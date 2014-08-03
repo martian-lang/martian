@@ -10,7 +10,6 @@ import (
 	"strings"
 )
 
-
 type (
 	Node struct {
 		lineno int
@@ -27,17 +26,17 @@ type (
 
 	StageDec struct {
 		Node
-		id     string
-		params []Param
-		split  []Param
+		id       string
+		params   []Param
+		splitter []Param
 	}
 
 	PipelineDec struct {
 		Node
 		id     string
 		params []Param
-		calls  []Stm
-		ret    Stm
+		calls  []*CallStm
+		ret    *ReturnStm
 	}
 
 	Param interface {
@@ -79,12 +78,12 @@ type (
 		Node
 		volatile bool
 		id       string
-		bindings []Stm
+		bindings []*BindStm
 	}
 
 	ReturnStm struct {
 		Node
-		bindings []Stm
+		bindings []*BindStm
 	}
 
 	Exp interface {
@@ -110,7 +109,7 @@ type (
 
 	File struct {
 		decs []Dec
-		call Stm
+		call *CallStm
 	}
 )
 // Whitelist for Dec and Param implementors. Patterned after Go's ast.go.
@@ -140,7 +139,11 @@ var ast File
 	exps []Exp
 	stm Stm
 	stms []Stm
-	node interface{}
+	call *CallStm
+	calls []*CallStm
+	binding *BindStm
+	bindings []*BindStm
+	retstm *ReturnStm
 }
 
 %type <val> file_id type help type src_lang
@@ -150,8 +153,11 @@ var ast File
 %type <params> param_list split_exp
 %type <exp> exp ref_exp
 %type <exps> exp_list
-%type <stm> call_stm return_stm bind_stm
-%type <stms> call_stm_list bind_stm_list
+%type <retstm> return_stm
+%type <call> call_stm 
+%type <binding> bind_stm
+%type <calls> call_stm_list 
+%type <bindings> bind_stm_list
 
 %token SKIP INVALID 
 %token SEMICOLON LBRACKET RBRACKET LPAREN RPAREN LBRACE RBRACE COMMA EQUALS
@@ -248,7 +254,7 @@ call_stm_list
     : call_stm_list call_stm
 		{{ $$ = append($1, $2) }}
     | call_stm
-		{{ $$ = []Stm{$1} }}
+		{{ $$ = []*CallStm{$1} }}
     ;
 
 call_stm
@@ -262,7 +268,7 @@ bind_stm_list
     : bind_stm_list bind_stm
 		{{ $$ = append($1, $2) }}
     | bind_stm
-		{{ $$ = []Stm{$1} }}
+		{{ $$ = []*BindStm{$1} }}
     ;
 
 bind_stm
@@ -438,9 +444,9 @@ func main() {
 			for _, param := range stageDec.params {			
 				fmt.Println(param)
 			}
-			if stageDec.split != nil {
-				for _, param := range stageDec.split {
-					fmt.Println(param)					
+			if stageDec.splitter != nil {
+				for _, param := range stageDec.splitter {
+					fmt.Println(param)
 				}
 			}
 		}
@@ -451,13 +457,14 @@ func main() {
 			for _, param := range pipelineDec.params {			
 				fmt.Println(param)
 			}
-			for _, stm := range pipelineDec.calls {
-				fmt.Println(stm)
-				call, _ := stm.(*CallStm)
-				for _, stm := range call.bindings {
-					binding, _ := stm.(*BindStm)
+			for _, call := range pipelineDec.calls {
+				fmt.Println(call)
+				for _, binding := range call.bindings {
 					fmt.Println(binding.id, binding.exp)
 				}
+			}
+			for _, binding := range pipelineDec.ret.bindings {
+				fmt.Println(binding.id, binding.exp)
 			}
 		}
 	}
