@@ -6,187 +6,277 @@ import (
 	"fmt"
 	"io/ioutil"
 	"regexp"
+	"strconv"
 	"strings"
 )
 
 
-type Node interface {
-}
+type (
+	Node struct {
+		lineno int
+	}
 
-type FileTypeDec struct {
-	Node
-	filetype string
-}
-func NewFileTypeDec(filetype string) *FileTypeDec {
-	return &FileTypeDec{filetype: filetype}
-}
+	Dec interface {
+		dec()
+	}
 
-type StageDec struct {
-	Node
-	name string
-}
-func NewStageDec(name string) *StageDec {
-	return &StageDec{name: name}
-}
+	FileTypeDec struct {
+		Node
+		id string
+	}
 
-type PipelineDec struct {
-	Node
-	name string
-}
-func NewPipelineDec(name string) *PipelineDec {
-	return &PipelineDec{name: name}
-}
+	StageDec struct {
+		Node
+		id     string
+		params []Param
+		split  []Param
+	}
 
-type File struct {
-	decList []Node
-}
+	PipelineDec struct {
+		Node
+		id     string
+		params []Param
+		calls  []Stm
+		ret    Stm
+	}
+
+	Param interface {
+		param()
+	}
+
+	InParam struct {
+		Node
+		tname string
+		id    string
+		help  string
+	}
+
+	OutParam struct {
+		Node
+		tname string
+		id    string
+		help  string
+	}
+
+	SourceParam struct {
+		Node
+		lang string
+		path string
+	}
+
+	Stm interface {
+		stm()
+	}
+
+	BindStm struct {
+		Node
+		id     string
+		exp    Exp
+		sweep  bool
+	}
+
+	CallStm struct {
+		Node
+		volatile bool
+		id       string
+		bindings []Stm
+	}
+
+	ReturnStm struct {
+		Node
+		bindings []Stm
+	}
+
+	Exp interface {
+		exp()
+	}
+
+	ValExp struct {
+		Node
+		kind string
+		fval float64
+		ival int64
+		sval string
+		bval bool
+		null bool
+	}
+
+	RefExp struct {
+		Node
+		kind     string
+		id       string
+		outputId string
+	}
+
+	File struct {
+		decs []Dec
+		call Stm
+	}
+)
+// Whitelist for Dec and Param implementors. Patterned after Go's ast.go.
+func (*FileTypeDec) dec() {}
+func (*StageDec) dec() {}
+func (*PipelineDec) dec() {}
+func (*InParam) param() {}
+func (*OutParam) param() {}
+func (*SourceParam) param() {}
+func (*ValExp) exp() {}
+func (*RefExp) exp() {}
+func (*BindStm) stm() {}
+func (*CallStm) stm() {}
+func (*ReturnStm) stm() {}
 
 var ast File
 %}
 
 %union{
+	lineno int
 	val string
-	node Node
-	list []Node
+	dec Dec
+	decs []Dec
+	param Param
+	params []Param
+	exp Exp
+	exps []Exp
+	stm Stm
+	stms []Stm
+	node interface{}
 }
 
-%type <val> file_id
-%type <node> file dec param help type src_lang
-%type <list> dec_list param_list
-%type <node> split_exp call_stm_list call_stm return_stm bind_stm_list 
-%type <node> bind_stm exp_list exp value_exp
+%type <val> file_id type help type src_lang
+%type <dec> dec 
+%type <decs> dec_list 
+%type <param> param
+%type <params> param_list split_exp
+%type <exp> exp ref_exp
+%type <exps> exp_list
+%type <stm> call_stm return_stm bind_stm
+%type <stms> call_stm_list bind_stm_list
 
-%token <val> ID
-%token FILETYPE SEMICOLON
-%token SKIP FILETYPE STAGE PIPELINE CALL VOLATILE SWEEP SPLIT 
-%token USING SELF RETURN EQUALS LPAREN RPAREN LBRACE RBRACE 
-%token LBRACKET RBRACKET SEMICOLON COMMA DOT IN OUT SRC PY 
-%token INT STRING FLOAT PATH FILE BOOL TRUE FALSE NULL DEFAULT 
-%token LITSTRING NUM_FLOAT NUM_INT INVALID
+%token SKIP INVALID 
+%token SEMICOLON LBRACKET RBRACKET LPAREN RPAREN LBRACE RBRACE COMMA EQUALS
+%token FILETYPE STAGE PIPELINE CALL VOLATILE SWEEP SPLIT USING SELF RETURN
+%token IN OUT SRC
+%token <val> ID LITSTRING NUM_FLOAT NUM_INT DOT
+%token <val> PY GO SH EXEC
+%token <val> INT STRING FLOAT PATH FILE BOOL TRUE FALSE NULL DEFAULT
 %%
 file
 	: dec_list
-		{{ ast = File{ decList: $1 } }}
-		/*
+		{{ ast = File{$1, nil} }}
 	| call_stm
-		{{ ast = File{ decList: []*Dec{} } }}
-		*/
+		{{ ast = File{nil, $1} }}
 	;
 
 dec_list
 	: dec_list dec
 		{{ $$ = append($1, $2) }}
 	| dec
-		{{ $$ = []Node{$1} }}
+		{{ $$ = []Dec{$1} }}
 	;
 
 dec
 	: FILETYPE file_id SEMICOLON
-		{{ $$ = NewFileTypeDec($2) }}
+		{{ $$ = &FileTypeDec{Node{mmlval.lineno}, $2} }}
 	| STAGE ID LPAREN param_list RPAREN 
-		{{ $$ = NewStageDec($2) }}
+		{{ $$ = &StageDec{Node{mmlval.lineno}, $2, $4, nil} }}
 	| STAGE ID LPAREN param_list RPAREN split_exp
-		{{ $$ = NewStageDec($2) }}
+		{{ $$ = &StageDec{Node{mmlval.lineno}, $2, $4, $6} }}
 	| PIPELINE ID LPAREN param_list RPAREN LBRACE call_stm_list return_stm RBRACE
-		{{ $$ = NewPipelineDec($2) }}
+		{{ $$ = &PipelineDec{Node{mmlval.lineno}, $2, $4, $7, $8} }}
 	;
 
 file_id
 	: ID DOT ID
-		{{ $$ = $1 + "." + $3 }}
+		{{ $$ = $1 + $2 + $3 }}
 	| ID
-		{{ $$ = $1 }}
 	;
 
 param_list
 	: param_list param
-		{{ $$ = nil }}
+		{{ $$ = append($1, $2) }}
 	| param
-		{{ $$ = nil }}
+		{{ $$ = []Param{$1} }}
 	;
 
 param
 	: IN type ID help
-		{{ $$ = nil }}
+		{{ $$ = &InParam{Node{mmlval.lineno}, $2, $3, $4} }}
 	| OUT type help 
-		{{ $$ = nil }}
+		{{ $$ = &OutParam{Node{mmlval.lineno}, $2, "default", $3} }}
 	| OUT type ID help 
-		{{ $$ = nil }}
+		{{ $$ = &OutParam{Node{mmlval.lineno}, $2, $3, $4} }}
 	| SRC src_lang LITSTRING COMMA
-		{{ $$ = nil }}
+		{{ $$ = &SourceParam{Node{mmlval.lineno}, $2, $3} }}
 	;
 help
     : LITSTRING COMMA
-		{{ $$ = nil }}
+    	{{ $$ = $1 }}
     | COMMA
-		{{ $$ = nil }}
+    	{{ $$ = "" }}
     ;
 
 type
     : INT
-		{{ $$ = nil }}
     | STRING
-		{{ $$ = nil }}
     | PATH
-		{{ $$ = nil }}
     | FLOAT
-		{{ $$ = nil }}
     | BOOL
-		{{ $$ = nil }}
     | ID
-		{{ $$ = nil }}
     | ID DOT ID
-		{{ $$ = nil }}
+		{{ $$ = $1 + "." + $3 }}
     ;
 
 src_lang
     : PY
-		{{ $$ = nil }}
+    //| GO
+    //| SH
+    //| EXEC
     ;
 
 split_exp
 	: SPLIT USING LPAREN param_list RPAREN
-		{{ $$ = nil }}
+		{{ $$ = $4 }}
 	;
 
 return_stm
     : RETURN LPAREN bind_stm_list RPAREN
-		{{ $$ = nil }}
+		{{ $$ = &ReturnStm{Node{mmlval.lineno}, $3 } }}
     ;
 
 call_stm_list
     : call_stm_list call_stm
-		{{ $$ = nil }}
+		{{ $$ = append($1, $2) }}
     | call_stm
-		{{ $$ = nil }}
+		{{ $$ = []Stm{$1} }}
     ;
 
 call_stm
     : CALL ID LPAREN bind_stm_list RPAREN
-		{{ $$ = nil }}
+		{{ $$ = &CallStm{Node{mmlval.lineno}, false, $2, $4 } }}
     | CALL VOLATILE ID LPAREN bind_stm_list RPAREN
-		{{ $$ = nil }}
+		{{ $$ = &CallStm{Node{mmlval.lineno}, true, $3, $5 } }}
     ;
 
 bind_stm_list
     : bind_stm_list bind_stm
-		{{ $$ = nil }}
+		{{ $$ = append($1, $2) }}
     | bind_stm
-		{{ $$ = nil }}
+		{{ $$ = []Stm{$1} }}
     ;
 
 bind_stm
     : ID EQUALS exp COMMA
-		{{ $$ = nil }}
+		{{ $$ = &BindStm{Node{mmlval.lineno}, $1, $3, false} }}
     | ID EQUALS SWEEP LPAREN exp RPAREN COMMA
-		{{ $$ = nil }}
+		{{ $$ = &BindStm{Node{mmlval.lineno}, $1, $5, true} }}
     ;
 
 exp_list
     : exp_list COMMA exp
-		{{ $$ = nil }}
+		{{ $$ = append($1, $3) }}
     | exp
-		{{ $$ = nil }}
+		{{ $$ = []Exp{$1} }}
     ; 
 
 exp
@@ -195,32 +285,38 @@ exp
     | LBRACKET RBRACKET
 		{{ $$ = nil }}
     | PATH LPAREN LITSTRING RPAREN
-		{{ $$ = nil }}
+		{{ $$ = &ValExp{Node:Node{mmlval.lineno}, kind: $1, sval: strings.Replace($3, "\"", "", -1) } }}
     | FILE LPAREN LITSTRING RPAREN
-		{{ $$ = nil }}
+		{{ $$ = &ValExp{Node:Node{mmlval.lineno}, kind: $1, sval: strings.Replace($3, "\"", "", -1) } }}
     | NUM_FLOAT
-		{{ $$ = nil }}
+		{{  // Lexer guarantees parseable float strings.
+			f, _ := strconv.ParseFloat($1, 64)
+			$$ = &ValExp{Node:Node{mmlval.lineno}, kind: "float", fval: f } 
+		}}
     | NUM_INT
-		{{ $$ = nil }}
+		{{  // Lexer guarantees parseable int strings.
+			i, _ := strconv.ParseInt($1, 0, 64)
+			$$ = &ValExp{Node:Node{mmlval.lineno}, kind: "int", ival: i } 
+		}}
     | LITSTRING
-		{{ $$ = nil }}
+		{{ $$ = &ValExp{Node:Node{mmlval.lineno}, kind: "string", sval: strings.Replace($1, "\"", "", -1)} }}
     | TRUE
-		{{ $$ = nil }}
+		{{ $$ = &ValExp{Node:Node{mmlval.lineno}, kind: "bool", bval: true} }}
     | FALSE
-		{{ $$ = nil }}
+		{{ $$ = &ValExp{Node:Node{mmlval.lineno}, kind: "bool", bval: false} }}
     | NULL
-		{{ $$ = nil }}
-    | value_exp
-		{{ $$ = nil }}
+		{{ $$ = &ValExp{Node:Node{mmlval.lineno}, kind: "null", null: true} }}
+    | ref_exp
+    	{{ $$ = $1 }}
     ;
 
-value_exp
+ref_exp
     : ID DOT ID
-		{{ $$ = nil }}
+		{{ $$ = &RefExp{Node{mmlval.lineno}, "call", $1, $3} }}
     | ID
-		{{ $$ = nil }}
+		{{ $$ = &RefExp{Node{mmlval.lineno}, "call", $1, "default"} }}
     | SELF DOT ID
-		{{ $$ = nil }}
+		{{ $$ = &RefExp{Node{mmlval.lineno}, "self", $3, ""} }}
     ;
 %%
 
@@ -262,6 +358,9 @@ var rules = []*Rule{
 	NewRule("out\\b", OUT),
 	NewRule("src\\b", SRC),
 	NewRule("py\\b", PY),
+	NewRule("go\\b", GO),
+	NewRule("sh\\b", SH),
+	NewRule("exec\\b", EXEC),
 	NewRule("int\\b", INT),
 	NewRule("string\\b", STRING),
 	NewRule("float\\b", FLOAT),
@@ -278,14 +377,14 @@ var rules = []*Rule{
 	NewRule(".", INVALID),
 }
 
-type MarioLex struct {
+type mmLex struct {
 	source string
 	pos    int
 	lineno int
 	last   string
 }
 
-func (self *MarioLex) Lex(lval *MarioSymType) int {
+func (self *mmLex) Lex(lval *mmSymType) int {
 	// 
 	for {
 		if self.pos >= len(self.source) {
@@ -307,42 +406,59 @@ func (self *MarioLex) Lex(lval *MarioSymType) int {
 			continue
 		}
 
-		fmt.Println(rule.token, val, self.lineno)
+		//fmt.Println(rule.token, val, self.lineno)
 		lval.val = val
+		lval.lineno = self.lineno
 		self.last = val
 		return rule.token
 	}
 }
 
-func (self *MarioLex) Error(s string) {
+func (self *mmLex) Error(s string) {
 	fmt.Printf("Unexpected token '%s' on line %d\n", self.last, self.lineno)
 }
 
 func main() {
 	data, _ := ioutil.ReadFile("stages.mro")
-	MarioParse(&MarioLex{
+	mmParse(&mmLex{
 		source: string(data),
 		pos:    0,
 		lineno: 1,
 	})
-	fmt.Println(len(ast.decList))
-	for _, dec := range ast.decList {
-		{
-			v, ok := dec.(*FileTypeDec)
-			if ok {
-				fmt.Println(v.filetype)
+	fmt.Println(len(ast.decs))
+	for _, dec := range ast.decs {
+		filetypeDec, ok := dec.(*FileTypeDec)
+		if ok {
+			fmt.Println(filetypeDec.id)
+		}
+
+		stageDec, ok := dec.(*StageDec)
+		if ok {
+			fmt.Println(stageDec.id)
+			for _, param := range stageDec.params {			
+				fmt.Println(param)
+			}
+			if stageDec.split != nil {
+				for _, param := range stageDec.split {
+					fmt.Println(param)					
+				}
 			}
 		}
-		{
-			v, ok := dec.(*StageDec)
-			if ok {
-				fmt.Println(v.name)
+
+		pipelineDec, ok := dec.(*PipelineDec)
+		if ok {
+			fmt.Println(pipelineDec.id)
+			for _, param := range pipelineDec.params {			
+				fmt.Println(param)
+			}
+			for _, stm := range pipelineDec.calls {
+				fmt.Println(stm)
+				call, _ := stm.(*CallStm)
+				for _, stm := range call.bindings {
+					binding, _ := stm.(*BindStm)
+					fmt.Println(binding.id, binding.exp)
+				}
 			}
 		}
-		{
-			v, ok := dec.(*PipelineDec)
-			if ok {
-				fmt.Println(v.name)
-			}
-		}	}
+	}
 }
