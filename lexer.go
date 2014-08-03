@@ -106,7 +106,7 @@ type MarioLex struct {
 	pos    int
 }
 
-func (self *MarioLex) Lex() int {
+func (self *MarioLex) Lex(lval *MarioSymType) int {
 	if self.pos >= len(self.source) {
 		return 1
 	}
@@ -125,6 +125,10 @@ func (self *MarioLex) Lex() int {
 		fmt.Println(rule.token, val)
 	}
 	return 0
+}
+
+func (self *MarioLex) Error(s string) {
+	fmt.Printf("Syntax error: %s\n", s)
 }
 
 func main() {
