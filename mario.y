@@ -4,7 +4,6 @@ package main
 
 import (
 	"fmt"
-	"io/ioutil"
 	"regexp"
 	"strconv"
 	"strings"
@@ -108,7 +107,7 @@ type (
 	}
 
 	File struct {
-		decs []Dec
+		Decs []Dec
 		call *CallStm
 	}
 )
@@ -424,48 +423,11 @@ func (self *mmLex) Error(s string) {
 	fmt.Printf("Unexpected token '%s' on line %d\n", self.last, self.lineno)
 }
 
-func main() {
-	data, _ := ioutil.ReadFile("stages.mro")
+func Parse(src string) *File {
 	mmParse(&mmLex{
-		source: string(data),
+		source: src,
 		pos:    0,
 		lineno: 1,
 	})
-	fmt.Println(len(ast.decs))
-	for _, dec := range ast.decs {
-		filetypeDec, ok := dec.(*FileTypeDec)
-		if ok {
-			fmt.Println(filetypeDec.id)
-		}
-
-		stageDec, ok := dec.(*StageDec)
-		if ok {
-			fmt.Println(stageDec.id)
-			for _, param := range stageDec.params {			
-				fmt.Println(param)
-			}
-			if stageDec.splitter != nil {
-				for _, param := range stageDec.splitter {
-					fmt.Println(param)
-				}
-			}
-		}
-
-		pipelineDec, ok := dec.(*PipelineDec)
-		if ok {
-			fmt.Println(pipelineDec.id)
-			for _, param := range pipelineDec.params {			
-				fmt.Println(param)
-			}
-			for _, call := range pipelineDec.calls {
-				fmt.Println(call)
-				for _, binding := range call.bindings {
-					fmt.Println(binding.id, binding.exp)
-				}
-			}
-			for _, binding := range pipelineDec.ret.bindings {
-				fmt.Println(binding.id, binding.exp)
-			}
-		}
-	}
+	return &ast
 }
