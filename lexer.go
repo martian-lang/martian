@@ -59,7 +59,19 @@ func NewRule(pattern string, token int) *Rule {
 }
 
 var rules = []*Rule{
+	NewRule("\\s+", SKIP),
 	NewRule("#.*\\n", SKIP),
+	NewRule("=", EQUALS),
+	NewRule("\\(", LPAREN),
+	NewRule("\\)", RPAREN),
+	NewRule("{", LBRACE),
+	NewRule("}", RBRACE),
+	NewRule("\\[", LBRACKET),
+	NewRule("\\]", RBRACKET),
+	NewRule(";", SEMICOLON),
+	NewRule(",", COMMA),
+	NewRule("\\.", DOT),
+	NewRule("\"[^\\\"]*\"", LITSTRING),
 	NewRule("filetype\\b", FILETYPE),
 	NewRule("stage\\b", STAGE),
 	NewRule("pipeline\\b", PIPELINE),
@@ -70,16 +82,6 @@ var rules = []*Rule{
 	NewRule("using\\b", USING),
 	NewRule("self\\b", SELF),
 	NewRule("return\\b", RETURN),
-	NewRule("=", EQUALS),
-	NewRule("\\(", LPAREN),
-	NewRule("\\)", RPAREN),
-	NewRule("\\{", LBRACE),
-	NewRule("\\}", RBRACE),
-	NewRule("\\[", LBRACKET),
-	NewRule("\\]", RBRACKET),
-	NewRule(";", SEMICOLON),
-	NewRule(",", COMMA),
-	NewRule("\\.", DOT),
 	NewRule("in\\b", IN),
 	NewRule("out\\b", OUT),
 	NewRule("src\\b", SRC),
@@ -94,11 +96,9 @@ var rules = []*Rule{
 	NewRule("false\\b", FALSE),
 	NewRule("null\\b", NULL),
 	NewRule("default\\b", DEFAULT),
-	NewRule("\"[^\\\"]*\"", LITSTRING),
 	NewRule("[a-zA-Z_][a-zA-z0-9_]*", ID),
 	NewRule("-?[0-9]+\\.[0-9]+([eE][-+]?[0-9]+)?\\b", NUM_FLOAT),
 	NewRule("-?[0-9]+\\b", NUM_INT),
-	NewRule("\\s+", SKIP),
 }
 
 type MarioLex struct {
@@ -122,17 +122,20 @@ func (self *MarioLex) Lex() int {
 	}
 	self.pos += len(val)
 	if rule.token != SKIP {
-		fmt.Println(rule.token)
+		fmt.Println(rule.token, val)
 	}
 	return 0
 }
 
 func main() {
 	data, _ := ioutil.ReadFile("stages.mro")
-	lexer := MarioLex{source: string(data), pos: 0}
+	lexer := MarioLex{
+		source: string(data),
+		pos:    0,
+	}
 	for {
-		r := lexer.Lex()
-		if r == 1 {
+		retval := lexer.Lex()
+		if retval != 0 {
 			break
 		}
 	}
