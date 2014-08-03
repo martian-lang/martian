@@ -91,6 +91,7 @@ type (
 
 	ValExp struct {
 		Node
+		// union-style multi-value store
 		kind string
 		fval float64
 		ival int64
@@ -111,52 +112,55 @@ type (
 		call *CallStm
 	}
 )
-// Whitelist for Dec and Param implementors. Patterned after Go's ast.go.
-func (*FileTypeDec) dec() {}
-func (*StageDec) dec() {}
-func (*PipelineDec) dec() {}
-func (*InParam) param() {}
-func (*OutParam) param() {}
+// Interface whitelist for Dec, Param, Exp, and Stm implementors. 
+// Patterned after code in Go's ast.go.
+func (*FileTypeDec) dec()   {}
+func (*StageDec) dec()      {}
+func (*PipelineDec) dec()   {}
+func (*InParam) param()     {}
+func (*OutParam) param()    {}
 func (*SourceParam) param() {}
-func (*ValExp) exp() {}
-func (*RefExp) exp() {}
-func (*BindStm) stm() {}
-func (*CallStm) stm() {}
-func (*ReturnStm) stm() {}
+func (*ValExp) exp()        {}
+func (*RefExp) exp()        {}
+func (*BindStm) stm()       {}
+func (*CallStm) stm()       {}
+func (*ReturnStm) stm()     {}
 
+// This global is where we build the AST. It will get passed out
+// by the main parsing function.
 var ast File
 %}
 
 %union{
-	lineno int
-	val string
-	dec Dec
-	decs []Dec
-	param Param
-	params []Param
-	exp Exp
-	exps []Exp
-	stm Stm
-	stms []Stm
-	call *CallStm
-	calls []*CallStm
-	binding *BindStm
+	lineno   int
+	val      string
+	dec      Dec
+	decs     []Dec
+	param    Param
+	params   []Param
+	exp      Exp
+	exps     []Exp
+	stm      Stm
+	stms     []Stm
+	call     *CallStm
+	calls    []*CallStm
+	binding  *BindStm
 	bindings []*BindStm
-	retstm *ReturnStm
+	retstm   *ReturnStm
 }
 
-%type <val> file_id type help type src_lang
-%type <dec> dec 
-%type <decs> dec_list 
-%type <param> param
-%type <params> param_list split_exp
-%type <exp> exp ref_exp
-%type <exps> exp_list
-%type <retstm> return_stm
-%type <call> call_stm 
-%type <binding> bind_stm
-%type <calls> call_stm_list 
+%type <val>      file_id type help type src_lang
+%type <dec>      dec 
+%type <decs>     dec_list 
+%type <param>    param
+%type <params>   param_list split_exp
+%type <exp>      exp ref_exp
+%type <exps>     exp_list
+%type <call>     call_stm 
+%type <calls>    call_stm_list 
+%type <binding>  bind_stm
 %type <bindings> bind_stm_list
+%type <retstm>   return_stm
 
 %token SKIP INVALID 
 %token SEMICOLON LBRACKET RBRACKET LPAREN RPAREN LBRACE RBRACE COMMA EQUALS
@@ -331,13 +335,15 @@ type Rule struct {
 }
 
 func NewRule(pattern string, token int) *Rule {
+	// Pre-compile regexps for token matching
 	re, _ := regexp.Compile("^" + pattern)
 	return &Rule{re, token}
 }
 
 var rules = []*Rule{
-	NewRule("\\s+", SKIP),
-	NewRule("#.*\\n", SKIP),
+	// Order matters.
+	NewRule("\\s+", SKIP),  		   	// whitespace 
+	NewRule("#.*\\n", SKIP),		   	// Python-style comments
 	NewRule("=", EQUALS),
 	NewRule("\\(", LPAREN),
 	NewRule("\\)", RPAREN),
@@ -348,7 +354,7 @@ var rules = []*Rule{
 	NewRule(";", SEMICOLON),
 	NewRule(",", COMMA),
 	NewRule("\\.", DOT),
-	NewRule("\"[^\\\"]*\"", LITSTRING),
+	NewRule("\"[^\\\"]*\"", LITSTRING),	// double-quoted strings. escapes not supported
 	NewRule("filetype\\b", FILETYPE),
 	NewRule("stage\\b", STAGE),
 	NewRule("pipeline\\b", PIPELINE),
@@ -377,26 +383,29 @@ var rules = []*Rule{
 	NewRule("null\\b", NULL),
 	NewRule("default\\b", DEFAULT),
 	NewRule("[a-zA-Z_][a-zA-z0-9_]*", ID),
-	NewRule("-?[0-9]+\\.[0-9]+([eE][-+]?[0-9]+)?\\b", NUM_FLOAT),
+	NewRule("-?[0-9]+\\.[0-9]+([eE][-+]?[0-9]+)?\\b", NUM_FLOAT), // support exponential
 	NewRule("-?[0-9]+\\b", NUM_INT),
 	NewRule(".", INVALID),
 }
 
 type mmLex struct {
-	source string
-	pos    int
-	lineno int
-	last   string
+	source string  	// All the data we're scanning
+	pos    int     	// Position of the scan head
+	lineno int     	// Keep track of the line number
+	last   string  	// Cache the last token for error messaging
 }
 
 func (self *mmLex) Lex(lval *mmSymType) int {
-	// 
+	// Loop until we return a token or run out of data.
 	for {
+		// Stop if we run out of data.
 		if self.pos >= len(self.source) {
 			return 0
 		}
+		// Slice the data using pos as a cursor.
 		head := self.source[self.pos:]
 
+		// Iterate through the regexps until one matches the head.
 		var val string
 		var rule *Rule
 		for _, rule = range rules {
@@ -405,13 +414,20 @@ func (self *mmLex) Lex(lval *mmSymType) int {
 				break
 			}
 		}
+
+		// Advance the cursor pos.
 		self.pos += len(val)
+
+		// If it was whitespace or a comment, advance the line counter
+		// by counting newlines.
 		if rule.token == SKIP {
 			self.lineno += strings.Count(val, "\n")
 			continue
 		}
 
-		//fmt.Println(rule.token, val, self.lineno)
+		// If we got a parseable token, pass it and the line number
+		// to the parser.
+		// fmt.Println(rule.token, val, self.lineno)
 		lval.val = val
 		lval.lineno = self.lineno
 		self.last = val
@@ -424,10 +440,6 @@ func (self *mmLex) Error(s string) {
 }
 
 func Parse(src string) *File {
-	mmParse(&mmLex{
-		source: src,
-		pos:    0,
-		lineno: 1,
-	})
+	mmParse(&mmLex{src, 0, 1, ""})
 	return &ast
 }
