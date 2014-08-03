@@ -92,7 +92,7 @@ stage MARK_DUPLICATES(
 ) split using (
     in int chunk_start,
     in int chunk_end,
-)
+)&
 
 stage SORT_BY_NAME(
     in bam input,

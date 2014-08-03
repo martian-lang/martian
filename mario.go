@@ -1,9 +1,9 @@
-//line mario.y.go:2
+//line mario.y:2
 package main
 
 import __yyfmt__ "fmt"
 
-//line mario.y.go:3
+//line mario.y:3
 import (
 	"fmt"
 	"regexp"
@@ -93,6 +93,7 @@ type (
 
 	ValExp struct {
 		Node
+		// union-style multi-value store
 		kind string
 		fval float64
 		ival int64
@@ -108,13 +109,14 @@ type (
 		outputId string
 	}
 
-	File struct {
+	Ptree struct {
 		Decs []Dec
 		call *CallStm
 	}
 )
 
-// Whitelist for Dec and Param implementors. Patterned after Go's ast.go.
+// Interface whitelist for Dec, Param, Exp, and Stm implementors.
+// Patterned after code in Go's ast.go.
 func (*FileTypeDec) dec()   {}
 func (*StageDec) dec()      {}
 func (*PipelineDec) dec()   {}
@@ -127,9 +129,11 @@ func (*BindStm) stm()       {}
 func (*CallStm) stm()       {}
 func (*ReturnStm) stm()     {}
 
-var ast File
+// This global is where we build the AST. It will get passed out
+// by the main parsing function.
+var ptree Ptree
 
-//line mario.y.go:130
+//line mario.y:134
 type mmSymType struct {
 	yys      int
 	lineno   int
@@ -244,7 +248,7 @@ const mmEofCode = 1
 const mmErrCode = 2
 const mmMaxDepth = 200
 
-//line mario.y.go:326
+//line mario.y:330
 
 type Rule struct {
 	re    *regexp.Regexp
@@ -252,13 +256,15 @@ type Rule struct {
 }
 
 func NewRule(pattern string, token int) *Rule {
+	// Pre-compile regexps for token matching
 	re, _ := regexp.Compile("^" + pattern)
 	return &Rule{re, token}
 }
 
 var rules = []*Rule{
-	NewRule("\\s+", SKIP),
-	NewRule("#.*\\n", SKIP),
+	// Order matters.
+	NewRule("\\s+", SKIP),   // whitespace
+	NewRule("#.*\\n", SKIP), // Python-style comments
 	NewRule("=", EQUALS),
 	NewRule("\\(", LPAREN),
 	NewRule("\\)", RPAREN),
@@ -269,7 +275,7 @@ var rules = []*Rule{
 	NewRule(";", SEMICOLON),
 	NewRule(",", COMMA),
 	NewRule("\\.", DOT),
-	NewRule("\"[^\\\"]*\"", LITSTRING),
+	NewRule("\"[^\\\"]*\"", LITSTRING), // double-quoted strings. escapes not supported
 	NewRule("filetype\\b", FILETYPE),
 	NewRule("stage\\b", STAGE),
 	NewRule("pipeline\\b", PIPELINE),
@@ -298,26 +304,41 @@ var rules = []*Rule{
 	NewRule("null\\b", NULL),
 	NewRule("default\\b", DEFAULT),
 	NewRule("[a-zA-Z_][a-zA-z0-9_]*", ID),
-	NewRule("-?[0-9]+\\.[0-9]+([eE][-+]?[0-9]+)?\\b", NUM_FLOAT),
+	NewRule("-?[0-9]+\\.[0-9]+([eE][-+]?[0-9]+)?\\b", NUM_FLOAT), // support exponential
 	NewRule("-?[0-9]+\\b", NUM_INT),
 	NewRule(".", INVALID),
 }
 
+type SyntaxError struct {
+	Lineno int
+	Line   string
+	Token  string
+	Err    error
+}
+
+func (self *SyntaxError) Error() string {
+	return fmt.Sprintf("MRO syntax error: unexpected token '%s' on line %d:\n\n%s", self.Token, self.Lineno, self.Line)
+}
+
 type mmLex struct {
-	source string
-	pos    int
-	lineno int
-	last   string
+	source string       // All the data we're scanning
+	pos    int          // Position of the scan head
+	lineno int          // Keep track of the line number
+	last   string       // Cache the last token for error messaging
+	err    *SyntaxError // Constructed syntax error object
 }
 
 func (self *mmLex) Lex(lval *mmSymType) int {
-	//
+	// Loop until we return a token or run out of data.
 	for {
+		// Stop if we run out of data.
 		if self.pos >= len(self.source) {
 			return 0
 		}
+		// Slice the data using pos as a cursor.
 		head := self.source[self.pos:]
 
+		// Iterate through the regexps until one matches the head.
 		var val string
 		var rule *Rule
 		for _, rule = range rules {
@@ -326,31 +347,44 @@ func (self *mmLex) Lex(lval *mmSymType) int {
 				break
 			}
 		}
+
+		// Advance the cursor pos.
 		self.pos += len(val)
+
+		// If it was whitespace or a comment, advance the line counter
+		// by counting newlines.
 		if rule.token == SKIP {
 			self.lineno += strings.Count(val, "\n")
 			continue
 		}
 
-		//fmt.Println(rule.token, val, self.lineno)
+		// If we got a parseable token, pass it and the line number
+		// to the parser.
+		// fmt.Println(rule.token, val, self.lineno)
 		lval.val = val
-		lval.lineno = self.lineno
 		self.last = val
+		lval.lineno = self.lineno
 		return rule.token
 	}
 }
 
 func (self *mmLex) Error(s string) {
-	fmt.Printf("Unexpected token '%s' on line %d\n", self.last, self.lineno)
+	// Capture the error line by searching back and forth for newlines.
+	spos := strings.LastIndex(self.source[0:self.pos], "\n") + 1
+	epos := strings.Index(self.source[self.pos:], "\n") + self.pos + 1
+	self.err = &SyntaxError{
+		Lineno: self.lineno,
+		Line:   self.source[spos:epos],
+		Token:  self.last,
+	}
 }
 
-func Parse(src string) *File {
-	mmParse(&mmLex{
-		source: src,
-		pos:    0,
-		lineno: 1,
-	})
-	return &ast
+func Parse(src string) (*Ptree, error) {
+	lex := mmLex{src, 0, 1, "", nil}
+	if mmParse(&lex) == 0 {
+		return &ptree, nil
+	}
+	return nil, lex.err
 }
 
 //line yacctab:1
@@ -384,8 +418,8 @@ var mmAct = []int{
 	38, 112, 5, 34, 29, 30, 31, 35, 102, 6,
 	7, 8, 5, 6, 7, 8, 94, 110, 89, 88,
 	75, 93, 108, 74, 106, 105, 103, 109, 99, 81,
-	80, 76, 25, 21, 20, 16, 18, 4, 1, 90,
-	9, 100, 77, 61, 65, 2, 47, 12,
+	80, 76, 25, 21, 20, 16, 18, 4, 1, 100,
+	9, 90, 77, 61, 65, 2, 47, 12,
 }
 var mmPact = []int{
 
@@ -405,14 +439,14 @@ var mmPact = []int{
 var mmPgo = []int{
 
 	0, 157, 28, 6, 156, 147, 155, 2, 3, 154,
-	4, 153, 152, 151, 5, 0, 149, 1, 148,
+	4, 153, 152, 5, 151, 0, 1, 149, 148,
 }
 var mmR1 = []int{
 
 	0, 18, 18, 6, 6, 5, 5, 5, 5, 1,
 	1, 8, 8, 7, 7, 7, 7, 3, 3, 2,
-	2, 2, 2, 2, 2, 2, 4, 9, 13, 16,
-	16, 14, 14, 17, 17, 15, 15, 12, 12, 10,
+	2, 2, 2, 2, 2, 2, 4, 9, 17, 14,
+	14, 13, 13, 16, 16, 15, 15, 12, 12, 10,
 	10, 10, 10, 10, 10, 10, 10, 10, 10, 10,
 	11, 11, 11,
 }
@@ -427,18 +461,18 @@ var mmR2 = []int{
 }
 var mmChk = []int{
 
-	-1000, -18, -6, -14, -5, 18, 15, 16, 17, -5,
+	-1000, -18, -6, -13, -5, 18, 15, 16, 17, -5,
 	28, 19, -1, 28, 28, 28, 9, 28, 6, 32,
-	9, 9, -17, -15, 28, 9, 28, -8, -7, 25,
-	26, 27, -8, 10, -15, 14, -17, 10, -7, -2,
+	9, 9, -16, -15, 28, 9, 28, -8, -7, 25,
+	26, 27, -8, 10, -15, 14, -16, 10, -7, -2,
 	37, 38, 40, 39, 42, 28, -2, -4, 33, 10,
 	-10, 20, 7, 40, 41, 30, 31, 29, 43, 44,
 	45, -11, 28, 23, 10, -9, 21, 28, 32, -3,
 	28, 29, 13, 29, 11, 13, 9, -12, 8, -10,
 	9, 9, 32, 32, 22, -3, 28, -3, 13, 13,
-	-16, -14, -10, 13, 8, 29, 29, 28, 28, 9,
-	-13, -14, 24, 10, -10, 10, 10, -8, 12, 9,
-	13, 10, -17, 10,
+	-14, -13, -10, 13, 8, 29, 29, 28, 28, 9,
+	-17, -13, 24, 10, -10, 10, 10, -8, 12, 9,
+	13, 10, -16, 10,
 }
 var mmDef = []int{
 
@@ -697,63 +731,63 @@ mmdefault:
 	switch mmnt {
 
 	case 1:
-		//line mario.y.go:171
+		//line mario.y:175
 		{
 			{
-				ast = File{mmS[mmpt-0].decs, nil}
+				ptree = Ptree{mmS[mmpt-0].decs, nil}
 			}
 		}
 	case 2:
-		//line mario.y.go:173
+		//line mario.y:177
 		{
 			{
-				ast = File{nil, mmS[mmpt-0].call}
+				ptree = Ptree{nil, mmS[mmpt-0].call}
 			}
 		}
 	case 3:
-		//line mario.y.go:178
+		//line mario.y:182
 		{
 			{
 				mmVAL.decs = append(mmS[mmpt-1].decs, mmS[mmpt-0].dec)
 			}
 		}
 	case 4:
-		//line mario.y.go:180
+		//line mario.y:184
 		{
 			{
 				mmVAL.decs = []Dec{mmS[mmpt-0].dec}
 			}
 		}
 	case 5:
-		//line mario.y.go:185
+		//line mario.y:189
 		{
 			{
 				mmVAL.dec = &FileTypeDec{Node{mmlval.lineno}, mmS[mmpt-1].val}
 			}
 		}
 	case 6:
-		//line mario.y.go:187
+		//line mario.y:191
 		{
 			{
 				mmVAL.dec = &StageDec{Node{mmlval.lineno}, mmS[mmpt-3].val, mmS[mmpt-1].params, nil}
 			}
 		}
 	case 7:
-		//line mario.y.go:189
+		//line mario.y:193
 		{
 			{
 				mmVAL.dec = &StageDec{Node{mmlval.lineno}, mmS[mmpt-4].val, mmS[mmpt-2].params, mmS[mmpt-0].params}
 			}
 		}
 	case 8:
-		//line mario.y.go:191
+		//line mario.y:195
 		{
 			{
 				mmVAL.dec = &PipelineDec{Node{mmlval.lineno}, mmS[mmpt-7].val, mmS[mmpt-5].params, mmS[mmpt-2].calls, mmS[mmpt-1].retstm}
 			}
 		}
 	case 9:
-		//line mario.y.go:196
+		//line mario.y:200
 		{
 			{
 				mmVAL.val = mmS[mmpt-2].val + mmS[mmpt-1].val + mmS[mmpt-0].val
@@ -762,56 +796,56 @@ mmdefault:
 	case 10:
 		mmVAL.val = mmS[mmpt-0].val
 	case 11:
-		//line mario.y.go:202
+		//line mario.y:206
 		{
 			{
 				mmVAL.params = append(mmS[mmpt-1].params, mmS[mmpt-0].param)
 			}
 		}
 	case 12:
-		//line mario.y.go:204
+		//line mario.y:208
 		{
 			{
 				mmVAL.params = []Param{mmS[mmpt-0].param}
 			}
 		}
 	case 13:
-		//line mario.y.go:209
+		//line mario.y:213
 		{
 			{
 				mmVAL.param = &InParam{Node{mmlval.lineno}, mmS[mmpt-2].val, mmS[mmpt-1].val, mmS[mmpt-0].val}
 			}
 		}
 	case 14:
-		//line mario.y.go:211
+		//line mario.y:215
 		{
 			{
 				mmVAL.param = &OutParam{Node{mmlval.lineno}, mmS[mmpt-1].val, "default", mmS[mmpt-0].val}
 			}
 		}
 	case 15:
-		//line mario.y.go:213
+		//line mario.y:217
 		{
 			{
 				mmVAL.param = &OutParam{Node{mmlval.lineno}, mmS[mmpt-2].val, mmS[mmpt-1].val, mmS[mmpt-0].val}
 			}
 		}
 	case 16:
-		//line mario.y.go:215
+		//line mario.y:219
 		{
 			{
 				mmVAL.param = &SourceParam{Node{mmlval.lineno}, mmS[mmpt-2].val, mmS[mmpt-1].val}
 			}
 		}
 	case 17:
-		//line mario.y.go:219
+		//line mario.y:223
 		{
 			{
 				mmVAL.val = mmS[mmpt-1].val
 			}
 		}
 	case 18:
-		//line mario.y.go:221
+		//line mario.y:225
 		{
 			{
 				mmVAL.val = ""
@@ -830,7 +864,7 @@ mmdefault:
 	case 24:
 		mmVAL.val = mmS[mmpt-0].val
 	case 25:
-		//line mario.y.go:232
+		//line mario.y:236
 		{
 			{
 				mmVAL.val = mmS[mmpt-2].val + "." + mmS[mmpt-0].val
@@ -839,119 +873,119 @@ mmdefault:
 	case 26:
 		mmVAL.val = mmS[mmpt-0].val
 	case 27:
-		//line mario.y.go:244
+		//line mario.y:248
 		{
 			{
 				mmVAL.params = mmS[mmpt-1].params
 			}
 		}
 	case 28:
-		//line mario.y.go:249
+		//line mario.y:253
 		{
 			{
 				mmVAL.retstm = &ReturnStm{Node{mmlval.lineno}, mmS[mmpt-1].bindings}
 			}
 		}
 	case 29:
-		//line mario.y.go:254
+		//line mario.y:258
 		{
 			{
 				mmVAL.calls = append(mmS[mmpt-1].calls, mmS[mmpt-0].call)
 			}
 		}
 	case 30:
-		//line mario.y.go:256
+		//line mario.y:260
 		{
 			{
 				mmVAL.calls = []*CallStm{mmS[mmpt-0].call}
 			}
 		}
 	case 31:
-		//line mario.y.go:261
+		//line mario.y:265
 		{
 			{
 				mmVAL.call = &CallStm{Node{mmlval.lineno}, false, mmS[mmpt-3].val, mmS[mmpt-1].bindings}
 			}
 		}
 	case 32:
-		//line mario.y.go:263
+		//line mario.y:267
 		{
 			{
 				mmVAL.call = &CallStm{Node{mmlval.lineno}, true, mmS[mmpt-3].val, mmS[mmpt-1].bindings}
 			}
 		}
 	case 33:
-		//line mario.y.go:268
+		//line mario.y:272
 		{
 			{
 				mmVAL.bindings = append(mmS[mmpt-1].bindings, mmS[mmpt-0].binding)
 			}
 		}
 	case 34:
-		//line mario.y.go:270
+		//line mario.y:274
 		{
 			{
 				mmVAL.bindings = []*BindStm{mmS[mmpt-0].binding}
 			}
 		}
 	case 35:
-		//line mario.y.go:275
+		//line mario.y:279
 		{
 			{
 				mmVAL.binding = &BindStm{Node{mmlval.lineno}, mmS[mmpt-3].val, mmS[mmpt-1].exp, false}
 			}
 		}
 	case 36:
-		//line mario.y.go:277
+		//line mario.y:281
 		{
 			{
 				mmVAL.binding = &BindStm{Node{mmlval.lineno}, mmS[mmpt-6].val, mmS[mmpt-2].exp, true}
 			}
 		}
 	case 37:
-		//line mario.y.go:282
+		//line mario.y:286
 		{
 			{
 				mmVAL.exps = append(mmS[mmpt-2].exps, mmS[mmpt-0].exp)
 			}
 		}
 	case 38:
-		//line mario.y.go:284
+		//line mario.y:288
 		{
 			{
 				mmVAL.exps = []Exp{mmS[mmpt-0].exp}
 			}
 		}
 	case 39:
-		//line mario.y.go:289
+		//line mario.y:293
 		{
 			{
 				mmVAL.exp = nil
 			}
 		}
 	case 40:
-		//line mario.y.go:291
+		//line mario.y:295
 		{
 			{
 				mmVAL.exp = nil
 			}
 		}
 	case 41:
-		//line mario.y.go:293
+		//line mario.y:297
 		{
 			{
 				mmVAL.exp = &ValExp{Node: Node{mmlval.lineno}, kind: mmS[mmpt-3].val, sval: strings.Replace(mmS[mmpt-1].val, "\"", "", -1)}
 			}
 		}
 	case 42:
-		//line mario.y.go:295
+		//line mario.y:299
 		{
 			{
 				mmVAL.exp = &ValExp{Node: Node{mmlval.lineno}, kind: mmS[mmpt-3].val, sval: strings.Replace(mmS[mmpt-1].val, "\"", "", -1)}
 			}
 		}
 	case 43:
-		//line mario.y.go:297
+		//line mario.y:301
 		{
 			{ // Lexer guarantees parseable float strings.
 				f, _ := strconv.ParseFloat(mmS[mmpt-0].val, 64)
@@ -959,7 +993,7 @@ mmdefault:
 			}
 		}
 	case 44:
-		//line mario.y.go:302
+		//line mario.y:306
 		{
 			{ // Lexer guarantees parseable int strings.
 				i, _ := strconv.ParseInt(mmS[mmpt-0].val, 0, 64)
@@ -967,56 +1001,56 @@ mmdefault:
 			}
 		}
 	case 45:
-		//line mario.y.go:307
+		//line mario.y:311
 		{
 			{
 				mmVAL.exp = &ValExp{Node: Node{mmlval.lineno}, kind: "string", sval: strings.Replace(mmS[mmpt-0].val, "\"", "", -1)}
 			}
 		}
 	case 46:
-		//line mario.y.go:309
+		//line mario.y:313
 		{
 			{
 				mmVAL.exp = &ValExp{Node: Node{mmlval.lineno}, kind: "bool", bval: true}
 			}
 		}
 	case 47:
-		//line mario.y.go:311
+		//line mario.y:315
 		{
 			{
 				mmVAL.exp = &ValExp{Node: Node{mmlval.lineno}, kind: "bool", bval: false}
 			}
 		}
 	case 48:
-		//line mario.y.go:313
+		//line mario.y:317
 		{
 			{
 				mmVAL.exp = &ValExp{Node: Node{mmlval.lineno}, kind: "null", null: true}
 			}
 		}
 	case 49:
-		//line mario.y.go:315
+		//line mario.y:319
 		{
 			{
 				mmVAL.exp = mmS[mmpt-0].exp
 			}
 		}
 	case 50:
-		//line mario.y.go:320
+		//line mario.y:324
 		{
 			{
 				mmVAL.exp = &RefExp{Node{mmlval.lineno}, "call", mmS[mmpt-2].val, mmS[mmpt-0].val}
 			}
 		}
 	case 51:
-		//line mario.y.go:322
+		//line mario.y:326
 		{
 			{
 				mmVAL.exp = &RefExp{Node{mmlval.lineno}, "call", mmS[mmpt-0].val, "default"}
 			}
 		}
 	case 52:
-		//line mario.y.go:324
+		//line mario.y:328
 		{
 			{
 				mmVAL.exp = &RefExp{Node{mmlval.lineno}, "self", mmS[mmpt-0].val, ""}
