@@ -65,10 +65,11 @@ var rules = []*rule{
 }
 
 type mmLexInfo struct {
-	src   string   // All the data we're scanning
-	pos   int      // Position of the scan head
-	loc   int      // Keep track of the line number
-	token string   // Cache the last token for error messaging
+	src    string   // All the data we're scanning
+	pos    int      // Position of the scan head
+	loc    int      // Keep track of the line number
+	token  string   // Cache the last token for error messaging
+    global *Ast
 }
 
 func (self *mmLexInfo) Lex(lval *mmSymType) int {
@@ -112,14 +113,15 @@ func (self *mmLexInfo) Lex(lval *mmSymType) int {
 func (self *mmLexInfo) Error(s string) {}
 
 func yaccParse(src string) (*Ast, *mmLexInfo) {
-	lexinfo := mmLexInfo{
+    lexinfo := mmLexInfo{
 		src: src, 
 		pos: 0, 
 		loc: 1, 
 		token: "",
+        global: &Ast{},
 	}
 	if mmParse(&lexinfo) != 0 {
 		return nil, &lexinfo // return lex on error to provide loc and token info
 	}
-	return &ast, nil // success
+	return lexinfo.global, nil // success
 }

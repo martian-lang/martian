@@ -29,9 +29,10 @@ func (self *ParseError) Error() string {
 
 type DuplicateNameError struct {
 	e    MarioError
-	name string
+    kind string 
+	id   string
 }
 
 func (self *DuplicateNameError) Error() string {
-	return self.e.f(*self, fmt.Sprintf("a stage or pipeline named '%s' was already declared before duplicate", self.name))
+	return self.e.f(*self, fmt.Sprintf("%s '%s' was previously declared; duplicate encountered", self.kind, self.id))
 }

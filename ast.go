@@ -12,43 +12,50 @@ type (
 
 	Dec interface {
 		dec()
-		Node() Node
-		ID() string
-	}
-
-	Idable interface {
-		Node() Node
-		ID() string
 	}
 
 	Callable interface {
 		callable()
 		Node() Node
-		ID() string
-		Params() []Param
+		Id() string
 	}
 
 	Stage struct {
-		node      Node
-		id        string
-		inparams  []InParam
-		outparams []OutParam
-		src       Src
-		splitter  []Param
+		node        Node
+		id          string
+		inParams    *ParamScope
+		outParams   *ParamScope
+		src         *Src
+		splitParams *ParamScope
 	}
 
 	Pipeline struct {
 		node      Node
 		id        string
-		inparams  []InParam
-		outparams []OutParam
+		inParams  *ParamScope
+		outParams *ParamScope
 		calls     []*CallStm
 		ret       *ReturnStm
 	}
 
-	Param interface {
-		param()
-	}
+    ParamScope struct {
+        params []Param
+        table  map[string]Param
+    }
+
+    CallScope struct {
+        callables []Callable
+        table     map[string]Callable
+    }
+
+    Param interface {
+        param()
+        Node() Node
+        Mode() string
+        Tname() string
+        Id() string
+        Help() string
+    }
 
 	InParam struct {
 		node  Node
@@ -119,7 +126,7 @@ type (
 		filetypes []*Filetype
 		stages    []*Stage
 		pipelines []*Pipeline
-		callables []Callable
+		callScope *CallScope
 		call      *CallStm
 	}
 )
@@ -138,19 +145,25 @@ func (*BindStm) stm()    {}
 func (*CallStm) stm()    {}
 func (*ReturnStm) stm()  {}
 
-func (s *Filetype) ID() string { return s.id }
+func (s *Filetype) Id() string { return s.id }
 func (s *Filetype) Node() Node { return s.node }
 
-func (s *Stage) callable()       {}
-func (s *Stage) ID() string      { return s.id }
-func (s *Stage) Node() Node      { return s.node }
-func (s *Stage) Params() []Param { return s.params }
+func (s *Stage) callable()        {}
+func (s *Stage) Id() string       { return s.id }
+func (s *Stage) Node() Node       { return s.node }
 
-func (s *Pipeline) callable()       {}
-func (s *Pipeline) ID() string      { return s.id }
-func (s *Pipeline) Node() Node      { return s.node }
-func (s *Pipeline) Params() []Param { return s.params }
+func (s *Pipeline) callable()     {}
+func (s *Pipeline) Id() string    { return s.id }
+func (s *Pipeline) Node() Node    { return s.node }
 
-// This global is where we build the AST. It will get passed out
-// by the main parsing function.
-var ast Ast
+func (s *InParam) Node() Node     { return s.node }
+func (s *InParam) Mode() string   { return "in" }
+func (s *InParam) Tname() string  { return s.tname }
+func (s *InParam) Id() string     { return s.id }
+func (s *InParam) Help() string   { return s.help }
+
+func (s *OutParam) Node() Node    { return s.node }
+func (s *OutParam) Mode() string  { return "out" }
+func (s *OutParam) Tname() string { return s.tname }
+func (s *OutParam) Id() string    { return s.id }
+func (s *OutParam) Help() string  { return s.help }

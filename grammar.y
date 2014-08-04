@@ -9,15 +9,15 @@ import (
 %}
 
 %union{
+    global    *Ast
 	loc   	  int
 	val       string
 	dec       Dec
 	decs      []Dec
-	inparam   InParam
-	inparams  []InParam
-	outparam  OutParam
-	outparams []OutParam
-	src 	  Src
+	inparam   *InParam
+	outparam  *OutParam
+    paramlist *ParamScope
+	src 	  *Src
 	exp       Exp
 	exps      []Exp
 	stm       Stm
@@ -33,9 +33,8 @@ import (
 %type <dec>       dec 
 %type <decs>      dec_list
 %type <inparam>   in_param
-%type <inparams>  in_param_list split_exp
 %type <outparam>  out_param
-%type <outparams> out_param_list
+%type <paramlist> in_param_list out_param_list split_param_list
 %type <src>		  src_stm
 %type <exp>       exp ref_exp
 %type <exps>      exp_list
@@ -57,22 +56,27 @@ import (
 file
 	: dec_list
 		{{ 
-			ast = Ast{[]*Filetype{}, []*Stage{}, []*Pipeline{}, []Callable{}, nil}
-			for _, dec := range $1 {
+            fmt.Print()
+            global := Ast{[]*Filetype{}, []*Stage{}, []*Pipeline{}, &CallScope{[]Callable{}, map[string]Callable{}}, nil}
+            for _, dec := range $1 {
 				switch dec := dec.(type) {
 				case *Filetype:
-					ast.filetypes = append(ast.filetypes, dec)
+					global.filetypes           = append(global.filetypes, dec)
 				case *Stage:
-					ast.stages    = append(ast.stages, dec)
-					ast.callables = append(ast.callables, dec)
+					global.stages              = append(global.stages, dec)
+					global.callScope.callables = append(global.callScope.callables, dec)
 				case *Pipeline:
-					ast.pipelines = append(ast.pipelines, dec)
-					ast.callables = append(ast.callables, dec)
+					global.pipelines           = append(global.pipelines, dec)
+					global.callScope.callables = append(global.callScope.callables, dec)
 				}
 			}
+            mmlex.(*mmLexInfo).global = &global
 		}}
 	| call_stm
-		{{ ast = Ast{[]*Filetype{}, []*Stage{}, []*Pipeline{}, []Callable{},  $1} }}
+		{{ 
+            global := Ast{[]*Filetype{}, []*Stage{}, []*Pipeline{}, &CallScope{[]Callable{}, map[string]Callable{}},  $1} 
+            mmlex.(*mmLexInfo).global = &global
+        }}
 	;
 
 dec_list
@@ -87,7 +91,7 @@ dec
 		{{ $$ = &Filetype{Node{mmlval.loc}, $2} }}
 	| STAGE ID LPAREN in_param_list out_param_list src_stm RPAREN 
 		{{ $$ = &Stage{Node{mmlval.loc}, $2, $4, $5, $6, nil} }}
-	| STAGE ID LPAREN in_param_list out_param_list src_stm RPAREN split_exp
+	| STAGE ID LPAREN in_param_list out_param_list src_stm RPAREN split_param_list
 		{{ $$ = &Stage{Node{mmlval.loc}, $2, $4, $5, $6, $8} }}
 	| PIPELINE ID LPAREN in_param_list out_param_list RPAREN LBRACE call_stm_list return_stm RBRACE
 		{{ $$ = &Pipeline{Node{mmlval.loc}, $2, $4, $5, $8, $9} }}
@@ -101,9 +105,12 @@ file_id
 
 in_param_list
 	: in_param_list in_param
-		{{ $$ = append($1, $2) }}
+		{{ 
+            $1.params = append($1.params, $2)
+            $$ = $1
+        }}
 	| in_param
-		{{ $$ = []InParam{$1} }}
+		{{ $$ = &ParamScope{[]Param{$1}, map[string]Param{}} }}
 	;
 
 in_param
@@ -113,9 +120,12 @@ in_param
 
 out_param_list
 	: out_param_list out_param
-		{{ $$ = append($1, $2) }}
+		{{ 
+            $1.params = append($1.params, $2)
+            $$ = $1
+        }}
 	| out_param
-		{{ $$ = []OutParam{$1} }}
+		{{ $$ = &ParamScope{[]Param{$1}, map[string]Param{}} }}
 	;
 
 out_param
@@ -155,7 +165,7 @@ src_lang
     //| EXEC
     ;
 
-split_exp
+split_param_list
 	: SPLIT USING LPAREN in_param_list RPAREN
 		{{ $$ = $4 }}
 	;
