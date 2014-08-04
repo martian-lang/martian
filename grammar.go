@@ -5,28 +5,32 @@ import __yyfmt__ "fmt"
 
 //line grammar.y:2
 import (
+	"fmt"
 	"strconv"
 	"strings"
 )
 
-//line grammar.y:10
+//line grammar.y:11
 type mmSymType struct {
-	yys      int
-	loc      int
-	val      string
-	dec      Dec
-	decs     []Dec
-	param    Param
-	params   []Param
-	exp      Exp
-	exps     []Exp
-	stm      Stm
-	stms     []Stm
-	call     *CallStm
-	calls    []*CallStm
-	binding  *BindStm
-	bindings []*BindStm
-	retstm   *ReturnStm
+	yys       int
+	loc       int
+	val       string
+	dec       Dec
+	decs      []Dec
+	inparam   InParam
+	inparams  []InParam
+	outparam  OutParam
+	outparams []OutParam
+	src       Src
+	exp       Exp
+	exps      []Exp
+	stm       Stm
+	stms      []Stm
+	call      *CallStm
+	calls     []*CallStm
+	binding   *BindStm
+	bindings  []*BindStm
+	retstm    *ReturnStm
 }
 
 const SKIP = 57346
@@ -124,7 +128,7 @@ const mmEofCode = 1
 const mmErrCode = 2
 const mmMaxDepth = 200
 
-//line grammar.y:207
+//line grammar.y:242
 
 //line yacctab:1
 var mmExca = []int{
@@ -133,100 +137,101 @@ var mmExca = []int{
 	-2, 0,
 }
 
-const mmNprod = 53
+const mmNprod = 55
 const mmPrivate = 57344
 
 var mmTokenNames []string
 var mmStates []string
 
-const mmLast = 158
+const mmLast = 159
 
 var mmAct = []int{
 
-	23, 22, 28, 27, 50, 3, 69, 45, 48, 83,
-	52, 78, 82, 68, 19, 96, 40, 41, 43, 42,
-	72, 44, 95, 34, 72, 32, 63, 36, 39, 52,
-	38, 62, 57, 55, 56, 38, 71, 34, 113, 70,
-	71, 73, 51, 53, 54, 63, 58, 59, 60, 24,
-	62, 57, 55, 56, 111, 64, 24, 79, 33, 46,
-	98, 97, 53, 54, 86, 58, 59, 60, 52, 29,
-	30, 31, 84, 24, 85, 67, 24, 87, 49, 26,
-	91, 92, 17, 15, 63, 29, 30, 31, 11, 62,
-	57, 55, 56, 29, 30, 31, 101, 10, 104, 37,
-	14, 53, 54, 107, 58, 59, 60, 13, 66, 5,
-	38, 112, 5, 34, 29, 30, 31, 35, 102, 6,
-	7, 8, 5, 6, 7, 8, 94, 110, 89, 88,
-	75, 93, 108, 74, 106, 105, 103, 109, 99, 81,
-	80, 76, 25, 21, 20, 16, 18, 4, 1, 100,
-	9, 90, 77, 61, 65, 2, 47, 12,
+	23, 22, 28, 3, 47, 81, 27, 39, 37, 80,
+	45, 77, 76, 67, 35, 49, 72, 19, 84, 40,
+	41, 43, 42, 32, 44, 84, 97, 34, 30, 118,
+	36, 60, 92, 36, 83, 32, 59, 54, 52, 53,
+	82, 83, 91, 49, 63, 46, 65, 24, 50, 51,
+	61, 55, 56, 57, 73, 63, 48, 24, 94, 60,
+	93, 11, 49, 86, 59, 54, 52, 53, 24, 31,
+	10, 66, 85, 38, 64, 88, 50, 51, 60, 55,
+	56, 57, 26, 59, 54, 52, 53, 24, 98, 17,
+	15, 101, 14, 13, 103, 50, 51, 68, 55, 56,
+	57, 29, 38, 29, 109, 117, 5, 106, 5, 90,
+	96, 33, 110, 38, 89, 111, 116, 32, 36, 115,
+	29, 6, 7, 8, 5, 6, 7, 8, 107, 99,
+	69, 113, 87, 105, 104, 102, 78, 114, 112, 75,
+	74, 70, 25, 21, 20, 16, 18, 4, 1, 108,
+	9, 100, 71, 58, 62, 95, 2, 79, 12,
 }
 var mmPact = []int{
 
-	104, -1000, 108, -1000, -1000, 69, 79, 72, 55, -1000,
-	136, 54, 140, -18, 135, 134, 21, 133, -1000, 51,
-	60, 60, 48, -1000, 103, 21, -1000, 89, -1000, -21,
-	-21, -25, 68, -1000, -1000, 22, 45, 87, -1000, 47,
-	-1000, -1000, -1000, -1000, -1000, -19, 11, 12, -1000, 122,
-	117, 132, 3, 131, 130, -1000, -1000, -1000, -1000, -1000,
-	-1000, -1000, -20, -23, -1000, -1000, 50, 7, 36, -1000,
-	7, 116, -1000, 115, 91, -1000, 61, 118, -1000, -1000,
-	-7, -14, 33, 32, 129, -1000, -1000, -1000, -1000, -1000,
-	94, -1000, 126, 61, -1000, 125, 124, -1000, -1000, 60,
-	120, -1000, 128, 114, -1000, -1000, -1000, 44, -1000, 21,
-	-1000, -1000, 28, -1000,
+	106, -1000, 110, -1000, -1000, 42, 65, 64, 62, -1000,
+	136, 61, 140, -15, 135, 134, 29, 133, -1000, 54,
+	78, 78, 59, -1000, 97, 29, -1000, 76, -1000, -18,
+	76, -1000, -1000, 36, 40, 47, -1000, -1000, -18, 43,
+	-1000, -1000, -1000, -1000, -1000, -19, 87, 117, 132, 8,
+	131, 130, -1000, -1000, -1000, -1000, -1000, -1000, -1000, -20,
+	-21, -1000, 126, -1000, -24, 12, 5, 35, 121, -1000,
+	55, 101, -1000, -1000, 13, 3, 32, 30, 89, -3,
+	-1000, -1000, 5, 116, -1000, -1000, -1000, 90, 125, 55,
+	-1000, 124, 123, -1000, -1000, -1000, 85, 115, -1000, -1000,
+	88, -1000, 102, -1000, -1000, -1000, 129, -1000, 119, -1000,
+	128, -1000, 78, -1000, 29, 95, 19, -1000, -1000,
 }
 var mmPgo = []int{
 
-	0, 157, 28, 6, 156, 147, 155, 2, 3, 154,
-	4, 153, 152, 5, 151, 0, 1, 149, 148,
+	0, 158, 7, 5, 157, 147, 156, 2, 6, 155,
+	8, 14, 154, 4, 153, 152, 3, 151, 0, 1,
+	149, 148,
 }
 var mmR1 = []int{
 
-	0, 18, 18, 6, 6, 5, 5, 5, 5, 1,
-	1, 8, 8, 7, 7, 7, 7, 3, 3, 2,
-	2, 2, 2, 2, 2, 2, 4, 9, 17, 14,
-	14, 13, 13, 16, 16, 15, 15, 12, 12, 10,
-	10, 10, 10, 10, 10, 10, 10, 10, 10, 10,
-	11, 11, 11,
+	0, 21, 21, 6, 6, 5, 5, 5, 5, 1,
+	1, 8, 8, 7, 11, 11, 10, 10, 12, 3,
+	3, 2, 2, 2, 2, 2, 2, 2, 4, 9,
+	20, 17, 17, 16, 16, 19, 19, 18, 18, 15,
+	15, 13, 13, 13, 13, 13, 13, 13, 13, 13,
+	13, 13, 14, 14, 14,
 }
 var mmR2 = []int{
 
-	0, 1, 1, 2, 1, 3, 5, 6, 9, 3,
-	1, 2, 1, 4, 3, 4, 4, 2, 1, 1,
-	1, 1, 1, 1, 1, 3, 1, 5, 4, 2,
-	1, 5, 6, 2, 1, 4, 7, 3, 1, 3,
-	2, 4, 4, 1, 1, 1, 1, 1, 1, 1,
-	3, 1, 3,
+	0, 1, 1, 2, 1, 3, 7, 8, 10, 3,
+	1, 2, 1, 4, 2, 1, 3, 4, 4, 2,
+	1, 1, 1, 1, 1, 1, 1, 3, 1, 5,
+	4, 2, 1, 5, 6, 2, 1, 4, 7, 3,
+	1, 3, 2, 4, 4, 1, 1, 1, 1, 1,
+	1, 1, 3, 1, 3,
 }
 var mmChk = []int{
 
-	-1000, -18, -6, -13, -5, 18, 15, 16, 17, -5,
+	-1000, -21, -6, -16, -5, 18, 15, 16, 17, -5,
 	28, 19, -1, 28, 28, 28, 9, 28, 6, 32,
-	9, 9, -16, -15, 28, 9, 28, -8, -7, 25,
-	26, 27, -8, 10, -15, 14, -16, 10, -7, -2,
-	37, 38, 40, 39, 42, 28, -2, -4, 33, 10,
-	-10, 20, 7, 40, 41, 30, 31, 29, 43, 44,
-	45, -11, 28, 23, 10, -9, 21, 28, 32, -3,
-	28, 29, 13, 29, 11, 13, 9, -12, 8, -10,
-	9, 9, 32, 32, 22, -3, 28, -3, 13, 13,
-	-14, -13, -10, 13, 8, 29, 29, 28, 28, 9,
-	-17, -13, 24, 10, -10, 10, 10, -8, 12, 9,
-	13, 10, -16, 10,
+	9, 9, -19, -18, 28, 9, 28, -8, -7, 25,
+	-8, 10, -18, 14, -19, -11, -7, -10, 26, -2,
+	37, 38, 40, 39, 42, 28, -11, -13, 20, 7,
+	40, 41, 30, 31, 29, 43, 44, 45, -14, 28,
+	23, 10, -12, -10, 27, -2, 28, 32, 10, 13,
+	9, -15, 8, -13, 9, 9, 32, 32, 10, -4,
+	33, -3, 28, 29, 13, -3, 28, 11, -13, 13,
+	8, 29, 29, 28, 28, -9, 21, 29, -3, 13,
+	-17, -16, 10, -13, 10, 10, 22, 13, -20, -16,
+	24, 13, 9, 12, 9, -8, -19, 10, 10,
 }
 var mmDef = []int{
 
 	0, -2, 1, 2, 4, 0, 0, 0, 0, 3,
 	0, 0, 0, 10, 0, 0, 0, 0, 5, 0,
-	0, 0, 0, 34, 0, 0, 9, 0, 12, 0,
-	0, 0, 0, 31, 33, 0, 0, 6, 11, 0,
-	19, 20, 21, 22, 23, 24, 0, 0, 26, 0,
-	0, 0, 0, 0, 0, 43, 44, 45, 46, 47,
-	48, 49, 51, 0, 32, 7, 0, 0, 0, 14,
-	0, 0, 18, 0, 0, 35, 0, 0, 40, 38,
-	0, 0, 0, 0, 0, 13, 25, 15, 17, 16,
-	0, 30, 0, 0, 39, 0, 0, 50, 52, 0,
-	0, 29, 0, 0, 37, 41, 42, 0, 8, 0,
-	36, 27, 0, 28,
+	0, 0, 0, 36, 0, 0, 9, 0, 12, 0,
+	0, 33, 35, 0, 0, 0, 11, 15, 0, 0,
+	21, 22, 23, 24, 25, 26, 0, 0, 0, 0,
+	0, 0, 45, 46, 47, 48, 49, 50, 51, 53,
+	0, 34, 0, 14, 0, 0, 0, 0, 0, 37,
+	0, 0, 42, 40, 0, 0, 0, 0, 6, 0,
+	28, 16, 0, 0, 20, 13, 27, 0, 0, 0,
+	41, 0, 0, 52, 54, 7, 0, 0, 17, 19,
+	0, 32, 0, 39, 43, 44, 0, 18, 0, 31,
+	0, 38, 0, 8, 0, 0, 0, 29, 30,
 }
 var mmTok1 = []int{
 
@@ -470,63 +475,75 @@ mmdefault:
 	switch mmnt {
 
 	case 1:
-		//line grammar.y:52
+		//line grammar.y:59
 		{
 			{
-				ast = Ast{mmS[mmpt-0].decs, nil}
+				ast = Ast{[]*Filetype{}, []*Stage{}, []*Pipeline{}, []Callable{}, nil}
+				for _, dec := range mmS[mmpt-0].decs {
+					switch dec := dec.(type) {
+					case *Filetype:
+						ast.filetypes = append(ast.filetypes, dec)
+					case *Stage:
+						ast.stages = append(ast.stages, dec)
+						ast.callables = append(ast.callables, dec)
+					case *Pipeline:
+						ast.pipelines = append(ast.pipelines, dec)
+						ast.callables = append(ast.callables, dec)
+					}
+				}
 			}
 		}
 	case 2:
-		//line grammar.y:54
+		//line grammar.y:75
 		{
 			{
-				ast = Ast{nil, mmS[mmpt-0].call}
+				ast = Ast{[]*Filetype{}, []*Stage{}, []*Pipeline{}, []Callable{}, mmS[mmpt-0].call}
 			}
 		}
 	case 3:
-		//line grammar.y:59
+		//line grammar.y:80
 		{
 			{
 				mmVAL.decs = append(mmS[mmpt-1].decs, mmS[mmpt-0].dec)
 			}
 		}
 	case 4:
-		//line grammar.y:61
+		//line grammar.y:82
 		{
 			{
 				mmVAL.decs = []Dec{mmS[mmpt-0].dec}
 			}
 		}
 	case 5:
-		//line grammar.y:66
+		//line grammar.y:87
 		{
 			{
-				mmVAL.dec = &FileTypeDec{Node{mmlval.loc}, mmS[mmpt-1].val}
+				mmVAL.dec = &Filetype{Node{mmlval.loc}, mmS[mmpt-1].val}
 			}
 		}
 	case 6:
-		//line grammar.y:68
+		//line grammar.y:89
 		{
 			{
-				mmVAL.dec = &StageDec{Node{mmlval.loc}, mmS[mmpt-3].val, mmS[mmpt-1].params, nil}
+				mmVAL.dec = &Stage{Node{mmlval.loc}, mmS[mmpt-5].val, mmS[mmpt-3].inparams, mmS[mmpt-2].outparams, mmS[mmpt-1].src, nil}
 			}
 		}
 	case 7:
-		//line grammar.y:70
+		//line grammar.y:91
 		{
 			{
-				mmVAL.dec = &StageDec{Node{mmlval.loc}, mmS[mmpt-4].val, mmS[mmpt-2].params, mmS[mmpt-0].params}
+				mmVAL.dec = &Stage{Node{mmlval.loc}, mmS[mmpt-6].val, mmS[mmpt-4].inparams, mmS[mmpt-3].outparams, mmS[mmpt-2].src, mmS[mmpt-0].inparams}
 			}
 		}
 	case 8:
-		//line grammar.y:72
+		//line grammar.y:93
 		{
 			{
-				mmVAL.dec = &PipelineDec{Node{mmlval.loc}, mmS[mmpt-7].val, mmS[mmpt-5].params, mmS[mmpt-2].calls, mmS[mmpt-1].retstm}
+				mmVAL.dec = &Pipeline{Node{mmlval.loc}, mmS[mmpt-8].val, mmS[mmpt-6].inparams, mmS[mmpt-5].outparams, mmS[mmpt-2].calls, mmS[mmpt-1].retstm}
 			}
 		}
 	case 9:
-		//line grammar.y:77
+		//line grammar.y:98
 		{
 			{
 				mmVAL.val = mmS[mmpt-2].val + mmS[mmpt-1].val + mmS[mmpt-0].val
@@ -535,65 +552,75 @@ mmdefault:
 	case 10:
 		mmVAL.val = mmS[mmpt-0].val
 	case 11:
-		//line grammar.y:83
+		//line grammar.y:104
 		{
 			{
-				mmVAL.params = append(mmS[mmpt-1].params, mmS[mmpt-0].param)
+				mmVAL.inparams = append(mmS[mmpt-1].inparams, mmS[mmpt-0].inparam)
 			}
 		}
 	case 12:
-		//line grammar.y:85
+		//line grammar.y:106
 		{
 			{
-				mmVAL.params = []Param{mmS[mmpt-0].param}
+				mmVAL.inparams = []InParam{mmS[mmpt-0].inparam}
 			}
 		}
 	case 13:
-		//line grammar.y:90
+		//line grammar.y:111
 		{
 			{
-				mmVAL.param = &InParam{Node{mmlval.loc}, mmS[mmpt-2].val, mmS[mmpt-1].val, mmS[mmpt-0].val}
+				mmVAL.inparam = &InParam{Node{mmlval.loc}, mmS[mmpt-2].val, mmS[mmpt-1].val, mmS[mmpt-0].val}
 			}
 		}
 	case 14:
-		//line grammar.y:92
+		//line grammar.y:116
 		{
 			{
-				mmVAL.param = &OutParam{Node{mmlval.loc}, mmS[mmpt-1].val, "default", mmS[mmpt-0].val}
+				mmVAL.outparams = append(mmS[mmpt-1].outparams, mmS[mmpt-0].outparam)
 			}
 		}
 	case 15:
-		//line grammar.y:94
+		//line grammar.y:118
 		{
 			{
-				mmVAL.param = &OutParam{Node{mmlval.loc}, mmS[mmpt-2].val, mmS[mmpt-1].val, mmS[mmpt-0].val}
+				mmVAL.outparams = []OutParam{mmS[mmpt-0].outparam}
 			}
 		}
 	case 16:
-		//line grammar.y:96
+		//line grammar.y:123
 		{
 			{
-				mmVAL.param = &SourceParam{Node{mmlval.loc}, mmS[mmpt-2].val, mmS[mmpt-1].val}
+				mmVAL.outparam = &OutParam{Node{mmlval.loc}, mmS[mmpt-1].val, "default", mmS[mmpt-0].val}
 			}
 		}
 	case 17:
-		//line grammar.y:100
+		//line grammar.y:125
+		{
+			{
+				mmVAL.outparam = &OutParam{Node{mmlval.loc}, mmS[mmpt-2].val, mmS[mmpt-1].val, mmS[mmpt-0].val}
+			}
+		}
+	case 18:
+		//line grammar.y:130
+		{
+			{
+				mmVAL.src = &Src{Node{mmlval.loc}, mmS[mmpt-2].val, mmS[mmpt-1].val}
+			}
+		}
+	case 19:
+		//line grammar.y:135
 		{
 			{
 				mmVAL.val = mmS[mmpt-1].val
 			}
 		}
-	case 18:
-		//line grammar.y:102
+	case 20:
+		//line grammar.y:137
 		{
 			{
 				mmVAL.val = ""
 			}
 		}
-	case 19:
-		mmVAL.val = mmS[mmpt-0].val
-	case 20:
-		mmVAL.val = mmS[mmpt-0].val
 	case 21:
 		mmVAL.val = mmS[mmpt-0].val
 	case 22:
@@ -603,193 +630,197 @@ mmdefault:
 	case 24:
 		mmVAL.val = mmS[mmpt-0].val
 	case 25:
-		//line grammar.y:113
+		mmVAL.val = mmS[mmpt-0].val
+	case 26:
+		mmVAL.val = mmS[mmpt-0].val
+	case 27:
+		//line grammar.y:148
 		{
 			{
 				mmVAL.val = mmS[mmpt-2].val + "." + mmS[mmpt-0].val
 			}
 		}
-	case 26:
+	case 28:
 		mmVAL.val = mmS[mmpt-0].val
-	case 27:
-		//line grammar.y:125
+	case 29:
+		//line grammar.y:160
 		{
 			{
-				mmVAL.params = mmS[mmpt-1].params
+				mmVAL.inparams = mmS[mmpt-1].inparams
 			}
 		}
-	case 28:
-		//line grammar.y:130
+	case 30:
+		//line grammar.y:165
 		{
 			{
 				mmVAL.retstm = &ReturnStm{Node{mmlval.loc}, mmS[mmpt-1].bindings}
 			}
 		}
-	case 29:
-		//line grammar.y:135
+	case 31:
+		//line grammar.y:170
 		{
 			{
 				mmVAL.calls = append(mmS[mmpt-1].calls, mmS[mmpt-0].call)
 			}
 		}
-	case 30:
-		//line grammar.y:137
+	case 32:
+		//line grammar.y:172
 		{
 			{
 				mmVAL.calls = []*CallStm{mmS[mmpt-0].call}
 			}
 		}
-	case 31:
-		//line grammar.y:142
+	case 33:
+		//line grammar.y:177
 		{
 			{
 				mmVAL.call = &CallStm{Node{mmlval.loc}, false, mmS[mmpt-3].val, mmS[mmpt-1].bindings}
 			}
 		}
-	case 32:
-		//line grammar.y:144
+	case 34:
+		//line grammar.y:179
 		{
 			{
 				mmVAL.call = &CallStm{Node{mmlval.loc}, true, mmS[mmpt-3].val, mmS[mmpt-1].bindings}
 			}
 		}
-	case 33:
-		//line grammar.y:149
+	case 35:
+		//line grammar.y:184
 		{
 			{
 				mmVAL.bindings = append(mmS[mmpt-1].bindings, mmS[mmpt-0].binding)
 			}
 		}
-	case 34:
-		//line grammar.y:151
+	case 36:
+		//line grammar.y:186
 		{
 			{
 				mmVAL.bindings = []*BindStm{mmS[mmpt-0].binding}
 			}
 		}
-	case 35:
-		//line grammar.y:156
+	case 37:
+		//line grammar.y:191
 		{
 			{
 				mmVAL.binding = &BindStm{Node{mmlval.loc}, mmS[mmpt-3].val, mmS[mmpt-1].exp, false}
 			}
 		}
-	case 36:
-		//line grammar.y:158
+	case 38:
+		//line grammar.y:193
 		{
 			{
 				mmVAL.binding = &BindStm{Node{mmlval.loc}, mmS[mmpt-6].val, mmS[mmpt-2].exp, true}
 			}
 		}
-	case 37:
-		//line grammar.y:163
+	case 39:
+		//line grammar.y:198
 		{
 			{
 				mmVAL.exps = append(mmS[mmpt-2].exps, mmS[mmpt-0].exp)
 			}
 		}
-	case 38:
-		//line grammar.y:165
+	case 40:
+		//line grammar.y:200
 		{
 			{
 				mmVAL.exps = []Exp{mmS[mmpt-0].exp}
 			}
 		}
-	case 39:
-		//line grammar.y:170
-		{
-			{
-				mmVAL.exp = nil
-			}
-		}
-	case 40:
-		//line grammar.y:172
-		{
-			{
-				mmVAL.exp = nil
-			}
-		}
 	case 41:
-		//line grammar.y:174
+		//line grammar.y:205
 		{
 			{
-				mmVAL.exp = &ValExp{node: Node{mmlval.loc}, kind: mmS[mmpt-3].val, sval: strings.Replace(mmS[mmpt-1].val, "\"", "", -1)}
+				mmVAL.exp = nil
 			}
 		}
 	case 42:
-		//line grammar.y:176
+		//line grammar.y:207
+		{
+			{
+				mmVAL.exp = nil
+			}
+		}
+	case 43:
+		//line grammar.y:209
 		{
 			{
 				mmVAL.exp = &ValExp{node: Node{mmlval.loc}, kind: mmS[mmpt-3].val, sval: strings.Replace(mmS[mmpt-1].val, "\"", "", -1)}
 			}
 		}
-	case 43:
-		//line grammar.y:178
+	case 44:
+		//line grammar.y:211
+		{
+			{
+				mmVAL.exp = &ValExp{node: Node{mmlval.loc}, kind: mmS[mmpt-3].val, sval: strings.Replace(mmS[mmpt-1].val, "\"", "", -1)}
+			}
+		}
+	case 45:
+		//line grammar.y:213
 		{
 			{ // Lexer guarantees parseable float strings.
 				f, _ := strconv.ParseFloat(mmS[mmpt-0].val, 64)
 				mmVAL.exp = &ValExp{node: Node{mmlval.loc}, kind: "float", fval: f}
 			}
 		}
-	case 44:
-		//line grammar.y:183
+	case 46:
+		//line grammar.y:218
 		{
 			{ // Lexer guarantees parseable int strings.
 				i, _ := strconv.ParseInt(mmS[mmpt-0].val, 0, 64)
 				mmVAL.exp = &ValExp{node: Node{mmlval.loc}, kind: "int", ival: i}
 			}
 		}
-	case 45:
-		//line grammar.y:188
+	case 47:
+		//line grammar.y:223
 		{
 			{
 				mmVAL.exp = &ValExp{node: Node{mmlval.loc}, kind: "string", sval: strings.Replace(mmS[mmpt-0].val, "\"", "", -1)}
 			}
 		}
-	case 46:
-		//line grammar.y:190
+	case 48:
+		//line grammar.y:225
 		{
 			{
 				mmVAL.exp = &ValExp{node: Node{mmlval.loc}, kind: "bool", bval: true}
 			}
 		}
-	case 47:
-		//line grammar.y:192
+	case 49:
+		//line grammar.y:227
 		{
 			{
 				mmVAL.exp = &ValExp{node: Node{mmlval.loc}, kind: "bool", bval: false}
 			}
 		}
-	case 48:
-		//line grammar.y:194
+	case 50:
+		//line grammar.y:229
 		{
 			{
 				mmVAL.exp = &ValExp{node: Node{mmlval.loc}, kind: "null", null: true}
 			}
 		}
-	case 49:
-		//line grammar.y:196
+	case 51:
+		//line grammar.y:231
 		{
 			{
 				mmVAL.exp = mmS[mmpt-0].exp
 			}
 		}
-	case 50:
-		//line grammar.y:201
+	case 52:
+		//line grammar.y:236
 		{
 			{
 				mmVAL.exp = &RefExp{Node{mmlval.loc}, "call", mmS[mmpt-2].val, mmS[mmpt-0].val}
 			}
 		}
-	case 51:
-		//line grammar.y:203
+	case 53:
+		//line grammar.y:238
 		{
 			{
 				mmVAL.exp = &RefExp{Node{mmlval.loc}, "call", mmS[mmpt-0].val, "default"}
 			}
 		}
-	case 52:
-		//line grammar.y:205
+	case 54:
+		//line grammar.y:240
 		{
 			{
 				mmVAL.exp = &RefExp{Node{mmlval.loc}, "self", mmS[mmpt-0].val, ""}

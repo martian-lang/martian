@@ -2,41 +2,48 @@
 package main
 
 import (
+	"fmt"
 	"strconv"
 	"strings"
 )
 %}
 
 %union{
-	loc   	 int
-	val      string
-	dec      Dec
-	decs     []Dec
-	param    Param
-	params   []Param
-	exp      Exp
-	exps     []Exp
-	stm      Stm
-	stms     []Stm
-	call     *CallStm
-	calls    []*CallStm
-	binding  *BindStm
-	bindings []*BindStm
-	retstm   *ReturnStm
+	loc   	  int
+	val       string
+	dec       Dec
+	decs      []Dec
+	inparam   InParam
+	inparams  []InParam
+	outparam  OutParam
+	outparams []OutParam
+	src 	  Src
+	exp       Exp
+	exps      []Exp
+	stm       Stm
+	stms      []Stm
+	call      *CallStm
+	calls     []*CallStm
+	binding   *BindStm
+	bindings  []*BindStm
+	retstm    *ReturnStm
 }
 
-%type <val>      file_id type help type src_lang
-%type <dec>      dec 
-%type <decs>     dec_list 
-%type <param>    param
-%type <params>   param_list split_exp
-%type <exp>      exp ref_exp
-%type <exps>     exp_list
-%type <call>     call_stm 
-%type <calls>    call_stm_list 
-%type <binding>  bind_stm
-%type <bindings> bind_stm_list
-%type <retstm>   return_stm
+%type <val>       file_id type help type src_lang
+%type <dec>       dec 
+%type <decs>      dec_list
+%type <inparam>   in_param
+%type <inparams>  in_param_list split_exp
+%type <outparam>  out_param
+%type <outparams> out_param_list
+%type <src>		  src_stm
+%type <exp>       exp ref_exp
+%type <exps>      exp_list
+%type <call>      call_stm 
+%type <calls>     call_stm_list 
+%type <binding>   bind_stm
+%type <bindings>  bind_stm_list
+%type <retstm>    return_stm
 
 %token SKIP INVALID 
 %token SEMICOLON LBRACKET RBRACKET LPAREN RPAREN LBRACE RBRACE COMMA EQUALS
@@ -49,9 +56,23 @@ import (
 %%
 file
 	: dec_list
-		{{ ast = Ast{$1, nil} }}
+		{{ 
+			ast = Ast{[]*Filetype{}, []*Stage{}, []*Pipeline{}, []Callable{}, nil}
+			for _, dec := range $1 {
+				switch dec := dec.(type) {
+				case *Filetype:
+					ast.filetypes = append(ast.filetypes, dec)
+				case *Stage:
+					ast.stages    = append(ast.stages, dec)
+					ast.callables = append(ast.callables, dec)
+				case *Pipeline:
+					ast.pipelines = append(ast.pipelines, dec)
+					ast.callables = append(ast.callables, dec)
+				}
+			}
+		}}
 	| call_stm
-		{{ ast = Ast{nil, $1} }}
+		{{ ast = Ast{[]*Filetype{}, []*Stage{}, []*Pipeline{}, []Callable{},  $1} }}
 	;
 
 dec_list
@@ -63,13 +84,13 @@ dec_list
 
 dec
 	: FILETYPE file_id SEMICOLON
-		{{ $$ = &FileTypeDec{Node{mmlval.loc}, $2} }}
-	| STAGE ID LPAREN param_list RPAREN 
-		{{ $$ = &StageDec{Node{mmlval.loc}, $2, $4, nil} }}
-	| STAGE ID LPAREN param_list RPAREN split_exp
-		{{ $$ = &StageDec{Node{mmlval.loc}, $2, $4, $6} }}
-	| PIPELINE ID LPAREN param_list RPAREN LBRACE call_stm_list return_stm RBRACE
-		{{ $$ = &PipelineDec{Node{mmlval.loc}, $2, $4, $7, $8} }}
+		{{ $$ = &Filetype{Node{mmlval.loc}, $2} }}
+	| STAGE ID LPAREN in_param_list out_param_list src_stm RPAREN 
+		{{ $$ = &Stage{Node{mmlval.loc}, $2, $4, $5, $6, nil} }}
+	| STAGE ID LPAREN in_param_list out_param_list src_stm RPAREN split_exp
+		{{ $$ = &Stage{Node{mmlval.loc}, $2, $4, $5, $6, $8} }}
+	| PIPELINE ID LPAREN in_param_list out_param_list RPAREN LBRACE call_stm_list return_stm RBRACE
+		{{ $$ = &Pipeline{Node{mmlval.loc}, $2, $4, $5, $8, $9} }}
 	;
 
 file_id
@@ -78,23 +99,37 @@ file_id
 	| ID
 	;
 
-param_list
-	: param_list param
+in_param_list
+	: in_param_list in_param
 		{{ $$ = append($1, $2) }}
-	| param
-		{{ $$ = []Param{$1} }}
+	| in_param
+		{{ $$ = []InParam{$1} }}
 	;
 
-param
+in_param
 	: IN type ID help
 		{{ $$ = &InParam{Node{mmlval.loc}, $2, $3, $4} }}
-	| OUT type help 
+	;
+
+out_param_list
+	: out_param_list out_param
+		{{ $$ = append($1, $2) }}
+	| out_param
+		{{ $$ = []OutParam{$1} }}
+	;
+
+out_param
+	: OUT type help 
 		{{ $$ = &OutParam{Node{mmlval.loc}, $2, "default", $3} }}
 	| OUT type ID help 
 		{{ $$ = &OutParam{Node{mmlval.loc}, $2, $3, $4} }}
-	| SRC src_lang LITSTRING COMMA
-		{{ $$ = &SourceParam{Node{mmlval.loc}, $2, $3} }}
 	;
+
+src_stm
+	: SRC src_lang LITSTRING COMMA
+		{{ $$ = &Src{Node{mmlval.loc}, $2, $3} }}
+	;
+
 help
     : LITSTRING COMMA
     	{{ $$ = $1 }}
@@ -121,7 +156,7 @@ src_lang
     ;
 
 split_exp
-	: SPLIT USING LPAREN param_list RPAREN
+	: SPLIT USING LPAREN in_param_list RPAREN
 		{{ $$ = $4 }}
 	;
 

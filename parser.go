@@ -9,42 +9,51 @@ import (
 //
 // Semantic Checking Helpers
 //
-func indexById(decs []Dec, decTable map[string]Dec, locmap []FileLoc) error {
-	for _, dec := range decs {
-		if _, ok := decTable[dec.ID()]; ok {
-			return &DuplicateNameError{MarioError{locmap, dec.Node().loc}, dec.ID()}
+type Checker struct {
+	ast    *Ast
+	locmap []FileLoc
+}
+
+func (self *Checker) checkIds(idables []Idable) error {
+	table := map[string]bool{}
+	for _, idable := range idables {
+		if _, ok := table[idable.ID()]; ok {
+			return &DuplicateNameError{MarioError{self.locmap, idable.Node().loc}, idable.ID()}
 		}
-		decTable[dec.ID()] = dec
+		table[idable.ID()] = true
 	}
 	return nil
 }
-func checkSemantics(ast *Ast, locmap []FileLoc) error {
-	// Build type table, starting with builtins. Duplicates allowed.
-	typeTable := map[string]bool{
-		"int": true, "string": true, "float": true,
-		"bool": true, "path": true, "file": true,
-	}
 
-	// Put decs into separate lists.
-	filetypeDecList := []Dec{}
-	stageDecList := []Dec{}
-	pipelineDecList := []Dec{}
-	for _, dec := range ast.Decs {
-		switch dec := dec.(type) {
-		default:
-		case *FileTypeDec:
-			filetypeDecList = append(filetypeDecList, dec)
-			typeTable[dec.id] = true
-		case *StageDec:
-			stageDecList = append(stageDecList, dec)
-		case *PipelineDec:
-			pipelineDecList = append(pipelineDecList, dec)
-		}
+func (self *Checker) checkParameters(callable Callable) {
+	idables := []Idable{}
+	for _, param := range callable.Params() {
+		fmt.Println(param)
+		idables = append(idables, param)
+	}
+//	self.checkIds()
+}
+
+func (self *Checker) checkSemantics() error {
+	// Build type table, starting with builtins. Duplicates allowed.
+	types := []string{"string", "int", "float", "bool", "path", "file"}
+	for _, filetype := range self.ast.filetypes {
+		types = append(types, filetype.id)
+	}
+	typeTable := map[string]bool{}
+	for _, t := range types {
+		typeTable[t] = true
 	}
 
 	// Register stage and pipeline declarations and check for duplicate names.
-	decTable := map[string]Dec{}
-	if err := indexById(append(stageDecList, pipelineDecList...), decTable, locmap); err != nil {
+	callableTable := map[string]Callable{}
+	idables := []Idable{}
+	for _, callable := range ast.callables {
+		idables = append(idables, callable)
+		callableTable[callable.ID()] = callable
+		self.checkParameters(callable)
+	}
+	if err := self.checkIds(idables); err != nil {
 		return err
 	}
 
@@ -59,7 +68,8 @@ func ParseString(src string, locmap []FileLoc) (*Ast, error) {
 	if err != nil { // err is an mmLexInfo struct
 		return nil, &ParseError{MarioError{locmap, err.loc}, err.token}
 	}
-	if err := checkSemantics(ast, locmap); err != nil {
+	checker := Checker{ast, locmap}
+	if err := checker.checkSemantics(); err != nil {
 		return nil, err
 	}
 	return ast, nil
