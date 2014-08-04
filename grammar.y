@@ -171,27 +171,27 @@ exp
     | LBRACKET RBRACKET
 		{{ $$ = nil }}
     | PATH LPAREN LITSTRING RPAREN
-		{{ $$ = &ValExp{Node:Node{mmlval.loc}, kind: $1, sval: strings.Replace($3, "\"", "", -1) } }}
+		{{ $$ = &ValExp{node:Node{mmlval.loc}, kind: $1, sval: strings.Replace($3, "\"", "", -1) } }}
     | FILE LPAREN LITSTRING RPAREN
-		{{ $$ = &ValExp{Node:Node{mmlval.loc}, kind: $1, sval: strings.Replace($3, "\"", "", -1) } }}
+		{{ $$ = &ValExp{node:Node{mmlval.loc}, kind: $1, sval: strings.Replace($3, "\"", "", -1) } }}
     | NUM_FLOAT
 		{{  // Lexer guarantees parseable float strings.
 			f, _ := strconv.ParseFloat($1, 64)
-			$$ = &ValExp{Node:Node{mmlval.loc}, kind: "float", fval: f } 
+			$$ = &ValExp{node:Node{mmlval.loc}, kind: "float", fval: f } 
 		}}
     | NUM_INT
 		{{  // Lexer guarantees parseable int strings.
 			i, _ := strconv.ParseInt($1, 0, 64)
-			$$ = &ValExp{Node:Node{mmlval.loc}, kind: "int", ival: i } 
+			$$ = &ValExp{node:Node{mmlval.loc}, kind: "int", ival: i } 
 		}}
     | LITSTRING
-		{{ $$ = &ValExp{Node:Node{mmlval.loc}, kind: "string", sval: strings.Replace($1, "\"", "", -1)} }}
+		{{ $$ = &ValExp{node:Node{mmlval.loc}, kind: "string", sval: strings.Replace($1, "\"", "", -1)} }}
     | TRUE
-		{{ $$ = &ValExp{Node:Node{mmlval.loc}, kind: "bool", bval: true} }}
+		{{ $$ = &ValExp{node:Node{mmlval.loc}, kind: "bool", bval: true} }}
     | FALSE
-		{{ $$ = &ValExp{Node:Node{mmlval.loc}, kind: "bool", bval: false} }}
+		{{ $$ = &ValExp{node:Node{mmlval.loc}, kind: "bool", bval: false} }}
     | NULL
-		{{ $$ = &ValExp{Node:Node{mmlval.loc}, kind: "null", null: true} }}
+		{{ $$ = &ValExp{node:Node{mmlval.loc}, kind: "null", null: true} }}
     | ref_exp
     	{{ $$ = $1 }}
     ;

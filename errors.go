@@ -9,19 +9,29 @@ import (
 // Mario Errors
 //
 type MarioError struct {
-	fname string
-	loc   int
+	locmap []FileLoc
+	loc    int
 }
 
-func (self *MarioError) Format(obj interface{}, msg string) string {
-	return fmt.Sprintf("MRO %s: %s at %s:%d.", reflect.TypeOf(obj).Name(), msg, self.fname, self.loc)
+func (self *MarioError) f(obj interface{}, msg string) string {
+	return fmt.Sprintf("MRO %s: %s at %s:%d.", reflect.TypeOf(obj).Name(), msg, 
+		self.locmap[self.loc].fname, self.locmap[self.loc].loc)
 }
 
 type ParseError struct {
-	err   MarioError
+	e     MarioError
 	token string
 }
 
 func (self *ParseError) Error() string {
-	return self.err.Format(*self, fmt.Sprintf("Unexpected token '%s'", self.token))
+	return self.e.f(*self, fmt.Sprintf("Unexpected token '%s'", self.token))
+}
+
+type DuplicateNameError struct {
+	e    MarioError
+	name string
+}
+
+func (self *DuplicateNameError) Error() string {
+	return self.e.f(*self, fmt.Sprintf("a stage or pipeline named '%s' was already declared before duplicate", self.name))
 }

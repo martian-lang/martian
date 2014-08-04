@@ -9,7 +9,45 @@ import (
 //
 // Semantic Checking Helpers
 //
-func checkSemantics(ast *Ast) error {
+func indexById(decs []Dec, decTable map[string]Dec, locmap []FileLoc) error {
+	for _, dec := range decs {
+		if _, ok := decTable[dec.ID()]; ok {
+			return &DuplicateNameError{MarioError{locmap, dec.Node().loc}, dec.ID()}
+		}
+		decTable[dec.ID()] = dec
+	}
+	return nil
+}
+func checkSemantics(ast *Ast, locmap []FileLoc) error {
+	// Build type table, starting with builtins. Duplicates allowed.
+	typeTable := map[string]bool{
+		"int": true, "string": true, "float": true,
+		"bool": true, "path": true, "file": true,
+	}
+
+	// Put decs into separate lists.
+	filetypeDecList := []Dec{}
+	stageDecList := []Dec{}
+	pipelineDecList := []Dec{}
+	for _, dec := range ast.Decs {
+		switch dec := dec.(type) {
+		default:
+		case *FileTypeDec:
+			filetypeDecList = append(filetypeDecList, dec)
+			typeTable[dec.id] = true
+		case *StageDec:
+			stageDecList = append(stageDecList, dec)
+		case *PipelineDec:
+			pipelineDecList = append(pipelineDecList, dec)
+		}
+	}
+
+	// Register stage and pipeline declarations and check for duplicate names.
+	decTable := map[string]Dec{}
+	if err := indexById(append(stageDecList, pipelineDecList...), decTable, locmap); err != nil {
+		return err
+	}
+
 	return nil
 }
 
@@ -18,11 +56,12 @@ func checkSemantics(ast *Ast) error {
 //
 func ParseString(src string, locmap []FileLoc) (*Ast, error) {
 	ast, err := yaccParse(src)
-	if err != nil {
-		// err is an mmLexInfo struct
-		return nil, &ParseError{MarioError{locmap[err.loc].fname, locmap[err.loc].loc}, err.token}
+	if err != nil { // err is an mmLexInfo struct
+		return nil, &ParseError{MarioError{locmap, err.loc}, err.token}
 	}
-	//checkSemantics(ast)
+	if err := checkSemantics(ast, locmap); err != nil {
+		return nil, err
+	}
 	return ast, nil
 }
 

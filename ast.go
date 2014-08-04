@@ -2,27 +2,29 @@ package main
 
 type (
 	Node struct {
-		lineno int
+		loc int
 	}
 
 	Dec interface {
 		dec()
+		ID()   string
+		Node() Node
 	}
 
 	FileTypeDec struct {
-		Node
-		id string
+		node Node
+		id   string
 	}
 
 	StageDec struct {
-		Node
+		node     Node
 		id       string
 		params   []Param
 		splitter []Param
 	}
 
 	PipelineDec struct {
-		Node
+		node   Node
 		id     string
 		params []Param
 		calls  []*CallStm
@@ -34,21 +36,21 @@ type (
 	}
 
 	InParam struct {
-		Node
+		node  Node
 		tname string
 		id    string
 		help  string
 	}
 
 	OutParam struct {
-		Node
+		node  Node
 		tname string
 		id    string
 		help  string
 	}
 
 	SourceParam struct {
-		Node
+		node Node
 		lang string
 		path string
 	}
@@ -58,21 +60,21 @@ type (
 	}
 
 	BindStm struct {
-		Node
+		node  Node
 		id    string
 		exp   Exp
 		sweep bool
 	}
 
 	CallStm struct {
-		Node
+		node     Node
 		volatile bool
 		id       string
 		bindings []*BindStm
 	}
 
 	ReturnStm struct {
-		Node
+		node     Node
 		bindings []*BindStm
 	}
 
@@ -81,7 +83,7 @@ type (
 	}
 
 	ValExp struct {
-		Node
+		node Node
 		// union-style multi-value store
 		kind string
 		fval float64
@@ -92,7 +94,7 @@ type (
 	}
 
 	RefExp struct {
-		Node
+		node     Node
 		kind     string
 		id       string
 		outputId string
@@ -117,6 +119,14 @@ func (*RefExp) exp()        {}
 func (*BindStm) stm()       {}
 func (*CallStm) stm()       {}
 func (*ReturnStm) stm()     {}
+
+func (s *FileTypeDec) ID() string	{ return s.id }
+func (s *StageDec) ID() string		{ return s.id }
+func (s *PipelineDec) ID() string	{ return s.id }
+
+func (s *FileTypeDec) Node() Node	{ return s.node }
+func (s *StageDec) Node() Node		{ return s.node }
+func (s *PipelineDec) Node() Node	{ return s.node }
 
 // This global is where we build the AST. It will get passed out
 // by the main parsing function.
