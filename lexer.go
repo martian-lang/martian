@@ -64,22 +64,22 @@ var rules = []*rule{
 	newRule(".", INVALID),
 }
 
-type mmLex struct {
-	source string   // All the data we're scanning
-	pos    int      // Position of the scan head
-	loc    int      // Keep track of the line number
-	token  string   // Cache the last token for error messaging
+type mmLexInfo struct {
+	src   string   // All the data we're scanning
+	pos   int      // Position of the scan head
+	loc   int      // Keep track of the line number
+	token string   // Cache the last token for error messaging
 }
 
-func (self *mmLex) Lex(lval *mmSymType) int {
+func (self *mmLexInfo) Lex(lval *mmSymType) int {
 	// Loop until we return a token or run out of data.
 	for {
 		// Stop if we run out of data.
-		if self.pos >= len(self.source) {
+		if self.pos >= len(self.src) {
 			return 0
 		}
 		// Slice the data using pos as a cursor.
-		head := self.source[self.pos:]
+		head := self.src[self.pos:]
 
 		// Iterate through the regexps until one matches the head.
 		var val string
@@ -101,7 +101,7 @@ func (self *mmLex) Lex(lval *mmSymType) int {
 		}
 
 		// If got parseable token, pass it and line number to parser.
-		// fmt.Println(rule.token, val, self.loc)
+		// fmt.Println(r.tokid, val, self.loc)
 		self.token = val
 		lval.val = val
 		lval.loc = self.loc // give grammar rules access to loc
@@ -109,12 +109,17 @@ func (self *mmLex) Lex(lval *mmSymType) int {
 	}
 }
 
-func (self *mmLex) Error(s string) {}
+func (self *mmLexInfo) Error(s string) {}
 
-func yaccParse(src string) (*Ast, *mmLex) {
-	lex := mmLex{src, 0, 1, ""}
-	if mmParse(&lex) == 0 {
-		return &ast, nil
+func yaccParse(src string) (*Ast, *mmLexInfo) {
+	lexinfo := mmLexInfo{
+		src: src, 
+		pos: 0, 
+		loc: 1, 
+		token: "",
 	}
-	return nil, &lex 
+	if mmParse(&lexinfo) != 0 {
+		return nil, &lexinfo // return lex on error to provide loc and token info
+	}
+	return &ast, nil // success
 }

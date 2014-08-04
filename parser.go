@@ -19,7 +19,7 @@ func checkSemantics(ast *Ast) error {
 func ParseString(src string, locmap []FileLoc) (*Ast, error) {
 	ast, err := yaccParse(src)
 	if err != nil {
-		// err is an mmLex struct
+		// err is an mmLexInfo struct
 		return nil, &ParseError{MarioError{locmap[err.loc].fname, locmap[err.loc].loc}, err.token}
 	}
 	//checkSemantics(ast)
