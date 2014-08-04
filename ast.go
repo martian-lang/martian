@@ -12,38 +12,38 @@ type (
 
 	Dec interface {
 		dec()
-		Node()   Node
-		ID()     string
+		Node() Node
+		ID() string
 	}
 
 	Idable interface {
 		Node() Node
-		ID()   string
+		ID() string
 	}
 
 	Callable interface {
 		callable()
-		Node()   Node
-		ID()     string
+		Node() Node
+		ID() string
 		Params() []Param
 	}
 
 	Stage struct {
-		node     Node
+		node      Node
 		id        string
-		inparams   []InParam
+		inparams  []InParam
 		outparams []OutParam
-		src 	  Src
-		splitter []Param
+		src       Src
+		splitter  []Param
 	}
 
 	Pipeline struct {
-		node   Node
-		id     string
-		inparams []InParam
+		node      Node
+		id        string
+		inparams  []InParam
 		outparams []OutParam
-		calls  []*CallStm
-		ret    *ReturnStm
+		calls     []*CallStm
+		ret       *ReturnStm
 	}
 
 	Param interface {
@@ -117,7 +117,7 @@ type (
 
 	Ast struct {
 		filetypes []*Filetype
-		stages	  []*Stage
+		stages    []*Stage
 		pipelines []*Pipeline
 		callables []Callable
 		call      *CallStm
@@ -126,30 +126,30 @@ type (
 
 // Interface whitelist for Dec, Param, Exp, and Stm implementors.
 // Patterned after code in Go's ast.go.
-func (*Filetype) dec()   	{}
-func (*Stage) dec()      	{}
-func (*Pipeline) dec()   	{}
-func (*InParam) param()     {}
-func (*OutParam) param()    {}
-func (*Src) param() {}
-func (*ValExp) exp()        {}
-func (*RefExp) exp()        {}
-func (*BindStm) stm()       {}
-func (*CallStm) stm()       {}
-func (*ReturnStm) stm()     {}
+func (*Filetype) dec()   {}
+func (*Stage) dec()      {}
+func (*Pipeline) dec()   {}
+func (*InParam) param()  {}
+func (*OutParam) param() {}
+func (*Src) param()      {}
+func (*ValExp) exp()     {}
+func (*RefExp) exp()     {}
+func (*BindStm) stm()    {}
+func (*CallStm) stm()    {}
+func (*ReturnStm) stm()  {}
 
 func (s *Filetype) ID() string { return s.id }
 func (s *Filetype) Node() Node { return s.node }
 
-func (s *Stage) callable() 		 {}
-func (s *Stage) ID() string		 { return s.id }
-func (s *Stage) Node() Node		 { return s.node }
+func (s *Stage) callable()       {}
+func (s *Stage) ID() string      { return s.id }
+func (s *Stage) Node() Node      { return s.node }
 func (s *Stage) Params() []Param { return s.params }
 
 func (s *Pipeline) callable()       {}
-func (s *Pipeline) ID() string	    { return s.id }
-func (s *Pipeline) Node() Node	    { return s.node }
-func (s *Pipeline) Params() []Param	{ return s.params }
+func (s *Pipeline) ID() string      { return s.id }
+func (s *Pipeline) Node() Node      { return s.node }
+func (s *Pipeline) Params() []Param { return s.params }
 
 // This global is where we build the AST. It will get passed out
 // by the main parsing function.
