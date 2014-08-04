@@ -1,87 +1,74 @@
 package main
 
 import (
-	"fmt"
 	"regexp"
 	"strings"
 )
 
-type Rule struct {
+// re matches text to produce token.
+type rule struct {
 	re    *regexp.Regexp
-	token int
+	tokid int
 }
 
-func NewRule(pattern string, token int) *Rule {
-	// Pre-compile regexps for token matching
-	re, _ := regexp.Compile("^" + pattern)
-	return &Rule{re, token}
+// Pre-compile regexps for token matching.
+func newRule(pattern string, tokid int) *rule {
+	return &rule{regexp.MustCompile("^" + pattern), tokid}
 }
 
-var rules = []*Rule{
+var rules = []*rule{
 	// Order matters.
-	NewRule("\\s+", SKIP),   // whitespace
-	NewRule("#.*\\n", SKIP), // Python-style comments
-	NewRule("=", EQUALS),
-	NewRule("\\(", LPAREN),
-	NewRule("\\)", RPAREN),
-	NewRule("{", LBRACE),
-	NewRule("}", RBRACE),
-	NewRule("\\[", LBRACKET),
-	NewRule("\\]", RBRACKET),
-	NewRule(";", SEMICOLON),
-	NewRule(",", COMMA),
-	NewRule("\\.", DOT),
-	NewRule("\"[^\\\"]*\"", LITSTRING), // double-quoted strings. escapes not supported
-	NewRule("filetype\\b", FILETYPE),
-	NewRule("stage\\b", STAGE),
-	NewRule("pipeline\\b", PIPELINE),
-	NewRule("call\\b", CALL),
-	NewRule("volatile\\b", VOLATILE),
-	NewRule("sweep\\b", SWEEP),
-	NewRule("split\\b", SPLIT),
-	NewRule("using\\b", USING),
-	NewRule("self\\b", SELF),
-	NewRule("return\\b", RETURN),
-	NewRule("in\\b", IN),
-	NewRule("out\\b", OUT),
-	NewRule("src\\b", SRC),
-	NewRule("py\\b", PY),
-	NewRule("go\\b", GO),
-	NewRule("sh\\b", SH),
-	NewRule("exec\\b", EXEC),
-	NewRule("int\\b", INT),
-	NewRule("string\\b", STRING),
-	NewRule("float\\b", FLOAT),
-	NewRule("path\\b", PATH),
-	NewRule("file\\b", FILE),
-	NewRule("bool\\b", BOOL),
-	NewRule("true\\b", TRUE),
-	NewRule("false\\b", FALSE),
-	NewRule("null\\b", NULL),
-	NewRule("default\\b", DEFAULT),
-	NewRule("[a-zA-Z_][a-zA-z0-9_]*", ID),
-	NewRule("-?[0-9]+\\.[0-9]+([eE][-+]?[0-9]+)?\\b", NUM_FLOAT), // support exponential
-	NewRule("-?[0-9]+\\b", NUM_INT),
-	NewRule(".", INVALID),
-}
-
-type SyntaxError struct {
-	Lineno int
-	Line   string
-	Token  string
-	Err    error
-}
-
-func (self *SyntaxError) Error() string {
-	return fmt.Sprintf("MRO syntax error: unexpected token '%s' on line %d:\n\n%s", self.Token, self.Lineno, self.Line)
+	newRule("\\s+", SKIP),   // whitespace
+	newRule("#.*\\n", SKIP), // Python-style comments
+	newRule("=", EQUALS),
+	newRule("\\(", LPAREN),
+	newRule("\\)", RPAREN),
+	newRule("{", LBRACE),
+	newRule("}", RBRACE),
+	newRule("\\[", LBRACKET),
+	newRule("\\]", RBRACKET),
+	newRule(";", SEMICOLON),
+	newRule(",", COMMA),
+	newRule("\\.", DOT),
+	newRule("\"[^\\\"]*\"", LITSTRING), // double-quoted strings. escapes not supported
+	newRule("filetype\\b", FILETYPE),
+	newRule("stage\\b", STAGE),
+	newRule("pipeline\\b", PIPELINE),
+	newRule("call\\b", CALL),
+	newRule("volatile\\b", VOLATILE),
+	newRule("sweep\\b", SWEEP),
+	newRule("split\\b", SPLIT),
+	newRule("using\\b", USING),
+	newRule("self\\b", SELF),
+	newRule("return\\b", RETURN),
+	newRule("in\\b", IN),
+	newRule("out\\b", OUT),
+	newRule("src\\b", SRC),
+	newRule("py\\b", PY),
+	newRule("go\\b", GO),
+	newRule("sh\\b", SH),
+	newRule("exec\\b", EXEC),
+	newRule("int\\b", INT),
+	newRule("string\\b", STRING),
+	newRule("float\\b", FLOAT),
+	newRule("path\\b", PATH),
+	newRule("file\\b", FILE),
+	newRule("bool\\b", BOOL),
+	newRule("true\\b", TRUE),
+	newRule("false\\b", FALSE),
+	newRule("null\\b", NULL),
+	newRule("default\\b", DEFAULT),
+	newRule("[a-zA-Z_][a-zA-z0-9_]*", ID),
+	newRule("-?[0-9]+\\.[0-9]+([eE][-+]?[0-9]+)?\\b", NUM_FLOAT), // support exponential
+	newRule("-?[0-9]+\\b", NUM_INT),
+	newRule(".", INVALID),
 }
 
 type mmLex struct {
-	source string       // All the data we're scanning
-	pos    int          // Position of the scan head
-	lineno int          // Keep track of the line number
-	last   string       // Cache the last token for error messaging
-	err    *SyntaxError // Constructed syntax error object
+	source string   // All the data we're scanning
+	pos    int      // Position of the scan head
+	loc    int      // Keep track of the line number
+	token  string   // Cache the last token for error messaging
 }
 
 func (self *mmLex) Lex(lval *mmSymType) int {
@@ -96,9 +83,9 @@ func (self *mmLex) Lex(lval *mmSymType) int {
 
 		// Iterate through the regexps until one matches the head.
 		var val string
-		var rule *Rule
-		for _, rule = range rules {
-			val = rule.re.FindString(head)
+		var r *rule
+		for _, r = range rules {
+			val = r.re.FindString(head)
 			if len(val) > 0 {
 				break
 			}
@@ -108,35 +95,26 @@ func (self *mmLex) Lex(lval *mmSymType) int {
 		self.pos += len(val)
 
 		// If whitespace or comment, advance line count by counting newlines.
-		if rule.token == SKIP {
-			self.lineno += strings.Count(val, "\n")
+		if r.tokid == SKIP {
+			self.loc += strings.Count(val, "\n")
 			continue
 		}
 
 		// If got parseable token, pass it and line number to parser.
-		// fmt.Println(rule.token, val, self.lineno)
+		// fmt.Println(rule.token, val, self.loc)
+		self.token = val
 		lval.val = val
-		self.last = val
-		lval.lineno = self.lineno
-		return rule.token
+		lval.loc = self.loc // give grammar rules access to loc
+		return r.tokid
 	}
 }
 
-func (self *mmLex) Error(s string) {
-	// Capture the error line by searching back and forth for newlines.
-	spos := strings.LastIndex(self.source[0:self.pos], "\n") + 1
-	epos := strings.Index(self.source[self.pos:], "\n") + self.pos + 1
-	self.err = &SyntaxError{
-		Lineno: self.lineno,
-		Line:   self.source[spos:epos],
-		Token:  self.last,
-	}
-}
+func (self *mmLex) Error(s string) {}
 
-func Parse(src string) (*Ptree, error) {
-	lex := mmLex{src, 0, 1, "", nil}
+func yaccParse(src string) (*Ast, *mmLex) {
+	lex := mmLex{src, 0, 1, ""}
 	if mmParse(&lex) == 0 {
-		return &ptree, nil
+		return &ast, nil
 	}
-	return nil, lex.err
+	return nil, &lex 
 }

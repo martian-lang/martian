@@ -98,7 +98,7 @@ type (
 		outputId string
 	}
 
-	Ptree struct {
+	Ast struct {
 		Decs []Dec
 		call *CallStm
 	}
@@ -120,4 +120,4 @@ func (*ReturnStm) stm()     {}
 
 // This global is where we build the AST. It will get passed out
 // by the main parsing function.
-var ptree Ptree
+var ast Ast
