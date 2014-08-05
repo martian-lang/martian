@@ -9,7 +9,7 @@ import (
 //
 // Semantic Checking Helpers
 //
-func (global *Ast) Error(locable Locatable, msg string) error {
+func (global *Ast) err(locable Locatable, msg string) error {
     return &MarioError{global, locable, msg}
 }
 
@@ -17,8 +17,7 @@ func (scope *CallScope) check(global *Ast) error {
     for _, callable := range scope.callables {
         // Check for duplicates
         if _, ok := scope.table[callable.Id()]; ok {
-            return global.Error(callable,
-                fmt.Sprintf("DuplicateNameError: stage or pipeline '%s' was previously declared when encountered", callable.Id()))
+            return global.err(callable, fmt.Sprintf("DuplicateNameError: stage or pipeline '%s' was already declared when encountered again", callable.Id()))
         }
         scope.table[callable.Id()] = callable
     }
@@ -29,14 +28,13 @@ func (scope *ParamScope) check(global *Ast) error {
     for _, param := range scope.params {
         // Check for duplicates
         if _, ok := scope.table[param.Id()]; ok {
-            return global.Error(param,
-                fmt.Sprintf("DuplicateNameError: parameter '%s' was previously declared when encountered", param.Id()))
+            return global.err(param, fmt.Sprintf("DuplicateNameError: parameter '%s' was already declared when encountered again", param.Id()))
         }
         scope.table[param.Id()] = param
 
+        // Check that types exist.
         if _, ok := global.typeTable[param.Tname()]; !ok {
-            return global.Error(param,
-                fmt.Sprintf("TypeError: undefined type '%s'", param.Tname()))
+            return global.err(param, fmt.Sprintf("TypeError: undefined type '%s'", param.Tname()))
         }
 
     }
@@ -58,11 +56,32 @@ func (global *Ast) check() error {
         return err
     }
 
+    // Check stage declarations.
     for _, stage := range global.stages {
+        // Check in parameters.
         if err := stage.inParams.check(global); err != nil {
             return err
         }
+        // Check out parameters.
         if err := stage.outParams.check(global); err != nil {
+            return err
+        }
+        // Check split parameters.
+        if stage.splitParams != nil {
+            if err := stage.splitParams.check(global); err != nil {
+                return err
+            }
+        }
+    }
+
+    // Check pipeline declarations.
+    for _, pipeline := range global.pipelines {
+        // Check in parameters.
+        if err := pipeline.inParams.check(global); err != nil {
+            return err
+        }
+        // Check out parameters.
+        if err := pipeline.outParams.check(global); err != nil {
             return err
         }
     }
