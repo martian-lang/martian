@@ -19,10 +19,10 @@ type (
 	}
 
 	Callable interface {
-		callable()
 		Node() Node
         Loc() int
 		Id() string
+        InParams() *ParamScope
 	}
 
 	Stage struct {
@@ -35,12 +35,13 @@ type (
 	}
 
 	Pipeline struct {
-		node      Node
-		id        string
-		inParams  *ParamScope
-		outParams *ParamScope
-		calls     []*CallStm
-		ret       *ReturnStm
+		node          Node
+		id            string
+		inParams      *ParamScope
+		outParams     *ParamScope
+		calls         []*Call
+        callableTable map[string]Callable
+		ret           *ReturnStm
 	}
 
     ParamScope struct {
@@ -48,13 +49,12 @@ type (
         table  map[string]Param
     }
 
-    CallScope struct {
+    CallableScope struct {
         callables []Callable
         table     map[string]Callable
     }
 
     Param interface {
-        param()
         Node() Node
         Loc() int
         Mode() string
@@ -83,27 +83,24 @@ type (
 		path string
 	}
 
-	Stm interface {
-		stm()
-	}
-
-	BindStm struct {
+	Binding struct {
 		node  Node
 		id    string
 		exp   Exp
 		sweep bool
 	}
 
-	CallStm struct {
-		node     Node
-		volatile bool
-		id       string
-		bindings []*BindStm
+	Call struct {
+		node         Node
+		volatile     bool
+		id           string
+		bindings     []*Binding
+        bindingTable map[string]*Binding
 	}
 
 	ReturnStm struct {
 		node     Node
-		bindings []*BindStm
+		bindings []*Binding
 	}
 
 	Exp interface {
@@ -129,13 +126,13 @@ type (
 	}
 
 	Ast struct {
-        locmap    []FileLoc
-		typeTable map[string]bool
-        filetypes []*Filetype
-		stages    []*Stage
-		pipelines []*Pipeline
-        callScope *CallScope
-		call      *CallStm
+        locmap        []FileLoc
+		typeTable     map[string]bool
+        filetypes     []*Filetype
+		stages        []*Stage
+		pipelines     []*Pipeline
+        callableScope *CallableScope
+		call          *Call
 	}
 )
 
@@ -144,28 +141,22 @@ type (
 func (*Filetype) dec()   {}
 func (*Stage) dec()      {}
 func (*Pipeline) dec()   {}
-func (*InParam) param()  {}
-func (*OutParam) param() {}
-func (*Src) param()      {}
 func (*ValExp) exp()     {}
 func (*RefExp) exp()     {}
-func (*BindStm) stm()    {}
-func (*CallStm) stm()    {}
-func (*ReturnStm) stm()  {}
 
 func (s *Filetype) Id() string { return s.id }
 func (s *Filetype) Node() Node { return s.node }
 func (s *Filetype) Loc() int   { return s.node.loc }
 
-func (s *Stage) callable()        {}
 func (s *Stage) Id() string       { return s.id }
 func (s *Stage) Node() Node       { return s.node }
 func (s *Stage) Loc() int         { return s.node.loc }
+func (s *Stage) InParams() *ParamScope { return s.inParams }
 
-func (s *Pipeline) callable()     {}
 func (s *Pipeline) Id() string    { return s.id }
 func (s *Pipeline) Node() Node    { return s.node }
 func (s *Pipeline) Loc() int      { return s.node.loc }
+func (s *Pipeline) InParams() *ParamScope { return s.inParams }
 
 func (s *InParam) Node() Node     { return s.node }
 func (s *InParam) Mode() string   { return "in" }
@@ -180,3 +171,5 @@ func (s *OutParam) Tname() string { return s.tname }
 func (s *OutParam) Id() string    { return s.id }
 func (s *OutParam) Help() string  { return s.help }
 func (s *OutParam) Loc() int      { return s.node.loc }
+
+func (s *Call) Loc() int          { return s.node.loc }

@@ -13,7 +13,7 @@ func (global *Ast) err(locable Locatable, msg string) error {
     return &MarioError{global, locable, msg}
 }
 
-func (scope *CallScope) check(global *Ast) error {    
+func (scope *CallableScope) check(global *Ast) error {    
     for _, callable := range scope.callables {
         // Check for duplicates
         if _, ok := scope.table[callable.Id()]; ok {
@@ -41,6 +41,42 @@ func (scope *ParamScope) check(global *Ast) error {
     return nil
 }
 
+func (binding *Binding) Type() string {
+    exp := binding.exp
+    /*
+    # Handle scalar types.
+    if valueExp.kind in ['int','float','string','bool','path','null']
+        return valueExp.kind
+
+    # Array: [ 1, 2 ]
+    if valueExp.kind == 'array'
+        lastType = 'null'
+        for elem in valueExp.value
+            elemType = resolveExpType(elem, decTable, paramTable)
+            # Make sure types of all array elements match.
+            if lastType and (not checkTypeMatch(elemType, lastType))
+                throw new MixedTypeArrayError(valueExp.loc)
+            lastType = elemType
+        return lastType
+
+    # Param: self.myparam
+    if valueExp.kind == 'self'
+        param = paramTable[valueExp.id]
+        if not param?
+            throw new ScopeNameError('param', valueExp.id, valueExp.loc)
+        if param.mode != 'in'
+            throw new BindingInputError(valueExp.id, valueExp.loc)        
+        return param.type
+
+    # Call: STAGE.myoutparam or STAGE
+    if valueExp.kind == 'call'
+        # Check referenced segment is actually called in this scope.
+        dec = decTable[valueExp.id]
+        if not dec?
+            throw new ScopeNameError('segment', valueExp.id, valueExp.loc)
+    */
+}
+
 func (global *Ast) check() error {
     // Build type table, starting with builtins. Duplicates allowed.
     types := []string{"string", "int", "float", "bool", "path", "file"}
@@ -52,7 +88,7 @@ func (global *Ast) check() error {
     }
 
     // Check for duplicate names amongst callables.
-    if err := global.callScope.check(global); err != nil {
+    if err := global.callableScope.check(global); err != nil {
         return err
     }
 
@@ -84,8 +120,46 @@ func (global *Ast) check() error {
         if err := pipeline.outParams.check(global); err != nil {
             return err
         }
-    }
 
+        // Check for duplicate calls.
+        for _, call := range pipeline.calls {
+            if _, ok := pipeline.callableTable[call.id]; ok {
+               return global.err(call, fmt.Sprintf("DuplicateCallError: '%s' was already called when encountered again", call.id))
+            }
+            // Check we're calling something declared.
+            callable, ok := global.callableScope.table[call.id]
+            if !ok {
+                return global.err(call, fmt.Sprintf("ScopeNameError: '%s' is not defined in this scope", call.id))
+            }
+            // Save the valid callables for this scope.
+            pipeline.callableTable[call.id] = callable
+
+            // Check the bindings
+            for _, binding := range call.bindings {
+                // Collect bindings by id so we can check that all params are bound.
+                call.bindingTable[binding.id] = binding
+
+                // Make sure the bound-to id is a declared input parameter of the callable.
+                if _, ok := callable.InParams().table[binding.id]; !ok {
+                    return global.err(call, fmt.Sprintf("ArgumentError: '%s' is not an input parameter of '%s'", binding.id, call.id))
+                }
+
+                // Typecheck the binding and cache the type.
+                valueType := binding.Type()
+                //resolveExpType(binding.valueExp, decTable, pipelineParamTable, typeTable)
+                //if not checkTypeMatch(param.type, valueType)
+                //    throw new TypeMismatchError(bindStm.id, param.type, valueType, bindStm.loc)
+                //bindStm.type = param.type
+
+            }
+            // Check that all input params of the callable are bound.   
+            for _, param := range callable.InParams().params {
+                if _, ok := call.bindingTable[param.Id()]; !ok {
+                    return global.err(call, fmt.Sprintf("ArgumentNotSuppliedError: no argument supplied for parameter '%s'", param.Id()))
+                }                    
+            }
+        }
+    }
     return nil
 }
 
