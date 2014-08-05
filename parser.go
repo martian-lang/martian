@@ -9,49 +9,60 @@ import (
 //
 // Semantic Checking Helpers
 //
+func (global *Ast) Error(locable Locatable, msg string) error {
+    return &MarioError{global, locable, msg}
+}
 
-func (scope *CallScope) check(locmap []FileLoc) error {    
+func (scope *CallScope) check(global *Ast) error {    
     for _, callable := range scope.callables {
+        // Check for duplicates
         if _, ok := scope.table[callable.Id()]; ok {
-            return &DuplicateNameError{MarioError{locmap, callable.Node().loc}, "stage or pipeline", callable.Id()}
+            return global.Error(callable,
+                fmt.Sprintf("DuplicateNameError: stage or pipeline '%s' was previously declared when encountered", callable.Id()))
         }
         scope.table[callable.Id()] = callable
     }
     return nil
 }
 
-func (scope *ParamScope) check(locmap []FileLoc) error {
+func (scope *ParamScope) check(global *Ast) error {
     for _, param := range scope.params {
+        // Check for duplicates
         if _, ok := scope.table[param.Id()]; ok {
-            return &DuplicateNameError{MarioError{locmap, param.Node().loc}, "parameter", param.Id()}
+            return global.Error(param,
+                fmt.Sprintf("DuplicateNameError: parameter '%s' was previously declared when encountered", param.Id()))
         }
         scope.table[param.Id()] = param
+
+        if _, ok := global.typeTable[param.Tname()]; !ok {
+            return global.Error(param,
+                fmt.Sprintf("TypeError: undefined type '%s'", param.Tname()))
+        }
+
     }
     return nil
 }
 
-func (global *Ast) check(locmap []FileLoc) error {
+func (global *Ast) check() error {
     // Build type table, starting with builtins. Duplicates allowed.
     types := []string{"string", "int", "float", "bool", "path", "file"}
     for _, filetype := range global.filetypes {
         types = append(types, filetype.id)
     }
-    typeTable := map[string]bool{}
     for _, t := range types {
-        typeTable[t] = true
+        global.typeTable[t] = true
     }
 
     // Check for duplicate names amongst callables.
-    if err := global.callScope.check(locmap); err != nil {
+    if err := global.callScope.check(global); err != nil {
         return err
     }
 
     for _, stage := range global.stages {
-        fmt.Println(stage.id)
-        if err := stage.inParams.check(locmap); err != nil {
+        if err := stage.inParams.check(global); err != nil {
             return err
         }
-        if err := stage.outParams.check(locmap); err != nil {
+        if err := stage.outParams.check(global); err != nil {
             return err
         }
     }
@@ -65,10 +76,12 @@ func (global *Ast) check(locmap []FileLoc) error {
 func ParseString(src string, locmap []FileLoc) (*Ast, error) {
     global, err := yaccParse(src)
     if err != nil { // err is an mmLexInfo struct
-        return nil, &ParseError{MarioError{locmap, err.loc}, err.token}
+        return nil, &ParseError{err.token, locmap[err.loc].fname, locmap[err.loc].loc}
     }
+
+    global.locmap = locmap
     
-    if err := global.check(locmap); err != nil {
+    if err := global.check(); err != nil {
         return nil, err
     }
     return global, nil

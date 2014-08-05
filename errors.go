@@ -2,37 +2,29 @@ package main
 
 import (
 	"fmt"
-	"reflect"
 )
 
 //
 // Mario Errors
 //
 type MarioError struct {
-	locmap []FileLoc
-	loc    int
+	global  *Ast
+	locable Locatable
+    msg     string
 }
 
-func (self *MarioError) f(obj interface{}, msg string) string {
-	return fmt.Sprintf("MRO %s: %s at %s:%d.", reflect.TypeOf(obj).Name(), msg, 
-		self.locmap[self.loc].fname, self.locmap[self.loc].loc)
+func (self *MarioError) Error() string {
+	return fmt.Sprintf("MRO %s at %s:%d.", self.msg, 
+        self.global.locmap[self.locable.Loc()].fname, 
+        self.global.locmap[self.locable.Loc()].loc)
 }
 
 type ParseError struct {
-	e     MarioError
-	token string
+    token string
+    fname string
+    loc   int	
 }
 
 func (self *ParseError) Error() string {
-	return self.e.f(*self, fmt.Sprintf("Unexpected token '%s'", self.token))
-}
-
-type DuplicateNameError struct {
-	e    MarioError
-    kind string 
-	id   string
-}
-
-func (self *DuplicateNameError) Error() string {
-	return self.e.f(*self, fmt.Sprintf("%s '%s' was previously declared; duplicate encountered", self.kind, self.id))
+	return fmt.Sprintf("MRO ParseError: unexpected token '%s' at %s:%d.", self.token, self.fname, self.loc)
 }

@@ -479,7 +479,7 @@ mmdefault:
 		{
 			{
 				fmt.Print()
-				global := Ast{[]*Filetype{}, []*Stage{}, []*Pipeline{}, &CallScope{[]Callable{}, map[string]Callable{}}, nil}
+				global := Ast{[]FileLoc{}, map[string]bool{}, []*Filetype{}, []*Stage{}, []*Pipeline{}, &CallScope{[]Callable{}, map[string]Callable{}}, nil}
 				for _, dec := range mmS[mmpt-0].decs {
 					switch dec := dec.(type) {
 					case *Filetype:
@@ -499,7 +499,7 @@ mmdefault:
 		//line grammar.y:76
 		{
 			{
-				global := Ast{[]*Filetype{}, []*Stage{}, []*Pipeline{}, &CallScope{[]Callable{}, map[string]Callable{}}, mmS[mmpt-0].call}
+				global := Ast{[]FileLoc{}, map[string]bool{}, []*Filetype{}, []*Stage{}, []*Pipeline{}, &CallScope{[]Callable{}, map[string]Callable{}}, mmS[mmpt-0].call}
 				mmlex.(*mmLexInfo).global = &global
 			}
 		}

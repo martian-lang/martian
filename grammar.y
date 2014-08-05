@@ -57,7 +57,7 @@ file
 	: dec_list
 		{{ 
             fmt.Print()
-            global := Ast{[]*Filetype{}, []*Stage{}, []*Pipeline{}, &CallScope{[]Callable{}, map[string]Callable{}}, nil}
+            global := Ast{[]FileLoc{}, map[string]bool{}, []*Filetype{}, []*Stage{}, []*Pipeline{}, &CallScope{[]Callable{}, map[string]Callable{}}, nil}
             for _, dec := range $1 {
 				switch dec := dec.(type) {
 				case *Filetype:
@@ -74,7 +74,7 @@ file
 		}}
 	| call_stm
 		{{ 
-            global := Ast{[]*Filetype{}, []*Stage{}, []*Pipeline{}, &CallScope{[]Callable{}, map[string]Callable{}},  $1} 
+            global := Ast{[]FileLoc{}, map[string]bool{}, []*Filetype{}, []*Stage{}, []*Pipeline{}, &CallScope{[]Callable{}, map[string]Callable{}},  $1} 
             mmlex.(*mmLexInfo).global = &global
         }}
 	;

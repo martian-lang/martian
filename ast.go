@@ -5,6 +5,10 @@ type (
 		loc int
 	}
 
+    Locatable interface {
+        Loc() int
+    }
+
 	Filetype struct {
 		node Node
 		id   string
@@ -17,6 +21,7 @@ type (
 	Callable interface {
 		callable()
 		Node() Node
+        Loc() int
 		Id() string
 	}
 
@@ -51,6 +56,7 @@ type (
     Param interface {
         param()
         Node() Node
+        Loc() int
         Mode() string
         Tname() string
         Id() string
@@ -123,10 +129,12 @@ type (
 	}
 
 	Ast struct {
-		filetypes []*Filetype
+        locmap    []FileLoc
+		typeTable map[string]bool
+        filetypes []*Filetype
 		stages    []*Stage
 		pipelines []*Pipeline
-		callScope *CallScope
+        callScope *CallScope
 		call      *CallStm
 	}
 )
@@ -147,23 +155,28 @@ func (*ReturnStm) stm()  {}
 
 func (s *Filetype) Id() string { return s.id }
 func (s *Filetype) Node() Node { return s.node }
+func (s *Filetype) Loc() int   { return s.node.loc }
 
 func (s *Stage) callable()        {}
 func (s *Stage) Id() string       { return s.id }
 func (s *Stage) Node() Node       { return s.node }
+func (s *Stage) Loc() int         { return s.node.loc }
 
 func (s *Pipeline) callable()     {}
 func (s *Pipeline) Id() string    { return s.id }
 func (s *Pipeline) Node() Node    { return s.node }
+func (s *Pipeline) Loc() int      { return s.node.loc }
 
 func (s *InParam) Node() Node     { return s.node }
 func (s *InParam) Mode() string   { return "in" }
 func (s *InParam) Tname() string  { return s.tname }
 func (s *InParam) Id() string     { return s.id }
 func (s *InParam) Help() string   { return s.help }
+func (s *InParam) Loc() int       { return s.node.loc }
 
 func (s *OutParam) Node() Node    { return s.node }
 func (s *OutParam) Mode() string  { return "out" }
 func (s *OutParam) Tname() string { return s.tname }
 func (s *OutParam) Id() string    { return s.id }
 func (s *OutParam) Help() string  { return s.help }
+func (s *OutParam) Loc() int      { return s.node.loc }
