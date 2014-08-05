@@ -9,10 +9,6 @@ import (
 //
 // Semantic Checking Helpers
 //
-type Checker struct {
-    global *Ast
-    locmap []FileLoc
-}
 
 func (scope *CallScope) check(locmap []FileLoc) error {    
     for _, callable := range scope.callables {
@@ -34,10 +30,10 @@ func (scope *ParamScope) check(locmap []FileLoc) error {
     return nil
 }
 
-func (self *Checker) checkSemantics() error {
+func (global *Ast) check(locmap []FileLoc) error {
     // Build type table, starting with builtins. Duplicates allowed.
     types := []string{"string", "int", "float", "bool", "path", "file"}
-    for _, filetype := range self.global.filetypes {
+    for _, filetype := range global.filetypes {
         types = append(types, filetype.id)
     }
     typeTable := map[string]bool{}
@@ -46,16 +42,16 @@ func (self *Checker) checkSemantics() error {
     }
 
     // Check for duplicate names amongst callables.
-    if err := self.global.callScope.check(self.locmap); err != nil {
+    if err := global.callScope.check(locmap); err != nil {
         return err
     }
 
-    for _, stage := range self.global.stages {
+    for _, stage := range global.stages {
         fmt.Println(stage.id)
-        if err := stage.inParams.check(self.locmap); err != nil {
+        if err := stage.inParams.check(locmap); err != nil {
             return err
         }
-        if err := stage.outParams.check(self.locmap); err != nil {
+        if err := stage.outParams.check(locmap); err != nil {
             return err
         }
     }
@@ -71,8 +67,8 @@ func ParseString(src string, locmap []FileLoc) (*Ast, error) {
     if err != nil { // err is an mmLexInfo struct
         return nil, &ParseError{MarioError{locmap, err.loc}, err.token}
     }
-    checker := Checker{global, locmap}
-    if err := checker.checkSemantics(); err != nil {
+    
+    if err := global.check(locmap); err != nil {
         return nil, err
     }
     return global, nil
