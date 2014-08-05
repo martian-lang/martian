@@ -41,8 +41,28 @@ func (scope *ParamScope) check(global *Ast) error {
     return nil
 }
 
-func (binding *Binding) Type() string {
-    exp := binding.exp
+func (exp *ValExp) ResolveType(global *Ast, pipeline *Pipeline) (string, error) {
+    switch exp.Kind() {
+    case "int", "float", "string", "bool", "path", "null":
+        return exp.Kind(), nil
+    case "array":
+    case "self":
+    case "call":
+    }
+    return "unknown", nil
+}
+
+func (exp *RefExp) ResolveType(global *Ast, pipeline *Pipeline) (string, error) {
+    switch exp.Kind() {
+    case "self":
+        if _, ok := pipeline.inParams.Get(exp.id); !ok {
+            return "", global.err(exp, fmt.Sprintf("ScopeNameError: '%s' is not defined in this scope", exp.id))
+        }
+    case "call":
+    }
+    return "call", nil
+}
+
     /*
     # Handle scalar types.
     if valueExp.kind in ['int','float','string','bool','path','null']
@@ -74,8 +94,14 @@ func (binding *Binding) Type() string {
         dec = decTable[valueExp.id]
         if not dec?
             throw new ScopeNameError('segment', valueExp.id, valueExp.loc)
+
+        param = dec.paramTable[valueExp.outputId]
+            if not param?
+                throw new NoSuchOutputError(valueExp.id, valueExp.outputId, valueExp.loc)
+            if param.mode != 'out'
+                throw new BindingOutputError(valueExp.outputId, valueExp.loc)
+            return param.type
     */
-}
 
 func (global *Ast) check() error {
     // Build type table, starting with builtins. Duplicates allowed.
@@ -123,16 +149,16 @@ func (global *Ast) check() error {
 
         // Check for duplicate calls.
         for _, call := range pipeline.calls {
-            if _, ok := pipeline.callableTable[call.id]; ok {
+            if _, ok := pipeline.callableScope.Get(call.id); ok {
                return global.err(call, fmt.Sprintf("DuplicateCallError: '%s' was already called when encountered again", call.id))
             }
             // Check we're calling something declared.
-            callable, ok := global.callableScope.table[call.id]
+            callable, ok := global.callableScope.Get(call.id)
             if !ok {
                 return global.err(call, fmt.Sprintf("ScopeNameError: '%s' is not defined in this scope", call.id))
             }
             // Save the valid callables for this scope.
-            pipeline.callableTable[call.id] = callable
+            pipeline.callableScope.Add(callable, call.id)
 
             // Check the bindings
             for _, binding := range call.bindings {
@@ -145,7 +171,11 @@ func (global *Ast) check() error {
                 }
 
                 // Typecheck the binding and cache the type.
-                valueType := binding.Type()
+                valueType, err := binding.exp.ResolveType(global, pipeline)
+                if err != nil {
+                    return err
+                }
+                fmt.Println(valueType)
                 //resolveExpType(binding.valueExp, decTable, pipelineParamTable, typeTable)
                 //if not checkTypeMatch(param.type, valueType)
                 //    throw new TypeMismatchError(bindStm.id, param.type, valueType, bindStm.loc)

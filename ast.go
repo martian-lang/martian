@@ -40,7 +40,7 @@ type (
 		inParams      *ParamScope
 		outParams     *ParamScope
 		calls         []*Call
-        callableTable map[string]Callable
+        callableScope *CallableScope
 		ret           *ReturnStm
 	}
 
@@ -105,6 +105,8 @@ type (
 
 	Exp interface {
 		exp()
+        Kind() string
+        ResolveType(*Ast, *Pipeline) (string, error)
 	}
 
 	ValExp struct {
@@ -173,3 +175,23 @@ func (s *OutParam) Help() string  { return s.help }
 func (s *OutParam) Loc() int      { return s.node.loc }
 
 func (s *Call) Loc() int          { return s.node.loc }
+
+func (s *ValExp) Kind() string { return s.kind }
+func (s *ValExp) Loc() int { return s.node.loc }
+
+func (s *RefExp) Kind() string { return s.kind }
+func (s *RefExp) Loc() int { return s.node.loc }
+
+func (s *CallableScope) Add(callable Callable, id string) {
+    s.callables = append(s.callables, callable)
+    s.table[id] = callable
+}
+func (s *CallableScope) Get(id string) (Callable, bool) {
+    callable, ok := s.table[id]
+    return callable, ok
+}
+func (s *ParamScope) Get(id string) (Param, bool) {
+    param, ok := s.table[id]
+    return param, ok
+}
+

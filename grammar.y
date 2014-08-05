@@ -92,7 +92,7 @@ dec
     | STAGE ID LPAREN in_param_list out_param_list src_stm RPAREN split_param_list
         {{ $$ = &Stage{Node{mmlval.loc}, $2, $4, $5, $6, $8} }}
     | PIPELINE ID LPAREN in_param_list out_param_list RPAREN LBRACE call_stm_list return_stm RBRACE
-        {{ $$ = &Pipeline{Node{mmlval.loc}, $2, $4, $5, $8, map[string]Callable{}, $9} }}
+        {{ $$ = &Pipeline{Node{mmlval.loc}, $2, $4, $5, $8, &CallableScope{[]Callable{}, map[string]Callable{}}, $9} }}
     ;
 
 file_id

@@ -540,7 +540,7 @@ mmdefault:
 		//line grammar.y:95
 		{
 			{
-				mmVAL.dec = &Pipeline{Node{mmlval.loc}, mmS[mmpt-8].val, mmS[mmpt-6].paramlist, mmS[mmpt-5].paramlist, mmS[mmpt-2].calls, map[string]Callable{}, mmS[mmpt-1].retstm}
+				mmVAL.dec = &Pipeline{Node{mmlval.loc}, mmS[mmpt-8].val, mmS[mmpt-6].paramlist, mmS[mmpt-5].paramlist, mmS[mmpt-2].calls, &CallableScope{[]Callable{}, map[string]Callable{}}, mmS[mmpt-1].retstm}
 			}
 		}
 	case 9:
