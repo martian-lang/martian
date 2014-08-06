@@ -16,14 +16,14 @@ import (
     decs      []Dec
     inparam   *InParam
     outparam  *OutParam
-    paramlist *ParamScope
+    params    *Params
     src       *Src
     exp       Exp
     exps      []Exp
     call      *Call
     calls     []*Call
     binding   *Binding
-    bindings  []*Binding
+    bindings  *Bindings
     retstm    *ReturnStm
 }
 
@@ -32,7 +32,7 @@ import (
 %type <decs>      dec_list
 %type <inparam>   in_param
 %type <outparam>  out_param
-%type <paramlist> in_param_list out_param_list split_param_list
+%type <params>    in_param_list out_param_list split_param_list
 %type <src>       src_stm
 %type <exp>       exp ref_exp
 %type <exps>      exp_list
@@ -55,24 +55,24 @@ file
     : dec_list
         {{ 
             fmt.Print()
-            global := Ast{[]FileLoc{}, map[string]bool{}, []*Filetype{}, []*Stage{}, []*Pipeline{}, &CallableScope{[]Callable{}, map[string]Callable{}}, nil}
+            global := Ast{[]FileLoc{}, map[string]bool{}, []*Filetype{}, []*Stage{}, []*Pipeline{}, &Callables{[]Callable{}, map[string]Callable{}}, nil}
             for _, dec := range $1 {
                 switch dec := dec.(type) {
                 case *Filetype:
-                    global.filetypes               = append(global.filetypes, dec)
+                    global.filetypes      = append(global.filetypes, dec)
                 case *Stage:
-                    global.stages                  = append(global.stages, dec)
-                    global.callableScope.callables = append(global.callableScope.callables, dec)
+                    global.stages         = append(global.stages, dec)
+                    global.callables.list = append(global.callables.list, dec)
                 case *Pipeline:
-                    global.pipelines               = append(global.pipelines, dec)
-                    global.callableScope.callables = append(global.callableScope.callables, dec)
+                    global.pipelines      = append(global.pipelines, dec)
+                    global.callables.list = append(global.callables.list, dec)
                 }
             }
             mmlex.(*mmLexInfo).global = &global
         }}
     | call_stm
         {{ 
-            global := Ast{[]FileLoc{}, map[string]bool{}, []*Filetype{}, []*Stage{}, []*Pipeline{}, &CallableScope{[]Callable{}, map[string]Callable{}},  $1} 
+            global := Ast{[]FileLoc{}, map[string]bool{}, []*Filetype{}, []*Stage{}, []*Pipeline{}, &Callables{[]Callable{}, map[string]Callable{}},  $1} 
             mmlex.(*mmLexInfo).global = &global
         }}
     ;
@@ -92,7 +92,7 @@ dec
     | STAGE ID LPAREN in_param_list out_param_list src_stm RPAREN split_param_list
         {{ $$ = &Stage{Node{mmlval.loc}, $2, $4, $5, $6, $8} }}
     | PIPELINE ID LPAREN in_param_list out_param_list RPAREN LBRACE call_stm_list return_stm RBRACE
-        {{ $$ = &Pipeline{Node{mmlval.loc}, $2, $4, $5, $8, &CallableScope{[]Callable{}, map[string]Callable{}}, $9} }}
+        {{ $$ = &Pipeline{Node{mmlval.loc}, $2, $4, $5, $8, &Callables{[]Callable{}, map[string]Callable{}}, $9} }}
     ;
 
 file_id
@@ -104,11 +104,11 @@ file_id
 in_param_list
     : in_param_list in_param
         {{ 
-            $1.params = append($1.params, $2)
+            $1.list = append($1.list, $2)
             $$ = $1
         }}
     | in_param
-        {{ $$ = &ParamScope{[]Param{$1}, map[string]Param{}} }}
+        {{ $$ = &Params{[]Param{$1}, map[string]Param{}} }}
     ;
 
 in_param
@@ -119,11 +119,11 @@ in_param
 out_param_list
     : out_param_list out_param
         {{ 
-            $1.params = append($1.params, $2)
+            $1.list = append($1.list, $2)
             $$ = $1
         }}
     | out_param
-        {{ $$ = &ParamScope{[]Param{$1}, map[string]Param{}} }}
+        {{ $$ = &Params{[]Param{$1}, map[string]Param{}} }}
     ;
 
 out_param
@@ -170,7 +170,7 @@ split_param_list
 
 return_stm
     : RETURN LPAREN bind_stm_list RPAREN
-        {{ $$ = &ReturnStm{Node{mmlval.loc}, $3 } }}
+        {{ $$ = &ReturnStm{Node{mmlval.loc}, $3} }}
     ;
 
 call_stm_list
@@ -182,23 +182,26 @@ call_stm_list
 
 call_stm
     : CALL ID LPAREN bind_stm_list RPAREN
-        {{ $$ = &Call{Node{mmlval.loc}, false, $2, $4, map[string]*Binding{} } }}
+        {{ $$ = &Call{Node{mmlval.loc}, false, $2, $4} }}
     | CALL VOLATILE ID LPAREN bind_stm_list RPAREN
-        {{ $$ = &Call{Node{mmlval.loc}, true, $3, $5, map[string]*Binding{} } }}
+        {{ $$ = &Call{Node{mmlval.loc}, true, $3, $5} }}
     ;
 
 bind_stm_list
     : bind_stm_list bind_stm
-        {{ $$ = append($1, $2) }}
+        {{ 
+            $1.list = append($1.list, $2)
+            $$ = $1
+        }}
     | bind_stm
-        {{ $$ = []*Binding{$1} }}
+        {{ $$ = &Bindings{[]*Binding{$1}, map[string]*Binding{} } }}
     ;
 
 bind_stm
     : ID EQUALS exp COMMA
-        {{ $$ = &Binding{Node{mmlval.loc}, $1, $3, false} }}
+        {{ $$ = &Binding{Node{mmlval.loc}, $1, $3, false, ""} }}
     | ID EQUALS SWEEP LPAREN exp RPAREN COMMA
-        {{ $$ = &Binding{Node{mmlval.loc}, $1, $5, true} }}
+        {{ $$ = &Binding{Node{mmlval.loc}, $1, $5, true, ""} }}
     ;
 
 exp_list

@@ -1,57 +1,58 @@
 package main
 
 type (
-	Node struct {
-		loc int
-	}
+    Node struct {
+        loc int
+    }
 
     Locatable interface {
         Loc() int
     }
 
-	Filetype struct {
-		node Node
-		id   string
-	}
-
-	Dec interface {
-		dec()
-	}
-
-	Callable interface {
-		Node() Node
-        Loc() int
-		Id() string
-        InParams() *ParamScope
-	}
-
-	Stage struct {
-		node        Node
-		id          string
-		inParams    *ParamScope
-		outParams   *ParamScope
-		src         *Src
-		splitParams *ParamScope
-	}
-
-	Pipeline struct {
-		node          Node
-		id            string
-		inParams      *ParamScope
-		outParams     *ParamScope
-		calls         []*Call
-        callableScope *CallableScope
-		ret           *ReturnStm
-	}
-
-    ParamScope struct {
-        params []Param
-        table  map[string]Param
+    Filetype struct {
+        node Node
+        id   string
     }
 
-    CallableScope struct {
-        callables []Callable
-        table     map[string]Callable
+    Dec interface {
+        dec()
+    }
+
+    Callable interface {
+        Node() Node
+        Loc() int
+        Id() string
+        InParams() *Params
+        OutParams() *Params
+    }
+
+    Stage struct {
+        node        Node
+        id          string
+        inParams    *Params
+        outParams   *Params
+        src         *Src
+        splitParams *Params
+    }
+
+    Pipeline struct {
+        node      Node
+        id        string
+        inParams  *Params
+        outParams *Params
+        calls     []*Call
+        callables *Callables
+        ret       *ReturnStm
+    }
+
+    Params struct {
+        list  []Param
+        table map[string]Param
+    }
+
+    Callables struct {
+        list  []Callable
+        table map[string]Callable
     }
 
     Param interface {
@@ -63,79 +64,84 @@ type (
         Help() string
     }
 
-	InParam struct {
-		node  Node
-		tname string
-		id    string
-		help  string
-	}
+    InParam struct {
+        node  Node
+        tname string
+        id    string
+        help  string
+    }
 
-	OutParam struct {
-		node  Node
-		tname string
-		id    string
-		help  string
-	}
+    OutParam struct {
+        node  Node
+        tname string
+        id    string
+        help  string
+    }
 
-	Src struct {
-		node Node
-		lang string
-		path string
-	}
+    Src struct {
+        node Node
+        lang string
+        path string
+    }
 
-	Binding struct {
-		node  Node
-		id    string
-		exp   Exp
-		sweep bool
-	}
+    Binding struct {
+        node  Node
+        id    string
+        exp   Exp
+        sweep bool
+        tname string
+    }
 
-	Call struct {
-		node         Node
-		volatile     bool
-		id           string
-		bindings     []*Binding
-        bindingTable map[string]*Binding
-	}
+    Bindings struct {
+        list  []*Binding
+        table map[string]*Binding
+    }
 
-	ReturnStm struct {
-		node     Node
-		bindings []*Binding
-	}
+    Call struct {
+        node     Node
+        volatile bool
+        id       string
+        bindings *Bindings
+    }
 
-	Exp interface {
-		exp()
+    ReturnStm struct {
+        node     Node
+        bindings *Bindings
+    }
+
+    Exp interface {
+        exp()
         Kind() string
         ResolveType(*Ast, *Pipeline) (string, error)
-	}
+    }
 
-	ValExp struct {
-		node Node
-		// union-style multi-value store
-		kind string
-		fval float64
-		ival int64
-		sval string
-		bval bool
-		null bool
-	}
+    ValExp struct {
+        node Node
+        // union-style multi-value store
+        kind string
+        fval float64
+        ival int64
+        sval string
+        bval bool
+        null bool
+    }
 
-	RefExp struct {
-		node     Node
-		kind     string
-		id       string
-		outputId string
-	}
+    RefExp struct {
+        node     Node
+        kind     string
+        id       string
+        outputId string
+    }
 
-	Ast struct {
-        locmap        []FileLoc
-		typeTable     map[string]bool
-        filetypes     []*Filetype
-		stages        []*Stage
-		pipelines     []*Pipeline
-        callableScope *CallableScope
-		call          *Call
-	}
+    Ast struct {
+        locmap    []FileLoc
+        typeTable map[string]bool
+        filetypes []*Filetype
+        stages    []*Stage
+        pipelines []*Pipeline
+        callables *Callables
+        call      *Call
+    }
 )
 
 // Interface whitelist for Dec, Param, Exp, and Stm implementors.
@@ -146,19 +152,21 @@ func (*Pipeline) dec()   {}
 func (*ValExp) exp()     {}
 func (*RefExp) exp()     {}
 
-func (s *Filetype) Id() string { return s.id }
-func (s *Filetype) Node() Node { return s.node }
-func (s *Filetype) Loc() int   { return s.node.loc }
+func (s *Filetype) Id() string    { return s.id }
+func (s *Filetype) Node() Node    { return s.node }
+func (s *Filetype) Loc() int      { return s.node.loc }
 
 func (s *Stage) Id() string       { return s.id }
 func (s *Stage) Node() Node       { return s.node }
 func (s *Stage) Loc() int         { return s.node.loc }
-func (s *Stage) InParams() *ParamScope { return s.inParams }
+func (s *Stage) InParams() *Params { return s.inParams }
+func (s *Stage) OutParams() *Params { return s.outParams }
 
 func (s *Pipeline) Id() string    { return s.id }
 func (s *Pipeline) Node() Node    { return s.node }
 func (s *Pipeline) Loc() int      { return s.node.loc }
-func (s *Pipeline) InParams() *ParamScope { return s.inParams }
+func (s *Pipeline) InParams() *Params { return s.inParams }
+func (s *Pipeline) OutParams() *Params { return s.outParams }
 
 func (s *InParam) Node() Node     { return s.node }
 func (s *InParam) Mode() string   { return "in" }
@@ -174,24 +182,12 @@ func (s *OutParam) Id() string    { return s.id }
 func (s *OutParam) Help() string  { return s.help }
 func (s *OutParam) Loc() int      { return s.node.loc }
 
+func (s *ReturnStm) Loc() int     { return s.node.loc }
 func (s *Call) Loc() int          { return s.node.loc }
+func (s *Binding) Loc() int       { return s.node.loc }
 
-func (s *ValExp) Kind() string { return s.kind }
-func (s *ValExp) Loc() int { return s.node.loc }
+func (s *ValExp) Kind() string    { return s.kind }
+func (s *ValExp) Loc() int        { return s.node.loc }
 
-func (s *RefExp) Kind() string { return s.kind }
+func (s *RefExp) Kind() string    { return s.kind }
 func (s *RefExp) Loc() int { return s.node.loc }
-
-func (s *CallableScope) Add(callable Callable, id string) {
-    s.callables = append(s.callables, callable)
-    s.table[id] = callable
-}
-func (s *CallableScope) Get(id string) (Callable, bool) {
-    callable, ok := s.table[id]
-    return callable, ok
-}
-func (s *ParamScope) Get(id string) (Param, bool) {
-    param, ok := s.table[id]
-    return param, ok
-}
-
