@@ -3,16 +3,13 @@ package main
 import (
 	"fmt"
 	"io/ioutil"
-    "path"
-    "strings"
-	"os"
 )
 
 //
 // Semantic Checking Helpers
 //
 func (global *Ast) err(locable Locatable, msg string, v ...interface{}) error {
-	return &MarioError{global, locable, fmt.Sprintf(msg, v...)}
+	return &AstError{global, locable, fmt.Sprintf(msg, v...)}
 }
 
 func (callables *Callables) check(global *Ast) error {
@@ -90,7 +87,7 @@ func checkTypeMatch(t1 string, t2 string) bool {
 	return t1 == "null" || t2 == "null" || t1 == t2
 }
 
-func (bindings *Bindings) check(global *Ast, pipeline *Pipeline, params *Params) error {
+func (bindings *BindStms) check(global *Ast, pipeline *Pipeline, params *Params) error {
 	// Check the bindings
 	for _, binding := range bindings.list {
 		// Collect bindings by id so we can check that all params are bound.
@@ -255,6 +252,18 @@ func ParseFile(filename string) (string, *Ast, error) {
 	return postsrc, global, err
 }
 
+func ParseCall(src string) (*Ast, error) {
+	global, err := yaccParse(src)
+	if err != nil {
+		return nil, &ParseError{err.token, "[invocation]", err.loc}
+	}
+	if err := global.check(); err != nil {
+		return nil, err
+	}
+	return global, nil
+}
+
+/*
 func main() {
     dirs, _ := ioutil.ReadDir("../pipelines/src/mro")
     count := 0
@@ -275,3 +284,4 @@ func main() {
     }
     fmt.Printf("Successfully compiled %d mro files.", count)
 }
+*/

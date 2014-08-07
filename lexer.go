@@ -7,9 +7,9 @@ import (
 
 // re matches text to produce token.
 type rule struct {
-    pattern string
-	re    *regexp.Regexp
-	tokid int
+	pattern string
+	re      *regexp.Regexp
+	tokid   int
 }
 
 // Pre-compile regexps for token matching.
@@ -50,7 +50,7 @@ var rules = []*rule{
 	newRule("sh\\b", SH),
 	newRule("exec\\b", EXEC),
 	newRule("int\\b", INT),
-	newRule("string\\b", STRING),
+	newRule("string\\b", TSTRING),
 	newRule("float\\b", FLOAT),
 	newRule("path\\b", PATH),
 	newRule("file\\b", FILE),
@@ -66,11 +66,11 @@ var rules = []*rule{
 }
 
 type mmLexInfo struct {
-	src    string   // All the data we're scanning
-	pos    int      // Position of the scan head
-	loc    int      // Keep track of the line number
-	token  string   // Cache the last token for error messaging
-    global *Ast
+	src    string // All the data we're scanning
+	pos    int    // Position of the scan head
+	loc    int    // Keep track of the line number
+	token  string // Cache the last token for error messaging
+	global *Ast
 }
 
 func (self *mmLexInfo) Lex(lval *mmSymType) int {
@@ -87,11 +87,11 @@ func (self *mmLexInfo) Lex(lval *mmSymType) int {
 		var val string
 		var r *rule
 		for _, r = range rules {
-            val = r.re.FindString(head)
-            if len(val) > 0 {
-			    break
-            }
-        }
+			val = r.re.FindString(head)
+			if len(val) > 0 {
+				break
+			}
+		}
 
 		// Advance the cursor pos.
 		self.pos += len(val)
@@ -114,12 +114,12 @@ func (self *mmLexInfo) Lex(lval *mmSymType) int {
 func (self *mmLexInfo) Error(s string) {}
 
 func yaccParse(src string) (*Ast, *mmLexInfo) {
-    lexinfo := mmLexInfo{
-		src: src, 
-		pos: 0, 
-		loc: 1, 
-		token: "",
-        global: &Ast{},
+	lexinfo := mmLexInfo{
+		src:    src,
+		pos:    0,
+		loc:    1,
+		token:  "",
+		global: &Ast{},
 	}
 	if mmParse(&lexinfo) != 0 {
 		return nil, &lexinfo // return lex on error to provide loc and token info

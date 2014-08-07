@@ -17,13 +17,13 @@ import (
     inparam   *InParam
     outparam  *OutParam
     params    *Params
-    src       *Src
+    src       *SrcParam
     exp       Exp
     exps      []Exp
-    call      *Call
-    calls     []*Call
-    binding   *Binding
-    bindings  *Bindings
+    call      *CallStm
+    calls     []*CallStm
+    binding   *BindStm
+    bindings  *BindStms
     retstm    *ReturnStm
 }
 
@@ -48,7 +48,7 @@ import (
 %token IN OUT SRC
 %token <val> ID LITSTRING NUM_FLOAT NUM_INT DOT
 %token <val> PY GO SH EXEC
-%token <val> INT STRING FLOAT PATH FILE BOOL TRUE FALSE NULL DEFAULT
+%token <val> INT TSTRING FLOAT PATH FILE BOOL TRUE FALSE NULL DEFAULT
 
 %%
 file
@@ -72,7 +72,7 @@ file
         }}
     | call_stm
         {{ 
-            global := Ast{[]FileLoc{}, map[string]bool{}, []*Filetype{}, []*Stage{}, []*Pipeline{}, &Callables{[]Callable{}, map[string]Callable{}},  $1} 
+            global := Ast{[]FileLoc{}, map[string]bool{}, []*Filetype{}, []*Stage{}, []*Pipeline{}, &Callables{[]Callable{}, map[string]Callable{}}, $1} 
             mmlex.(*mmLexInfo).global = &global
         }}
     ;
@@ -86,13 +86,13 @@ dec_list
 
 dec
     : FILETYPE file_id SEMICOLON
-        {{ $$ = &Filetype{Node{mmlval.loc}, $2} }}
+        {{ $$ = &Filetype{AstNode{mmlval.loc}, $2} }}
     | STAGE ID LPAREN in_param_list out_param_list src_stm RPAREN 
-        {{ $$ = &Stage{Node{mmlval.loc}, $2, $4, $5, $6, nil} }}
+        {{ $$ = &Stage{AstNode{mmlval.loc}, $2, $4, $5, $6, nil} }}
     | STAGE ID LPAREN in_param_list out_param_list src_stm RPAREN split_param_list
-        {{ $$ = &Stage{Node{mmlval.loc}, $2, $4, $5, $6, $8} }}
+        {{ $$ = &Stage{AstNode{mmlval.loc}, $2, $4, $5, $6, $8} }}
     | PIPELINE ID LPAREN in_param_list out_param_list RPAREN LBRACE call_stm_list return_stm RBRACE
-        {{ $$ = &Pipeline{Node{mmlval.loc}, $2, $4, $5, $8, &Callables{[]Callable{}, map[string]Callable{}}, $9} }}
+        {{ $$ = &Pipeline{AstNode{mmlval.loc}, $2, $4, $5, $8, &Callables{[]Callable{}, map[string]Callable{}}, $9} }}
     ;
 
 file_id
@@ -113,7 +113,7 @@ in_param_list
 
 in_param
     : IN type ID help
-        {{ $$ = &InParam{Node{mmlval.loc}, $2, $3, $4} }}
+        {{ $$ = &InParam{AstNode{mmlval.loc}, $2, $3, $4} }}
     ;
 
 out_param_list
@@ -128,14 +128,14 @@ out_param_list
 
 out_param
     : OUT type help 
-        {{ $$ = &OutParam{Node{mmlval.loc}, $2, "default", $3} }}
+        {{ $$ = &OutParam{AstNode{mmlval.loc}, $2, "default", $3} }}
     | OUT type ID help 
-        {{ $$ = &OutParam{Node{mmlval.loc}, $2, $3, $4} }}
+        {{ $$ = &OutParam{AstNode{mmlval.loc}, $2, $3, $4} }}
     ;
 
 src_stm
     : SRC src_lang LITSTRING COMMA
-        {{ $$ = &Src{Node{mmlval.loc}, $2, $3} }}
+        {{ $$ = &SrcParam{AstNode{mmlval.loc}, $2, $3} }}
     ;
 
 help
@@ -147,7 +147,7 @@ help
 
 type
     : INT
-    | STRING
+    | TSTRING
     | PATH
     | FLOAT
     | BOOL
@@ -170,21 +170,21 @@ split_param_list
 
 return_stm
     : RETURN LPAREN bind_stm_list RPAREN
-        {{ $$ = &ReturnStm{Node{mmlval.loc}, $3} }}
+        {{ $$ = &ReturnStm{AstNode{mmlval.loc}, $3} }}
     ;
 
 call_stm_list
     : call_stm_list call_stm
         {{ $$ = append($1, $2) }}
     | call_stm
-        {{ $$ = []*Call{$1} }}
+        {{ $$ = []*CallStm{$1} }}
     ;
 
 call_stm
     : CALL ID LPAREN bind_stm_list RPAREN
-        {{ $$ = &Call{Node{mmlval.loc}, false, $2, $4} }}
+        {{ $$ = &CallStm{AstNode{mmlval.loc}, false, $2, $4} }}
     | CALL VOLATILE ID LPAREN bind_stm_list RPAREN
-        {{ $$ = &Call{Node{mmlval.loc}, true, $3, $5} }}
+        {{ $$ = &CallStm{AstNode{mmlval.loc}, true, $3, $5} }}
     ;
 
 bind_stm_list
@@ -194,14 +194,14 @@ bind_stm_list
             $$ = $1
         }}
     | bind_stm
-        {{ $$ = &Bindings{[]*Binding{$1}, map[string]*Binding{} } }}
+        {{ $$ = &BindStms{[]*BindStm{$1}, map[string]*BindStm{} } }}
     ;
 
 bind_stm
     : ID EQUALS exp COMMA
-        {{ $$ = &Binding{Node{mmlval.loc}, $1, $3, false, ""} }}
+        {{ $$ = &BindStm{AstNode{mmlval.loc}, $1, $3, false, ""} }}
     | ID EQUALS SWEEP LPAREN exp RPAREN COMMA
-        {{ $$ = &Binding{Node{mmlval.loc}, $1, $5, true, ""} }}
+        {{ $$ = &BindStm{AstNode{mmlval.loc}, $1, $5, true, ""} }}
     ;
 
 exp_list
@@ -217,37 +217,37 @@ exp
     | LBRACKET RBRACKET
         {{ $$ = nil }}
     | PATH LPAREN LITSTRING RPAREN
-        {{ $$ = &ValExp{node:Node{mmlval.loc}, kind: $1, sval: strings.Replace($3, "\"", "", -1) } }}
+        {{ $$ = &ValExp{node:AstNode{mmlval.loc}, kind: $1, sval: strings.Replace($3, "\"", "", -1) } }}
     | FILE LPAREN LITSTRING RPAREN
-        {{ $$ = &ValExp{node:Node{mmlval.loc}, kind: $1, sval: strings.Replace($3, "\"", "", -1) } }}
+        {{ $$ = &ValExp{node:AstNode{mmlval.loc}, kind: $1, sval: strings.Replace($3, "\"", "", -1) } }}
     | NUM_FLOAT
         {{  // Lexer guarantees parseable float strings.
             f, _ := strconv.ParseFloat($1, 64)
-            $$ = &ValExp{node:Node{mmlval.loc}, kind: "float", fval: f } 
+            $$ = &ValExp{node:AstNode{mmlval.loc}, kind: "float", fval: f } 
         }}
     | NUM_INT
         {{  // Lexer guarantees parseable int strings.
             i, _ := strconv.ParseInt($1, 0, 64)
-            $$ = &ValExp{node:Node{mmlval.loc}, kind: "int", ival: i } 
+            $$ = &ValExp{node:AstNode{mmlval.loc}, kind: "int", ival: i } 
         }}
     | LITSTRING
-        {{ $$ = &ValExp{node:Node{mmlval.loc}, kind: "string", sval: strings.Replace($1, "\"", "", -1)} }}
+        {{ $$ = &ValExp{node:AstNode{mmlval.loc}, kind: "string", sval: strings.Replace($1, "\"", "", -1)} }}
     | TRUE
-        {{ $$ = &ValExp{node:Node{mmlval.loc}, kind: "bool", bval: true} }}
+        {{ $$ = &ValExp{node:AstNode{mmlval.loc}, kind: "bool", bval: true} }}
     | FALSE
-        {{ $$ = &ValExp{node:Node{mmlval.loc}, kind: "bool", bval: false} }}
+        {{ $$ = &ValExp{node:AstNode{mmlval.loc}, kind: "bool", bval: false} }}
     | NULL
-        {{ $$ = &ValExp{node:Node{mmlval.loc}, kind: "null", null: true} }}
+        {{ $$ = &ValExp{node:AstNode{mmlval.loc}, kind: "null", null: true} }}
     | ref_exp
         {{ $$ = $1 }}
     ;
 
 ref_exp
     : ID DOT ID
-        {{ $$ = &RefExp{Node{mmlval.loc}, "call", $1, $3} }}
+        {{ $$ = &RefExp{AstNode{mmlval.loc}, "call", $1, $3} }}
     | ID
-        {{ $$ = &RefExp{Node{mmlval.loc}, "call", $1, "default"} }}
+        {{ $$ = &RefExp{AstNode{mmlval.loc}, "call", $1, "default"} }}
     | SELF DOT ID
-        {{ $$ = &RefExp{Node{mmlval.loc}, "self", $3, ""} }}
+        {{ $$ = &RefExp{AstNode{mmlval.loc}, "self", $3, ""} }}
     ;
 %%
