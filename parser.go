@@ -3,21 +3,23 @@ package main
 import (
 	"fmt"
 	"io/ioutil"
+    "path"
+    "strings"
 	"os"
 )
 
 //
 // Semantic Checking Helpers
 //
-func (global *Ast) err(locable Locatable, msg string) error {
-	return &MarioError{global, locable, msg}
+func (global *Ast) err(locable Locatable, msg string, v ...interface{}) error {
+	return &MarioError{global, locable, fmt.Sprintf(msg, v...)}
 }
 
 func (callables *Callables) check(global *Ast) error {
 	for _, callable := range callables.list {
 		// Check for duplicates
 		if _, ok := callables.table[callable.Id()]; ok {
-			return global.err(callable, fmt.Sprintf("DuplicateNameError: stage or pipeline '%s' was already declared when encountered again", callable.Id()))
+			return global.err(callable, "DuplicateNameError: stage or pipeline '%s' was already declared when encountered again", callable.Id())
 		}
 		callables.table[callable.Id()] = callable
 	}
@@ -28,13 +30,13 @@ func (params *Params) check(global *Ast) error {
 	for _, param := range params.list {
 		// Check for duplicates
 		if _, ok := params.table[param.Id()]; ok {
-			return global.err(param, fmt.Sprintf("DuplicateNameError: parameter '%s' was already declared when encountered again", param.Id()))
+			return global.err(param, "DuplicateNameError: parameter '%s' was already declared when encountered again", param.Id())
 		}
 		params.table[param.Id()] = param
 
 		// Check that types exist.
 		if _, ok := global.typeTable[param.Tname()]; !ok {
-			return global.err(param, fmt.Sprintf("TypeError: undefined type '%s'", param.Tname()))
+			return global.err(param, "TypeError: undefined type '%s'", param.Tname())
 		}
 
 	}
@@ -62,7 +64,7 @@ func (exp *RefExp) ResolveType(global *Ast, pipeline *Pipeline) (string, error) 
 	case "self":
 		param, ok := pipeline.inParams.table[exp.id]
 		if !ok {
-			return "", global.err(exp, fmt.Sprintf("ScopeNameError: '%s' is not an input parameter of pipeline '%s'", exp.id, pipeline.id))
+			return "", global.err(exp, "ScopeNameError: '%s' is not an input parameter of pipeline '%s'", exp.id, pipeline.id)
 		}
 		return param.Tname(), nil
 
@@ -71,13 +73,13 @@ func (exp *RefExp) ResolveType(global *Ast, pipeline *Pipeline) (string, error) 
 		// Check referenced callable is acutally called in this scope.
 		callable, ok := pipeline.callables.table[exp.id]
 		if !ok {
-			return "", global.err(exp, fmt.Sprintf("ScopeNameError: '%s' is not called in pipeline '%s'", exp.id, pipeline.id))
+			return "", global.err(exp, "ScopeNameError: '%s' is not called in pipeline '%s'", exp.id, pipeline.id)
 		}
 
 		// Check referenced output is actually an output of the callable.
 		param, ok := callable.OutParams().table[exp.outputId]
 		if !ok {
-			return "", global.err(exp, fmt.Sprintf("NoSuchOutputError: '%s' is not an output parameter of '%s'", exp.outputId, callable.Id()))
+			return "", global.err(exp, "NoSuchOutputError: '%s' is not an output parameter of '%s'", exp.outputId, callable.Id())
 		}
 		return param.Tname(), nil
 	}
@@ -93,14 +95,14 @@ func (bindings *Bindings) check(global *Ast, pipeline *Pipeline, params *Params)
 	for _, binding := range bindings.list {
 		// Collect bindings by id so we can check that all params are bound.
 		if _, ok := bindings.table[binding.id]; ok {
-			return global.err(binding, fmt.Sprintf("DuplicateBinding: '%s' already bound in this call", binding.id))
+			return global.err(binding, "DuplicateBinding: '%s' already bound in this call", binding.id)
 		}
 		bindings.table[binding.id] = binding
 
 		// Make sure the bound-to id is a declared parameter of the callable.
 		param, ok := params.table[binding.id]
 		if !ok {
-			return global.err(binding, fmt.Sprintf("ArgumentError: '%s' is not a valid parameter", binding.id))
+			return global.err(binding, "ArgumentError: '%s' is not a valid parameter", binding.id)
 		}
 
 		// Typecheck the binding and cache the type.
@@ -109,7 +111,7 @@ func (bindings *Bindings) check(global *Ast, pipeline *Pipeline, params *Params)
 			return err
 		}
 		if !checkTypeMatch(param.Tname(), valueType) {
-			return global.err(param, fmt.Sprintf("TypeMismatchError: expected type '%s' for '%s' but got '%s' instead", param.Tname(), param.Id(), valueType))
+			return global.err(param, "TypeMismatchError: expected type '%s' for '%s' but got '%s' instead", param.Tname(), param.Id(), valueType)
 		}
 		binding.tname = param.Tname()
 	}
@@ -164,12 +166,12 @@ func (global *Ast) check() error {
 		for _, call := range pipeline.calls {
 			// Check for duplicate calls.
 			if _, ok := pipeline.callables.table[call.id]; ok {
-				return global.err(call, fmt.Sprintf("DuplicateCallError: '%s' was already called when encountered again", call.id))
+				return global.err(call, "DuplicateCallError: '%s' was already called when encountered again", call.id)
 			}
 			// Check we're calling something declared.
 			callable, ok := global.callables.table[call.id]
 			if !ok {
-				return global.err(call, fmt.Sprintf("ScopeNameError: '%s' is not defined in this scope", call.id))
+				return global.err(call, "ScopeNameError: '%s' is not defined in this scope", call.id)
 			}
 			// Save the valid callables for this scope.
 			pipeline.callables.table[call.id] = callable
@@ -182,7 +184,7 @@ func (global *Ast) check() error {
 			// Check that all input params of the callable are bound.
 			for _, param := range callable.InParams().list {
 				if _, ok := call.bindings.table[param.Id()]; !ok {
-					return global.err(call, fmt.Sprintf("ArgumentNotSuppliedError: no argument supplied for parameter '%s'", param.Id()))
+					return global.err(call, "ArgumentNotSuppliedError: no argument supplied for parameter '%s'", param.Id())
 				}
 			}
 		}
@@ -203,7 +205,7 @@ func (global *Ast) check() error {
 		}
 		for _, param := range pipeline.inParams.list {
 			if _, ok := boundParamIds[param.Id()]; !ok {
-				return global.err(param, fmt.Sprintf("UnusedInputError: no calls use pipeline input parameter '%s'", param.Id()))
+				return global.err(param, "UnusedInputError: no calls use pipeline input parameter '%s'", param.Id())
 			}
 		}
 
@@ -214,7 +216,7 @@ func (global *Ast) check() error {
 		}
 		for _, param := range pipeline.outParams.list {
 			if _, ok := returnedParamIds[param.Id()]; !ok {
-				return global.err(pipeline.ret, fmt.Sprintf("ReturnError: pipeline output parameter '%s' is not returned", param.Id()))
+				return global.err(pipeline.ret, "ReturnError: pipeline output parameter '%s' is not returned", param.Id())
 			}
 		}
 
@@ -254,9 +256,22 @@ func ParseFile(filename string) (string, *Ast, error) {
 }
 
 func main() {
-	_, _, err := ParseFile("../pipelines/src/mro/analytics_phasing.mro")
-	if err != nil {
-		fmt.Println(err.Error())
-		os.Exit(1)
-	}
+    dirs, _ := ioutil.ReadDir("../pipelines/src/mro")
+    count := 0
+    for i := 0; i < 1; i ++ {
+        for _, dir := range dirs {
+            if strings.HasPrefix(dir.Name(), "_") {
+                continue
+            }
+            p := path.Join("../pipelines/src/mro", dir.Name())
+            //_, _, err := ParseFile("../pipelines/src/mro/analytics_phasing.mro")
+            _, _, err := ParseFile(p)
+            count += 1
+            if err != nil {
+                fmt.Println(err.Error())
+                os.Exit(1)
+            }
+        }
+    }
+    fmt.Printf("Successfully compiled %d mro files.", count)
 }

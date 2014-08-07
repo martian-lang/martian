@@ -7,13 +7,14 @@ import (
 
 // re matches text to produce token.
 type rule struct {
+    pattern string
 	re    *regexp.Regexp
 	tokid int
 }
 
 // Pre-compile regexps for token matching.
 func newRule(pattern string, tokid int) *rule {
-	return &rule{regexp.MustCompile("^" + pattern), tokid}
+	return &rule{pattern, regexp.MustCompile("^" + pattern), tokid}
 }
 
 var rules = []*rule{
@@ -86,11 +87,11 @@ func (self *mmLexInfo) Lex(lval *mmSymType) int {
 		var val string
 		var r *rule
 		for _, r = range rules {
-			val = r.re.FindString(head)
-			if len(val) > 0 {
-				break
-			}
-		}
+            val = r.re.FindString(head)
+            if len(val) > 0 {
+			    break
+            }
+        }
 
 		// Advance the cursor pos.
 		self.pos += len(val)
