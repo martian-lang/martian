@@ -526,7 +526,7 @@ mmdefault:
 		//line grammar.y:91
 		{
 			{
-				mmVAL.dec = &Stage{AstNode{mmlval.loc}, mmS[mmpt-5].val, mmS[mmpt-3].params, mmS[mmpt-2].params, mmS[mmpt-1].src, nil}
+				mmVAL.dec = &Stage{AstNode{mmlval.loc}, mmS[mmpt-5].val, mmS[mmpt-3].params, mmS[mmpt-2].params, mmS[mmpt-1].src, &Params{[]Param{}, map[string]Param{}}}
 			}
 		}
 	case 7:
@@ -734,28 +734,28 @@ mmdefault:
 		//line grammar.y:216
 		{
 			{
-				mmVAL.exp = nil
+				mmVAL.exp = &ValExp{node: AstNode{mmlval.loc}, kind: "array", value: mmS[mmpt-1].exps}
 			}
 		}
 	case 42:
 		//line grammar.y:218
 		{
 			{
-				mmVAL.exp = nil
+				mmVAL.exp = &ValExp{node: AstNode{mmlval.loc}, kind: "array", value: []Exp{}}
 			}
 		}
 	case 43:
 		//line grammar.y:220
 		{
 			{
-				mmVAL.exp = &ValExp{node: AstNode{mmlval.loc}, kind: mmS[mmpt-3].val, sval: strings.Replace(mmS[mmpt-1].val, "\"", "", -1)}
+				mmVAL.exp = &ValExp{node: AstNode{mmlval.loc}, kind: mmS[mmpt-3].val, value: strings.Replace(mmS[mmpt-1].val, "\"", "", -1)}
 			}
 		}
 	case 44:
 		//line grammar.y:222
 		{
 			{
-				mmVAL.exp = &ValExp{node: AstNode{mmlval.loc}, kind: mmS[mmpt-3].val, sval: strings.Replace(mmS[mmpt-1].val, "\"", "", -1)}
+				mmVAL.exp = &ValExp{node: AstNode{mmlval.loc}, kind: mmS[mmpt-3].val, value: strings.Replace(mmS[mmpt-1].val, "\"", "", -1)}
 			}
 		}
 	case 45:
@@ -763,7 +763,7 @@ mmdefault:
 		{
 			{ // Lexer guarantees parseable float strings.
 				f, _ := strconv.ParseFloat(mmS[mmpt-0].val, 64)
-				mmVAL.exp = &ValExp{node: AstNode{mmlval.loc}, kind: "float", fval: f}
+				mmVAL.exp = &ValExp{node: AstNode{mmlval.loc}, kind: "float", value: f}
 			}
 		}
 	case 46:
@@ -771,35 +771,35 @@ mmdefault:
 		{
 			{ // Lexer guarantees parseable int strings.
 				i, _ := strconv.ParseInt(mmS[mmpt-0].val, 0, 64)
-				mmVAL.exp = &ValExp{node: AstNode{mmlval.loc}, kind: "int", ival: i}
+				mmVAL.exp = &ValExp{node: AstNode{mmlval.loc}, kind: "int", value: i}
 			}
 		}
 	case 47:
 		//line grammar.y:234
 		{
 			{
-				mmVAL.exp = &ValExp{node: AstNode{mmlval.loc}, kind: "string", sval: strings.Replace(mmS[mmpt-0].val, "\"", "", -1)}
+				mmVAL.exp = &ValExp{node: AstNode{mmlval.loc}, kind: "string", value: strings.Replace(mmS[mmpt-0].val, "\"", "", -1)}
 			}
 		}
 	case 48:
 		//line grammar.y:236
 		{
 			{
-				mmVAL.exp = &ValExp{node: AstNode{mmlval.loc}, kind: "bool", bval: true}
+				mmVAL.exp = &ValExp{node: AstNode{mmlval.loc}, kind: "bool", value: true}
 			}
 		}
 	case 49:
 		//line grammar.y:238
 		{
 			{
-				mmVAL.exp = &ValExp{node: AstNode{mmlval.loc}, kind: "bool", bval: false}
+				mmVAL.exp = &ValExp{node: AstNode{mmlval.loc}, kind: "bool", value: false}
 			}
 		}
 	case 50:
 		//line grammar.y:240
 		{
 			{
-				mmVAL.exp = &ValExp{node: AstNode{mmlval.loc}, kind: "null", null: true}
+				mmVAL.exp = &ValExp{node: AstNode{mmlval.loc}, kind: "null", value: nil}
 			}
 		}
 	case 51:

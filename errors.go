@@ -22,6 +22,7 @@ type AstError struct {
 }
 
 func (self *AstError) Error() string {
+	fmt.Println(self.msg)
 	return fmt.Sprintf("MRO %s at %s:%d.", self.msg,
 		self.global.locmap[self.locable.Loc()].fname,
 		self.global.locmap[self.locable.Loc()].loc)

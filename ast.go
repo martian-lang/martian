@@ -118,12 +118,8 @@ type (
 	ValExp struct {
 		node AstNode
 		// union-style multi-value store
-		kind string
-		fval float64
-		ival int64
-		sval string
-		bval bool
-		null bool
+		kind  string
+		value interface{}
 	}
 
 	RefExp struct {

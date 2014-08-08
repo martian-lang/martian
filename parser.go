@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	"io/ioutil"
+	"path"
 )
 
 //
@@ -49,7 +50,12 @@ func (exp *ValExp) ResolveType(global *Ast, pipeline *Pipeline) (string, error) 
 
 	// Array: [ 1, 2 ]
 	case "array":
+		for _, subexp := range exp.value.([]Exp) {
+			return subexp.Kind(), nil
+		}
+		return "null", nil
 	case "file":
+		return path.Ext(exp.value.(string))[1:], nil
 	}
 	return "unknown", nil
 }
@@ -256,9 +262,6 @@ func ParseCall(src string) (*Ast, error) {
 	global, err := yaccParse(src)
 	if err != nil {
 		return nil, &ParseError{err.token, "[invocation]", err.loc}
-	}
-	if err := global.check(); err != nil {
-		return nil, err
 	}
 	return global, nil
 }

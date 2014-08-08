@@ -88,7 +88,7 @@ dec
     : FILETYPE file_id SEMICOLON
         {{ $$ = &Filetype{AstNode{mmlval.loc}, $2} }}
     | STAGE ID LPAREN in_param_list out_param_list src_stm RPAREN 
-        {{ $$ = &Stage{AstNode{mmlval.loc}, $2, $4, $5, $6, nil} }}
+        {{ $$ = &Stage{AstNode{mmlval.loc}, $2, $4, $5, $6, &Params{[]Param{}, map[string]Param{}} } }}
     | STAGE ID LPAREN in_param_list out_param_list src_stm RPAREN split_param_list
         {{ $$ = &Stage{AstNode{mmlval.loc}, $2, $4, $5, $6, $8} }}
     | PIPELINE ID LPAREN in_param_list out_param_list RPAREN LBRACE call_stm_list return_stm RBRACE
@@ -212,32 +212,32 @@ exp_list
     ; 
 
 exp
-    : LBRACKET exp_list RBRACKET
-        {{ $$ = nil }}
+    : LBRACKET exp_list RBRACKET        
+        {{ $$ = &ValExp{node:AstNode{mmlval.loc}, kind: "array", value: $2} }}
     | LBRACKET RBRACKET
-        {{ $$ = nil }}
+        {{ $$ = &ValExp{node:AstNode{mmlval.loc}, kind: "array", value: []Exp{}} }}
     | PATH LPAREN LITSTRING RPAREN
-        {{ $$ = &ValExp{node:AstNode{mmlval.loc}, kind: $1, sval: strings.Replace($3, "\"", "", -1) } }}
+        {{ $$ = &ValExp{node:AstNode{mmlval.loc}, kind: $1, value: strings.Replace($3, "\"", "", -1) } }}
     | FILE LPAREN LITSTRING RPAREN
-        {{ $$ = &ValExp{node:AstNode{mmlval.loc}, kind: $1, sval: strings.Replace($3, "\"", "", -1) } }}
+        {{ $$ = &ValExp{node:AstNode{mmlval.loc}, kind: $1, value: strings.Replace($3, "\"", "", -1) } }}
     | NUM_FLOAT
         {{  // Lexer guarantees parseable float strings.
             f, _ := strconv.ParseFloat($1, 64)
-            $$ = &ValExp{node:AstNode{mmlval.loc}, kind: "float", fval: f } 
+            $$ = &ValExp{node:AstNode{mmlval.loc}, kind: "float", value: f } 
         }}
     | NUM_INT
         {{  // Lexer guarantees parseable int strings.
             i, _ := strconv.ParseInt($1, 0, 64)
-            $$ = &ValExp{node:AstNode{mmlval.loc}, kind: "int", ival: i } 
+            $$ = &ValExp{node:AstNode{mmlval.loc}, kind: "int", value: i } 
         }}
     | LITSTRING
-        {{ $$ = &ValExp{node:AstNode{mmlval.loc}, kind: "string", sval: strings.Replace($1, "\"", "", -1)} }}
+        {{ $$ = &ValExp{node:AstNode{mmlval.loc}, kind: "string", value: strings.Replace($1, "\"", "", -1)} }}
     | TRUE
-        {{ $$ = &ValExp{node:AstNode{mmlval.loc}, kind: "bool", bval: true} }}
+        {{ $$ = &ValExp{node:AstNode{mmlval.loc}, kind: "bool", value: true} }}
     | FALSE
-        {{ $$ = &ValExp{node:AstNode{mmlval.loc}, kind: "bool", bval: false} }}
+        {{ $$ = &ValExp{node:AstNode{mmlval.loc}, kind: "bool", value: false} }}
     | NULL
-        {{ $$ = &ValExp{node:AstNode{mmlval.loc}, kind: "null", null: true} }}
+        {{ $$ = &ValExp{node:AstNode{mmlval.loc}, kind: "null", value: nil} }}
     | ref_exp
         {{ $$ = $1 }}
     ;
