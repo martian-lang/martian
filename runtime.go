@@ -39,7 +39,7 @@ type Binding struct {
 	mode      string
 	boundNode Nodable
 	output    string
-	value     *ValExp
+	value     interface{}
 }
 
 func NewBinding(node *Node, bindStm *BindStm) *Binding {
@@ -73,11 +73,35 @@ func NewBinding(node *Node, bindStm *BindStm) *Binding {
 	case *ValExp:
 		self.mode = "value"
 		self.boundNode = node
-		self.value = valueExp
+		self.value = bindStm.exp.(*ValExp).value
 		// Unwrap array values.
 
 	}
 	return self
+}
+
+func (self *Binding) resolve(argPermute map[string]interface{}) interface{} {
+	self.waiting = false
+	if self.mode == "value" {
+		if argPermute == nil {
+			return self.value
+		}
+		if self.sweep {
+			return argPermute[self.id]
+		} else {
+			return self.value
+		}
+	}
+	if argPermute == nil {
+		return nil
+	}
+	matchedFork := self.boundNode.Node().matchFork(argPermute)
+	outputs := matchedFork.metadata.readSync("outs")
+	if output, ok := outputs[self.output]; ok {
+		return output
+	}
+	self.waiting = true
+	return nil
 }
 
 type Metadata struct {
@@ -97,6 +121,14 @@ func (self *Metadata) mkdirs(done chan bool) int {
 	count := mkdirAsync(self.path, done)
 	count += mkdirAsync(self.filesPath, done)
 	return count
+}
+
+func (self *Metadata) cache() {
+	if _, ok := self.contents["complete"]; ok {
+		return
+	}
+	self.contents = map[string]interface{}
+    
 }
 
 type Chunk struct {
@@ -144,6 +176,7 @@ type Fork struct {
 	split_metadata *Metadata
 	join_metadata  *Metadata
 	chunks         []*Chunk
+	argPermute     map[string]interface{}
 }
 
 func NewFork(nodable Nodable, index int, argPermute []int) *Fork {
@@ -167,6 +200,10 @@ func (self *Fork) mkdirs(done chan bool) int {
 	return count
 }
 
+func (self *Fork) getState() string {
+	return ""
+}
+
 /****************************************************
  * Node Classes
  */
@@ -175,18 +212,19 @@ type Nodable interface {
 }
 
 type Node struct {
-	parent      Nodable
-	rt          *Runtime
-	kind        string
-	name        string
-	fqname      string
-	path        string
-	metadata    *Metadata
-	outparams   *Params
-	argbindings map[string]*Binding
-	subnodes    map[string]Nodable
-	prenodes    map[string]Nodable
-	forks       []*Fork
+	parent        Nodable
+	rt            *Runtime
+	kind          string
+	name          string
+	fqname        string
+	path          string
+	metadata      *Metadata
+	outparams     *Params
+	argbindings   map[string]*Binding
+	sweepbindings []*Binding
+	subnodes      map[string]Nodable
+	prenodes      map[string]Nodable
+	forks         []*Fork
 }
 
 func (self *Node) Node() *Node { return self }
@@ -218,10 +256,6 @@ func NewNode(parent Nodable, kind string, callStm *CallStm, callables *Callables
 	return self
 }
 
-func (self *Node) buildForks(bindings []*Binding) {
-
-}
-
 func (self *Node) mkdirs(done chan bool) int {
 	count := mkdirAsync(self.path, done)
 	for _, fork := range self.forks {
@@ -231,6 +265,80 @@ func (self *Node) mkdirs(done chan bool) int {
 		count += subnode.Node().mkdirs(done)
 	}
 	return count
+}
+
+// State and dataflow management (synchronous)
+func (self *Node) getState() string {
+	complete := true
+	for _, fork := range self.forks {
+		if fork.getState() != "complete" {
+			complete = false
+			break
+		}
+	}
+	if complete {
+		return "complete"
+	}
+	for _, fork := range self.forks {
+		if fork.getState() == "failed" {
+			return "failed"
+		}
+	}
+	for _, prenode := range self.prenodes {
+		if prenode.Node().getState() != "complete" {
+			return "waiting"
+		}
+	}
+	return "running"
+}
+
+// Sweep management
+func (self *Node) buildForks(bindings []*Binding) {
+	// Use a map to uniquify bindings by id.
+	bindingTable := map[string]*Binding{}
+
+	// Add local sweep bindings.
+	for _, binding := range bindings {
+		if binding.sweep {
+			bindingTable[binding.id] = binding
+		}
+	}
+	// Add upstream sweep bindings (from prenodes).
+	for _, prenode := range self.prenodes {
+		for _, binding := range prenode.Node().sweepbindings {
+			bindingTable[binding.id] = binding
+		}
+	}
+	// Add all unique bindings to self.sweepbindings.
+	paramIds := []string{}
+	argRanges := []interface{}{}
+	for _, binding := range bindingTable {
+		self.sweepbindings = append(self.sweepbindings, binding)
+		paramIds = append(paramIds, binding.id)
+		argRanges = append(argRanges, binding.resolve(nil))
+	}
+
+	// Build out argument permutations.
+	//for _, binding: =
+}
+
+func (self *Node) matchFork(targetArgPermute map[string]interface{}) *Fork {
+	if targetArgPermute == nil {
+		return nil
+	}
+	for _, fork := range self.forks {
+		every := true
+		for paramId, argValue := range fork.argPermute {
+			if targetArgPermute[paramId] != argValue {
+				every = false
+				break
+			}
+		}
+		if every {
+			return fork
+		}
+	}
+	return nil
 }
 
 type Pipestance struct {
