@@ -1,6 +1,7 @@
 package main
 
 import (
+	"encoding/json"
 	"fmt"
 	"io/ioutil"
 	"os"
@@ -14,14 +15,17 @@ import (
 /****************************************************
  * Helpers
  */
-func mkdirAsync(p string, done chan bool) int {
+func mkdirAsync(p string, done chan interface{}) int {
 	go func() {
 		fmt.Println("start", p)
-		os.Mkdir(p, 0700)
-		//time.Sleep(time.Microsecond * 1)
-		//runtime.Gosched()
-		fmt.Println("done ", p)
-		done <- true
+		if err := os.Mkdir(p, 0700); err == nil {
+			//time.Sleep(time.Microsecond * 1)
+			//runtime.Gosched()
+			fmt.Println("done ", p)
+			done <- true
+		} else {
+			done <- err
+		}
 	}()
 	return 1
 }
@@ -106,7 +110,7 @@ func (self *Binding) resolve(argPermute map[string]interface{}) interface{} {
 
 type Metadata struct {
 	path      string
-	contents  map[string]interface{}
+	contents  map[string]bool
 	filesPath string
 }
 
@@ -117,18 +121,122 @@ func NewMetadata(p string) *Metadata {
 	return self
 }
 
-func (self *Metadata) mkdirs(done chan bool) int {
+func (self *Metadata) glob() ([]string, error) {
+	return filepath.Glob(path.Join(self.path, "_*"))
+}
+
+func (self *Metadata) mkdirs(done chan interface{}) int {
 	count := mkdirAsync(self.path, done)
 	count += mkdirAsync(self.filesPath, done)
 	return count
 }
 
-func (self *Metadata) cache() {
+func (self *Metadata) cache(done chan interface{}) int {
 	if _, ok := self.contents["complete"]; ok {
-		return
+		return 0
 	}
-	self.contents = map[string]interface{}
-    
+	go func() {
+		self.contents = map[string]bool{}
+		if paths, err := self.glob(); err == nil {
+			for _, p := range paths {
+				self.contents[path.Base(p)[1:]] = true
+			}
+			done <- true
+		} else {
+			done <- err
+		}
+	}()
+	return 1
+}
+
+func (self *Metadata) restartIfFailed(done chan bool) int {
+	if _, ok := self.contents["error"]; !ok {
+		return 0
+	}
+	self.contents = map[string]bool{}
+	go func() {
+		if paths, err := self.glob(); err == nil {
+			sdone := make(chan interface{})
+			for _, p := range paths {
+				go func() {
+					if err := os.Remove(p); err == nil {
+						sdone <- true
+					} else {
+						sdone <- err
+					}
+				}()
+			}
+			for i := 0; i < len(paths); i++ {
+				<-sdone
+			}
+		} else {
+			done <- true
+		}
+	}()
+	return 1
+}
+
+func (self *Metadata) makePath(name string) string {
+	return path.Join(self.path, "_"+name)
+}
+
+func (self *Metadata) exists(name string) bool {
+	_, ok := self.contents[name]
+	return ok
+}
+
+func (self *Metadata) readRaw(name string, done chan string) {
+	go func() {
+		if bytes, err := ioutil.ReadFile(self.makePath(name)); err == nil {
+			done <- string(bytes)
+		} else {
+			done <- ""
+		}
+	}()
+}
+
+func (self *Metadata) read(name string, done chan interface{}) {
+	go func() {
+		sdone := make(chan string)
+		self.readRaw(name, sdone)
+		var v interface{}
+		if err := json.Unmarshal([]byte(<-sdone), v); err == nil {
+			done <- v
+		} else {
+			done <- err
+		}
+	}()
+}
+
+func (self *Metadata) writeRaw(name string, text string, done chan interface{}) {
+	go func() {
+		if err := ioutil.WriteFile(self.makePath(name), []byte(text), 0600); err == nil {
+			done <- true
+		} else {
+			done <- err
+		}
+	}()
+}
+
+func (self *Metadata) write(name string, object interface{}, done chan interface{}) {
+	go func() {
+		bytes, _ := json.Marshal(object)
+		self.writeRaw(name, string(bytes), done)
+	}()
+}
+
+func (self *Metadata) append(name string, text string, done chan interface{}) {
+	if f, err := os.OpenFile(self.makePath(name), os.O_WRONLY|os.O_CREATE, 0700); err == nil {
+		f.Write([]byte(text))
+		f.Close()
+		done <- true
+	} else {
+		done <- err
+	}
+}
+
+func (self *Metadata) writeTime(name string, done chan interface{}) {
+	self.writeRaw()
 }
 
 type Chunk struct {
@@ -155,7 +263,7 @@ func NewChunk(nodable Nodable, fork *Fork, index int, chunkDef map[string]int) *
 		// to the filesPath of the parent fork, to save a pseudo-join copy.
 		self.metadata.filesPath = self.fork.metadata.filesPath
 	}
-	done := make(chan bool)
+	done := make(chan interface{})
 	count := self.mkdirs(done)
 	for i := 0; i < count; i++ {
 		<-done
@@ -163,7 +271,7 @@ func NewChunk(nodable Nodable, fork *Fork, index int, chunkDef map[string]int) *
 	return self
 }
 
-func (self *Chunk) mkdirs(done chan bool) int {
+func (self *Chunk) mkdirs(done chan interface{}) int {
 	return self.metadata.mkdirs(done)
 }
 
@@ -192,7 +300,7 @@ func NewFork(nodable Nodable, index int, argPermute []int) *Fork {
 	return self
 }
 
-func (self *Fork) mkdirs(done chan bool) int {
+func (self *Fork) mkdirs(done chan interface{}) int {
 	count := 0
 	count += self.metadata.mkdirs(done)
 	count += self.split_metadata.mkdirs(done)
@@ -256,7 +364,7 @@ func NewNode(parent Nodable, kind string, callStm *CallStm, callables *Callables
 	return self
 }
 
-func (self *Node) mkdirs(done chan bool) int {
+func (self *Node) mkdirs(done chan interface{}) int {
 	count := mkdirAsync(self.path, done)
 	for _, fork := range self.forks {
 		count += fork.mkdirs(done)
@@ -511,22 +619,17 @@ func (self *Runtime) Compile(fname string) (*Ast, error) {
 }
 
 func (self *Runtime) CompileAll() (int, error) {
-	dirs, _ := ioutil.ReadDir(self.mroPath)
-	count := 0
-	for _, dir := range dirs {
-		if !(path.Ext(dir.Name()) == ".mro") {
-			continue
-		}
-		if path.Base(dir.Name())[0:1] == "_" {
-			continue
-		}
-		_, err := self.Compile(path.Join(dir.Name()))
+	paths, err := filepath.Glob(self.mroPath + "/[^_]*.mro")
+	if err != nil {
+		return 0, err
+	}
+	for _, p := range paths {
+		_, err := self.Compile(path.Base(p))
 		if err != nil {
 			return 0, err
 		}
-		count += 1
 	}
-	return count, nil
+	return len(paths), nil
 }
 
 func (self *Runtime) InvokeWithSource(psid string, src string, pipestancePath string) (*Pipestance, error) {
@@ -534,7 +637,7 @@ func (self *Runtime) InvokeWithSource(psid string, src string, pipestancePath st
 	if err != nil {
 		return nil, err
 	}
-	done := make(chan bool)
+	done := make(chan interface{})
 	count := pipestance.Node().mkdirs(done)
 	fmt.Println(count)
 	for i := 0; i < count; i++ {
@@ -548,7 +651,7 @@ func (self *Runtime) InvokeWithSource(psid string, src string, pipestancePath st
  */
 func main() {
 	runtime.GOMAXPROCS(4)
-	rt := NewRuntime("sge", "/Users/alex/Home/git/pipelines/src")
+	rt := NewRuntime("sge", "/Users/aywong/Home/Work/10X/git/pipelines/src")
 	count, err := rt.CompileAll()
 	if err != nil {
 		fmt.Println(err.Error())
