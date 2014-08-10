@@ -9,30 +9,62 @@ import (
 	"path/filepath"
 	_ "reflect"
 	"runtime"
-	_ "time"
+	"sync"
+	"time"
 )
 
 /****************************************************
  * Helpers
  */
-func mkdirAsync(p string, done chan interface{}) int {
-	go func() {
-		fmt.Println("start", p)
-		if err := os.Mkdir(p, 0700); err == nil {
-			//time.Sleep(time.Microsecond * 1)
-			//runtime.Gosched()
-			fmt.Println("done ", p)
-			done <- true
-		} else {
-			done <- err
-		}
-	}()
-	return 1
+func mkdir(p string) {
+	err := os.Mkdir(p, 0700)
+	if err != nil {
+		fmt.Println(err)
+	}
 }
+
+func cartesianProduct(valueSets []interface{}) []interface{} {
+	perms := []interface{}{[]interface{}{}}
+	for _, valueSet := range valueSets {
+		newPerms := []interface{}{}
+		for _, perm := range perms {
+			for _, value := range valueSet.([]interface{}) {
+				perm := perm.([]interface{})
+				newPerm := make([]interface{}, len(perm))
+				copy(newPerm, perm)
+				newPerm = append(newPerm, value)
+				newPerms = append(newPerms, newPerm)
+			}
+		}
+		perms = newPerms
+	}
+	return perms
+}
+
+/*
+func main() {
+	aoa := []interface{}{
+		[]interface{}{ "always" },
+		[]interface{}{ "a", "b" },
+		[]interface{}{ "red", "blue" },
+		[]interface{}{ 1, 2, 3 },
+		//[]interface{}{ "tree", "bush" },
+		//[]interface{}{ "cat", "dog" },
+	}
+	fmt.Println(cartesianProduct(aoa))
+}
+*/
 
 /****************************************************
  * Runtime Model Classes
  */
+type Parameter struct {
+}
+
+func NewParameter() {
+
+}
+
 type Binding struct {
 	node      *Node
 	id        string
@@ -49,6 +81,7 @@ type Binding struct {
 func NewBinding(node *Node, bindStm *BindStm) *Binding {
 	self := &Binding{}
 	self.node = node
+	//fmt.Println("HAHA", self.id, self.node.parent.Node())
 	self.id = bindStm.id
 	self.tname = bindStm.tname
 	self.sweep = bindStm.sweep
@@ -62,11 +95,16 @@ func NewBinding(node *Node, bindStm *BindStm) *Binding {
 			self.sweep = parentBinding.sweep
 			self.waiting = parentBinding.waiting
 			self.mode = parentBinding.mode
+			self.boundNode = parentBinding.boundNode
+			self.output = parentBinding.output
+			self.value = parentBinding.value
 			self.id = bindStm.id
 			self.valexp = "self." + valueExp.id
 		} else if valueExp.kind == "call" {
 			self.mode = "reference"
+			//fmt.Println("HAAaaAAAAAAAA", valueExp.id, self.node.parent.Node())
 			self.boundNode = self.node.parent.Node().subnodes[valueExp.id]
+			//fmt.Println("ho", self.boundNode)
 			self.output = valueExp.outputId
 			if valueExp.outputId == "default" {
 				self.valexp = valueExp.id
@@ -78,8 +116,30 @@ func NewBinding(node *Node, bindStm *BindStm) *Binding {
 		self.mode = "value"
 		self.boundNode = node
 		self.value = bindStm.exp.(*ValExp).value
-		// Unwrap array values.
+		if self.value != nil && valueExp.kind == "array" {
+			value := []interface{}{}
+			for _, e := range self.value.([]Exp) {
+				value = append(value, e.(*ValExp).value)
+			}
+			self.value = value
+		}
+	}
+	return self
+}
 
+func NewReturnBinding(node *Node, bindStm *BindStm) *Binding {
+	self := &Binding{}
+	self.node = node
+	self.id = bindStm.id
+	self.tname = bindStm.tname
+	self.mode = "reference"
+	valueExp := bindStm.exp.(*RefExp)
+	self.boundNode = self.node.subnodes[valueExp.id] // from node, NOT parent; this is diff from Binding
+	self.output = valueExp.outputId
+	if valueExp.outputId == "default" {
+		self.valexp = valueExp.id
+	} else {
+		self.valexp = valueExp.id + "." + valueExp.outputId
 	}
 	return self
 }
@@ -88,6 +148,8 @@ func (self *Binding) resolve(argPermute map[string]interface{}) interface{} {
 	self.waiting = false
 	if self.mode == "value" {
 		if argPermute == nil {
+			// In this case we want to get the raw value, which might be
+			// a sweep array.
 			return self.value
 		}
 		if self.sweep {
@@ -100,12 +162,31 @@ func (self *Binding) resolve(argPermute map[string]interface{}) interface{} {
 		return nil
 	}
 	matchedFork := self.boundNode.Node().matchFork(argPermute)
-	outputs := matchedFork.metadata.readSync("outs")
-	if output, ok := outputs[self.output]; ok {
-		return output
-	}
+	outputs := matchedFork.metadata.read("outs").(map[string]interface{})
+	output, _ := outputs[self.output]
 	self.waiting = true
-	return nil
+	return output
+}
+
+func resolveBindings(bindings map[string]*Binding, argPermute map[string]interface{}) map[string]interface{} {
+	resolvedBindings := map[string]interface{}{}
+	for id, binding := range bindings {
+		resolvedBindings[id] = binding.resolve(argPermute)
+	}
+	return resolvedBindings
+}
+func makeOutArgs(outParams *Params, filesPath string) map[string]interface{} {
+	args := map[string]interface{}{}
+	for id, param := range outParams.table {
+		switch param.Tname() {
+		case "file":
+			args[id] = path.Join(filesPath, param.Id()+"."+param.Tname())
+		case "path":
+			args[id] = path.Join(filesPath, param.Id())
+		default:
+		}
+	}
+	return args
 }
 
 type Metadata struct {
@@ -121,136 +202,88 @@ func NewMetadata(p string) *Metadata {
 	return self
 }
 
-func (self *Metadata) glob() ([]string, error) {
-	return filepath.Glob(path.Join(self.path, "_*"))
+func (self *Metadata) glob() []string {
+	paths, _ := filepath.Glob(path.Join(self.path, "_*"))
+	return paths
 }
 
-func (self *Metadata) mkdirs(done chan interface{}) int {
-	count := mkdirAsync(self.path, done)
-	count += mkdirAsync(self.filesPath, done)
-	return count
+func (self *Metadata) mkdirs() {
+	mkdir(self.path)
+	mkdir(self.filesPath)
 }
 
-func (self *Metadata) cache(done chan interface{}) int {
-	if _, ok := self.contents["complete"]; ok {
-		return 0
-	}
-	go func() {
+func (self *Metadata) cache() {
+	if !self.exists("complete") {
 		self.contents = map[string]bool{}
-		if paths, err := self.glob(); err == nil {
-			for _, p := range paths {
-				self.contents[path.Base(p)[1:]] = true
-			}
-			done <- true
-		} else {
-			done <- err
+		paths := self.glob()
+		for _, p := range paths {
+			self.contents[path.Base(p)[1:]] = true
 		}
-	}()
-	return 1
+	}
 }
 
-func (self *Metadata) restartIfFailed(done chan bool) int {
-	if _, ok := self.contents["error"]; !ok {
-		return 0
-	}
-	self.contents = map[string]bool{}
-	go func() {
-		if paths, err := self.glob(); err == nil {
-			sdone := make(chan interface{})
-			for _, p := range paths {
-				go func() {
-					if err := os.Remove(p); err == nil {
-						sdone <- true
-					} else {
-						sdone <- err
-					}
-				}()
-			}
-			for i := 0; i < len(paths); i++ {
-				<-sdone
-			}
-		} else {
-			done <- true
+func (self *Metadata) restartIfFailed() {
+	if self.exists("errors") {
+		self.contents = map[string]bool{}
+		paths := self.glob()
+		for _, p := range paths {
+			os.Remove(p)
 		}
-	}()
-	return 1
+	}
 }
 
 func (self *Metadata) makePath(name string) string {
 	return path.Join(self.path, "_"+name)
 }
-
 func (self *Metadata) exists(name string) bool {
 	_, ok := self.contents[name]
 	return ok
 }
-
-func (self *Metadata) readRaw(name string, done chan string) {
-	go func() {
-		if bytes, err := ioutil.ReadFile(self.makePath(name)); err == nil {
-			done <- string(bytes)
-		} else {
-			done <- ""
-		}
-	}()
+func (self *Metadata) readRaw(name string) string {
+	bytes, _ := ioutil.ReadFile(self.makePath(name))
+	return string(bytes)
+}
+func (self *Metadata) read(name string) interface{} {
+	var v interface{}
+	json.Unmarshal([]byte(self.readRaw(name)), v)
+	return v
+}
+func (self *Metadata) writeRaw(name string, text string) {
+	ioutil.WriteFile(self.makePath(name), []byte(text), 0600)
+}
+func (self *Metadata) write(name string, object interface{}) {
+	bytes, _ := json.Marshal(object)
+	self.writeRaw(name, string(bytes))
 }
 
-func (self *Metadata) read(name string, done chan interface{}) {
-	go func() {
-		sdone := make(chan string)
-		self.readRaw(name, sdone)
-		var v interface{}
-		if err := json.Unmarshal([]byte(<-sdone), v); err == nil {
-			done <- v
-		} else {
-			done <- err
-		}
-	}()
+func (self *Metadata) append(name string, text string) {
+	f, _ := os.OpenFile(self.makePath(name), os.O_WRONLY|os.O_CREATE, 0700)
+	f.Write([]byte(text))
+	f.Close()
 }
 
-func (self *Metadata) writeRaw(name string, text string, done chan interface{}) {
-	go func() {
-		if err := ioutil.WriteFile(self.makePath(name), []byte(text), 0600); err == nil {
-			done <- true
-		} else {
-			done <- err
-		}
-	}()
+func (self *Metadata) writeTime(name string) {
+	self.writeRaw(name, time.Now().Format("2006-01-02 15:04:05"))
 }
 
-func (self *Metadata) write(name string, object interface{}, done chan interface{}) {
-	go func() {
-		bytes, _ := json.Marshal(object)
-		self.writeRaw(name, string(bytes), done)
-	}()
-}
-
-func (self *Metadata) append(name string, text string, done chan interface{}) {
-	if f, err := os.OpenFile(self.makePath(name), os.O_WRONLY|os.O_CREATE, 0700); err == nil {
-		f.Write([]byte(text))
-		f.Close()
-		done <- true
-	} else {
-		done <- err
-	}
-}
-
-func (self *Metadata) writeTime(name string, done chan interface{}) {
-	self.writeRaw()
+func (self *Metadata) remove(name string) {
+	os.Remove(self.makePath(name))
 }
 
 type Chunk struct {
+	node        *Node
 	stagestance *Stagestance
 	fork        *Fork
 	index       int
-	chunkDef    map[string]int
+	chunkDef    map[string]interface{}
 	path        string
 	fqname      string
 	metadata    *Metadata
 }
 
-func NewChunk(nodable Nodable, fork *Fork, index int, chunkDef map[string]int) *Chunk {
+func NewChunk(nodable Nodable, fork *Fork, index int, chunkDef map[string]interface{}) *Chunk {
 	self := &Chunk{}
+	self.node = nodable.Node()
 	self.stagestance = nodable.(*Stagestance)
 	self.fork = fork
 	self.index = index
@@ -263,16 +296,44 @@ func NewChunk(nodable Nodable, fork *Fork, index int, chunkDef map[string]int) *
 		// to the filesPath of the parent fork, to save a pseudo-join copy.
 		self.metadata.filesPath = self.fork.metadata.filesPath
 	}
-	done := make(chan interface{})
-	count := self.mkdirs(done)
-	for i := 0; i < count; i++ {
-		<-done
-	}
+	// we have to mkdirs here because runtime might have been interrupted after chunk_defs were
+	// written but before next step interval caused the actual creation of the chnk folders.
+	// in that scenario, upon restart the fork step would try to write _args into chnk folders
+	// that don't exist.
+	self.mkdirs()
 	return self
 }
 
-func (self *Chunk) mkdirs(done chan interface{}) int {
-	return self.metadata.mkdirs(done)
+func (self *Chunk) mkdirs() {
+	self.metadata.mkdirs()
+}
+
+func (self *Chunk) getState() string {
+	if self.metadata.exists("errors") {
+		return "failed"
+	}
+	if self.metadata.exists("complete") {
+		return "complete"
+	}
+	if self.metadata.exists("log") {
+		return "running"
+	}
+	if self.metadata.exists("jobinfo") {
+		return "queued"
+	}
+	return "ready"
+}
+
+func (self *Chunk) step() {
+	if self.getState() == "ready" {
+		resolvedBindings := resolveBindings(self.node.argbindings, self.fork.argPermute)
+		for id, value := range self.chunkDef {
+			resolvedBindings[id] = value
+		}
+		self.metadata.write("args", resolvedBindings)
+		self.metadata.write("outs", makeOutArgs(self.node.outparams, self.metadata.filesPath))
+		// runjob
+	}
 }
 
 type Fork struct {
@@ -287,7 +348,7 @@ type Fork struct {
 	argPermute     map[string]interface{}
 }
 
-func NewFork(nodable Nodable, index int, argPermute []int) *Fork {
+func NewFork(nodable Nodable, index int, argPermute map[string]interface{}) *Fork {
 	self := &Fork{}
 	self.node = nodable.Node()
 	self.index = index
@@ -297,15 +358,22 @@ func NewFork(nodable Nodable, index int, argPermute []int) *Fork {
 	self.split_metadata = NewMetadata(path.Join(self.path, "split"))
 	self.join_metadata = NewMetadata(path.Join(self.path, "join"))
 	self.chunks = []*Chunk{}
+	self.argPermute = argPermute
 	return self
 }
 
-func (self *Fork) mkdirs(done chan interface{}) int {
-	count := 0
-	count += self.metadata.mkdirs(done)
-	count += self.split_metadata.mkdirs(done)
-	count += self.join_metadata.mkdirs(done)
-	return count
+func (self *Fork) collectMetadatas() []*Metadata {
+	metadatas := []*Metadata{self.metadata, self.split_metadata, self.join_metadata}
+	for _, chunk := range self.chunks {
+		metadatas = append(metadatas, chunk.metadata)
+	}
+	return metadatas
+}
+
+func (self *Fork) mkdirs() {
+	self.metadata.mkdirs()
+	self.split_metadata.mkdirs()
+	self.join_metadata.mkdirs()
 }
 
 func (self *Fork) getState() string {
@@ -356,6 +424,8 @@ func NewNode(parent Nodable, kind string, callStm *CallStm, callables *Callables
 	for id, bindStm := range callStm.bindings.table {
 		binding := NewBinding(self, bindStm)
 		self.argbindings[id] = binding
+	}
+	for _, binding := range self.argbindings {
 		if binding.mode == "reference" && binding.boundNode != nil {
 			self.prenodes[binding.boundNode.Node().name] = binding.boundNode
 		}
@@ -364,15 +434,62 @@ func NewNode(parent Nodable, kind string, callStm *CallStm, callables *Callables
 	return self
 }
 
-func (self *Node) mkdirs(done chan interface{}) int {
-	count := mkdirAsync(self.path, done)
+/*
+func (self *Node) mkdirs() {
+	mkdir(self.path)
 	for _, fork := range self.forks {
-		count += fork.mkdirs(done)
+		fork.mkdirs()
 	}
 	for _, subnode := range self.subnodes {
-		count += subnode.Node().mkdirs(done)
+		subnode.Node().mkdirs()
 	}
-	return count
+	fmt.Println("got done", self.name)
+}
+*/
+
+/*
+func (self *Node) mkdirs() {
+	mkdir(self.path)
+	done := make(chan bool, 1)
+	for _, fork := range self.forks {
+		go func(fork *Fork) {
+			fork.mkdirs()
+			done <- true
+		}(fork)
+	}
+	for i := 0; i < len(self.forks); i++ {
+		<-done
+	}
+	done = make(chan bool)
+	for _, subnode := range self.subnodes {
+		go func(subnode Nodable) {
+			subnode.Node().mkdirs()
+			done <- true
+		}(subnode)
+	}
+	for j := 0; j < len(self.subnodes); j++ {
+		<-done
+	}
+	fmt.Println("got done", self.name)
+}
+*/
+func (self *Node) mkdirs(wg *sync.WaitGroup) {
+	fmt.Println("hello", self.name)
+	mkdir(self.path)
+	for _, fork := range self.forks {
+		wg.Add(1)
+		go func(f *Fork) {
+			defer wg.Done()
+			f.mkdirs()
+		}(fork)
+	}
+	for _, subnode := range self.subnodes {
+		wg.Add(1)
+		go func(n Nodable) {
+			defer wg.Done()
+			n.Node().mkdirs(wg)
+		}(subnode)
+	}
 }
 
 // State and dataflow management (synchronous)
@@ -401,7 +518,7 @@ func (self *Node) getState() string {
 }
 
 // Sweep management
-func (self *Node) buildForks(bindings []*Binding) {
+func (self *Node) buildForks(bindings map[string]*Binding) {
 	// Use a map to uniquify bindings by id.
 	bindingTable := map[string]*Binding{}
 
@@ -417,17 +534,28 @@ func (self *Node) buildForks(bindings []*Binding) {
 			bindingTable[binding.id] = binding
 		}
 	}
+
+	for _, binding := range bindingTable {
+		self.sweepbindings = append(self.sweepbindings, binding)
+	}
+
 	// Add all unique bindings to self.sweepbindings.
 	paramIds := []string{}
 	argRanges := []interface{}{}
-	for _, binding := range bindingTable {
-		self.sweepbindings = append(self.sweepbindings, binding)
+	for _, binding := range self.sweepbindings {
+		//	self.sweepbindings = append(self.sweepbindings, binding)
 		paramIds = append(paramIds, binding.id)
 		argRanges = append(argRanges, binding.resolve(nil))
 	}
 
 	// Build out argument permutations.
-	//for _, binding: =
+	for i, valPermute := range cartesianProduct(argRanges) {
+		argPermute := map[string]interface{}{}
+		for j, paramId := range paramIds {
+			argPermute[paramId] = valPermute.([]interface{})[j]
+		}
+		self.forks = append(self.forks, NewFork(self, i, argPermute))
+	}
 }
 
 func (self *Node) matchFork(targetArgPermute map[string]interface{}) *Fork {
@@ -449,9 +577,58 @@ func (self *Node) matchFork(targetArgPermute map[string]interface{}) *Fork {
 	return nil
 }
 
+func (self *Node) collectMetadatas() []*Metadata {
+	metadatas := []*Metadata{self.metadata}
+	for _, fork := range self.forks {
+		metadatas = append(metadatas, fork.collectMetadatas()...)
+	}
+	return metadatas
+}
+
+func (self *Node) refreshMetadata(done chan bool) int {
+	metadatas := self.collectMetadatas()
+	for _, metadata := range metadatas {
+		go func(m *Metadata) {
+			m.cache()
+			done <- true
+		}(metadata)
+	}
+	return len(metadatas)
+}
+
+func (self *Node) restartFailedMetadatas(done chan bool) int {
+	metadatas := self.collectMetadatas()
+	for _, metadata := range metadatas {
+		go func(m *Metadata) {
+			m.restartIfFailed()
+			done <- true
+		}(metadata)
+	}
+	return len(metadatas)
+}
+
+type Stagestance struct {
+	node          *Node
+	stagecodePath string
+	split         bool
+}
+
+func (self *Stagestance) Node() *Node { return self.node }
+
+func NewStagestance(parent Nodable, callStm *CallStm, callables *Callables) *Stagestance {
+	self := &Stagestance{}
+	self.node = NewNode(parent, "stage", callStm, callables)
+	//fmt.Println("==", self.node.name)
+	stage := callables.table[self.node.name].(*Stage)
+	self.stagecodePath = path.Join(self.node.rt.stagecodePath, stage.src.path)
+	self.split = len(stage.splitParams.list) > 0
+	self.node.buildForks(self.node.argbindings)
+	return self
+}
+
 type Pipestance struct {
 	node        *Node
-	retbindings []Binding
+	retbindings map[string]*Binding
 }
 
 func (self *Pipestance) Node() *Node { return self.node }
@@ -460,37 +637,29 @@ func NewPipestance(parent Nodable, callStm *CallStm, callables *Callables) *Pipe
 	self := &Pipestance{}
 	self.node = NewNode(parent, "pipeline", callStm, callables)
 
+	// Build subcall tree.
 	pipeline := callables.table[self.node.name].(*Pipeline)
 	for _, subcallStm := range pipeline.calls {
 		callable := callables.table[subcallStm.id]
 		switch callable.(type) {
 		case *Stage:
-			self.node.subnodes[subcallStm.id] = NewPythonStagestance(self, subcallStm, callables)
+			self.node.subnodes[subcallStm.id] = NewStagestance(self.Node(), subcallStm, callables)
 		case *Pipeline:
-			self.node.subnodes[subcallStm.id] = NewPipestance(self, subcallStm, callables)
+			self.node.subnodes[subcallStm.id] = NewPipestance(self.Node(), subcallStm, callables)
 		}
-
 	}
-	return self
-}
 
-type Stagestance struct {
-	node          *Node
-	stagecodePath string
-	split         bool
-	// buildForks
-}
+	// Also depends on stages bound to return values.
+	self.retbindings = map[string]*Binding{}
+	for id, bindStm := range pipeline.ret.bindings.table {
+		binding := NewReturnBinding(self.node, bindStm)
+		self.retbindings[id] = binding
+		if binding.mode == "reference" && binding.boundNode != nil {
+			self.node.prenodes[binding.boundNode.Node().name] = binding.boundNode
+		}
+	}
 
-func (self *Stagestance) Node() *Node { return self.node }
-
-func NewStagestance(parent Nodable, callStm *CallStm, callables *Callables) *Stagestance {
-	self := &Stagestance{}
-	self.node = NewNode(parent, "stage", callStm, callables)
-	fmt.Println("==", self.node.name)
-	stage := callables.table[self.node.name].(*Stage)
-	self.stagecodePath = path.Join(self.node.rt.stagecodePath, stage.src.path)
-	self.split = len(stage.splitParams.list) > 0
-	/* buildforks */
+	self.node.buildForks(self.retbindings)
 	return self
 }
 
@@ -637,12 +806,11 @@ func (self *Runtime) InvokeWithSource(psid string, src string, pipestancePath st
 	if err != nil {
 		return nil, err
 	}
-	done := make(chan interface{})
-	count := pipestance.Node().mkdirs(done)
-	fmt.Println(count)
-	for i := 0; i < count; i++ {
-		<-done
-	}
+
+	//pipestance.Node().mkdirs()
+	var wg sync.WaitGroup
+	pipestance.Node().mkdirs(&wg)
+	wg.Wait()
 	return pipestance, nil
 }
 
@@ -661,10 +829,10 @@ func main() {
     read_path = [path("/mnt/analysis/marsoc/pipestances/HA911ADXX/PREPROCESS/HA911ADXX/1.4.1/PREPROCESS/DEMULTIPLEX/fork0/files/demultiplexed_fastq_path")],
     sample_indices = ["GTTGTAGT","TTCTATGC","CAACCCAA","CCGATTAG"],
     lanes = null,
-    genome = "PhiX",
+    genome = sweep(["PhiX","hg19"]),
     targets_file = null,
     confident_regions = null,
-    trim_length = 0,
+    trim_length = sweep([0,10]),
     barcode_whitelist = "737K-april-2014",
     primers = ["R1-alt2:TTGCTCATTCCCTACACGACGCTCTTCCGATCT","R2RC:GTGACTGGAGTTCAGACGTGTGCTCTTCCGATCT","Alt2-10N:AATGATACGGCGACCACCGAGATCTACACTAGATCGCTTGCTCATTCCCTACACGACGCTCTTCCGATCTNNNNNNNNNN","P7RC:CAAGCAGAAGACGGCATACGAGAT","P5:AATGATACGGCGACCACCGAGA"],
     variant_results = null,
