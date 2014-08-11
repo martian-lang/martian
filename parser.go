@@ -1,3 +1,8 @@
+//
+// Copyright (c) 2014 10X Technologies, Inc. All rights reserved.
+//
+// Margo
+//
 package main
 
 import (
@@ -36,6 +41,10 @@ func (params *Params) check(global *Ast) error {
 		if _, ok := global.typeTable[param.Tname()]; !ok {
 			return global.err(param, "TypeError: undefined type '%s'", param.Tname())
 		}
+
+		// Cache if param is file or path.
+		_, ok := global.filetypeTable[param.Tname()]
+		param.SetIsFile(ok)
 
 	}
 	return nil
@@ -126,6 +135,7 @@ func (global *Ast) check() error {
 	types := []string{"string", "int", "float", "bool", "path", "file"}
 	for _, filetype := range global.filetypes {
 		types = append(types, filetype.id)
+		global.filetypeTable[filetype.id] = true
 	}
 	for _, t := range types {
 		global.typeTable[t] = true

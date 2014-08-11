@@ -1,3 +1,8 @@
+//
+// Copyright (c) 2014 10X Technologies, Inc. All rights reserved.
+//
+// Margo
+//
 package main
 
 import (
@@ -5,10 +10,11 @@ import (
 	"fmt"
 	"io/ioutil"
 	"os"
+	"os/exec"
 	"path"
 	"path/filepath"
-	_ "reflect"
 	"runtime"
+	"strings"
 	"sync"
 	"time"
 )
@@ -19,7 +25,7 @@ import (
 func mkdir(p string) {
 	err := os.Mkdir(p, 0700)
 	if err != nil {
-		fmt.Println(err)
+		//fmt.Println(err)
 	}
 }
 
@@ -40,20 +46,6 @@ func cartesianProduct(valueSets []interface{}) []interface{} {
 	}
 	return perms
 }
-
-/*
-func main() {
-	aoa := []interface{}{
-		[]interface{}{ "always" },
-		[]interface{}{ "a", "b" },
-		[]interface{}{ "red", "blue" },
-		[]interface{}{ 1, 2, 3 },
-		//[]interface{}{ "tree", "bush" },
-		//[]interface{}{ "cat", "dog" },
-	}
-	fmt.Println(cartesianProduct(aoa))
-}
-*/
 
 /****************************************************
  * Runtime Model Classes
@@ -81,7 +73,6 @@ type Binding struct {
 func NewBinding(node *Node, bindStm *BindStm) *Binding {
 	self := &Binding{}
 	self.node = node
-	//fmt.Println("HAHA", self.id, self.node.parent.Node())
 	self.id = bindStm.id
 	self.tname = bindStm.tname
 	self.sweep = bindStm.sweep
@@ -102,9 +93,7 @@ func NewBinding(node *Node, bindStm *BindStm) *Binding {
 			self.valexp = "self." + valueExp.id
 		} else if valueExp.kind == "call" {
 			self.mode = "reference"
-			//fmt.Println("HAAaaAAAAAAAA", valueExp.id, self.node.parent.Node())
 			self.boundNode = self.node.parent.Node().subnodes[valueExp.id]
-			//fmt.Println("ho", self.boundNode)
 			self.output = valueExp.outputId
 			if valueExp.outputId == "default" {
 				self.valexp = valueExp.id
@@ -116,6 +105,7 @@ func NewBinding(node *Node, bindStm *BindStm) *Binding {
 		self.mode = "value"
 		self.boundNode = node
 		self.value = bindStm.exp.(*ValExp).value
+		// Unwrap array values.
 		if self.value != nil && valueExp.kind == "array" {
 			value := []interface{}{}
 			for _, e := range self.value.([]Exp) {
@@ -148,10 +138,10 @@ func (self *Binding) resolve(argPermute map[string]interface{}) interface{} {
 	self.waiting = false
 	if self.mode == "value" {
 		if argPermute == nil {
-			// In this case we want to get the raw value, which might be
-			// a sweep array.
+			// In this case we want to get the raw value, which might be a sweep array.
 			return self.value
 		}
+		// Replace literal sweep ranges with specific permuted argument values.
 		if self.sweep {
 			return argPermute[self.id]
 		} else {
@@ -168,6 +158,7 @@ func (self *Binding) resolve(argPermute map[string]interface{}) interface{} {
 	return output
 }
 
+// Helpers
 func resolveBindings(bindings map[string]*Binding, argPermute map[string]interface{}) map[string]interface{} {
 	resolvedBindings := map[string]interface{}{}
 	for id, binding := range bindings {
@@ -175,19 +166,21 @@ func resolveBindings(bindings map[string]*Binding, argPermute map[string]interfa
 	}
 	return resolvedBindings
 }
+
 func makeOutArgs(outParams *Params, filesPath string) map[string]interface{} {
 	args := map[string]interface{}{}
 	for id, param := range outParams.table {
-		switch param.Tname() {
-		case "file":
+		if param.IsFile() {
 			args[id] = path.Join(filesPath, param.Id()+"."+param.Tname())
-		case "path":
+		}
+		if param.Tname() == "path" {
 			args[id] = path.Join(filesPath, param.Id())
-		default:
 		}
 	}
 	return args
 }
+
+const TIME_FORMAT = "2006-01-02 15:04:05"
 
 type Metadata struct {
 	path      string
@@ -212,6 +205,22 @@ func (self *Metadata) mkdirs() {
 	mkdir(self.filesPath)
 }
 
+func (self *Metadata) getState(name string) (string, bool) {
+	if self.exists("errors") {
+		return "failed", true
+	}
+	if self.exists("complete") {
+		return name + "complete", true
+	}
+	if self.exists("log") {
+		return name + "running", true
+	}
+	if self.exists("jobinfo") {
+		return name + "queued", true
+	}
+	return "", false
+}
+
 func (self *Metadata) cache() {
 	if !self.exists("complete") {
 		self.contents = map[string]bool{}
@@ -232,66 +241,57 @@ func (self *Metadata) restartIfFailed() {
 	}
 }
 
-func (self *Metadata) makePath(name string) string {
-	return path.Join(self.path, "_"+name)
-}
-func (self *Metadata) exists(name string) bool {
-	_, ok := self.contents[name]
-	return ok
-}
+func (self *Metadata) makePath(name string) string { return path.Join(self.path, "_"+name) }
+func (self *Metadata) exists(name string) bool     { _, ok := self.contents[name]; return ok }
 func (self *Metadata) readRaw(name string) string {
 	bytes, _ := ioutil.ReadFile(self.makePath(name))
 	return string(bytes)
 }
 func (self *Metadata) read(name string) interface{} {
 	var v interface{}
-	json.Unmarshal([]byte(self.readRaw(name)), v)
+	err := json.Unmarshal([]byte(self.readRaw(name)), &v)
+	if err != nil {
+		fmt.Println(err)
+	}
 	return v
 }
 func (self *Metadata) writeRaw(name string, text string) {
 	ioutil.WriteFile(self.makePath(name), []byte(text), 0600)
 }
 func (self *Metadata) write(name string, object interface{}) {
-	bytes, _ := json.Marshal(object)
+	bytes, _ := json.MarshalIndent(object, "", "    ")
 	self.writeRaw(name, string(bytes))
 }
-
 func (self *Metadata) append(name string, text string) {
 	f, _ := os.OpenFile(self.makePath(name), os.O_WRONLY|os.O_CREATE, 0700)
 	f.Write([]byte(text))
 	f.Close()
 }
-
 func (self *Metadata) writeTime(name string) {
-	self.writeRaw(name, time.Now().Format("2006-01-02 15:04:05"))
+	self.writeRaw(name, time.Now().Format(TIME_FORMAT))
 }
-
-func (self *Metadata) remove(name string) {
-	os.Remove(self.makePath(name))
-}
+func (self *Metadata) remove(name string) { os.Remove(self.makePath(name)) }
 
 type Chunk struct {
-	node        *Node
-	stagestance *Stagestance
-	fork        *Fork
-	index       int
-	chunkDef    map[string]interface{}
-	path        string
-	fqname      string
-	metadata    *Metadata
+	node     *Node
+	fork     *Fork
+	index    int
+	chunkDef map[string]interface{}
+	path     string
+	fqname   string
+	metadata *Metadata
 }
 
 func NewChunk(nodable Nodable, fork *Fork, index int, chunkDef map[string]interface{}) *Chunk {
 	self := &Chunk{}
 	self.node = nodable.Node()
-	self.stagestance = nodable.(*Stagestance)
 	self.fork = fork
 	self.index = index
 	self.chunkDef = chunkDef
 	self.path = path.Join(fork.path, fmt.Sprintf("chnk%d", index))
 	self.fqname = fork.fqname + fmt.Sprintf(".chnk%d", index)
 	self.metadata = NewMetadata(self.path)
-	if !self.stagestance.split {
+	if !self.node.split {
 		// If we're not splitting, just set the sole chunk's filesPath
 		// to the filesPath of the parent fork, to save a pseudo-join copy.
 		self.metadata.filesPath = self.fork.metadata.filesPath
@@ -304,24 +304,14 @@ func NewChunk(nodable Nodable, fork *Fork, index int, chunkDef map[string]interf
 	return self
 }
 
-func (self *Chunk) mkdirs() {
-	self.metadata.mkdirs()
-}
+func (self *Chunk) mkdirs() { self.metadata.mkdirs() }
 
 func (self *Chunk) getState() string {
-	if self.metadata.exists("errors") {
-		return "failed"
+	if state, ok := self.metadata.getState(""); ok {
+		return state
+	} else {
+		return "ready"
 	}
-	if self.metadata.exists("complete") {
-		return "complete"
-	}
-	if self.metadata.exists("log") {
-		return "running"
-	}
-	if self.metadata.exists("jobinfo") {
-		return "queued"
-	}
-	return "ready"
 }
 
 func (self *Chunk) step() {
@@ -332,7 +322,7 @@ func (self *Chunk) step() {
 		}
 		self.metadata.write("args", resolvedBindings)
 		self.metadata.write("outs", makeOutArgs(self.node.outparams, self.metadata.filesPath))
-		// runjob
+		self.node.RunJob("main", self.fqname, self.metadata, self.chunkDef["__threads"], self.chunkDef["__mem_gb"])
 	}
 }
 
@@ -377,7 +367,101 @@ func (self *Fork) mkdirs() {
 }
 
 func (self *Fork) getState() string {
-	return ""
+	if self.metadata.exists("complete") {
+		return "complete"
+	}
+	if state, ok := self.join_metadata.getState("join_"); ok {
+		return state
+	}
+	if len(self.chunks) > 0 {
+		// If any chunks have failed, we're failed.
+		for _, chunk := range self.chunks {
+			if chunk.getState() == "failed" {
+				return "failed"
+			}
+		}
+		// If every chunk is complete, we're complete.
+		every := true
+		for _, chunk := range self.chunks {
+			if chunk.getState() != "complete" {
+				every = false
+				break
+			}
+		}
+		if every {
+			return "chunks_complete"
+		}
+		// If every chunk is queued, running, or complete, we're complete.
+		every = true
+		runningStates := map[string]bool{"queued": true, "running": true, "complete": true}
+		for _, chunk := range self.chunks {
+			if _, ok := runningStates[chunk.getState()]; !ok {
+				every = false
+				break
+			}
+		}
+		if every {
+			return "chunks_running"
+		}
+	}
+	if state, ok := self.split_metadata.getState("split_"); ok {
+		return state
+	}
+	return "ready"
+}
+
+func (self *Fork) step() {
+	if self.node.kind == "stage" {
+		state := self.getState()
+		if !strings.HasSuffix(state, "_running") && !strings.HasSuffix(state, "_queued") {
+			fmt.Println("[RUNTIME]", time.Now().Format(TIME_FORMAT), "("+state+")", self.node.fqname)
+		}
+
+		if state == "ready" {
+			self.split_metadata.write("args", resolveBindings(self.node.argbindings, self.argPermute))
+			if self.node.split {
+				self.node.RunJob("split", self.fqname, self.split_metadata, nil, nil)
+			} else {
+				self.split_metadata.write("chunk_defs", []interface{}{map[string]interface{}{}})
+				self.split_metadata.writeTime("complete")
+			}
+		} else if state == "split_complete" {
+			chunkDefs := self.split_metadata.read("chunk_defs")
+			if len(self.chunks) == 0 {
+				for i, chunkDef := range chunkDefs.([]interface{}) {
+					chunk := NewChunk(self.node, self, i, chunkDef.(map[string]interface{}))
+					self.chunks = append(self.chunks, chunk)
+					chunk.mkdirs()
+				}
+			}
+			for _, chunk := range self.chunks {
+				chunk.step()
+			}
+		} else if state == "chunks_complete" {
+			self.join_metadata.write("args", resolveBindings(self.node.argbindings, self.argPermute))
+			self.join_metadata.write("chunk_defs", self.split_metadata.read("chunk_defs"))
+			if self.node.split {
+				chunkOuts := []map[string]interface{}{}
+				for _, chunk := range self.chunks {
+					outs := chunk.metadata.read("outs")
+					chunkOuts = append(chunkOuts, outs.(map[string]interface{}))
+				}
+				self.join_metadata.write("chunk_outs", chunkOuts)
+				self.join_metadata.write("outs", makeOutArgs(self.node.outparams, self.metadata.filesPath))
+				self.node.RunJob("join", self.fqname, self.join_metadata, nil, nil)
+			} else {
+				self.join_metadata.write("outs", self.chunks[0].metadata.read("outs"))
+				self.join_metadata.writeTime("complete")
+			}
+		} else if state == "join_complete" {
+			self.metadata.write("outs", self.join_metadata.read("outs"))
+			self.metadata.writeTime("complete")
+		}
+
+	} else if self.node.kind == "pipeline" {
+		self.metadata.write("outs", resolveBindings(self.node.retbindings, self.argPermute))
+		self.metadata.writeTime("complete")
+	}
 }
 
 /****************************************************
@@ -397,10 +481,14 @@ type Node struct {
 	metadata      *Metadata
 	outparams     *Params
 	argbindings   map[string]*Binding
+	retbindings   map[string]*Binding
 	sweepbindings []*Binding
 	subnodes      map[string]Nodable
 	prenodes      map[string]Nodable
 	forks         []*Fork
+	split         bool
+	state         string
+	stagecodePath string
 }
 
 func (self *Node) Node() *Node { return self }
@@ -434,66 +522,27 @@ func NewNode(parent Nodable, kind string, callStm *CallStm, callables *Callables
 	return self
 }
 
-/*
-func (self *Node) mkdirs() {
-	mkdir(self.path)
-	for _, fork := range self.forks {
-		fork.mkdirs()
-	}
-	for _, subnode := range self.subnodes {
-		subnode.Node().mkdirs()
-	}
-	fmt.Println("got done", self.name)
-}
-*/
-
-/*
-func (self *Node) mkdirs() {
-	mkdir(self.path)
-	done := make(chan bool, 1)
-	for _, fork := range self.forks {
-		go func(fork *Fork) {
-			fork.mkdirs()
-			done <- true
-		}(fork)
-	}
-	for i := 0; i < len(self.forks); i++ {
-		<-done
-	}
-	done = make(chan bool)
-	for _, subnode := range self.subnodes {
-		go func(subnode Nodable) {
-			subnode.Node().mkdirs()
-			done <- true
-		}(subnode)
-	}
-	for j := 0; j < len(self.subnodes); j++ {
-		<-done
-	}
-	fmt.Println("got done", self.name)
-}
-*/
 func (self *Node) mkdirs(wg *sync.WaitGroup) {
-	fmt.Println("hello", self.name)
 	mkdir(self.path)
 	for _, fork := range self.forks {
 		wg.Add(1)
 		go func(f *Fork) {
-			defer wg.Done()
 			f.mkdirs()
+			wg.Done()
 		}(fork)
 	}
 	for _, subnode := range self.subnodes {
 		wg.Add(1)
 		go func(n Nodable) {
-			defer wg.Done()
 			n.Node().mkdirs(wg)
+			wg.Done()
 		}(subnode)
 	}
 }
 
 // State and dataflow management (synchronous)
 func (self *Node) getState() string {
+	// If every fork is complete, we're complete.
 	complete := true
 	for _, fork := range self.forks {
 		if fork.getState() != "complete" {
@@ -504,16 +553,19 @@ func (self *Node) getState() string {
 	if complete {
 		return "complete"
 	}
+	// If any fork is failed, we're failed.
 	for _, fork := range self.forks {
 		if fork.getState() == "failed" {
 			return "failed"
 		}
 	}
+	// If any prenode is not complete, we're waiting.
 	for _, prenode := range self.prenodes {
 		if prenode.Node().getState() != "complete" {
 			return "waiting"
 		}
 	}
+	// Otherwise we're running.
 	return "running"
 }
 
@@ -586,14 +638,22 @@ func (self *Node) collectMetadatas() []*Metadata {
 }
 
 func (self *Node) refreshMetadata(done chan bool) int {
-	metadatas := self.collectMetadatas()
-	for _, metadata := range metadatas {
-		go func(m *Metadata) {
-			m.cache()
-			done <- true
-		}(metadata)
-	}
-	return len(metadatas)
+	go func() {
+		sdone := make(chan bool)
+		metadatas := self.collectMetadatas()
+		for _, metadata := range metadatas {
+			go func(m *Metadata) {
+				m.cache()
+				sdone <- true
+			}(metadata)
+		}
+		for i := 0; i < len(metadatas); i++ {
+			<-sdone
+		}
+		self.state = self.getState()
+		done <- true
+	}()
+	return 1
 }
 
 func (self *Node) restartFailedMetadatas(done chan bool) int {
@@ -607,10 +667,47 @@ func (self *Node) restartFailedMetadatas(done chan bool) int {
 	return len(metadatas)
 }
 
+func (self *Node) step() {
+	if self.state == "running" {
+		for _, fork := range self.forks {
+			fork.step()
+		}
+	}
+}
+
+func (self *Node) allNodes() []*Node {
+	all := []*Node{self}
+	for _, subnode := range self.subnodes {
+		all = append(all, subnode.Node().allNodes()...)
+	}
+	return all
+}
+
+func execLocalJob(shellName string, shellCmd string, stagecodePath string, libPath string,
+	fqname string, metadata *Metadata, threads interface{}, memGB interface{}) {
+	cmd := shellCmd
+	args := []string{stagecodePath, libPath, metadata.path, metadata.filesPath, "profile"}
+
+	c := exec.Command(cmd, args...)
+	err := c.Start()
+	if err != nil {
+		fmt.Println(err.Error())
+	}
+	metadata.write("jobinfo", map[string]interface{}{"type": "local", "childid": c.Process.Pid})
+}
+
+func (self *Node) RunJob(shellName string, fqname string, metadata *Metadata, threads interface{}, memGB interface{}) {
+	//stagecodeLang = "Python"
+	adaptersPath := path.Join(self.rt.adaptersPath, "python")
+	libPath := path.Join(self.rt.libPath, "python")
+	fmt.Println("[RUNTIME]", time.Now().Format(TIME_FORMAT), "(run-local)", fqname+"."+shellName)
+	metadata.write("jobinfo", map[string]interface{}{"type": nil, "childpid": nil})
+	shellCmd := path.Join(adaptersPath, shellName+".py")
+	execLocalJob(shellName, shellCmd, self.stagecodePath, libPath, fqname, metadata, threads, memGB)
+}
+
 type Stagestance struct {
-	node          *Node
-	stagecodePath string
-	split         bool
+	node *Node
 }
 
 func (self *Stagestance) Node() *Node { return self.node }
@@ -618,17 +715,15 @@ func (self *Stagestance) Node() *Node { return self.node }
 func NewStagestance(parent Nodable, callStm *CallStm, callables *Callables) *Stagestance {
 	self := &Stagestance{}
 	self.node = NewNode(parent, "stage", callStm, callables)
-	//fmt.Println("==", self.node.name)
 	stage := callables.table[self.node.name].(*Stage)
-	self.stagecodePath = path.Join(self.node.rt.stagecodePath, stage.src.path)
-	self.split = len(stage.splitParams.list) > 0
+	self.node.stagecodePath = path.Join(self.node.rt.stagecodePath, stage.src.path)
+	self.node.split = len(stage.splitParams.list) > 0
 	self.node.buildForks(self.node.argbindings)
 	return self
 }
 
 type Pipestance struct {
-	node        *Node
-	retbindings map[string]*Binding
+	node *Node
 }
 
 func (self *Pipestance) Node() *Node { return self.node }
@@ -650,40 +745,38 @@ func NewPipestance(parent Nodable, callStm *CallStm, callables *Callables) *Pipe
 	}
 
 	// Also depends on stages bound to return values.
-	self.retbindings = map[string]*Binding{}
+	self.node.retbindings = map[string]*Binding{}
 	for id, bindStm := range pipeline.ret.bindings.table {
 		binding := NewReturnBinding(self.node, bindStm)
-		self.retbindings[id] = binding
+		self.node.retbindings[id] = binding
 		if binding.mode == "reference" && binding.boundNode != nil {
 			self.node.prenodes[binding.boundNode.Node().name] = binding.boundNode
 		}
 	}
 
-	self.node.buildForks(self.retbindings)
+	self.node.buildForks(self.node.retbindings)
 	return self
 }
 
 /****************************************************
  * Python Adapter
  */
-type PythonStagestance struct {
-	stagestance   *Stagestance
+/*
+type PythonStageRunner struct {
 	stagecodeLang string
 	adaptersPath  string
 	libPath       string
 }
 
-func (self *PythonStagestance) Node() *Node { return self.stagestance.node }
-
-func NewPythonStagestance(parent Nodable, callStm *CallStm, callables *Callables) *PythonStagestance {
-	self := &PythonStagestance{}
-	self.stagestance = NewStagestance(parent, callStm, callables)
+func NewPythonStageRunner(node *Node, callStm *CallStm, callables *Callables) *PythonStageRunner {
+	self := &PythonStageRunner{}
 	self.stagecodeLang = "Python"
-	self.adaptersPath = path.Join(self.stagestance.node.rt.adaptersPath, "python")
-	self.libPath = path.Join(self.stagestance.node.rt.libPath, "python")
-	/* check for __init__.py */
-	return self
+	self.adaptersPath = path.Join(self.node.rt.adaptersPath, "python")
+	self.libPath = path.Join(self.node.rt.libPath, "python")
+	// check for __init__.py
+	//return self
 }
+*/
 
 /****************************************************
  * Job Execution Classes
@@ -742,12 +835,12 @@ func NewRuntime(jobMode string, pipelinesPath string) *Runtime {
 		"sge":   NewSGEJob,
 	}
 
-	thispath, _ := filepath.Abs(path.Dir(os.Args[0]))
+	//thispath, _ := filepath.Abs(path.Dir(os.Args[0]))
 	return &Runtime{
 		mroPath:        path.Join(pipelinesPath, "mro"),
 		stagecodePath:  path.Join(pipelinesPath, "stages"),
 		libPath:        path.Join(pipelinesPath, "lib"),
-		adaptersPath:   path.Join(thispath, "..", "adapters"),
+		adaptersPath:   "/Users/aywong/Home/Work/10X/git/mario/adapters", //path.Join(thispath, "..", "adapters"),
 		jobConstructor: JOBRUNNER_TABLE[jobMode],
 		ptreeTable:     map[string]*Ast{},
 		srcTable:       map[string]string{},
@@ -807,7 +900,6 @@ func (self *Runtime) InvokeWithSource(psid string, src string, pipestancePath st
 		return nil, err
 	}
 
-	//pipestance.Node().mkdirs()
 	var wg sync.WaitGroup
 	pipestance.Node().mkdirs(&wg)
 	wg.Wait()
@@ -824,34 +916,49 @@ func main() {
 	if err != nil {
 		fmt.Println(err.Error())
 	}
-	callSrc :=
-		`call ANALYTICS(
-    read_path = [path("/mnt/analysis/marsoc/pipestances/HA911ADXX/PREPROCESS/HA911ADXX/1.4.1/PREPROCESS/DEMULTIPLEX/fork0/files/demultiplexed_fastq_path")],
-    sample_indices = ["GTTGTAGT","TTCTATGC","CAACCCAA","CCGATTAG"],
-    lanes = null,
-    genome = sweep(["PhiX","hg19"]),
-    targets_file = null,
-    confident_regions = null,
-    trim_length = sweep([0,10]),
-    barcode_whitelist = "737K-april-2014",
-    primers = ["R1-alt2:TTGCTCATTCCCTACACGACGCTCTTCCGATCT","R2RC:GTGACTGGAGTTCAGACGTGTGCTCTTCCGATCT","Alt2-10N:AATGATACGGCGACCACCGAGATCTACACTAGATCGCTTGCTCATTCCCTACACGACGCTCTTCCGATCTNNNNNNNNNN","P7RC:CAAGCAGAAGACGGCATACGAGAT","P5:AATGATACGGCGACCACCGAGA"],
-    variant_results = null,
-    sample_id = "2444",
-    lena_url = "lena.10x.office",
-)`
-		/*
-		   `call PREPROCESS(
-		      run_path = path("/mnt/sequencing/test/sequencers/miseq00V/mini-bcl"),
-		      #run_path = path("/Users/alex/tmp/netapp/sequencing/sequencers/miseq00V/mini-bcl"),
+	/*
+			callSrc :=
+				`call ANALYTICS(
+		    read_path = [path("/mnt/analysis/marsoc/pipestances/HA911ADXX/PREPROCESS/HA911ADXX/1.4.1/PREPROCESS/DEMULTIPLEX/fork0/files/demultiplexed_fastq_path")],
+		    sample_indices = ["GTTGTAGT","TTCTATGC","CAACCCAA","CCGATTAG"],
+		    lanes = null,
+		    genome = sweep(["PhiX","hg19"]),
+		    targets_file = null,
+		    confident_regions = null,
+		    trim_length = sweep([0,10]),
+		    barcode_whitelist = "737K-april-2014",
+		    primers = ["R1-alt2:TTGCTCATTCCCTACACGACGCTCTTCCGATCT","R2RC:GTGACTGGAGTTCAGACGTGTGCTCTTCCGATCT","Alt2-10N:AATGATACGGCGACCACCGAGATCTACACTAGATCGCTTGCTCATTCCCTACACGACGCTCTTCCGATCTNNNNNNNNNN","P7RC:CAAGCAGAAGACGGCATACGAGAT","P5:AATGATACGGCGACCACCGAGA"],
+		    variant_results = null,
+		    sample_id = "2444",
+		    lena_url = "lena.10x.office",
+		)`*/
+	callSrc := `call PREPROCESS(
+		      #run_path = path("/mnt/sequencing/test/sequencers/miseq00V/mini-bcl"),
+		      run_path = path("/Users/aywong/tmp/mini"),
 		      seq_run_id = "mini-bcl",
 		      lena_url = null,
 		   )`
-		*/
 	PIPESTANCE_PATH := "./HA191"
 	os.MkdirAll(PIPESTANCE_PATH, 0700)
-	_, err = rt.InvokeWithSource("HA191", callSrc, PIPESTANCE_PATH)
+	pipestance, err := rt.InvokeWithSource("HA191", callSrc, PIPESTANCE_PATH)
 	if err != nil {
 		fmt.Println(err.Error())
+	}
+
+	nodes := pipestance.Node().allNodes()
+	for {
+		done := make(chan bool)
+		count := 0
+		for _, node := range nodes {
+			count += node.refreshMetadata(done)
+		}
+		for i := 0; i < count; i++ {
+			<-done
+		}
+		for _, node := range nodes {
+			node.step()
+		}
+		time.Sleep(time.Second * 1)
 	}
 
 	fmt.Printf("Successfully compiled %d mro files.", count)

@@ -1,3 +1,8 @@
+//
+// Copyright (c) 2014 10X Technologies, Inc. All rights reserved.
+//
+// Margo
+//
 package main
 
 type (
@@ -62,20 +67,24 @@ type (
 		Tname() string
 		Id() string
 		Help() string
+		IsFile() bool
+		SetIsFile(bool)
 	}
 
 	InParam struct {
-		node  AstNode
-		tname string
-		id    string
-		help  string
+		node   AstNode
+		tname  string
+		id     string
+		help   string
+		isfile bool
 	}
 
 	OutParam struct {
-		node  AstNode
-		tname string
-		id    string
-		help  string
+		node   AstNode
+		tname  string
+		id     string
+		help   string
+		isfile bool
 	}
 
 	SrcParam struct {
@@ -130,13 +139,14 @@ type (
 	}
 
 	Ast struct {
-		locmap    []FileLoc
-		typeTable map[string]bool
-		filetypes []*Filetype
-		stages    []*Stage
-		pipelines []*Pipeline
-		callables *Callables
-		call      *CallStm
+		locmap        []FileLoc
+		typeTable     map[string]bool
+		filetypes     []*Filetype
+		filetypeTable map[string]bool
+		stages        []*Stage
+		pipelines     []*Pipeline
+		callables     *Callables
+		call          *CallStm
 	}
 )
 
@@ -167,19 +177,23 @@ func (s *Pipeline) OutParams() *Params { return s.outParams }
 func (s *CallStm) Id() string { return s.id }
 func (s *CallStm) Loc() int   { return s.node.loc }
 
-func (s *InParam) Node() AstNode { return s.node }
-func (s *InParam) Mode() string  { return "in" }
-func (s *InParam) Tname() string { return s.tname }
-func (s *InParam) Id() string    { return s.id }
-func (s *InParam) Help() string  { return s.help }
-func (s *InParam) Loc() int      { return s.node.loc }
+func (s *InParam) Node() AstNode    { return s.node }
+func (s *InParam) Mode() string     { return "in" }
+func (s *InParam) Tname() string    { return s.tname }
+func (s *InParam) Id() string       { return s.id }
+func (s *InParam) Help() string     { return s.help }
+func (s *InParam) Loc() int         { return s.node.loc }
+func (s *InParam) IsFile() bool     { return s.isfile }
+func (s *InParam) SetIsFile(b bool) { s.isfile = b }
 
-func (s *OutParam) Node() AstNode { return s.node }
-func (s *OutParam) Mode() string  { return "out" }
-func (s *OutParam) Tname() string { return s.tname }
-func (s *OutParam) Id() string    { return s.id }
-func (s *OutParam) Help() string  { return s.help }
-func (s *OutParam) Loc() int      { return s.node.loc }
+func (s *OutParam) Node() AstNode    { return s.node }
+func (s *OutParam) Mode() string     { return "out" }
+func (s *OutParam) Tname() string    { return s.tname }
+func (s *OutParam) Id() string       { return s.id }
+func (s *OutParam) Help() string     { return s.help }
+func (s *OutParam) Loc() int         { return s.node.loc }
+func (s *OutParam) IsFile() bool     { return s.isfile }
+func (s *OutParam) SetIsFile(b bool) { s.isfile = b }
 
 func (s *ReturnStm) Loc() int { return s.node.loc }
 func (s *BindStm) Loc() int   { return s.node.loc }

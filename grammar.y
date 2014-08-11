@@ -1,4 +1,9 @@
 %{
+//
+// Copyright (c) 2014 10X Technologies, Inc. All rights reserved.
+//
+// Margo
+//
 package main
 
 import (
@@ -55,7 +60,7 @@ file
     : dec_list
         {{ 
             fmt.Print()
-            global := Ast{[]FileLoc{}, map[string]bool{}, []*Filetype{}, []*Stage{}, []*Pipeline{}, &Callables{[]Callable{}, map[string]Callable{}}, nil}
+            global := Ast{[]FileLoc{}, map[string]bool{}, []*Filetype{}, map[string]bool{}, []*Stage{}, []*Pipeline{}, &Callables{[]Callable{}, map[string]Callable{}}, nil}
             for _, dec := range $1 {
                 switch dec := dec.(type) {
                 case *Filetype:
@@ -72,7 +77,7 @@ file
         }}
     | call_stm
         {{ 
-            global := Ast{[]FileLoc{}, map[string]bool{}, []*Filetype{}, []*Stage{}, []*Pipeline{}, &Callables{[]Callable{}, map[string]Callable{}}, $1} 
+            global := Ast{[]FileLoc{}, map[string]bool{}, []*Filetype{}, map[string]bool{}, []*Stage{}, []*Pipeline{}, &Callables{[]Callable{}, map[string]Callable{}}, $1} 
             mmlex.(*mmLexInfo).global = &global
         }}
     ;
@@ -113,7 +118,7 @@ in_param_list
 
 in_param
     : IN type ID help
-        {{ $$ = &InParam{AstNode{mmlval.loc}, $2, $3, $4} }}
+        {{ $$ = &InParam{AstNode{mmlval.loc}, $2, $3, $4, false } }}
     ;
 
 out_param_list
@@ -128,14 +133,14 @@ out_param_list
 
 out_param
     : OUT type help 
-        {{ $$ = &OutParam{AstNode{mmlval.loc}, $2, "default", $3} }}
+        {{ $$ = &OutParam{AstNode{mmlval.loc}, $2, "default", $3, false } }}
     | OUT type ID help 
-        {{ $$ = &OutParam{AstNode{mmlval.loc}, $2, $3, $4} }}
+        {{ $$ = &OutParam{AstNode{mmlval.loc}, $2, $3, $4, false } }}
     ;
 
 src_stm
     : SRC src_lang LITSTRING COMMA
-        {{ $$ = &SrcParam{AstNode{mmlval.loc}, $2, $3} }}
+        {{ $$ = &SrcParam{AstNode{mmlval.loc}, $2, strings.Replace($3, "\"", "", -1) } }}
     ;
 
 help

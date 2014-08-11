@@ -477,7 +477,7 @@ mmdefault:
 		{
 			{
 				fmt.Print()
-				global := Ast{[]FileLoc{}, map[string]bool{}, []*Filetype{}, []*Stage{}, []*Pipeline{}, &Callables{[]Callable{}, map[string]Callable{}}, nil}
+				global := Ast{[]FileLoc{}, map[string]bool{}, []*Filetype{}, map[string]bool{}, []*Stage{}, []*Pipeline{}, &Callables{[]Callable{}, map[string]Callable{}}, nil}
 				for _, dec := range mmS[mmpt-0].decs {
 					switch dec := dec.(type) {
 					case *Filetype:
@@ -497,7 +497,7 @@ mmdefault:
 		//line grammar.y:74
 		{
 			{
-				global := Ast{[]FileLoc{}, map[string]bool{}, []*Filetype{}, []*Stage{}, []*Pipeline{}, &Callables{[]Callable{}, map[string]Callable{}}, mmS[mmpt-0].call}
+				global := Ast{[]FileLoc{}, map[string]bool{}, []*Filetype{}, map[string]bool{}, []*Stage{}, []*Pipeline{}, &Callables{[]Callable{}, map[string]Callable{}}, mmS[mmpt-0].call}
 				mmlex.(*mmLexInfo).global = &global
 			}
 		}
@@ -571,7 +571,7 @@ mmdefault:
 		//line grammar.y:116
 		{
 			{
-				mmVAL.inparam = &InParam{AstNode{mmlval.loc}, mmS[mmpt-2].val, mmS[mmpt-1].val, mmS[mmpt-0].val}
+				mmVAL.inparam = &InParam{AstNode{mmlval.loc}, mmS[mmpt-2].val, mmS[mmpt-1].val, mmS[mmpt-0].val, false}
 			}
 		}
 	case 14:
@@ -593,21 +593,21 @@ mmdefault:
 		//line grammar.y:131
 		{
 			{
-				mmVAL.outparam = &OutParam{AstNode{mmlval.loc}, mmS[mmpt-1].val, "default", mmS[mmpt-0].val}
+				mmVAL.outparam = &OutParam{AstNode{mmlval.loc}, mmS[mmpt-1].val, "default", mmS[mmpt-0].val, false}
 			}
 		}
 	case 17:
 		//line grammar.y:133
 		{
 			{
-				mmVAL.outparam = &OutParam{AstNode{mmlval.loc}, mmS[mmpt-2].val, mmS[mmpt-1].val, mmS[mmpt-0].val}
+				mmVAL.outparam = &OutParam{AstNode{mmlval.loc}, mmS[mmpt-2].val, mmS[mmpt-1].val, mmS[mmpt-0].val, false}
 			}
 		}
 	case 18:
 		//line grammar.y:138
 		{
 			{
-				mmVAL.src = &SrcParam{AstNode{mmlval.loc}, mmS[mmpt-2].val, mmS[mmpt-1].val}
+				mmVAL.src = &SrcParam{AstNode{mmlval.loc}, mmS[mmpt-2].val, strings.Replace(mmS[mmpt-1].val, "\"", "", -1)}
 			}
 		}
 	case 19:
