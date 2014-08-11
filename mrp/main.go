@@ -80,7 +80,6 @@ func main() {
 
 	// Start the runner loop.
 	go func() {
-		return
 		nodes := pipestance.Node().AllNodes()
 		for {
 			fmt.Println("===============================================================")
@@ -117,15 +116,14 @@ func main() {
 		}
 	}()
 
-	t, err := amber.CompileFile("../web/graph.jade", amber.Options{true, false})
-	if err != nil {
-		fmt.Println(err.Error())
-		os.Exit(1)
-	}
-
 	// Start the web server.
 	m.Get("/", func() string {
 		var doc bytes.Buffer
+		t, err := amber.CompileFile("../web/graph.jade", amber.Options{true, false})
+		if err != nil {
+			fmt.Println(err.Error())
+			os.Exit(1)
+		}
 		err = t.Execute(&doc, &Graph{})
 		if err != nil {
 			fmt.Println(err.Error())

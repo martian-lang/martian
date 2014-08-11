@@ -661,7 +661,7 @@ func execLocalJob(shellName string, shellCmd string, stagecodePath string,
 	libPath string, fqname string, metadata *Metadata, threads interface{},
 	memGB interface{}) {
 	cmd := shellCmd
-	args := []string{stagecodePath, libPath, metadata.path, metadata.filesPath, ""}
+	args := []string{stagecodePath, libPath, metadata.path, metadata.filesPath, "profile"}
 
 	c := exec.Command(cmd, args...)
 	err := c.Start()
