@@ -275,26 +275,3 @@ func ParseCall(src string) (*Ast, error) {
 	}
 	return global, nil
 }
-
-/*
-func main() {
-    dirs, _ := ioutil.ReadDir("../pipelines/src/mro")
-    count := 0
-    for i := 0; i < 1; i ++ {
-        for _, dir := range dirs {
-            if strings.HasPrefix(dir.Name(), "_") {
-                continue
-            }
-            p := path.Join("../pipelines/src/mro", dir.Name())
-            //_, _, err := ParseFile("../pipelines/src/mro/analytics_phasing.mro")
-            _, _, err := ParseFile(p)
-            count += 1
-            if err != nil {
-                fmt.Println(err.Error())
-                os.Exit(1)
-            }
-        }
-    }
-    fmt.Printf("Successfully compiled %d mro files.", count)
-}
-*/
