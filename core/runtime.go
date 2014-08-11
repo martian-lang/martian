@@ -15,40 +15,107 @@ import (
 	"path/filepath"
 	"strings"
 	"sync"
-	"time"
 )
 
-/****************************************************
- * Helpers
- */
-func mkdir(p string) {
-	err := os.Mkdir(p, 0700)
-	if err != nil {
-		//fmt.Println(err)
-	}
+//=============================================================================
+// Metadata
+//=============================================================================
+type Metadata struct {
+	path      string
+	contents  map[string]bool
+	filesPath string
 }
 
-func cartesianProduct(valueSets []interface{}) []interface{} {
-	perms := []interface{}{[]interface{}{}}
-	for _, valueSet := range valueSets {
-		newPerms := []interface{}{}
-		for _, perm := range perms {
-			for _, value := range valueSet.([]interface{}) {
-				perm := perm.([]interface{})
-				newPerm := make([]interface{}, len(perm))
-				copy(newPerm, perm)
-				newPerm = append(newPerm, value)
-				newPerms = append(newPerms, newPerm)
-			}
+func NewMetadata(p string) *Metadata {
+	self := &Metadata{}
+	self.path = p
+	self.filesPath = path.Join(p, "files")
+	return self
+}
+
+func (self *Metadata) glob() []string {
+	paths, _ := filepath.Glob(path.Join(self.path, "_*"))
+	return paths
+}
+
+func (self *Metadata) mkdirs() {
+	mkdir(self.path)
+	mkdir(self.filesPath)
+}
+
+func (self *Metadata) getState(name string) (string, bool) {
+	if self.exists("errors") {
+		return "failed", true
+	}
+	if self.exists("complete") {
+		return name + "complete", true
+	}
+	if self.exists("log") {
+		return name + "running", true
+	}
+	if self.exists("jobinfo") {
+		return name + "queued", true
+	}
+	return "", false
+}
+
+func (self *Metadata) cache() {
+	if !self.exists("complete") {
+		//fmt.Println(self.path)
+		self.contents = map[string]bool{}
+		paths := self.glob()
+		for _, p := range paths {
+			self.contents[path.Base(p)[1:]] = true
 		}
-		perms = newPerms
 	}
-	return perms
 }
 
-/****************************************************
- * Runtime Model Classes
- */
+func (self *Metadata) restartIfFailed() {
+	if self.exists("errors") {
+		self.contents = map[string]bool{}
+		paths := self.glob()
+		for _, p := range paths {
+			os.Remove(p)
+		}
+	}
+}
+
+func (self *Metadata) makePath(name string) string {
+	return path.Join(self.path, "_"+name)
+}
+func (self *Metadata) exists(name string) bool {
+	_, ok := self.contents[name]
+	return ok
+}
+func (self *Metadata) readRaw(name string) string {
+	bytes, _ := ioutil.ReadFile(self.makePath(name))
+	return string(bytes)
+}
+func (self *Metadata) read(name string) interface{} {
+	var v interface{}
+	json.Unmarshal([]byte(self.readRaw(name)), &v)
+	return v
+}
+func (self *Metadata) writeRaw(name string, text string) {
+	ioutil.WriteFile(self.makePath(name), []byte(text), 0600)
+}
+func (self *Metadata) write(name string, object interface{}) {
+	bytes, _ := json.MarshalIndent(object, "", "    ")
+	self.writeRaw(name, string(bytes))
+}
+func (self *Metadata) append(name string, text string) {
+	f, _ := os.OpenFile(self.makePath(name), os.O_WRONLY|os.O_CREATE, 0700)
+	f.Write([]byte(text))
+	f.Close()
+}
+func (self *Metadata) writeTime(name string) {
+	self.writeRaw(name, Timestamp())
+}
+func (self *Metadata) remove(name string) { os.Remove(self.makePath(name)) }
+
+//=============================================================================
+// Binding
+//=============================================================================
 type Binding struct {
 	node      *Node
 	id        string
@@ -172,97 +239,9 @@ func makeOutArgs(outParams *Params, filesPath string) map[string]interface{} {
 	return args
 }
 
-func Timestamp() string {
-	return time.Now().Format("2006-01-02 15:04:05")
-}
-
-type Metadata struct {
-	path      string
-	contents  map[string]bool
-	filesPath string
-}
-
-func NewMetadata(p string) *Metadata {
-	self := &Metadata{}
-	self.path = p
-	self.filesPath = path.Join(p, "files")
-	return self
-}
-
-func (self *Metadata) glob() []string {
-	paths, _ := filepath.Glob(path.Join(self.path, "_*"))
-	return paths
-}
-
-func (self *Metadata) mkdirs() {
-	mkdir(self.path)
-	mkdir(self.filesPath)
-}
-
-func (self *Metadata) getState(name string) (string, bool) {
-	if self.exists("errors") {
-		return "failed", true
-	}
-	if self.exists("complete") {
-		return name + "complete", true
-	}
-	if self.exists("log") {
-		return name + "running", true
-	}
-	if self.exists("jobinfo") {
-		return name + "queued", true
-	}
-	return "", false
-}
-
-func (self *Metadata) cache() {
-	if !self.exists("complete") {
-		self.contents = map[string]bool{}
-		paths := self.glob()
-		for _, p := range paths {
-			self.contents[path.Base(p)[1:]] = true
-		}
-	}
-}
-
-func (self *Metadata) restartIfFailed() {
-	if self.exists("errors") {
-		self.contents = map[string]bool{}
-		paths := self.glob()
-		for _, p := range paths {
-			os.Remove(p)
-		}
-	}
-}
-
-func (self *Metadata) makePath(name string) string { return path.Join(self.path, "_"+name) }
-func (self *Metadata) exists(name string) bool     { _, ok := self.contents[name]; return ok }
-func (self *Metadata) readRaw(name string) string {
-	bytes, _ := ioutil.ReadFile(self.makePath(name))
-	return string(bytes)
-}
-func (self *Metadata) read(name string) interface{} {
-	var v interface{}
-	json.Unmarshal([]byte(self.readRaw(name)), &v)
-	return v
-}
-func (self *Metadata) writeRaw(name string, text string) {
-	ioutil.WriteFile(self.makePath(name), []byte(text), 0600)
-}
-func (self *Metadata) write(name string, object interface{}) {
-	bytes, _ := json.MarshalIndent(object, "", "    ")
-	self.writeRaw(name, string(bytes))
-}
-func (self *Metadata) append(name string, text string) {
-	f, _ := os.OpenFile(self.makePath(name), os.O_WRONLY|os.O_CREATE, 0700)
-	f.Write([]byte(text))
-	f.Close()
-}
-func (self *Metadata) writeTime(name string) {
-	self.writeRaw(name, Timestamp())
-}
-func (self *Metadata) remove(name string) { os.Remove(self.makePath(name)) }
-
+//=============================================================================
+// Chunk
+//=============================================================================
 type Chunk struct {
 	node     *Node
 	fork     *Fork
@@ -317,6 +296,9 @@ func (self *Chunk) Step() {
 	}
 }
 
+//=============================================================================
+// Fork
+//=============================================================================
 type Fork struct {
 	node           *Node
 	index          int
@@ -455,9 +437,9 @@ func (self *Fork) Step() {
 	}
 }
 
-/****************************************************
- * Node Classes
- */
+//=============================================================================
+// Node
+//=============================================================================
 type Nodable interface {
 	Node() *Node
 }
@@ -509,7 +491,8 @@ func NewNode(parent Nodable, kind string, callStm *CallStm, callables *Callables
 			self.prenodes[binding.boundNode.Node().name] = binding.boundNode
 		}
 	}
-	// Do not set state = getState here, or else nodes will wrongly report complete before the first refreshMetadata call
+	// Do not set state = getState here, or else nodes will wrongly report
+	// complete before the first refreshMetadata call
 	return self
 }
 
@@ -674,10 +657,11 @@ func (self *Node) AllNodes() []*Node {
 	return all
 }
 
-func execLocalJob(shellName string, shellCmd string, stagecodePath string, libPath string,
-	fqname string, metadata *Metadata, threads interface{}, memGB interface{}) {
+func execLocalJob(shellName string, shellCmd string, stagecodePath string,
+	libPath string, fqname string, metadata *Metadata, threads interface{},
+	memGB interface{}) {
 	cmd := shellCmd
-	args := []string{stagecodePath, libPath, metadata.path, metadata.filesPath, "profile"}
+	args := []string{stagecodePath, libPath, metadata.path, metadata.filesPath, ""}
 
 	c := exec.Command(cmd, args...)
 	err := c.Start()
@@ -687,7 +671,8 @@ func execLocalJob(shellName string, shellCmd string, stagecodePath string, libPa
 	metadata.write("jobinfo", map[string]interface{}{"type": "local", "childid": c.Process.Pid})
 }
 
-func (self *Node) RunJob(shellName string, fqname string, metadata *Metadata, threads interface{}, memGB interface{}) {
+func (self *Node) RunJob(shellName string, fqname string, metadata *Metadata,
+	threads interface{}, memGB interface{}) {
 	//stagecodeLang = "Python"
 	adaptersPath := path.Join(self.rt.adaptersPath, "python")
 	libPath := path.Join(self.rt.libPath, "python")
@@ -697,6 +682,9 @@ func (self *Node) RunJob(shellName string, fqname string, metadata *Metadata, th
 	execLocalJob(shellName, shellCmd, self.stagecodePath, libPath, fqname, metadata, threads, memGB)
 }
 
+//=============================================================================
+// Stagestance
+//=============================================================================
 type Stagestance struct {
 	node *Node
 }
@@ -713,6 +701,9 @@ func NewStagestance(parent Nodable, callStm *CallStm, callables *Callables) *Sta
 	return self
 }
 
+//=============================================================================
+// Pipestance
+//=============================================================================
 type Pipestance struct {
 	node *Node
 }
@@ -774,9 +765,9 @@ func (self *Pipestance) GetOverallState() string {
 	return "waiting"
 }
 
-/****************************************************
- * Runtime
- */
+//=============================================================================
+// TopNode
+//=============================================================================
 type TopNode struct {
 	node *Node
 }
@@ -792,6 +783,9 @@ func NewTopNode(rt *Runtime, psid string, p string) *TopNode {
 	return self
 }
 
+//=============================================================================
+// Runtime
+//=============================================================================
 type Runtime struct {
 	mroPath       string
 	stagecodePath string
