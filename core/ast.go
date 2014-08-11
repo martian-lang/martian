@@ -3,7 +3,7 @@
 //
 // Margo
 //
-package main
+package core
 
 type (
 	AstNode struct {

@@ -4,7 +4,7 @@
 //
 // Margo
 //
-package main
+package core
 
 import (
     "fmt"

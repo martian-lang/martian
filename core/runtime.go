@@ -3,7 +3,7 @@
 //
 // Margo
 //
-package main
+package core
 
 import (
 	"encoding/json"
@@ -13,7 +13,6 @@ import (
 	"os/exec"
 	"path"
 	"path/filepath"
-	"runtime"
 	"strings"
 	"sync"
 	"time"
@@ -50,13 +49,6 @@ func cartesianProduct(valueSets []interface{}) []interface{} {
 /****************************************************
  * Runtime Model Classes
  */
-type Parameter struct {
-}
-
-func NewParameter() {
-
-}
-
 type Binding struct {
 	node      *Node
 	id        string
@@ -180,7 +172,9 @@ func makeOutArgs(outParams *Params, filesPath string) map[string]interface{} {
 	return args
 }
 
-const TIME_FORMAT = "2006-01-02 15:04:05"
+func Timestamp() string {
+	return time.Now().Format("2006-01-02 15:04:05")
+}
 
 type Metadata struct {
 	path      string
@@ -249,10 +243,7 @@ func (self *Metadata) readRaw(name string) string {
 }
 func (self *Metadata) read(name string) interface{} {
 	var v interface{}
-	err := json.Unmarshal([]byte(self.readRaw(name)), &v)
-	if err != nil {
-		fmt.Println(err)
-	}
+	json.Unmarshal([]byte(self.readRaw(name)), &v)
 	return v
 }
 func (self *Metadata) writeRaw(name string, text string) {
@@ -268,7 +259,7 @@ func (self *Metadata) append(name string, text string) {
 	f.Close()
 }
 func (self *Metadata) writeTime(name string) {
-	self.writeRaw(name, time.Now().Format(TIME_FORMAT))
+	self.writeRaw(name, Timestamp())
 }
 func (self *Metadata) remove(name string) { os.Remove(self.makePath(name)) }
 
@@ -314,7 +305,7 @@ func (self *Chunk) getState() string {
 	}
 }
 
-func (self *Chunk) step() {
+func (self *Chunk) Step() {
 	if self.getState() == "ready" {
 		resolvedBindings := resolveBindings(self.node.argbindings, self.fork.argPermute)
 		for id, value := range self.chunkDef {
@@ -410,11 +401,11 @@ func (self *Fork) getState() string {
 	return "ready"
 }
 
-func (self *Fork) step() {
+func (self *Fork) Step() {
 	if self.node.kind == "stage" {
 		state := self.getState()
 		if !strings.HasSuffix(state, "_running") && !strings.HasSuffix(state, "_queued") {
-			fmt.Println("[RUNTIME]", time.Now().Format(TIME_FORMAT), "("+state+")", self.node.fqname)
+			fmt.Println("[RUNTIME]", Timestamp(), "("+state+")", self.node.fqname)
 		}
 
 		if state == "ready" {
@@ -435,7 +426,7 @@ func (self *Fork) step() {
 				}
 			}
 			for _, chunk := range self.chunks {
-				chunk.step()
+				chunk.Step()
 			}
 		} else if state == "chunks_complete" {
 			self.join_metadata.write("args", resolveBindings(self.node.argbindings, self.argPermute))
@@ -595,7 +586,7 @@ func (self *Node) buildForks(bindings map[string]*Binding) {
 	paramIds := []string{}
 	argRanges := []interface{}{}
 	for _, binding := range self.sweepbindings {
-		//	self.sweepbindings = append(self.sweepbindings, binding)
+		//  self.sweepbindings = append(self.sweepbindings, binding)
 		paramIds = append(paramIds, binding.id)
 		argRanges = append(argRanges, binding.resolve(nil))
 	}
@@ -637,7 +628,7 @@ func (self *Node) collectMetadatas() []*Metadata {
 	return metadatas
 }
 
-func (self *Node) refreshMetadata(done chan bool) int {
+func (self *Node) RefreshMetadata(done chan bool) int {
 	go func() {
 		sdone := make(chan bool)
 		metadatas := self.collectMetadatas()
@@ -667,18 +658,18 @@ func (self *Node) restartFailedMetadatas(done chan bool) int {
 	return len(metadatas)
 }
 
-func (self *Node) step() {
+func (self *Node) Step() {
 	if self.state == "running" {
 		for _, fork := range self.forks {
-			fork.step()
+			fork.Step()
 		}
 	}
 }
 
-func (self *Node) allNodes() []*Node {
+func (self *Node) AllNodes() []*Node {
 	all := []*Node{self}
 	for _, subnode := range self.subnodes {
-		all = append(all, subnode.Node().allNodes()...)
+		all = append(all, subnode.Node().AllNodes()...)
 	}
 	return all
 }
@@ -700,7 +691,7 @@ func (self *Node) RunJob(shellName string, fqname string, metadata *Metadata, th
 	//stagecodeLang = "Python"
 	adaptersPath := path.Join(self.rt.adaptersPath, "python")
 	libPath := path.Join(self.rt.libPath, "python")
-	fmt.Println("[RUNTIME]", time.Now().Format(TIME_FORMAT), "(run-local)", fqname+"."+shellName)
+	fmt.Println("[RUNTIME]", Timestamp(), "(run-local)", fqname+"."+shellName)
 	metadata.write("jobinfo", map[string]interface{}{"type": nil, "childpid": nil})
 	shellCmd := path.Join(adaptersPath, shellName+".py")
 	execLocalJob(shellName, shellCmd, self.stagecodePath, libPath, fqname, metadata, threads, memGB)
@@ -758,44 +749,29 @@ func NewPipestance(parent Nodable, callStm *CallStm, callables *Callables) *Pipe
 	return self
 }
 
-/****************************************************
- * Python Adapter
- */
-/*
-type PythonStageRunner struct {
-	stagecodeLang string
-	adaptersPath  string
-	libPath       string
-}
-
-func NewPythonStageRunner(node *Node, callStm *CallStm, callables *Callables) *PythonStageRunner {
-	self := &PythonStageRunner{}
-	self.stagecodeLang = "Python"
-	self.adaptersPath = path.Join(self.node.rt.adaptersPath, "python")
-	self.libPath = path.Join(self.node.rt.libPath, "python")
-	// check for __init__.py
-	//return self
-}
-*/
-
-/****************************************************
- * Job Execution Classes
- */
-type Job interface {
-}
-
-type LocalJob struct {
-}
-
-func NewLocalJob() Job {
-	return &LocalJob{}
-}
-
-type SGEJob struct {
-}
-
-func NewSGEJob() Job {
-	return &SGEJob{}
+func (self *Pipestance) GetOverallState() string {
+	nodes := self.Node().AllNodes()
+	for _, node := range nodes {
+		if node.state == "failed" {
+			return "failed"
+		}
+	}
+	for _, node := range nodes {
+		if node.state == "running" {
+			return "running"
+		}
+	}
+	every := true
+	for _, node := range nodes {
+		if node.state != "complete" {
+			every = false
+			break
+		}
+	}
+	if every {
+		return "complete"
+	}
+	return "waiting"
 }
 
 /****************************************************
@@ -817,36 +793,29 @@ func NewTopNode(rt *Runtime, psid string, p string) *TopNode {
 }
 
 type Runtime struct {
-	mroPath        string
-	stagecodePath  string
-	libPath        string
-	adaptersPath   string
-	jobConstructor func() Job
-	ptreeTable     map[string]*Ast
-	srcTable       map[string]string
-	typeTable      map[string]string
-	codeVersion    string
-	/* queue goes here */
+	mroPath       string
+	stagecodePath string
+	libPath       string
+	adaptersPath  string
+	ptreeTable    map[string]*Ast
+	srcTable      map[string]string
+	typeTable     map[string]string
+	codeVersion   string
+	/* TODO queue goes here */
 }
 
 func NewRuntime(jobMode string, pipelinesPath string) *Runtime {
-	JOBRUNNER_TABLE := map[string]func() Job{
-		"local": NewLocalJob,
-		"sge":   NewSGEJob,
-	}
-
-	//thispath, _ := filepath.Abs(path.Dir(os.Args[0]))
-	return &Runtime{
-		mroPath:        path.Join(pipelinesPath, "mro"),
-		stagecodePath:  path.Join(pipelinesPath, "stages"),
-		libPath:        path.Join(pipelinesPath, "lib"),
-		adaptersPath:   "/Users/aywong/Home/Work/10X/git/mario/adapters", //path.Join(thispath, "..", "adapters"),
-		jobConstructor: JOBRUNNER_TABLE[jobMode],
-		ptreeTable:     map[string]*Ast{},
-		srcTable:       map[string]string{},
-		typeTable:      map[string]string{},
-		codeVersion:    "",
-	}
+	cwd, _ := filepath.Abs(path.Dir(os.Args[0]))
+	self := &Runtime{}
+	self.mroPath = path.Join(pipelinesPath, "mro")
+	self.stagecodePath = path.Join(pipelinesPath, "stages")
+	self.libPath = path.Join(pipelinesPath, "lib")
+	self.adaptersPath = path.Join(cwd, "..", "adapters")
+	self.ptreeTable = map[string]*Ast{}
+	self.srcTable = map[string]string{}
+	self.typeTable = map[string]string{}
+	self.codeVersion = "" // TODO
+	return self
 }
 
 func (self *Runtime) Instantiate(psid string, src string, pipestancePath string) (*Pipestance, error) {
@@ -900,66 +869,14 @@ func (self *Runtime) InvokeWithSource(psid string, src string, pipestancePath st
 		return nil, err
 	}
 
+	metadata := NewMetadata(pipestancePath)
+	metadata.writeRaw("invocation", src)
+	metadata.writeRaw("mrosource", self.srcTable[pipestance.Node().name])
+	metadata.writeRaw("codeversion", self.codeVersion)
+	metadata.writeTime("timestamp")
+
 	var wg sync.WaitGroup
 	pipestance.Node().mkdirs(&wg)
 	wg.Wait()
 	return pipestance, nil
-}
-
-/****************************************************
- * Main Routine
- */
-func main() {
-	runtime.GOMAXPROCS(4)
-	rt := NewRuntime("sge", "/Users/aywong/Home/Work/10X/git/pipelines/src")
-	count, err := rt.CompileAll()
-	if err != nil {
-		fmt.Println(err.Error())
-	}
-	/*
-			callSrc :=
-				`call ANALYTICS(
-		    read_path = [path("/mnt/analysis/marsoc/pipestances/HA911ADXX/PREPROCESS/HA911ADXX/1.4.1/PREPROCESS/DEMULTIPLEX/fork0/files/demultiplexed_fastq_path")],
-		    sample_indices = ["GTTGTAGT","TTCTATGC","CAACCCAA","CCGATTAG"],
-		    lanes = null,
-		    genome = sweep(["PhiX","hg19"]),
-		    targets_file = null,
-		    confident_regions = null,
-		    trim_length = sweep([0,10]),
-		    barcode_whitelist = "737K-april-2014",
-		    primers = ["R1-alt2:TTGCTCATTCCCTACACGACGCTCTTCCGATCT","R2RC:GTGACTGGAGTTCAGACGTGTGCTCTTCCGATCT","Alt2-10N:AATGATACGGCGACCACCGAGATCTACACTAGATCGCTTGCTCATTCCCTACACGACGCTCTTCCGATCTNNNNNNNNNN","P7RC:CAAGCAGAAGACGGCATACGAGAT","P5:AATGATACGGCGACCACCGAGA"],
-		    variant_results = null,
-		    sample_id = "2444",
-		    lena_url = "lena.10x.office",
-		)`*/
-	callSrc := `call PREPROCESS(
-		      #run_path = path("/mnt/sequencing/test/sequencers/miseq00V/mini-bcl"),
-		      run_path = path("/Users/aywong/tmp/mini"),
-		      seq_run_id = "mini-bcl",
-		      lena_url = null,
-		   )`
-	PIPESTANCE_PATH := "./HA191"
-	os.MkdirAll(PIPESTANCE_PATH, 0700)
-	pipestance, err := rt.InvokeWithSource("HA191", callSrc, PIPESTANCE_PATH)
-	if err != nil {
-		fmt.Println(err.Error())
-	}
-
-	nodes := pipestance.Node().allNodes()
-	for {
-		done := make(chan bool)
-		count := 0
-		for _, node := range nodes {
-			count += node.refreshMetadata(done)
-		}
-		for i := 0; i < count; i++ {
-			<-done
-		}
-		for _, node := range nodes {
-			node.step()
-		}
-		time.Sleep(time.Second * 1)
-	}
-
-	fmt.Printf("Successfully compiled %d mro files.", count)
 }
