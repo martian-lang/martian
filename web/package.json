@@ -1,0 +1,15 @@
+{
+  "name": "margo-web",
+  "version": "0.0.1",
+  "description": "",
+  "main": "",
+  "dependencies": {},
+  "scripts": {},
+  "author": "",
+  "license": "",
+  "devDependencies": {
+    "gulp": "^3.8.7",
+    "gulp-coffee": "^2.1.1",
+    "gulp-jade": "^0.7.0"
+  }
+}

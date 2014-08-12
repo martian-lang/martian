@@ -10,8 +10,8 @@ import (
 	"encoding/json"
 	"fmt"
 	"github.com/docopt/docopt-go"
-	"github.com/eknkc/amber"
 	"github.com/go-martini/martini"
+	"html/template"
 	"io/ioutil"
 	"margo/core"
 	"os"
@@ -98,9 +98,13 @@ func main() {
 			// Check for completion states.
 			switch pipestance.GetOverallState() {
 			case "complete":
+				// Give time for web ui client to get last update.
+				time.Sleep(time.Second * 10)
 				fmt.Println("[RUNTIME]", core.Timestamp(), "Pipestance is complete, exiting.")
 				os.Exit(0)
 			case "failed":
+				// Give time for web ui client to get last update.
+				time.Sleep(time.Second * 10)
 				fmt.Println("[RUNTIME]", core.Timestamp(), "Pipestance failed, exiting.")
 				os.Exit(1)
 			}
@@ -126,13 +130,13 @@ func main() {
 	ma := &martini.ClassicMartini{m, r}
 
 	ma.Get("/", func() string {
-		var doc bytes.Buffer
-		t, err := amber.CompileFile("../web/graph.jade", amber.Options{true, false})
+		tmpl, err := template.New("graph.html").Delims("[[", "]]").ParseFiles("../web/templates/graph.html")
 		if err != nil {
 			fmt.Println(err.Error())
 			os.Exit(1)
 		}
-		err = t.Execute(&doc, &Graph{
+		var doc bytes.Buffer
+		err = tmpl.Execute(&doc, &Graph{
 			Container: "runner",
 			Pname:     pname,
 			Psid:      psid,
@@ -142,8 +146,7 @@ func main() {
 			fmt.Println(err.Error())
 			os.Exit(1)
 		}
-		s := doc.String()
-		return s
+		return doc.String()
 	})
 	ma.Get("/api/get-nodes/:container/:pname/:psid", func(params martini.Params) string {
 		//fmt.Println(params)
