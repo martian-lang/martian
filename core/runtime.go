@@ -113,6 +113,17 @@ func (self *Metadata) writeTime(name string) {
 }
 func (self *Metadata) remove(name string) { os.Remove(self.makePath(name)) }
 
+func (self *Metadata) serialize() interface{} {
+	names := []string{}
+	for content, _ := range self.contents {
+		names = append(names, content)
+	}
+	return map[string]interface{}{
+		"path":  self.path,
+		"names": names,
+	}
+}
+
 //=============================================================================
 // Binding
 //=============================================================================
@@ -217,6 +228,20 @@ func (self *Binding) resolve(argPermute map[string]interface{}) interface{} {
 	return output
 }
 
+func (self *Binding) serialize(argPermute map[string]interface{}) interface{} {
+	return map[string]interface{}{
+		"id":          self.id,
+		"type":        self.tname,
+		"valexp":      self.valexp,
+		"mode":        self.mode,
+		"output":      self.output,
+		"sweep":       self.sweep,
+		"node":        self.boundNode.Node().name,
+		"matchedFork": self.boundNode.Node().matchFork(argPermute).index,
+		"waiting":     self.waiting,
+	}
+}
+
 // Helpers
 func resolveBindings(bindings map[string]*Binding, argPermute map[string]interface{}) map[string]interface{} {
 	resolvedBindings := map[string]interface{}{}
@@ -293,6 +318,15 @@ func (self *Chunk) Step() {
 		self.metadata.write("args", resolvedBindings)
 		self.metadata.write("outs", makeOutArgs(self.node.outparams, self.metadata.filesPath))
 		self.node.RunJob("main", self.fqname, self.metadata, self.chunkDef["__threads"], self.chunkDef["__mem_gb"])
+	}
+}
+
+func (self *Chunk) serialize() interface{} {
+	return map[string]interface{}{
+		"index":    self.index,
+		"chunkDef": self.chunkDef,
+		"state":    self.getState(),
+		"metadata": self.metadata.serialize(),
 	}
 }
 
@@ -434,6 +468,35 @@ func (self *Fork) Step() {
 	} else if self.node.kind == "pipeline" {
 		self.metadata.write("outs", resolveBindings(self.node.retbindings, self.argPermute))
 		self.metadata.writeTime("complete")
+	}
+}
+
+func (self *Fork) serialize() interface{} {
+	argbindings := []interface{}{}
+	for _, argbinding := range self.node.argbindings {
+		argbindings = append(argbindings, argbinding.serialize(self.argPermute))
+	}
+	retbindings := []interface{}{}
+	for _, retbinding := range self.node.retbindings {
+		retbindings = append(retbindings, retbinding.serialize(self.argPermute))
+	}
+	bindings := map[string]interface{}{
+		"Argument": argbindings,
+		"Return":   retbindings,
+	}
+	chunks := []interface{}{}
+	for _, chunk := range self.chunks {
+		chunks = append(chunks, chunk.serialize())
+	}
+	return map[string]interface{}{
+		"index":          self.index,
+		"argPermute":     self.argPermute,
+		"state":          self.getState(),
+		"metadata":       self.metadata.serialize(),
+		"split_metadata": self.split_metadata.serialize(),
+		"join_metadata":  self.join_metadata.serialize(),
+		"chunks":         chunks,
+		"bindings":       bindings,
 	}
 }
 
@@ -657,6 +720,38 @@ func (self *Node) AllNodes() []*Node {
 	return all
 }
 
+func (self *Node) Serialize() interface{} {
+	sweepbindings := []interface{}{}
+	for _, sweepbinding := range self.sweepbindings {
+		sweepbindings = append(sweepbindings, sweepbinding.serialize(nil))
+	}
+	forks := []interface{}{}
+	for _, fork := range self.forks {
+		forks = append(forks, fork.serialize())
+	}
+	edges := []interface{}{}
+	for _, prenode := range self.prenodes {
+		edges = append(edges, map[string]string{
+			"from": prenode.Node().name,
+			"to":   self.name,
+		})
+	}
+	return map[string]interface{}{
+		"name":          self.name,
+		"fqname":        self.fqname,
+		"type":          self.kind,
+		"path":          self.path,
+		"state":         self.state,
+		"metadata":      self.metadata.serialize(),
+		"sweepbindings": sweepbindings,
+		"forks":         forks,
+		"edges":         edges,
+	}
+}
+
+//=============================================================================
+// Job Runners
+//=============================================================================
 func execLocalJob(shellName string, shellCmd string, stagecodePath string,
 	libPath string, fqname string, metadata *Metadata, threads interface{},
 	memGB interface{}) {

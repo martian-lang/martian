@@ -18,18 +18,15 @@ html[ng-app="app"][ng-controller="MarioGraphCtrl"]
         script[src="/js/ngClip.js"]
         script[src="/js/ZeroClipboard.min.js"]
 
-    body
+    body#donttouchmebro
         header.navbar.navbar-inverse.navbar-fixed-top
             div.navbar-header 
                 div.navbar-brand
-                    a[href="{{urlprefix}}"][style="color:white"] 10
-                        span.logo-color X
-                        | &nbsp;MARSOC&nbsp;
-                    | / {{psid}} / {{pname}} 
-        #graph[style="margin-left: 25px; margin-top: 75px"]
+                    a[href="{{urlprefix}}"][style="color:white"] 10<span class="logo-color">X</span>&nbsp;MARSOC&nbsp;/ {{psid}} / {{pname}} 
+        div#graph
             svg[transform="scale(0.5)"][width="875px"][height="1000px"]
                 g#top[transform="translate(5,5) scale(0.80)"]
-        #details[ng-show="node"]
+        div#details[ng-show="node"]
             h4#stagename
                 a[href="#"] {{node.name}}                
                 | {{node.type}} 
@@ -144,7 +141,7 @@ html[ng-app="app"][ng-controller="MarioGraphCtrl"]
                 tr
                     td[style="width: 85px"] Chunks
                     td
-                        .btn-group
+                        div.btn-group
                             button.btn.btn-default[ng-class="chunk.state"][type="button"][ng-model="$parent.chunki"][ng-repeat="chunk in node.forks[forki].chunks"][btn-radio="chunk.index"] {{chunk.index}}
                 tr
                     td[style="width: 85px"] State

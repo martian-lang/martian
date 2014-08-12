@@ -7,13 +7,13 @@ package main
 
 import (
 	"bytes"
+	"encoding/json"
 	"fmt"
 	"github.com/docopt/docopt-go"
 	"github.com/eknkc/amber"
 	"github.com/go-martini/martini"
 	"io/ioutil"
 	"margo/core"
-	"net/http"
 	"os"
 	"path"
 	"path/filepath"
@@ -28,13 +28,8 @@ type Graph struct {
 	Admin     bool
 }
 
-func handler(w http.ResponseWriter, r *http.Request) {
-	fmt.Fprintf(w, "Hi there, I love %s!", r.URL.Path[1:])
-}
-
 func main() {
-	m := martini.Classic()
-	runtime.GOMAXPROCS(4)
+	runtime.GOMAXPROCS(2)
 
 	// Command-line arguments.
 	doc :=
@@ -87,10 +82,9 @@ func main() {
 	go func() {
 		nodes := pipestance.Node().AllNodes()
 		for {
-			fmt.Println("===============================================================")
-
 			// Concurrently run metadata refreshes.
-			start := time.Now()
+			//fmt.Println("===============================================================")
+			//start := time.Now()
 			done := make(chan bool)
 			count := 0
 			for _, node := range nodes {
@@ -99,7 +93,7 @@ func main() {
 			for i := 0; i < count; i++ {
 				<-done
 			}
-			fmt.Println(time.Since(start))
+			//fmt.Println(time.Since(start))
 
 			// Check for completion states.
 			switch pipestance.GetOverallState() {
@@ -122,7 +116,16 @@ func main() {
 	}()
 
 	// Start the web server.
-	m.Get("/", func() string {
+	m := martini.New()
+	r := martini.NewRouter()
+	m.Use(martini.Recovery())
+	m.Use(martini.Static("../web/res"))
+	m.Use(martini.Static("../web/client"))
+	m.MapTo(r, (*martini.Routes)(nil))
+	m.Action(r.Handle)
+	ma := &martini.ClassicMartini{m, r}
+
+	ma.Get("/", func() string {
 		var doc bytes.Buffer
 		t, err := amber.CompileFile("../web/graph.jade", amber.Options{true, false})
 		if err != nil {
@@ -142,7 +145,14 @@ func main() {
 		s := doc.String()
 		return s
 	})
-	m.Use(martini.Static("../web/res"))
-	m.Use(martini.Static("../web/client"))
-	m.Run()
+	ma.Get("/api/get-nodes/:container/:pname/:psid", func(params martini.Params) string {
+		//fmt.Println(params)
+		data := []interface{}{}
+		for _, node := range pipestance.Node().AllNodes() {
+			data = append(data, node.Serialize())
+		}
+		bytes, _ := json.Marshal(data)
+		return string(bytes)
+	})
+	ma.Run()
 }
