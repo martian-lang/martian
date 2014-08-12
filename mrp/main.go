@@ -22,13 +22,6 @@ import (
 	"time"
 )
 
-type Graph struct {
-	Container string
-	Pname     string
-	Psid      string
-	Admin     bool
-}
-
 func main() {
 	runtime.GOMAXPROCS(2)
 
@@ -71,6 +64,7 @@ func main() {
 	PIPESTANCE_PATH := path.Join(cwd, psid)
 	callSrc, _ := ioutil.ReadFile(INVOCATION_PATH)
 	os.MkdirAll(PIPESTANCE_PATH, 0700)
+	STEP_SECS := 3
 
 	// Invoke pipestance.
 	pipestance, pname, err := rt.InvokeWithSource(psid, string(callSrc), PIPESTANCE_PATH)
@@ -97,17 +91,11 @@ func main() {
 			//fmt.Println(time.Since(start))
 
 			// Check for completion states.
-			switch pipestance.GetOverallState() {
-			case "complete":
+			if pipestance.GetOverallState() == "complete" {
 				// Give time for web ui client to get last update.
 				time.Sleep(time.Second * 10)
 				fmt.Println("[RUNTIME]", core.Timestamp(), "Pipestance is complete, exiting.")
 				os.Exit(0)
-			case "failed":
-				// Give time for web ui client to get last update.
-				time.Sleep(time.Second * 10)
-				fmt.Println("[RUNTIME]", core.Timestamp(), "Pipestance failed, exiting.")
-				os.Exit(1)
 			}
 
 			// Step all nodes.
@@ -116,7 +104,7 @@ func main() {
 			}
 
 			// Wait for a bit.
-			time.Sleep(time.Second * 1)
+			time.Sleep(time.Second * time.Duration(STEP_SECS))
 		}
 	}()
 
@@ -124,15 +112,21 @@ func main() {
 	m := martini.New()
 	r := martini.NewRouter()
 	m.Use(martini.Recovery())
-	m.Use(martini.Static("../web/res"))
-	m.Use(martini.Static("../web/client"))
+	m.Use(martini.Static("../web/res", martini.StaticOptions{"", true, "index.html", nil}))
+	m.Use(martini.Static("../web/client", martini.StaticOptions{"", true, "index.html", nil}))
 	m.MapTo(r, (*martini.Routes)(nil))
 	m.Action(r.Handle)
-	ma := &martini.ClassicMartini{m, r}
+	app := &martini.ClassicMartini{m, r}
 
 	// API: Pipestance Browser
 	// Pages
-	ma.Get("/", func() string {
+	type Graph struct {
+		Container string
+		Pname     string
+		Psid      string
+		Admin     bool
+	}
+	app.Get("/", func() string {
 		tmpl, err := template.New("graph.html").Delims("[[", "]]").ParseFiles("../web/templates/graph.html")
 		if err != nil {
 			fmt.Println(err.Error())
@@ -154,7 +148,7 @@ func main() {
 
 	// APIs
 	// Get graph nodes
-	ma.Get("/api/get-nodes/:container/:pname/:psid", func(params martini.Params) string {
+	app.Get("/api/get-nodes/:container/:pname/:psid", func(params martini.Params) string {
 		data := []interface{}{}
 		for _, node := range pipestance.Node().AllNodes() {
 			data = append(data, node.Serialize())
@@ -163,13 +157,12 @@ func main() {
 		return string(bytes)
 	})
 
+	// Get metadata contents
 	type MetadataForm struct {
 		Path string `form:"path" binding:"required"`
 		Name string `form:"name" binding:"required"`
 	}
-
-	// Get metadata contents
-	ma.Post("/api/get-metadata/:container/:pname/:psid", binding.Bind(MetadataForm{}), func(body MetadataForm, params martini.Params) string {
+	app.Post("/api/get-metadata/:container/:pname/:psid", binding.Bind(MetadataForm{}), func(body MetadataForm, params martini.Params) string {
 		// TODO sanitize input, check for '..'
 		data, err := ioutil.ReadFile(path.Join(body.Path, "_"+body.Name))
 		if err != nil {
@@ -177,5 +170,18 @@ func main() {
 		}
 		return string(data)
 	})
-	ma.Run()
+
+	// Restart failed stage
+	app.Post("/api/restart/:container/:pname/:psid/:fqname", func(params martini.Params) string {
+		// TODO sanitize input, check for '..'
+		node := pipestance.Node().Find(params["fqname"])
+		done := make(chan bool)
+		count := node.RestartFailedMetadatas(done)
+		for i := 0; i < count; i++ {
+			<-done
+		}
+		return ""
+	})
+
+	app.Run()
 }

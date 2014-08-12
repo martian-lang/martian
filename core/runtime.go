@@ -222,10 +222,15 @@ func (self *Binding) resolve(argPermute map[string]interface{}) interface{} {
 		return nil
 	}
 	matchedFork := self.boundNode.Node().matchFork(argPermute)
-	outputs := matchedFork.metadata.read("outs").(map[string]interface{})
-	output, _ := outputs[self.output]
+	outputs, ok := matchedFork.metadata.read("outs").(map[string]interface{})
+	if ok {
+		output, ok := outputs[self.output]
+		if ok {
+			return output
+		}
+	}
 	self.waiting = true
-	return output
+	return nil
 }
 
 func (self *Binding) serialize(argPermute map[string]interface{}) interface{} {
@@ -238,6 +243,7 @@ func (self *Binding) serialize(argPermute map[string]interface{}) interface{} {
 		"sweep":       self.sweep,
 		"node":        self.boundNode.Node().name,
 		"matchedFork": self.boundNode.Node().matchFork(argPermute).index,
+		"value":       self.resolve(argPermute),
 		"waiting":     self.waiting,
 	}
 }
@@ -693,7 +699,7 @@ func (self *Node) RefreshMetadata(done chan bool) int {
 	return 1
 }
 
-func (self *Node) restartFailedMetadatas(done chan bool) int {
+func (self *Node) RestartFailedMetadatas(done chan bool) int {
 	metadatas := self.collectMetadatas()
 	for _, metadata := range metadatas {
 		go func(m *Metadata) {
@@ -718,6 +724,19 @@ func (self *Node) AllNodes() []*Node {
 		all = append(all, subnode.Node().AllNodes()...)
 	}
 	return all
+}
+
+func (self *Node) Find(fqname string) *Node {
+	if self.fqname == fqname {
+		return self
+	}
+	for _, subnode := range self.subnodes {
+		node := subnode.Node().Find(fqname)
+		if node != nil {
+			return node
+		}
+	}
+	return nil
 }
 
 func (self *Node) Serialize() interface{} {
