@@ -27,8 +27,8 @@ html[ng-app="app"][ng-controller="MarioGraphCtrl"]
                         | &nbsp;MARSOC&nbsp;
                     | / {{psid}} / {{pname}} 
         #graph[style="margin-left: 25px; margin-top: 75px"]
-            svg(transform="scale(0.5)" width="875px" height="1000px")
-                g#top(transform="translate(5,5) scale(0.80)")
+            svg[transform="scale(0.5)"][width="875px"][height="1000px"]
+                g#top[transform="translate(5,5) scale(0.80)"]
         #details[ng-show="node"]
             h4#stagename
                 a[href="#"] {{node.name}}                
@@ -40,7 +40,7 @@ html[ng-app="app"][ng-controller="MarioGraphCtrl"]
                     td[style="width: 85px"] State
                     td 
                         span.minibox[ng-class="node.state"] {{node.state}}
-                        button.btn.btn-default.btn-xs(ng-if="node.state == 'failed' && showRestart && admin" ng-click="restart()" style="margin-left: 10px") Restart
+                        button.btn.btn-default.btn-xs[ng-if="node.state == 'failed' && showRestart && admin"][ng-click="restart()"][style="margin-left: 10px"] Restart
                 tr
                     td FQName
                     td {{node.fqname}}
@@ -50,17 +50,17 @@ html[ng-app="app"][ng-controller="MarioGraphCtrl"]
                         button.btn.btn-default.btn-xs[type="button"][clip-copy="copyToClipboard()"]
                             span.glyphicon.glyphicon-paperclip
                         span.copyable {{node.path}}
-                tr(ng-if="node.type=='stage'")
+                tr[ng-if="node.type=='stage'"]
                     td {{node.stagecodeLang}}
                     td 
-                        button.btn.btn-default.btn-xs(type="button" clip-copy="copyToClipboard()")
+                        button.btn.btn-default.btn-xs[type="button"][clip-copy="copyToClipboard()"]
                             span.glyphicon.glyphicon-paperclip
                         span.copyable {{node.stagecodePath}}
                 tr
-                    td(style="vertical-align: top") Sweeps
+                    td[style="vertical-align: top"] Sweeps
                     td
                         table
-                            tr(ng-repeat="binding in node.sweepbindings") 
+                            tr[ng-repeat="binding in node.sweepbindings"]
                                 td {{binding.id}}&nbsp;&nbsp;
                                 td 
                                     span.glyphicon.glyphicon-transfer &nbsp;
@@ -69,107 +69,111 @@ html[ng-app="app"][ng-controller="MarioGraphCtrl"]
             h5 Sweeping
             table.table
                 tr
-                    td(style="width: 85px") Forks
-                    td(colspan="5")
+                    td[style="width: 85px"] Forks
+                    td[colspan="5"]
                         div.btn-group
-                            button.btn.btn-default(type="button" ng-model="$parent.forki" ng-repeat="fork in node.forks" btn-radio="fork.index") {{fork.index}}
+                            button.btn.btn-default[type="button"][ng-model="$parent.forki"][ng-repeat="fork in node.forks"][btn-radio="fork.index"] {{fork.index}}
                 tr
-                    td(style="width: 85px") State
+                    td[style="width: 85px"] State
                     td 
-                        span.minibox(ng-class="node.forks[forki].state") {{node.forks[forki].state}}
+                        span.minibox[ng-class="node.forks[forki].state"] {{node.forks[forki].state}}
                 tr
                     td Permute
-                    td(colspan="5")
+                    td[colspan="5"]
                         table
-                            tr(ng-repeat="(key, value) in node.forks[forki].argPermute")
+                            tr[ng-repeat="(key, value) in node.forks[forki].argPermute"]
                                 td {{key}}
                                 td &nbsp;=&nbsp;
                                 td {{value}}
                 tr
                     td Metadata
-                    td(colspan="5")
-                        span(ng-repeat="name in node.forks[forki].metadata.names") &nbsp;
-                            a(ng-click="selectMetadata('fork', name, node.forks[forki].metadata.path)") {{name}}
+                    td[colspan="5"]
+                        span[ng-repeat="name in node.forks[forki].metadata.names"] &nbsp;
+                            a[ng-click="selectMetadata('fork', name, node.forks[forki].metadata.path)"] {{name}}
                             | &nbsp;
-                        pre#metadata(ng-show="mdviews['fork'].length")
-                            button.close(type="button" ng-click="mdviews['fork']=''") &times;
+                        pre#metadata[ng-show="mdviews['fork'].length"]
+                            button.close[type="button"][ng-click="mdviews['fork']=''"] &times;
                             | {{mdviews.fork}}
 
                 tr
                     td Split 
-                    td(colspan="5")
-                        span(ng-repeat="name in node.forks[forki].split_metadata.names") &nbsp;
-                            a(ng-click="selectMetadata('split', name, node.forks[forki].split_metadata.path)") {{name}}
+                    td[colspan="5"]
+                        span[ng-repeat="name in node.forks[forki].split_metadata.names"] &nbsp;
+                            a[ng-click="selectMetadata('split', name, node.forks[forki].split_metadata.path)"] {{name}}
                             | &nbsp;
-                        pre#metadata(ng-show="mdviews.split.length")
-                            button.close(type="button" ng-click="mdviews.split=''") &times;
+                        pre#metadata[ng-show="mdviews.split.length"]
+                            button.close[type="button"][ng-click="mdviews.split=''"] &times;
                             | {{mdviews.split}}
 
                 tr
                     td Join 
-                    td(colspan="5")
-                        span(ng-repeat="name in node.forks[forki].join_metadata.names") &nbsp;
-                            a(ng-click="selectMetadata('join', name, node.forks[forki].join_metadata.path)") {{name}}
+                    td[colspan="5"]
+                        span[ng-repeat="name in node.forks[forki].join_metadata.names"] &nbsp;
+                            a[ng-click="selectMetadata('join', name, node.forks[forki].join_metadata.path)"] {{name}}
                             | &nbsp;
-                        pre#metadata(ng-show="mdviews.join.length")
-                            button.close(type="button" ng-click="mdviews.join=''") &times;
+                        pre#metadata[ng-show="mdviews.join.length"]
+                            button.close[type="button"][ng-click="mdviews.join=''"] &times;
                             | {{mdviews.join}}
 
-                tr(ng-repeat-start="(bindtype, bindings) in node.forks[forki].bindings").active
-                    th(colspan="4") {{bindtype}} Bindings
+                tr[ng-repeat-start="(bindtype, bindings) in node.forks[forki].bindings"].active
+                    th[colspan="4"] {{bindtype}} Bindings
                     th Source
                     th Value
-                tr(ng-repeat="bnd in bindings")
-                    td.tight(style="text-align: right")
+                tr[ng-repeat="bnd in bindings"]
+                    td.tight[style="text-align: right"]
                         i {{bnd.type}}
                     td.tight {{bnd.id}}
                     td.tight =
                     td.tight
-                        span(ng-if="bnd.valexp") {{bnd.valexp}}
-                        span(ng-if="!bnd.valexp") {{bnd.value}}
+                        span[ng-if="bnd.valexp"] {{bnd.valexp}}
+                        span[ng-if="!bnd.valexp"] {{bnd.value}}
                     td
-                        span(ng-class="[bnd.mode=='reference'?'minibox':'',nodes[bnd.node].state]") {{bnd.node}}
-                            span(ng-if="bnd.mode=='reference'") {{bnd.matchedFork}}
+                        span[ng-class="[bnd.mode=='reference'?'minibox':'',nodes[bnd.node].state]"] {{bnd.node}}
+                            span[ng-if="bnd.mode=='reference'"] {{bnd.matchedFork}}
                     td
-                        span(ng-if="bnd.waiting") 
+                        span[ng-if="bnd.waiting"] 
                             i.pending waiting
-                        span(ng-if="!bnd.waiting && bnd.value==null") null
-                        button.btn.btn-default.btn-xs(ng-if="bnd.value!=null" type="button" clip-copy="copyToClipboard()" style="vertical-align: top")
+                        span[ng-if="!bnd.waiting && bnd.value==null"] null
+                        button.btn.btn-default.btn-xs[ng-if="bnd.value!=null"][type="button"][clip-copy="copyToClipboard()"][style="vertical-align: top"]
                             span.glyphicon.glyphicon-paperclip
-                        span.copyable(ng-if="bnd.value!=null") {{bnd.value}}
-                tr(ng-repeat-end)
+                        span.copyable[ng-if="bnd.value!=null"] {{bnd.value}}
+                tr[ng-repeat-end]
                 
             h5 Chunking
             table.table 
                 tr
-                    td(style="width: 85px") Chunks
+                    td[style="width: 85px"] Chunks
                     td
                         .btn-group
-                            button.btn.btn-default(ng-class="chunk.state" type="button" ng-model="$parent.chunki" ng-repeat="chunk in node.forks[forki].chunks" btn-radio="chunk.index") {{chunk.index}}
+                            button.btn.btn-default[ng-class="chunk.state"][type="button"][ng-model="$parent.chunki"][ng-repeat="chunk in node.forks[forki].chunks"][btn-radio="chunk.index"] {{chunk.index}}
                 tr
-                    td(style="width: 85px") State
+                    td[style="width: 85px"] State
                     td 
-                        span.minibox(ng-class="node.forks[forki].chunks[chunki].state") {{node.forks[forki].chunks[chunki].state}}
+                        span.minibox[ng-class="node.forks[forki].chunks[chunki].state"] {{node.forks[forki].chunks[chunki].state}}
                 tr
                     td Chunk Def
                     td
                         table
-                            tr(ng-repeat="(key, value) in node.forks[forki].chunks[chunki].chunkDef")
+                            tr[ng-repeat="(key, value) in node.forks[forki].chunks[chunki].chunkDef"]
                                 td {{key}}
                                 td &nbsp;=&nbsp;
                                 td 
-                                    button.btn.btn-default.btn-xs(type="button" clip-copy="copyToClipboard()")
+                                    button.btn.btn-default.btn-xs[type="button"][clip-copy="copyToClipboard()"]
                                         span.glyphicon.glyphicon-paperclip
                                     span.copyable {{value}}
                 tr
                     td Metadata
-                    td(colspan="5")
-                        span(ng-repeat="name in node.forks[forki].chunks[chunki].metadata.names") &nbsp; 
-                            a(ng-click="selectMetadata('chunk', name, node.forks[forki].chunks[chunki].metadata.path)") {{name}}
+                    td[colspan="5"]
+                        span[ng-repeat="name in node.forks[forki].chunks[chunki].metadata.names"] &nbsp; 
+                            a[ng-click="selectMetadata('chunk', name, node.forks[forki].chunks[chunki].metadata.path)"] {{name}}
                             | &nbsp;
-                        pre#metadata(ng-show="mdviews.chunk.length")
-                            button.close(type="button" ng-click="mdviews.chunk=''") &times;
+                        pre#metadata[ng-show="mdviews.chunk.length"]
+                            button.close[type="button"][ng-click="mdviews.chunk=''"] &times;
                             | {{mdviews.chunk}}
 
     script
-    script(src="graph.js")
+        container = '#{Container}';
+        pname = '#{Pname}';
+        psid = '#{Psid}';
+        admin = '#{Admin}';
+    script[src="graph.js"]

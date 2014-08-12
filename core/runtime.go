@@ -668,7 +668,11 @@ func execLocalJob(shellName string, shellCmd string, stagecodePath string,
 	if err != nil {
 		fmt.Println(err.Error())
 	}
-	metadata.write("jobinfo", map[string]interface{}{"type": "local", "childid": c.Process.Pid})
+	pid := 0
+	if c.Process != nil {
+		pid = c.Process.Pid
+	}
+	metadata.write("jobinfo", map[string]interface{}{"type": "local", "childid": pid})
 }
 
 func (self *Node) RunJob(shellName string, fqname string, metadata *Metadata,
@@ -812,25 +816,6 @@ func NewRuntime(jobMode string, pipelinesPath string) *Runtime {
 	return self
 }
 
-func (self *Runtime) Instantiate(psid string, src string, pipestancePath string) (*Pipestance, error) {
-	global, err := ParseCall(src)
-	if err != nil {
-		return nil, err
-	}
-	callStm := global.call
-
-	ptree, ok := self.ptreeTable[callStm.Id()]
-	if !ok {
-		return nil, &MarioError{fmt.Sprintf("PipelineNotFoundError: '%s'", callStm.Id())}
-	}
-	pipeline := ptree.callables.table[callStm.Id()].(*Pipeline)
-	if err := callStm.bindings.check(global, pipeline, pipeline.InParams()); err != nil {
-		return nil, err
-	}
-	pipestance := NewPipestance(NewTopNode(self, psid, pipestancePath), global.call, ptree.callables)
-	return pipestance, nil
-}
-
 func (self *Runtime) Compile(fname string) (*Ast, error) {
 	processedSrc, ptree, err := ParseFile(path.Join(self.mroPath, fname))
 	if err != nil {
@@ -857,10 +842,29 @@ func (self *Runtime) CompileAll() (int, error) {
 	return len(paths), nil
 }
 
-func (self *Runtime) InvokeWithSource(psid string, src string, pipestancePath string) (*Pipestance, error) {
-	pipestance, err := self.Instantiate(psid, src, pipestancePath)
+func (self *Runtime) Instantiate(psid string, src string, pipestancePath string) (*Pipestance, string, error) {
+	global, err := ParseCall(src)
 	if err != nil {
-		return nil, err
+		return nil, "", err
+	}
+	callStm := global.call
+
+	ptree, ok := self.ptreeTable[callStm.Id()]
+	if !ok {
+		return nil, "", &MarioError{fmt.Sprintf("PipelineNotFoundError: '%s'", callStm.Id())}
+	}
+	pipeline := ptree.callables.table[callStm.Id()].(*Pipeline)
+	if err := callStm.bindings.check(global, pipeline, pipeline.InParams()); err != nil {
+		return nil, "", err
+	}
+	pipestance := NewPipestance(NewTopNode(self, psid, pipestancePath), global.call, ptree.callables)
+	return pipestance, pipeline.Id(), nil
+}
+
+func (self *Runtime) InvokeWithSource(psid string, src string, pipestancePath string) (*Pipestance, string, error) {
+	pipestance, pname, err := self.Instantiate(psid, src, pipestancePath)
+	if err != nil {
+		return nil, "", err
 	}
 
 	metadata := NewMetadata(pipestancePath)
@@ -872,5 +876,5 @@ func (self *Runtime) InvokeWithSource(psid string, src string, pipestancePath st
 	var wg sync.WaitGroup
 	pipestance.Node().mkdirs(&wg)
 	wg.Wait()
-	return pipestance, nil
+	return pipestance, pname, nil
 }

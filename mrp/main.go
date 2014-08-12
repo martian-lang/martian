@@ -21,7 +21,12 @@ import (
 	"time"
 )
 
-type Graph struct{}
+type Graph struct {
+	Container string
+	Pname     string
+	Psid      string
+	Admin     bool
+}
 
 func handler(w http.ResponseWriter, r *http.Request) {
 	fmt.Fprintf(w, "Hi there, I love %s!", r.URL.Path[1:])
@@ -72,7 +77,7 @@ func main() {
 	os.MkdirAll(PIPESTANCE_PATH, 0700)
 
 	// Invoke pipestance.
-	pipestance, err := rt.InvokeWithSource(psid, string(callSrc), PIPESTANCE_PATH)
+	pipestance, pname, err := rt.InvokeWithSource(psid, string(callSrc), PIPESTANCE_PATH)
 	if err != nil {
 		fmt.Println(err.Error())
 		os.Exit(1)
@@ -124,7 +129,12 @@ func main() {
 			fmt.Println(err.Error())
 			os.Exit(1)
 		}
-		err = t.Execute(&doc, &Graph{})
+		err = t.Execute(&doc, &Graph{
+			Container: "runner",
+			Pname:     pname,
+			Psid:      psid,
+			Admin:     true,
+		})
 		if err != nil {
 			fmt.Println(err.Error())
 			os.Exit(1)
@@ -132,7 +142,7 @@ func main() {
 		s := doc.String()
 		return s
 	})
+	m.Use(martini.Static("../web/res"))
+	m.Use(martini.Static("../web/client"))
 	m.Run()
-	//http.HandleFunc("/", handler)
-	//http.ListenAndServe(":8080", nil)
 }
