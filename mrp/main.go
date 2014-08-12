@@ -128,10 +128,6 @@ func main() {
 	}
 	app.Get("/", func() string {
 		tmpl, err := template.New("graph.html").Delims("[[", "]]").ParseFiles("../web/templates/graph.html")
-		if err != nil {
-			fmt.Println(err.Error())
-			os.Exit(1)
-		}
 		var doc bytes.Buffer
 		err = tmpl.Execute(&doc, &Graph{
 			Container: "runner",
@@ -139,10 +135,6 @@ func main() {
 			Psid:      psid,
 			Admin:     true,
 		})
-		if err != nil {
-			fmt.Println(err.Error())
-			os.Exit(1)
-		}
 		return doc.String()
 	})
 
@@ -159,21 +151,25 @@ func main() {
 
 	// Get metadata contents
 	type MetadataForm struct {
-		Path string `form:"path" binding:"required"`
-		Name string `form:"name" binding:"required"`
+		Path string
+		Name string
 	}
 	app.Post("/api/get-metadata/:container/:pname/:psid", binding.Bind(MetadataForm{}), func(body MetadataForm, params martini.Params) string {
-		// TODO sanitize input, check for '..'
+		if strings.Index(body.Path, "..") > -1 {
+			return "'..' not allowed in path."
+		}
 		data, err := ioutil.ReadFile(path.Join(body.Path, "_"+body.Name))
 		if err != nil {
-			fmt.Println(err.Error())
+			return err.Error()
 		}
 		return string(data)
 	})
 
 	// Restart failed stage
 	app.Post("/api/restart/:container/:pname/:psid/:fqname", func(params martini.Params) string {
-		// TODO sanitize input, check for '..'
+		if strings.Index(body.Path, "..") > -1 {
+			return "'..' not allowed in path."
+		}
 		node := pipestance.Node().Find(params["fqname"])
 		done := make(chan bool)
 		count := node.RestartFailedMetadatas(done)
