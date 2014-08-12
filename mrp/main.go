@@ -11,6 +11,7 @@ import (
 	"fmt"
 	"github.com/docopt/docopt-go"
 	"github.com/go-martini/martini"
+	"github.com/martini-contrib/binding"
 	"html/template"
 	"io/ioutil"
 	"margo/core"
@@ -129,6 +130,8 @@ func main() {
 	m.Action(r.Handle)
 	ma := &martini.ClassicMartini{m, r}
 
+	// API: Pipestance Browser
+	// Pages
 	ma.Get("/", func() string {
 		tmpl, err := template.New("graph.html").Delims("[[", "]]").ParseFiles("../web/templates/graph.html")
 		if err != nil {
@@ -148,14 +151,31 @@ func main() {
 		}
 		return doc.String()
 	})
+
+	// APIs
+	// Get graph nodes
 	ma.Get("/api/get-nodes/:container/:pname/:psid", func(params martini.Params) string {
-		//fmt.Println(params)
 		data := []interface{}{}
 		for _, node := range pipestance.Node().AllNodes() {
 			data = append(data, node.Serialize())
 		}
 		bytes, _ := json.Marshal(data)
 		return string(bytes)
+	})
+
+	type MetadataForm struct {
+		Path string `form:"path" binding:"required"`
+		Name string `form:"name" binding:"required"`
+	}
+
+	// Get metadata contents
+	ma.Post("/api/get-metadata/:container/:pname/:psid", binding.Bind(MetadataForm{}), func(body MetadataForm, params martini.Params) string {
+		// TODO sanitize input, check for '..'
+		data, err := ioutil.ReadFile(path.Join(body.Path, "_"+body.Name))
+		if err != nil {
+			fmt.Println(err.Error())
+		}
+		return string(data)
 	})
 	ma.Run()
 }

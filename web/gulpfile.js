@@ -16,7 +16,7 @@ gulp.task('coffee', function() {
 
 gulp.task('pages', function() {
     return gulp.src(paths.pages)
-        .pipe(jade({pretty:true}))
+        .pipe(jade())
         .pipe(gulp.dest('templates'));
 });
 
