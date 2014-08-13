@@ -19,6 +19,7 @@ import (
 	"path"
 	"path/filepath"
 	"runtime"
+	"strings"
 	"time"
 )
 
@@ -63,14 +64,17 @@ func main() {
 	cwd, _ := filepath.Abs(path.Dir(os.Args[0]))
 	PIPESTANCE_PATH := path.Join(cwd, psid)
 	callSrc, _ := ioutil.ReadFile(INVOCATION_PATH)
-	os.MkdirAll(PIPESTANCE_PATH, 0700)
 	STEP_SECS := 3
 
 	// Invoke pipestance.
 	pipestance, pname, err := rt.InvokeWithSource(psid, string(callSrc), PIPESTANCE_PATH)
 	if err != nil {
-		fmt.Println(err.Error())
-		os.Exit(1)
+		// If it already eixsts, try to reattach to it.
+		pipestance, pname, err = rt.Reattach(psid, PIPESTANCE_PATH)
+		if err != nil {
+			fmt.Println(err.Error())
+			os.Exit(1)
+		}
 	}
 
 	// Start the runner loop.
@@ -127,7 +131,7 @@ func main() {
 		Admin     bool
 	}
 	app.Get("/", func() string {
-		tmpl, err := template.New("graph.html").Delims("[[", "]]").ParseFiles("../web/templates/graph.html")
+		tmpl, _ := template.New("graph.html").Delims("[[", "]]").ParseFiles("../web/templates/graph.html")
 		var doc bytes.Buffer
 		err = tmpl.Execute(&doc, &Graph{
 			Container: "runner",
@@ -167,9 +171,6 @@ func main() {
 
 	// Restart failed stage
 	app.Post("/api/restart/:container/:pname/:psid/:fqname", func(params martini.Params) string {
-		if strings.Index(body.Path, "..") > -1 {
-			return "'..' not allowed in path."
-		}
 		node := pipestance.Node().Find(params["fqname"])
 		done := make(chan bool)
 		count := node.RestartFailedMetadatas(done)

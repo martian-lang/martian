@@ -13,8 +13,12 @@ import (
 func mkdir(p string) {
 	err := os.Mkdir(p, 0700)
 	if err != nil {
-		//fmt.Println(err)
+		panic(err.Error())
 	}
+}
+
+func idemMkdir(p string) {
+	os.Mkdir(p, 0700)
 }
 
 func cartesianProduct(valueSets []interface{}) []interface{} {

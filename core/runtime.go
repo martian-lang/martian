@@ -43,6 +43,11 @@ func (self *Metadata) mkdirs() {
 	mkdir(self.filesPath)
 }
 
+func (self *Metadata) idemMkdirs() {
+	idemMkdir(self.path)
+	idemMkdir(self.filesPath)
+}
+
 func (self *Metadata) getState(name string) (string, bool) {
 	if self.exists("errors") {
 		return "failed", true
@@ -305,7 +310,9 @@ func NewChunk(nodable Nodable, fork *Fork, index int, chunkDef map[string]interf
 	return self
 }
 
-func (self *Chunk) mkdirs() { self.metadata.mkdirs() }
+func (self *Chunk) mkdirs() {
+	self.metadata.idemMkdirs()
+}
 
 func (self *Chunk) getState() string {
 	if state, ok := self.metadata.getState(""); ok {
@@ -930,6 +937,7 @@ func NewRuntime(jobMode string, pipelinesPath string) *Runtime {
 	return self
 }
 
+// Compile an MRO file in self.mroPath named fname.mro.
 func (self *Runtime) Compile(fname string) (*Ast, error) {
 	processedSrc, ptree, err := ParseFile(path.Join(self.mroPath, fname))
 	if err != nil {
@@ -942,6 +950,7 @@ func (self *Runtime) Compile(fname string) (*Ast, error) {
 	return ptree, nil
 }
 
+// Compile all the MRO files in self.mroPath.
 func (self *Runtime) CompileAll() (int, error) {
 	paths, err := filepath.Glob(self.mroPath + "/[^_]*.mro")
 	if err != nil {
@@ -956,7 +965,10 @@ func (self *Runtime) CompileAll() (int, error) {
 	return len(paths), nil
 }
 
-func (self *Runtime) Instantiate(psid string, src string, pipestancePath string) (*Pipestance, string, error) {
+// Instantiate a pipestance object given a psid, MRO source, and a
+// pipestance path. This is the core (private) method called by the
+// public InvokeWithSource and Reattach methods.
+func (self *Runtime) instantiate(psid string, src string, pipestancePath string) (*Pipestance, string, error) {
 	global, err := ParseCall(src)
 	if err != nil {
 		return nil, "", err
@@ -975,20 +987,50 @@ func (self *Runtime) Instantiate(psid string, src string, pipestancePath string)
 	return pipestance, pipeline.Id(), nil
 }
 
+// Invokes a new pipestance.
 func (self *Runtime) InvokeWithSource(psid string, src string, pipestancePath string) (*Pipestance, string, error) {
-	pipestance, pname, err := self.Instantiate(psid, src, pipestancePath)
+	// Check if pipestance path already exists.
+	if _, err := os.Stat(pipestancePath); err == nil {
+		return nil, "", &MarioError{fmt.Sprintf("PipestanceExistsError: '%s'", psid)}
+	}
+
+	// Create the pipestance path.
+	err := os.MkdirAll(pipestancePath, 0700)
 	if err != nil {
 		return nil, "", err
 	}
 
+	// Instantiate the pipestance.
+	pipestance, pname, err := self.instantiate(psid, src, pipestancePath)
+	if err != nil {
+		return nil, "", err
+	}
+
+	// Write top-level metadata files.
 	metadata := NewMetadata(pipestancePath)
 	metadata.writeRaw("invocation", src)
 	metadata.writeRaw("mrosource", self.srcTable[pipestance.Node().name])
 	metadata.writeRaw("codeversion", self.codeVersion)
 	metadata.writeTime("timestamp")
 
+	// Create pipestance folder graph concurrently.
 	var wg sync.WaitGroup
 	pipestance.Node().mkdirs(&wg)
 	wg.Wait()
+
 	return pipestance, pname, nil
+}
+
+// Reattaches to an existing pipestance.
+func (self *Runtime) Reattach(psid string, pipestancePath string) (*Pipestance, string, error) {
+	// TODO check here if _codeversion matches with self.codeVersion
+
+	// Read in the existing _invocation file.
+	bytes, err := ioutil.ReadFile(path.Join(pipestancePath, "_invocation"))
+	if err != nil {
+		return nil, "", err
+	}
+
+	// Instantiate the pipestance.
+	return self.instantiate(psid, string(bytes), pipestancePath)
 }
