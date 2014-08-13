@@ -537,6 +537,7 @@ type Node struct {
 	forks         []*Fork
 	split         bool
 	state         string
+	stagecodeLang string
 	stagecodePath string
 }
 
@@ -772,6 +773,8 @@ func (self *Node) Serialize() interface{} {
 		"sweepbindings": sweepbindings,
 		"forks":         forks,
 		"edges":         edges,
+		"stagecodeLang": self.stagecodeLang,
+		"stagecodePath": self.stagecodePath,
 	}
 }
 
@@ -821,6 +824,7 @@ func NewStagestance(parent Nodable, callStm *CallStm, callables *Callables) *Sta
 	self.node = NewNode(parent, "stage", callStm, callables)
 	stage := callables.table[self.node.name].(*Stage)
 	self.node.stagecodePath = path.Join(self.node.rt.stagecodePath, stage.src.path)
+	self.node.stagecodeLang = "Python"
 	self.node.split = len(stage.splitParams.list) > 0
 	self.node.buildForks(self.node.argbindings)
 	return self
