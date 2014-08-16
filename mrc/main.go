@@ -1,7 +1,7 @@
 //
 // Copyright (c) 2014 10X Technologies, Inc. All rights reserved.
 //
-// Margo
+// Mario command-line compiler. Primarily used for unit testing.
 //
 package main
 
@@ -9,7 +9,6 @@ import (
 	"fmt"
 	"github.com/docopt/docopt-go"
 	"margo/core"
-	"os"
 )
 
 func main() {
@@ -25,23 +24,20 @@ func main() {
 		{"MARIO_PIPELINES_PATH", "path/to/pipelines"},
 	})
 
-	// Compile MRO files.
+	// Setup runtime with pipelines path.
 	rt := core.NewRuntime("local", env["MARIO_PIPELINES_PATH"])
+
 	count := 0
 	if opts["--all"].(bool) {
+		// Compile all MRO files in pipelines path.
 		num, err := rt.CompileAll()
-		if err != nil {
-			fmt.Println(err.Error())
-			os.Exit(1)
-		}
+		core.DieIf(err)
 		count += num
 	} else {
+		// Compile just the specified MRO files in pipeliens path.
 		for _, name := range opts["<mro_name>"].([]string) {
 			_, err := rt.Compile(name + ".mro")
-			if err != nil {
-				fmt.Println(err.Error())
-				os.Exit(1)
-			}
+			core.DieIf(err)
 			count += 1
 		}
 	}

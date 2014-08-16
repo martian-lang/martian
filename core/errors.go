@@ -7,17 +7,18 @@ package core
 
 import (
 	"fmt"
+	"os"
 )
 
 //
 // Mario Errors
 //
 type MarioError struct {
-	msg string
+	Msg string
 }
 
 func (self *MarioError) Error() string {
-	return self.msg
+	return self.Msg
 }
 
 type AstError struct {
@@ -41,4 +42,11 @@ type ParseError struct {
 
 func (self *ParseError) Error() string {
 	return fmt.Sprintf("MRO ParseError: unexpected token '%s' at %s:%d.", self.token, self.fname, self.loc)
+}
+
+func DieIf(err error) {
+	if err != nil {
+		fmt.Println(err.Error())
+		os.Exit(1)
+	}
 }

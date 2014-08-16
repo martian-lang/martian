@@ -1,7 +1,7 @@
 //
 // Copyright (c) 2014 10X Technologies, Inc. All rights reserved.
 //
-// Margo
+// Mario pipeline runner.
 //
 package main
 
@@ -53,10 +53,7 @@ func main() {
 	// Compile MRO files.
 	rt := core.NewRuntime(JOBMODE, env["MARIO_PIPELINES_PATH"])
 	_, err := rt.CompileAll()
-	if err != nil {
-		fmt.Println(err.Error())
-		os.Exit(1)
-	}
+	core.DieIf(err)
 
 	// psid, invocation file, and pipestance.
 	psid := opts["<unique_pipestance_id>"].(string)
@@ -69,12 +66,9 @@ func main() {
 	// Invoke pipestance.
 	pipestance, pname, err := rt.InvokeWithSource(psid, string(callSrc), PIPESTANCE_PATH)
 	if err != nil {
-		// If it already eixsts, try to reattach to it.
+		// If it already exists, try to reattach to it.
 		pipestance, pname, err = rt.Reattach(psid, PIPESTANCE_PATH)
-		if err != nil {
-			fmt.Println(err.Error())
-			os.Exit(1)
-		}
+		core.DieIf(err)
 	}
 
 	// Start the runner loop.
@@ -122,7 +116,6 @@ func main() {
 	m.Action(r.Handle)
 	app := &martini.ClassicMartini{m, r}
 
-	// API: Pipestance Browser
 	// Pages
 	type Graph struct {
 		Container string
@@ -143,7 +136,7 @@ func main() {
 	})
 
 	// APIs
-	// Get graph nodes
+	// Get graph nodes.
 	app.Get("/api/get-nodes/:container/:pname/:psid", func(params martini.Params) string {
 		data := []interface{}{}
 		for _, node := range pipestance.Node().AllNodes() {
@@ -153,7 +146,7 @@ func main() {
 		return string(bytes)
 	})
 
-	// Get metadata contents
+	// Get metadata contents.
 	type MetadataForm struct {
 		Path string
 		Name string
@@ -169,7 +162,7 @@ func main() {
 		return string(data)
 	})
 
-	// Restart failed stage
+	// Restart failed stage.
 	app.Post("/api/restart/:container/:pname/:psid/:fqname", func(params martini.Params) string {
 		node := pipestance.Node().Find(params["fqname"])
 		done := make(chan bool)

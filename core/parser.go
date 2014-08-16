@@ -70,6 +70,10 @@ func (exp *ValExp) ResolveType(global *Ast, pipeline *Pipeline) (string, error) 
 }
 
 func (exp *RefExp) ResolveType(global *Ast, pipeline *Pipeline) (string, error) {
+	if pipeline == nil {
+		global.err(exp, "ReferenceError: this binding cannot be resolved outside of a pipeline.")
+	}
+
 	switch exp.Kind() {
 
 	// Param: self.myparam
@@ -244,7 +248,7 @@ func (global *Ast) check() error {
 //
 // Package Exports
 //
-func ParseString(src string, locmap []FileLoc) (*Ast, error) {
+func parseString(src string, locmap []FileLoc) (*Ast, error) {
 	global, err := yaccParse(src)
 	if err != nil { // err is an mmLexInfo struct
 		return nil, &ParseError{err.token, locmap[err.loc].fname, locmap[err.loc].loc}
@@ -257,18 +261,18 @@ func ParseString(src string, locmap []FileLoc) (*Ast, error) {
 	return global, nil
 }
 
-func ParseFile(filename string) (string, *Ast, error) {
+func parseFile(filename string) (string, *Ast, error) {
 	data, err := ioutil.ReadFile(filename)
 	if err != nil {
 		return "", nil, err
 	}
 	postsrc, locmap := preprocess(string(data), filename)
 	//printSourceMap(postsrc, locmap)
-	global, err := ParseString(postsrc, locmap)
+	global, err := parseString(postsrc, locmap)
 	return postsrc, global, err
 }
 
-func ParseCall(src string) (*Ast, error) {
+func parseCall(src string) (*Ast, error) {
 	global, err := yaccParse(src)
 	if err != nil {
 		return nil, &ParseError{err.token, "[invocation]", err.loc}

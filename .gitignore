@@ -1,6 +1,6 @@
-y.output
-margo
 *.pyc
 node_modules
 mrc/mrc
 mrp/mrp
+mrs/mrs
+marsoc/marsoc

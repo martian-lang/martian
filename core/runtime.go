@@ -592,7 +592,7 @@ func (self *Node) mkdirs(wg *sync.WaitGroup) {
 }
 
 // State and dataflow management (synchronous)
-func (self *Node) getState() string {
+func (self *Node) GetState() string {
 	// If every fork is complete, we're complete.
 	complete := true
 	for _, fork := range self.forks {
@@ -612,7 +612,7 @@ func (self *Node) getState() string {
 	}
 	// If any prenode is not complete, we're waiting.
 	for _, prenode := range self.prenodes {
-		if prenode.Node().getState() != "complete" {
+		if prenode.Node().GetState() != "complete" {
 			return "waiting"
 		}
 	}
@@ -701,7 +701,7 @@ func (self *Node) RefreshMetadata(done chan bool) int {
 		for i := 0; i < len(metadatas); i++ {
 			<-sdone
 		}
-		self.state = self.getState()
+		self.state = self.GetState()
 		done <- true
 	}()
 	return 1
@@ -920,7 +920,7 @@ type Runtime struct {
 	stagecodePath string
 	libPath       string
 	adaptersPath  string
-	ptreeTable    map[string]*Ast
+	globalTable   map[string]*Ast
 	srcTable      map[string]string
 	typeTable     map[string]string
 	codeVersion   string
@@ -934,7 +934,7 @@ func NewRuntime(jobMode string, pipelinesPath string) *Runtime {
 	self.stagecodePath = path.Join(pipelinesPath, "stages")
 	self.libPath = path.Join(pipelinesPath, "lib")
 	self.adaptersPath = path.Join(cwd, "..", "adapters")
-	self.ptreeTable = map[string]*Ast{}
+	self.globalTable = map[string]*Ast{}
 	self.srcTable = map[string]string{}
 	self.typeTable = map[string]string{}
 	self.codeVersion = "" // TODO
@@ -943,15 +943,15 @@ func NewRuntime(jobMode string, pipelinesPath string) *Runtime {
 
 // Compile an MRO file in self.mroPath named fname.mro.
 func (self *Runtime) Compile(fname string) (*Ast, error) {
-	processedSrc, ptree, err := ParseFile(path.Join(self.mroPath, fname))
+	processedSrc, global, err := parseFile(path.Join(self.mroPath, fname))
 	if err != nil {
 		return nil, err
 	}
-	for _, pipeline := range ptree.pipelines {
-		self.ptreeTable[pipeline.Id()] = ptree
+	for _, pipeline := range global.pipelines {
+		self.globalTable[pipeline.Id()] = global
 		self.srcTable[pipeline.Id()] = processedSrc
 	}
-	return ptree, nil
+	return global, nil
 }
 
 // Compile all the MRO files in self.mroPath.
@@ -973,22 +973,56 @@ func (self *Runtime) CompileAll() (int, error) {
 // pipestance path. This is the core (private) method called by the
 // public InvokeWithSource and Reattach methods.
 func (self *Runtime) instantiate(psid string, src string, pipestancePath string) (*Pipestance, string, error) {
-	global, err := ParseCall(src)
+	// Parse the invocation call.
+	callGlobal, err := parseCall(src)
 	if err != nil {
 		return nil, "", err
 	}
-	callStm := global.call
+	callStm := callGlobal.call
 
-	ptree, ok := self.ptreeTable[callStm.Id()]
+	// Get the global scope that defines the called pipeline.
+	global, ok := self.globalTable[callStm.Id()]
 	if !ok {
 		return nil, "", &MarioError{fmt.Sprintf("PipelineNotFoundError: '%s'", callStm.Id())}
 	}
-	pipeline := ptree.callables.table[callStm.Id()].(*Pipeline)
+
+	// Get the actual pipeline definition and check call bindings.
+	pipeline := global.callables.table[callStm.Id()].(*Pipeline)
 	if err := callStm.bindings.check(global, pipeline, pipeline.InParams()); err != nil {
 		return nil, "", err
 	}
-	pipestance := NewPipestance(NewTopNode(self, psid, pipestancePath), global.call, ptree.callables)
+
+	// Instantiate the pipeline.
+	pipestance := NewPipestance(NewTopNode(self, psid, pipestancePath), callStm, global.callables)
 	return pipestance, pipeline.Id(), nil
+}
+
+// Instantiate a stagestance.
+func (self *Runtime) InstantiateStage(src string, stagestancePath string) (*Stagestance, error) {
+	// Parse the invocation call.
+	callGlobal, err := parseCall(src)
+	if err != nil {
+		return nil, err
+	}
+	callStm := callGlobal.call
+
+	// Search through all globals for the named stage.
+	for _, global := range self.globalTable {
+		if stage, ok := global.callables.table[callStm.Id()]; ok {
+			err := callStm.bindings.check(global, nil, stage.InParams())
+			DieIf(err)
+
+			stagestance := NewStagestance(NewTopNode(self, "", stagestancePath), callStm, global.callables)
+
+			// Create stagestance folder graph concurrently.
+			var wg sync.WaitGroup
+			stagestance.Node().mkdirs(&wg)
+			wg.Wait()
+
+			return stagestance, nil
+		}
+	}
+	return nil, &MarioError{fmt.Sprintf("StageNotFoundError: '%s'", callStm.Id())}
 }
 
 // Invokes a new pipestance.
@@ -999,8 +1033,7 @@ func (self *Runtime) InvokeWithSource(psid string, src string, pipestancePath st
 	}
 
 	// Create the pipestance path.
-	err := os.MkdirAll(pipestancePath, 0700)
-	if err != nil {
+	if err := os.MkdirAll(pipestancePath, 0700); err != nil {
 		return nil, "", err
 	}
 
