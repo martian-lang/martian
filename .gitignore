@@ -1,7 +1,6 @@
 *.pyc
 *.swp
 *.swo
-nice.json
 node_modules
 mrc/mrc
 mrp/mrp
