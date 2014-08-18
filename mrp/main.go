@@ -8,7 +8,6 @@ package main
 import (
 	"bytes"
 	"encoding/json"
-	"fmt"
 	"github.com/docopt/docopt-go"
 	"github.com/go-martini/martini"
 	"github.com/martini-contrib/binding"
@@ -92,9 +91,12 @@ func main() {
 
 			// Check for completion states.
 			if pipestance.GetOverallState() == "complete" {
+				core.LogInfo("RUNTIME", "Starting VDR kill...")
+				killReport := pipestance.VDRKill()
+				core.LogInfo("RUNTIME", "VDR killed %d files, %d bytes.", killReport.Count, killReport.Size)
 				// Give time for web ui client to get last update.
 				time.Sleep(time.Second * 10)
-				fmt.Println("[RUNTIME]", core.Timestamp(), "Pipestance is complete, exiting.")
+				core.LogInfo("RUNTIME", "Pipestance is complete, exiting.")
 				os.Exit(0)
 			}
 

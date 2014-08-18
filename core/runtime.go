@@ -39,6 +39,10 @@ func (self *Metadata) glob() []string {
 	return paths
 }
 
+func (self *Metadata) enumerateFiles() ([]string, error) {
+	return filepath.Glob(path.Join(self.filesPath, "*"))
+}
+
 func (self *Metadata) mkdirs() {
 	mkdir(self.path)
 	mkdir(self.filesPath)
@@ -538,6 +542,7 @@ type Node struct {
 	forks         []*Fork
 	split         bool
 	state         string
+	volatile      bool
 	stagecodeLang string
 	stagecodePath string
 }
@@ -554,6 +559,7 @@ func NewNode(parent Nodable, kind string, callStm *CallStm, callables *Callables
 	self.fqname = parent.Node().fqname + "." + self.name
 	self.path = path.Join(parent.Node().path, self.name)
 	self.metadata = NewMetadata(self.path)
+	self.volatile = callStm.volatile
 
 	self.outparams = callables.table[self.name].OutParams()
 	self.argbindings = map[string]*Binding{}
@@ -949,6 +955,61 @@ func (self *Pipestance) Immortalize() {
 func (self *Pipestance) Unimmortalize() {
 	metadata := NewMetadata(self.Node().parent.Node().path)
 	metadata.remove("finalstate")
+}
+
+type VDRKillReport struct {
+	Count int      `json:"count"`
+	Size  int64    `json:"size"`
+	Paths []string `json:"paths"`
+}
+
+func (self *Pipestance) VDRKill() *VDRKillReport {
+	killPaths := []string{}
+
+	// Iterate over all nodes.
+	for _, node := range self.Node().AllNodes() {
+		// Iterate over all forks.
+		for _, fork := range node.forks {
+			// For volatile nodes, kill fork-level files.
+			if node.volatile {
+				if paths, err := fork.metadata.enumerateFiles(); err == nil {
+					killPaths = append(killPaths, paths...)
+				}
+				if paths, err := fork.split_metadata.enumerateFiles(); err == nil {
+					killPaths = append(killPaths, paths...)
+				}
+				if paths, err := fork.join_metadata.enumerateFiles(); err == nil {
+					killPaths = append(killPaths, paths...)
+				}
+			}
+			// For ALL nodes, if the node splits, kill chunk-level files.
+			// Must check for split here, otherwise we'll end up deleting
+			// output files of non-volatile nodes because single-chunk nodes
+			// get their output redirected to the one chunk's files path.
+			if node.split {
+				for _, chunk := range fork.chunks {
+					if paths, err := chunk.metadata.enumerateFiles(); err == nil {
+						killPaths = append(killPaths, paths...)
+					}
+				}
+			}
+		}
+	}
+
+	// Actually delete the paths.
+	killReport := VDRKillReport{}
+	for _, p := range killPaths {
+		filepath.Walk(p, func(_ string, info os.FileInfo, _ error) error {
+			killReport.Size += info.Size()
+			killReport.Count += 1
+			return nil
+		})
+		killReport.Paths = append(killReport.Paths, p)
+		os.RemoveAll(p)
+	}
+	metadata := NewMetadata(self.Node().parent.Node().path)
+	metadata.write("vdrkill", &killReport)
+	return &killReport
 }
 
 func (self *Pipestance) GetOuts(forki int) interface{} {
