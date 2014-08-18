@@ -958,9 +958,10 @@ func (self *Pipestance) Unimmortalize() {
 }
 
 type VDRKillReport struct {
-	Count int      `json:"count"`
-	Size  int64    `json:"size"`
-	Paths []string `json:"paths"`
+	Count  int      `json:"count"`
+	Size   int64    `json:"size"`
+	Paths  []string `json:"paths"`
+	Errors []string `json:"errors"`
 }
 
 func (self *Pipestance) VDRKill() *VDRKillReport {
@@ -999,9 +1000,13 @@ func (self *Pipestance) VDRKill() *VDRKillReport {
 	// Actually delete the paths.
 	killReport := VDRKillReport{}
 	for _, p := range killPaths {
-		filepath.Walk(p, func(_ string, info os.FileInfo, _ error) error {
-			killReport.Size += info.Size()
-			killReport.Count += 1
+		filepath.Walk(p, func(_ string, info os.FileInfo, err error) error {
+			if err == nil {
+				killReport.Size += info.Size()
+				killReport.Count += 1
+			} else {
+				killReport.Errors = append(killReport.Errors, err.Error())
+			}
 			return nil
 		})
 		killReport.Paths = append(killReport.Paths, p)
