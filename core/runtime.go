@@ -913,6 +913,10 @@ func (self *Pipestance) Unimmortalize() {
 	metadata.remove("finalstate")
 }
 
+func (self *Pipestance) GetOuts(forki int) interface{} {
+	return self.Node().forks[forki].metadata.read("outs")
+}
+
 //=============================================================================
 // TopNode
 //=============================================================================
