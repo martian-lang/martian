@@ -782,7 +782,7 @@ func (self *Node) Serialize() interface{} {
 //=============================================================================
 // Job Runners
 //=============================================================================
-func execLocalJob(shellName string, shellCmd string, stagecodePath string,
+func (self *Node) execLocalJob(shellName string, shellCmd string, stagecodePath string,
 	libPath string, fqname string, metadata *Metadata, threads interface{},
 	memGB interface{}) {
 	cmd := shellCmd
@@ -800,6 +800,38 @@ func execLocalJob(shellName string, shellCmd string, stagecodePath string,
 	metadata.write("jobinfo", map[string]interface{}{"type": "local", "childid": pid})
 }
 
+func (self *Node) execSGEJob(shellName string, shellCmd string, stagecodePath string,
+	libPath string, fqname string, metadata *Metadata, threads interface{},
+	memGB interface{}) {
+	qsub := []string{shellCmd, stagecodePath, libPath, metadata.path, metadata.filesPath, "profile"}
+	metadata.writeRaw("qsub", strings.Join(qsub, " "))
+
+	threadsArg := ""
+	if threads != nil {
+		threadsArg = fmt.Sprintf("-pe threads %v", threads)
+	}
+	memGBArg := ""
+	if memGB != nil {
+		memGBArg = fmt.Sprintf("-l h_vmem=%vG", memGB)
+	}
+
+	cmdline := []string{
+		"-N", strings.Join([]string{self.fqname, shellName}, "."),
+		"-V",
+		threadsArg,
+		memGBArg,
+		"-cwd",
+		"-o", metadata.makePath("stdout"),
+		"-e", metadata.makePath("stderr"),
+		metadata.makePath("qsub"),
+	}
+	metadata.write("jobinfo", map[string]string{"type": "sge"})
+
+	c := exec.Command("qsub", cmdline...)
+	err := c.Start()
+	_ = err
+}
+
 func (self *Node) RunJob(shellName string, fqname string, metadata *Metadata,
 	threads interface{}, memGB interface{}) {
 	//stagecodeLang = "Python"
@@ -808,7 +840,13 @@ func (self *Node) RunJob(shellName string, fqname string, metadata *Metadata,
 	fmt.Println("[RUNTIME]", Timestamp(), "(run-local)", fqname+"."+shellName)
 	metadata.write("jobinfo", map[string]interface{}{"type": nil, "childpid": nil})
 	shellCmd := path.Join(adaptersPath, shellName+".py")
-	execLocalJob(shellName, shellCmd, self.stagecodePath, libPath, fqname, metadata, threads, memGB)
+	if self.rt.jobMode == "local" {
+		self.execLocalJob(shellName, shellCmd, self.stagecodePath, libPath, fqname, metadata, threads, memGB)
+	} else if self.rt.jobMode == "sge" {
+		self.execSGEJob(shellName, shellCmd, self.stagecodePath, libPath, fqname, metadata, threads, memGB)
+	} else {
+		panic(fmt.Sprintf("Unknown jobMode: %s", self.rt.jobMode))
+	}
 }
 
 //=============================================================================
@@ -947,6 +985,7 @@ type Runtime struct {
 	srcTable      map[string]string
 	typeTable     map[string]string
 	CodeVersion   string
+	jobMode       string
 	/* TODO queue goes here */
 }
 
@@ -961,6 +1000,7 @@ func NewRuntime(jobMode string, pipelinesPath string) *Runtime {
 	self.srcTable = map[string]string{}
 	self.typeTable = map[string]string{}
 	self.CodeVersion = getGitTag(pipelinesPath)
+	self.jobMode = jobMode
 	return self
 }
 
