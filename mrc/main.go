@@ -17,12 +17,12 @@ func main() {
 		`Usage: 
     mrc <mro_name>... | --all
     mrc -h | --help | --version`
-	opts, _ := docopt.Parse(doc, nil, true, "mrp", false)
+	opts, _ := docopt.Parse(doc, nil, true, "mrc", false)
 
 	// Mario environment variables.
 	env := core.EnvRequire([][]string{
 		{"MARIO_PIPELINES_PATH", "path/to/pipelines"},
-	})
+	}, true)
 
 	// Setup runtime with pipelines path.
 	rt := core.NewRuntime("local", env["MARIO_PIPELINES_PATH"])

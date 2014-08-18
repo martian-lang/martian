@@ -15,6 +15,7 @@ import (
 	"html/template"
 	"io/ioutil"
 	"margo/core"
+	"net/http"
 	"os"
 	"path"
 	"path/filepath"
@@ -37,37 +38,38 @@ func main() {
 	env := core.EnvRequire([][]string{
 		{"MARIO_PORT", ">2000"},
 		{"MARIO_PIPELINES_PATH", "path/to/pipelines"},
-	})
+	}, true)
 
 	// Job mode and SGE environment variables.
-	JOBMODE := "local"
+	jobMode := "local"
 	if opts["--sge"].(bool) {
-		JOBMODE = "sge"
+		jobMode = "sge"
 		core.EnvRequire([][]string{
 			{"SGE_ROOT", "path/to/sge/root"},
 			{"SGE_CLUSTER_NAME", "SGE cluster name"},
 			{"SGE_CELL", "usually 'default'"},
-		})
+		}, true)
 	}
 
 	// Compile MRO files.
-	rt := core.NewRuntime(JOBMODE, env["MARIO_PIPELINES_PATH"])
+	rt := core.NewRuntime(jobMode, env["MARIO_PIPELINES_PATH"])
 	_, err := rt.CompileAll()
 	core.DieIf(err)
 
 	// psid, invocation file, and pipestance.
+	uiport := env["MARIO_PORT"]
 	psid := opts["<unique_pipestance_id>"].(string)
-	INVOCATION_PATH := opts["<invocation_mro>"].(string)
+	invocationPath := opts["<invocation_mro>"].(string)
 	cwd, _ := filepath.Abs(path.Dir(os.Args[0]))
-	PIPESTANCE_PATH := path.Join(cwd, psid)
-	callSrc, _ := ioutil.ReadFile(INVOCATION_PATH)
+	pipestancePath := path.Join(cwd, psid)
+	callSrc, _ := ioutil.ReadFile(invocationPath)
 	STEP_SECS := 3
 
 	// Invoke pipestance.
-	pipestance, pname, err := rt.InvokeWithSource(psid, string(callSrc), PIPESTANCE_PATH)
+	pipestance, pname, err := rt.InvokeWithSource(psid, string(callSrc), pipestancePath)
 	if err != nil {
 		// If it already exists, try to reattach to it.
-		pipestance, pname, err = rt.Reattach(psid, PIPESTANCE_PATH)
+		pipestance, pname, err = rt.Reattach(psid, pipestancePath)
 		core.DieIf(err)
 	}
 
@@ -173,5 +175,5 @@ func main() {
 		return ""
 	})
 
-	app.Run()
+	http.ListenAndServe(":"+uiport, app)
 }

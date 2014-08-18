@@ -25,12 +25,12 @@ func main() {
 		`Usage: 
     mrs <invocation_mro> [<unique_stagestance_id>] [--sge]
     mrs -h | --help | --version`
-	opts, _ := docopt.Parse(doc, nil, true, "mrp", false)
+	opts, _ := docopt.Parse(doc, nil, true, "mrs", false)
 
 	// Mario environment variables.
 	env := core.EnvRequire([][]string{
 		{"MARIO_PIPELINES_PATH", "path/to/pipelines"},
-	})
+	}, true)
 
 	// Job mode and SGE environment variables.
 	jobMode := "local"
@@ -40,7 +40,7 @@ func main() {
 			{"SGE_ROOT", "path/to/sge/root"},
 			{"SGE_CLUSTER_NAME", "SGE cluster name"},
 			{"SGE_CELL", "usually 'default'"},
-		})
+		}, true)
 	}
 
 	// Compile MRO files.

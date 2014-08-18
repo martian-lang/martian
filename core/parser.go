@@ -1,7 +1,7 @@
 //
 // Copyright (c) 2014 10X Technologies, Inc. All rights reserved.
 //
-// Margo
+// MRO semantic checking.
 //
 package core
 
@@ -12,7 +12,7 @@ import (
 )
 
 //
-// Semantic Checking Helpers
+// Semantic Checking Methods
 //
 func (global *Ast) err(locable Locatable, msg string, v ...interface{}) error {
 	return &AstError{global, locable, fmt.Sprintf(msg, v...)}
@@ -246,7 +246,7 @@ func (global *Ast) check() error {
 }
 
 //
-// Package Exports
+// Parser interface, called by runtime.
 //
 func parseString(src string, locmap []FileLoc) (*Ast, error) {
 	global, err := yaccParse(src)

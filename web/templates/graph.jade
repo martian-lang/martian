@@ -6,7 +6,7 @@
 doctype html
 html(ng-app="app" ng-controller="MarioGraphCtrl")
     head
-        title MARSOC / [[.Psid]] [[.Pname]]
+        title Mario Pipeline Runner / [[.Psid]] [[.Pname]]
         link(rel="stylesheet" href="/css/bootstrap.min.css")
         link(rel="stylesheet" href="/css/main.css")
         script(src="/js/d3.v3.min.js")
@@ -24,7 +24,7 @@ html(ng-app="app" ng-controller="MarioGraphCtrl")
                 .navbar-brand
                     a(href="{{urlprefix}}" style="color:white") 10
                         span.logo-color X
-                        | &nbsp;MARSOC&nbsp;
+                        | &nbsp;Mario Pipeline Runner&nbsp;
                     | / [[.Psid]] / [[.Pname]] 
         #graph(style="margin-left: 25px; margin-top: 75px")
             svg(transform="scale(0.5)" width="875px" height="1000px")

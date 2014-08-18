@@ -1,7 +1,7 @@
 //
 // Copyright (c) 2014 10X Technologies, Inc. All rights reserved.
 //
-// Margo
+// Margo runtime.
 //
 package core
 
@@ -13,6 +13,7 @@ import (
 	"os/exec"
 	"path"
 	"path/filepath"
+	"reflect"
 	"strings"
 	"sync"
 )
@@ -869,6 +870,10 @@ func NewPipestance(parent Nodable, callStm *CallStm, callables *Callables) *Pipe
 	return self
 }
 
+func (self *Pipestance) GetFQName() string {
+	return self.Node().fqname
+}
+
 func (self *Pipestance) GetOverallState() string {
 	nodes := self.Node().AllNodes()
 	for _, node := range nodes {
@@ -892,6 +897,20 @@ func (self *Pipestance) GetOverallState() string {
 		return "complete"
 	}
 	return "waiting"
+}
+
+func (self *Pipestance) Immortalize() {
+	metadata := NewMetadata(self.Node().parent.Node().path)
+	all := []interface{}{}
+	for _, node := range self.Node().AllNodes() {
+		all = append(all, node.Serialize())
+	}
+	metadata.write("finalstate", all)
+}
+
+func (self *Pipestance) Unimmortalize() {
+	metadata := NewMetadata(self.Node().parent.Node().path)
+	metadata.remove("finalstate")
 }
 
 //=============================================================================
@@ -923,7 +942,7 @@ type Runtime struct {
 	globalTable   map[string]*Ast
 	srcTable      map[string]string
 	typeTable     map[string]string
-	codeVersion   string
+	CodeVersion   string
 	/* TODO queue goes here */
 }
 
@@ -937,8 +956,27 @@ func NewRuntime(jobMode string, pipelinesPath string) *Runtime {
 	self.globalTable = map[string]*Ast{}
 	self.srcTable = map[string]string{}
 	self.typeTable = map[string]string{}
-	self.codeVersion = "" // TODO
+	self.CodeVersion = getGitTag(pipelinesPath)
 	return self
+}
+
+func getGitTag(p string) string {
+	oldCwd, _ := os.Getwd()
+	os.Chdir(p)
+	out, err := exec.Command("git", "describe", "--tags", "--dirty", "--always").Output()
+	os.Chdir(oldCwd)
+	if err == nil {
+		return strings.TrimSpace(string(out))
+	}
+	return "noversion"
+}
+
+func (self *Runtime) GetPipelineNames() []string {
+	names := []string{}
+	for name, _ := range self.globalTable {
+		names = append(names, name)
+	}
+	return names
 }
 
 // Compile an MRO file in self.mroPath named fname.mro.
@@ -1047,7 +1085,7 @@ func (self *Runtime) InvokeWithSource(psid string, src string, pipestancePath st
 	metadata := NewMetadata(pipestancePath)
 	metadata.writeRaw("invocation", src)
 	metadata.writeRaw("mrosource", self.srcTable[pipestance.Node().name])
-	metadata.writeRaw("codeversion", self.codeVersion)
+	metadata.writeRaw("codeversion", self.CodeVersion)
 	metadata.writeTime("timestamp")
 
 	// Create pipestance folder graph concurrently.
@@ -1070,4 +1108,49 @@ func (self *Runtime) Reattach(psid string, pipestancePath string) (*Pipestance, 
 
 	// Instantiate the pipestance.
 	return self.instantiate(psid, string(bytes), pipestancePath)
+}
+
+func (self *Runtime) GetSerialization(pipestancePath string) (interface{}, bool) {
+	metadata := NewMetadata(pipestancePath)
+	metadata.cache()
+	if metadata.exists("finalstate") {
+		return metadata.read("finalstate"), true
+	}
+	return nil, false
+}
+
+func (self *Runtime) buildVal(param Param, val interface{}) string {
+	if param.IsFile() {
+		return fmt.Sprintf("file(\"%s\")", val)
+	}
+	if param.Tname() == "path" {
+		return fmt.Sprintf("path(\"%s\")", val)
+	}
+	if param.Tname() == "string" {
+		return fmt.Sprintf("\"%s\"", val)
+	}
+	return fmt.Sprintf("%v", val)
+}
+
+func (self *Runtime) BuildCallSource(pname string, args map[string]interface{}) string {
+	lines := []string{}
+	for _, param := range self.globalTable[pname].callables.table[pname].InParams().list {
+		valstr := ""
+		val, ok := args[param.Id()]
+		if !ok || val == nil {
+			valstr = "null"
+		} else if reflect.TypeOf(val).Kind() == reflect.Slice {
+			a := []string{}
+			slice := reflect.ValueOf(val)
+			for i := 0; i < slice.Len(); i++ {
+				v := slice.Index(i).Interface()
+				a = append(a, self.buildVal(param, v))
+			}
+			valstr = fmt.Sprintf("[%s]", strings.Join(a, ", "))
+		} else {
+			valstr = self.buildVal(param, val)
+		}
+		lines = append(lines, fmt.Sprintf("    %s = %s,", param.Id(), valstr))
+	}
+	return fmt.Sprintf("call %s(\n%s\n)", pname, strings.Join(lines, "\n"))
 }

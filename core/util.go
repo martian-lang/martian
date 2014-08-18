@@ -39,6 +39,8 @@ func cartesianProduct(valueSets []interface{}) []interface{} {
 	return perms
 }
 
+const TIMEFMT = "2006-01-02 15:04:05"
+
 func Timestamp() string {
-	return time.Now().Format("2006-01-02 15:04:05")
+	return time.Now().Format(TIMEFMT)
 }
