@@ -843,7 +843,7 @@ func (self *Node) RunJob(shellName string, fqname string, metadata *Metadata,
 	//stagecodeLang = "Python"
 	adaptersPath := path.Join(self.rt.adaptersPath, "python")
 	libPath := path.Join(self.rt.libPath, "python")
-	fmt.Println("[RUNTIME]", Timestamp(), "(run-local)", fqname+"."+shellName)
+	LogInfo("RUNTIME", "(run-%s) %s.%s", self.rt.jobMode, fqname, shellName)
 	metadata.write("jobinfo", map[string]interface{}{"type": nil, "childpid": nil})
 	shellCmd := path.Join(adaptersPath, shellName+".py")
 	if self.rt.jobMode == "local" {
