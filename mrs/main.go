@@ -81,6 +81,7 @@ func main() {
 		for {
 			// Concurrently run metadata refreshes.
 			var wg sync.WaitGroup
+			wg.Add(1)
 			stagestance.Node().RefreshMetadata(&wg)
 			wg.Wait()
 
