@@ -1,7 +1,7 @@
 //
 // Copyright (c) 2014 10X Technologies, Inc. All rights reserved.
 //
-// Marsoc utilities.
+// Mario logging.
 //
 package core
 
