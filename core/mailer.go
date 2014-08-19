@@ -13,18 +13,20 @@ import (
 )
 
 type Mailer struct {
-	username string
-	password string
-	host     string
-	port     int
+	username    string
+	password    string
+	host        string
+	port        int
+	notifyEmail string
 }
 
-func NewMailer(username string, password string) *Mailer {
+func NewMailer(username string, password string, notifyEmail string) *Mailer {
 	self := &Mailer{}
 	self.username = username
 	self.password = password
 	self.host = "smtp.gmail.com"
 	self.port = 587
+	self.notifyEmail = notifyEmail
 	return self
 }
 
@@ -41,17 +43,16 @@ Subject: {{.Subject}}
 
 {{.Body}}
 
-Kapow,
+Respectfully,
 M.Lo
 `
 
 func (self *Mailer) Sendmail(subject string, body string) error {
 	var doc bytes.Buffer
-	to := "alex@10xtechnologies.com"
 
 	context := &SmtpTemplateData{
 		fmt.Sprintf("Mario Lopez <%s>", self.username),
-		to,
+		self.notifyEmail,
 		subject,
 		body,
 	}
@@ -64,7 +65,7 @@ func (self *Mailer) Sendmail(subject string, body string) error {
 		fmt.Sprintf("%s:%d", self.host, self.port),
 		auth,
 		self.username,
-		[]string{to},
+		[]string{self.notifyEmail},
 		doc.Bytes(),
 	)
 }

@@ -1003,7 +1003,7 @@ func (self *Pipestance) VDRKill() *VDRKillReport {
 		filepath.Walk(p, func(_ string, info os.FileInfo, err error) error {
 			if err == nil {
 				killReport.Size += info.Size()
-				killReport.Count += 1
+				killReport.Count++
 			} else {
 				killReport.Errors = append(killReport.Errors, err.Error())
 			}

@@ -38,7 +38,7 @@ func main() {
 		for _, name := range opts["<mro_name>"].([]string) {
 			_, err := rt.Compile(name + ".mro")
 			core.DieIf(err)
-			count += 1
+			count++
 		}
 	}
 	fmt.Println("Successfully compiled", count, "mro files.")
