@@ -14,25 +14,29 @@ import (
 	"path"
 	"path/filepath"
 	"runtime"
+	"sync"
 	"time"
 )
 
 func main() {
 	runtime.GOMAXPROCS(2)
 
-	// Command-line arguments.
+	//=========================================================================
+	// Commandline argument and environment variables.
+	//=========================================================================
+	// Parse commandline.
 	doc :=
 		`Usage: 
     mrs <invocation_mro> [<unique_stagestance_id>] [--sge]
     mrs -h | --help | --version`
 	opts, _ := docopt.Parse(doc, nil, true, "mrs", false)
 
-	// Mario environment variables.
+	// Required Mario environment variables.
 	env := core.EnvRequire([][]string{
 		{"MARIO_PIPELINES_PATH", "path/to/pipelines"},
 	}, true)
 
-	// Job mode and SGE environment variables.
+	// Required job mode and SGE environment variables.
 	jobMode := "local"
 	if opts["--sge"].(bool) {
 		jobMode = "sge"
@@ -43,18 +47,20 @@ func main() {
 		}, true)
 	}
 
-	// Compile MRO files.
-	rt := core.NewRuntime(jobMode, env["MARIO_PIPELINES_PATH"])
-	_, err := rt.CompileAll()
-	core.DieIf(err)
-
-	// sid, invocation file, and pipestance.
+	// Prepare configuration variables.
 	invocationPath := opts["<invocation_mro>"].(string)
 	stagestancePath, _ := filepath.Abs(path.Dir(os.Args[0]))
 	if sid, ok := opts["<unique_stagestance_id>"]; ok {
 		stagestancePath = path.Join(stagestancePath, sid.(string))
 	}
-	STEP_SECS := 1
+	stepSecs := 1
+
+	//=========================================================================
+	// Configure Mario runtime.
+	//=========================================================================
+	rt := core.NewRuntime(jobMode, env["MARIO_PIPELINES_PATH"])
+	_, err := rt.CompileAll()
+	core.DieIf(err)
 
 	// Create the stagestance path.
 	if _, err := os.Stat(stagestancePath); err == nil {
@@ -68,30 +74,32 @@ func main() {
 	stagestance, err := rt.InstantiateStage(string(callSrc), stagestancePath)
 	core.DieIf(err)
 
-	// Start the runner loop.
-	done := make(chan bool)
+	//=========================================================================
+	// Start run loop.
+	//=========================================================================
 	go func() {
 		for {
 			// Concurrently run metadata refreshes.
-			rdone := make(chan bool)
-			count := stagestance.Node().RefreshMetadata(rdone)
-			for i := 0; i < count; i++ {
-				<-rdone
-			}
+			var wg sync.WaitGroup
+			stagestance.Node().RefreshMetadata(&wg)
+			wg.Wait()
 
 			// Check for completion states.
 			state := stagestance.Node().GetState()
 			if state == "complete" || state == "failed" {
-				fmt.Println("[RUNTIME]", core.Timestamp(), "Stage is complete, exiting.")
-				done <- true
+				core.LogInfo("RUNTIME", "Stage is complete, exiting.")
+				os.Exit(0)
 			}
 
 			// Step all nodes.
 			stagestance.Node().Step()
 
 			// Wait for a bit.
-			time.Sleep(time.Second * time.Duration(STEP_SECS))
+			time.Sleep(time.Second * time.Duration(stepSecs))
 		}
 	}()
+
+	// Let the daemons take over.
+	done := make(chan bool)
 	<-done
 }

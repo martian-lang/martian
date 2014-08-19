@@ -695,34 +695,32 @@ func (self *Node) collectMetadatas() []*Metadata {
 	return metadatas
 }
 
-func (self *Node) RefreshMetadata(done chan bool) int {
+func (self *Node) RefreshMetadata(wg *sync.WaitGroup) {
 	go func() {
-		sdone := make(chan bool)
+		var mwg sync.WaitGroup
 		metadatas := self.collectMetadatas()
+		mwg.Add(len(metadatas))
 		for _, metadata := range metadatas {
 			go func(m *Metadata) {
 				m.cache()
-				sdone <- true
+				mwg.Done()
 			}(metadata)
 		}
-		for i := 0; i < len(metadatas); i++ {
-			<-sdone
-		}
+		mwg.Wait()
 		self.state = self.GetState()
-		done <- true
+		wg.Done()
 	}()
-	return 1
 }
 
-func (self *Node) RestartFailedMetadatas(done chan bool) int {
+func (self *Node) RestartFailedMetadatas(wg *sync.WaitGroup) {
 	metadatas := self.collectMetadatas()
+	wg.Add(len(metadatas))
 	for _, metadata := range metadatas {
-		go func(m *Metadata) {
+		go func(wg *sync.WaitGroup, m *Metadata) {
 			m.restartIfFailed()
-			done <- true
-		}(metadata)
+			wg.Done()
+		}(wg, metadata)
 	}
-	return len(metadatas)
 }
 
 func (self *Node) Step() {
@@ -884,6 +882,9 @@ type Pipestance struct {
 
 func (self *Pipestance) Node() *Node { return self.node }
 
+func (self *Pipestance) Pname() string { return self.node.name }
+func (self *Pipestance) Psid() string  { return self.node.parent.Node().name }
+
 func NewPipestance(parent Nodable, callStm *CallStm, callables *Callables) *Pipestance {
 	self := &Pipestance{}
 	self.node = NewNode(parent, "pipeline", callStm, callables)
@@ -1036,6 +1037,7 @@ func NewTopNode(rt *Runtime, psid string, p string) *TopNode {
 	self.node.path = p
 	self.node.rt = rt
 	self.node.fqname = "ID." + psid
+	self.node.name = psid
 	return self
 }
 
@@ -1120,29 +1122,29 @@ func (self *Runtime) CompileAll() (int, error) {
 // Instantiate a pipestance object given a psid, MRO source, and a
 // pipestance path. This is the core (private) method called by the
 // public InvokeWithSource and Reattach methods.
-func (self *Runtime) instantiate(psid string, src string, pipestancePath string) (*Pipestance, string, error) {
+func (self *Runtime) instantiate(psid string, src string, pipestancePath string) (*Pipestance, error) {
 	// Parse the invocation call.
 	callGlobal, err := parseCall(src)
 	if err != nil {
-		return nil, "", err
+		return nil, err
 	}
 	callStm := callGlobal.call
 
 	// Get the global scope that defines the called pipeline.
 	global, ok := self.globalTable[callStm.Id()]
 	if !ok {
-		return nil, "", &MarioError{fmt.Sprintf("PipelineNotFoundError: '%s'", callStm.Id())}
+		return nil, &MarioError{fmt.Sprintf("PipelineNotFoundError: '%s'", callStm.Id())}
 	}
 
 	// Get the actual pipeline definition and check call bindings.
 	pipeline := global.callables.table[callStm.Id()].(*Pipeline)
 	if err := callStm.bindings.check(global, pipeline, pipeline.InParams()); err != nil {
-		return nil, "", err
+		return nil, err
 	}
 
 	// Instantiate the pipeline.
 	pipestance := NewPipestance(NewTopNode(self, psid, pipestancePath), callStm, global.callables)
-	return pipestance, pipeline.Id(), nil
+	return pipestance, nil
 }
 
 // Instantiate a stagestance.
@@ -1174,21 +1176,21 @@ func (self *Runtime) InstantiateStage(src string, stagestancePath string) (*Stag
 }
 
 // Invokes a new pipestance.
-func (self *Runtime) InvokeWithSource(psid string, src string, pipestancePath string) (*Pipestance, string, error) {
+func (self *Runtime) InvokeWithSource(psid string, src string, pipestancePath string) (*Pipestance, error) {
 	// Check if pipestance path already exists.
 	if _, err := os.Stat(pipestancePath); err == nil {
-		return nil, "", &MarioError{fmt.Sprintf("PipestanceExistsError: '%s'", psid)}
+		return nil, &MarioError{fmt.Sprintf("PipestanceExistsError: '%s'", psid)}
 	}
 
 	// Create the pipestance path.
 	if err := os.MkdirAll(pipestancePath, 0700); err != nil {
-		return nil, "", err
+		return nil, err
 	}
 
 	// Instantiate the pipestance.
-	pipestance, pname, err := self.instantiate(psid, src, pipestancePath)
+	pipestance, err := self.instantiate(psid, src, pipestancePath)
 	if err != nil {
-		return nil, "", err
+		return nil, err
 	}
 
 	// Write top-level metadata files.
@@ -1203,17 +1205,17 @@ func (self *Runtime) InvokeWithSource(psid string, src string, pipestancePath st
 	pipestance.Node().mkdirs(&wg)
 	wg.Wait()
 
-	return pipestance, pname, nil
+	return pipestance, nil
 }
 
 // Reattaches to an existing pipestance.
-func (self *Runtime) Reattach(psid string, pipestancePath string) (*Pipestance, string, error) {
+func (self *Runtime) Reattach(psid string, pipestancePath string) (*Pipestance, error) {
 	// TODO check here if _codeversion matches with self.codeVersion
 
 	// Read in the existing _invocation file.
 	bytes, err := ioutil.ReadFile(path.Join(pipestancePath, "_invocation"))
 	if err != nil {
-		return nil, "", err
+		return nil, err
 	}
 
 	// Instantiate the pipestance.
