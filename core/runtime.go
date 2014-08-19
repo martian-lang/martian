@@ -439,7 +439,7 @@ func (self *Fork) Step() {
 	if self.node.kind == "stage" {
 		state := self.getState()
 		if !strings.HasSuffix(state, "_running") && !strings.HasSuffix(state, "_queued") {
-			fmt.Println("[RUNTIME]", Timestamp(), "("+state+")", self.node.fqname)
+			LogInfo("RUNTIME", "(%s) %s", state, self.node.fqname)
 		}
 
 		if state == "ready" {
@@ -797,7 +797,7 @@ func (self *Node) execLocalJob(shellName string, shellCmd string, stagecodePath 
 	c := exec.Command(cmd, args...)
 	err := c.Start()
 	if err != nil {
-		fmt.Println(err.Error())
+		LogError(err, "RUNTIME", "Could not exec local job.")
 	}
 	pid := 0
 	if c.Process != nil {
