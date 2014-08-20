@@ -72,9 +72,9 @@ func (self *Metadata) getState(name string) (string, bool) {
 func (self *Metadata) cache() {
 	if !self.exists("complete") {
 		self.contents = map[string]bool{}
-		pathInfos, _ := ioutil.ReadDir(self.path)
-		for _, pathInfo := range pathInfos {
-			self.contents[pathInfo.Name()[1:]] = true
+		paths := self.glob()
+		for _, p := range paths {
+			self.contents[path.Base(p)[1:]] = true
 		}
 	}
 }
