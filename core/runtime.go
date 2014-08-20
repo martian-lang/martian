@@ -810,35 +810,37 @@ func (self *Node) execSGEJob(shellName string, shellCmd string, stagecodePath st
 	qsub := []string{shellCmd, stagecodePath, libPath, metadata.path, metadata.filesPath, "profile"}
 	metadata.writeRaw("qsub", strings.Join(qsub, " "))
 
-	threadsArg := ""
-	if threads != nil {
-		threadsArg = fmt.Sprintf("-pe threads %v", threads)
-	}
-	memGBArg := ""
-	if memGB != nil {
-		memGBArg = fmt.Sprintf("-l h_vmem=%vG", memGB)
-	}
-
 	cmdline := []string{
 		"-N", strings.Join([]string{self.fqname, shellName}, "."),
 		"-V",
-		threadsArg,
-		memGBArg,
 		"-cwd",
 		"-o", metadata.makePath("stdout"),
 		"-e", metadata.makePath("stderr"),
 		metadata.makePath("qsub"),
 	}
+	// exec.Command doesn't like it if there are empty members of this
+	// arg string array. Problem is empty threads arg string, if it
+	// comes before the path to the script, is it gets interpreted
+	// as the path to the script and qsub fails.
+	if threads != nil {
+		cmdline = append(cmdline, fmt.Sprintf("-pe threads %v", threads))
+	}
+	if memGB != nil {
+		cmdline = append(cmdline, fmt.Sprintf("-l h_vmem=%vG", memGB))
+	}
+
 	metadata.write("jobinfo", map[string]string{"type": "sge"})
 
 	c := exec.Command("qsub", cmdline...)
-	err := c.Start()
-	_ = err
+	if err := c.Start(); err != nil {
+		metadata.writeRaw("errors", err.Error())
+	} else if err := c.Wait(); err != nil {
+		metadata.writeRaw("errors", err.Error())
+	}
 }
 
 func (self *Node) RunJob(shellName string, fqname string, metadata *Metadata,
 	threads interface{}, memGB interface{}) {
-	//stagecodeLang = "Python"
 	adaptersPath := path.Join(self.rt.adaptersPath, "python")
 	libPath := path.Join(self.rt.libPath, "python")
 	LogInfo("RUNTIME", "(run-%s) %s.%s", self.rt.jobMode, fqname, shellName)

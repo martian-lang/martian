@@ -13,15 +13,17 @@ import (
 )
 
 type Mailer struct {
-	username    string
-	password    string
-	host        string
-	port        int
-	notifyEmail string
+	InstanceName string
+	username     string
+	password     string
+	host         string
+	port         int
+	notifyEmail  string
 }
 
-func NewMailer(username string, password string, notifyEmail string) *Mailer {
+func NewMailer(instanceName string, username string, password string, notifyEmail string) *Mailer {
 	self := &Mailer{}
+	self.InstanceName = instanceName
 	self.username = username
 	self.password = password
 	self.host = "smtp.gmail.com"
@@ -43,8 +45,8 @@ Subject: {{.Subject}}
 
 {{.Body}}
 
-Respectfully,
-M.Lo
+Stay fresh,
+Mario
 `
 
 func (self *Mailer) Sendmail(subject string, body string) error {
