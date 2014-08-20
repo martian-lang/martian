@@ -9,6 +9,7 @@ import (
 	"bytes"
 	"fmt"
 	"net/smtp"
+	"strings"
 	"text/template"
 )
 
@@ -23,7 +24,7 @@ type Mailer struct {
 
 func NewMailer(instanceName string, username string, password string, notifyEmail string) *Mailer {
 	self := &Mailer{}
-	self.InstanceName = instanceName
+	self.InstanceName = strings.ToLower(instanceName)
 	self.username = username
 	self.password = password
 	self.host = "smtp.gmail.com"

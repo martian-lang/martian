@@ -71,11 +71,10 @@ func (self *Metadata) getState(name string) (string, bool) {
 
 func (self *Metadata) cache() {
 	if !self.exists("complete") {
-		//fmt.Println(self.path)
 		self.contents = map[string]bool{}
-		paths := self.glob()
-		for _, p := range paths {
-			self.contents[path.Base(p)[1:]] = true
+		pathInfos, _ := ioutil.ReadDir(self.path)
+		for _, pathInfo := range pathInfos {
+			self.contents[pathInfo.Name()[1:]] = true
 		}
 	}
 }
@@ -961,8 +960,8 @@ func (self *Pipestance) Unimmortalize() {
 }
 
 type VDRKillReport struct {
-	Count  int      `json:"count"`
-	Size   int64    `json:"size"`
+	Count  uint     `json:"count"`
+	Size   uint64   `json:"size"`
 	Paths  []string `json:"paths"`
 	Errors []string `json:"errors"`
 }
@@ -1005,7 +1004,7 @@ func (self *Pipestance) VDRKill() *VDRKillReport {
 	for _, p := range killPaths {
 		filepath.Walk(p, func(_ string, info os.FileInfo, err error) error {
 			if err == nil {
-				killReport.Size += info.Size()
+				killReport.Size += uint64(info.Size())
 				killReport.Count++
 			} else {
 				killReport.Errors = append(killReport.Errors, err.Error())
