@@ -25,7 +25,7 @@ func EnvRequire(reqs [][]string, log bool) map[string]string {
 		}
 		e[req[0]] = val
 		if log {
-			fmt.Println("[ENV]", req[0], "=", val)
+			LogInfo("environ", "%s = %s", req[0], val)
 		}
 	}
 	return e

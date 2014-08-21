@@ -439,7 +439,7 @@ func (self *Fork) Step() {
 	if self.node.kind == "stage" {
 		state := self.getState()
 		if !strings.HasSuffix(state, "_running") && !strings.HasSuffix(state, "_queued") {
-			LogInfo("RUNTIME", "(%s) %s", state, self.node.fqname)
+			LogInfo("runtime", "(%s) %s", state, self.node.fqname)
 		}
 
 		if state == "ready" {
@@ -795,7 +795,7 @@ func (self *Node) execLocalJob(shellName string, shellCmd string, stagecodePath 
 	c := exec.Command(cmd, args...)
 	err := c.Start()
 	if err != nil {
-		LogError(err, "RUNTIME", "Could not exec local job.")
+		LogError(err, "runtime", "Could not exec local job.")
 	}
 	pid := 0
 	if c.Process != nil {
@@ -843,7 +843,7 @@ func (self *Node) RunJob(shellName string, fqname string, metadata *Metadata,
 	threads interface{}, memGB interface{}) {
 	adaptersPath := path.Join(self.rt.adaptersPath, "python")
 	libPath := path.Join(self.rt.libPath, "python")
-	LogInfo("RUNTIME", "(run-%s) %s.%s", self.rt.jobMode, fqname, shellName)
+	LogInfo("runtime", "(run-%s) %s.%s", self.rt.jobMode, fqname, shellName)
 	metadata.write("jobinfo", map[string]interface{}{"type": nil, "childpid": nil})
 	shellCmd := path.Join(adaptersPath, shellName+".py")
 	if self.rt.jobMode == "local" {

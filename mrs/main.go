@@ -14,6 +14,7 @@ import (
 	"path"
 	"path/filepath"
 	"runtime"
+	"strings"
 	"sync"
 	"time"
 )
@@ -30,6 +31,8 @@ func main() {
     mrs <invocation_mro> [<unique_stagestance_id>] [--sge]
     mrs -h | --help | --version`
 	opts, _ := docopt.Parse(doc, nil, true, "mrs", false)
+	core.LogInfo("*", "Mario Run Stage")
+	core.LogInfo("cmdline", strings.Join(os.Args, " "))
 
 	// Required Mario environment variables.
 	env := core.EnvRequire([][]string{
@@ -88,7 +91,7 @@ func main() {
 			// Check for completion states.
 			state := stagestance.Node().GetState()
 			if state == "complete" || state == "failed" {
-				core.LogInfo("RUNTIME", "Stage is complete, exiting.")
+				core.LogInfo("runtime", "Stage is complete, exiting.")
 				os.Exit(0)
 			}
 
