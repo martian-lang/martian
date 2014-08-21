@@ -271,9 +271,10 @@ func makeOutArgs(outParams *Params, filesPath string) map[string]interface{} {
 	for id, param := range outParams.table {
 		if param.IsFile() {
 			args[id] = path.Join(filesPath, param.Id()+"."+param.Tname())
-		}
-		if param.Tname() == "path" {
+		} else if param.Tname() == "path" {
 			args[id] = path.Join(filesPath, param.Id())
+		} else {
+			args[id] = nil
 		}
 	}
 	return args
