@@ -50,7 +50,7 @@ Stay fresh,
 Mario
 `
 
-func (self *Mailer) Sendmail(subject string, body string) error {
+func (self *Mailer) Sendmail(to []string, subject string, body string) error {
 	var doc bytes.Buffer
 
 	context := &SmtpTemplateData{
@@ -68,7 +68,7 @@ func (self *Mailer) Sendmail(subject string, body string) error {
 		fmt.Sprintf("%s:%d", self.host, self.port),
 		auth,
 		self.username,
-		[]string{self.notifyEmail},
+		append([]string{self.notifyEmail}, to...),
 		doc.Bytes(),
 	)
 }
