@@ -22,7 +22,7 @@ func main() {
 	// Mario environment variables.
 	env := core.EnvRequire([][]string{
 		{"MARIO_PIPELINES_PATH", "path/to/pipelines"},
-	}, true)
+	}, false)
 
 	// Setup runtime with pipelines path.
 	rt := core.NewRuntime("local", env["MARIO_PIPELINES_PATH"])
