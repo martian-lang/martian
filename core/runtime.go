@@ -828,8 +828,8 @@ func (self *Node) execLocalJob(shellName string, shellCmd string, stagecodePath 
 	cmd := exec.Command(shellCmd, stagecodePath, libPath, metadata.path, metadata.filesPath, "profile")
 	stdoutFile, _ := os.Create(metadata.makePath("stdout"))
 	stderrFile, _ := os.Create(metadata.makePath("stderr"))
-	stdoutFile.WriteString("[no output]")
-	stderrFile.WriteString("[no output]")
+	stdoutFile.WriteString("[stdout]\n")
+	stderrFile.WriteString("[stderr]\n")
 	defer stdoutFile.Close()
 	defer stderrFile.Close()
 
@@ -874,8 +874,8 @@ func (self *Node) execSGEJob(shellName string, shellCmd string, stagecodePath st
 	cmd := exec.Command("qsub", cmdline...)
 	stdoutFile, _ := os.Create(metadata.makePath("stdout"))
 	stderrFile, _ := os.Create(metadata.makePath("stderr"))
-	stdoutFile.WriteString("[no output]")
-	stderrFile.WriteString("[no output]")
+	stdoutFile.WriteString("[stdout]\n")
+	stderrFile.WriteString("[stderr]\n")
 	defer stdoutFile.Close()
 	defer stderrFile.Close()
 
