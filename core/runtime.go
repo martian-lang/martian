@@ -14,6 +14,7 @@ import (
 	"path"
 	"path/filepath"
 	"reflect"
+	"sort"
 	"strings"
 	"sync"
 )
@@ -127,6 +128,7 @@ func (self *Metadata) serialize() interface{} {
 	for content, _ := range self.contents {
 		names = append(names, content)
 	}
+	sort.Strings(names)
 	return map[string]interface{}{
 		"path":  self.path,
 		"names": names,
@@ -506,11 +508,11 @@ func (self *Fork) Step() {
 
 func (self *Fork) serialize() interface{} {
 	argbindings := []interface{}{}
-	for _, argbinding := range self.node.argbindings {
+	for _, argbinding := range self.node.argbindingList {
 		argbindings = append(argbindings, argbinding.serialize(self.argPermute))
 	}
 	retbindings := []interface{}{}
-	for _, retbinding := range self.node.retbindings {
+	for _, retbinding := range self.node.retbindingList {
 		retbindings = append(retbindings, retbinding.serialize(self.argPermute))
 	}
 	bindings := map[string]interface{}{
@@ -541,25 +543,28 @@ type Nodable interface {
 }
 
 type Node struct {
-	parent        Nodable
-	rt            *Runtime
-	kind          string
-	name          string
-	fqname        string
-	path          string
-	metadata      *Metadata
-	outparams     *Params
-	argbindings   map[string]*Binding
-	retbindings   map[string]*Binding
-	sweepbindings []*Binding
-	subnodes      map[string]Nodable
-	prenodes      map[string]Nodable
-	forks         []*Fork
-	split         bool
-	state         string
-	volatile      bool
-	stagecodeLang string
-	stagecodePath string
+	parent         Nodable
+	rt             *Runtime
+	kind           string
+	name           string
+	fqname         string
+	path           string
+	metadata       *Metadata
+	outparams      *Params
+	argbindings    map[string]*Binding
+	argbindingList []*Binding // for stable ordering
+	retbindings    map[string]*Binding
+	retbindingList []*Binding // for stable ordering
+	sweepbindings  []*Binding
+	subnodes       map[string]Nodable
+	prenodes       map[string]Nodable
+	prenodeList    []Nodable //for stable ordering
+	forks          []*Fork
+	split          bool
+	state          string
+	volatile       bool
+	stagecodeLang  string
+	stagecodePath  string
 }
 
 func (self *Node) Node() *Node { return self }
@@ -578,16 +583,22 @@ func NewNode(parent Nodable, kind string, callStm *CallStm, callables *Callables
 
 	self.outparams = callables.table[self.name].OutParams()
 	self.argbindings = map[string]*Binding{}
+	self.argbindingList = []*Binding{}
+	self.retbindings = map[string]*Binding{}
+	self.retbindingList = []*Binding{}
 	self.subnodes = map[string]Nodable{}
 	self.prenodes = map[string]Nodable{}
+	self.prenodeList = []Nodable{}
 
 	for id, bindStm := range callStm.bindings.table {
 		binding := NewBinding(self, bindStm)
 		self.argbindings[id] = binding
+		self.argbindingList = append(self.argbindingList, binding)
 	}
-	for _, binding := range self.argbindings {
+	for _, binding := range self.argbindingList {
 		if binding.mode == "reference" && binding.boundNode != nil {
 			self.prenodes[binding.boundNode.Node().name] = binding.boundNode
+			self.prenodeList = append(self.prenodeList, binding.boundNode)
 		}
 	}
 	// Do not set state = getState here, or else nodes will wrongly report
@@ -777,7 +788,7 @@ func (self *Node) Serialize() interface{} {
 		forks = append(forks, fork.serialize())
 	}
 	edges := []interface{}{}
-	for _, prenode := range self.prenodes {
+	for _, prenode := range self.prenodeList {
 		edges = append(edges, map[string]string{
 			"from": prenode.Node().name,
 			"to":   self.name,
@@ -808,6 +819,8 @@ func (self *Node) execLocalJob(shellName string, shellCmd string, stagecodePath 
 	cmd := exec.Command(shellCmd, stagecodePath, libPath, metadata.path, metadata.filesPath, "profile")
 	stdoutFile, _ := os.Create(metadata.makePath("stdout"))
 	stderrFile, _ := os.Create(metadata.makePath("stderr"))
+	stdoutFile.WriteString("[no output]")
+	stderrFile.WriteString("[no output]")
 	defer stdoutFile.Close()
 	defer stderrFile.Close()
 
@@ -852,6 +865,8 @@ func (self *Node) execSGEJob(shellName string, shellCmd string, stagecodePath st
 	cmd := exec.Command("qsub", cmdline...)
 	stdoutFile, _ := os.Create(metadata.makePath("stdout"))
 	stderrFile, _ := os.Create(metadata.makePath("stderr"))
+	stdoutFile.WriteString("[no output]")
+	stderrFile.WriteString("[no output]")
 	defer stdoutFile.Close()
 	defer stderrFile.Close()
 
@@ -935,8 +950,10 @@ func NewPipestance(parent Nodable, callStm *CallStm, callables *Callables) *Pipe
 	for id, bindStm := range pipeline.ret.bindings.table {
 		binding := NewReturnBinding(self.node, bindStm)
 		self.node.retbindings[id] = binding
+		self.node.retbindingList = append(self.node.retbindingList, binding)
 		if binding.mode == "reference" && binding.boundNode != nil {
 			self.node.prenodes[binding.boundNode.Node().name] = binding.boundNode
+			self.node.prenodeList = append(self.node.prenodeList, binding.boundNode)
 		}
 	}
 
