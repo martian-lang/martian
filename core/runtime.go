@@ -14,6 +14,7 @@ import (
 	"path"
 	"path/filepath"
 	"reflect"
+	"runtime"
 	"sort"
 	"strings"
 	"sync"
@@ -1117,12 +1118,13 @@ type Runtime struct {
 }
 
 func NewRuntime(jobMode string, pipelinesPath string) *Runtime {
-	cwd, _ := filepath.Abs(path.Dir(os.Args[0]))
+	_, filename, _, _ := runtime.Caller(1)
+	exeDir, _ := filepath.Abs(filepath.Dir(filename))
 	self := &Runtime{}
 	self.mroPath = path.Join(pipelinesPath, "mro")
 	self.stagecodePath = path.Join(pipelinesPath, "stages")
 	self.libPath = path.Join(pipelinesPath, "lib")
-	self.adaptersPath = path.Join(cwd, "..", "adapters")
+	self.adaptersPath = path.Join(exeDir, "..", "adapters")
 	self.globalTable = map[string]*Ast{}
 	self.srcTable = map[string]string{}
 	self.typeTable = map[string]string{}
@@ -1269,18 +1271,6 @@ func (self *Runtime) InvokeWithSource(psid string, src string, pipestancePath st
 
 // Reattaches to an existing pipestance.
 func (self *Runtime) Reattach(psid string, pipestancePath string) (*Pipestance, error) {
-	// Check here if _codeversion matches with self.codeVersion
-	// Read in the existing _codeversion file.
-	/*
-		bytes, err := ioutil.ReadFile(path.Join(pipestancePath, "_codeversion"))
-		if err != nil {
-			return nil, err
-		}
-		if string(bytes) != self.CodeVersion {
-			return nil, errors.New(fmt.Sprintf("Not reattaching because code versions don't match: %s vs %s.", string(bytes), self.CodeVersion))
-		}
-	*/
-
 	// Read in the existing _invocation file.
 	bytes, err := ioutil.ReadFile(path.Join(pipestancePath, "_invocation"))
 	if err != nil {
