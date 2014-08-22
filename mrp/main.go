@@ -7,6 +7,7 @@ package main
 
 import (
 	"github.com/docopt/docopt-go"
+	"github.com/dustin/go-humanize"
 	"io/ioutil"
 	"margo/core"
 	"os"
@@ -39,7 +40,7 @@ func runLoop(pipestance *core.Pipestance, stepSecs int) {
 		if pipestance.GetOverallState() == "complete" {
 			core.LogInfo("runtime", "Starting VDR kill...")
 			killReport := pipestance.VDRKill()
-			core.LogInfo("runtime", "VDR killed %d files, %d bytes.", killReport.Count, killReport.Size)
+			core.LogInfo("runtime", "VDR killed %d files, %s.", killReport.Count, humanize.Bytes(killReport.Size))
 			// Give time for web ui client to get last update.
 			time.Sleep(time.Second * 10)
 			core.LogInfo("runtime", "Pipestance is complete, exiting.")

@@ -291,6 +291,7 @@ type Chunk struct {
 	path     string
 	fqname   string
 	metadata *Metadata
+	has_run  bool
 }
 
 func NewChunk(nodable Nodable, fork *Fork, index int, chunkDef map[string]interface{}) *Chunk {
@@ -302,6 +303,7 @@ func NewChunk(nodable Nodable, fork *Fork, index int, chunkDef map[string]interf
 	self.path = path.Join(fork.path, fmt.Sprintf("chnk%d", index))
 	self.fqname = fork.fqname + fmt.Sprintf(".chnk%d", index)
 	self.metadata = NewMetadata(self.path)
+	self.has_run = false
 	if !self.node.split {
 		// If we're not splitting, just set the sole chunk's filesPath
 		// to the filesPath of the parent fork, to save a pseudo-join copy.
@@ -335,7 +337,10 @@ func (self *Chunk) Step() {
 		}
 		self.metadata.write("args", resolvedBindings)
 		self.metadata.write("outs", makeOutArgs(self.node.outparams, self.metadata.filesPath))
-		self.node.RunJob("main", self.fqname, self.metadata, self.chunkDef["__threads"], self.chunkDef["__mem_gb"])
+		if !self.has_run {
+			self.has_run = true
+			self.node.RunJob("main", self.fqname, self.metadata, self.chunkDef["__threads"], self.chunkDef["__mem_gb"])
+		}
 	}
 }
 
@@ -360,6 +365,8 @@ type Fork struct {
 	split_metadata *Metadata
 	join_metadata  *Metadata
 	chunks         []*Chunk
+	split_has_run  bool
+	join_has_run   bool
 	argPermute     map[string]interface{}
 }
 
@@ -374,6 +381,8 @@ func NewFork(nodable Nodable, index int, argPermute map[string]interface{}) *For
 	self.join_metadata = NewMetadata(path.Join(self.path, "join"))
 	self.chunks = []*Chunk{}
 	self.argPermute = argPermute
+	self.split_has_run = false
+	self.join_has_run = false
 	return self
 }
 
@@ -445,7 +454,10 @@ func (self *Fork) Step() {
 		if state == "ready" {
 			self.split_metadata.write("args", resolveBindings(self.node.argbindings, self.argPermute))
 			if self.node.split {
-				self.node.RunJob("split", self.fqname, self.split_metadata, nil, nil)
+				if !self.split_has_run {
+					self.split_has_run = true
+					self.node.RunJob("split", self.fqname, self.split_metadata, nil, nil)
+				}
 			} else {
 				self.split_metadata.write("chunk_defs", []interface{}{map[string]interface{}{}})
 				self.split_metadata.writeTime("complete")
@@ -473,7 +485,10 @@ func (self *Fork) Step() {
 				}
 				self.join_metadata.write("chunk_outs", chunkOuts)
 				self.join_metadata.write("outs", makeOutArgs(self.node.outparams, self.metadata.filesPath))
-				self.node.RunJob("join", self.fqname, self.join_metadata, nil, nil)
+				if !self.join_has_run {
+					self.join_has_run = true
+					self.node.RunJob("join", self.fqname, self.join_metadata, nil, nil)
+				}
 			} else {
 				self.join_metadata.write("outs", self.chunks[0].metadata.read("outs"))
 				self.join_metadata.writeTime("complete")
@@ -789,19 +804,22 @@ func (self *Node) Serialize() interface{} {
 func (self *Node) execLocalJob(shellName string, shellCmd string, stagecodePath string,
 	libPath string, fqname string, metadata *Metadata, threads interface{},
 	memGB interface{}) {
-	cmd := shellCmd
-	args := []string{stagecodePath, libPath, metadata.path, metadata.filesPath, "profile"}
 
-	c := exec.Command(cmd, args...)
-	err := c.Start()
-	if err != nil {
+	cmd := exec.Command(shellCmd, stagecodePath, libPath, metadata.path, metadata.filesPath, "profile")
+	stdoutFile, _ := os.Create(metadata.makePath("stdout"))
+	stderrFile, _ := os.Create(metadata.makePath("stderr"))
+	defer stdoutFile.Close()
+	defer stderrFile.Close()
+
+	cmd.Stdout = stdoutFile
+	cmd.Stderr = stderrFile
+
+	if err := cmd.Start(); err != nil {
 		LogError(err, "runtime", "Could not exec local job.")
+		return
 	}
-	pid := 0
-	if c.Process != nil {
-		pid = c.Process.Pid
-	}
-	metadata.write("jobinfo", map[string]interface{}{"type": "local", "childid": pid})
+	metadata.write("jobinfo", map[string]interface{}{"type": "local", "childid": cmd.Process.Pid})
+	cmd.Wait()
 }
 
 func (self *Node) execSGEJob(shellName string, shellCmd string, stagecodePath string,
@@ -831,12 +849,21 @@ func (self *Node) execSGEJob(shellName string, shellCmd string, stagecodePath st
 
 	metadata.write("jobinfo", map[string]string{"type": "sge"})
 
-	c := exec.Command("qsub", cmdline...)
-	if err := c.Start(); err != nil {
+	cmd := exec.Command("qsub", cmdline...)
+	stdoutFile, _ := os.Create(metadata.makePath("stdout"))
+	stderrFile, _ := os.Create(metadata.makePath("stderr"))
+	defer stdoutFile.Close()
+	defer stderrFile.Close()
+
+	cmd.Stdout = stdoutFile
+	cmd.Stderr = stderrFile
+
+	if err := cmd.Start(); err != nil {
 		metadata.writeRaw("errors", err.Error())
-	} else if err := c.Wait(); err != nil {
+	} else if err := cmd.Wait(); err != nil {
 		metadata.writeRaw("errors", err.Error())
 	}
+	cmd.Wait()
 }
 
 func (self *Node) RunJob(shellName string, fqname string, metadata *Metadata,
@@ -847,9 +874,9 @@ func (self *Node) RunJob(shellName string, fqname string, metadata *Metadata,
 	metadata.write("jobinfo", map[string]interface{}{"type": nil, "childpid": nil})
 	shellCmd := path.Join(adaptersPath, shellName+".py")
 	if self.rt.jobMode == "local" {
-		self.execLocalJob(shellName, shellCmd, self.stagecodePath, libPath, fqname, metadata, threads, memGB)
+		go self.execLocalJob(shellName, shellCmd, self.stagecodePath, libPath, fqname, metadata, threads, memGB)
 	} else if self.rt.jobMode == "sge" {
-		self.execSGEJob(shellName, shellCmd, self.stagecodePath, libPath, fqname, metadata, threads, memGB)
+		go self.execSGEJob(shellName, shellCmd, self.stagecodePath, libPath, fqname, metadata, threads, memGB)
 	} else {
 		panic(fmt.Sprintf("Unknown jobMode: %s", self.rt.jobMode))
 	}
