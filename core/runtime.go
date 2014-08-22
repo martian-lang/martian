@@ -245,6 +245,15 @@ func (self *Binding) resolve(argPermute map[string]interface{}) interface{} {
 }
 
 func (self *Binding) serialize(argPermute map[string]interface{}) interface{} {
+	var node interface{} = nil
+	var matchedFork interface{} = nil
+	if self.boundNode != nil {
+		node = self.boundNode.Node().name
+		f := self.boundNode.Node().matchFork(argPermute)
+		if f != nil {
+			matchedFork = f.index
+		}
+	}
 	return map[string]interface{}{
 		"id":          self.id,
 		"type":        self.tname,
@@ -252,8 +261,8 @@ func (self *Binding) serialize(argPermute map[string]interface{}) interface{} {
 		"mode":        self.mode,
 		"output":      self.output,
 		"sweep":       self.sweep,
-		"node":        self.boundNode.Node().name,
-		"matchedFork": self.boundNode.Node().matchFork(argPermute).index,
+		"node":        node,
+		"matchedFork": matchedFork,
 		"value":       self.resolve(argPermute),
 		"waiting":     self.waiting,
 	}

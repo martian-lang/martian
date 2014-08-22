@@ -4,7 +4,7 @@
   app = angular.module('app', ['ui.bootstrap', 'ngClipboard']);
 
   renderGraph = function($scope, $compile) {
-    var edge, g, node, _i, _j, _k, _len, _len1, _len2, _ref, _ref1, _ref2;
+    var edge, g, maxX, node, scale, _i, _j, _k, _len, _len1, _len2, _ref, _ref1, _ref2;
     g = new dagreD3.Digraph();
     _ref = _.values($scope.nodes);
     for (_i = 0, _len = _ref.length; _i < _len; _i++) {
@@ -22,10 +22,25 @@
       }
     }
     (new dagreD3.Renderer()).run(g, d3.select("g"));
+    maxX = 0.0;
     d3.selectAll("g.node").each(function(id) {
+      var xCoord;
       d3.select(this).classed(g.node(id).type, true);
       d3.select(this).attr('ng-click', "selectNode('" + id + "')");
-      return d3.select(this).attr('ng-class', "[node.name=='" + id + "'?'seled':'',nodes['" + id + "'].state]");
+      d3.select(this).attr('ng-class', "[node.name=='" + id + "'?'seled':'',nodes['" + id + "'].state]");
+      xCoord = parseFloat(d3.select(this).attr('transform').substr(10).split(',')[0]);
+      console.log(xCoord);
+      if (xCoord > maxX) {
+        return maxX = xCoord;
+      }
+    });
+    maxX += 100;
+    if (maxX < 750.0) {
+      maxX = 750.0;
+    }
+    scale = 750.0 / maxX;
+    d3.selectAll("g#top").each(function(id) {
+      return d3.select(this).attr('transform', 'translate(5,5) scale(' + scale + ')');
     });
     d3.selectAll("g.node.stage rect").each(function(id) {
       return d3.select(this).attr('rx', 20).attr('ry', 20);
@@ -101,7 +116,6 @@
       });
     };
     return $scope.refresh = function() {
-      console.log('refresh');
       return $http.get("/api/get-nodes/" + container + "/" + pname + "/" + psid).success(function(nodes) {
         $scope.nodes = _.indexBy(nodes, 'name');
         if ($scope.id) {

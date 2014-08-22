@@ -15,10 +15,22 @@ renderGraph = ($scope, $compile) ->
         for edge in node.edges
             g.addEdge(null, edge.from, edge.to, {}) 
     (new dagreD3.Renderer()).run(g, d3.select("g"))
+    maxX = 0.0
     d3.selectAll("g.node").each((id) ->
         d3.select(this).classed(g.node(id).type, true)
         d3.select(this).attr('ng-click', "selectNode('#{id}')")
         d3.select(this).attr('ng-class', "[node.name=='#{id}'?'seled':'',nodes['#{id}'].state]")
+        xCoord = parseFloat(d3.select(this).attr('transform').substr(10).split(',')[0])
+        console.log(xCoord)
+        if xCoord > maxX
+            maxX = xCoord
+    )
+    maxX += 100
+    if maxX < 750.0
+        maxX = 750.0
+    scale = 750.0 / maxX
+    d3.selectAll("g#top").each((id) ->
+        d3.select(this).attr('transform', 'translate(5,5) scale('+scale+')')
     )
     d3.selectAll("g.node.stage rect").each((id) ->
         d3.select(this).attr('rx', 20).attr('ry', 20))
@@ -74,7 +86,6 @@ app.controller('MarioGraphCtrl', ($scope, $compile, $http, $interval) ->
         )
 
     $scope.refresh = () ->
-        console.log('refresh')
         $http.get("/api/get-nodes/#{container}/#{pname}/#{psid}").success((nodes) ->
             $scope.nodes = _.indexBy(nodes, 'name')
             if $scope.id then $scope.node = $scope.nodes[$scope.id]

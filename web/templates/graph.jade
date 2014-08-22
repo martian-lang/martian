@@ -26,9 +26,9 @@ html(ng-app="app" ng-controller="MarioGraphCtrl")
                         span.logo-color X
                         | &nbsp;Mario Pipeline Runner&nbsp;
                     | / [[.Psid]] / [[.Pname]] 
-        #graph(style="margin-left: 25px; margin-top: 75px")
-            svg(transform="scale(0.5)" width="875px" height="1000px")
-                g#top(transform="translate(5,5) scale(0.80)")
+        #graph(style="margin-left: 10px; margin-top: 60px")
+            svg(width="750px" height="1000px")
+                g#top(transform="translate(5,5) scale(1.0)")
         #details(ng-show="node")
             h4#stagename
                 a(href="#") {{node.name}}                
