@@ -20,9 +20,10 @@ type Mailer struct {
 	host         string
 	port         int
 	notifyEmail  string
+	debug        bool
 }
 
-func NewMailer(instanceName string, username string, password string, notifyEmail string) *Mailer {
+func NewMailer(instanceName string, username string, password string, notifyEmail string, debug bool) *Mailer {
 	self := &Mailer{}
 	self.InstanceName = strings.ToLower(instanceName)
 	self.username = username
@@ -30,6 +31,7 @@ func NewMailer(instanceName string, username string, password string, notifyEmai
 	self.host = "smtp.gmail.com"
 	self.port = 587
 	self.notifyEmail = notifyEmail
+	self.debug = debug
 	return self
 }
 
@@ -52,6 +54,10 @@ Mario
 
 func (self *Mailer) Sendmail(to []string, subject string, body string) error {
 	var doc bytes.Buffer
+
+	if self.debug {
+		subject = "[DEBUG - IGNORE] " + subject
+	}
 
 	context := &SmtpTemplateData{
 		fmt.Sprintf("Mario Lopez <%s>", self.username),
