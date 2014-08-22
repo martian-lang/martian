@@ -162,14 +162,16 @@ func NewBinding(node *Node, bindStm *BindStm) *Binding {
 	case *RefExp:
 		if valueExp.kind == "self" {
 			parentBinding := self.node.parent.Node().argbindings[valueExp.id]
-			self.node = parentBinding.node
-			self.tname = parentBinding.tname
-			self.sweep = parentBinding.sweep
-			self.waiting = parentBinding.waiting
-			self.mode = parentBinding.mode
-			self.boundNode = parentBinding.boundNode
-			self.output = parentBinding.output
-			self.value = parentBinding.value
+			if parentBinding != nil {
+				self.node = parentBinding.node
+				self.tname = parentBinding.tname
+				self.sweep = parentBinding.sweep
+				self.waiting = parentBinding.waiting
+				self.mode = parentBinding.mode
+				self.boundNode = parentBinding.boundNode
+				self.output = parentBinding.output
+				self.value = parentBinding.value
+			}
 			self.id = bindStm.id
 			self.valexp = "self." + valueExp.id
 		} else if valueExp.kind == "call" {
@@ -232,12 +234,14 @@ func (self *Binding) resolve(argPermute map[string]interface{}) interface{} {
 	if argPermute == nil {
 		return nil
 	}
-	matchedFork := self.boundNode.Node().matchFork(argPermute)
-	outputs, ok := matchedFork.metadata.read("outs").(map[string]interface{})
-	if ok {
-		output, ok := outputs[self.output]
+	if self.boundNode != nil {
+		matchedFork := self.boundNode.Node().matchFork(argPermute)
+		outputs, ok := matchedFork.metadata.read("outs").(map[string]interface{})
 		if ok {
-			return output
+			output, ok := outputs[self.output]
+			if ok {
+				return output
+			}
 		}
 	}
 	self.waiting = true
@@ -1265,7 +1269,17 @@ func (self *Runtime) InvokeWithSource(psid string, src string, pipestancePath st
 
 // Reattaches to an existing pipestance.
 func (self *Runtime) Reattach(psid string, pipestancePath string) (*Pipestance, error) {
-	// TODO check here if _codeversion matches with self.codeVersion
+	// Check here if _codeversion matches with self.codeVersion
+	// Read in the existing _codeversion file.
+	/*
+		bytes, err := ioutil.ReadFile(path.Join(pipestancePath, "_codeversion"))
+		if err != nil {
+			return nil, err
+		}
+		if string(bytes) != self.CodeVersion {
+			return nil, errors.New(fmt.Sprintf("Not reattaching because code versions don't match: %s vs %s.", string(bytes), self.CodeVersion))
+		}
+	*/
 
 	// Read in the existing _invocation file.
 	bytes, err := ioutil.ReadFile(path.Join(pipestancePath, "_invocation"))
