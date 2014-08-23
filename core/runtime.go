@@ -1318,7 +1318,9 @@ func (self *Runtime) buildVal(param Param, val interface{}) string {
 		return fmt.Sprintf("%f", val)
 	}
 	if param.Tname() == "int" {
-		return fmt.Sprintf("%d", val)
+		if fval, ok := val.(float64); ok {
+			return fmt.Sprintf("%d", int(fval))
+		}
 	}
 	if param.Tname() == "bool" {
 		return fmt.Sprintf("%t", val)
