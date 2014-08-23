@@ -81,16 +81,6 @@ func (self *Metadata) cache() {
 	}
 }
 
-func (self *Metadata) restartIfFailed() {
-	if self.exists("errors") {
-		self.contents = map[string]bool{}
-		paths := self.glob()
-		for _, p := range paths {
-			os.Remove(p)
-		}
-	}
-}
-
 func (self *Metadata) makePath(name string) string {
 	return path.Join(self.path, "_"+name)
 }
@@ -399,6 +389,16 @@ func NewFork(nodable Nodable, index int, argPermute map[string]interface{}) *For
 	self.argPermute = argPermute
 	self.split_has_run = false
 	self.join_has_run = false
+
+	// reconstruct chunks using chunk_defs on reattach, do not rely
+	// on metadata.exists('chunk_defs') since it may not be cached
+	chunkDefIfaces := self.split_metadata.read("chunk_defs")
+	if chunkDefs, ok := chunkDefIfaces.([]interface{}); ok {
+		for i, chunkDef := range chunkDefs {
+			chunk := NewChunk(self.node, self, i, chunkDef.(map[string]interface{}))
+			self.chunks = append(self.chunks, chunk)
+		}
+	}
 	return self
 }
 
@@ -752,15 +752,13 @@ func (self *Node) RefreshMetadata(wg *sync.WaitGroup) {
 	}()
 }
 
-func (self *Node) RestartFailedMetadatas(wg *sync.WaitGroup) {
-	metadatas := self.collectMetadatas()
-	wg.Add(len(metadatas))
-	for _, metadata := range metadatas {
-		go func(wg *sync.WaitGroup, m *Metadata) {
-			m.restartIfFailed()
-			wg.Done()
-		}(wg, metadata)
-	}
+func (self *Node) RestartFromFailed(wg *sync.WaitGroup) {
+	wg.Add(1)
+	go func() {
+		os.RemoveAll(self.path)
+		self.mkdirs(wg)
+		wg.Done()
+	}()
 }
 
 func (self *Node) Step() {
@@ -852,31 +850,42 @@ func (self *Node) execLocalJob(shellName string, shellCmd string, stagecodePath 
 func (self *Node) execSGEJob(shellName string, shellCmd string, stagecodePath string,
 	libPath string, fqname string, metadata *Metadata, threads interface{},
 	memGB interface{}) {
-	qsub := []string{shellCmd, stagecodePath, libPath, metadata.path, metadata.filesPath, "profile"}
-	metadata.writeRaw("qsub", strings.Join(qsub, " "))
+	qscript := []string{shellCmd, stagecodePath, libPath, metadata.path, metadata.filesPath, "profile"}
+	metadata.writeRaw("qscript", strings.Join(qscript, " "))
 
 	cmdline := []string{
 		"-N", strings.Join([]string{self.fqname, shellName}, "."),
 		"-V",
-		"-cwd",
-		"-o", metadata.makePath("stdout"),
-		"-e", metadata.makePath("stderr"),
 	}
 	// exec.Command doesn't like it if there are empty members of this
 	// arg string array. Problem is empty threads arg string, if it
 	// comes before the path to the script, is it gets interpreted
 	// as the path to the script and qsub fails.
 	if threads != nil {
-		cmdline = append(cmdline, fmt.Sprintf("-pe threads %v", threads))
+		cmdline = append(cmdline, []string{
+			"-pe",
+			"threads",
+			fmt.Sprintf("%v", threads),
+		}...)
 	}
 	if memGB != nil {
-		cmdline = append(cmdline, fmt.Sprintf("-l h_vmem=%vG", memGB))
+		cmdline = append(cmdline, []string{
+			"-l",
+			fmt.Sprintf("h_vmem=%vG", memGB),
+		}...)
 	}
-	cmdline = append(cmdline, metadata.makePath("qsub"))
+	cmdline = append(cmdline, []string{
+		"-cwd",
+		"-o", metadata.makePath("stdout"),
+		"-e", metadata.makePath("stderr"),
+		metadata.makePath("qscript"),
+	}...)
 
 	metadata.write("jobinfo", map[string]string{"type": "sge"})
 
 	cmd := exec.Command("qsub", cmdline...)
+	cmd.Dir = metadata.filesPath
+	metadata.writeRaw("qsub", strings.Join(cmd.Args, " "))
 	stdoutFile, _ := os.Create(metadata.makePath("stdout"))
 	stderrFile, _ := os.Create(metadata.makePath("stderr"))
 	stdoutFile.WriteString("[stdout]\n")
@@ -887,12 +896,7 @@ func (self *Node) execSGEJob(shellName string, shellCmd string, stagecodePath st
 	cmd.Stdout = stdoutFile
 	cmd.Stderr = stderrFile
 
-	if err := cmd.Start(); err != nil {
-		metadata.writeRaw("errors", err.Error())
-	} else if err := cmd.Wait(); err != nil {
-		metadata.writeRaw("errors", err.Error())
-	}
-	cmd.Wait()
+	cmd.Start()
 }
 
 func (self *Node) RunJob(shellName string, fqname string, metadata *Metadata,
