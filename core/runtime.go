@@ -861,7 +861,6 @@ func (self *Node) execSGEJob(shellName string, shellCmd string, stagecodePath st
 		"-cwd",
 		"-o", metadata.makePath("stdout"),
 		"-e", metadata.makePath("stderr"),
-		metadata.makePath("qsub"),
 	}
 	// exec.Command doesn't like it if there are empty members of this
 	// arg string array. Problem is empty threads arg string, if it
@@ -873,6 +872,7 @@ func (self *Node) execSGEJob(shellName string, shellCmd string, stagecodePath st
 	if memGB != nil {
 		cmdline = append(cmdline, fmt.Sprintf("-l h_vmem=%vG", memGB))
 	}
+	cmdline = append(cmdline, metadata.makePath("qsub"))
 
 	metadata.write("jobinfo", map[string]string{"type": "sge"})
 
