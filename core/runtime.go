@@ -735,38 +735,25 @@ func (self *Node) collectMetadatas() []*Metadata {
 	return metadatas
 }
 
-func (self *Node) RefreshMetadata(wg *sync.WaitGroup) {
-	go func() {
-		var mwg sync.WaitGroup
-		metadatas := self.collectMetadatas()
-		mwg.Add(len(metadatas))
-		for _, metadata := range metadatas {
-			go func(m *Metadata) {
-				m.cache()
-				mwg.Done()
-			}(metadata)
-		}
-		mwg.Wait()
-		self.state = self.GetState()
-		wg.Done()
-	}()
+func (self *Node) RefreshMetadata() {
+	metadatas := self.collectMetadatas()
+	for _, metadata := range metadatas {
+		metadata.cache()
+	}
+	self.state = self.GetState()
 }
 
-func (self *Node) RestartFromFailed(wg *sync.WaitGroup) {
-	wg.Add(1)
-	go func() {
-		// Blow away the entire stage node.
-		os.RemoveAll(self.path)
+func (self *Node) RestartFromFailed() {
+	// Blow away the entire stage node.
+	os.RemoveAll(self.path)
 
-		// Re-create the folders.
-		var mwg sync.WaitGroup
-		self.mkdirs(&mwg)
-		mwg.Wait()
+	// Re-create the folders.
+	var rewg sync.WaitGroup
+	self.mkdirs(&rewg)
+	rewg.Wait()
 
-		// Refresh the metadata (clear it all).
-		self.RefreshMetadata(wg)
-		wg.Done()
-	}()
+	// Refresh the metadata (clear it all).
+	self.RefreshMetadata()
 }
 
 func (self *Node) Step() {
