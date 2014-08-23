@@ -494,10 +494,10 @@ func (self *Fork) Step() {
 			self.join_metadata.write("args", resolveBindings(self.node.argbindings, self.argPermute))
 			self.join_metadata.write("chunk_defs", self.split_metadata.read("chunk_defs"))
 			if self.node.split {
-				chunkOuts := []map[string]interface{}{}
+				chunkOuts := []interface{}{}
 				for _, chunk := range self.chunks {
 					outs := chunk.metadata.read("outs")
-					chunkOuts = append(chunkOuts, outs.(map[string]interface{}))
+					chunkOuts = append(chunkOuts, outs)
 				}
 				self.join_metadata.write("chunk_outs", chunkOuts)
 				self.join_metadata.write("outs", makeOutArgs(self.node.outparams, self.metadata.filesPath))
@@ -755,8 +755,16 @@ func (self *Node) RefreshMetadata(wg *sync.WaitGroup) {
 func (self *Node) RestartFromFailed(wg *sync.WaitGroup) {
 	wg.Add(1)
 	go func() {
+		// Blow away the entire stage node.
 		os.RemoveAll(self.path)
-		self.mkdirs(wg)
+
+		// Re-create the folders.
+		var mwg sync.WaitGroup
+		self.mkdirs(&mwg)
+		mwg.Wait()
+
+		// Refresh the metadata (clear it all).
+		self.RefreshMetadata(wg)
 		wg.Done()
 	}()
 }
