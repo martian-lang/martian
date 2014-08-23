@@ -849,7 +849,7 @@ func (self *Node) execSGEJob(shellName string, shellCmd string, stagecodePath st
 	metadata.writeRaw("qscript", strings.Join(qscript, " "))
 
 	cmdline := []string{
-		"-N", strings.Join([]string{self.fqname, shellName}, "."),
+		"-N", strings.Join([]string{fqname, shellName}, "."),
 		"-V",
 	}
 	// exec.Command doesn't like it if there are empty members of this
