@@ -1250,6 +1250,8 @@ func (self *Runtime) InvokeWithSource(psid string, src string, pipestancePath st
 	// Instantiate the pipestance.
 	pipestance, err := self.instantiate(psid, src, pipestancePath)
 	if err != nil {
+		// If instantiation failed, delete the pipestance folder.
+		os.RemoveAll(pipestancePath)
 		return nil, err
 	}
 
@@ -1298,6 +1300,17 @@ func (self *Runtime) buildVal(param Param, val interface{}) string {
 	}
 	if param.Tname() == "string" {
 		return fmt.Sprintf("\"%s\"", val)
+	}
+	if param.Tname() == "float" {
+		return fmt.Sprintf("%f", val)
+	}
+	if param.Tname() == "int" {
+		if fval, ok := val.(float64); ok {
+			return fmt.Sprintf("%d", int(fval))
+		}
+	}
+	if param.Tname() == "bool" {
+		return fmt.Sprintf("%t", val)
 	}
 	return fmt.Sprintf("%v", val)
 }
