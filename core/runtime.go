@@ -881,18 +881,19 @@ func (self *Node) execSGEJob(shellName string, shellCmd string, stagecodePath st
 	cmd := exec.Command("qsub", cmdline...)
 	cmd.Dir = metadata.filesPath
 	metadata.writeRaw("qsub", strings.Join(cmd.Args, " "))
-	/*
-		stdoutFile, _ := os.Create(metadata.makePath("stdout"))
-		stderrFile, _ := os.Create(metadata.makePath("stderr"))
-		stdoutFile.WriteString("[stdout]\n")
-		stderrFile.WriteString("[stderr]\n")
-		defer stdoutFile.Close()
-		defer stderrFile.Close()
 
-		cmd.Stdout = stdoutFile
-		cmd.Stderr = stderrFile
-	*/
+	stdoutFile, _ := os.Create(metadata.makePath("stdout"))
+	stderrFile, _ := os.Create(metadata.makePath("stderr"))
+	stdoutFile.WriteString("[stdout]\n")
+	stderrFile.WriteString("[stderr]\n")
+	defer stdoutFile.Close()
+	defer stderrFile.Close()
+
+	cmd.Stdout = stdoutFile
+	cmd.Stderr = stderrFile
+
 	cmd.Start()
+	cmd.Wait()
 }
 
 func (self *Node) RunJob(shellName string, fqname string, metadata *Metadata,
@@ -903,9 +904,9 @@ func (self *Node) RunJob(shellName string, fqname string, metadata *Metadata,
 	metadata.write("jobinfo", map[string]interface{}{"type": nil, "childpid": nil})
 	shellCmd := path.Join(adaptersPath, shellName+".py")
 	if self.rt.jobMode == "local" {
-		go self.execLocalJob(shellName, shellCmd, self.stagecodePath, libPath, fqname, metadata, threads, memGB)
+		self.execLocalJob(shellName, shellCmd, self.stagecodePath, libPath, fqname, metadata, threads, memGB)
 	} else if self.rt.jobMode == "sge" {
-		go self.execSGEJob(shellName, shellCmd, self.stagecodePath, libPath, fqname, metadata, threads, memGB)
+		self.execSGEJob(shellName, shellCmd, self.stagecodePath, libPath, fqname, metadata, threads, memGB)
 	} else {
 		panic(fmt.Sprintf("Unknown jobMode: %s", self.rt.jobMode))
 	}
