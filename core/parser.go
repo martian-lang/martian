@@ -8,7 +8,7 @@ package core
 import (
 	"fmt"
 	"io/ioutil"
-	"path"
+	"strings"
 )
 
 //
@@ -63,8 +63,13 @@ func (exp *ValExp) ResolveType(global *Ast, pipeline *Pipeline) (string, error) 
 			return subexp.Kind(), nil
 		}
 		return "null", nil
+	// File: look for matching filetype in type table
 	case "file":
-		return path.Ext(exp.value.(string))[1:], nil
+		for filetype, _ := range global.filetypeTable {
+			if strings.HasSuffix(exp.value.(string), filetype) {
+				return filetype, nil
+			}
+		}
 	}
 	return "unknown", nil
 }

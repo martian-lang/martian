@@ -110,8 +110,11 @@ func main() {
 	//=========================================================================
 	pipestance, err := rt.InvokeWithSource(psid, string(callSrc), pipestancePath)
 	if err != nil {
-		// If it already exists, try to reattach to it.
-		pipestance, err = rt.Reattach(psid, pipestancePath)
+		if _, ok := err.(*core.MarioError); ok {
+			// If it already exists, try to reattach to it.
+			pipestance, err = rt.Reattach(psid, pipestancePath)
+			core.DieIf(err)
+		}
 		core.DieIf(err)
 	}
 
