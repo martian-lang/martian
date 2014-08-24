@@ -489,10 +489,10 @@ mmdefault:
 					case *Filetype:
 						global.filetypes = append(global.filetypes, dec)
 					case *Stage:
-						global.stages = append(global.stages, dec)
+						global.Stages = append(global.Stages, dec)
 						global.callables.list = append(global.callables.list, dec)
 					case *Pipeline:
-						global.pipelines = append(global.pipelines, dec)
+						global.Pipelines = append(global.Pipelines, dec)
 						global.callables.list = append(global.callables.list, dec)
 					}
 				}
@@ -697,7 +697,7 @@ mmdefault:
 		//line grammar.y:197
 		{
 			{
-				mmS[mmpt-1].bindings.list = append(mmS[mmpt-1].bindings.list, mmS[mmpt-0].binding)
+				mmS[mmpt-1].bindings.List = append(mmS[mmpt-1].bindings.List, mmS[mmpt-0].binding)
 				mmVAL.bindings = mmS[mmpt-1].bindings
 			}
 		}
@@ -740,28 +740,28 @@ mmdefault:
 		//line grammar.y:221
 		{
 			{
-				mmVAL.exp = &ValExp{node: AstNode{mmlval.loc}, kind: "array", value: mmS[mmpt-1].exps}
+				mmVAL.exp = &ValExp{node: AstNode{mmlval.loc}, Kind: "array", Value: mmS[mmpt-1].exps}
 			}
 		}
 	case 42:
 		//line grammar.y:223
 		{
 			{
-				mmVAL.exp = &ValExp{node: AstNode{mmlval.loc}, kind: "array", value: []Exp{}}
+				mmVAL.exp = &ValExp{node: AstNode{mmlval.loc}, Kind: "array", Value: []Exp{}}
 			}
 		}
 	case 43:
 		//line grammar.y:225
 		{
 			{
-				mmVAL.exp = &ValExp{node: AstNode{mmlval.loc}, kind: mmS[mmpt-3].val, value: strings.Replace(mmS[mmpt-1].val, "\"", "", -1)}
+				mmVAL.exp = &ValExp{node: AstNode{mmlval.loc}, Kind: mmS[mmpt-3].val, Value: strings.Replace(mmS[mmpt-1].val, "\"", "", -1)}
 			}
 		}
 	case 44:
 		//line grammar.y:227
 		{
 			{
-				mmVAL.exp = &ValExp{node: AstNode{mmlval.loc}, kind: mmS[mmpt-3].val, value: strings.Replace(mmS[mmpt-1].val, "\"", "", -1)}
+				mmVAL.exp = &ValExp{node: AstNode{mmlval.loc}, Kind: mmS[mmpt-3].val, Value: strings.Replace(mmS[mmpt-1].val, "\"", "", -1)}
 			}
 		}
 	case 45:
@@ -769,7 +769,7 @@ mmdefault:
 		{
 			{ // Lexer guarantees parseable float strings.
 				f, _ := strconv.ParseFloat(mmS[mmpt-0].val, 64)
-				mmVAL.exp = &ValExp{node: AstNode{mmlval.loc}, kind: "float", value: f}
+				mmVAL.exp = &ValExp{node: AstNode{mmlval.loc}, Kind: "float", Value: f}
 			}
 		}
 	case 46:
@@ -777,35 +777,35 @@ mmdefault:
 		{
 			{ // Lexer guarantees parseable int strings.
 				i, _ := strconv.ParseInt(mmS[mmpt-0].val, 0, 64)
-				mmVAL.exp = &ValExp{node: AstNode{mmlval.loc}, kind: "int", value: i}
+				mmVAL.exp = &ValExp{node: AstNode{mmlval.loc}, Kind: "int", Value: i}
 			}
 		}
 	case 47:
 		//line grammar.y:239
 		{
 			{
-				mmVAL.exp = &ValExp{node: AstNode{mmlval.loc}, kind: "string", value: strings.Replace(mmS[mmpt-0].val, "\"", "", -1)}
+				mmVAL.exp = &ValExp{node: AstNode{mmlval.loc}, Kind: "string", Value: strings.Replace(mmS[mmpt-0].val, "\"", "", -1)}
 			}
 		}
 	case 48:
 		//line grammar.y:241
 		{
 			{
-				mmVAL.exp = &ValExp{node: AstNode{mmlval.loc}, kind: "bool", value: true}
+				mmVAL.exp = &ValExp{node: AstNode{mmlval.loc}, Kind: "bool", Value: true}
 			}
 		}
 	case 49:
 		//line grammar.y:243
 		{
 			{
-				mmVAL.exp = &ValExp{node: AstNode{mmlval.loc}, kind: "bool", value: false}
+				mmVAL.exp = &ValExp{node: AstNode{mmlval.loc}, Kind: "bool", Value: false}
 			}
 		}
 	case 50:
 		//line grammar.y:245
 		{
 			{
-				mmVAL.exp = &ValExp{node: AstNode{mmlval.loc}, kind: "null", value: nil}
+				mmVAL.exp = &ValExp{node: AstNode{mmlval.loc}, Kind: "null", Value: nil}
 			}
 		}
 	case 51:

@@ -3,6 +3,7 @@
 *.swo
 node_modules
 mrc/mrc
+mre/mre
 mrp/mrp
 mrs/mrs
 marsoc/marsoc

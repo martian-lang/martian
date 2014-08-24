@@ -29,7 +29,6 @@
       d3.select(this).attr('ng-click', "selectNode('" + id + "')");
       d3.select(this).attr('ng-class', "[node.name=='" + id + "'?'seled':'',nodes['" + id + "'].state]");
       xCoord = parseFloat(d3.select(this).attr('transform').substr(10).split(',')[0]);
-      console.log(xCoord);
       if (xCoord > maxX) {
         return maxX = xCoord;
       }

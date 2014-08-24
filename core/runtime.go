@@ -146,13 +146,13 @@ func NewBinding(node *Node, bindStm *BindStm) *Binding {
 	self := &Binding{}
 	self.node = node
 	self.id = bindStm.id
-	self.tname = bindStm.tname
+	self.tname = bindStm.Tname
 	self.sweep = bindStm.sweep
 	self.waiting = false
-	switch valueExp := bindStm.exp.(type) {
+	switch valueExp := bindStm.Exp.(type) {
 	case *RefExp:
-		if valueExp.kind == "self" {
-			parentBinding := self.node.parent.Node().argbindings[valueExp.id]
+		if valueExp.Kind == "self" {
+			parentBinding := self.node.parent.Node().argbindings[valueExp.Id]
 			if parentBinding != nil {
 				self.node = parentBinding.node
 				self.tname = parentBinding.tname
@@ -164,26 +164,26 @@ func NewBinding(node *Node, bindStm *BindStm) *Binding {
 				self.value = parentBinding.value
 			}
 			self.id = bindStm.id
-			self.valexp = "self." + valueExp.id
-		} else if valueExp.kind == "call" {
+			self.valexp = "self." + valueExp.Id
+		} else if valueExp.Kind == "call" {
 			self.mode = "reference"
-			self.boundNode = self.node.parent.Node().subnodes[valueExp.id]
+			self.boundNode = self.node.parent.Node().subnodes[valueExp.Id]
 			self.output = valueExp.outputId
 			if valueExp.outputId == "default" {
-				self.valexp = valueExp.id
+				self.valexp = valueExp.Id
 			} else {
-				self.valexp = valueExp.id + "." + valueExp.outputId
+				self.valexp = valueExp.Id + "." + valueExp.outputId
 			}
 		}
 	case *ValExp:
 		self.mode = "value"
 		self.boundNode = node
-		self.value = bindStm.exp.(*ValExp).value
+		self.value = bindStm.Exp.(*ValExp).Value
 		// Unwrap array values.
-		if self.value != nil && valueExp.kind == "array" {
+		if self.value != nil && valueExp.Kind == "array" {
 			value := []interface{}{}
 			for _, e := range self.value.([]Exp) {
-				value = append(value, e.(*ValExp).value)
+				value = append(value, e.(*ValExp).Value)
 			}
 			self.value = value
 		}
@@ -195,15 +195,15 @@ func NewReturnBinding(node *Node, bindStm *BindStm) *Binding {
 	self := &Binding{}
 	self.node = node
 	self.id = bindStm.id
-	self.tname = bindStm.tname
+	self.tname = bindStm.Tname
 	self.mode = "reference"
-	valueExp := bindStm.exp.(*RefExp)
-	self.boundNode = self.node.subnodes[valueExp.id] // from node, NOT parent; this is diff from Binding
+	valueExp := bindStm.Exp.(*RefExp)
+	self.boundNode = self.node.subnodes[valueExp.Id] // from node, NOT parent; this is diff from Binding
 	self.output = valueExp.outputId
 	if valueExp.outputId == "default" {
-		self.valexp = valueExp.id
+		self.valexp = valueExp.Id
 	} else {
-		self.valexp = valueExp.id + "." + valueExp.outputId
+		self.valexp = valueExp.Id + "." + valueExp.outputId
 	}
 	return self
 }
@@ -589,7 +589,7 @@ func NewNode(parent Nodable, kind string, callStm *CallStm, callables *Callables
 
 	self.rt = parent.Node().rt
 	self.kind = kind
-	self.name = callStm.id
+	self.name = callStm.Id
 	self.fqname = parent.Node().fqname + "." + self.name
 	self.path = path.Join(parent.Node().path, self.name)
 	self.metadata = NewMetadata(self.path)
@@ -604,7 +604,7 @@ func NewNode(parent Nodable, kind string, callStm *CallStm, callables *Callables
 	self.prenodes = map[string]Nodable{}
 	self.prenodeList = []Nodable{}
 
-	for id, bindStm := range callStm.bindings.table {
+	for id, bindStm := range callStm.Bindings.table {
 		binding := NewBinding(self, bindStm)
 		self.argbindings[id] = binding
 		self.argbindingList = append(self.argbindingList, binding)
@@ -881,16 +881,17 @@ func (self *Node) execSGEJob(shellName string, shellCmd string, stagecodePath st
 	cmd := exec.Command("qsub", cmdline...)
 	cmd.Dir = metadata.filesPath
 	metadata.writeRaw("qsub", strings.Join(cmd.Args, " "))
-	stdoutFile, _ := os.Create(metadata.makePath("stdout"))
-	stderrFile, _ := os.Create(metadata.makePath("stderr"))
-	stdoutFile.WriteString("[stdout]\n")
-	stderrFile.WriteString("[stderr]\n")
-	defer stdoutFile.Close()
-	defer stderrFile.Close()
+	/*
+		stdoutFile, _ := os.Create(metadata.makePath("stdout"))
+		stderrFile, _ := os.Create(metadata.makePath("stderr"))
+		stdoutFile.WriteString("[stdout]\n")
+		stderrFile.WriteString("[stderr]\n")
+		defer stdoutFile.Close()
+		defer stderrFile.Close()
 
-	cmd.Stdout = stdoutFile
-	cmd.Stderr = stderrFile
-
+		cmd.Stdout = stdoutFile
+		cmd.Stderr = stderrFile
+	*/
 	cmd.Start()
 }
 
@@ -948,13 +949,13 @@ func NewPipestance(parent Nodable, callStm *CallStm, callables *Callables) *Pipe
 
 	// Build subcall tree.
 	pipeline := callables.table[self.node.name].(*Pipeline)
-	for _, subcallStm := range pipeline.calls {
-		callable := callables.table[subcallStm.id]
+	for _, subcallStm := range pipeline.Calls {
+		callable := callables.table[subcallStm.Id]
 		switch callable.(type) {
 		case *Stage:
-			self.node.subnodes[subcallStm.id] = NewStagestance(self.Node(), subcallStm, callables)
+			self.node.subnodes[subcallStm.Id] = NewStagestance(self.Node(), subcallStm, callables)
 		case *Pipeline:
-			self.node.subnodes[subcallStm.id] = NewPipestance(self.Node(), subcallStm, callables)
+			self.node.subnodes[subcallStm.Id] = NewPipestance(self.Node(), subcallStm, callables)
 		}
 	}
 
@@ -1104,7 +1105,7 @@ func NewTopNode(rt *Runtime, psid string, p string) *TopNode {
 // Runtime
 //=============================================================================
 type Runtime struct {
-	mroPath       string
+	MroPath       string
 	stagecodePath string
 	libPath       string
 	adaptersPath  string
@@ -1120,7 +1121,7 @@ func NewRuntime(jobMode string, pipelinesPath string) *Runtime {
 	_, filename, _, _ := runtime.Caller(1)
 	exeDir, _ := filepath.Abs(filepath.Dir(filename))
 	self := &Runtime{}
-	self.mroPath = path.Join(pipelinesPath, "mro")
+	self.MroPath = path.Join(pipelinesPath, "mro")
 	self.stagecodePath = path.Join(pipelinesPath, "stages")
 	self.libPath = path.Join(pipelinesPath, "lib")
 	self.adaptersPath = path.Join(exeDir, "..", "adapters")
@@ -1153,20 +1154,20 @@ func (self *Runtime) GetPipelineNames() []string {
 
 // Compile an MRO file in self.mroPath named fname.mro.
 func (self *Runtime) Compile(fname string) (*Ast, error) {
-	processedSrc, global, err := parseFile(path.Join(self.mroPath, fname))
+	processedSrc, global, err := parseFile(path.Join(self.MroPath, fname))
 	if err != nil {
 		return nil, err
 	}
-	for _, pipeline := range global.pipelines {
-		self.globalTable[pipeline.Id()] = global
-		self.srcTable[pipeline.Id()] = processedSrc
+	for _, pipeline := range global.Pipelines {
+		self.globalTable[pipeline.Id] = global
+		self.srcTable[pipeline.Id] = processedSrc
 	}
 	return global, nil
 }
 
 // Compile all the MRO files in self.mroPath.
 func (self *Runtime) CompileAll() (int, error) {
-	paths, err := filepath.Glob(self.mroPath + "/[^_]*.mro")
+	paths, err := filepath.Glob(self.MroPath + "/[^_]*.mro")
 	if err != nil {
 		return 0, err
 	}
@@ -1191,14 +1192,14 @@ func (self *Runtime) instantiate(psid string, src string, pipestancePath string)
 	callStm := callGlobal.call
 
 	// Get the global scope that defines the called pipeline.
-	global, ok := self.globalTable[callStm.Id()]
+	global, ok := self.globalTable[callStm.Id]
 	if !ok {
-		return nil, &MarioError{fmt.Sprintf("PipelineNotFoundError: '%s'", callStm.Id())}
+		return nil, &MarioError{fmt.Sprintf("PipelineNotFoundError: '%s'", callStm.Id)}
 	}
 
 	// Get the actual pipeline definition and check call bindings.
-	pipeline := global.callables.table[callStm.Id()].(*Pipeline)
-	if err := callStm.bindings.check(global, pipeline, pipeline.InParams()); err != nil {
+	pipeline := global.callables.table[callStm.Id].(*Pipeline)
+	if err := callStm.Bindings.check(global, pipeline, pipeline.InParams()); err != nil {
 		return nil, err
 	}
 
@@ -1218,8 +1219,8 @@ func (self *Runtime) InstantiateStage(src string, stagestancePath string) (*Stag
 
 	// Search through all globals for the named stage.
 	for _, global := range self.globalTable {
-		if stage, ok := global.callables.table[callStm.Id()]; ok {
-			err := callStm.bindings.check(global, nil, stage.InParams())
+		if stage, ok := global.callables.table[callStm.Id]; ok {
+			err := callStm.Bindings.check(global, nil, stage.InParams())
 			DieIf(err)
 
 			stagestance := NewStagestance(NewTopNode(self, "", stagestancePath), callStm, global.callables)
@@ -1232,7 +1233,7 @@ func (self *Runtime) InstantiateStage(src string, stagestancePath string) (*Stag
 			return stagestance, nil
 		}
 	}
-	return nil, &MarioError{fmt.Sprintf("StageNotFoundError: '%s'", callStm.Id())}
+	return nil, &MarioError{fmt.Sprintf("StageNotFoundError: '%s'", callStm.Id)}
 }
 
 // Invokes a new pipestance.

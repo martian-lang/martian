@@ -66,10 +66,10 @@ file
                 case *Filetype:
                     global.filetypes      = append(global.filetypes, dec)
                 case *Stage:
-                    global.stages         = append(global.stages, dec)
+                    global.Stages         = append(global.Stages, dec)
                     global.callables.list = append(global.callables.list, dec)
                 case *Pipeline:
-                    global.pipelines      = append(global.pipelines, dec)
+                    global.Pipelines      = append(global.Pipelines, dec)
                     global.callables.list = append(global.callables.list, dec)
                 }
             }
@@ -195,7 +195,7 @@ call_stm
 bind_stm_list
     : bind_stm_list bind_stm
         {{ 
-            $1.list = append($1.list, $2)
+            $1.List = append($1.List, $2)
             $$ = $1
         }}
     | bind_stm
@@ -218,31 +218,31 @@ exp_list
 
 exp
     : LBRACKET exp_list RBRACKET        
-        {{ $$ = &ValExp{node:AstNode{mmlval.loc}, kind: "array", value: $2} }}
+        {{ $$ = &ValExp{node:AstNode{mmlval.loc}, Kind: "array", Value: $2} }}
     | LBRACKET RBRACKET
-        {{ $$ = &ValExp{node:AstNode{mmlval.loc}, kind: "array", value: []Exp{}} }}
+        {{ $$ = &ValExp{node:AstNode{mmlval.loc}, Kind: "array", Value: []Exp{}} }}
     | PATH LPAREN LITSTRING RPAREN
-        {{ $$ = &ValExp{node:AstNode{mmlval.loc}, kind: $1, value: strings.Replace($3, "\"", "", -1) } }}
+        {{ $$ = &ValExp{node:AstNode{mmlval.loc}, Kind: $1, Value: strings.Replace($3, "\"", "", -1) } }}
     | FILE LPAREN LITSTRING RPAREN
-        {{ $$ = &ValExp{node:AstNode{mmlval.loc}, kind: $1, value: strings.Replace($3, "\"", "", -1) } }}
+        {{ $$ = &ValExp{node:AstNode{mmlval.loc}, Kind: $1, Value: strings.Replace($3, "\"", "", -1) } }}
     | NUM_FLOAT
         {{  // Lexer guarantees parseable float strings.
             f, _ := strconv.ParseFloat($1, 64)
-            $$ = &ValExp{node:AstNode{mmlval.loc}, kind: "float", value: f } 
+            $$ = &ValExp{node:AstNode{mmlval.loc}, Kind: "float", Value: f } 
         }}
     | NUM_INT
         {{  // Lexer guarantees parseable int strings.
             i, _ := strconv.ParseInt($1, 0, 64)
-            $$ = &ValExp{node:AstNode{mmlval.loc}, kind: "int", value: i } 
+            $$ = &ValExp{node:AstNode{mmlval.loc}, Kind: "int", Value: i } 
         }}
     | LITSTRING
-        {{ $$ = &ValExp{node:AstNode{mmlval.loc}, kind: "string", value: strings.Replace($1, "\"", "", -1)} }}
+        {{ $$ = &ValExp{node:AstNode{mmlval.loc}, Kind: "string", Value: strings.Replace($1, "\"", "", -1)} }}
     | TRUE
-        {{ $$ = &ValExp{node:AstNode{mmlval.loc}, kind: "bool", value: true} }}
+        {{ $$ = &ValExp{node:AstNode{mmlval.loc}, Kind: "bool", Value: true} }}
     | FALSE
-        {{ $$ = &ValExp{node:AstNode{mmlval.loc}, kind: "bool", value: false} }}
+        {{ $$ = &ValExp{node:AstNode{mmlval.loc}, Kind: "bool", Value: false} }}
     | NULL
-        {{ $$ = &ValExp{node:AstNode{mmlval.loc}, kind: "null", value: nil} }}
+        {{ $$ = &ValExp{node:AstNode{mmlval.loc}, Kind: "null", Value: nil} }}
     | ref_exp
         {{ $$ = $1 }}
     ;

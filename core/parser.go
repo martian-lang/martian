@@ -21,10 +21,10 @@ func (global *Ast) err(locable Locatable, msg string, v ...interface{}) error {
 func (callables *Callables) check(global *Ast) error {
 	for _, callable := range callables.list {
 		// Check for duplicates
-		if _, ok := callables.table[callable.Id()]; ok {
-			return global.err(callable, "DuplicateNameError: stage or pipeline '%s' was already declared when encountered again", callable.Id())
+		if _, ok := callables.table[callable.GetId()]; ok {
+			return global.err(callable, "DuplicateNameError: stage or pipeline '%s' was already declared when encountered again", callable.GetId())
 		}
-		callables.table[callable.Id()] = callable
+		callables.table[callable.GetId()] = callable
 	}
 	return nil
 }
@@ -43,7 +43,7 @@ func (params *Params) check(global *Ast) error {
 		}
 
 		// Cache if param is file or path.
-		_, ok := global.filetypeTable[param.Tname()]
+		_, ok := global.FiletypeTable[param.Tname()]
 		param.SetIsFile(ok)
 
 	}
@@ -51,22 +51,22 @@ func (params *Params) check(global *Ast) error {
 }
 
 func (exp *ValExp) ResolveType(global *Ast, pipeline *Pipeline) (string, error) {
-	switch exp.Kind() {
+	switch exp.GetKind() {
 
 	// Handle scalar types.
 	case "int", "float", "string", "bool", "path", "null":
-		return exp.Kind(), nil
+		return exp.GetKind(), nil
 
 	// Array: [ 1, 2 ]
 	case "array":
-		for _, subexp := range exp.value.([]Exp) {
-			return subexp.Kind(), nil
+		for _, subexp := range exp.Value.([]Exp) {
+			return subexp.GetKind(), nil
 		}
 		return "null", nil
 	// File: look for matching filetype in type table
 	case "file":
-		for filetype, _ := range global.filetypeTable {
-			if strings.HasSuffix(exp.value.(string), filetype) {
+		for filetype, _ := range global.FiletypeTable {
+			if strings.HasSuffix(exp.Value.(string), filetype) {
 				return filetype, nil
 			}
 		}
@@ -79,28 +79,28 @@ func (exp *RefExp) ResolveType(global *Ast, pipeline *Pipeline) (string, error) 
 		global.err(exp, "ReferenceError: this binding cannot be resolved outside of a pipeline.")
 	}
 
-	switch exp.Kind() {
+	switch exp.GetKind() {
 
 	// Param: self.myparam
 	case "self":
-		param, ok := pipeline.inParams.table[exp.id]
+		param, ok := pipeline.inParams.table[exp.Id]
 		if !ok {
-			return "", global.err(exp, "ScopeNameError: '%s' is not an input parameter of pipeline '%s'", exp.id, pipeline.id)
+			return "", global.err(exp, "ScopeNameError: '%s' is not an input parameter of pipeline '%s'", exp.Id, pipeline.Id)
 		}
 		return param.Tname(), nil
 
 	// Call: STAGE.myoutparam or STAGE
 	case "call":
 		// Check referenced callable is acutally called in this scope.
-		callable, ok := pipeline.callables.table[exp.id]
+		callable, ok := pipeline.callables.table[exp.Id]
 		if !ok {
-			return "", global.err(exp, "ScopeNameError: '%s' is not called in pipeline '%s'", exp.id, pipeline.id)
+			return "", global.err(exp, "ScopeNameError: '%s' is not called in pipeline '%s'", exp.Id, pipeline.Id)
 		}
 
 		// Check referenced output is actually an output of the callable.
 		param, ok := callable.OutParams().table[exp.outputId]
 		if !ok {
-			return "", global.err(exp, "NoSuchOutputError: '%s' is not an output parameter of '%s'", exp.outputId, callable.Id())
+			return "", global.err(exp, "NoSuchOutputError: '%s' is not an output parameter of '%s'", exp.outputId, callable.GetId())
 		}
 		return param.Tname(), nil
 	}
@@ -113,7 +113,7 @@ func checkTypeMatch(t1 string, t2 string) bool {
 
 func (bindings *BindStms) check(global *Ast, pipeline *Pipeline, params *Params) error {
 	// Check the bindings
-	for _, binding := range bindings.list {
+	for _, binding := range bindings.List {
 		// Collect bindings by id so we can check that all params are bound.
 		if _, ok := bindings.table[binding.id]; ok {
 			return global.err(binding, "DuplicateBinding: '%s' already bound in this call", binding.id)
@@ -127,14 +127,14 @@ func (bindings *BindStms) check(global *Ast, pipeline *Pipeline, params *Params)
 		}
 
 		// Typecheck the binding and cache the type.
-		valueType, err := binding.exp.ResolveType(global, pipeline)
+		valueType, err := binding.Exp.ResolveType(global, pipeline)
 		if err != nil {
 			return err
 		}
 		if !checkTypeMatch(param.Tname(), valueType) {
 			return global.err(param, "TypeMismatchError: expected type '%s' for '%s' but got '%s' instead", param.Tname(), param.Id(), valueType)
 		}
-		binding.tname = param.Tname()
+		binding.Tname = param.Tname()
 	}
 	return nil
 }
@@ -143,8 +143,8 @@ func (global *Ast) check() error {
 	// Build type table, starting with builtins. Duplicates allowed.
 	types := []string{"string", "int", "float", "bool", "path", "file"}
 	for _, filetype := range global.filetypes {
-		types = append(types, filetype.id)
-		global.filetypeTable[filetype.id] = true
+		types = append(types, filetype.Id)
+		global.FiletypeTable[filetype.Id] = true
 	}
 	for _, t := range types {
 		global.typeTable[t] = true
@@ -156,7 +156,7 @@ func (global *Ast) check() error {
 	}
 
 	// Check stage declarations.
-	for _, stage := range global.stages {
+	for _, stage := range global.Stages {
 		// Check in parameters.
 		if err := stage.inParams.check(global); err != nil {
 			return err
@@ -174,7 +174,7 @@ func (global *Ast) check() error {
 	}
 
 	// Check pipeline declarations.
-	for _, pipeline := range global.pipelines {
+	for _, pipeline := range global.Pipelines {
 		// Check in parameters.
 		if err := pipeline.inParams.check(global); err != nil {
 			return err
@@ -185,27 +185,27 @@ func (global *Ast) check() error {
 		}
 
 		// Check calls.
-		for _, call := range pipeline.calls {
+		for _, call := range pipeline.Calls {
 			// Check for duplicate calls.
-			if _, ok := pipeline.callables.table[call.id]; ok {
-				return global.err(call, "DuplicateCallError: '%s' was already called when encountered again", call.id)
+			if _, ok := pipeline.callables.table[call.Id]; ok {
+				return global.err(call, "DuplicateCallError: '%s' was already called when encountered again", call.Id)
 			}
 			// Check we're calling something declared.
-			callable, ok := global.callables.table[call.id]
+			callable, ok := global.callables.table[call.Id]
 			if !ok {
-				return global.err(call, "ScopeNameError: '%s' is not defined in this scope", call.id)
+				return global.err(call, "ScopeNameError: '%s' is not defined in this scope", call.Id)
 			}
 			// Save the valid callables for this scope.
-			pipeline.callables.table[call.id] = callable
+			pipeline.callables.table[call.Id] = callable
 
 			// Check the bindings
-			if err := call.bindings.check(global, pipeline, callable.InParams()); err != nil {
+			if err := call.Bindings.check(global, pipeline, callable.InParams()); err != nil {
 				return err
 			}
 
 			// Check that all input params of the callable are bound.
 			for _, param := range callable.InParams().list {
-				if _, ok := call.bindings.table[param.Id()]; !ok {
+				if _, ok := call.Bindings.table[param.Id()]; !ok {
 					return global.err(call, "ArgumentNotSuppliedError: no argument supplied for parameter '%s'", param.Id())
 				}
 			}
@@ -214,14 +214,14 @@ func (global *Ast) check() error {
 
 	// Doing these in a separate loop gives the user better incremental
 	// error messages while writing a long pipeline declaration.
-	for _, pipeline := range global.pipelines {
+	for _, pipeline := range global.Pipelines {
 		// Check all pipeline input params are bound in a call statement.
 		boundParamIds := map[string]bool{}
-		for _, call := range pipeline.calls {
-			for _, binding := range call.bindings.list {
-				refexp, ok := binding.exp.(*RefExp)
+		for _, call := range pipeline.Calls {
+			for _, binding := range call.Bindings.List {
+				refexp, ok := binding.Exp.(*RefExp)
 				if ok {
-					boundParamIds[refexp.id] = true
+					boundParamIds[refexp.Id] = true
 				}
 			}
 		}
@@ -233,7 +233,7 @@ func (global *Ast) check() error {
 
 		// Check all pipeline output params are returned.
 		returnedParamIds := map[string]bool{}
-		for _, binding := range pipeline.ret.bindings.list {
+		for _, binding := range pipeline.ret.bindings.List {
 			returnedParamIds[binding.id] = true
 		}
 		for _, param := range pipeline.outParams.list {
