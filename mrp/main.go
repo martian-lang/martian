@@ -26,15 +26,15 @@ func runLoop(pipestance *core.Pipestance, stepSecs int) {
 	nodes := pipestance.Node().AllNodes()
 	for {
 		// Concurrently run metadata refreshes.
-		//fmt.Println("===============================================================")
-		//start := time.Now()
 		var wg sync.WaitGroup
-		wg.Add(len(nodes))
 		for _, node := range nodes {
-			node.RefreshMetadata(&wg)
+			wg.Add(1)
+			go func(node *core.Node) {
+				node.RefreshMetadata()
+				wg.Done()
+			}(node)
 		}
 		wg.Wait()
-		//fmt.Println(time.Since(start))
 
 		// Check for completion states.
 		if pipestance.GetOverallState() == "complete" {
