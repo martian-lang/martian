@@ -15,7 +15,6 @@ import (
 	"path/filepath"
 	"runtime"
 	"strings"
-	"sync"
 	"time"
 )
 
@@ -83,10 +82,7 @@ func main() {
 	go func() {
 		for {
 			// Refresh metadata on the node.
-			var wg sync.WaitGroup
-			wg.Add(1)
-			stagestance.Node().RefreshMetadata(&wg)
-			wg.Wait()
+			stagestance.Node().RefreshMetadata()
 
 			// Check for completion states.
 			state := stagestance.Node().GetState()

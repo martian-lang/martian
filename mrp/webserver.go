@@ -16,7 +16,6 @@ import (
 	"net/http"
 	"path"
 	"strings"
-	"sync"
 )
 
 //=============================================================================
@@ -89,9 +88,7 @@ func runWebServer(uiport string, rt *core.Runtime, pipestance *core.Pipestance) 
 	app.Post("/api/restart/:container/:pname/:psid/:fqname",
 		func(p martini.Params) string {
 			node := pipestance.Node().Find(p["fqname"])
-			var wg sync.WaitGroup
-			node.RestartFailedMetadatas(&wg)
-			wg.Wait()
+			node.RestartFromFailed()
 			return ""
 		})
 
