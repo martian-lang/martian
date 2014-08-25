@@ -11,14 +11,14 @@ import (
 )
 
 func mkdir(p string) {
-	err := os.Mkdir(p, 0700)
+	err := os.Mkdir(p, 0755)
 	if err != nil {
 		panic(err.Error())
 	}
 }
 
 func idemMkdir(p string) {
-	os.Mkdir(p, 0700)
+	os.Mkdir(p, 0755)
 }
 
 func cartesianProduct(valueSets []interface{}) []interface{} {

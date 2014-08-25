@@ -98,14 +98,14 @@ func (self *Metadata) read(name string) interface{} {
 	return v
 }
 func (self *Metadata) writeRaw(name string, text string) {
-	ioutil.WriteFile(self.makePath(name), []byte(text), 0600)
+	ioutil.WriteFile(self.makePath(name), []byte(text), 0644)
 }
 func (self *Metadata) write(name string, object interface{}) {
 	bytes, _ := json.MarshalIndent(object, "", "    ")
 	self.writeRaw(name, string(bytes))
 }
 func (self *Metadata) append(name string, text string) {
-	f, _ := os.OpenFile(self.makePath(name), os.O_WRONLY|os.O_CREATE, 0700)
+	f, _ := os.OpenFile(self.makePath(name), os.O_WRONLY|os.O_CREATE, 0644)
 	f.Write([]byte(text))
 	f.Close()
 }
@@ -1245,7 +1245,7 @@ func (self *Runtime) InvokeWithSource(psid string, src string, pipestancePath st
 	}
 
 	// Create the pipestance path.
-	if err := os.MkdirAll(pipestancePath, 0700); err != nil {
+	if err := os.MkdirAll(pipestancePath, 0755); err != nil {
 		return nil, err
 	}
 
