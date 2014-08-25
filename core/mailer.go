@@ -40,6 +40,7 @@ type SmtpTemplateData struct {
 	To      string
 	Subject string
 	Body    string
+	Cc      string
 }
 
 const emailTemplate = `From: {{.From}}
@@ -47,6 +48,8 @@ To: {{.To}}
 Subject: {{.Subject}}
 
 {{.Body}}
+
+cc: {{.Cc}}
 
 Stay fresh,
 Mario
@@ -59,11 +62,14 @@ func (self *Mailer) Sendmail(to []string, subject string, body string) error {
 		subject = "[DEBUG - IGNORE] " + subject
 	}
 
+	recipients := append([]string{self.notifyEmail}, to...)
+
 	context := &SmtpTemplateData{
 		fmt.Sprintf("Mario Lopez <%s>", self.username),
 		self.notifyEmail,
 		subject,
 		body,
+		strings.Join(recipients, ", "),
 	}
 	t := template.New("emailTemplate")
 	t, _ = t.Parse(emailTemplate)
@@ -74,7 +80,7 @@ func (self *Mailer) Sendmail(to []string, subject string, body string) error {
 		fmt.Sprintf("%s:%d", self.host, self.port),
 		auth,
 		self.username,
-		append([]string{self.notifyEmail}, to...),
+		recipients,
 		doc.Bytes(),
 	)
 }
