@@ -14,7 +14,6 @@ import (
 	"path"
 	"path/filepath"
 	"reflect"
-	"runtime"
 	"sort"
 	"strings"
 	"sync"
@@ -1119,13 +1118,11 @@ type Runtime struct {
 }
 
 func NewRuntime(jobMode string, pipelinesPath string) *Runtime {
-	_, filename, _, _ := runtime.Caller(1)
-	exeDir, _ := filepath.Abs(filepath.Dir(filename))
 	self := &Runtime{}
 	self.MroPath = path.Join(pipelinesPath, "mro")
 	self.stagecodePath = path.Join(pipelinesPath, "stages")
 	self.libPath = path.Join(pipelinesPath, "lib")
-	self.adaptersPath = path.Join(exeDir, "..", "adapters")
+	self.adaptersPath = RelPath(path.Join("..", "adapters"))
 	self.globalTable = map[string]*Ast{}
 	self.srcTable = map[string]string{}
 	self.typeTable = map[string]string{}

@@ -44,8 +44,8 @@ func runWebServer(uiport string, rt *core.Runtime) {
 	m := martini.New()
 	r := martini.NewRouter()
 	m.Use(martini.Recovery())
-	m.Use(martini.Static("../web/res", martini.StaticOptions{"", true, "index.html", nil}))
-	m.Use(martini.Static("../web/client", martini.StaticOptions{"", true, "index.html", nil}))
+	m.Use(martini.Static(core.RelPath("../web/res"), martini.StaticOptions{"", true, "index.html", nil}))
+	m.Use(martini.Static(core.RelPath("../web/client"), martini.StaticOptions{"", true, "index.html", nil}))
 	m.MapTo(r, (*martini.Routes)(nil))
 	m.Action(r.Handle)
 	app := &martini.ClassicMartini{m, r}
@@ -54,7 +54,7 @@ func runWebServer(uiport string, rt *core.Runtime) {
 	// Page renderers.
 	//=========================================================================
 	app.Get("/", func() string {
-		tmpl, _ := template.New("editor.html").Delims("[[", "]]").ParseFiles("../web/templates/editor.html")
+		tmpl, _ := template.New("editor.html").Delims("[[", "]]").ParseFiles(core.RelPath("../web/templates/editor.html"))
 		var doc bytes.Buffer
 		tmpl.Execute(&doc, map[string]interface{}{})
 		return doc.String()

@@ -6,7 +6,9 @@
 package core
 
 import (
+	"github.com/10XDev/osext"
 	"os"
+	"path"
 	"time"
 )
 
@@ -15,6 +17,11 @@ func mkdir(p string) {
 	if err != nil {
 		panic(err.Error())
 	}
+}
+
+func RelPath(p string) string {
+	folder, _ := osext.ExecutableFolder()
+	return path.Join(folder, p)
 }
 
 func idemMkdir(p string) {
