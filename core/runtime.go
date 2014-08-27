@@ -1079,7 +1079,11 @@ func (self *Pipestance) VDRKill() *VDRKillReport {
 }
 
 func (self *Pipestance) GetOuts(forki int) interface{} {
-	return self.Node().forks[forki].metadata.read("outs")
+	v := self.Node().forks[forki].metadata.read("outs")
+	if v == nil {
+		return map[string]interface{}{}
+	}
+	return v
 }
 
 //=============================================================================
