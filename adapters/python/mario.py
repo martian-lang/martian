@@ -133,7 +133,7 @@ def done():
         "end": metadata.make_timestamp(endtime),
         "duration_seconds": endtime - starttime
     }
-    
+
     def rusage_to_dict(ru):
         # Incantation to convert struct_rusage object into a dict.
         return dict((key, ru.__getattribute__(key)) for key in [ attr for attr in dir(ru) if attr.startswith('ru') ])
@@ -151,7 +151,7 @@ def fail(stacktrace):
 def complete():
     metadata.write_time("complete")
     done()
-    
+
 def run(cmd):
     if profile_flag:
         profile = cProfile.Profile()
@@ -162,8 +162,11 @@ def run(cmd):
         ps = pstats.Stats(profile, stream=str).sort_stats("cumulative")
         ps.print_stats()
         metadata.write_raw("profile", str.getvalue())
+        full_profile_path = metadata.make_path("profile_full")
+        profile.dump_stats(full_profile_path)
     else:
-        exec(cmd)
+        import __main__
+        exec(cmd, __main__.__dict__, __main__.__dict__)
 
 def Popen(args, bufsize=0, executable=None, stdin=None, stdout=None, stderr=None,
     preexec_fn=None, close_fds=False, shell=False, cwd=None, env=None,
