@@ -31,17 +31,17 @@ func main() {
 
 	// Required Mario environment variables.
 	env := core.EnvRequire([][]string{
-		{"MARIO_PORT", ">2000"},
-		{"MARIO_PIPELINES_PATH", "path/to/pipelines"},
+		{"MROPORT", ">2000"},
+		{"MROPATH", "path/to/mros"},
 	}, true)
 
 	// Prepare configuration variables.
-	uiport := env["MARIO_PORT"]
+	uiport := env["MROPORT"]
 
 	//=========================================================================
 	// Configure Mario runtime.
 	//=========================================================================
-	rt := core.NewRuntime("local", env["MARIO_PIPELINES_PATH"])
+	rt := core.NewRuntime("local", env["MROPATH"])
 
 	//=========================================================================
 	// Start web server.

@@ -98,7 +98,7 @@ def initialize(argv):
     global metadata, module, profile_flag, starttime
 
     # Take options from command line.
-    [ shell_cmd, stagecode_path, lib_path, metadata_path, files_path, profile_flag ] = argv
+    [ shell_cmd, stagecode_path, metadata_path, files_path, profile_flag ] = argv
 
     # Create metadata object with metadata directory.
     metadata = Metadata(metadata_path, files_path)
@@ -114,9 +114,6 @@ def initialize(argv):
 
     # allow shells and stage code to import mario easily
     sys.path.append(os.path.dirname(__file__))
-
-    # allow stage code to import lib modules
-    sys.path.append(lib_path)
 
     # Load the stage code as a module.
     sys.path.append(os.path.dirname(stagecode_path))

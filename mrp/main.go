@@ -74,8 +74,8 @@ func main() {
 
 	// Required Mario environment variables.
 	env := core.EnvRequire([][]string{
-		{"MARIO_PORT", ">2000"},
-		{"MARIO_PIPELINES_PATH", "path/to/pipelines"},
+		{"MROPORT", ">2000"},
+		{"MROPATH", "path/to/mros"},
 	}, true)
 
 	// Required job mode and SGE environment variables.
@@ -90,7 +90,7 @@ func main() {
 	}
 
 	// Prepare configuration variables.
-	uiport := env["MARIO_PORT"]
+	uiport := env["MROPORT"]
 	psid := opts["<unique_pipestance_id>"].(string)
 	invocationPath := opts["<invocation_mro>"].(string)
 	cwd, _ := filepath.Abs(path.Dir(os.Args[0]))
@@ -101,7 +101,7 @@ func main() {
 	//=========================================================================
 	// Configure Mario runtime.
 	//=========================================================================
-	rt := core.NewRuntime(jobMode, env["MARIO_PIPELINES_PATH"])
+	rt := core.NewRuntime(jobMode, env["MROPATH"])
 	_, err := rt.CompileAll()
 	core.DieIf(err)
 
