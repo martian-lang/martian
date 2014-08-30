@@ -136,6 +136,13 @@ func (bindings *BindStms) check(global *Ast, pipeline *Pipeline, params *Params)
 		}
 		binding.Tname = param.Tname()
 	}
+
+	// Check that all input params of the called segment are bound.
+	for _, param := range params.list {
+		if _, ok := bindings.table[param.Id()]; !ok {
+			return global.err(param, "ArgumentNotSuppliedError: no argument supplied for parameter '%s'", param.Id())
+		}
+	}
 	return nil
 }
 
@@ -266,12 +273,15 @@ func parseString(src string, locmap []FileLoc) (*Ast, error) {
 	return global, nil
 }
 
-func parseFile(filename string) (string, *Ast, error) {
+func parseFile(filename string, incFolder string) (string, *Ast, error) {
 	data, err := ioutil.ReadFile(filename)
 	if err != nil {
 		return "", nil, err
 	}
-	postsrc, locmap := preprocess(string(data), filename)
+	postsrc, locmap, perr := preprocess(string(data), filename, incFolder)
+	if perr != nil {
+		return "", nil, perr
+	}
 	//printSourceMap(postsrc, locmap)
 	global, err := parseString(postsrc, locmap)
 	return postsrc, global, err
@@ -282,5 +292,6 @@ func parseCall(src string) (*Ast, error) {
 	if err != nil {
 		return nil, &ParseError{err.token, "[invocation]", err.loc}
 	}
+
 	return global, nil
 }

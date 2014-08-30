@@ -116,5 +116,6 @@ func runWebServer(uiport string, rt *core.Runtime) {
 	//=========================================================================
 	// Start webserver.
 	//=========================================================================
+	core.LogInfo("webserv", "Serving UI at http://localhost:%s", uiport)
 	http.ListenAndServe(":"+uiport, app)
 }

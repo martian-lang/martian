@@ -1149,9 +1149,8 @@ func (self *Runtime) GetPipelineNames() []string {
 	return names
 }
 
-// Compile an MRO file in self.mroPath named fname.mro.
-func (self *Runtime) Compile(fname string) (*Ast, error) {
-	processedSrc, global, err := parseFile(path.Join(self.MroPath, fname))
+func (self *Runtime) compileCore(fname string) (*Ast, error) {
+	processedSrc, global, err := parseFile(fname, self.MroPath)
 	if err != nil {
 		return nil, err
 	}
@@ -1162,6 +1161,15 @@ func (self *Runtime) Compile(fname string) (*Ast, error) {
 	return global, nil
 }
 
+// Compile an MRO file in cwd or self.mroPath.
+func (self *Runtime) Compile(fname string) (*Ast, error) {
+	// Look for file in cwd, then in MROPATH.
+	if _, err := os.Stat(fname); os.IsNotExist(err) {
+		fname = path.Join(self.MroPath, fname)
+	}
+	return self.compileCore(fname)
+}
+
 // Compile all the MRO files in self.mroPath.
 func (self *Runtime) CompileAll() (int, error) {
 	paths, err := filepath.Glob(self.MroPath + "/[^_]*.mro")
@@ -1169,7 +1177,7 @@ func (self *Runtime) CompileAll() (int, error) {
 		return 0, err
 	}
 	for _, p := range paths {
-		_, err := self.Compile(path.Base(p))
+		_, err := self.compileCore(p)
 		if err != nil {
 			return 0, err
 		}
@@ -1237,7 +1245,7 @@ func (self *Runtime) InstantiateStage(src string, stagestancePath string) (*Stag
 func (self *Runtime) InvokeWithSource(psid string, src string, pipestancePath string) (*Pipestance, error) {
 	// Check if pipestance path already exists.
 	if _, err := os.Stat(pipestancePath); err == nil {
-		return nil, &MarioError{fmt.Sprintf("PipestanceExistsError: '%s'", psid)}
+		return nil, &PipestanceExistsError{psid}
 	}
 
 	// Create the pipestance path.

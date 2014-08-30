@@ -19,10 +19,12 @@ import (
 	"time"
 )
 
+var __VERSION__ string
+
 //=============================================================================
 // Pipestance runner.
 //=============================================================================
-func runLoop(pipestance *core.Pipestance, stepSecs int) {
+func runLoop(pipestance *core.Pipestance, stepSecs int, disableVDR bool) {
 	nodes := pipestance.Node().AllNodes()
 	for {
 		// Concurrently run metadata refreshes.
@@ -38,9 +40,13 @@ func runLoop(pipestance *core.Pipestance, stepSecs int) {
 
 		// Check for completion states.
 		if pipestance.GetOverallState() == "complete" {
-			core.LogInfo("runtime", "Starting VDR kill...")
-			killReport := pipestance.VDRKill()
-			core.LogInfo("runtime", "VDR killed %d files, %s.", killReport.Count, humanize.Bytes(killReport.Size))
+			if disableVDR {
+				core.LogInfo("runtime", "VDR disabled by --novdr option. No files killed.")
+			} else {
+				core.LogInfo("runtime", "Starting VDR kill...")
+				killReport := pipestance.VDRKill()
+				core.LogInfo("runtime", "VDR killed %d files, %s.", killReport.Count, humanize.Bytes(killReport.Size))
+			}
 			// Give time for web ui client to get last update.
 			time.Sleep(time.Second * 10)
 			core.LogInfo("runtime", "Pipestance is complete, exiting.")
@@ -64,19 +70,24 @@ func main() {
 	// Commandline argument and environment variables.
 	//=========================================================================
 	// Parse commandline.
-	doc :=
-		`Usage: 
-    mrp <invocation_mro> <unique_pipestance_id> [--sge]
-    mrp -h | --help | --version`
-	opts, _ := docopt.Parse(doc, nil, true, "mrp", false)
+	doc := `Mario Pipeline Runner.
+
+Usage: 
+    mrp <call.mro> <pipestance_name> [--port=<num>] [--noui] [--novdr] [--sge]
+    mrp -h | --help | --version
+
+Options:
+    --port=<num>  Serve UI at http://localhost:<num>
+                    Overrides $MROPORT environment variable.
+                    Defaults to 3600 if not otherwise specified.
+    --noui        Disable UI.
+    --novdr       Disable Volatile Data Removal.
+    --sge         Run jobs on Sun Grid Engine instead of locally.
+    -h --help     Show this message.
+    --version     Show version.`
+	opts, _ := docopt.Parse(doc, nil, true, __VERSION__, false)
 	core.LogInfo("*", "Mario Run Pipeline")
 	core.LogInfo("cmdline", strings.Join(os.Args, " "))
-
-	// Required Mario environment variables.
-	env := core.EnvRequire([][]string{
-		{"MROPORT", ">2000"},
-		{"MROPATH", "path/to/mros"},
-	}, true)
 
 	// Required job mode and SGE environment variables.
 	jobMode := "local"
@@ -89,11 +100,31 @@ func main() {
 		}, true)
 	}
 
-	// Prepare configuration variables.
-	uiport := env["MROPORT"]
-	psid := opts["<unique_pipestance_id>"].(string)
-	invocationPath := opts["<invocation_mro>"].(string)
+	// Compute UI port.
+	uiport := "3600"
+	if value := os.Getenv("MROPORT"); len(value) > 0 {
+		core.LogInfo("environ", "MROPORT = %s", value)
+		uiport = value
+	}
+	if value := opts["--port"]; value != nil {
+		uiport = value.(string)
+	}
+	if opts["--noui"].(bool) {
+		uiport = ""
+	}
+
+	// Compute MRO path.
 	cwd, _ := filepath.Abs(path.Dir(os.Args[0]))
+	mroPath := cwd
+	if value := os.Getenv("MROPATH"); len(value) > 0 {
+		mroPath = value
+	}
+	core.LogInfo("environ", "MROPATH = %s", mroPath)
+
+	// Setup invocation-specific values.
+	disableVDR := opts["--novdr"].(bool)
+	psid := opts["<pipestance_name>"].(string)
+	invocationPath := opts["<call.mro>"].(string)
 	pipestancePath := path.Join(cwd, psid)
 	callSrc, _ := ioutil.ReadFile(invocationPath)
 	stepSecs := 3
@@ -101,7 +132,7 @@ func main() {
 	//=========================================================================
 	// Configure Mario runtime.
 	//=========================================================================
-	rt := core.NewRuntime(jobMode, env["MROPATH"])
+	rt := core.NewRuntime(jobMode, mroPath)
 	_, err := rt.CompileAll()
 	core.DieIf(err)
 
@@ -110,7 +141,7 @@ func main() {
 	//=========================================================================
 	pipestance, err := rt.InvokeWithSource(psid, string(callSrc), pipestancePath)
 	if err != nil {
-		if _, ok := err.(*core.MarioError); ok {
+		if _, ok := err.(*core.PipestanceExistsError); ok {
 			// If it already exists, try to reattach to it.
 			pipestance, err = rt.Reattach(psid, pipestancePath)
 			core.DieIf(err)
@@ -121,12 +152,16 @@ func main() {
 	//=========================================================================
 	// Start run loop.
 	//=========================================================================
-	go runLoop(pipestance, stepSecs)
+	go runLoop(pipestance, stepSecs, disableVDR)
 
 	//=========================================================================
 	// Start web server.
 	//=========================================================================
-	go runWebServer(uiport, rt, pipestance)
+	if len(uiport) > 0 {
+		go runWebServer(uiport, rt, pipestance)
+	} else {
+		core.LogInfo("webserv", "UI disabled by --noui option.")
+	}
 
 	// Let daemons take over.
 	done := make(chan bool)

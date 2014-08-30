@@ -8,6 +8,8 @@ package core
 import (
 	"fmt"
 	"io/ioutil"
+	"os"
+	"path"
 	"path/filepath"
 	"regexp"
 	"strings"
@@ -40,7 +42,7 @@ func printSourceMap(src string, locmap []FileLoc) {
 /*
  * Inject contents of included files, recursively.
  */
-func preprocess(src string, filename string) (string, []FileLoc) {
+func preprocess(src string, filename string, incFolder string) (string, []FileLoc, *PreprocessError) {
 	filebase := filepath.Base(filename)
 	filedir := filepath.Dir(filename)
 
@@ -55,9 +57,18 @@ func preprocess(src string, filename string) (string, []FileLoc) {
 	// Replace all @include statements with contents of files they refer to.
 	re := regexp.MustCompile("@include \"([^\\\"]+)\"")
 	offsets := re.FindAllStringIndex(src, -1)
+	fileNotFoundError := &PreprocessError{[]string{}}
 	processedSrc := re.ReplaceAllStringFunc(src, func(match string) string {
 		// Get the source to be included.
-		includeFilename := filepath.Join(filedir, re.FindStringSubmatch(match)[1])
+		ifname := re.FindStringSubmatch(match)[1]
+		includeFilename := filepath.Join(filedir, ifname)
+		if _, err := os.Stat(includeFilename); os.IsNotExist(err) {
+			includeFilename = path.Join(incFolder, ifname)
+		}
+		if _, err := os.Stat(includeFilename); os.IsNotExist(err) {
+			fileNotFoundError.files = append(fileNotFoundError.files, ifname)
+			return ""
+		}
 		data, _ := ioutil.ReadFile(includeFilename)
 		includeSrc := string(data)
 
@@ -66,7 +77,10 @@ func preprocess(src string, filename string) (string, []FileLoc) {
 		offsets = offsets[1:] // shift()
 
 		// Recursively preprocess the included source.
-		processedIncludeSrc, processedIncludeLocmap := preprocess(includeSrc, includeFilename)
+		processedIncludeSrc, processedIncludeLocmap, err := preprocess(includeSrc, includeFilename, incFolder)
+		if err != nil {
+			fileNotFoundError.files = append(fileNotFoundError.files, err.files...)
+		}
 		processedIncludeLineCount := lineCount(processedIncludeSrc)
 
 		// Keep track of hwo much we need to increment insertion points as
@@ -78,5 +92,8 @@ func preprocess(src string, filename string) (string, []FileLoc) {
 
 		return processedIncludeSrc
 	})
-	return processedSrc, locmap
+	if len(fileNotFoundError.files) > 0 {
+		return processedSrc, locmap, fileNotFoundError
+	}
+	return processedSrc, locmap, nil
 }

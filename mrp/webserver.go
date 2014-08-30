@@ -8,12 +8,14 @@ package main
 import (
 	"bytes"
 	"encoding/json"
+	"fmt"
 	"github.com/go-martini/martini"
 	"github.com/martini-contrib/binding"
 	"html/template"
 	"io/ioutil"
 	"margo/core"
 	"net/http"
+	"os"
 	"path"
 	"strings"
 )
@@ -95,5 +97,10 @@ func runWebServer(uiport string, rt *core.Runtime, pipestance *core.Pipestance) 
 	//=========================================================================
 	// Start webserver.
 	//=========================================================================
-	http.ListenAndServe(":"+uiport, app)
+	core.LogInfo("webserv", "Serving UI at http://localhost:%s", uiport)
+	if err := http.ListenAndServe(":"+uiport, app); err != nil {
+		// Don't continue starting if we detect another instance running.
+		fmt.Println(err.Error())
+		os.Exit(1)
+	}
 }

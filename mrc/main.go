@@ -9,23 +9,36 @@ import (
 	"fmt"
 	"github.com/docopt/docopt-go"
 	"margo/core"
+	"os"
+	"path"
+	"path/filepath"
 )
+
+var __VERSION__ string
 
 func main() {
 	// Command-line arguments.
-	doc :=
-		`Usage: 
-    mrc <mro_name>... | --all
-    mrc -h | --help | --version`
-	opts, _ := docopt.Parse(doc, nil, true, "mrc", false)
+	doc := `Mario Compiler.
+
+Usage:
+    mrc <file.mro>... | --all
+    mrc -h | --help | --version
+
+Options:
+    --all         Compile all files in $MROPATH.
+    -h --help     Show this message.
+    --version     Show version.`
+	opts, _ := docopt.Parse(doc, nil, true, __VERSION__, false)
 
 	// Mario environment variables.
-	env := core.EnvRequire([][]string{
-		{"MROPATH", "path/to/mros"},
-	}, false)
+	cwd, _ := filepath.Abs(path.Dir(os.Args[0]))
+	mroPath := cwd
+	if value := os.Getenv("MROPATH"); len(value) > 0 {
+		mroPath = value
+	}
 
 	// Setup runtime with pipelines path.
-	rt := core.NewRuntime("local", env["MROPATH"])
+	rt := core.NewRuntime("local", mroPath)
 
 	count := 0
 	if opts["--all"].(bool) {
@@ -35,8 +48,8 @@ func main() {
 		count += num
 	} else {
 		// Compile just the specified MRO files in pipeliens path.
-		for _, name := range opts["<mro_name>"].([]string) {
-			_, err := rt.Compile(name + ".mro")
+		for _, fname := range opts["<file.mro>"].([]string) {
+			_, err := rt.Compile(fname)
 			core.DieIf(err)
 			count++
 		}

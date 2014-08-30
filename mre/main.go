@@ -9,9 +9,13 @@ import (
 	"github.com/docopt/docopt-go"
 	"margo/core"
 	"os"
+	"path"
+	"path/filepath"
 	"runtime"
 	"strings"
 )
+
+var __VERSION__ string
 
 func main() {
 	runtime.GOMAXPROCS(2)
@@ -20,28 +24,45 @@ func main() {
 	// Commandline argument and environment variables.
 	//=========================================================================
 	// Parse commandline.
-	doc :=
-		`Usage: 
-    mre 
-    mre -h | --help | --version`
-	opts, _ := docopt.Parse(doc, nil, true, "mre", false)
-	_ = opts
+	doc := `Mario MRO Editor.
+
+Usage:
+    mre [--port=<num>]
+    mre -h | --help | --version
+
+Options:
+    --port=<num>  Serve UI at http://localhost:<num>
+                    Overrides $MROPORT_EDITOR environment variable.
+                    Defaults to 3601 if not otherwise specified.
+    --sge         Run jobs on Sun Grid Engine instead of locally.
+    -h --help     Show this message.
+    --version     Show version.`
+	opts, _ := docopt.Parse(doc, nil, true, __VERSION__, false)
 	core.LogInfo("*", "Mario MRO Editor")
 	core.LogInfo("cmdline", strings.Join(os.Args, " "))
 
-	// Required Mario environment variables.
-	env := core.EnvRequire([][]string{
-		{"MROPORT", ">2000"},
-		{"MROPATH", "path/to/mros"},
-	}, true)
+	// Compute UI port.
+	uiport := "3601"
+	if value := os.Getenv("MROPORT_EDITOR"); len(value) > 0 {
+		core.LogInfo("environ", "MROPORT_EDITOR = %s", value)
+		uiport = value
+	}
+	if value := opts["--port"]; value != nil {
+		uiport = value.(string)
+	}
 
-	// Prepare configuration variables.
-	uiport := env["MROPORT"]
+	// Compute MRO path.
+	cwd, _ := filepath.Abs(path.Dir(os.Args[0]))
+	mroPath := cwd
+	if value := os.Getenv("MROPATH"); len(value) > 0 {
+		mroPath = value
+	}
+	core.LogInfo("environ", "MROPATH = %s", mroPath)
 
 	//=========================================================================
 	// Configure Mario runtime.
 	//=========================================================================
-	rt := core.NewRuntime("local", env["MROPATH"])
+	rt := core.NewRuntime("local", mroPath)
 
 	//=========================================================================
 	// Start web server.

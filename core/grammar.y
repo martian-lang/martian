@@ -7,7 +7,6 @@
 package core
 
 import (
-    "fmt"
     "strconv"
     "strings"
 )
@@ -59,7 +58,6 @@ import (
 file
     : dec_list
         {{ 
-            fmt.Print()
             global := Ast{[]FileLoc{}, map[string]bool{}, []*Filetype{}, map[string]bool{}, []*Stage{}, []*Pipeline{}, &Callables{[]Callable{}, map[string]Callable{}}, nil}
             for _, dec := range $1 {
                 switch dec := dec.(type) {

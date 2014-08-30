@@ -18,6 +18,8 @@ import (
 	"time"
 )
 
+var __VERSION__ string
+
 func main() {
 	runtime.GOMAXPROCS(2)
 
@@ -25,18 +27,19 @@ func main() {
 	// Commandline argument and environment variables.
 	//=========================================================================
 	// Parse commandline.
-	doc :=
-		`Usage: 
-    mrs <invocation_mro> [<unique_stagestance_id>] [--sge]
-    mrs -h | --help | --version`
-	opts, _ := docopt.Parse(doc, nil, true, "mrs", false)
+	doc := `Mario Stage Runner.
+
+Usage: 
+    mrs <call.mro> [<stagestance_name>] [--sge]
+    mrs -h | --help | --version
+
+Options:
+    --sge         Run jobs on Sun Grid Engine instead of locally.
+    -h --help     Show this message.
+    --version     Show version.`
+	opts, _ := docopt.Parse(doc, nil, true, __VERSION__, false)
 	core.LogInfo("*", "Mario Run Stage")
 	core.LogInfo("cmdline", strings.Join(os.Args, " "))
-
-	// Required Mario environment variables.
-	env := core.EnvRequire([][]string{
-		{"MARIO_PIPELINES_PATH", "path/to/pipelines"},
-	}, true)
 
 	// Required job mode and SGE environment variables.
 	jobMode := "local"
@@ -49,10 +52,17 @@ func main() {
 		}, true)
 	}
 
-	// Prepare configuration variables.
-	invocationPath := opts["<invocation_mro>"].(string)
-	stagestancePath, _ := filepath.Abs(path.Dir(os.Args[0]))
-	if sid, ok := opts["<unique_stagestance_id>"]; ok {
+	// Compute MRO path.
+	cwd, _ := filepath.Abs(path.Dir(os.Args[0]))
+	mroPath := cwd
+	if value := os.Getenv("MROPATH"); len(value) > 0 {
+		mroPath = value
+	}
+
+	// Setup invocation-specific values.
+	invocationPath := opts["<call.mro>"].(string)
+	stagestancePath := cwd
+	if sid, ok := opts["<stagestance_name>"]; ok {
 		stagestancePath = path.Join(stagestancePath, sid.(string))
 	}
 	stepSecs := 1
@@ -60,7 +70,7 @@ func main() {
 	//=========================================================================
 	// Configure Mario runtime.
 	//=========================================================================
-	rt := core.NewRuntime(jobMode, env["MARIO_PIPELINES_PATH"])
+	rt := core.NewRuntime(jobMode, mroPath)
 	_, err := rt.CompileAll()
 	core.DieIf(err)
 
