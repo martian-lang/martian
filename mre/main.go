@@ -34,7 +34,6 @@ Options:
     --port=<num>  Serve UI at http://localhost:<num>
                     Overrides $MROPORT_EDITOR environment variable.
                     Defaults to 3601 if not otherwise specified.
-    --sge         Run jobs on Sun Grid Engine instead of locally.
     -h --help     Show this message.
     --version     Show version.`
 	opts, _ := docopt.Parse(doc, nil, true, __VERSION__, false)
