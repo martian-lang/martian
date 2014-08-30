@@ -1118,14 +1118,14 @@ type Runtime struct {
 	/* TODO queue goes here */
 }
 
-func NewRuntime(jobMode string, pipelinesPath string) *Runtime {
+func NewRuntime(jobMode string, mroPath string) *Runtime {
 	self := &Runtime{}
-	self.MroPath = path.Join(pipelinesPath)
+	self.MroPath = mroPath
 	self.adaptersPath = RelPath(path.Join("..", "adapters"))
 	self.globalTable = map[string]*Ast{}
 	self.srcTable = map[string]string{}
 	self.typeTable = map[string]string{}
-	self.CodeVersion = getGitTag(pipelinesPath)
+	self.CodeVersion = getGitTag(mroPath)
 	self.jobMode = jobMode
 	return self
 }
