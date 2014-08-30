@@ -6,7 +6,7 @@
 doctype html
 html(ng-app="app" ng-controller="MarioGraphCtrl")
     head
-        title Mario Pipeline Runner / [[.Psid]] [[.Pname]]
+        title [[.InstanceName]] / [[.Psid]] [[.Pname]]
         link(rel="stylesheet" href="/css/bootstrap.min.css")
         link(rel="stylesheet" href="/css/main.css")
         script(src="/js/d3.v3.min.js")
@@ -19,13 +19,17 @@ html(ng-app="app" ng-controller="MarioGraphCtrl")
         script(src="/js/ZeroClipboard.min.js")
 
     body
-        header.navbar.navbar-inverse.navbar-fixed-top
+        header.navbar.navbar-inverse.navbar-fixed-top(ng-class="{admin: adminstyle}")
             .navbar-header 
                 .navbar-brand
-                    a(href="{{urlprefix}}" style="color:white") 10
+                    a(href="{{urlprefix}}" style="color:#555") 10
                         span.logo-color X
-                        | &nbsp;Mario Pipeline Runner&nbsp;
-                    | / [[.Psid]] / [[.Pname]] 
+                        | &nbsp;[[.InstanceName]]
+                    | &nbsp;/ [[.Psid]] / [[.Pname]]
+                    span(ng-if="adminstyle")
+                        | &nbsp;(
+                        a.admin-exit(href="/") exit admin mode
+                        | )
         #graph(style="margin-left: 10px; margin-top: 60px")
             svg(width="750px" height="1000px")
                 g#top(transform="translate(5,5) scale(1.0)")
@@ -50,12 +54,14 @@ html(ng-app="app" ng-controller="MarioGraphCtrl")
                         button.btn.btn-default.btn-xs(type="button" clip-copy="copyToClipboard()")
                             span.glyphicon.glyphicon-paperclip
                         span.copyable {{node.path}}
+                        span.copyable-display {{node.path | shorten}}
                 tr(ng-if="node.type=='stage'")
                     td {{node.stagecodeLang}}
                     td 
                         button.btn.btn-default.btn-xs(type="button" clip-copy="copyToClipboard()")
                             span.glyphicon.glyphicon-paperclip
                         span.copyable {{node.stagecodePath}}
+                        span.copyable-display {{node.stagecodePath | shorten}}
                 tr
                     td(style="vertical-align: top") Sweeps
                     td
@@ -64,7 +70,7 @@ html(ng-app="app" ng-controller="MarioGraphCtrl")
                                 td {{binding.id}}&nbsp;&nbsp;
                                 td 
                                     span.glyphicon.glyphicon-transfer &nbsp;
-                                td {{binding.value}}
+                                td {{binding.value | shorten}}
 
             h5 Sweeping
             table.table
@@ -84,7 +90,7 @@ html(ng-app="app" ng-controller="MarioGraphCtrl")
                             tr(ng-repeat="(key, value) in node.forks[forki].argPermute")
                                 td {{key}}
                                 td &nbsp;=&nbsp;
-                                td {{value}}
+                                td {{value | shorten}}
                 tr
                     td Metadata
                     td(colspan="5")
@@ -116,7 +122,7 @@ html(ng-app="app" ng-controller="MarioGraphCtrl")
                             | {{mdviews.join}}
 
                 tr(ng-repeat-start="(bindtype, bindings) in node.forks[forki].bindings").active
-                    th(colspan="4") {{bindtype}} Bindings
+                    th(colspan="3") {{bindtype}} Bindings
                     th Source
                     th Value
                 tr(ng-repeat="bnd in bindings")
@@ -124,9 +130,6 @@ html(ng-app="app" ng-controller="MarioGraphCtrl")
                         i {{bnd.type}}
                     td.tight {{bnd.id}}
                     td.tight =
-                    td.tight
-                        span(ng-if="bnd.valexp") {{bnd.valexp}}
-                        span(ng-if="!bnd.valexp") {{bnd.value}}
                     td
                         span(ng-class="[bnd.mode=='reference'?'minibox':'',nodes[bnd.node].state]") {{bnd.node}}
                             span(ng-if="bnd.mode=='reference'") \#{{bnd.matchedFork}}
@@ -137,6 +140,7 @@ html(ng-app="app" ng-controller="MarioGraphCtrl")
                         button.btn.btn-default.btn-xs(ng-if="bnd.value!=null" type="button" clip-copy="copyToClipboard()" style="vertical-align: top")
                             span.glyphicon.glyphicon-paperclip
                         span.copyable(ng-if="bnd.value!=null") {{bnd.value}}
+                        span.copyable-display(ng-if="bnd.value!=null") {{bnd.value | shorten}}
                 tr(ng-repeat-end)
                 
             h5 Chunking
@@ -161,6 +165,7 @@ html(ng-app="app" ng-controller="MarioGraphCtrl")
                                     button.btn.btn-default.btn-xs(type="button" clip-copy="copyToClipboard()")
                                         span.glyphicon.glyphicon-paperclip
                                     span.copyable {{value}}
+                                    span.copyable-display {{value | shorten}}
                 tr
                     td Metadata
                     td(colspan="5")
@@ -172,8 +177,9 @@ html(ng-app="app" ng-controller="MarioGraphCtrl")
                             | {{mdviews.chunk}}
 
     script
-        | container = '[[.Container]]'
+        | container = '[[.Container]]';
         | pname = '[[.Pname]]';
         | psid = '[[.Psid]]';
-        | admin = '[[.Admin]]'
+        | admin = [[.Admin]];
+        | adminstyle = [[.AdminStyle]];
     script(src="/graph.js")

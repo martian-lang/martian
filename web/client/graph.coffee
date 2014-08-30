@@ -5,6 +5,11 @@
 #
 
 app = angular.module('app', ['ui.bootstrap','ngClipboard'])
+app.filter('shorten',  () -> (s) ->
+    s = s + ""
+    if s.length < 71 then return s
+    else return s.substr(0, 30) + " ... " + s.substr(s.length - 50)
+)
 
 renderGraph = ($scope, $compile) ->
     g = new dagreD3.Digraph()
@@ -13,7 +18,7 @@ renderGraph = ($scope, $compile) ->
         g.addNode(node.name, node)
     for node in _.values($scope.nodes)
         for edge in node.edges
-            g.addEdge(null, edge.from, edge.to, {}) 
+            g.addEdge(null, edge.from, edge.to, {})
     (new dagreD3.Renderer()).run(g, d3.select("g"))
     maxX = 0.0
     d3.selectAll("g.node").each((id) ->
@@ -42,7 +47,8 @@ app.controller('MarioGraphCtrl', ($scope, $compile, $http, $interval) ->
     $scope.pname = pname
     $scope.psid = psid
     $scope.admin = admin
-    $scope.urlprefix = if admin then '/admin' else '/'
+    $scope.adminstyle = adminstyle
+    $scope.urlprefix = if adminstyle then '/admin' else '/'
 
     $http.get("/api/get-nodes/#{container}/#{pname}/#{psid}").success((nodes) ->
         $scope.nodes = _.indexBy(nodes, 'name')
@@ -53,10 +59,14 @@ app.controller('MarioGraphCtrl', ($scope, $compile, $http, $interval) ->
     $scope.forki = 0
     $scope.chunki = 0
     $scope.mdviews = { fork:'', split:'', join:'', chunk:'' }
-    $scope.showRestart = true
+    $scope.showRestart = true    
 
     # Only admin pages get auto-refresh.
-    if admin then $interval((() -> $scope.refresh()), 5000)
+    if admin 
+        $scope.stopRefresh = $interval(() ->
+            console.log('refresh')
+            $scope.refresh()
+        , 5000)
 
     $scope.copyToClipboard = () ->
         return ''
@@ -89,5 +99,8 @@ app.controller('MarioGraphCtrl', ($scope, $compile, $http, $interval) ->
             $scope.nodes = _.indexBy(nodes, 'name')
             if $scope.id then $scope.node = $scope.nodes[$scope.id]
             $scope.showRestart = true
+        ).error(() ->
+            console.log('stopping refresh')
+            $interval.cancel($scope.stopRefresh)
         )
 )

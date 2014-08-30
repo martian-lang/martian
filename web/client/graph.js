@@ -3,6 +3,17 @@
 
   app = angular.module('app', ['ui.bootstrap', 'ngClipboard']);
 
+  app.filter('shorten', function() {
+    return function(s) {
+      s = s + "";
+      if (s.length < 71) {
+        return s;
+      } else {
+        return s.substr(0, 30) + " ... " + s.substr(s.length - 50);
+      }
+    };
+  });
+
   renderGraph = function($scope, $compile) {
     var edge, g, maxX, node, scale, _i, _j, _k, _len, _len1, _len2, _ref, _ref1, _ref2;
     g = new dagreD3.Digraph();
@@ -54,7 +65,8 @@
     $scope.pname = pname;
     $scope.psid = psid;
     $scope.admin = admin;
-    $scope.urlprefix = admin ? '/admin' : '/';
+    $scope.adminstyle = adminstyle;
+    $scope.urlprefix = adminstyle ? '/admin' : '/';
     $http.get("/api/get-nodes/" + container + "/" + pname + "/" + psid).success(function(nodes) {
       $scope.nodes = _.indexBy(nodes, 'name');
       return renderGraph($scope, $compile);
@@ -70,9 +82,10 @@
     };
     $scope.showRestart = true;
     if (admin) {
-      $interval((function() {
+      $scope.stopRefresh = $interval(function() {
+        console.log('refresh');
         return $scope.refresh();
-      }), 5000);
+      }, 5000);
     }
     $scope.copyToClipboard = function() {
       return '';
@@ -121,6 +134,9 @@
           $scope.node = $scope.nodes[$scope.id];
         }
         return $scope.showRestart = true;
+      }).error(function() {
+        console.log('stopping refresh');
+        return $interval.cancel($scope.stopRefresh);
       });
     };
   });

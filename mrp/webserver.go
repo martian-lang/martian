@@ -24,10 +24,12 @@ import (
 // Page and form structs.
 //=============================================================================
 type GraphPage struct {
-	Container string
-	Pname     string
-	Psid      string
-	Admin     bool
+	InstanceName string
+	Container    string
+	Pname        string
+	Psid         string
+	Admin        bool
+	AdminStyle   bool
 }
 
 type MetadataForm struct {
@@ -54,7 +56,14 @@ func runWebServer(uiport string, rt *core.Runtime, pipestance *core.Pipestance) 
 	app.Get("/", func() string {
 		tmpl, _ := template.New("graph.html").Delims("[[", "]]").ParseFiles(core.RelPath("../web/templates/graph.html"))
 		var doc bytes.Buffer
-		tmpl.Execute(&doc, &GraphPage{"runner", pipestance.Pname(), pipestance.Psid(), true})
+		tmpl.Execute(&doc, &GraphPage{
+			InstanceName: "Mario Pipeline Runner",
+			Container:    "runner",
+			Pname:        pipestance.Pname(),
+			Psid:         pipestance.Psid(),
+			Admin:        true,
+			AdminStyle:   false,
+		})
 		return doc.String()
 	})
 
