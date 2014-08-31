@@ -15,7 +15,7 @@ import (
 	"strings"
 )
 
-var __VERSION__ string
+var __VERSION__ string = "<version not embedded>"
 
 func main() {
 	runtime.GOMAXPROCS(2)
