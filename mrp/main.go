@@ -20,7 +20,7 @@ import (
 	"time"
 )
 
-var __VERSION__ string
+var __VERSION__ string = "<version not embedded>"
 
 //=============================================================================
 // Pipestance runner.

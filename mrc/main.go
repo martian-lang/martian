@@ -14,7 +14,7 @@ import (
 	"path/filepath"
 )
 
-var __VERSION__ string
+var __VERSION__ string = "<version not embedded>"
 
 func main() {
 	// Command-line arguments.
