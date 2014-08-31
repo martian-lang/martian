@@ -142,7 +142,7 @@ Options:
 	//=========================================================================
 	// Configure Mario runtime.
 	//=========================================================================
-	rt := core.NewRuntime(jobMode, mroPath, reqCores)
+	rt := core.NewRuntimeWithCores(jobMode, mroPath, reqCores)
 	_, err := rt.CompileAll()
 	core.DieIf(err)
 

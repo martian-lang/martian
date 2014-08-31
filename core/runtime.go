@@ -1095,7 +1095,11 @@ type Runtime struct {
 	scheduler    *Scheduler
 }
 
-func NewRuntime(jobMode string, mroPath string, reqCores int) *Runtime {
+func NewRuntime(jobMode string, mroPath string) *Runtime {
+	return NewRuntimeWithCores(jobMode, mroPath, 1<<16)
+}
+
+func NewRuntimeWithCores(jobMode string, mroPath string, reqCores int) *Runtime {
 	self := &Runtime{}
 	self.MroPath = mroPath
 	self.adaptersPath = RelPath(path.Join("..", "adapters"))
