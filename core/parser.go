@@ -148,7 +148,7 @@ func (bindings *BindStms) check(global *Ast, pipeline *Pipeline, params *Params)
 
 func (global *Ast) check() error {
 	// Build type table, starting with builtins. Duplicates allowed.
-	types := []string{"string", "int", "float", "bool", "path", "file"}
+	types := []string{"string", "int", "float", "bool", "path", "file", "map"}
 	for _, filetype := range global.filetypes {
 		types = append(types, filetype.Id)
 		global.FiletypeTable[filetype.Id] = true

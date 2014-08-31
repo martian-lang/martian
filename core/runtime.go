@@ -177,17 +177,32 @@ func NewBinding(node *Node, bindStm *BindStm) *Binding {
 	case *ValExp:
 		self.mode = "value"
 		self.boundNode = node
-		self.value = bindStm.Exp.(*ValExp).Value
-		// Unwrap array values.
-		if self.value != nil && valueExp.Kind == "array" {
-			value := []interface{}{}
-			for _, e := range self.value.([]Exp) {
-				value = append(value, e.(*ValExp).Value)
-			}
-			self.value = value
-		}
+		self.value = expToInterface(bindStm.Exp)
 	}
 	return self
+}
+
+func expToInterface(exp Exp) interface{} {
+	// Convert tree of Exps into a tree of interface{}s.
+	valExp, ok := exp.(*ValExp)
+	if !ok {
+		return nil
+	}
+	if valExp.Kind == "array" {
+		varray := []interface{}{}
+		for _, exp := range valExp.Value.([]Exp) {
+			varray = append(varray, expToInterface(exp))
+		}
+		return varray
+	} else if valExp.Kind == "map" {
+		vmap := map[string]interface{}{}
+		for k, exp := range valExp.Value.(map[string]Exp) {
+			vmap[k] = expToInterface(exp)
+		}
+		return vmap
+	} else {
+		return valExp.Value
+	}
 }
 
 func NewReturnBinding(node *Node, bindStm *BindStm) *Binding {

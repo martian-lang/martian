@@ -72,19 +72,21 @@ type (
 	}
 
 	InParam struct {
-		node   AstNode
-		tname  string
-		id     string
-		help   string
-		isfile bool
+		node    AstNode
+		tname   string
+		isarray bool
+		id      string
+		help    string
+		isfile  bool
 	}
 
 	OutParam struct {
-		node   AstNode
-		tname  string
-		id     string
-		help   string
-		isfile bool
+		node    AstNode
+		tname   string
+		isarray bool
+		id      string
+		help    string
+		isfile  bool
 	}
 
 	SrcParam struct {
@@ -125,8 +127,7 @@ type (
 	}
 
 	ValExp struct {
-		node AstNode
-		// union-style multi-value store
+		node  AstNode
 		Kind  string
 		Value interface{}
 	}
