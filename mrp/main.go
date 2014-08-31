@@ -14,6 +14,7 @@ import (
 	"path"
 	"path/filepath"
 	"runtime"
+	"strconv"
 	"strings"
 	"sync"
 	"time"
@@ -73,13 +74,14 @@ func main() {
 	doc := `Mario Pipeline Runner.
 
 Usage: 
-    mrp <call.mro> <pipestance_name> [--port=<num>] [--noui] [--novdr] [--sge]
+    mrp <call.mro> <pipestance_name> [--port=<num>] [--cores=<num>] [--noui] [--novdr] [--sge]
     mrp -h | --help | --version
 
 Options:
     --port=<num>  Serve UI at http://localhost:<num>
                     Overrides $MROPORT environment variable.
                     Defaults to 3600 if not otherwise specified.
+    --cores=<num> Maximum number of cores to use in local mode.
     --noui        Disable UI.
     --novdr       Disable Volatile Data Removal.
     --sge         Run jobs on Sun Grid Engine instead of locally.
@@ -113,6 +115,14 @@ Options:
 		uiport = ""
 	}
 
+	// Requested cores.
+	reqCores := 1 << 16
+	if value := opts["--cores"]; value != nil {
+		if value, err := strconv.Atoi(value.(string)); err == nil {
+			reqCores = value
+		}
+	}
+
 	// Compute MRO path.
 	cwd, _ := filepath.Abs(path.Dir(os.Args[0]))
 	mroPath := cwd
@@ -132,7 +142,7 @@ Options:
 	//=========================================================================
 	// Configure Mario runtime.
 	//=========================================================================
-	rt := core.NewRuntime(jobMode, mroPath)
+	rt := core.NewRuntime(jobMode, mroPath, reqCores)
 	_, err := rt.CompileAll()
 	core.DieIf(err)
 

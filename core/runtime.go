@@ -819,54 +819,38 @@ func (self *Node) Serialize() interface{} {
 // Job Runners
 //=============================================================================
 func (self *Node) execLocalJob(shellName string, shellCmd string, stagecodePath string,
-	fqname string, metadata *Metadata, threads interface{},
-	memGB interface{}) {
+	fqname string, metadata *Metadata, threads interface{}, memGB interface{}) {
 
 	cmd := exec.Command(shellCmd, stagecodePath, metadata.path, metadata.filesPath, "profile")
 	stdoutFile, _ := os.Create(metadata.makePath("stdout"))
 	stderrFile, _ := os.Create(metadata.makePath("stderr"))
 	stdoutFile.WriteString("[stdout]\n")
 	stderrFile.WriteString("[stderr]\n")
-	defer stdoutFile.Close()
-	defer stderrFile.Close()
-
 	cmd.Stdout = stdoutFile
 	cmd.Stderr = stderrFile
 
-	if err := cmd.Start(); err != nil {
-		LogError(err, "runtime", "Could not exec local job.")
-		return
+	tnum := 1
+	if threads != nil {
+		tnum = int(threads.(float64))
 	}
-	metadata.write("jobinfo", map[string]interface{}{"type": "local", "childid": cmd.Process.Pid})
-	cmd.Wait()
+	self.rt.scheduler.Enqueue(cmd, tnum, stdoutFile, stderrFile)
 }
 
 func (self *Node) execSGEJob(shellName string, shellCmd string, stagecodePath string,
-	fqname string, metadata *Metadata, threads interface{},
-	memGB interface{}) {
+	fqname string, metadata *Metadata, threads interface{}, memGB interface{}) {
 	qscript := []string{shellCmd, stagecodePath, metadata.path, metadata.filesPath, "profile"}
 	metadata.writeRaw("qscript", strings.Join(qscript, " "))
 
-	cmdline := []string{
-		"-N", strings.Join([]string{fqname, shellName}, "."),
-		"-V",
-	}
+	cmdline := []string{"-N", strings.Join([]string{fqname, shellName}, "."), "-V"}
 	// exec.Command doesn't like it if there are empty members of this
 	// arg string array. Problem is empty threads arg string, if it
 	// comes before the path to the script, is it gets interpreted
 	// as the path to the script and qsub fails.
 	if threads != nil {
-		cmdline = append(cmdline, []string{
-			"-pe",
-			"threads",
-			fmt.Sprintf("%v", threads),
-		}...)
+		cmdline = append(cmdline, []string{"-pe", "threads", fmt.Sprintf("%v", threads)}...)
 	}
 	if memGB != nil {
-		cmdline = append(cmdline, []string{
-			"-l",
-			fmt.Sprintf("h_vmem=%vG", memGB),
-		}...)
+		cmdline = append(cmdline, []string{"-l", fmt.Sprintf("h_vmem=%vG", memGB)}...)
 	}
 	cmdline = append(cmdline, []string{
 		"-cwd",
@@ -879,20 +863,13 @@ func (self *Node) execSGEJob(shellName string, shellCmd string, stagecodePath st
 
 	cmd := exec.Command("qsub", cmdline...)
 	cmd.Dir = metadata.filesPath
-	metadata.writeRaw("qsub", strings.Join(cmd.Args, " "))
-
-	stdoutFile, _ := os.Create(metadata.makePath("stdout"))
-	stderrFile, _ := os.Create(metadata.makePath("stderr"))
-	stdoutFile.WriteString("[stdout]\n")
-	stderrFile.WriteString("[stderr]\n")
-	defer stdoutFile.Close()
-	defer stderrFile.Close()
-
-	cmd.Stdout = stdoutFile
-	cmd.Stderr = stderrFile
-
-	cmd.Start()
-	cmd.Wait()
+	out := ""
+	if data, err := cmd.CombinedOutput(); err == nil {
+		out = string(data)
+	} else {
+		out = err.Error()
+	}
+	metadata.writeRaw("qsub", strings.Join(cmd.Args, " ")+"\n\n"+out)
 }
 
 func (self *Node) RunJob(shellName string, fqname string, metadata *Metadata,
@@ -1115,10 +1092,10 @@ type Runtime struct {
 	typeTable    map[string]string
 	CodeVersion  string
 	jobMode      string
-	/* TODO queue goes here */
+	scheduler    *Scheduler
 }
 
-func NewRuntime(jobMode string, mroPath string) *Runtime {
+func NewRuntime(jobMode string, mroPath string, reqCores int) *Runtime {
 	self := &Runtime{}
 	self.MroPath = mroPath
 	self.adaptersPath = RelPath(path.Join("..", "adapters"))
@@ -1127,6 +1104,7 @@ func NewRuntime(jobMode string, mroPath string) *Runtime {
 	self.typeTable = map[string]string{}
 	self.CodeVersion = getGitTag(mroPath)
 	self.jobMode = jobMode
+	self.scheduler = NewScheduler(reqCores)
 	return self
 }
 
