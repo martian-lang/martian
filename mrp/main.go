@@ -74,7 +74,7 @@ func main() {
 	doc := `Mario Pipeline Runner.
 
 Usage: 
-    mrp <call.mro> <pipestance_name> [--port=<num>] [--cores=<num>] [--noui] [--novdr] [--sge]
+    mrp <call.mro> <pipestance_name> [options]
     mrp -h | --help | --version
 
 Options:
