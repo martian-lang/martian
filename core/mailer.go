@@ -60,7 +60,7 @@ func (self *Mailer) Sendmail(to []string, subject string, body string) error {
 
 	// If debug mode, put name of instance in subject line.
 	if self.debug {
-		subject = fmt.Sprintf("[%s] %s", self.InstanceName, subject)
+		subject = fmt.Sprintf("[DEBUG - %s] %s", strings.ToUpper(self.InstanceName), subject)
 	}
 
 	// Only add individual recipients if not in debug mode.
@@ -69,6 +69,7 @@ func (self *Mailer) Sendmail(to []string, subject string, body string) error {
 		recipients = append(recipients, to...)
 	}
 
+	// Build template context.
 	context := &SmtpTemplateData{
 		fmt.Sprintf("Mario Lopez <%s>", self.username),
 		self.notifyEmail,
@@ -76,10 +77,13 @@ func (self *Mailer) Sendmail(to []string, subject string, body string) error {
 		body,
 		strings.Join(recipients, ", "),
 	}
+
+	// Render the template.
 	t := template.New("emailTemplate")
 	t, _ = t.Parse(emailTemplate)
 	_ = t.Execute(&doc, context)
 
+	// Send email.
 	auth := smtp.PlainAuth("", self.username, self.password, self.host)
 	return smtp.SendMail(
 		fmt.Sprintf("%s:%d", self.host, self.port),
