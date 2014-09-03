@@ -2,9 +2,9 @@
 *.swp
 *.swo
 node_modules
-mrc/mrc
-mre/mre
-mrp/mrp
-mrs/mrs
-marsoc/marsoc
-marstat/marstat
+mario/mrc/mrc
+mario/mre/mre
+mario/mrp/mrp
+mario/mrs/mrs
+mario/marsoc/marsoc
+mario/marstat/marstat
