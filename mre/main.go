@@ -7,7 +7,7 @@ package main
 
 import (
 	"github.com/docopt/docopt-go"
-	"margo/core"
+	"mario/core"
 	"os"
 	"path"
 	"path/filepath"

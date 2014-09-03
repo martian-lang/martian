@@ -9,7 +9,7 @@ import (
 	"github.com/docopt/docopt-go"
 	"github.com/dustin/go-humanize"
 	"io/ioutil"
-	"margo/core"
+	"mario/core"
 	"os"
 	"path"
 	"path/filepath"

@@ -8,7 +8,7 @@ package main
 import (
 	"fmt"
 	"github.com/docopt/docopt-go"
-	"margo/core"
+	"mario/core"
 	"os"
 	"path"
 	"path/filepath"

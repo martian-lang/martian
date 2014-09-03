@@ -13,7 +13,7 @@ import (
 	"github.com/martini-contrib/binding"
 	"html/template"
 	"io/ioutil"
-	"margo/core"
+	"mario/core"
 	"net/http"
 	"os"
 	"path"
