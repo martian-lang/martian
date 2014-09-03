@@ -9,7 +9,7 @@ import (
 	"fmt"
 	"github.com/docopt/docopt-go"
 	"io/ioutil"
-	"margo/core"
+	"mario/core"
 	"os"
 	"path"
 	"path/filepath"
