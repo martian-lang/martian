@@ -1,0 +1,5 @@
+#!/bin/bash
+# 
+# marsoc startup script
+#
+nohup marsoc > ~/logs/`date "+%Y%m%d%H%M"`.log &

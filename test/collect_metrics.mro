@@ -1,3 +1,0 @@
-call COLLECT_METRICS(
-    run_path = path("/Users/alex/tmp/netapp/sequencing/sequencers/miseq00V/mini-bcl"),
-)

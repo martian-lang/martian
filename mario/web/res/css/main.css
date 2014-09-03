@@ -1,0 +1,244 @@
+/*
+ * Copyright (c) 2014 10X Technologies, Inc. All rights reserved.
+ *
+ * Styles for pipeline runner graph page.
+ *
+ */
+
+/* angular-ui fix */
+.nav, .pagination, .carousel, .panel-title a { cursor: pointer; }
+
+a { cursor:pointer; }
+
+/* Page-specific styles */
+.admin {
+    background-color: #822 !important;
+}
+.admin .navbar-brand a {
+    color: white !important;
+}
+.navbar-inverse.admin .navbar-brand {
+    color: white;
+}
+.navbar-inverse.admin .navbar-brand:hover {
+    color: white;
+}
+.admin .navbar-brand a.admin-exit {
+    color: #b6d7a8 !important;
+}
+.admin .navbar-brand a.admin-exit:hover {
+    color: #b6d7a8 !important;
+}
+.navbar-header {
+    width: 100%;
+}
+.navbar-inverse {
+    background-color: #eee;
+    border-bottom: 0;
+}
+.navbar-inverse .navbar-brand {
+    position: fixed;
+    width: 100%;
+    color: #555;
+    font-size: 20px;
+}
+.navbar-inverse .navbar-brand:hover {
+    position: fixed;
+    width: 100%;
+    color: #555;
+    font-size: 20px;
+}
+.navbar-inverse .navbar-left {
+    padding: 15px; 
+    color: #888;
+    vertical-align: bottom; 
+    font-size: 14px;
+}
+.navbar-inverse .navbar-right {
+    position: absolute;
+    right: 0px;
+    top: 0px;
+    height: 50px;
+    padding: 15px;
+    color: #888;
+    vertical-align: bottom; 
+    font-size: 14px;
+    font-family: Menlo, Arial;
+}
+
+.logo-color {
+    color: #33b5e5;
+}
+.navbar-left a, .navbar-right a {
+    color: #888;
+    cursor: pointer;
+}
+
+/*******************************************/
+.close {
+    top: -1px;
+    position: relative;
+}
+
+
+#details {
+    position: absolute;
+    padding: 5px 10px;
+    top: 50px;
+    left: 0px;
+    margin-left: 775px;
+}
+pre {
+    font-size: 12px;
+}
+h4#stagename {
+    font-family: Menlo, Arial;
+}
+#details h5 {
+    font-weight: bold;
+}
+#graph {
+    margin-left: 25px; 
+    margin-top: 75px
+}
+.copyable {
+    display: none;
+}
+.copyable-display {
+    margin-left: 10px;
+}
+.node rect {
+    stroke: #333;
+    stroke-width: 1.5px;
+    fill: #ddd;
+    cursor: pointer;
+}
+g.node:hover rect {
+    stroke: #666;
+}
+g.seled rect, g.seled.node:hover rect {
+    stroke-width: 3px;
+    stroke: #de5068;
+}
+tr.active {
+    font-size: 12px;
+    font-weight: bold;
+}
+.glyphicon-transfer {
+    color: #de5068;
+}
+.failed rect {
+    fill: #666;
+    color: white !important;
+}
+.failed text {
+    color: white;
+    text-color: white !important;
+}
+.running rect, .chunks_running rect, .split_running rect, .join_running rect {
+    fill: #33b5e5;
+    color: white;
+}
+.ready rect {
+    fill: white;
+    color: black;
+}
+.btn.btn-default.queued {
+    background: #a0c5e8;
+    border: none;
+    color: white;
+}
+.btn.btn-default.complete {
+    background: #b6d7a8;
+    border: none;
+}
+.btn.btn-default.running {
+    background: #33b5e5;
+    border: none;
+    color: white;
+}
+.btn.btn-default.failed {
+    background: #666;
+    border: none;
+    color: white;
+}
+.complete rect, .chunks_complete rect, .join_complete rect, .split_complete rect {
+    fill: #b6d7a8;
+    color: black;
+}
+.pending {
+    font-style: italic;
+    color: #de5068;
+}
+#details td {
+    font-family: Menlo, Arial;
+    font-size: 12px;
+}
+
+tspan {
+    font-family: Menlo, Arial;
+    font-size: 12px;
+    cursor: pointer;
+    -webkit-user-select: none;
+}
+.edgeLabel rect {
+    fill: #fff;
+}
+.edgePath {
+    stroke: #333;
+    stroke-width: 1.5px;
+    fill: none;
+}
+#details td.table-section-header {
+    font-family: 'Helvetica Neue', Helvetica;
+    font-size: 14px;
+    font-weight: bold;
+}
+
+.minibox {
+    display: inline-block;
+    padding: 2px 10px;
+    font-family: Menlo, Arial;
+    font-size: 12px;
+    border: 1.5px solid black;
+    background: #ddd;
+    border-radius: 5px;
+}
+.minibox.ready {
+    background: white;
+    color: black;
+}
+.minibox.queued, .minibox.chunks_queued, .minibox.split_queued, .minibox.join_queued {
+    background: #a0c5e8;
+    color: white;
+}
+.minibox.queued a, .minibox.chunks_queued a, .minibox.split_queued a, .minibox.join_queued a {
+    color: white;
+}
+.minibox.complete, .minibox.chunks_complete, .minibox.split_complete, .minibox.join_complete {
+    background: #b6d7a8;
+    color: #555;
+}
+.minibox.complete a, .minibox.chunks_complete a, .minibox.split_complete a, .minibox.join_complete a {
+    color: #555;
+}
+.minibox.running, .minibox.chunks_running, .minibox.split_running, .minibox.join_running {
+    background: #33b5e5;
+    color: white;
+}
+.minibox.running a, .minibox.chunks_running a, .minibox.split_running a, .minibox.join_running a {
+    color: white;
+}
+.minibox.failed a, .minibox.incomplete a {
+    color: white;
+}
+.minibox.failed, .minibox.incomplete {
+    background: #666;
+    color: white;
+}
+table#bindings td, table#info td {
+    vertical-align: middle;
+}
+td.tight {
+    padding: 8px 4px;
+}
