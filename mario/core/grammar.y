@@ -10,6 +10,10 @@ import (
     "strconv"
     "strings"
 )
+
+func unquote(qs string) string {
+    return strings.Replace(qs, "\"", "", -1)
+}
 %}
 
 %union{
@@ -24,6 +28,7 @@ import (
     src       *SrcParam
     exp       Exp
     exps      []Exp
+    kvpairs   map[string]Exp
     call      *CallStm
     calls     []*CallStm
     binding   *BindStm
@@ -40,6 +45,7 @@ import (
 %type <src>       src_stm
 %type <exp>       exp ref_exp
 %type <exps>      exp_list
+%type <kvpairs>   kvpair_list
 %type <call>      call_stm 
 %type <calls>     call_stm_list 
 %type <binding>   bind_stm
@@ -47,12 +53,13 @@ import (
 %type <retstm>    return_stm
 
 %token SKIP INVALID 
-%token SEMICOLON LBRACKET RBRACKET LPAREN RPAREN LBRACE RBRACE COMMA EQUALS
+%token SEMICOLON COLON COMMA EQUALS
+%token LBRACKET RBRACKET LPAREN RPAREN LBRACE RBRACE 
 %token FILETYPE STAGE PIPELINE CALL VOLATILE SWEEP SPLIT USING SELF RETURN
 %token IN OUT SRC
 %token <val> ID LITSTRING NUM_FLOAT NUM_INT DOT
 %token <val> PY GO SH EXEC
-%token <val> INT TSTRING FLOAT PATH FILE BOOL TRUE FALSE NULL DEFAULT
+%token <val> MAP INT STRING FLOAT PATH FILE BOOL TRUE FALSE NULL DEFAULT
 
 %%
 file
@@ -116,7 +123,9 @@ in_param_list
 
 in_param
     : IN type ID help
-        {{ $$ = &InParam{AstNode{mmlval.loc}, $2, $3, $4, false } }}
+        {{ $$ = &InParam{AstNode{mmlval.loc}, $2, false, $3, $4, false } }}
+    | IN type LBRACKET RBRACKET ID help
+        {{ $$ = &InParam{AstNode{mmlval.loc}, $2, true, $5, $6, false } }}
     ;
 
 out_param_list
@@ -131,14 +140,18 @@ out_param_list
 
 out_param
     : OUT type help 
-        {{ $$ = &OutParam{AstNode{mmlval.loc}, $2, "default", $3, false } }}
+        {{ $$ = &OutParam{AstNode{mmlval.loc}, $2, false, "default", $3, false } }}
     | OUT type ID help 
-        {{ $$ = &OutParam{AstNode{mmlval.loc}, $2, $3, $4, false } }}
+        {{ $$ = &OutParam{AstNode{mmlval.loc}, $2, false, $3, $4, false } }}    
+    | OUT type LBRACKET RBRACKET help 
+        {{ $$ = &OutParam{AstNode{mmlval.loc}, $2, true, "default", $5, false } }}
+    | OUT type LBRACKET RBRACKET ID help 
+        {{ $$ = &OutParam{AstNode{mmlval.loc}, $2, true, $5, $6, false } }}    
     ;
 
 src_stm
     : SRC src_lang LITSTRING COMMA
-        {{ $$ = &SrcParam{AstNode{mmlval.loc}, $2, strings.Replace($3, "\"", "", -1) } }}
+        {{ $$ = &SrcParam{AstNode{mmlval.loc}, $2, unquote($3) } }}
     ;
 
 help
@@ -150,10 +163,11 @@ help
 
 type
     : INT
-    | TSTRING
+    | STRING
     | PATH
     | FLOAT
     | BOOL
+    | MAP
     | ID
     | ID DOT ID
         {{ $$ = $1 + "." + $3 }}
@@ -214,15 +228,29 @@ exp_list
         {{ $$ = []Exp{$1} }}
     ; 
 
+kvpair_list
+    : kvpair_list COMMA LITSTRING COLON exp
+        {{ 
+            $1[unquote($3)] = $5
+            $$ = $1
+        }}
+    | LITSTRING COLON exp
+        {{ $$ = map[string]Exp{unquote($1): $3} }}
+    ;
+
 exp
     : LBRACKET exp_list RBRACKET        
         {{ $$ = &ValExp{node:AstNode{mmlval.loc}, Kind: "array", Value: $2} }}
     | LBRACKET RBRACKET
         {{ $$ = &ValExp{node:AstNode{mmlval.loc}, Kind: "array", Value: []Exp{}} }}
+    | LBRACE RBRACE
+        {{ $$ = &ValExp{node:AstNode{mmlval.loc}, Kind: "map", Value: map[string]interface{}{}} }}
+    | LBRACE kvpair_list RBRACE
+        {{ $$ = &ValExp{node:AstNode{mmlval.loc}, Kind: "map", Value: $2} }}
     | PATH LPAREN LITSTRING RPAREN
-        {{ $$ = &ValExp{node:AstNode{mmlval.loc}, Kind: $1, Value: strings.Replace($3, "\"", "", -1) } }}
+        {{ $$ = &ValExp{node:AstNode{mmlval.loc}, Kind: $1, Value: unquote($3)} }}
     | FILE LPAREN LITSTRING RPAREN
-        {{ $$ = &ValExp{node:AstNode{mmlval.loc}, Kind: $1, Value: strings.Replace($3, "\"", "", -1) } }}
+        {{ $$ = &ValExp{node:AstNode{mmlval.loc}, Kind: $1, Value: unquote($3)} }}
     | NUM_FLOAT
         {{  // Lexer guarantees parseable float strings.
             f, _ := strconv.ParseFloat($1, 64)
@@ -234,7 +262,7 @@ exp
             $$ = &ValExp{node:AstNode{mmlval.loc}, Kind: "int", Value: i } 
         }}
     | LITSTRING
-        {{ $$ = &ValExp{node:AstNode{mmlval.loc}, Kind: "string", Value: strings.Replace($1, "\"", "", -1)} }}
+        {{ $$ = &ValExp{node:AstNode{mmlval.loc}, Kind: "string", Value: unquote($1)} }}
     | TRUE
         {{ $$ = &ValExp{node:AstNode{mmlval.loc}, Kind: "bool", Value: true} }}
     | FALSE

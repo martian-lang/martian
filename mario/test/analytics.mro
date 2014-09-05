@@ -1,14 +1,25 @@
 call ANALYTICS(
-    read_path = [path("/mnt/analysis/marsoc/pipestances/HA911ADXX/PREPROCESS/HA911ADXX/1.4.1/PREPROCESS/DEMULTIPLEX/fork0/files/demultiplexed_fastq_path")],
-    sample_indices = ["GTTGTAGT","TTCTATGC","CAACCCAA","CCGATTAG"],
-    lanes = null,
-    genome = sweep(["PhiX","hg19"]),
-    targets_file = null,
-    confident_regions = null,
-    trim_length = sweep([0,10]),
+    sample_spec = [
+        {
+            "read_path": "/mnt/analysis/stagesoc/pipestances/AALKG/PREPROCESS/AALKG/1.5.0-104-g392144e/PREPROCESS/DEMULTIPLEX/fork0/files/demultiplexed_fastq_path",
+            "sample_indices": ["GATCTTTC", "CTATCCAG", "GATAACAT", "CGCTGGTC", "AAGACCGG", "TGATTTAC", "GACTGCAG", "CTGAATTA", "TGTACCGT", "CCCGTTAC", "TCTGTTCC", "ATCCCAGT"],
+            "lanes": null
+        },
+        {
+            "read_path": "/mnt/analysis/stagesoc/pipestances/AALKG/PREPROCESS/AALKG/1.5.0-104-g392144e/PREPROCESS/DEMULTIPLEX/fork0/files/demultiplexed_fastq_path",
+            "sample_indices": ["GATCTTTC", "CTATCCAG", "GATAACAT", "CGCTGGTC", "AAGACCGG", "TGATTTAC", "GACTGCAG", "CTGAATTA", "TGTACCGT", "CCCGTTAC", "TCTGTTCC", "ATCCCAGT"],
+            "lanes": null
+        }
+    ],
+    genome = "hg19",
+    targets_file = file("/mnt/opt/meowmix/targetsets/hg19/agilent_kinome_targs.bed"),
+    confident_regions = file("/mnt/opt/meowmix/genometracks/hg19/human_conf_35.bed"),
+    trim_length = 10,
     barcode_whitelist = "737K-april-2014",
-    primers = ["R1-alt2:TTGCTCATTCCCTACACGACGCTCTTCCGATCT","R2RC:GTGACTGGAGTTCAGACGTGTGCTCTTCCGATCT","Alt2-10N:AATGATACGGCGACCACCGAGATCTACACTAGATCGCTTGCTCATTCCCTACACGACGCTCTTCCGATCTNNNNNNNNNN","P7RC:CAAGCAGAAGACGGCATACGAGAT","P5:AATGATACGGCGACCACCGAGA"],
+    primers = ["R1-alt2:TTGCTCATTCCCTACACGACGCTCTTCCGATCT", "R2RC:GTGACTGGAGTTCAGACGTGTGCTCTTCCGATCT", "Alt2-10N:AATGATACGGCGACCACCGAGATCTACACTAGATCGCTTGCTCATTCCCTACACGACGCTCTTCCGATCTNNNNNNNNNN", "P7RC:CAAGCAGAAGACGGCATACGAGAT", "P5:AATGATACGGCGACCACCGAGA"],
     variant_results = null,
-    sample_id = "2444",
+    sample_id = "2647",
     lena_url = "lena.10x.office",
+    template_mass = 3.000000,
+    common_vars = file("/mnt/opt/meowmix/variants/hg19/common/hg19.pickle"),
 )
