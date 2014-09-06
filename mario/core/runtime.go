@@ -1299,9 +1299,9 @@ func (self *Runtime) InvokeWithSource(psid string, src string, pipestancePath st
 	metadata := NewMetadata(pipestancePath)
 	metadata.writeRaw("invocation", src)
 	metadata.writeRaw("mrosource", self.srcTable[pipestance.Node().name])
-	metadata.write("codeversion", map[string]string{
-		"mario": self.MarioVersion,
-		"mro":   self.CodeVersion,
+	metadata.write("versions", map[string]string{
+		"mario":     self.MarioVersion,
+		"pipelines": self.CodeVersion,
 	})
 	metadata.writeTime("timestamp")
 
