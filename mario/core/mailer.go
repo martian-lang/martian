@@ -17,15 +17,19 @@ type Mailer struct {
 	InstanceName string
 	host         string
 	port         int
+	senderEmail  string
 	notifyEmail  string
 	debug        bool
 }
 
-func NewMailer(instanceName string, smtphost string, notifyEmail string, debug bool) *Mailer {
+func NewMailer(instanceName string, smtphost string, senderEmail string, notifyEmail string,
+	debug bool) *Mailer {
+
 	self := &Mailer{}
 	self.InstanceName = strings.ToLower(instanceName)
 	self.host = smtphost
 	self.port = 25
+	self.senderEmail = senderEmail
 	self.notifyEmail = notifyEmail
 	self.debug = debug
 	return self
@@ -67,7 +71,7 @@ func (self *Mailer) Sendmail(to []string, subject string, body string) error {
 
 	// Build template context.
 	context := &SmtpTemplateData{
-		fmt.Sprintf("Mario Lopez <%s>", self.notifyEmail),
+		fmt.Sprintf("Mario Lopez <%s>", self.senderEmail),
 		self.notifyEmail,
 		subject,
 		body,
@@ -83,7 +87,7 @@ func (self *Mailer) Sendmail(to []string, subject string, body string) error {
 	return smtp.SendMail(
 		fmt.Sprintf("%s:%d", self.host, self.port),
 		nil,
-		self.notifyEmail,
+		self.senderEmail,
 		recipients,
 		doc.Bytes(),
 	)
