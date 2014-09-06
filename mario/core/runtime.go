@@ -31,6 +31,7 @@ type Metadata struct {
 func NewMetadata(p string) *Metadata {
 	self := &Metadata{}
 	self.path = p
+	self.contents = map[string]bool{}
 	self.filesPath = path.Join(p, "files")
 	return self
 }
