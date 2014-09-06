@@ -68,3 +68,7 @@ func (self *Scheduler) Enqueue(cmd *exec.Cmd, threads int, stdoutFile *os.File, 
 		self.sem.V(threads)
 	}(cmd, threads, stdoutFile, stderrFile)
 }
+
+func (self *Scheduler) getCores() int {
+	return self.cores
+}

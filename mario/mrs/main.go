@@ -35,6 +35,7 @@ Usage:
 
 Options:
     --sge         Run jobs on Sun Grid Engine instead of locally.
+    --profile     Enable stage performance profiling.
     -h --help     Show this message.
     --version     Show version.`
 	opts, _ := docopt.Parse(doc, nil, true, __VERSION__, false)
@@ -59,6 +60,12 @@ Options:
 		mroPath = value
 	}
 
+	// Compute profiling flag.
+	profile := opts["--profile"].(bool)
+	if value := os.Getenv("MROPROFILE"); len(value) > 0 {
+		profile = true
+	}
+
 	// Setup invocation-specific values.
 	invocationPath := opts["<call.mro>"].(string)
 	stagestancePath := cwd
@@ -70,7 +77,7 @@ Options:
 	//=========================================================================
 	// Configure Mario runtime.
 	//=========================================================================
-	rt := core.NewRuntime(jobMode, mroPath)
+	rt := core.NewRuntime(jobMode, mroPath, __VERSION__, profile)
 	_, err := rt.CompileAll()
 	core.DieIf(err)
 

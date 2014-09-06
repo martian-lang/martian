@@ -41,6 +41,7 @@ func runLoop(pipestance *core.Pipestance, stepSecs int, disableVDR bool) {
 
 		// Check for completion states.
 		if pipestance.GetOverallState() == "complete" {
+			pipestance.Immortalize()
 			if disableVDR {
 				core.LogInfo("runtime", "VDR disabled by --novdr option. No files killed.")
 			} else {
@@ -82,6 +83,7 @@ Options:
                     Overrides $MROPORT environment variable.
                     Defaults to 3600 if not otherwise specified.
     --cores=<num> Maximum number of cores to use in local mode.
+    --profile     Enable stage performance profiling.
     --noui        Disable UI.
     --novdr       Disable Volatile Data Removal.
     --sge         Run jobs on Sun Grid Engine instead of locally.
@@ -131,6 +133,13 @@ Options:
 	}
 	core.LogInfo("environ", "MROPATH = %s", mroPath)
 
+	// Compute profiling flag.
+	profile := opts["--profile"].(bool)
+	if value := os.Getenv("MROPROFILE"); len(value) > 0 {
+		profile = true
+	}
+	core.LogInfo("environ", "MROPROFILE = %v", profile)
+
 	// Setup invocation-specific values.
 	disableVDR := opts["--novdr"].(bool)
 	psid := opts["<pipestance_name>"].(string)
@@ -142,7 +151,7 @@ Options:
 	//=========================================================================
 	// Configure Mario runtime.
 	//=========================================================================
-	rt := core.NewRuntimeWithCores(jobMode, mroPath, reqCores)
+	rt := core.NewRuntimeWithCores(jobMode, mroPath, reqCores, __VERSION__, profile)
 	_, err := rt.CompileAll()
 	core.DieIf(err)
 
