@@ -354,13 +354,26 @@ func (self *Chunk) Step() {
 	if self.getState() == "ready" {
 		resolvedBindings := resolveBindings(self.node.argbindings, self.fork.argPermute)
 		for id, value := range self.chunkDef {
+			// Cap the __threads passed to chunks by max cores as resolved by scheduler.
+			if id == "__threads" {
+				value = self.node.rt.scheduler.getCores()
+			}
 			resolvedBindings[id] = value
 		}
 		self.metadata.write("args", resolvedBindings)
 		self.metadata.write("outs", makeOutArgs(self.node.outparams, self.metadata.filesPath))
 		if !self.has_run {
 			self.has_run = true
-			self.node.RunJob("main", self.fqname, self.metadata, self.chunkDef["__threads"], self.chunkDef["__mem_gb"])
+			// Unpack threads and memory requirements.
+			threads := 1
+			if self.chunkDef["__threads"] != nil {
+				threads = int(self.chunkDef["__threads"].(float64))
+			}
+			memGB := 0
+			if self.chunkDef["__mem_gb"] != nil {
+				memGB = int(self.chunkDef["__mem_gb"].(float64))
+			}
+			self.node.RunJob("main", self.fqname, self.metadata, threads, memGB)
 		}
 	}
 }
@@ -487,7 +500,7 @@ func (self *Fork) Step() {
 			if self.node.split {
 				if !self.split_has_run {
 					self.split_has_run = true
-					self.node.RunJob("split", self.fqname, self.split_metadata, nil, nil)
+					self.node.RunJob("split", self.fqname, self.split_metadata, 1, 0)
 				}
 			} else {
 				self.split_metadata.write("chunk_defs", []interface{}{map[string]interface{}{}})
@@ -518,7 +531,7 @@ func (self *Fork) Step() {
 				self.join_metadata.write("outs", makeOutArgs(self.node.outparams, self.metadata.filesPath))
 				if !self.join_has_run {
 					self.join_has_run = true
-					self.node.RunJob("join", self.fqname, self.join_metadata, nil, nil)
+					self.node.RunJob("join", self.fqname, self.join_metadata, 1, 0)
 				}
 			} else {
 				self.join_metadata.write("outs", self.chunks[0].metadata.read("outs"))
@@ -834,10 +847,14 @@ func (self *Node) Serialize() interface{} {
 //=============================================================================
 // Job Runners
 //=============================================================================
-func (self *Node) execLocalJob(shellName string, shellCmd string, stagecodePath string,
-	fqname string, metadata *Metadata, threads interface{}, memGB interface{}) {
+func (self *Node) execLocalJob(shellCmd string, stagecodePath string,
+	metadata *Metadata, threads int, profile string) {
 
-	cmd := exec.Command(shellCmd, stagecodePath, metadata.path, metadata.filesPath, "profile")
+	// Exec the shell directly.
+	argv := []string{stagecodePath, metadata.path, metadata.filesPath, profile}
+	cmd := exec.Command(shellCmd, argv...)
+
+	// Connect child to _stdout and _stderr metadata files.
 	stdoutFile, _ := os.Create(metadata.makePath("stdout"))
 	stderrFile, _ := os.Create(metadata.makePath("stderr"))
 	stdoutFile.WriteString("[stdout]\n")
@@ -845,39 +862,37 @@ func (self *Node) execLocalJob(shellName string, shellCmd string, stagecodePath 
 	cmd.Stdout = stdoutFile
 	cmd.Stderr = stderrFile
 
-	tnum := 1
-	if threads != nil {
-		tnum = int(threads.(float64))
-	}
-	self.rt.scheduler.Enqueue(cmd, tnum, stdoutFile, stderrFile)
+	// Enqueue the command to the local scheduler.
+	self.rt.scheduler.Enqueue(cmd, threads, stdoutFile, stderrFile)
 }
 
-func (self *Node) execSGEJob(shellName string, shellCmd string, stagecodePath string,
-	fqname string, metadata *Metadata, threads interface{}, memGB interface{}) {
-	qscript := []string{shellCmd, stagecodePath, metadata.path, metadata.filesPath, "profile"}
-	metadata.writeRaw("qscript", strings.Join(qscript, " "))
+func (self *Node) execSGEJob(fqname string, shellName string, shellCmd string,
+	stagecodePath string, metadata *Metadata, threads int, memGB int, profile string) {
 
-	cmdline := []string{"-N", strings.Join([]string{fqname, shellName}, "."), "-V"}
-	// exec.Command doesn't like it if there are empty members of this
-	// arg string array. Problem is empty threads arg string, if it
-	// comes before the path to the script, is it gets interpreted
-	// as the path to the script and qsub fails.
-	if threads != nil {
-		cmdline = append(cmdline, []string{"-pe", "threads", fmt.Sprintf("%v", threads)}...)
+	// Generate the script that will be qsub'ed.
+	argv := []string{shellCmd, stagecodePath, metadata.path, metadata.filesPath, profile}
+	metadata.writeRaw("qscript", strings.Join(argv, " "))
+
+	// Build the qsub command.
+	argv = []string{
+		"-N", fqname + "." + shellName,
+		"-V",
+		"-pe", "threads", fmt.Sprintf("%d", threads),
 	}
-	if memGB != nil {
-		cmdline = append(cmdline, []string{"-l", fmt.Sprintf("h_vmem=%vG", memGB)}...)
+	if memGB > 0 {
+		argv = append(argv, "-l", fmt.Sprintf("h_vmem=%dG", memGB))
 	}
-	cmdline = append(cmdline, []string{
+	argv = append(argv,
 		"-cwd",
 		"-o", metadata.makePath("stdout"),
 		"-e", metadata.makePath("stderr"),
 		metadata.makePath("qscript"),
-	}...)
+	)
 
 	metadata.write("jobinfo", map[string]string{"type": "sge"})
 
-	cmd := exec.Command("qsub", cmdline...)
+	// Exec the qsub command synchronously and write result out to _qsub.
+	cmd := exec.Command("qsub", argv...)
 	cmd.Dir = metadata.filesPath
 	out := ""
 	if data, err := cmd.CombinedOutput(); err == nil {
@@ -889,16 +904,27 @@ func (self *Node) execSGEJob(shellName string, shellCmd string, stagecodePath st
 }
 
 func (self *Node) RunJob(shellName string, fqname string, metadata *Metadata,
-	threads interface{}, memGB interface{}) {
-	adaptersPath := path.Join(self.rt.adaptersPath, "python")
+	threads int, memGB int) {
+
+	// Log the job run.
 	LogInfo("runtime", "(run-%s) %s.%s", self.rt.jobMode, fqname, shellName)
 	metadata.write("jobinfo", map[string]interface{}{"type": nil, "childpid": nil})
-	shellCmd := path.Join(adaptersPath, shellName+".py")
-	if self.rt.jobMode == "local" {
-		self.execLocalJob(shellName, shellCmd, self.stagecodePath, fqname, metadata, threads, memGB)
-	} else if self.rt.jobMode == "sge" {
-		self.execSGEJob(shellName, shellCmd, self.stagecodePath, fqname, metadata, threads, memGB)
-	} else {
+
+	// Construct path to the shell.
+	shellCmd := path.Join(self.rt.adaptersPath, "python", shellName+".py")
+
+	// Configure profiling.
+	profile := ""
+	if self.rt.enableProfiling {
+		profile = "profile"
+	}
+
+	switch self.rt.jobMode {
+	case "local":
+		self.execLocalJob(shellCmd, self.stagecodePath, metadata, threads, profile)
+	case "sge":
+		self.execSGEJob(fqname, shellName, shellCmd, self.stagecodePath, metadata, threads, memGB, profile)
+	default:
 		panic(fmt.Sprintf("Unknown jobMode: %s", self.rt.jobMode))
 	}
 }
@@ -913,11 +939,15 @@ type Stagestance struct {
 func (self *Stagestance) Node() *Node { return self.node }
 
 func NewStagestance(parent Nodable, callStm *CallStm, callables *Callables) *Stagestance {
+	langMap := map[string]string{
+		"py": "Python",
+	}
+
 	self := &Stagestance{}
 	self.node = NewNode(parent, "stage", callStm, callables)
 	stage := callables.table[self.node.name].(*Stage)
 	self.node.stagecodePath = path.Join(self.node.rt.MroPath, stage.src.path)
-	self.node.stagecodeLang = "Python"
+	self.node.stagecodeLang = langMap[stage.src.lang]
 	self.node.split = len(stage.splitParams.list) > 0
 	self.node.buildForks(self.node.argbindings)
 	return self
@@ -1101,30 +1131,36 @@ func NewTopNode(rt *Runtime, psid string, p string) *TopNode {
 // Runtime
 //=============================================================================
 type Runtime struct {
-	MroPath      string
-	adaptersPath string
-	globalTable  map[string]*Ast
-	srcTable     map[string]string
-	typeTable    map[string]string
-	CodeVersion  string
-	jobMode      string
-	scheduler    *Scheduler
+	MroPath         string
+	adaptersPath    string
+	globalTable     map[string]*Ast
+	srcTable        map[string]string
+	typeTable       map[string]string
+	MarioVersion    string
+	CodeVersion     string
+	jobMode         string
+	scheduler       *Scheduler
+	enableProfiling bool
 }
 
-func NewRuntime(jobMode string, mroPath string) *Runtime {
-	return NewRuntimeWithCores(jobMode, mroPath, 1<<16)
+func NewRuntime(jobMode string, mroPath string, marioVersion string, enableProfiling bool) *Runtime {
+	return NewRuntimeWithCores(jobMode, mroPath, 1<<16, marioVersion, enableProfiling)
 }
 
-func NewRuntimeWithCores(jobMode string, mroPath string, reqCores int) *Runtime {
+func NewRuntimeWithCores(jobMode string, mroPath string, reqCores int,
+	marioVersion string, enableProfiling bool) *Runtime {
+
 	self := &Runtime{}
 	self.MroPath = mroPath
 	self.adaptersPath = RelPath(path.Join("..", "adapters"))
 	self.globalTable = map[string]*Ast{}
 	self.srcTable = map[string]string{}
 	self.typeTable = map[string]string{}
+	self.MarioVersion = marioVersion
 	self.CodeVersion = getGitTag(mroPath)
 	self.jobMode = jobMode
 	self.scheduler = NewScheduler(reqCores)
+	self.enableProfiling = enableProfiling
 	return self
 }
 
@@ -1263,7 +1299,10 @@ func (self *Runtime) InvokeWithSource(psid string, src string, pipestancePath st
 	metadata := NewMetadata(pipestancePath)
 	metadata.writeRaw("invocation", src)
 	metadata.writeRaw("mrosource", self.srcTable[pipestance.Node().name])
-	metadata.writeRaw("codeversion", self.CodeVersion)
+	metadata.write("codeversion", map[string]string{
+		"mario": self.MarioVersion,
+		"mro":   self.CodeVersion,
+	})
 	metadata.writeTime("timestamp")
 
 	// Create pipestance folder graph concurrently.
