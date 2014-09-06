@@ -15,7 +15,11 @@ import (
 	"strings"
 )
 
-//line grammar.y:15
+func unquote(qs string) string {
+	return strings.Replace(qs, "\"", "", -1)
+}
+
+//line grammar.y:19
 type mmSymType struct {
 	yys      int
 	global   *Ast
@@ -29,6 +33,7 @@ type mmSymType struct {
 	src      *SrcParam
 	exp      Exp
 	exps     []Exp
+	kvpairs  map[string]Exp
 	call     *CallStm
 	calls    []*CallStm
 	binding  *BindStm
@@ -39,59 +44,62 @@ type mmSymType struct {
 const SKIP = 57346
 const INVALID = 57347
 const SEMICOLON = 57348
-const LBRACKET = 57349
-const RBRACKET = 57350
-const LPAREN = 57351
-const RPAREN = 57352
-const LBRACE = 57353
-const RBRACE = 57354
-const COMMA = 57355
-const EQUALS = 57356
-const FILETYPE = 57357
-const STAGE = 57358
-const PIPELINE = 57359
-const CALL = 57360
-const VOLATILE = 57361
-const SWEEP = 57362
-const SPLIT = 57363
-const USING = 57364
-const SELF = 57365
-const RETURN = 57366
-const IN = 57367
-const OUT = 57368
-const SRC = 57369
-const ID = 57370
-const LITSTRING = 57371
-const NUM_FLOAT = 57372
-const NUM_INT = 57373
-const DOT = 57374
-const PY = 57375
-const GO = 57376
-const SH = 57377
-const EXEC = 57378
-const INT = 57379
-const TSTRING = 57380
-const FLOAT = 57381
-const PATH = 57382
-const FILE = 57383
-const BOOL = 57384
-const TRUE = 57385
-const FALSE = 57386
-const NULL = 57387
-const DEFAULT = 57388
+const COLON = 57349
+const COMMA = 57350
+const EQUALS = 57351
+const LBRACKET = 57352
+const RBRACKET = 57353
+const LPAREN = 57354
+const RPAREN = 57355
+const LBRACE = 57356
+const RBRACE = 57357
+const FILETYPE = 57358
+const STAGE = 57359
+const PIPELINE = 57360
+const CALL = 57361
+const VOLATILE = 57362
+const SWEEP = 57363
+const SPLIT = 57364
+const USING = 57365
+const SELF = 57366
+const RETURN = 57367
+const IN = 57368
+const OUT = 57369
+const SRC = 57370
+const ID = 57371
+const LITSTRING = 57372
+const NUM_FLOAT = 57373
+const NUM_INT = 57374
+const DOT = 57375
+const PY = 57376
+const GO = 57377
+const SH = 57378
+const EXEC = 57379
+const MAP = 57380
+const INT = 57381
+const STRING = 57382
+const FLOAT = 57383
+const PATH = 57384
+const FILE = 57385
+const BOOL = 57386
+const TRUE = 57387
+const FALSE = 57388
+const NULL = 57389
+const DEFAULT = 57390
 
 var mmToknames = []string{
 	"SKIP",
 	"INVALID",
 	"SEMICOLON",
+	"COLON",
+	"COMMA",
+	"EQUALS",
 	"LBRACKET",
 	"RBRACKET",
 	"LPAREN",
 	"RPAREN",
 	"LBRACE",
 	"RBRACE",
-	"COMMA",
-	"EQUALS",
 	"FILETYPE",
 	"STAGE",
 	"PIPELINE",
@@ -114,8 +122,9 @@ var mmToknames = []string{
 	"GO",
 	"SH",
 	"EXEC",
+	"MAP",
 	"INT",
-	"TSTRING",
+	"STRING",
 	"FLOAT",
 	"PATH",
 	"FILE",
@@ -131,7 +140,7 @@ const mmEofCode = 1
 const mmErrCode = 2
 const mmMaxDepth = 200
 
-//line grammar.y:256
+//line grammar.y:284
 
 //line yacctab:1
 var mmExca = []int{
@@ -140,101 +149,112 @@ var mmExca = []int{
 	-2, 0,
 }
 
-const mmNprod = 55
+const mmNprod = 63
 const mmPrivate = 57344
 
 var mmTokenNames []string
 var mmStates []string
 
-const mmLast = 159
+const mmLast = 184
 
 var mmAct = []int{
 
-	23, 22, 28, 3, 47, 81, 27, 39, 37, 80,
-	45, 77, 76, 67, 35, 49, 72, 19, 84, 40,
-	41, 43, 42, 32, 44, 84, 97, 34, 30, 118,
-	36, 60, 92, 36, 83, 32, 59, 54, 52, 53,
-	82, 83, 91, 49, 63, 46, 65, 24, 50, 51,
-	61, 55, 56, 57, 73, 63, 48, 24, 94, 60,
-	93, 11, 49, 86, 59, 54, 52, 53, 24, 31,
-	10, 66, 85, 38, 64, 88, 50, 51, 60, 55,
-	56, 57, 26, 59, 54, 52, 53, 24, 98, 17,
-	15, 101, 14, 13, 103, 50, 51, 68, 55, 56,
-	57, 29, 38, 29, 109, 117, 5, 106, 5, 90,
-	96, 33, 110, 38, 89, 111, 116, 32, 36, 115,
-	29, 6, 7, 8, 5, 6, 7, 8, 107, 99,
-	69, 113, 87, 105, 104, 102, 78, 114, 112, 75,
-	74, 70, 25, 21, 20, 16, 18, 4, 1, 108,
-	9, 100, 71, 58, 62, 95, 2, 79, 12,
+	23, 22, 28, 48, 87, 39, 3, 86, 83, 27,
+	82, 70, 37, 19, 77, 91, 91, 89, 117, 108,
+	50, 75, 103, 32, 51, 102, 69, 34, 91, 79,
+	36, 30, 35, 36, 62, 32, 88, 90, 90, 61,
+	56, 54, 55, 139, 67, 68, 63, 50, 65, 124,
+	90, 51, 52, 53, 76, 57, 58, 59, 49, 24,
+	65, 62, 24, 47, 24, 31, 61, 56, 54, 55,
+	112, 105, 104, 92, 94, 26, 46, 96, 17, 52,
+	53, 24, 57, 58, 59, 45, 40, 41, 43, 42,
+	50, 44, 15, 109, 51, 38, 66, 11, 14, 13,
+	71, 116, 114, 138, 62, 118, 10, 29, 38, 61,
+	56, 54, 55, 5, 38, 123, 29, 125, 29, 128,
+	127, 121, 52, 53, 107, 57, 58, 59, 5, 132,
+	6, 7, 8, 5, 135, 133, 137, 95, 32, 36,
+	99, 136, 6, 7, 8, 110, 120, 100, 119, 115,
+	84, 134, 131, 97, 81, 80, 98, 18, 73, 25,
+	21, 20, 16, 93, 33, 129, 122, 111, 72, 130,
+	101, 4, 1, 126, 9, 113, 78, 74, 60, 64,
+	106, 2, 85, 12,
 }
 var mmPact = []int{
 
-	106, -1000, 110, -1000, -1000, 42, 65, 64, 62, -1000,
-	136, 61, 140, -15, 135, 134, 29, 133, -1000, 54,
-	78, 78, 59, -1000, 97, 29, -1000, 76, -1000, -18,
-	76, -1000, -1000, 36, 40, 47, -1000, -1000, -18, 43,
-	-1000, -1000, -1000, -1000, -1000, -19, 87, 117, 132, 8,
-	131, 130, -1000, -1000, -1000, -1000, -1000, -1000, -1000, -20,
-	-21, -1000, 126, -1000, -24, 12, 5, 35, 121, -1000,
-	55, 101, -1000, -1000, 13, 3, 32, 30, 89, -3,
-	-1000, -1000, 5, 116, -1000, -1000, -1000, 90, 125, 55,
-	-1000, 124, 123, -1000, -1000, -1000, 85, 115, -1000, -1000,
-	88, -1000, 102, -1000, -1000, -1000, 129, -1000, 119, -1000,
-	128, -1000, 78, -1000, 29, 95, 19, -1000, -1000,
+	114, -1000, 126, -1000, -1000, 77, 70, 69, 63, -1000,
+	150, 49, 151, -20, 149, 148, 35, 147, -1000, 46,
+	92, 92, 52, -1000, 155, 35, -1000, 81, -1000, 47,
+	81, -1000, -1000, 37, 33, 68, -1000, -1000, 47, 16,
+	-1000, -1000, -1000, -1000, -1000, -1000, -22, 87, 160, 146,
+	10, -1, 143, 142, -1000, -1000, -1000, -1000, -1000, -1000,
+	-1000, -23, -25, -1000, 137, -1000, -27, 7, 8, 152,
+	45, 123, -1000, 80, 145, -1000, -1000, -1000, 132, 163,
+	-5, -8, 43, 42, 102, -11, -1000, -1000, 8, 134,
+	159, -1000, -1000, 41, -1000, 109, 136, 80, -1000, -12,
+	-1000, 80, 135, 133, -1000, -1000, -1000, 98, 158, -1000,
+	20, -1000, 8, 94, -1000, 157, -1000, 162, -1000, -1000,
+	-1000, 140, -1000, -1000, 8, -1000, 120, -1000, 139, -1000,
+	80, 92, -1000, -1000, 35, -1000, 90, 30, -1000, -1000,
 }
 var mmPgo = []int{
 
-	0, 158, 7, 5, 157, 147, 156, 2, 8, 6,
-	14, 155, 154, 4, 153, 152, 3, 151, 0, 1,
-	149, 148,
+	0, 183, 5, 4, 182, 171, 181, 2, 12, 9,
+	32, 180, 179, 3, 178, 177, 176, 6, 175, 0,
+	1, 173, 172,
 }
 var mmR1 = []int{
 
-	0, 21, 21, 6, 6, 5, 5, 5, 5, 1,
-	1, 9, 9, 7, 10, 10, 8, 8, 12, 3,
-	3, 2, 2, 2, 2, 2, 2, 2, 4, 11,
-	20, 17, 17, 16, 16, 19, 19, 18, 18, 15,
-	15, 13, 13, 13, 13, 13, 13, 13, 13, 13,
-	13, 13, 14, 14, 14,
+	0, 22, 22, 6, 6, 5, 5, 5, 5, 1,
+	1, 9, 9, 7, 7, 10, 10, 8, 8, 8,
+	8, 12, 3, 3, 2, 2, 2, 2, 2, 2,
+	2, 2, 4, 11, 21, 18, 18, 17, 17, 20,
+	20, 19, 19, 15, 15, 16, 16, 13, 13, 13,
+	13, 13, 13, 13, 13, 13, 13, 13, 13, 13,
+	14, 14, 14,
 }
 var mmR2 = []int{
 
 	0, 1, 1, 2, 1, 3, 7, 8, 10, 3,
-	1, 2, 1, 4, 2, 1, 3, 4, 4, 2,
-	1, 1, 1, 1, 1, 1, 1, 3, 1, 5,
-	4, 2, 1, 5, 6, 2, 1, 4, 7, 3,
-	1, 3, 2, 4, 4, 1, 1, 1, 1, 1,
-	1, 1, 3, 1, 3,
+	1, 2, 1, 4, 6, 2, 1, 3, 4, 5,
+	6, 4, 2, 1, 1, 1, 1, 1, 1, 1,
+	1, 3, 1, 5, 4, 2, 1, 5, 6, 2,
+	1, 4, 7, 3, 1, 5, 3, 3, 2, 2,
+	3, 4, 4, 1, 1, 1, 1, 1, 1, 1,
+	3, 1, 3,
 }
 var mmChk = []int{
 
-	-1000, -21, -6, -16, -5, 18, 15, 16, 17, -5,
-	28, 19, -1, 28, 28, 28, 9, 28, 6, 32,
-	9, 9, -19, -18, 28, 9, 28, -9, -7, 25,
-	-9, 10, -18, 14, -19, -10, -7, -8, 26, -2,
-	37, 38, 40, 39, 42, 28, -10, -13, 20, 7,
-	40, 41, 30, 31, 29, 43, 44, 45, -14, 28,
-	23, 10, -12, -8, 27, -2, 28, 32, 10, 13,
-	9, -15, 8, -13, 9, 9, 32, 32, 10, -4,
-	33, -3, 28, 29, 13, -3, 28, 11, -13, 13,
-	8, 29, 29, 28, 28, -11, 21, 29, -3, 13,
-	-17, -16, 10, -13, 10, 10, 22, 13, -20, -16,
-	24, 13, 9, 12, 9, -9, -19, 10, 10,
+	-1000, -22, -6, -17, -5, 19, 16, 17, 18, -5,
+	29, 20, -1, 29, 29, 29, 12, 29, 6, 33,
+	12, 12, -20, -19, 29, 12, 29, -9, -7, 26,
+	-9, 13, -19, 9, -20, -10, -7, -8, 27, -2,
+	39, 40, 42, 41, 44, 38, 29, -10, -13, 21,
+	10, 14, 42, 43, 31, 32, 30, 45, 46, 47,
+	-14, 29, 24, 13, -12, -8, 28, -2, 29, 10,
+	33, 13, 8, 12, -15, 11, -13, 15, -16, 30,
+	12, 12, 33, 33, 13, -4, 34, -3, 29, 10,
+	30, 8, -3, 11, 29, 14, -13, 8, 11, 8,
+	15, 7, 30, 30, 29, 29, -11, 22, 30, -3,
+	11, 8, 29, -18, -17, 13, -13, 30, -13, 13,
+	13, 23, 8, -3, 29, -3, -21, -17, 25, 8,
+	7, 12, -3, 15, 12, -13, -9, -20, 13, 13,
 }
 var mmDef = []int{
 
 	0, -2, 1, 2, 4, 0, 0, 0, 0, 3,
 	0, 0, 0, 10, 0, 0, 0, 0, 5, 0,
-	0, 0, 0, 36, 0, 0, 9, 0, 12, 0,
-	0, 33, 35, 0, 0, 0, 11, 15, 0, 0,
-	21, 22, 23, 24, 25, 26, 0, 0, 0, 0,
-	0, 0, 45, 46, 47, 48, 49, 50, 51, 53,
-	0, 34, 0, 14, 0, 0, 0, 0, 0, 37,
-	0, 0, 42, 40, 0, 0, 0, 0, 6, 0,
-	28, 16, 0, 0, 20, 13, 27, 0, 0, 0,
-	41, 0, 0, 52, 54, 7, 0, 0, 17, 19,
-	0, 32, 0, 39, 43, 44, 0, 18, 0, 31,
-	0, 38, 0, 8, 0, 0, 0, 29, 30,
+	0, 0, 0, 40, 0, 0, 9, 0, 12, 0,
+	0, 37, 39, 0, 0, 0, 11, 16, 0, 0,
+	24, 25, 26, 27, 28, 29, 30, 0, 0, 0,
+	0, 0, 0, 0, 53, 54, 55, 56, 57, 58,
+	59, 61, 0, 38, 0, 15, 0, 0, 0, 0,
+	0, 0, 41, 0, 0, 48, 44, 49, 0, 0,
+	0, 0, 0, 0, 6, 0, 32, 17, 0, 0,
+	0, 23, 13, 0, 31, 0, 0, 0, 47, 0,
+	50, 0, 0, 0, 60, 62, 7, 0, 0, 18,
+	0, 22, 0, 0, 36, 0, 43, 0, 46, 51,
+	52, 0, 21, 19, 0, 14, 0, 35, 0, 42,
+	0, 0, 20, 8, 0, 45, 0, 0, 33, 34,
 }
 var mmTok1 = []int{
 
@@ -246,7 +266,7 @@ var mmTok2 = []int{
 	12, 13, 14, 15, 16, 17, 18, 19, 20, 21,
 	22, 23, 24, 25, 26, 27, 28, 29, 30, 31,
 	32, 33, 34, 35, 36, 37, 38, 39, 40, 41,
-	42, 43, 44, 45, 46,
+	42, 43, 44, 45, 46, 47, 48,
 }
 var mmTok3 = []int{
 	0,
@@ -478,7 +498,7 @@ mmdefault:
 	switch mmnt {
 
 	case 1:
-		//line grammar.y:60
+		//line grammar.y:67
 		{
 			{
 				global := Ast{[]FileLoc{}, map[string]bool{}, []*Filetype{}, map[string]bool{}, []*Stage{}, []*Pipeline{}, &Callables{[]Callable{}, map[string]Callable{}}, nil}
@@ -498,7 +518,7 @@ mmdefault:
 			}
 		}
 	case 2:
-		//line grammar.y:77
+		//line grammar.y:84
 		{
 			{
 				global := Ast{[]FileLoc{}, map[string]bool{}, []*Filetype{}, map[string]bool{}, []*Stage{}, []*Pipeline{}, &Callables{[]Callable{}, map[string]Callable{}}, mmS[mmpt-0].call}
@@ -506,49 +526,49 @@ mmdefault:
 			}
 		}
 	case 3:
-		//line grammar.y:85
+		//line grammar.y:92
 		{
 			{
 				mmVAL.decs = append(mmS[mmpt-1].decs, mmS[mmpt-0].dec)
 			}
 		}
 	case 4:
-		//line grammar.y:87
+		//line grammar.y:94
 		{
 			{
 				mmVAL.decs = []Dec{mmS[mmpt-0].dec}
 			}
 		}
 	case 5:
-		//line grammar.y:92
+		//line grammar.y:99
 		{
 			{
 				mmVAL.dec = &Filetype{AstNode{mmlval.loc}, mmS[mmpt-1].val}
 			}
 		}
 	case 6:
-		//line grammar.y:94
+		//line grammar.y:101
 		{
 			{
 				mmVAL.dec = &Stage{AstNode{mmlval.loc}, mmS[mmpt-5].val, mmS[mmpt-3].params, mmS[mmpt-2].params, mmS[mmpt-1].src, &Params{[]Param{}, map[string]Param{}}}
 			}
 		}
 	case 7:
-		//line grammar.y:96
+		//line grammar.y:103
 		{
 			{
 				mmVAL.dec = &Stage{AstNode{mmlval.loc}, mmS[mmpt-6].val, mmS[mmpt-4].params, mmS[mmpt-3].params, mmS[mmpt-2].src, mmS[mmpt-0].params}
 			}
 		}
 	case 8:
-		//line grammar.y:98
+		//line grammar.y:105
 		{
 			{
 				mmVAL.dec = &Pipeline{AstNode{mmlval.loc}, mmS[mmpt-8].val, mmS[mmpt-6].params, mmS[mmpt-5].params, mmS[mmpt-2].calls, &Callables{[]Callable{}, map[string]Callable{}}, mmS[mmpt-1].retstm}
 			}
 		}
 	case 9:
-		//line grammar.y:103
+		//line grammar.y:110
 		{
 			{
 				mmVAL.val = mmS[mmpt-2].val + mmS[mmpt-1].val + mmS[mmpt-0].val
@@ -557,7 +577,7 @@ mmdefault:
 	case 10:
 		mmVAL.val = mmS[mmpt-0].val
 	case 11:
-		//line grammar.y:109
+		//line grammar.y:116
 		{
 			{
 				mmS[mmpt-1].params.list = append(mmS[mmpt-1].params.list, mmS[mmpt-0].inparam)
@@ -565,75 +585,90 @@ mmdefault:
 			}
 		}
 	case 12:
-		//line grammar.y:114
+		//line grammar.y:121
 		{
 			{
 				mmVAL.params = &Params{[]Param{mmS[mmpt-0].inparam}, map[string]Param{}}
 			}
 		}
 	case 13:
-		//line grammar.y:119
+		//line grammar.y:126
 		{
 			{
-				mmVAL.inparam = &InParam{AstNode{mmlval.loc}, mmS[mmpt-2].val, mmS[mmpt-1].val, mmS[mmpt-0].val, false}
+				mmVAL.inparam = &InParam{AstNode{mmlval.loc}, mmS[mmpt-2].val, false, mmS[mmpt-1].val, mmS[mmpt-0].val, false}
 			}
 		}
 	case 14:
-		//line grammar.y:124
+		//line grammar.y:128
+		{
+			{
+				mmVAL.inparam = &InParam{AstNode{mmlval.loc}, mmS[mmpt-4].val, true, mmS[mmpt-1].val, mmS[mmpt-0].val, false}
+			}
+		}
+	case 15:
+		//line grammar.y:133
 		{
 			{
 				mmS[mmpt-1].params.list = append(mmS[mmpt-1].params.list, mmS[mmpt-0].outparam)
 				mmVAL.params = mmS[mmpt-1].params
 			}
 		}
-	case 15:
-		//line grammar.y:129
+	case 16:
+		//line grammar.y:138
 		{
 			{
 				mmVAL.params = &Params{[]Param{mmS[mmpt-0].outparam}, map[string]Param{}}
 			}
 		}
-	case 16:
-		//line grammar.y:134
-		{
-			{
-				mmVAL.outparam = &OutParam{AstNode{mmlval.loc}, mmS[mmpt-1].val, "default", mmS[mmpt-0].val, false}
-			}
-		}
 	case 17:
-		//line grammar.y:136
+		//line grammar.y:143
 		{
 			{
-				mmVAL.outparam = &OutParam{AstNode{mmlval.loc}, mmS[mmpt-2].val, mmS[mmpt-1].val, mmS[mmpt-0].val, false}
+				mmVAL.outparam = &OutParam{AstNode{mmlval.loc}, mmS[mmpt-1].val, false, "default", mmS[mmpt-0].val, false}
 			}
 		}
 	case 18:
-		//line grammar.y:141
+		//line grammar.y:145
 		{
 			{
-				mmVAL.src = &SrcParam{AstNode{mmlval.loc}, mmS[mmpt-2].val, strings.Replace(mmS[mmpt-1].val, "\"", "", -1)}
+				mmVAL.outparam = &OutParam{AstNode{mmlval.loc}, mmS[mmpt-2].val, false, mmS[mmpt-1].val, mmS[mmpt-0].val, false}
 			}
 		}
 	case 19:
-		//line grammar.y:146
+		//line grammar.y:147
+		{
+			{
+				mmVAL.outparam = &OutParam{AstNode{mmlval.loc}, mmS[mmpt-3].val, true, "default", mmS[mmpt-0].val, false}
+			}
+		}
+	case 20:
+		//line grammar.y:149
+		{
+			{
+				mmVAL.outparam = &OutParam{AstNode{mmlval.loc}, mmS[mmpt-4].val, true, mmS[mmpt-1].val, mmS[mmpt-0].val, false}
+			}
+		}
+	case 21:
+		//line grammar.y:154
+		{
+			{
+				mmVAL.src = &SrcParam{AstNode{mmlval.loc}, mmS[mmpt-2].val, unquote(mmS[mmpt-1].val)}
+			}
+		}
+	case 22:
+		//line grammar.y:159
 		{
 			{
 				mmVAL.val = mmS[mmpt-1].val
 			}
 		}
-	case 20:
-		//line grammar.y:148
+	case 23:
+		//line grammar.y:161
 		{
 			{
 				mmVAL.val = ""
 			}
 		}
-	case 21:
-		mmVAL.val = mmS[mmpt-0].val
-	case 22:
-		mmVAL.val = mmS[mmpt-0].val
-	case 23:
-		mmVAL.val = mmS[mmpt-0].val
 	case 24:
 		mmVAL.val = mmS[mmpt-0].val
 	case 25:
@@ -641,194 +676,231 @@ mmdefault:
 	case 26:
 		mmVAL.val = mmS[mmpt-0].val
 	case 27:
-		//line grammar.y:159
+		mmVAL.val = mmS[mmpt-0].val
+	case 28:
+		mmVAL.val = mmS[mmpt-0].val
+	case 29:
+		mmVAL.val = mmS[mmpt-0].val
+	case 30:
+		mmVAL.val = mmS[mmpt-0].val
+	case 31:
+		//line grammar.y:173
 		{
 			{
 				mmVAL.val = mmS[mmpt-2].val + "." + mmS[mmpt-0].val
 			}
 		}
-	case 28:
+	case 32:
 		mmVAL.val = mmS[mmpt-0].val
-	case 29:
-		//line grammar.y:171
+	case 33:
+		//line grammar.y:185
 		{
 			{
 				mmVAL.params = mmS[mmpt-1].params
-			}
-		}
-	case 30:
-		//line grammar.y:176
-		{
-			{
-				mmVAL.retstm = &ReturnStm{AstNode{mmlval.loc}, mmS[mmpt-1].bindings}
-			}
-		}
-	case 31:
-		//line grammar.y:181
-		{
-			{
-				mmVAL.calls = append(mmS[mmpt-1].calls, mmS[mmpt-0].call)
-			}
-		}
-	case 32:
-		//line grammar.y:183
-		{
-			{
-				mmVAL.calls = []*CallStm{mmS[mmpt-0].call}
-			}
-		}
-	case 33:
-		//line grammar.y:188
-		{
-			{
-				mmVAL.call = &CallStm{AstNode{mmlval.loc}, false, mmS[mmpt-3].val, mmS[mmpt-1].bindings}
 			}
 		}
 	case 34:
 		//line grammar.y:190
 		{
 			{
-				mmVAL.call = &CallStm{AstNode{mmlval.loc}, true, mmS[mmpt-3].val, mmS[mmpt-1].bindings}
+				mmVAL.retstm = &ReturnStm{AstNode{mmlval.loc}, mmS[mmpt-1].bindings}
 			}
 		}
 	case 35:
 		//line grammar.y:195
 		{
 			{
-				mmS[mmpt-1].bindings.List = append(mmS[mmpt-1].bindings.List, mmS[mmpt-0].binding)
-				mmVAL.bindings = mmS[mmpt-1].bindings
+				mmVAL.calls = append(mmS[mmpt-1].calls, mmS[mmpt-0].call)
 			}
 		}
 	case 36:
-		//line grammar.y:200
+		//line grammar.y:197
 		{
 			{
-				mmVAL.bindings = &BindStms{[]*BindStm{mmS[mmpt-0].binding}, map[string]*BindStm{}}
+				mmVAL.calls = []*CallStm{mmS[mmpt-0].call}
 			}
 		}
 	case 37:
-		//line grammar.y:205
+		//line grammar.y:202
 		{
 			{
-				mmVAL.binding = &BindStm{AstNode{mmlval.loc}, mmS[mmpt-3].val, mmS[mmpt-1].exp, false, ""}
+				mmVAL.call = &CallStm{AstNode{mmlval.loc}, false, mmS[mmpt-3].val, mmS[mmpt-1].bindings}
 			}
 		}
 	case 38:
-		//line grammar.y:207
+		//line grammar.y:204
 		{
 			{
-				mmVAL.binding = &BindStm{AstNode{mmlval.loc}, mmS[mmpt-6].val, mmS[mmpt-2].exp, true, ""}
+				mmVAL.call = &CallStm{AstNode{mmlval.loc}, true, mmS[mmpt-3].val, mmS[mmpt-1].bindings}
 			}
 		}
 	case 39:
-		//line grammar.y:212
+		//line grammar.y:209
 		{
 			{
-				mmVAL.exps = append(mmS[mmpt-2].exps, mmS[mmpt-0].exp)
+				mmS[mmpt-1].bindings.List = append(mmS[mmpt-1].bindings.List, mmS[mmpt-0].binding)
+				mmVAL.bindings = mmS[mmpt-1].bindings
 			}
 		}
 	case 40:
 		//line grammar.y:214
 		{
 			{
-				mmVAL.exps = []Exp{mmS[mmpt-0].exp}
+				mmVAL.bindings = &BindStms{[]*BindStm{mmS[mmpt-0].binding}, map[string]*BindStm{}}
 			}
 		}
 	case 41:
 		//line grammar.y:219
 		{
 			{
-				mmVAL.exp = &ValExp{node: AstNode{mmlval.loc}, Kind: "array", Value: mmS[mmpt-1].exps}
+				mmVAL.binding = &BindStm{AstNode{mmlval.loc}, mmS[mmpt-3].val, mmS[mmpt-1].exp, false, ""}
 			}
 		}
 	case 42:
 		//line grammar.y:221
 		{
 			{
-				mmVAL.exp = &ValExp{node: AstNode{mmlval.loc}, Kind: "array", Value: []Exp{}}
+				mmVAL.binding = &BindStm{AstNode{mmlval.loc}, mmS[mmpt-6].val, mmS[mmpt-2].exp, true, ""}
 			}
 		}
 	case 43:
-		//line grammar.y:223
+		//line grammar.y:226
 		{
 			{
-				mmVAL.exp = &ValExp{node: AstNode{mmlval.loc}, Kind: mmS[mmpt-3].val, Value: strings.Replace(mmS[mmpt-1].val, "\"", "", -1)}
+				mmVAL.exps = append(mmS[mmpt-2].exps, mmS[mmpt-0].exp)
 			}
 		}
 	case 44:
-		//line grammar.y:225
+		//line grammar.y:228
 		{
 			{
-				mmVAL.exp = &ValExp{node: AstNode{mmlval.loc}, Kind: mmS[mmpt-3].val, Value: strings.Replace(mmS[mmpt-1].val, "\"", "", -1)}
+				mmVAL.exps = []Exp{mmS[mmpt-0].exp}
 			}
 		}
 	case 45:
-		//line grammar.y:227
+		//line grammar.y:233
+		{
+			{
+				mmS[mmpt-4].kvpairs[unquote(mmS[mmpt-2].val)] = mmS[mmpt-0].exp
+				mmVAL.kvpairs = mmS[mmpt-4].kvpairs
+			}
+		}
+	case 46:
+		//line grammar.y:238
+		{
+			{
+				mmVAL.kvpairs = map[string]Exp{unquote(mmS[mmpt-2].val): mmS[mmpt-0].exp}
+			}
+		}
+	case 47:
+		//line grammar.y:243
+		{
+			{
+				mmVAL.exp = &ValExp{node: AstNode{mmlval.loc}, Kind: "array", Value: mmS[mmpt-1].exps}
+			}
+		}
+	case 48:
+		//line grammar.y:245
+		{
+			{
+				mmVAL.exp = &ValExp{node: AstNode{mmlval.loc}, Kind: "array", Value: []Exp{}}
+			}
+		}
+	case 49:
+		//line grammar.y:247
+		{
+			{
+				mmVAL.exp = &ValExp{node: AstNode{mmlval.loc}, Kind: "map", Value: map[string]interface{}{}}
+			}
+		}
+	case 50:
+		//line grammar.y:249
+		{
+			{
+				mmVAL.exp = &ValExp{node: AstNode{mmlval.loc}, Kind: "map", Value: mmS[mmpt-1].kvpairs}
+			}
+		}
+	case 51:
+		//line grammar.y:251
+		{
+			{
+				mmVAL.exp = &ValExp{node: AstNode{mmlval.loc}, Kind: mmS[mmpt-3].val, Value: unquote(mmS[mmpt-1].val)}
+			}
+		}
+	case 52:
+		//line grammar.y:253
+		{
+			{
+				mmVAL.exp = &ValExp{node: AstNode{mmlval.loc}, Kind: mmS[mmpt-3].val, Value: unquote(mmS[mmpt-1].val)}
+			}
+		}
+	case 53:
+		//line grammar.y:255
 		{
 			{ // Lexer guarantees parseable float strings.
 				f, _ := strconv.ParseFloat(mmS[mmpt-0].val, 64)
 				mmVAL.exp = &ValExp{node: AstNode{mmlval.loc}, Kind: "float", Value: f}
 			}
 		}
-	case 46:
-		//line grammar.y:232
+	case 54:
+		//line grammar.y:260
 		{
 			{ // Lexer guarantees parseable int strings.
 				i, _ := strconv.ParseInt(mmS[mmpt-0].val, 0, 64)
 				mmVAL.exp = &ValExp{node: AstNode{mmlval.loc}, Kind: "int", Value: i}
 			}
 		}
-	case 47:
-		//line grammar.y:237
+	case 55:
+		//line grammar.y:265
 		{
 			{
-				mmVAL.exp = &ValExp{node: AstNode{mmlval.loc}, Kind: "string", Value: strings.Replace(mmS[mmpt-0].val, "\"", "", -1)}
+				mmVAL.exp = &ValExp{node: AstNode{mmlval.loc}, Kind: "string", Value: unquote(mmS[mmpt-0].val)}
 			}
 		}
-	case 48:
-		//line grammar.y:239
+	case 56:
+		//line grammar.y:267
 		{
 			{
 				mmVAL.exp = &ValExp{node: AstNode{mmlval.loc}, Kind: "bool", Value: true}
 			}
 		}
-	case 49:
-		//line grammar.y:241
+	case 57:
+		//line grammar.y:269
 		{
 			{
 				mmVAL.exp = &ValExp{node: AstNode{mmlval.loc}, Kind: "bool", Value: false}
 			}
 		}
-	case 50:
-		//line grammar.y:243
+	case 58:
+		//line grammar.y:271
 		{
 			{
 				mmVAL.exp = &ValExp{node: AstNode{mmlval.loc}, Kind: "null", Value: nil}
 			}
 		}
-	case 51:
-		//line grammar.y:245
+	case 59:
+		//line grammar.y:273
 		{
 			{
 				mmVAL.exp = mmS[mmpt-0].exp
 			}
 		}
-	case 52:
-		//line grammar.y:250
+	case 60:
+		//line grammar.y:278
 		{
 			{
 				mmVAL.exp = &RefExp{AstNode{mmlval.loc}, "call", mmS[mmpt-2].val, mmS[mmpt-0].val}
 			}
 		}
-	case 53:
-		//line grammar.y:252
+	case 61:
+		//line grammar.y:280
 		{
 			{
 				mmVAL.exp = &RefExp{AstNode{mmlval.loc}, "call", mmS[mmpt-0].val, "default"}
 			}
 		}
-	case 54:
-		//line grammar.y:254
+	case 62:
+		//line grammar.y:282
 		{
 			{
 				mmVAL.exp = &RefExp{AstNode{mmlval.loc}, "self", mmS[mmpt-0].val, ""}
