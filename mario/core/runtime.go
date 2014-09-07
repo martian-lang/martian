@@ -330,10 +330,11 @@ func NewChunk(nodable Nodable, fork *Fork, index int, chunkDef map[string]interf
 		// to the filesPath of the parent fork, to save a pseudo-join copy.
 		self.metadata.filesPath = self.fork.metadata.filesPath
 	}
-	// we have to mkdirs here because runtime might have been interrupted after chunk_defs were
+	// We have to mkdirs here because runtime might have been interrupted after chunk_defs were
 	// written but before next step interval caused the actual creation of the chnk folders.
 	// in that scenario, upon restart the fork step would try to write _args into chnk folders
 	// that don't exist.
+	// This also gets run if we are restarting from a failed stage.
 	self.mkdirs()
 	return self
 }
@@ -417,9 +418,14 @@ func NewFork(nodable Nodable, index int, argPermute map[string]interface{}) *For
 	self.argPermute = argPermute
 	self.split_has_run = false
 	self.join_has_run = false
+	self.createChunks()
+	return self
+}
 
+func (self *Fork) createChunks() {
 	// reconstruct chunks using chunk_defs on reattach, do not rely
 	// on metadata.exists('chunk_defs') since it may not be cached
+	self.chunks = []*Chunk{}
 	chunkDefIfaces := self.split_metadata.read("chunk_defs")
 	if chunkDefs, ok := chunkDefIfaces.([]interface{}); ok {
 		for i, chunkDef := range chunkDefs {
@@ -427,7 +433,6 @@ func NewFork(nodable Nodable, index int, argPermute map[string]interface{}) *For
 			self.chunks = append(self.chunks, chunk)
 		}
 	}
-	return self
 }
 
 func (self *Fork) collectMetadatas() []*Metadata {
@@ -779,6 +784,11 @@ func (self *Node) RestartFromFailed() {
 	var rewg sync.WaitGroup
 	self.mkdirs(&rewg)
 	rewg.Wait()
+
+	// Restart the forks (specifically, recreate the chunks).
+	for _, fork := range self.forks {
+		fork.createChunks()
+	}
 
 	// Refresh the metadata (clear it all).
 	self.RefreshMetadata()
