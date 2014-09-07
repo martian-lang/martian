@@ -46,11 +46,15 @@ func (self *Metadata) enumerateFiles() ([]string, error) {
 }
 
 func (self *Metadata) mkdirs() {
+	// When making/remaking dirs, clear the cache.
+	self.contents = map[string]bool{}
 	mkdir(self.path)
 	mkdir(self.filesPath)
 }
 
 func (self *Metadata) idemMkdirs() {
+	// When making/remaking dirs, clear the cache.
+	self.contents = map[string]bool{}
 	idemMkdir(self.path)
 	idemMkdir(self.filesPath)
 }
@@ -414,15 +418,9 @@ func NewFork(nodable Nodable, index int, argPermute map[string]interface{}) *For
 	self.metadata = NewMetadata(self.path)
 	self.split_metadata = NewMetadata(path.Join(self.path, "split"))
 	self.join_metadata = NewMetadata(path.Join(self.path, "join"))
-	self.chunks = []*Chunk{}
 	self.argPermute = argPermute
 	self.split_has_run = false
 	self.join_has_run = false
-	self.createChunks()
-	return self
-}
-
-func (self *Fork) createChunks() {
 	// reconstruct chunks using chunk_defs on reattach, do not rely
 	// on metadata.exists('chunk_defs') since it may not be cached
 	self.chunks = []*Chunk{}
@@ -433,6 +431,11 @@ func (self *Fork) createChunks() {
 			self.chunks = append(self.chunks, chunk)
 		}
 	}
+	return self
+}
+
+func (self *Fork) clearChunks() {
+	self.chunks = []*Chunk{}
 }
 
 func (self *Fork) collectMetadatas() []*Metadata {
@@ -781,17 +784,18 @@ func (self *Node) RestartFromFailed() {
 	os.RemoveAll(self.path)
 
 	// Re-create the folders.
+	// This will also clear all the metadata in-memory caches.
 	var rewg sync.WaitGroup
 	self.mkdirs(&rewg)
 	rewg.Wait()
 
-	// Restart the forks (specifically, recreate the chunks).
-	for _, fork := range self.forks {
-		fork.createChunks()
-	}
-
 	// Refresh the metadata (clear it all).
 	self.RefreshMetadata()
+
+	// Clear chunks in the forks so they can be rebuilt on split.
+	for _, fork := range self.forks {
+		fork.clearChunks()
+	}
 }
 
 func (self *Node) Step() {
