@@ -38,7 +38,7 @@ Options:
 	}
 
 	// Setup runtime with pipelines path.
-	rt := core.NewRuntime("local", mroPath)
+	rt := core.NewRuntime("local", mroPath, __VERSION__, false)
 
 	count := 0
 	if opts["--all"].(bool) {
