@@ -959,7 +959,10 @@ func NewStagestance(parent Nodable, callStm *CallStm, callables *Callables) *Sta
 
 	self := &Stagestance{}
 	self.node = NewNode(parent, "stage", callStm, callables)
-	stage := callables.table[self.node.name].(*Stage)
+	stage, ok := callables.table[self.node.name].(*Stage)
+	if !ok {
+		return nil
+	}
 	self.node.stagecodePath = path.Join(self.node.rt.MroPath, stage.src.path)
 	self.node.stagecodeLang = langMap[stage.src.lang]
 	self.node.split = len(stage.splitParams.list) > 0
@@ -1277,6 +1280,9 @@ func (self *Runtime) InstantiateStage(src string, stagestancePath string) (*Stag
 			DieIf(err)
 
 			stagestance := NewStagestance(NewTopNode(self, "", stagestancePath), callStm, global.callables)
+			if stagestance == nil {
+				return nil, &MarioError{fmt.Sprintf("NotAStageError: '%s'", callStm.Id)}
+			}
 
 			// Create stagestance folder graph concurrently.
 			var wg sync.WaitGroup
