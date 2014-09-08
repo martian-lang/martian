@@ -30,7 +30,7 @@ func main() {
 	doc := `Mario Stage Runner.
 
 Usage: 
-    mrs <call.mro> [<stagestance_name>] [--sge]
+    mrs <call.mro> <stagestance_name> [options]
     mrs -h | --help | --version
 
 Options:
@@ -41,6 +41,8 @@ Options:
 	opts, _ := docopt.Parse(doc, nil, true, __VERSION__, false)
 	core.LogInfo("*", "Mario Run Stage")
 	core.LogInfo("cmdline", strings.Join(os.Args, " "))
+
+	fmt.Println(opts)
 
 	// Required job mode and SGE environment variables.
 	jobMode := "local"
@@ -68,10 +70,7 @@ Options:
 
 	// Setup invocation-specific values.
 	invocationPath := opts["<call.mro>"].(string)
-	stagestancePath := cwd
-	if sid, ok := opts["<stagestance_name>"]; ok {
-		stagestancePath = path.Join(stagestancePath, sid.(string))
-	}
+	stagestancePath := opts["<stagestance_name>"].(string)
 	stepSecs := 1
 
 	//=========================================================================
