@@ -360,7 +360,7 @@ func (self *Chunk) Step() {
 		resolvedBindings := resolveBindings(self.node.argbindings, self.fork.argPermute)
 		for id, value := range self.chunkDef {
 			// Cap the __threads passed to chunks by max cores as resolved by scheduler.
-			if id == "__threads" {
+			if id == "__threads" && self.node.rt.jobMode == "local" {
 				value = self.node.rt.scheduler.getCores()
 			}
 			resolvedBindings[id] = value
