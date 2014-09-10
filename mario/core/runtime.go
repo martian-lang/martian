@@ -928,7 +928,7 @@ func (self *Node) RunJob(shellName string, fqname string, metadata *Metadata,
 	shellCmd := path.Join(self.rt.adaptersPath, "python", shellName+".py")
 
 	// Configure profiling.
-	profile := ""
+	profile := "disable"
 	if self.rt.enableProfiling {
 		profile = "profile"
 	}
