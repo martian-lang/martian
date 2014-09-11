@@ -25,7 +25,7 @@ var __VERSION__ string = "<version not embedded>"
 //=============================================================================
 // Pipestance runner.
 //=============================================================================
-func runLoop(pipestance *core.Pipestance, stepSecs int, disableVDR bool) {
+func runLoop(pipestance *core.Pipestance, stepSecs int, disableVDR bool, noExit bool) {
 	nodes := pipestance.Node().AllNodes()
 	for {
 		// Concurrently run metadata refreshes.
@@ -49,10 +49,22 @@ func runLoop(pipestance *core.Pipestance, stepSecs int, disableVDR bool) {
 				killReport := pipestance.VDRKill()
 				core.LogInfo("runtime", "VDR killed %d files, %s.", killReport.Count, humanize.Bytes(killReport.Size))
 			}
-			// Give time for web ui client to get last update.
-			time.Sleep(time.Second * 10)
-			core.LogInfo("runtime", "Pipestance is complete, exiting.")
-			os.Exit(0)
+			if noExit {
+				core.LogInfo("runtime", "Pipestance is complete, staying alive because --noexit given.")
+			} else {
+				// Give time for web ui client to get last update.
+				time.Sleep(time.Second * 10)
+				core.LogInfo("runtime", "Pipestance is complete, exiting.")
+				os.Exit(0)
+			}
+		}
+		if pipestance.GetOverallState() == "failed" {
+			if noExit {
+				core.LogInfo("runtime", "Pipestance failed, staying alive because --noexit given.")
+			} else {
+				core.LogInfo("runtime", "Pipestance failed, exiting.")
+				os.Exit(1)
+			}
 		}
 
 		// Step all nodes.
@@ -84,6 +96,7 @@ Options:
                     Defaults to 3600 if not otherwise specified.
     --cores=<num> Maximum number of cores to use in local mode.
     --profile     Enable stage performance profiling.
+    --noexit      Keep running UI after pipestance completes or fails.
     --noui        Disable UI.
     --novdr       Disable Volatile Data Removal.
     --sge         Run jobs on Sun Grid Engine instead of locally.
@@ -142,6 +155,7 @@ Options:
 
 	// Setup invocation-specific values.
 	disableVDR := opts["--novdr"].(bool)
+	noExit := opts["--noexit"].(bool)
 	psid := opts["<pipestance_name>"].(string)
 	invocationPath := opts["<call.mro>"].(string)
 	pipestancePath := path.Join(cwd, psid)
@@ -171,7 +185,7 @@ Options:
 	//=========================================================================
 	// Start run loop.
 	//=========================================================================
-	go runLoop(pipestance, stepSecs, disableVDR)
+	go runLoop(pipestance, stepSecs, disableVDR, noExit)
 
 	//=========================================================================
 	// Start web server.
