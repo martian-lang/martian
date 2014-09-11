@@ -102,9 +102,13 @@ Options:
 
 			// Check for completion states.
 			state := stagestance.Node().GetState()
-			if state == "complete" || state == "failed" {
-				core.LogInfo("runtime", "Stage is complete, exiting.")
+			if state == "complete" {
+				core.LogInfo("runtime", "Stage completed, exiting.")
 				os.Exit(0)
+			}
+			if state == "failed" {
+				core.LogInfo("runtime", "Stage failed, exiting.")
+				os.Exit(1)
 			}
 
 			// Step the node.
