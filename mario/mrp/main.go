@@ -51,6 +51,7 @@ func runLoop(pipestance *core.Pipestance, stepSecs int, disableVDR bool, noExit 
 			}
 			if noExit {
 				core.LogInfo("runtime", "Pipestance is complete, staying alive because --noexit given.")
+				break
 			} else {
 				// Give time for web ui client to get last update.
 				time.Sleep(time.Second * 10)
@@ -61,6 +62,7 @@ func runLoop(pipestance *core.Pipestance, stepSecs int, disableVDR bool, noExit 
 		if pipestance.GetOverallState() == "failed" {
 			if noExit {
 				core.LogInfo("runtime", "Pipestance failed, staying alive because --noexit given.")
+				break
 			} else {
 				core.LogInfo("runtime", "Pipestance failed, exiting.")
 				os.Exit(1)
@@ -91,17 +93,19 @@ Usage:
     mrp -h | --help | --version
 
 Options:
-    --port=<num>  Serve UI at http://localhost:<num>
-                    Overrides $MROPORT environment variable.
-                    Defaults to 3600 if not otherwise specified.
-    --cores=<num> Maximum number of cores to use in local mode.
-    --profile     Enable stage performance profiling.
-    --noexit      Keep running UI after pipestance completes or fails.
-    --noui        Disable UI.
-    --novdr       Disable Volatile Data Removal.
-    --sge         Run jobs on Sun Grid Engine instead of locally.
-    -h --help     Show this message.
-    --version     Show version.`
+    --port=<num>     Serve UI at http://localhost:<num>
+                       Overrides $MROPORT environment variable.
+                       Defaults to 3600 if not otherwise specified.
+    --noexit         Keep UI running after pipestance completes or fails.
+    --noui           Disable UI.
+    --novdr          Disable Volatile Data Removal.
+    --profile        Enable stage performance profiling.
+    --maxcores=<num> Set max cores the pipeline may request at one time.
+    --maxmem=<num>   Set max GB the pipeline may request at one time.
+    --sge            Run jobs on Sun Grid Engine instead of locally.
+                     (--maxcores and --maxmem will be ignored)
+    -h --help        Show this message.
+    --version        Show version.`
 	opts, _ := docopt.Parse(doc, nil, true, __VERSION__, false)
 	core.LogInfo("*", "Mario Run Pipeline")
 	core.LogInfo("cmdline", strings.Join(os.Args, " "))
@@ -131,10 +135,16 @@ Options:
 	}
 
 	// Requested cores.
-	reqCores := 1 << 16
-	if value := opts["--cores"]; value != nil {
+	reqCores := -1
+	if value := opts["--maxcores"]; value != nil {
 		if value, err := strconv.Atoi(value.(string)); err == nil {
 			reqCores = value
+		}
+	}
+	reqMem := -1
+	if value := opts["--maxmem"]; value != nil {
+		if value, err := strconv.Atoi(value.(string)); err == nil {
+			reqMem = value
 		}
 	}
 
@@ -165,7 +175,7 @@ Options:
 	//=========================================================================
 	// Configure Mario runtime.
 	//=========================================================================
-	rt := core.NewRuntimeWithCores(jobMode, mroPath, reqCores, __VERSION__, profile)
+	rt := core.NewRuntimeWithCores(jobMode, mroPath, reqCores, reqMem, __VERSION__, profile)
 	_, err := rt.CompileAll()
 	core.DieIf(err)
 
