@@ -32,7 +32,7 @@
         g.addEdge(null, edge.from, edge.to, {});
       }
     }
-    (new dagreD3.Renderer()).zoom(true).run(g, d3.select("g"));
+    (new dagreD3.Renderer()).run(g, d3.select("g"));
     maxX = 0.0;
     d3.selectAll("g.node").each(function(id) {
       var xCoord;
