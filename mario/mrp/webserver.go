@@ -44,8 +44,10 @@ func runWebServer(uiport string, rt *core.Runtime, pipestance *core.Pipestance) 
 	m := martini.New()
 	r := martini.NewRouter()
 	m.Use(martini.Recovery())
-	m.Use(martini.Static(core.RelPath("../web/res"), martini.StaticOptions{"", true, "index.html", nil}))
-	m.Use(martini.Static(core.RelPath("../web/client"), martini.StaticOptions{"", true, "index.html", nil}))
+	m.Use(martini.Static(core.RelPath("../web/res"),
+		martini.StaticOptions{"", true, "index.html", nil}))
+	m.Use(martini.Static(core.RelPath("../web/client"),
+		martini.StaticOptions{"", true, "index.html", nil}))
 	m.MapTo(r, (*martini.Routes)(nil))
 	m.Action(r.Handle)
 	app := &martini.ClassicMartini{m, r}
@@ -71,14 +73,25 @@ func runWebServer(uiport string, rt *core.Runtime, pipestance *core.Pipestance) 
 	// API endpoints.
 	//=========================================================================
 
-	// Get graph nodes.
-	app.Get("/api/get-nodes/:container/:pname/:psid",
+	// Get pipestance state: nodes and fatal error (if any).
+	app.Get("/api/get-state/:container/:pname/:psid",
 		func(p martini.Params) string {
-			data := []interface{}{}
-			for _, node := range pipestance.Node().AllNodes() {
-				data = append(data, node.Serialize())
+			state := map[string]interface{}{}
+			state["error"] = nil
+			if pipestance.GetOverallState() == "failed" {
+				fqname, errpath, summary, log := pipestance.GetFatalError()
+				state["error"] = map[string]string{
+					"fqname":  fqname,
+					"path":    errpath,
+					"summary": summary,
+					"log":     log,
+				}
 			}
-			bytes, _ := json.Marshal(data)
+			state["nodes"] = []interface{}{}
+			for _, node := range pipestance.Node().AllNodes() {
+				state["nodes"] = append(state["nodes"].([]interface{}), node.Serialize())
+			}
+			bytes, _ := json.Marshal(state)
 			return string(bytes)
 		})
 

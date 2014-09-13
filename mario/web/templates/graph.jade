@@ -37,7 +37,20 @@ html(ng-app="app" ng-controller="MarioGraphCtrl")
             h4#stagename
                 a(href="#") {{node.name}}                
                 | {{node.type}} 
-
+            
+            div.alert.alert-danger.fixed(ng-if="error.fqname.indexOf(node.fqname) == 0")                
+                div 
+                    b Failed in {{error.fqname.substr(node.fqname.length+1)}}
+                    br
+                    |{{error.summary}}
+                    br
+                    br
+                    a(ng-show="showLog==false" ng-click="showLog=true") show details
+                    a(ng-show="showLog==true" ng-click="showLog=false") hide details
+                    pre#metadata(ng-show="showLog")
+                        button.close(type="button" ng-click="showLog=false") &times;
+                        | {{error.log}}
+        
             h5 Details
             table.table#info
                 tr

@@ -19,7 +19,7 @@ renderGraph = ($scope, $compile) ->
     for node in _.values($scope.nodes)
         for edge in node.edges
             g.addEdge(null, edge.from, edge.to, {})
-    (new dagreD3.Renderer()).run(g, d3.select("g"))
+    (new dagreD3.Renderer()).zoom(false).run(g, d3.select("g"));
     maxX = 0.0
     d3.selectAll("g.node").each((id) ->
         d3.select(this).classed(g.node(id).type, true)
@@ -50,8 +50,9 @@ app.controller('MarioGraphCtrl', ($scope, $compile, $http, $interval) ->
     $scope.adminstyle = adminstyle
     $scope.urlprefix = if adminstyle then '/admin' else '/'
 
-    $http.get("/api/get-nodes/#{container}/#{pname}/#{psid}").success((nodes) ->
-        $scope.nodes = _.indexBy(nodes, 'name')
+    $http.get("/api/get-state/#{container}/#{pname}/#{psid}").success((state) ->
+        $scope.nodes = _.indexBy(state.nodes, 'name')
+        $scope.error = state.error
         renderGraph($scope, $compile)
     )
 
@@ -59,12 +60,12 @@ app.controller('MarioGraphCtrl', ($scope, $compile, $http, $interval) ->
     $scope.forki = 0
     $scope.chunki = 0
     $scope.mdviews = { fork:'', split:'', join:'', chunk:'' }
-    $scope.showRestart = true    
+    $scope.showRestart = true
+    $scope.showLog = false
 
     # Only admin pages get auto-refresh.
     if admin 
         $scope.stopRefresh = $interval(() ->
-            console.log('refresh')
             $scope.refresh()
         , 5000)
 
@@ -89,18 +90,14 @@ app.controller('MarioGraphCtrl', ($scope, $compile, $http, $interval) ->
             $scope.mdviews[view] = metadata
         )
 
-    $scope.step = () ->
-        $http.get('/step').success((nodes) ->
-            if $scope.id then $scope.selectNode($scope.id)
-        )
-
     $scope.refresh = () ->
-        $http.get("/api/get-nodes/#{container}/#{pname}/#{psid}").success((nodes) ->
-            $scope.nodes = _.indexBy(nodes, 'name')
+        $http.get("/api/get-state/#{container}/#{pname}/#{psid}").success((state) ->
+            $scope.nodes = _.indexBy(state.nodes, 'name')
             if $scope.id then $scope.node = $scope.nodes[$scope.id]
             $scope.showRestart = true
+            $scope.error = state.error
         ).error(() ->
-            console.log('stopping refresh')
+            console.log('Server responded with an error for /api/get-state, so stopping auto-refresh.')
             $interval.cancel($scope.stopRefresh)
         )
 )
