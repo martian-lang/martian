@@ -42,8 +42,6 @@ Options:
 	core.LogInfo("*", "Mario Run Stage")
 	core.LogInfo("cmdline", strings.Join(os.Args, " "))
 
-	fmt.Println(opts)
-
 	// Required job mode and SGE environment variables.
 	jobMode := "local"
 	if opts["--sge"].(bool) {

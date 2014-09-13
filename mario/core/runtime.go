@@ -309,14 +309,14 @@ func makeOutArgs(outParams *Params, filesPath string) map[string]interface{} {
 // Chunk
 //=============================================================================
 type Chunk struct {
-	node     *Node
-	fork     *Fork
-	index    int
-	chunkDef map[string]interface{}
-	path     string
-	fqname   string
-	metadata *Metadata
-	has_run  bool
+	node       *Node
+	fork       *Fork
+	index      int
+	chunkDef   map[string]interface{}
+	path       string
+	fqname     string
+	metadata   *Metadata
+	hasBeenRun bool
 }
 
 func NewChunk(nodable Nodable, fork *Fork, index int, chunkDef map[string]interface{}) *Chunk {
@@ -328,7 +328,7 @@ func NewChunk(nodable Nodable, fork *Fork, index int, chunkDef map[string]interf
 	self.path = path.Join(fork.path, fmt.Sprintf("chnk%d", index))
 	self.fqname = fork.fqname + fmt.Sprintf(".chnk%d", index)
 	self.metadata = NewMetadata(self.path)
-	self.has_run = false
+	self.hasBeenRun = false
 	if !self.node.split {
 		// If we're not splitting, just set the sole chunk's filesPath
 		// to the filesPath of the parent fork, to save a pseudo-join copy.
@@ -359,25 +359,33 @@ func (self *Chunk) Step() {
 	if self.getState() == "ready" {
 		resolvedBindings := resolveBindings(self.node.argbindings, self.fork.argPermute)
 		for id, value := range self.chunkDef {
-			// Cap the __threads passed to chunks by max cores as resolved by scheduler.
-			if id == "__threads" && self.node.rt.jobMode == "local" {
-				value = self.node.rt.scheduler.getCores()
+			if self.node.rt.jobMode == "local" {
+				// Cap __threads and __mem_gb passed through to chunks.
+				if id == "__threads" {
+					value = self.node.rt.scheduler.getCores()
+				}
+				if id == "__mem_gb" {
+					value = self.node.rt.scheduler.getMemGB()
+				}
 			}
 			resolvedBindings[id] = value
 		}
 		self.metadata.write("args", resolvedBindings)
 		self.metadata.write("outs", makeOutArgs(self.node.outparams, self.metadata.filesPath))
-		if !self.has_run {
-			self.has_run = true
-			// Unpack threads and memory requirements.
+		if !self.hasBeenRun {
+			self.hasBeenRun = true
+
+			// Unpack threads and memory requirements. Default is 1 each.
 			threads := 1
 			if self.chunkDef["__threads"] != nil {
 				threads = int(self.chunkDef["__threads"].(float64))
 			}
-			memGB := 0
+			memGB := 1
 			if self.chunkDef["__mem_gb"] != nil {
 				memGB = int(self.chunkDef["__mem_gb"].(float64))
 			}
+
+			// Run the chunk.
 			self.node.RunJob("main", self.fqname, self.metadata, threads, memGB)
 		}
 	}
@@ -508,7 +516,7 @@ func (self *Fork) Step() {
 			if self.node.split {
 				if !self.split_has_run {
 					self.split_has_run = true
-					self.node.RunJob("split", self.fqname, self.split_metadata, 1, 0)
+					self.node.RunJob("split", self.fqname, self.split_metadata, 1, 1)
 				}
 			} else {
 				self.split_metadata.write("chunk_defs", []interface{}{map[string]interface{}{}})
@@ -539,7 +547,7 @@ func (self *Fork) Step() {
 				self.join_metadata.write("outs", makeOutArgs(self.node.outparams, self.metadata.filesPath))
 				if !self.join_has_run {
 					self.join_has_run = true
-					self.node.RunJob("join", self.fqname, self.join_metadata, 1, 0)
+					self.node.RunJob("join", self.fqname, self.join_metadata, 1, 1)
 				}
 			} else {
 				self.join_metadata.write("outs", self.chunks[0].metadata.read("outs"))
@@ -862,7 +870,7 @@ func (self *Node) Serialize() interface{} {
 // Job Runners
 //=============================================================================
 func (self *Node) execLocalJob(shellCmd string, stagecodePath string,
-	metadata *Metadata, threads int, profile string) {
+	metadata *Metadata, threads int, memGB int, profile string) {
 
 	// Exec the shell directly.
 	argv := []string{stagecodePath, metadata.path, metadata.filesPath, profile}
@@ -877,7 +885,7 @@ func (self *Node) execLocalJob(shellCmd string, stagecodePath string,
 	cmd.Stderr = stderrFile
 
 	// Enqueue the command to the local scheduler.
-	self.rt.scheduler.Enqueue(cmd, threads, stdoutFile, stderrFile)
+	self.rt.scheduler.Enqueue(cmd, threads, memGB, stdoutFile, stderrFile)
 }
 
 func (self *Node) execSGEJob(fqname string, shellName string, shellCmd string,
@@ -935,7 +943,7 @@ func (self *Node) RunJob(shellName string, fqname string, metadata *Metadata,
 
 	switch self.rt.jobMode {
 	case "local":
-		self.execLocalJob(shellCmd, self.stagecodePath, metadata, threads, profile)
+		self.execLocalJob(shellCmd, self.stagecodePath, metadata, threads, memGB, profile)
 	case "sge":
 		self.execSGEJob(fqname, shellName, shellCmd, self.stagecodePath, metadata, threads, memGB, profile)
 	default:
@@ -1161,10 +1169,10 @@ type Runtime struct {
 }
 
 func NewRuntime(jobMode string, mroPath string, marioVersion string, enableProfiling bool) *Runtime {
-	return NewRuntimeWithCores(jobMode, mroPath, 1<<16, marioVersion, enableProfiling)
+	return NewRuntimeWithCores(jobMode, mroPath, -1, -1, marioVersion, enableProfiling)
 }
 
-func NewRuntimeWithCores(jobMode string, mroPath string, reqCores int,
+func NewRuntimeWithCores(jobMode string, mroPath string, reqCores int, reqMem int,
 	marioVersion string, enableProfiling bool) *Runtime {
 
 	self := &Runtime{}
@@ -1176,7 +1184,7 @@ func NewRuntimeWithCores(jobMode string, mroPath string, reqCores int,
 	self.MarioVersion = marioVersion
 	self.CodeVersion = getGitTag(mroPath)
 	self.jobMode = jobMode
-	self.scheduler = NewScheduler(reqCores)
+	self.scheduler = NewScheduler(reqCores, reqMem)
 	self.enableProfiling = enableProfiling
 	return self
 }
