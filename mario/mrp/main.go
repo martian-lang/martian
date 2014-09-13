@@ -61,8 +61,8 @@ func runLoop(pipestance *core.Pipestance, stepSecs int, disableVDR bool, noExit 
 			}
 		}
 		if pipestance.GetOverallState() == "failed" {
-			errpath, err := pipestance.GetFatalError()
-			fmt.Printf("\nStage failed, error written to:\n%s\n\n%s\n", errpath, err)
+			fqname, errpath, _, log := pipestance.GetFatalError()
+			fmt.Printf("\nPipestance failed at:\n%s\n\nErrors written to:\n%s\n\n%s\n", fqname, errpath, log)
 			if noExit {
 				core.LogInfo("runtime", "Pipestance failed, staying alive because --noexit given.")
 				break

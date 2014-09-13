@@ -23,13 +23,15 @@ import (
 // Metadata
 //=============================================================================
 type Metadata struct {
+	fqname    string
 	path      string
 	contents  map[string]bool
 	filesPath string
 }
 
-func NewMetadata(p string) *Metadata {
+func NewMetadata(fqname string, p string) *Metadata {
 	self := &Metadata{}
+	self.fqname = fqname
 	self.path = p
 	self.contents = map[string]bool{}
 	self.filesPath = path.Join(p, "files")
@@ -327,7 +329,7 @@ func NewChunk(nodable Nodable, fork *Fork, index int, chunkDef map[string]interf
 	self.chunkDef = chunkDef
 	self.path = path.Join(fork.path, fmt.Sprintf("chnk%d", index))
 	self.fqname = fork.fqname + fmt.Sprintf(".chnk%d", index)
-	self.metadata = NewMetadata(self.path)
+	self.metadata = NewMetadata(self.fqname, self.path)
 	self.hasBeenRun = false
 	if !self.node.split {
 		// If we're not splitting, just set the sole chunk's filesPath
@@ -423,9 +425,9 @@ func NewFork(nodable Nodable, index int, argPermute map[string]interface{}) *For
 	self.index = index
 	self.path = path.Join(self.node.path, fmt.Sprintf("fork%d", index))
 	self.fqname = self.node.fqname + fmt.Sprintf(".fork%d", index)
-	self.metadata = NewMetadata(self.path)
-	self.split_metadata = NewMetadata(path.Join(self.path, "split"))
-	self.join_metadata = NewMetadata(path.Join(self.path, "join"))
+	self.metadata = NewMetadata(self.fqname, self.path)
+	self.split_metadata = NewMetadata(self.fqname+".split", path.Join(self.path, "split"))
+	self.join_metadata = NewMetadata(self.fqname+".join", path.Join(self.path, "join"))
 	self.argPermute = argPermute
 	self.split_has_run = false
 	self.join_has_run = false
@@ -636,7 +638,7 @@ func NewNode(parent Nodable, kind string, callStm *CallStm, callables *Callables
 	self.name = callStm.Id
 	self.fqname = parent.Node().fqname + "." + self.name
 	self.path = path.Join(parent.Node().path, self.name)
-	self.metadata = NewMetadata(self.path)
+	self.metadata = NewMetadata(self.fqname, self.path)
 	self.volatile = callStm.volatile
 
 	self.outparams = callables.table[self.name].OutParams()
@@ -804,6 +806,22 @@ func (self *Node) RestartFromFailed() {
 	for _, fork := range self.forks {
 		fork.clearChunks()
 	}
+}
+
+func (self *Node) GetFatalError() (string, string, string, string) {
+	for _, metadata := range self.collectMetadatas() {
+		if metadata.exists("errors") {
+			errlog := metadata.readRaw("errors")
+			summary := "<none>"
+			if self.stagecodeLang == "Python" {
+				errlines := strings.Split(errlog, "\n")
+				summary = errlines[len(errlines)-2]
+			}
+			return metadata.fqname, metadata.makePath("errors"),
+				summary, errlog
+		}
+	}
+	return "", "", "", ""
 }
 
 func (self *Node) Step() {
@@ -1026,18 +1044,14 @@ func (self *Pipestance) GetFQName() string {
 	return self.Node().fqname
 }
 
-func (self *Pipestance) GetFatalError() (string, string) {
+func (self *Pipestance) GetFatalError() (string, string, string, string) {
 	nodes := self.Node().AllNodes()
 	for _, node := range nodes {
 		if node.state == "failed" {
-			for _, metadata := range node.collectMetadatas() {
-				if metadata.exists("errors") {
-					return metadata.makePath("errors"), metadata.readRaw("errors")
-				}
-			}
+			return node.GetFatalError()
 		}
 	}
-	return "", ""
+	return "", "", "", ""
 }
 
 func (self *Pipestance) GetOverallState() string {
@@ -1066,7 +1080,8 @@ func (self *Pipestance) GetOverallState() string {
 }
 
 func (self *Pipestance) Immortalize() {
-	metadata := NewMetadata(self.Node().parent.Node().path)
+	metadata := NewMetadata(self.Node().parent.Node().fqname,
+		self.Node().parent.Node().path)
 	all := []interface{}{}
 	for _, node := range self.Node().AllNodes() {
 		all = append(all, node.Serialize())
@@ -1075,7 +1090,8 @@ func (self *Pipestance) Immortalize() {
 }
 
 func (self *Pipestance) Unimmortalize() {
-	metadata := NewMetadata(self.Node().parent.Node().path)
+	metadata := NewMetadata(self.Node().parent.Node().fqname,
+		self.Node().parent.Node().path)
 	metadata.remove("finalstate")
 }
 
@@ -1134,7 +1150,8 @@ func (self *Pipestance) VDRKill() *VDRKillReport {
 		killReport.Paths = append(killReport.Paths, p)
 		os.RemoveAll(p)
 	}
-	metadata := NewMetadata(self.Node().parent.Node().path)
+	metadata := NewMetadata(self.Node().parent.Node().fqname,
+		self.Node().parent.Node().path)
 	metadata.write("vdrkill", &killReport)
 	return &killReport
 }
@@ -1338,7 +1355,7 @@ func (self *Runtime) InvokeWithSource(psid string, src string, pipestancePath st
 	}
 
 	// Write top-level metadata files.
-	metadata := NewMetadata(pipestancePath)
+	metadata := NewMetadata("ID."+psid, pipestancePath)
 	metadata.writeRaw("invocation", src)
 	metadata.writeRaw("mrosource", self.srcTable[pipestance.Node().name])
 	metadata.write("versions", map[string]string{
@@ -1368,7 +1385,7 @@ func (self *Runtime) Reattach(psid string, pipestancePath string) (*Pipestance, 
 }
 
 func (self *Runtime) GetSerialization(pipestancePath string) (interface{}, bool) {
-	metadata := NewMetadata(pipestancePath)
+	metadata := NewMetadata("", pipestancePath)
 	metadata.cache()
 	if metadata.exists("finalstate") {
 		return metadata.read("finalstate"), true

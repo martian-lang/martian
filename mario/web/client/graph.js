@@ -32,7 +32,7 @@
         g.addEdge(null, edge.from, edge.to, {});
       }
     }
-    (new dagreD3.Renderer()).run(g, d3.select("g"));
+    (new dagreD3.Renderer()).zoom(false).run(g, d3.select("g"));
     maxX = 0.0;
     d3.selectAll("g.node").each(function(id) {
       var xCoord;
@@ -67,8 +67,9 @@
     $scope.admin = admin;
     $scope.adminstyle = adminstyle;
     $scope.urlprefix = adminstyle ? '/admin' : '/';
-    $http.get("/api/get-nodes/" + container + "/" + pname + "/" + psid).success(function(nodes) {
-      $scope.nodes = _.indexBy(nodes, 'name');
+    $http.get("/api/get-state/" + container + "/" + pname + "/" + psid).success(function(state) {
+      $scope.nodes = _.indexBy(state.nodes, 'name');
+      $scope.error = state.error;
       return renderGraph($scope, $compile);
     });
     $scope.id = null;
@@ -81,9 +82,9 @@
       chunk: ''
     };
     $scope.showRestart = true;
+    $scope.showLog = false;
     if (admin) {
       $scope.stopRefresh = $interval(function() {
-        console.log('refresh');
         return $scope.refresh();
       }, 5000);
     }
@@ -120,22 +121,16 @@
         return $scope.mdviews[view] = metadata;
       });
     };
-    $scope.step = function() {
-      return $http.get('/step').success(function(nodes) {
-        if ($scope.id) {
-          return $scope.selectNode($scope.id);
-        }
-      });
-    };
     return $scope.refresh = function() {
-      return $http.get("/api/get-nodes/" + container + "/" + pname + "/" + psid).success(function(nodes) {
-        $scope.nodes = _.indexBy(nodes, 'name');
+      return $http.get("/api/get-state/" + container + "/" + pname + "/" + psid).success(function(state) {
+        $scope.nodes = _.indexBy(state.nodes, 'name');
         if ($scope.id) {
           $scope.node = $scope.nodes[$scope.id];
         }
-        return $scope.showRestart = true;
+        $scope.showRestart = true;
+        return $scope.error = state.error;
       }).error(function() {
-        console.log('stopping refresh');
+        console.log('Server responded with an error for /api/get-state, so stopping auto-refresh.');
         return $interval.cancel($scope.stopRefresh);
       });
     };

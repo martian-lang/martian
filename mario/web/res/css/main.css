@@ -91,6 +91,18 @@ a { cursor:pointer; }
 pre {
     font-size: 12px;
 }
+.fixed {
+    font-family: Menlo, Arial;
+    font-size: 12px;
+}
+.alert-danger {    
+    border: none;
+    background: #666;
+    color: white; 
+}
+.alert-danger a {
+    color: #ddf;
+}
 h4#stagename {
     font-family: Menlo, Arial;
 }

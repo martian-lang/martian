@@ -105,6 +105,8 @@ Options:
 				os.Exit(0)
 			}
 			if state == "failed" {
+				_, errpath, _, err := stagestance.Node().GetFatalError()
+				fmt.Printf("\nStage failed, errors written to:\n%s\n\n%s\n", errpath, err)
 				core.LogInfo("runtime", "Stage failed, exiting.")
 				os.Exit(1)
 			}
