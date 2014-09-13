@@ -1026,6 +1026,20 @@ func (self *Pipestance) GetFQName() string {
 	return self.Node().fqname
 }
 
+func (self *Pipestance) GetFatalError() (string, string) {
+	nodes := self.Node().AllNodes()
+	for _, node := range nodes {
+		if node.state == "failed" {
+			for _, metadata := range node.collectMetadatas() {
+				if metadata.exists("errors") {
+					return metadata.makePath("errors"), metadata.readRaw("errors")
+				}
+			}
+		}
+	}
+	return "", ""
+}
+
 func (self *Pipestance) GetOverallState() string {
 	nodes := self.Node().AllNodes()
 	for _, node := range nodes {

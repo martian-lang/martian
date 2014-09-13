@@ -6,6 +6,7 @@
 package main
 
 import (
+	"fmt"
 	"github.com/docopt/docopt-go"
 	"github.com/dustin/go-humanize"
 	"io/ioutil"
@@ -60,6 +61,8 @@ func runLoop(pipestance *core.Pipestance, stepSecs int, disableVDR bool, noExit 
 			}
 		}
 		if pipestance.GetOverallState() == "failed" {
+			errpath, err := pipestance.GetFatalError()
+			fmt.Printf("\nStage failed, error written to:\n%s\n\n%s\n", errpath, err)
 			if noExit {
 				core.LogInfo("runtime", "Pipestance failed, staying alive because --noexit given.")
 				break
