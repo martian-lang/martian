@@ -958,7 +958,7 @@ func (self *Node) RunJob(shellName string, fqname string, metadata *Metadata,
 	threads int, memGB int) {
 
 	// Log the job run.
-	LogInfo("runtime", "(run-%s) %s.%s", self.rt.jobMode, fqname, shellName)
+	LogInfo("runtime", "(run_%s) %s.%s", self.rt.jobMode, fqname, shellName)
 	metadata.write("jobinfo", map[string]interface{}{"type": nil, "childpid": nil})
 
 	// Construct path to the shell.
