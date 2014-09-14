@@ -59,6 +59,9 @@ func NewScheduler(reqCores int, reqMem int) *Scheduler {
 	mem := sigar.Mem{}
 	mem.Get()
 	self.memGB = int(float64(mem.Total) * MAXMEM_FRACTION / 1000000000)
+	if self.memGB < 1 {
+		self.memGB = 1
+	}
 	if reqMem > 0 {
 		self.memGB = reqMem
 		LogInfo("schedlr", "Using %d GB, per --maxmem option.", self.memGB)
