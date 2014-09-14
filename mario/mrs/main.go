@@ -40,6 +40,7 @@ Options:
     --version     Show version.`
 	opts, _ := docopt.Parse(doc, nil, true, __VERSION__, false)
 	core.LogInfo("*", "Mario Run Stage")
+	core.LogInfo("version", __VERSION__)
 	core.LogInfo("cmdline", strings.Join(os.Args, " "))
 
 	// Required job mode and SGE environment variables.
@@ -68,7 +69,9 @@ Options:
 
 	// Setup invocation-specific values.
 	invocationPath := opts["<call.mro>"].(string)
-	stagestancePath := opts["<stagestance_name>"].(string)
+	ssid := opts["<stagestance_name>"].(string)
+	stagestancePath := path.Join(cwd, ssid)
+	fmt.Println(stagestancePath)
 	stepSecs := 1
 
 	//=========================================================================
