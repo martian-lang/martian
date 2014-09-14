@@ -172,7 +172,6 @@ Options:
 	psid := opts["<pipestance_name>"].(string)
 	invocationPath := opts["<call.mro>"].(string)
 	pipestancePath := path.Join(cwd, psid)
-	callSrc, _ := ioutil.ReadFile(invocationPath)
 	stepSecs := 3
 
 	//=========================================================================
@@ -185,6 +184,8 @@ Options:
 	//=========================================================================
 	// Invoke pipestance or Reattach if exists.
 	//=========================================================================
+	callSrc, err := ioutil.ReadFile(invocationPath)
+	core.DieIf(err)
 	pipestance, err := rt.InvokeWithSource(psid, string(callSrc), pipestancePath)
 	if err != nil {
 		if _, ok := err.(*core.PipestanceExistsError); ok {
