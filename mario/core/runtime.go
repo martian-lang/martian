@@ -869,6 +869,16 @@ func (self *Node) Serialize() interface{} {
 			"to":   self.name,
 		})
 	}
+	var err interface{} = nil
+	if self.state == "failed" {
+		fqname, errpath, summary, log := self.GetFatalError()
+		err = map[string]string{
+			"fqname":  fqname,
+			"path":    errpath,
+			"summary": summary,
+			"log":     log,
+		}
+	}
 	return map[string]interface{}{
 		"name":          self.name,
 		"fqname":        self.fqname,
@@ -881,6 +891,7 @@ func (self *Node) Serialize() interface{} {
 		"edges":         edges,
 		"stagecodeLang": self.stagecodeLang,
 		"stagecodePath": self.stagecodePath,
+		"error":         err,
 	}
 }
 
