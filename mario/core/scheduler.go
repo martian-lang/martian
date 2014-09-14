@@ -52,7 +52,7 @@ func NewScheduler(reqCores int, reqMem int) *Scheduler {
 		LogInfo("schedlr", "Using %d core%s, per --maxcores option.",
 			self.cores, pluralize(self.cores))
 	} else {
-		LogInfo("schedlr", "Using all %d core%s available on system.",
+		LogInfo("schedlr", "Using %d core%s available on system.",
 			self.cores, pluralize(self.cores))
 	}
 
