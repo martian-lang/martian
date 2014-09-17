@@ -358,39 +358,69 @@ func (self *Chunk) getState() string {
 }
 
 func (self *Chunk) Step() {
-	if self.getState() == "ready" {
-		resolvedBindings := resolveBindings(self.node.argbindings, self.fork.argPermute)
-		for id, value := range self.chunkDef {
-			if self.node.rt.jobMode == "local" {
-				// Cap __threads and __mem_gb passed through to chunks.
-				if id == "__threads" {
-					value = self.node.rt.scheduler.getCores()
-				}
-				if id == "__mem_gb" {
-					value = self.node.rt.scheduler.getMemGB()
-				}
-			}
-			resolvedBindings[id] = value
-		}
-		self.metadata.write("args", resolvedBindings)
-		self.metadata.write("outs", makeOutArgs(self.node.outparams, self.metadata.filesPath))
-		if !self.hasBeenRun {
-			self.hasBeenRun = true
+	if self.getState() != "ready" {
+		return
+	}
 
-			// Unpack threads and memory requirements. Default is 1 each.
-			threads := 1
-			if self.chunkDef["__threads"] != nil {
-				threads = int(self.chunkDef["__threads"].(float64))
-			}
-			memGB := 1
-			if self.chunkDef["__mem_gb"] != nil {
-				memGB = int(self.chunkDef["__mem_gb"].(float64))
-			}
+	// Belt and suspenders for not double-submitting a job.
+	if self.hasBeenRun {
+		return
+	} else {
+		self.hasBeenRun = true
+	}
 
-			// Run the chunk.
-			self.node.RunJob("main", self.fqname, self.metadata, threads, memGB)
+	//
+	// Process __threads and __mem_gb requested by stage split.
+	//
+	// __threads tells scheduler how much concurrency this chunk wants.
+	// __mem_gb  tells SGE to kill-if-exceed. For local mode, it is
+	//           instead a consumption request like __threads.
+
+	// A chunk consumes 1 thread unless stage split explicitly asks for more.
+	threads := 1
+	if v, ok := self.chunkDef["__threads"].(float64); ok {
+		threads = int(v)
+
+		// In local mode, cap to the scheduler's max cores.
+		// It is not sufficient for the scheduler to do the capping downstream.
+		// We rewrite the chunkDef here to inform the chunk it should use less
+		// concurrency.
+		if self.node.rt.jobMode == "local" {
+			maxCores := self.node.rt.scheduler.getMaxCores()
+			if threads > maxCores {
+				threads = maxCores
+			}
+			self.chunkDef["__threads"] = threads
 		}
 	}
+
+	// Default to -1 to impose no limit (no flag will be passed to SGE).
+	// The local mode scheduler will convert -1 to 1 downstream.
+	memGB := -1
+	if v, ok := self.chunkDef["__mem_gb"].(float64); ok {
+		memGB = int(v)
+
+		if self.node.rt.jobMode == "local" {
+			maxMemGB := self.node.rt.scheduler.getMaxMemGB()
+			if memGB > maxMemGB {
+				memGB = maxMemGB
+			}
+			self.chunkDef["__mem_gb"] = memGB
+		}
+	}
+
+	// Resolve input argument bindings and merge in the chunk defs.
+	resolvedBindings := resolveBindings(self.node.argbindings, self.fork.argPermute)
+	for id, value := range self.chunkDef {
+		resolvedBindings[id] = value
+	}
+
+	// Write out input and ouput args for the chunk.
+	self.metadata.write("args", resolvedBindings)
+	self.metadata.write("outs", makeOutArgs(self.node.outparams, self.metadata.filesPath))
+
+	// Run the chunk.
+	self.node.RunChunk(self.fqname, self.metadata, threads, memGB)
 }
 
 func (self *Chunk) serialize() interface{} {
@@ -518,7 +548,8 @@ func (self *Fork) Step() {
 			if self.node.split {
 				if !self.split_has_run {
 					self.split_has_run = true
-					self.node.RunJob("split", self.fqname, self.split_metadata, 1, 1)
+					// Default memory to -1 for no limit.
+					self.node.RunSplit(self.fqname, self.split_metadata)
 				}
 			} else {
 				self.split_metadata.write("chunk_defs", []interface{}{map[string]interface{}{}})
@@ -549,7 +580,7 @@ func (self *Fork) Step() {
 				self.join_metadata.write("outs", makeOutArgs(self.node.outparams, self.metadata.filesPath))
 				if !self.join_has_run {
 					self.join_has_run = true
-					self.node.RunJob("join", self.fqname, self.join_metadata, 1, 1)
+					self.node.RunJoin(self.fqname, self.join_metadata)
 				}
 			} else {
 				self.join_metadata.write("outs", self.chunks[0].metadata.read("outs"))
@@ -924,12 +955,18 @@ func (self *Node) execSGEJob(fqname string, shellName string, shellCmd string,
 	argv := []string{shellCmd, stagecodePath, metadata.path, metadata.filesPath, profile}
 	metadata.writeRaw("qscript", strings.Join(argv, " "))
 
+	// Sanity check the thread count.
+	if threads < 1 {
+		threads = 1
+	}
+
 	// Build the qsub command.
 	argv = []string{
 		"-N", fqname + "." + shellName,
 		"-V",
 		"-pe", "threads", fmt.Sprintf("%d", threads),
 	}
+	// Only append memory cap if value is sane.
 	if memGB > 0 {
 		argv = append(argv, "-l", fmt.Sprintf("h_vmem=%dG", memGB))
 	}
@@ -952,6 +989,18 @@ func (self *Node) execSGEJob(fqname string, shellName string, shellCmd string,
 		out = err.Error()
 	}
 	metadata.writeRaw("qsub", strings.Join(cmd.Args, " ")+"\n\n"+out)
+}
+
+func (self *Node) RunSplit(fqname string, metadata *Metadata) {
+	self.RunJob("split", fqname, metadata, 1, -1)
+}
+
+func (self *Node) RunJoin(fqname string, metadata *Metadata) {
+	self.RunJob("join", fqname, metadata, 1, -1)
+}
+
+func (self *Node) RunChunk(fqname string, metadata *Metadata, threads int, memGB int) {
+	self.RunJob("main", fqname, metadata, threads, memGB)
 }
 
 func (self *Node) RunJob(shellName string, fqname string, metadata *Metadata,
