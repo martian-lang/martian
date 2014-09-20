@@ -261,12 +261,14 @@ func (global *Ast) check() error {
 // Parser interface, called by runtime.
 //
 func parseString(src string, locmap []FileLoc) (*Ast, error) {
+	// Parse the source into an AST and attach the locmap.
 	global, err := yaccParse(src)
 	if err != nil { // err is an mmLexInfo struct
 		return nil, &ParseError{err.token, locmap[err.loc].fname, locmap[err.loc].loc}
 	}
 	global.locmap = locmap
 
+	// Run semantic checks.
 	if err := global.check(); err != nil {
 		return nil, err
 	}
@@ -274,15 +276,20 @@ func parseString(src string, locmap []FileLoc) (*Ast, error) {
 }
 
 func parseFile(filename string, incFolder string) (string, *Ast, error) {
+	// Read in the file.
 	data, err := ioutil.ReadFile(filename)
 	if err != nil {
 		return "", nil, err
 	}
+
+	// Preprocess, generating new source and a locmap.
 	postsrc, locmap, perr := preprocess(string(data), filename, incFolder)
 	if perr != nil {
 		return "", nil, perr
 	}
 	//printSourceMap(postsrc, locmap)
+
+	// Go ahead and parse the full source.
 	global, err := parseString(postsrc, locmap)
 	return postsrc, global, err
 }

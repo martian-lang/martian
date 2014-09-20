@@ -1,7 +1,7 @@
 //
 // Copyright (c) 2014 10X Technologies, Inc. All rights reserved.
 //
-// Mario command-line compiler. Primarily used for unit testing.
+// Mario command-line formatter. Enforces the one true style.
 //
 package main
 
@@ -18,14 +18,14 @@ var __VERSION__ string = "<version not embedded>"
 
 func main() {
 	// Command-line arguments.
-	doc := `Mario Compiler.
+	doc := `Mario Formatter.
 
 Usage:
-    mrc <file.mro>... | --all
-    mrc -h | --help | --version
+    mrf <file.mro>... | --all
+    mrf -h | --help | --version
 
 Options:
-    --all         Compile all files in $MROPATH.
+    --all         Format all files in $MROPATH.
     -h --help     Show this message.
     --version     Show version.`
 	opts, _ := docopt.Parse(doc, nil, true, __VERSION__, false)
@@ -37,22 +37,24 @@ Options:
 		mroPath = value
 	}
 
-	// Setup runtime with MRO path.
-	rt := core.NewRuntime("local", mroPath, __VERSION__, false)
-
 	count := 0
 	if opts["--all"].(bool) {
-		// Compile all MRO files in MRO path.
-		num, err := rt.CompileAll()
+		// Format all MRO files in MRO path.
+		paths, err := filepath.Glob(mroPath + "/*.mro")
 		core.DieIf(err)
-		count += num
+		for _, p := range paths {
+			_ = p
+			//core.DieIf(err)
+			count += 1
+		}
 	} else {
-		// Compile just the specified MRO files.
+		// Format just the specified MRO files.
 		for _, fname := range opts["<file.mro>"].([]string) {
-			_, err := rt.Compile(fname)
+			fsrc, err := core.FormatFile(fname)
 			core.DieIf(err)
+			fmt.Println(fsrc)
 			count++
 		}
 	}
-	fmt.Println("Successfully compiled", count, "mro files.")
+	fmt.Println("Successfully formatted", count, "mro files.")
 }
