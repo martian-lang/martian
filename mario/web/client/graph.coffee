@@ -19,7 +19,7 @@ renderGraph = ($scope, $compile) ->
     for node in _.values($scope.nodes)
         for edge in node.edges
             g.addEdge(null, edge.from, edge.to, {})
-    (new dagreD3.Renderer()).run(g, d3.select("g"));
+    (new dagreD3.Renderer()).zoom(false).run(g, d3.select("g"));
     maxX = 0.0
     d3.selectAll("g.node").each((id) ->
         d3.select(this).classed(g.node(id).type, true)

@@ -55,7 +55,7 @@ func preprocess(src string, filename string, incFolder string) (string, []FileLo
 	insertOffset := 0
 
 	// Replace all @include statements with contents of files they refer to.
-	re := regexp.MustCompile("@include \"([^\\\"]+)\"")
+	re := regexp.MustCompile("@include\\s+\"([^\\\"]+)\"")
 	offsets := re.FindAllStringIndex(src, -1)
 	fileNotFoundError := &PreprocessError{[]string{}}
 	processedSrc := re.ReplaceAllStringFunc(src, func(match string) string {
