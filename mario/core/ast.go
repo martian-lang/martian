@@ -5,9 +5,15 @@
 //
 package core
 
+import (
+	"regexp"
+	"strings"
+)
+
 type (
 	AstNode struct {
-		loc int
+		loc      int
+		comments string
 	}
 
 	Locatable interface {
@@ -24,11 +30,12 @@ type (
 	}
 
 	Callable interface {
-		Node() AstNode
+		Node() *AstNode
 		Loc() int
 		GetId() string
 		InParams() *Params
 		OutParams() *Params
+		format() string
 	}
 
 	Stage struct {
@@ -61,7 +68,7 @@ type (
 	}
 
 	Param interface {
-		Node() AstNode
+		Node() *AstNode
 		Loc() int
 		Mode() string
 		Tname() string
@@ -122,8 +129,10 @@ type (
 
 	Exp interface {
 		exp()
+		Node() *AstNode
 		GetKind() string
 		ResolveType(*Ast, *Pipeline) (string, error)
+		format() string
 	}
 
 	ValExp struct {
@@ -151,6 +160,16 @@ type (
 	}
 )
 
+func NewAstNode(lval *mmSymType) AstNode {
+	re := regexp.MustCompile("\n{2,}")
+	comments := re.ReplaceAllString(lval.comments, "\n")
+	comments = strings.TrimSpace(comments)
+	comments += "\n"
+	node := AstNode{lval.loc, comments}
+	lval.comments = ""
+	return node
+}
+
 // Interface whitelist for Dec, Param, Exp, and Stm implementors.
 // Patterned after code in Go's ast.go.
 func (*Filetype) dec() {}
@@ -159,24 +178,24 @@ func (*Pipeline) dec() {}
 func (*ValExp) exp()   {}
 func (*RefExp) exp()   {}
 
-func (s *Filetype) Node() AstNode { return s.node }
-func (s *Filetype) Loc() int      { return s.node.loc }
+func (s *Filetype) Node() *AstNode { return &s.node }
+func (s *Filetype) Loc() int       { return s.node.loc }
 
 func (s *Stage) GetId() string      { return s.Id }
-func (s *Stage) Node() AstNode      { return s.node }
+func (s *Stage) Node() *AstNode     { return &s.node }
 func (s *Stage) Loc() int           { return s.node.loc }
 func (s *Stage) InParams() *Params  { return s.inParams }
 func (s *Stage) OutParams() *Params { return s.outParams }
 
 func (s *Pipeline) GetId() string      { return s.Id }
-func (s *Pipeline) Node() AstNode      { return s.node }
+func (s *Pipeline) Node() *AstNode     { return &s.node }
 func (s *Pipeline) Loc() int           { return s.node.loc }
 func (s *Pipeline) InParams() *Params  { return s.inParams }
 func (s *Pipeline) OutParams() *Params { return s.outParams }
 
 func (s *CallStm) Loc() int { return s.node.loc }
 
-func (s *InParam) Node() AstNode    { return s.node }
+func (s *InParam) Node() *AstNode   { return &s.node }
 func (s *InParam) Mode() string     { return "in" }
 func (s *InParam) Tname() string    { return s.tname }
 func (s *InParam) Id() string       { return s.id }
@@ -185,7 +204,7 @@ func (s *InParam) Loc() int         { return s.node.loc }
 func (s *InParam) IsFile() bool     { return s.isfile }
 func (s *InParam) SetIsFile(b bool) { s.isfile = b }
 
-func (s *OutParam) Node() AstNode    { return s.node }
+func (s *OutParam) Node() *AstNode   { return &s.node }
 func (s *OutParam) Mode() string     { return "out" }
 func (s *OutParam) Tname() string    { return s.tname }
 func (s *OutParam) Id() string       { return s.id }
@@ -197,8 +216,10 @@ func (s *OutParam) SetIsFile(b bool) { s.isfile = b }
 func (s *ReturnStm) Loc() int { return s.node.loc }
 func (s *BindStm) Loc() int   { return s.node.loc }
 
+func (s *ValExp) Node() *AstNode  { return &s.node }
 func (s *ValExp) GetKind() string { return s.Kind }
 func (s *ValExp) Loc() int        { return s.node.loc }
 
+func (s *RefExp) Node() *AstNode  { return &s.node }
 func (s *RefExp) GetKind() string { return s.Kind }
 func (s *RefExp) Loc() int        { return s.node.loc }

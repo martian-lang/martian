@@ -37,7 +37,6 @@ Options:
 		mroPath = value
 	}
 
-	count := 0
 	if opts["--all"].(bool) {
 		// Format all MRO files in MRO path.
 		paths, err := filepath.Glob(mroPath + "/*.mro")
@@ -45,7 +44,6 @@ Options:
 		for _, p := range paths {
 			_ = p
 			//core.DieIf(err)
-			count += 1
 		}
 	} else {
 		// Format just the specified MRO files.
@@ -53,8 +51,6 @@ Options:
 			fsrc, err := core.FormatFile(fname)
 			core.DieIf(err)
 			fmt.Println(fsrc)
-			count++
 		}
 	}
-	fmt.Println("Successfully formatted", count, "mro files.")
 }

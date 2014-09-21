@@ -106,6 +106,7 @@ func (self *mmLexInfo) Lex(lval *mmSymType) int {
 		// If whitespace or comment, advance line count by counting newlines.
 		if r.tokid == SKIP {
 			self.loc += strings.Count(val, "\n")
+			lval.comments += val
 			continue
 		}
 
