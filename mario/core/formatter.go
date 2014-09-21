@@ -77,18 +77,24 @@ func (self *BindStms) format() string {
 // Parameter
 //
 func paramFormat(self Param, modeWidth int, typeWidth int, idWidth int) string {
-	// Column align a parameter expression.
+	id := self.Id()
+
+	// Generate column alignment paddings.
 	modePad := strings.Repeat(" ", modeWidth-len(self.Mode()))
 	typePad := strings.Repeat(" ", typeWidth-len(self.Tname()))
-	id := self.Id()
-	if id == "default" {
-		id = ""
-		typePad = ""
+	idPad := strings.Repeat(" ", idWidth-len(id))
+
+	// Common columns up to type name.
+	fsrc := fmt.Sprintf("%s%s%s%s %s", self.Node().comments, INDENT,
+		self.Mode(), modePad, self.Tname())
+
+	// Add id if not default.
+	if id != "default" {
+		fsrc += fmt.Sprintf("%s %s", typePad, id)
 	}
-	fsrc := fmt.Sprintf("%s%s %s%s %s%s %s", self.Node().comments, INDENT,
-		self.Mode(), modePad, self.Tname(), typePad, id)
+
+	// Add help string if it exists.
 	if len(self.Help()) > 0 {
-		idPad := strings.Repeat(" ", idWidth-len(id))
 		fsrc += fmt.Sprintf("%s  \"%s\"", idPad, self.Help())
 	}
 	return fsrc + ",  "
@@ -106,11 +112,17 @@ func (self *Params) getWidths() (int, int, int) {
 	return modeWidth, typeWidth, idWidth
 }
 
-func measureCallable(callable Callable) (int, int, int) {
-	modeWidthIn, typeWidthIn, idWidthIn := callable.InParams().getWidths()
-	modeWidthOut, typeWidthOut, idWidthOut := callable.OutParams().getWidths()
-	return max(modeWidthIn, modeWidthOut), max(typeWidthIn, typeWidthOut),
-		max(idWidthIn, idWidthOut)
+func measureParamsWidths(paramsList []*Params) (int, int, int) {
+	modeWidth := 0
+	typeWidth := 0
+	idWidth := 0
+	for _, params := range paramsList {
+		mw, tw, iw := params.getWidths()
+		modeWidth = max(modeWidth, mw)
+		typeWidth = max(typeWidth, tw)
+		idWidth = max(idWidth, iw)
+	}
+	return modeWidth, typeWidth, idWidth
 }
 
 func (self *Params) format(modeWidth int, typeWidth int, idWidth int) string {
@@ -125,7 +137,9 @@ func (self *Params) format(modeWidth int, typeWidth int, idWidth int) string {
 // Pipeline, Call, Return
 //
 func (self *Pipeline) format() string {
-	modeWidth, typeWidth, idWidth := measureCallable(self)
+	modeWidth, typeWidth, idWidth := measureParamsWidths([]*Params{
+		self.inParams, self.outParams,
+	})
 
 	// Steal the first param's comment.
 	fsrc := self.inParams.list[0].Node().comments
@@ -176,7 +190,9 @@ func (self *ReturnStm) format() string {
 // Stage
 //
 func (self *Stage) format() string {
-	modeWidth, typeWidth, idWidth := measureCallable(self)
+	modeWidth, typeWidth, idWidth := measureParamsWidths([]*Params{
+		self.inParams, self.outParams, self.splitParams,
+	})
 
 	// Steal comment from first in param.
 	fsrc := self.inParams.list[0].Node().comments
@@ -188,12 +204,17 @@ func (self *Stage) format() string {
 	fsrc += self.src.format()
 	fsrc += self.node.comments
 	fsrc += ")"
+	if len(self.splitParams.list) > 0 {
+		fsrc += " split using ("
+		fsrc += self.splitParams.format(modeWidth, typeWidth, idWidth)
+		fsrc += NEWLINE + ")"
+	}
 	return fsrc
 }
 
 func (self *SrcParam) format() string {
 	fsrc := self.node.comments
-	fsrc += fmt.Sprintf("%s src %s \"%s\", ", INDENT, self.lang, self.path)
+	fsrc += fmt.Sprintf("%ssrc %s \"%s\", ", INDENT, self.lang, self.path)
 	return fsrc
 }
 

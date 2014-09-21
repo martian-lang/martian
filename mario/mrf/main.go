@@ -8,10 +8,8 @@ package main
 import (
 	"fmt"
 	"github.com/docopt/docopt-go"
+	"io/ioutil"
 	"mario/core"
-	"os"
-	"path"
-	"path/filepath"
 )
 
 var __VERSION__ string = "<version not embedded>"
@@ -21,36 +19,23 @@ func main() {
 	doc := `Mario Formatter.
 
 Usage:
-    mrf <file.mro>... | --all
+    mrf <file.mro>... [--rewrite]
     mrf -h | --help | --version
 
 Options:
-    --all         Format all files in $MROPATH.
+    --rewrite     Rewrite the specified file(s) in place in addition to 
+                  printing reformatted source to stdout.
     -h --help     Show this message.
     --version     Show version.`
 	opts, _ := docopt.Parse(doc, nil, true, __VERSION__, false)
 
-	// Mario environment variables.
-	cwd, _ := filepath.Abs(path.Dir(os.Args[0]))
-	mroPath := cwd
-	if value := os.Getenv("MROPATH"); len(value) > 0 {
-		mroPath = value
-	}
-
-	if opts["--all"].(bool) {
-		// Format all MRO files in MRO path.
-		paths, err := filepath.Glob(mroPath + "/*.mro")
+	// Format just the specified MRO files.
+	for _, fname := range opts["<file.mro>"].([]string) {
+		fsrc, err := core.FormatFile(fname)
 		core.DieIf(err)
-		for _, p := range paths {
-			_ = p
-			//core.DieIf(err)
-		}
-	} else {
-		// Format just the specified MRO files.
-		for _, fname := range opts["<file.mro>"].([]string) {
-			fsrc, err := core.FormatFile(fname)
-			core.DieIf(err)
-			fmt.Println(fsrc)
+		fmt.Print(fsrc)
+		if opts["--rewrite"].(bool) {
+			ioutil.WriteFile(fname, []byte(fsrc), 0600)
 		}
 	}
 }

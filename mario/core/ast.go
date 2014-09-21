@@ -161,13 +161,22 @@ type (
 )
 
 func NewAstNode(lval *mmSymType) AstNode {
+	// Process the accumulated comments/whitespace.
+
+	// Compress consecutive newlines into one.
 	re := regexp.MustCompile("\n{2,}")
 	comments := re.ReplaceAllString(lval.comments, "\n")
+
+	// Remove whitespace at either end.
 	comments = strings.TrimSpace(comments)
+
+	// Add newline to the end.
 	comments += "\n"
-	node := AstNode{lval.loc, comments}
+
+	// Reset lexer's comment/whitespace accumulator.
 	lval.comments = ""
-	return node
+
+	return AstNode{lval.loc, comments}
 }
 
 // Interface whitelist for Dec, Param, Exp, and Stm implementors.
