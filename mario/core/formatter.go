@@ -31,6 +31,12 @@ func (self *ValExp) format() string {
 	if self.Value == nil {
 		return "null"
 	}
+	if self.Kind == "float" {
+		// %v prints using exponential notation, which we don't want.
+		// Also, strip trailing zeroes.
+		re := regexp.MustCompile("0+$")
+		return re.ReplaceAllString(fmt.Sprintf("%f", self.Value), "")
+	}
 	if self.Kind == "string" {
 		return fmt.Sprintf("\"%s\"", self.Value)
 	}
