@@ -213,7 +213,7 @@ func (self *Stage) format() string {
 	fsrc += fmt.Sprintf("stage %s(", self.Id)
 	fsrc += self.inParams.format(modeWidth, typeWidth, idWidth)
 	fsrc += self.outParams.format(modeWidth, typeWidth, idWidth)
-	fsrc += self.src.format()
+	fsrc += self.src.format(modeWidth, typeWidth, idWidth)
 	fsrc += self.node.comments
 	fsrc += ")"
 	if len(self.splitParams.list) > 0 {
@@ -224,10 +224,10 @@ func (self *Stage) format() string {
 	return fsrc
 }
 
-func (self *SrcParam) format() string {
-	fsrc := self.node.comments
-	fsrc += fmt.Sprintf("%ssrc %s \"%s\", ", INDENT, self.lang, self.path)
-	return fsrc
+func (self *SrcParam) format(modeWidth int, typeWidth int, idWidth int) string {
+	langPad := strings.Repeat(" ", typeWidth-len(self.lang))
+	return fmt.Sprintf("%s%ssrc %s%s \"%s\", ", self.node.comments, INDENT,
+		self.lang, langPad, self.path)
 }
 
 //
