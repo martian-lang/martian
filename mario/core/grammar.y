@@ -20,6 +20,7 @@ func unquote(qs string) string {
     global    *Ast
     loc       int
     val       string
+    comments  string
     dec       Dec
     decs      []Dec
     inparam   *InParam
@@ -96,13 +97,13 @@ dec_list
 
 dec
     : FILETYPE file_id SEMICOLON
-        {{ $$ = &Filetype{AstNode{mmlval.loc}, $2} }}
+        {{ $$ = &Filetype{NewAstNode(&mmlval), $2} }}
     | STAGE ID LPAREN in_param_list out_param_list src_stm RPAREN 
-        {{ $$ = &Stage{AstNode{mmlval.loc}, $2, $4, $5, $6, &Params{[]Param{}, map[string]Param{}} } }}
+        {{ $$ = &Stage{NewAstNode(&mmlval), $2, $4, $5, $6, &Params{[]Param{}, map[string]Param{}} } }}
     | STAGE ID LPAREN in_param_list out_param_list src_stm RPAREN split_param_list
-        {{ $$ = &Stage{AstNode{mmlval.loc}, $2, $4, $5, $6, $8} }}
+        {{ $$ = &Stage{NewAstNode(&mmlval), $2, $4, $5, $6, $8} }}
     | PIPELINE ID LPAREN in_param_list out_param_list RPAREN LBRACE call_stm_list return_stm RBRACE
-        {{ $$ = &Pipeline{AstNode{mmlval.loc}, $2, $4, $5, $8, &Callables{[]Callable{}, map[string]Callable{}}, $9} }}
+        {{ $$ = &Pipeline{NewAstNode(&mmlval), $2, $4, $5, $8, &Callables{[]Callable{}, map[string]Callable{}}, $9} }}
     ;
 
 file_id
@@ -123,9 +124,9 @@ in_param_list
 
 in_param
     : IN type ID help
-        {{ $$ = &InParam{AstNode{mmlval.loc}, $2, false, $3, $4, false } }}
+        {{ $$ = &InParam{NewAstNode(&mmlval), $2, false, $3, unquote($4), false } }}
     | IN type LBRACKET RBRACKET ID help
-        {{ $$ = &InParam{AstNode{mmlval.loc}, $2, true, $5, $6, false } }}
+        {{ $$ = &InParam{NewAstNode(&mmlval), $2, true, $5, unquote($6), false } }}
     ;
 
 out_param_list
@@ -140,18 +141,18 @@ out_param_list
 
 out_param
     : OUT type help 
-        {{ $$ = &OutParam{AstNode{mmlval.loc}, $2, false, "default", $3, false } }}
+        {{ $$ = &OutParam{NewAstNode(&mmlval), $2, false, "default", unquote($3), false } }}
     | OUT type ID help 
-        {{ $$ = &OutParam{AstNode{mmlval.loc}, $2, false, $3, $4, false } }}    
+        {{ $$ = &OutParam{NewAstNode(&mmlval), $2, false, $3, unquote($4), false } }}
     | OUT type LBRACKET RBRACKET help 
-        {{ $$ = &OutParam{AstNode{mmlval.loc}, $2, true, "default", $5, false } }}
+        {{ $$ = &OutParam{NewAstNode(&mmlval), $2, true, "default", unquote($5), false } }}
     | OUT type LBRACKET RBRACKET ID help 
-        {{ $$ = &OutParam{AstNode{mmlval.loc}, $2, true, $5, $6, false } }}    
+        {{ $$ = &OutParam{NewAstNode(&mmlval), $2, true, $5, unquote($6), false } }}    
     ;
 
 src_stm
     : SRC src_lang LITSTRING COMMA
-        {{ $$ = &SrcParam{AstNode{mmlval.loc}, $2, unquote($3) } }}
+        {{ $$ = &SrcParam{NewAstNode(&mmlval), $2, unquote($3) } }}
     ;
 
 help
@@ -187,7 +188,7 @@ split_param_list
 
 return_stm
     : RETURN LPAREN bind_stm_list RPAREN
-        {{ $$ = &ReturnStm{AstNode{mmlval.loc}, $3} }}
+        {{ $$ = &ReturnStm{NewAstNode(&mmlval), $3} }}
     ;
 
 call_stm_list
@@ -199,9 +200,9 @@ call_stm_list
 
 call_stm
     : CALL ID LPAREN bind_stm_list RPAREN
-        {{ $$ = &CallStm{AstNode{mmlval.loc}, false, $2, $4} }}
+        {{ $$ = &CallStm{NewAstNode(&mmlval), false, $2, $4} }}
     | CALL VOLATILE ID LPAREN bind_stm_list RPAREN
-        {{ $$ = &CallStm{AstNode{mmlval.loc}, true, $3, $5} }}
+        {{ $$ = &CallStm{NewAstNode(&mmlval), true, $3, $5} }}
     ;
 
 bind_stm_list
@@ -216,9 +217,9 @@ bind_stm_list
 
 bind_stm
     : ID EQUALS exp COMMA
-        {{ $$ = &BindStm{AstNode{mmlval.loc}, $1, $3, false, ""} }}
+        {{ $$ = &BindStm{NewAstNode(&mmlval), $1, $3, false, ""} }}
     | ID EQUALS SWEEP LPAREN exp RPAREN COMMA
-        {{ $$ = &BindStm{AstNode{mmlval.loc}, $1, $5, true, ""} }}
+        {{ $$ = &BindStm{NewAstNode(&mmlval), $1, $5, true, ""} }}
     ;
 
 exp_list
@@ -240,45 +241,45 @@ kvpair_list
 
 exp
     : LBRACKET exp_list RBRACKET        
-        {{ $$ = &ValExp{node:AstNode{mmlval.loc}, Kind: "array", Value: $2} }}
+        {{ $$ = &ValExp{node:NewAstNode(&mmlval), Kind: "array", Value: $2} }}
     | LBRACKET RBRACKET
-        {{ $$ = &ValExp{node:AstNode{mmlval.loc}, Kind: "array", Value: []Exp{}} }}
+        {{ $$ = &ValExp{node:NewAstNode(&mmlval), Kind: "array", Value: []Exp{}} }}
     | LBRACE RBRACE
-        {{ $$ = &ValExp{node:AstNode{mmlval.loc}, Kind: "map", Value: map[string]interface{}{}} }}
+        {{ $$ = &ValExp{node:NewAstNode(&mmlval), Kind: "map", Value: map[string]interface{}{}} }}
     | LBRACE kvpair_list RBRACE
-        {{ $$ = &ValExp{node:AstNode{mmlval.loc}, Kind: "map", Value: $2} }}
+        {{ $$ = &ValExp{node:NewAstNode(&mmlval), Kind: "map", Value: $2} }}
     | PATH LPAREN LITSTRING RPAREN
-        {{ $$ = &ValExp{node:AstNode{mmlval.loc}, Kind: $1, Value: unquote($3)} }}
+        {{ $$ = &ValExp{node:NewAstNode(&mmlval), Kind: $1, Value: unquote($3)} }}
     | FILE LPAREN LITSTRING RPAREN
-        {{ $$ = &ValExp{node:AstNode{mmlval.loc}, Kind: $1, Value: unquote($3)} }}
+        {{ $$ = &ValExp{node:NewAstNode(&mmlval), Kind: $1, Value: unquote($3)} }}
     | NUM_FLOAT
         {{  // Lexer guarantees parseable float strings.
             f, _ := strconv.ParseFloat($1, 64)
-            $$ = &ValExp{node:AstNode{mmlval.loc}, Kind: "float", Value: f } 
+            $$ = &ValExp{node:NewAstNode(&mmlval), Kind: "float", Value: f } 
         }}
     | NUM_INT
         {{  // Lexer guarantees parseable int strings.
             i, _ := strconv.ParseInt($1, 0, 64)
-            $$ = &ValExp{node:AstNode{mmlval.loc}, Kind: "int", Value: i } 
+            $$ = &ValExp{node:NewAstNode(&mmlval), Kind: "int", Value: i } 
         }}
     | LITSTRING
-        {{ $$ = &ValExp{node:AstNode{mmlval.loc}, Kind: "string", Value: unquote($1)} }}
+        {{ $$ = &ValExp{node:NewAstNode(&mmlval), Kind: "string", Value: unquote($1)} }}
     | TRUE
-        {{ $$ = &ValExp{node:AstNode{mmlval.loc}, Kind: "bool", Value: true} }}
+        {{ $$ = &ValExp{node:NewAstNode(&mmlval), Kind: "bool", Value: true} }}
     | FALSE
-        {{ $$ = &ValExp{node:AstNode{mmlval.loc}, Kind: "bool", Value: false} }}
+        {{ $$ = &ValExp{node:NewAstNode(&mmlval), Kind: "bool", Value: false} }}
     | NULL
-        {{ $$ = &ValExp{node:AstNode{mmlval.loc}, Kind: "null", Value: nil} }}
+        {{ $$ = &ValExp{node:NewAstNode(&mmlval), Kind: "null", Value: nil} }}
     | ref_exp
         {{ $$ = $1 }}
     ;
 
 ref_exp
     : ID DOT ID
-        {{ $$ = &RefExp{AstNode{mmlval.loc}, "call", $1, $3} }}
+        {{ $$ = &RefExp{NewAstNode(&mmlval), "call", $1, $3} }}
     | ID
-        {{ $$ = &RefExp{AstNode{mmlval.loc}, "call", $1, "default"} }}
+        {{ $$ = &RefExp{NewAstNode(&mmlval), "call", $1, "default"} }}
     | SELF DOT ID
-        {{ $$ = &RefExp{AstNode{mmlval.loc}, "self", $3, ""} }}
+        {{ $$ = &RefExp{NewAstNode(&mmlval), "self", $3, ""} }}
     ;
 %%

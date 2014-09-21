@@ -25,6 +25,7 @@ type mmSymType struct {
 	global   *Ast
 	loc      int
 	val      string
+	comments string
 	dec      Dec
 	decs     []Dec
 	inparam  *InParam
@@ -140,7 +141,7 @@ const mmEofCode = 1
 const mmErrCode = 2
 const mmMaxDepth = 200
 
-//line grammar.y:284
+//line grammar.y:285
 
 //line yacctab:1
 var mmExca = []int{
@@ -498,7 +499,7 @@ mmdefault:
 	switch mmnt {
 
 	case 1:
-		//line grammar.y:67
+		//line grammar.y:68
 		{
 			{
 				global := Ast{[]FileLoc{}, map[string]bool{}, []*Filetype{}, map[string]bool{}, []*Stage{}, []*Pipeline{}, &Callables{[]Callable{}, map[string]Callable{}}, nil}
@@ -518,7 +519,7 @@ mmdefault:
 			}
 		}
 	case 2:
-		//line grammar.y:84
+		//line grammar.y:85
 		{
 			{
 				global := Ast{[]FileLoc{}, map[string]bool{}, []*Filetype{}, map[string]bool{}, []*Stage{}, []*Pipeline{}, &Callables{[]Callable{}, map[string]Callable{}}, mmS[mmpt-0].call}
@@ -526,49 +527,49 @@ mmdefault:
 			}
 		}
 	case 3:
-		//line grammar.y:92
+		//line grammar.y:93
 		{
 			{
 				mmVAL.decs = append(mmS[mmpt-1].decs, mmS[mmpt-0].dec)
 			}
 		}
 	case 4:
-		//line grammar.y:94
+		//line grammar.y:95
 		{
 			{
 				mmVAL.decs = []Dec{mmS[mmpt-0].dec}
 			}
 		}
 	case 5:
-		//line grammar.y:99
+		//line grammar.y:100
 		{
 			{
-				mmVAL.dec = &Filetype{AstNode{mmlval.loc}, mmS[mmpt-1].val}
+				mmVAL.dec = &Filetype{NewAstNode(&mmlval), mmS[mmpt-1].val}
 			}
 		}
 	case 6:
-		//line grammar.y:101
+		//line grammar.y:102
 		{
 			{
-				mmVAL.dec = &Stage{AstNode{mmlval.loc}, mmS[mmpt-5].val, mmS[mmpt-3].params, mmS[mmpt-2].params, mmS[mmpt-1].src, &Params{[]Param{}, map[string]Param{}}}
+				mmVAL.dec = &Stage{NewAstNode(&mmlval), mmS[mmpt-5].val, mmS[mmpt-3].params, mmS[mmpt-2].params, mmS[mmpt-1].src, &Params{[]Param{}, map[string]Param{}}}
 			}
 		}
 	case 7:
-		//line grammar.y:103
+		//line grammar.y:104
 		{
 			{
-				mmVAL.dec = &Stage{AstNode{mmlval.loc}, mmS[mmpt-6].val, mmS[mmpt-4].params, mmS[mmpt-3].params, mmS[mmpt-2].src, mmS[mmpt-0].params}
+				mmVAL.dec = &Stage{NewAstNode(&mmlval), mmS[mmpt-6].val, mmS[mmpt-4].params, mmS[mmpt-3].params, mmS[mmpt-2].src, mmS[mmpt-0].params}
 			}
 		}
 	case 8:
-		//line grammar.y:105
+		//line grammar.y:106
 		{
 			{
-				mmVAL.dec = &Pipeline{AstNode{mmlval.loc}, mmS[mmpt-8].val, mmS[mmpt-6].params, mmS[mmpt-5].params, mmS[mmpt-2].calls, &Callables{[]Callable{}, map[string]Callable{}}, mmS[mmpt-1].retstm}
+				mmVAL.dec = &Pipeline{NewAstNode(&mmlval), mmS[mmpt-8].val, mmS[mmpt-6].params, mmS[mmpt-5].params, mmS[mmpt-2].calls, &Callables{[]Callable{}, map[string]Callable{}}, mmS[mmpt-1].retstm}
 			}
 		}
 	case 9:
-		//line grammar.y:110
+		//line grammar.y:111
 		{
 			{
 				mmVAL.val = mmS[mmpt-2].val + mmS[mmpt-1].val + mmS[mmpt-0].val
@@ -577,7 +578,7 @@ mmdefault:
 	case 10:
 		mmVAL.val = mmS[mmpt-0].val
 	case 11:
-		//line grammar.y:116
+		//line grammar.y:117
 		{
 			{
 				mmS[mmpt-1].params.list = append(mmS[mmpt-1].params.list, mmS[mmpt-0].inparam)
@@ -585,28 +586,28 @@ mmdefault:
 			}
 		}
 	case 12:
-		//line grammar.y:121
+		//line grammar.y:122
 		{
 			{
 				mmVAL.params = &Params{[]Param{mmS[mmpt-0].inparam}, map[string]Param{}}
 			}
 		}
 	case 13:
-		//line grammar.y:126
+		//line grammar.y:127
 		{
 			{
-				mmVAL.inparam = &InParam{AstNode{mmlval.loc}, mmS[mmpt-2].val, false, mmS[mmpt-1].val, mmS[mmpt-0].val, false}
+				mmVAL.inparam = &InParam{NewAstNode(&mmlval), mmS[mmpt-2].val, false, mmS[mmpt-1].val, unquote(mmS[mmpt-0].val), false}
 			}
 		}
 	case 14:
-		//line grammar.y:128
+		//line grammar.y:129
 		{
 			{
-				mmVAL.inparam = &InParam{AstNode{mmlval.loc}, mmS[mmpt-4].val, true, mmS[mmpt-1].val, mmS[mmpt-0].val, false}
+				mmVAL.inparam = &InParam{NewAstNode(&mmlval), mmS[mmpt-4].val, true, mmS[mmpt-1].val, unquote(mmS[mmpt-0].val), false}
 			}
 		}
 	case 15:
-		//line grammar.y:133
+		//line grammar.y:134
 		{
 			{
 				mmS[mmpt-1].params.list = append(mmS[mmpt-1].params.list, mmS[mmpt-0].outparam)
@@ -614,56 +615,56 @@ mmdefault:
 			}
 		}
 	case 16:
-		//line grammar.y:138
+		//line grammar.y:139
 		{
 			{
 				mmVAL.params = &Params{[]Param{mmS[mmpt-0].outparam}, map[string]Param{}}
 			}
 		}
 	case 17:
-		//line grammar.y:143
+		//line grammar.y:144
 		{
 			{
-				mmVAL.outparam = &OutParam{AstNode{mmlval.loc}, mmS[mmpt-1].val, false, "default", mmS[mmpt-0].val, false}
+				mmVAL.outparam = &OutParam{NewAstNode(&mmlval), mmS[mmpt-1].val, false, "default", unquote(mmS[mmpt-0].val), false}
 			}
 		}
 	case 18:
-		//line grammar.y:145
+		//line grammar.y:146
 		{
 			{
-				mmVAL.outparam = &OutParam{AstNode{mmlval.loc}, mmS[mmpt-2].val, false, mmS[mmpt-1].val, mmS[mmpt-0].val, false}
+				mmVAL.outparam = &OutParam{NewAstNode(&mmlval), mmS[mmpt-2].val, false, mmS[mmpt-1].val, unquote(mmS[mmpt-0].val), false}
 			}
 		}
 	case 19:
-		//line grammar.y:147
+		//line grammar.y:148
 		{
 			{
-				mmVAL.outparam = &OutParam{AstNode{mmlval.loc}, mmS[mmpt-3].val, true, "default", mmS[mmpt-0].val, false}
+				mmVAL.outparam = &OutParam{NewAstNode(&mmlval), mmS[mmpt-3].val, true, "default", unquote(mmS[mmpt-0].val), false}
 			}
 		}
 	case 20:
-		//line grammar.y:149
+		//line grammar.y:150
 		{
 			{
-				mmVAL.outparam = &OutParam{AstNode{mmlval.loc}, mmS[mmpt-4].val, true, mmS[mmpt-1].val, mmS[mmpt-0].val, false}
+				mmVAL.outparam = &OutParam{NewAstNode(&mmlval), mmS[mmpt-4].val, true, mmS[mmpt-1].val, unquote(mmS[mmpt-0].val), false}
 			}
 		}
 	case 21:
-		//line grammar.y:154
+		//line grammar.y:155
 		{
 			{
-				mmVAL.src = &SrcParam{AstNode{mmlval.loc}, mmS[mmpt-2].val, unquote(mmS[mmpt-1].val)}
+				mmVAL.src = &SrcParam{NewAstNode(&mmlval), mmS[mmpt-2].val, unquote(mmS[mmpt-1].val)}
 			}
 		}
 	case 22:
-		//line grammar.y:159
+		//line grammar.y:160
 		{
 			{
 				mmVAL.val = mmS[mmpt-1].val
 			}
 		}
 	case 23:
-		//line grammar.y:161
+		//line grammar.y:162
 		{
 			{
 				mmVAL.val = ""
@@ -684,7 +685,7 @@ mmdefault:
 	case 30:
 		mmVAL.val = mmS[mmpt-0].val
 	case 31:
-		//line grammar.y:173
+		//line grammar.y:174
 		{
 			{
 				mmVAL.val = mmS[mmpt-2].val + "." + mmS[mmpt-0].val
@@ -693,49 +694,49 @@ mmdefault:
 	case 32:
 		mmVAL.val = mmS[mmpt-0].val
 	case 33:
-		//line grammar.y:185
+		//line grammar.y:186
 		{
 			{
 				mmVAL.params = mmS[mmpt-1].params
 			}
 		}
 	case 34:
-		//line grammar.y:190
+		//line grammar.y:191
 		{
 			{
-				mmVAL.retstm = &ReturnStm{AstNode{mmlval.loc}, mmS[mmpt-1].bindings}
+				mmVAL.retstm = &ReturnStm{NewAstNode(&mmlval), mmS[mmpt-1].bindings}
 			}
 		}
 	case 35:
-		//line grammar.y:195
+		//line grammar.y:196
 		{
 			{
 				mmVAL.calls = append(mmS[mmpt-1].calls, mmS[mmpt-0].call)
 			}
 		}
 	case 36:
-		//line grammar.y:197
+		//line grammar.y:198
 		{
 			{
 				mmVAL.calls = []*CallStm{mmS[mmpt-0].call}
 			}
 		}
 	case 37:
-		//line grammar.y:202
+		//line grammar.y:203
 		{
 			{
-				mmVAL.call = &CallStm{AstNode{mmlval.loc}, false, mmS[mmpt-3].val, mmS[mmpt-1].bindings}
+				mmVAL.call = &CallStm{NewAstNode(&mmlval), false, mmS[mmpt-3].val, mmS[mmpt-1].bindings}
 			}
 		}
 	case 38:
-		//line grammar.y:204
+		//line grammar.y:205
 		{
 			{
-				mmVAL.call = &CallStm{AstNode{mmlval.loc}, true, mmS[mmpt-3].val, mmS[mmpt-1].bindings}
+				mmVAL.call = &CallStm{NewAstNode(&mmlval), true, mmS[mmpt-3].val, mmS[mmpt-1].bindings}
 			}
 		}
 	case 39:
-		//line grammar.y:209
+		//line grammar.y:210
 		{
 			{
 				mmS[mmpt-1].bindings.List = append(mmS[mmpt-1].bindings.List, mmS[mmpt-0].binding)
@@ -743,42 +744,42 @@ mmdefault:
 			}
 		}
 	case 40:
-		//line grammar.y:214
+		//line grammar.y:215
 		{
 			{
 				mmVAL.bindings = &BindStms{[]*BindStm{mmS[mmpt-0].binding}, map[string]*BindStm{}}
 			}
 		}
 	case 41:
-		//line grammar.y:219
+		//line grammar.y:220
 		{
 			{
-				mmVAL.binding = &BindStm{AstNode{mmlval.loc}, mmS[mmpt-3].val, mmS[mmpt-1].exp, false, ""}
+				mmVAL.binding = &BindStm{NewAstNode(&mmlval), mmS[mmpt-3].val, mmS[mmpt-1].exp, false, ""}
 			}
 		}
 	case 42:
-		//line grammar.y:221
+		//line grammar.y:222
 		{
 			{
-				mmVAL.binding = &BindStm{AstNode{mmlval.loc}, mmS[mmpt-6].val, mmS[mmpt-2].exp, true, ""}
+				mmVAL.binding = &BindStm{NewAstNode(&mmlval), mmS[mmpt-6].val, mmS[mmpt-2].exp, true, ""}
 			}
 		}
 	case 43:
-		//line grammar.y:226
+		//line grammar.y:227
 		{
 			{
 				mmVAL.exps = append(mmS[mmpt-2].exps, mmS[mmpt-0].exp)
 			}
 		}
 	case 44:
-		//line grammar.y:228
+		//line grammar.y:229
 		{
 			{
 				mmVAL.exps = []Exp{mmS[mmpt-0].exp}
 			}
 		}
 	case 45:
-		//line grammar.y:233
+		//line grammar.y:234
 		{
 			{
 				mmS[mmpt-4].kvpairs[unquote(mmS[mmpt-2].val)] = mmS[mmpt-0].exp
@@ -786,124 +787,124 @@ mmdefault:
 			}
 		}
 	case 46:
-		//line grammar.y:238
+		//line grammar.y:239
 		{
 			{
 				mmVAL.kvpairs = map[string]Exp{unquote(mmS[mmpt-2].val): mmS[mmpt-0].exp}
 			}
 		}
 	case 47:
-		//line grammar.y:243
+		//line grammar.y:244
 		{
 			{
-				mmVAL.exp = &ValExp{node: AstNode{mmlval.loc}, Kind: "array", Value: mmS[mmpt-1].exps}
+				mmVAL.exp = &ValExp{node: NewAstNode(&mmlval), Kind: "array", Value: mmS[mmpt-1].exps}
 			}
 		}
 	case 48:
-		//line grammar.y:245
+		//line grammar.y:246
 		{
 			{
-				mmVAL.exp = &ValExp{node: AstNode{mmlval.loc}, Kind: "array", Value: []Exp{}}
+				mmVAL.exp = &ValExp{node: NewAstNode(&mmlval), Kind: "array", Value: []Exp{}}
 			}
 		}
 	case 49:
-		//line grammar.y:247
+		//line grammar.y:248
 		{
 			{
-				mmVAL.exp = &ValExp{node: AstNode{mmlval.loc}, Kind: "map", Value: map[string]interface{}{}}
+				mmVAL.exp = &ValExp{node: NewAstNode(&mmlval), Kind: "map", Value: map[string]interface{}{}}
 			}
 		}
 	case 50:
-		//line grammar.y:249
+		//line grammar.y:250
 		{
 			{
-				mmVAL.exp = &ValExp{node: AstNode{mmlval.loc}, Kind: "map", Value: mmS[mmpt-1].kvpairs}
+				mmVAL.exp = &ValExp{node: NewAstNode(&mmlval), Kind: "map", Value: mmS[mmpt-1].kvpairs}
 			}
 		}
 	case 51:
-		//line grammar.y:251
+		//line grammar.y:252
 		{
 			{
-				mmVAL.exp = &ValExp{node: AstNode{mmlval.loc}, Kind: mmS[mmpt-3].val, Value: unquote(mmS[mmpt-1].val)}
+				mmVAL.exp = &ValExp{node: NewAstNode(&mmlval), Kind: mmS[mmpt-3].val, Value: unquote(mmS[mmpt-1].val)}
 			}
 		}
 	case 52:
-		//line grammar.y:253
+		//line grammar.y:254
 		{
 			{
-				mmVAL.exp = &ValExp{node: AstNode{mmlval.loc}, Kind: mmS[mmpt-3].val, Value: unquote(mmS[mmpt-1].val)}
+				mmVAL.exp = &ValExp{node: NewAstNode(&mmlval), Kind: mmS[mmpt-3].val, Value: unquote(mmS[mmpt-1].val)}
 			}
 		}
 	case 53:
-		//line grammar.y:255
+		//line grammar.y:256
 		{
 			{ // Lexer guarantees parseable float strings.
 				f, _ := strconv.ParseFloat(mmS[mmpt-0].val, 64)
-				mmVAL.exp = &ValExp{node: AstNode{mmlval.loc}, Kind: "float", Value: f}
+				mmVAL.exp = &ValExp{node: NewAstNode(&mmlval), Kind: "float", Value: f}
 			}
 		}
 	case 54:
-		//line grammar.y:260
+		//line grammar.y:261
 		{
 			{ // Lexer guarantees parseable int strings.
 				i, _ := strconv.ParseInt(mmS[mmpt-0].val, 0, 64)
-				mmVAL.exp = &ValExp{node: AstNode{mmlval.loc}, Kind: "int", Value: i}
+				mmVAL.exp = &ValExp{node: NewAstNode(&mmlval), Kind: "int", Value: i}
 			}
 		}
 	case 55:
-		//line grammar.y:265
+		//line grammar.y:266
 		{
 			{
-				mmVAL.exp = &ValExp{node: AstNode{mmlval.loc}, Kind: "string", Value: unquote(mmS[mmpt-0].val)}
+				mmVAL.exp = &ValExp{node: NewAstNode(&mmlval), Kind: "string", Value: unquote(mmS[mmpt-0].val)}
 			}
 		}
 	case 56:
-		//line grammar.y:267
+		//line grammar.y:268
 		{
 			{
-				mmVAL.exp = &ValExp{node: AstNode{mmlval.loc}, Kind: "bool", Value: true}
+				mmVAL.exp = &ValExp{node: NewAstNode(&mmlval), Kind: "bool", Value: true}
 			}
 		}
 	case 57:
-		//line grammar.y:269
+		//line grammar.y:270
 		{
 			{
-				mmVAL.exp = &ValExp{node: AstNode{mmlval.loc}, Kind: "bool", Value: false}
+				mmVAL.exp = &ValExp{node: NewAstNode(&mmlval), Kind: "bool", Value: false}
 			}
 		}
 	case 58:
-		//line grammar.y:271
+		//line grammar.y:272
 		{
 			{
-				mmVAL.exp = &ValExp{node: AstNode{mmlval.loc}, Kind: "null", Value: nil}
+				mmVAL.exp = &ValExp{node: NewAstNode(&mmlval), Kind: "null", Value: nil}
 			}
 		}
 	case 59:
-		//line grammar.y:273
+		//line grammar.y:274
 		{
 			{
 				mmVAL.exp = mmS[mmpt-0].exp
 			}
 		}
 	case 60:
-		//line grammar.y:278
+		//line grammar.y:279
 		{
 			{
-				mmVAL.exp = &RefExp{AstNode{mmlval.loc}, "call", mmS[mmpt-2].val, mmS[mmpt-0].val}
+				mmVAL.exp = &RefExp{NewAstNode(&mmlval), "call", mmS[mmpt-2].val, mmS[mmpt-0].val}
 			}
 		}
 	case 61:
-		//line grammar.y:280
+		//line grammar.y:281
 		{
 			{
-				mmVAL.exp = &RefExp{AstNode{mmlval.loc}, "call", mmS[mmpt-0].val, "default"}
+				mmVAL.exp = &RefExp{NewAstNode(&mmlval), "call", mmS[mmpt-0].val, "default"}
 			}
 		}
 	case 62:
-		//line grammar.y:282
+		//line grammar.y:283
 		{
 			{
-				mmVAL.exp = &RefExp{AstNode{mmlval.loc}, "self", mmS[mmpt-0].val, ""}
+				mmVAL.exp = &RefExp{NewAstNode(&mmlval), "self", mmS[mmpt-0].val, ""}
 			}
 		}
 	}
