@@ -78,6 +78,9 @@ func (self *BindStms) format() string {
 //
 func paramFormat(self Param, modeWidth int, typeWidth int, idWidth int) string {
 	id := self.Id()
+	if id == "default" {
+		id = ""
+	}
 
 	// Generate column alignment paddings.
 	modePad := strings.Repeat(" ", modeWidth-len(self.Mode()))
@@ -89,12 +92,15 @@ func paramFormat(self Param, modeWidth int, typeWidth int, idWidth int) string {
 		self.Mode(), modePad, self.Tname())
 
 	// Add id if not default.
-	if id != "default" {
+	if id != "" {
 		fsrc += fmt.Sprintf("%s %s", typePad, id)
 	}
 
 	// Add help string if it exists.
 	if len(self.Help()) > 0 {
+		if id == "" {
+			fsrc += fmt.Sprintf("%s ", typePad)
+		}
 		fsrc += fmt.Sprintf("%s  \"%s\"", idPad, self.Help())
 	}
 	return fsrc + ",  "
