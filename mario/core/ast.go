@@ -161,7 +161,6 @@ type (
 )
 
 func NewAstNode(lval *mmSymType) AstNode {
-<<<<<<< HEAD
 	// Process the accumulated comments/whitespace.
 
 	// Compress consecutive newlines into one.
@@ -178,15 +177,6 @@ func NewAstNode(lval *mmSymType) AstNode {
 	lval.comments = ""
 
 	return AstNode{lval.loc, comments}
-=======
-	re := regexp.MustCompile("\n{2,}")
-	comments := re.ReplaceAllString(lval.comments, "\n")
-	comments = strings.TrimSpace(comments)
-	comments += "\n"
-	node := AstNode{lval.loc, comments}
-	lval.comments = ""
-	return node
->>>>>>> FETCH_HEAD
 }
 
 // Interface whitelist for Dec, Param, Exp, and Stm implementors.
