@@ -30,6 +30,8 @@ Options:
     --version     Show version.`
 	opts, _ := docopt.Parse(doc, nil, true, __VERSION__, false)
 
+	core.ENABLE_LOGGING = false
+
 	// Mario environment variables.
 	cwd, _ := filepath.Abs(path.Dir(os.Args[0]))
 	mroPath := cwd
