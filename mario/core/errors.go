@@ -1,7 +1,7 @@
 //
 // Copyright (c) 2014 10X Technologies, Inc. All rights reserved.
 //
-// Margo
+// Mario error types.
 //
 package core
 

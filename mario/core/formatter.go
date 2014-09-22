@@ -1,9 +1,8 @@
 //
 // Copyright (c) 2014 10X Technologies, Inc. All rights reserved.
 //
-// Mario Formatting
+// MRO canonical formatting. Inspired by gofmt.
 //
-
 package core
 
 import (
