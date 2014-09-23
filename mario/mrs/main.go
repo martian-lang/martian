@@ -18,8 +18,6 @@ import (
 	"time"
 )
 
-var __VERSION__ string = "<version not embedded>"
-
 func main() {
 	runtime.GOMAXPROCS(2)
 
@@ -38,9 +36,9 @@ Options:
     --profile     Enable stage performance profiling.
     -h --help     Show this message.
     --version     Show version.`
-	opts, _ := docopt.Parse(doc, nil, true, __VERSION__, false)
+	opts, _ := docopt.Parse(doc, nil, true, core.GetVersion(), false)
 	core.LogInfo("*", "Mario Run Stage")
-	core.LogInfo("version", __VERSION__)
+	core.LogInfo("version", core.GetVersion())
 	core.LogInfo("cmdline", strings.Join(os.Args, " "))
 
 	// Required job mode and SGE environment variables.
@@ -77,13 +75,14 @@ Options:
 	//=========================================================================
 	// Configure Mario runtime.
 	//=========================================================================
-	rt := core.NewRuntime(jobMode, mroPath, __VERSION__, profile)
+	rt := core.NewRuntime(jobMode, mroPath, core.GetVersion(), profile)
 	_, err := rt.CompileAll()
 	core.DieIf(err)
 
 	// Create the stagestance path.
 	if _, err := os.Stat(stagestancePath); err == nil {
-		core.DieIf(&core.MarioError{fmt.Sprintf("StagestanceExistsError: '%s'", stagestancePath)})
+		core.DieIf(&core.MarioError{fmt.Sprintf("StagestanceExistsError: '%s'",
+			stagestancePath)})
 	}
 	err = os.MkdirAll(stagestancePath, 0700)
 	core.DieIf(err)
@@ -109,7 +108,8 @@ Options:
 			}
 			if state == "failed" {
 				_, errpath, _, err := stagestance.Node().GetFatalError()
-				fmt.Printf("\nStage failed, errors written to:\n%s\n\n%s\n", errpath, err)
+				fmt.Printf("\nStage failed, errors written to:\n%s\n\n%s\n",
+					errpath, err)
 				core.LogInfo("runtime", "Stage failed, exiting.")
 				os.Exit(1)
 			}

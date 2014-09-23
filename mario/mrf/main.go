@@ -15,8 +15,6 @@ import (
 	"path/filepath"
 )
 
-var __VERSION__ string = "<version not embedded>"
-
 func main() {
 	// Command-line arguments.
 	doc := `Mario Formatter.
@@ -32,7 +30,7 @@ Options:
     --all         Rewrite all files in MROPATH.
     -h --help     Show this message.
     --version     Show version.`
-	opts, _ := docopt.Parse(doc, nil, true, __VERSION__, false)
+	opts, _ := docopt.Parse(doc, nil, true, core.GetVersion(), false)
 
 	// Mario environment variables.
 	cwd, _ := filepath.Abs(path.Dir(os.Args[0]))

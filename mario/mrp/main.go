@@ -21,8 +21,6 @@ import (
 	"time"
 )
 
-var __VERSION__ string = "<version not embedded>"
-
 //=============================================================================
 // Pipestance runner.
 //=============================================================================
@@ -44,14 +42,17 @@ func runLoop(pipestance *core.Pipestance, stepSecs int, disableVDR bool, noExit 
 		if pipestance.GetOverallState() == "complete" {
 			pipestance.Immortalize()
 			if disableVDR {
-				core.LogInfo("runtime", "VDR disabled by --novdr option. No files killed.")
+				core.LogInfo("runtime",
+					"VDR disabled by --novdr option. No files killed.")
 			} else {
 				core.LogInfo("runtime", "Starting VDR kill...")
 				killReport := pipestance.VDRKill()
-				core.LogInfo("runtime", "VDR killed %d files, %s.", killReport.Count, humanize.Bytes(killReport.Size))
+				core.LogInfo("runtime", "VDR killed %d files, %s.",
+					killReport.Count, humanize.Bytes(killReport.Size))
 			}
 			if noExit {
-				core.LogInfo("runtime", "Pipestance is complete, staying alive because --noexit given.")
+				core.LogInfo("runtime",
+					"Pipestance is complete, staying alive because --noexit given.")
 				break
 			} else {
 				// Give time for web ui client to get last update.
@@ -62,9 +63,11 @@ func runLoop(pipestance *core.Pipestance, stepSecs int, disableVDR bool, noExit 
 		}
 		if pipestance.GetOverallState() == "failed" {
 			fqname, errpath, _, log := pipestance.GetFatalError()
-			fmt.Printf("\nPipestance failed at:\n%s\n\nErrors written to:\n%s\n\n%s\n", fqname, errpath, log)
+			fmt.Printf("\nPipestance failed at:\n%s\n\nErrors written to:\n%s\n\n%s\n",
+				fqname, errpath, log)
 			if noExit {
-				core.LogInfo("runtime", "Pipestance failed, staying alive because --noexit given.")
+				core.LogInfo("runtime",
+					"Pipestance failed, staying alive because --noexit given.")
 				break
 			} else {
 				core.LogInfo("runtime", "Pipestance failed, exiting.")
@@ -109,9 +112,9 @@ Options:
                      (--maxcores and --maxmem will be ignored)
     -h --help        Show this message.
     --version        Show version.`
-	opts, _ := docopt.Parse(doc, nil, true, __VERSION__, false)
+	opts, _ := docopt.Parse(doc, nil, true, core.GetVersion(), false)
 	core.LogInfo("*", "Mario Run Pipeline")
-	core.LogInfo("version", __VERSION__)
+	core.LogInfo("version", core.GetVersion())
 	core.LogInfo("cmdline", strings.Join(os.Args, " "))
 
 	// Required job mode and SGE environment variables.
@@ -178,7 +181,8 @@ Options:
 	//=========================================================================
 	// Configure Mario runtime.
 	//=========================================================================
-	rt := core.NewRuntimeWithCores(jobMode, mroPath, reqCores, reqMem, __VERSION__, profile)
+	rt := core.NewRuntimeWithCores(jobMode, mroPath, reqCores, reqMem,
+		core.GetVersion(), profile)
 	_, err := rt.CompileAll()
 	core.DieIf(err)
 

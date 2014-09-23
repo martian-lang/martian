@@ -14,8 +14,6 @@ import (
 	"path/filepath"
 )
 
-var __VERSION__ string = "<version not embedded>"
-
 func main() {
 	// Command-line arguments.
 	doc := `Mario Compiler.
@@ -28,7 +26,7 @@ Options:
     --all         Compile all files in $MROPATH.
     -h --help     Show this message.
     --version     Show version.`
-	opts, _ := docopt.Parse(doc, nil, true, __VERSION__, false)
+	opts, _ := docopt.Parse(doc, nil, true, core.GetVersion(), false)
 
 	core.ENABLE_LOGGING = false
 
@@ -40,7 +38,7 @@ Options:
 	}
 
 	// Setup runtime with MRO path.
-	rt := core.NewRuntime("local", mroPath, __VERSION__, false)
+	rt := core.NewRuntime("local", mroPath, core.GetVersion(), false)
 
 	count := 0
 	if opts["--all"].(bool) {
