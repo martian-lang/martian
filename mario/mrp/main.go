@@ -183,7 +183,7 @@ Options:
 	//=========================================================================
 	rt := core.NewRuntimeWithCores(jobMode, mroPath, reqCores, reqMem,
 		core.GetVersion(), profile)
-	_, err := rt.CompileAll()
+	_, err := rt.CompileAll(true)
 	core.DieIf(err)
 
 	//=========================================================================

@@ -8,6 +8,8 @@ package core
 import (
 	"fmt"
 	"io/ioutil"
+	"os"
+	"path"
 	"strings"
 )
 
@@ -163,7 +165,7 @@ func (bindings *BindStms) check(global *Ast, pipeline *Pipeline, params *Params)
 	return nil
 }
 
-func (global *Ast) check() error {
+func (global *Ast) check(incFolder string, checkSrcPath bool) error {
 	// Build type table, starting with builtins. Duplicates allowed.
 	types := []string{"string", "int", "float", "bool", "path", "file", "map"}
 	for _, filetype := range global.filetypes {
@@ -188,6 +190,14 @@ func (global *Ast) check() error {
 		// Check out parameters.
 		if err := stage.outParams.check(global); err != nil {
 			return err
+		}
+		if checkSrcPath {
+			// Check existence of src path.
+			srcPath := path.Join(incFolder, stage.src.path)
+			_, err := os.Stat(srcPath)
+			if os.IsNotExist(err) {
+				return global.err(stage, "SourcePathError: stage source path does not exist '%s'", srcPath)
+			}
 		}
 		// Check split parameters.
 		if stage.splitParams != nil {
@@ -277,7 +287,7 @@ func (global *Ast) check() error {
 //
 // Parser interface, called by runtime.
 //
-func parseString(src string, locmap []FileLoc) (*Ast, error) {
+func parseString(src string, locmap []FileLoc, incFolder string, checkSrc bool) (*Ast, error) {
 	// Parse the source into an AST and attach the locmap.
 	global, err := yaccParse(src)
 	if err != nil { // err is an mmLexInfo struct
@@ -286,13 +296,13 @@ func parseString(src string, locmap []FileLoc) (*Ast, error) {
 	global.locmap = locmap
 
 	// Run semantic checks.
-	if err := global.check(); err != nil {
+	if err := global.check(incFolder, checkSrc); err != nil {
 		return nil, err
 	}
 	return global, nil
 }
 
-func parseFile(filename string, incFolder string) (string, *Ast, error) {
+func parseFile(filename string, incFolder string, checkSrc bool) (string, *Ast, error) {
 	// Read in the file.
 	data, err := ioutil.ReadFile(filename)
 	if err != nil {
@@ -307,7 +317,7 @@ func parseFile(filename string, incFolder string) (string, *Ast, error) {
 	//printSourceMap(postsrc, locmap)
 
 	// Go ahead and parse the full source.
-	global, err := parseString(postsrc, locmap)
+	global, err := parseString(postsrc, locmap, incFolder, checkSrc)
 	return postsrc, global, err
 }
 

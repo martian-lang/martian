@@ -1302,8 +1302,8 @@ func (self *Runtime) GetPipelineNames() []string {
 	return names
 }
 
-func (self *Runtime) compileCore(fname string) (*Ast, error) {
-	processedSrc, global, err := parseFile(fname, self.MroPath)
+func (self *Runtime) compileCore(fname string, checkSrcPath bool) (*Ast, error) {
+	processedSrc, global, err := parseFile(fname, self.MroPath, checkSrcPath)
 	if err != nil {
 		return nil, err
 	}
@@ -1315,22 +1315,22 @@ func (self *Runtime) compileCore(fname string) (*Ast, error) {
 }
 
 // Compile an MRO file in cwd or self.mroPath.
-func (self *Runtime) Compile(fname string) (*Ast, error) {
+func (self *Runtime) Compile(fname string, checkSrcPath bool) (*Ast, error) {
 	// Look for file in cwd, then in MROPATH.
 	if _, err := os.Stat(fname); os.IsNotExist(err) {
 		fname = path.Join(self.MroPath, fname)
 	}
-	return self.compileCore(fname)
+	return self.compileCore(fname, checkSrcPath)
 }
 
 // Compile all the MRO files in self.mroPath.
-func (self *Runtime) CompileAll() (int, error) {
+func (self *Runtime) CompileAll(checkSrcPath bool) (int, error) {
 	paths, err := filepath.Glob(self.MroPath + "/[^_]*.mro")
 	if err != nil {
 		return 0, err
 	}
 	for _, p := range paths {
-		_, err := self.compileCore(p)
+		_, err := self.compileCore(p, checkSrcPath)
 		if err != nil {
 			return 0, err
 		}

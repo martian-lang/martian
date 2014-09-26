@@ -76,7 +76,7 @@ Options:
 	// Configure Mario runtime.
 	//=========================================================================
 	rt := core.NewRuntime(jobMode, mroPath, core.GetVersion(), profile)
-	_, err := rt.CompileAll()
+	_, err := rt.CompileAll(true)
 	core.DieIf(err)
 
 	// Create the stagestance path.
