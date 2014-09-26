@@ -7,6 +7,7 @@ package core
 
 import (
 	"github.com/cloudfoundry/gosigar"
+	"io/ioutil"
 	"os"
 	"os/exec"
 	"runtime"
@@ -86,7 +87,7 @@ func NewScheduler(userMaxCores int, userMaxMemGB int) *Scheduler {
 }
 
 func (self *Scheduler) Enqueue(cmd *exec.Cmd, threads int, memGB int,
-	stdoutFile *os.File, stderrFile *os.File) {
+	stdoutFile *os.File, stderrFile *os.File, errorsPath string) {
 
 	go func() {
 		log := true // convenience flag for toggling debug logging
@@ -138,8 +139,13 @@ func (self *Scheduler) Enqueue(cmd *exec.Cmd, threads int, memGB int,
 				len(self.memGBSem), self.maxMemGB)
 		}
 
-		cmd.Start()
-		cmd.Wait()
+		if err := cmd.Start(); err != nil {
+			ioutil.WriteFile(errorsPath, []byte(err.Error()), 0600)
+		} else {
+			if err := cmd.Wait(); err != nil {
+				ioutil.WriteFile(errorsPath, []byte(err.Error()), 0600)
+			}
+		}
 
 		self.coreSem.V(threads)
 		if log {

@@ -1,4 +1,4 @@
-call ANALYTICS(
+call ANALYZER_PD(
     read_path = [path("/mnt/analysis/marsoc/pipestances/HA911ADXX/PREPROCESS/HA911ADXX/1.4.1/PREPROCESS/DEMULTIPLEX/fork0/files/demultiplexed_fastq_path")],
     sample_indices = ["GTTGTAGT","TTCTATGC","CAACCCAA","CCGATTAG"],
     lanes = null,

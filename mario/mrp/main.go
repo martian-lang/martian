@@ -176,7 +176,7 @@ Options:
 	psid := opts["<pipestance_name>"].(string)
 	invocationPath := opts["<call.mro>"].(string)
 	pipestancePath := path.Join(cwd, psid)
-	stepSecs := 3
+	stepSecs := 1
 
 	//=========================================================================
 	// Configure Mario runtime.

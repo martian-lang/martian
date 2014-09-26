@@ -1,4 +1,4 @@
-call PREPROCESS(
+call BCL_PROCESSOR_PD(
     #run_path = path("/mnt/sequencing/test/sequencers/miseq00V/mini-bcl"),
     run_path = path("/Users/alex/tmp/netapp/sequencing/sequencers/miseq00V/mini-bcl"),
     seq_run_id = null,

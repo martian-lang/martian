@@ -846,7 +846,9 @@ func (self *Node) GetFatalError() (string, string, string, string) {
 			summary := "<none>"
 			if self.stagecodeLang == "Python" {
 				errlines := strings.Split(errlog, "\n")
-				summary = errlines[len(errlines)-2]
+				if len(errlines) >= 2 {
+					summary = errlines[len(errlines)-2]
+				}
 			}
 			return metadata.fqname, metadata.makePath("errors"),
 				summary, errlog
@@ -943,9 +945,10 @@ func (self *Node) execLocalJob(shellCmd string, stagecodePath string,
 	stderrFile.WriteString("[stderr]\n")
 	cmd.Stdout = stdoutFile
 	cmd.Stderr = stderrFile
+	errorsPath := metadata.makePath("errors")
 
 	// Enqueue the command to the local scheduler.
-	self.rt.scheduler.Enqueue(cmd, threads, memGB, stdoutFile, stderrFile)
+	self.rt.scheduler.Enqueue(cmd, threads, memGB, stdoutFile, stderrFile, errorsPath)
 }
 
 func (self *Node) execSGEJob(fqname string, shellName string, shellCmd string,
