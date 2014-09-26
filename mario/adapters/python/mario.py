@@ -17,7 +17,7 @@ import StringIO
 import cProfile
 import traceback
 
-class MarioException(Exception):
+class StageException(Exception):
     pass
 
 class Record(object):
@@ -217,4 +217,4 @@ def log_json(label, object):
     metadata.log("json", json.dumps({"label":label, "object":object}))
 
 def throw(message):
-    raise MarioException(message)
+    raise StageException(message)

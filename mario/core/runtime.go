@@ -1368,6 +1368,8 @@ func (self *Runtime) instantiate(psid string, src string, pipestancePath string)
 
 // Instantiate a stagestance.
 func (self *Runtime) InstantiateStage(src string, stagestancePath string) (*Stagestance, error) {
+	src = os.ExpandEnv(src)
+
 	// Parse the invocation call.
 	callGlobal, err := parseCall(src)
 	if err != nil {
@@ -1399,6 +1401,8 @@ func (self *Runtime) InstantiateStage(src string, stagestancePath string) (*Stag
 
 // Invokes a new pipestance.
 func (self *Runtime) InvokeWithSource(psid string, src string, pipestancePath string) (*Pipestance, error) {
+	src = os.ExpandEnv(src)
+
 	// Check if pipestance path already exists.
 	if _, err := os.Stat(pipestancePath); err == nil {
 		return nil, &PipestanceExistsError{psid}

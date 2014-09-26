@@ -131,7 +131,7 @@ type (
 		exp()
 		Node() *AstNode
 		GetKind() string
-		ResolveType(*Ast, *Pipeline) (string, error)
+		ResolveType(*Ast, *Pipeline) ([]string, error)
 		format() string
 	}
 
