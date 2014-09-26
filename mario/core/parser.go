@@ -50,31 +50,40 @@ func (params *Params) check(global *Ast) error {
 	return nil
 }
 
-func (exp *ValExp) ResolveType(global *Ast, pipeline *Pipeline) (string, error) {
+func (exp *ValExp) ResolveType(global *Ast, pipeline *Pipeline) ([]string, error) {
 	switch exp.GetKind() {
 
 	// Handle scalar types.
-	case "int", "float", "string", "bool", "path", "null":
-		return exp.GetKind(), nil
+	case "int", "float", "bool", "path", "null":
+		return []string{exp.GetKind()}, nil
+
+	// Handle strings (which could be files too).
+	case "string":
+		for filetype, _ := range global.FiletypeTable {
+			if strings.HasSuffix(exp.Value.(string), filetype) {
+				return []string{"string", filetype}, nil
+			}
+		}
+		return []string{"string"}, nil
 
 	// Array: [ 1, 2 ]
 	case "array":
 		for _, subexp := range exp.Value.([]Exp) {
-			return subexp.GetKind(), nil
+			return []string{subexp.GetKind()}, nil
 		}
-		return "null", nil
+		return []string{"null"}, nil
 	// File: look for matching filetype in type table
 	case "file":
 		for filetype, _ := range global.FiletypeTable {
 			if strings.HasSuffix(exp.Value.(string), filetype) {
-				return filetype, nil
+				return []string{filetype}, nil
 			}
 		}
 	}
-	return "unknown", nil
+	return []string{"unknown"}, nil
 }
 
-func (exp *RefExp) ResolveType(global *Ast, pipeline *Pipeline) (string, error) {
+func (exp *RefExp) ResolveType(global *Ast, pipeline *Pipeline) ([]string, error) {
 	if pipeline == nil {
 		global.err(exp, "ReferenceError: this binding cannot be resolved outside of a pipeline.")
 	}
@@ -85,30 +94,32 @@ func (exp *RefExp) ResolveType(global *Ast, pipeline *Pipeline) (string, error) 
 	case "self":
 		param, ok := pipeline.inParams.table[exp.Id]
 		if !ok {
-			return "", global.err(exp, "ScopeNameError: '%s' is not an input parameter of pipeline '%s'", exp.Id, pipeline.Id)
+			return []string{""}, global.err(exp, "ScopeNameError: '%s' is not an input parameter of pipeline '%s'", exp.Id, pipeline.Id)
 		}
-		return param.Tname(), nil
+		return []string{param.Tname()}, nil
 
 	// Call: STAGE.myoutparam or STAGE
 	case "call":
 		// Check referenced callable is acutally called in this scope.
 		callable, ok := pipeline.callables.table[exp.Id]
 		if !ok {
-			return "", global.err(exp, "ScopeNameError: '%s' is not called in pipeline '%s'", exp.Id, pipeline.Id)
+			return []string{""}, global.err(exp, "ScopeNameError: '%s' is not called in pipeline '%s'", exp.Id, pipeline.Id)
 		}
 
 		// Check referenced output is actually an output of the callable.
 		param, ok := callable.OutParams().table[exp.outputId]
 		if !ok {
-			return "", global.err(exp, "NoSuchOutputError: '%s' is not an output parameter of '%s'", exp.outputId, callable.GetId())
+			return []string{""}, global.err(exp, "NoSuchOutputError: '%s' is not an output parameter of '%s'", exp.outputId, callable.GetId())
 		}
-		return param.Tname(), nil
+		return []string{param.Tname()}, nil
 	}
-	return "call", nil
+	return []string{"call"}, nil
 }
 
-func checkTypeMatch(t1 string, t2 string) bool {
-	return t1 == "null" || t2 == "null" || t1 == t2
+func checkTypeMatch(paramType string, valueType string) bool {
+	return (valueType == "null" ||
+		paramType == valueType ||
+		(paramType == "path" && valueType == "string"))
 }
 
 func (bindings *BindStms) check(global *Ast, pipeline *Pipeline, params *Params) error {
@@ -127,12 +138,18 @@ func (bindings *BindStms) check(global *Ast, pipeline *Pipeline, params *Params)
 		}
 
 		// Typecheck the binding and cache the type.
-		valueType, err := binding.Exp.ResolveType(global, pipeline)
+		valueTypes, err := binding.Exp.ResolveType(global, pipeline)
 		if err != nil {
 			return err
 		}
-		if !checkTypeMatch(param.Tname(), valueType) {
-			return global.err(param, "TypeMismatchError: expected type '%s' for '%s' but got '%s' instead", param.Tname(), param.Id(), valueType)
+		anymatch := false
+		lastType := ""
+		for _, valueType := range valueTypes {
+			anymatch = anymatch || checkTypeMatch(param.Tname(), valueType)
+			lastType = valueType
+		}
+		if !anymatch {
+			return global.err(param, "TypeMismatchError: expected type '%s' for '%s' but got '%s' instead", param.Tname(), param.Id(), lastType)
 		}
 		binding.Tname = param.Tname()
 	}
