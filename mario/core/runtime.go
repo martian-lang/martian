@@ -1462,10 +1462,10 @@ func (self *Runtime) GetSerialization(pipestancePath string) (interface{}, bool)
 
 func (self *Runtime) buildVal(param Param, val interface{}) string {
 	if param.IsFile() {
-		return fmt.Sprintf("file(\"%s\")", val)
+		return fmt.Sprintf("\"%s\"", val)
 	}
 	if param.Tname() == "path" {
-		return fmt.Sprintf("path(\"%s\")", val)
+		return fmt.Sprintf("\"%s\"", val)
 	}
 	if param.Tname() == "string" {
 		return fmt.Sprintf("\"%s\"", val)

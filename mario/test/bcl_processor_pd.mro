@@ -1,5 +1,5 @@
 call BCL_PROCESSOR_PD(
-    run_path = path("$MROTEST/mnt/sequencing/sequencers/miseq00V/mini-bcl"),
+    run_path = "$MROTEST/mnt/sequencing/sequencers/miseq00V/mini-bcl",
     seq_run_id = null,
     lena_url = null,
 )
