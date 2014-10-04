@@ -27,6 +27,7 @@ type Metadata struct {
 	path      string
 	contents  map[string]bool
 	filesPath string
+	mutex     *sync.Mutex
 }
 
 func NewMetadata(fqname string, p string) *Metadata {
@@ -35,6 +36,7 @@ func NewMetadata(fqname string, p string) *Metadata {
 	self.path = p
 	self.contents = map[string]bool{}
 	self.filesPath = path.Join(p, "files")
+	self.mutex = &sync.Mutex{}
 	return self
 }
 
@@ -49,14 +51,18 @@ func (self *Metadata) enumerateFiles() ([]string, error) {
 
 func (self *Metadata) mkdirs() {
 	// When making/remaking dirs, clear the cache.
+	self.mutex.Lock()
 	self.contents = map[string]bool{}
+	self.mutex.Unlock()
 	mkdir(self.path)
 	mkdir(self.filesPath)
 }
 
 func (self *Metadata) idemMkdirs() {
 	// When making/remaking dirs, clear the cache.
+	self.mutex.Lock()
 	self.contents = map[string]bool{}
+	self.mutex.Unlock()
 	idemMkdir(self.path)
 	idemMkdir(self.filesPath)
 }
@@ -79,11 +85,13 @@ func (self *Metadata) getState(name string) (string, bool) {
 
 func (self *Metadata) cache() {
 	if !self.exists("complete") {
-		self.contents = map[string]bool{}
 		paths := self.glob()
+		self.mutex.Lock()
+		self.contents = map[string]bool{}
 		for _, p := range paths {
 			self.contents[path.Base(p)[1:]] = true
 		}
+		self.mutex.Unlock()
 	}
 }
 
@@ -91,7 +99,9 @@ func (self *Metadata) makePath(name string) string {
 	return path.Join(self.path, "_"+name)
 }
 func (self *Metadata) exists(name string) bool {
+	self.mutex.Lock()
 	_, ok := self.contents[name]
+	self.mutex.Unlock()
 	return ok
 }
 func (self *Metadata) readRaw(name string) string {
@@ -122,9 +132,11 @@ func (self *Metadata) remove(name string) { os.Remove(self.makePath(name)) }
 
 func (self *Metadata) serialize() interface{} {
 	names := []string{}
+	self.mutex.Lock()
 	for content, _ := range self.contents {
 		names = append(names, content)
 	}
+	self.mutex.Unlock()
 	sort.Strings(names)
 	return map[string]interface{}{
 		"path":  self.path,
@@ -540,7 +552,8 @@ func (self *Fork) Step() {
 	if self.node.kind == "stage" {
 		state := self.getState()
 		if !strings.HasSuffix(state, "_running") && !strings.HasSuffix(state, "_queued") {
-			LogInfo("runtime", "(%s) %s", state, self.node.fqname)
+			statePad := strings.Repeat(" ", 15-len(state))
+			LogInfo("runtime", "(%s)%s %s", state, statePad, self.node.fqname)
 		}
 
 		if state == "ready" {
@@ -1010,7 +1023,8 @@ func (self *Node) RunJob(shellName string, fqname string, metadata *Metadata,
 	threads int, memGB int) {
 
 	// Log the job run.
-	LogInfo("runtime", "(run_%s) %s.%s", self.rt.jobMode, fqname, shellName)
+	modePad := strings.Repeat(" ", 15-(len(self.rt.jobMode)+4))
+	LogInfo("runtime", "(run:%s)%s %s.%s", self.rt.jobMode, modePad, fqname, shellName)
 	metadata.write("jobinfo", map[string]interface{}{"type": nil, "childpid": nil})
 
 	// Construct path to the shell.

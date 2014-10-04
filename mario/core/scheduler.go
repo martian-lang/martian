@@ -90,7 +90,7 @@ func (self *Scheduler) Enqueue(cmd *exec.Cmd, threads int, memGB int,
 	stdoutFile *os.File, stderrFile *os.File, errorsPath string) {
 
 	go func() {
-		log := true // convenience flag for toggling debug logging
+		log := false // convenience flag for toggling debug logging
 
 		defer stdoutFile.Close()
 		defer stderrFile.Close()
