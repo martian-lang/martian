@@ -36,9 +36,10 @@ Options:
     --profile     Enable stage performance profiling.
     -h --help     Show this message.
     --version     Show version.`
-	opts, _ := docopt.Parse(doc, nil, true, core.GetVersion(), false)
+	marioVersion := core.GetVersion()
+	opts, _ := docopt.Parse(doc, nil, true, marioVersion, false)
 	core.LogInfo("*", "Mario Run Stage")
-	core.LogInfo("version", core.GetVersion())
+	core.LogInfo("version", marioVersion)
 	core.LogInfo("cmdline", strings.Join(os.Args, " "))
 
 	// Required job mode and SGE environment variables.
@@ -58,6 +59,8 @@ Options:
 	if value := os.Getenv("MROPATH"); len(value) > 0 {
 		mroPath = value
 	}
+	mroVersion := core.GetGitTag(mroPath)
+	core.LogInfo("version", "MRO_STAGES = %s", mroVersion)
 
 	// Compute profiling flag.
 	profile := opts["--profile"].(bool)
@@ -69,27 +72,17 @@ Options:
 	invocationPath := opts["<call.mro>"].(string)
 	ssid := opts["<stagestance_name>"].(string)
 	stagestancePath := path.Join(cwd, ssid)
-	fmt.Println(stagestancePath)
 	stepSecs := 1
 
 	//=========================================================================
 	// Configure Mario runtime.
 	//=========================================================================
-	rt := core.NewRuntime(jobMode, mroPath, core.GetVersion(), profile)
-	_, err := rt.CompileAll(true)
-	core.DieIf(err)
-
-	// Create the stagestance path.
-	if _, err := os.Stat(stagestancePath); err == nil {
-		core.DieIf(&core.MarioError{fmt.Sprintf("StagestanceExistsError: '%s'",
-			stagestancePath)})
-	}
-	err = os.MkdirAll(stagestancePath, 0700)
-	core.DieIf(err)
+	rt := core.NewRuntime(jobMode, mroPath, marioVersion, mroVersion, profile)
 
 	// Invoke stagestance.
-	callSrc, _ := ioutil.ReadFile(invocationPath)
-	stagestance, err := rt.InstantiateStage(string(callSrc), stagestancePath)
+	data, err := ioutil.ReadFile(invocationPath)
+	core.DieIf(err)
+	stagestance, err := rt.InvokeStage(string(data), invocationPath, ssid, stagestancePath)
 	core.DieIf(err)
 
 	//=========================================================================
@@ -98,16 +91,16 @@ Options:
 	go func() {
 		for {
 			// Refresh metadata on the node.
-			stagestance.Node().RefreshMetadata()
+			stagestance.RefreshMetadata()
 
 			// Check for completion states.
-			state := stagestance.Node().GetState()
+			state := stagestance.GetState()
 			if state == "complete" {
 				core.LogInfo("runtime", "Stage completed, exiting.")
 				os.Exit(0)
 			}
 			if state == "failed" {
-				_, errpath, _, err := stagestance.Node().GetFatalError()
+				_, errpath, _, err := stagestance.GetFatalError()
 				fmt.Printf("\nStage failed, errors written to:\n%s\n\n%s\n",
 					errpath, err)
 				core.LogInfo("runtime", "Stage failed, exiting.")
@@ -115,7 +108,7 @@ Options:
 			}
 
 			// Step the node.
-			stagestance.Node().Step()
+			stagestance.Step()
 
 			// Wait for a bit.
 			time.Sleep(time.Second * time.Duration(stepSecs))

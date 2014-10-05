@@ -61,8 +61,8 @@ func runWebServer(uiport string, rt *core.Runtime, pipestance *core.Pipestance) 
 		tmpl.Execute(&doc, &GraphPage{
 			InstanceName: "Mario Pipeline Runner",
 			Container:    "runner",
-			Pname:        pipestance.Pname(),
-			Psid:         pipestance.Psid(),
+			Pname:        pipestance.GetPname(),
+			Psid:         pipestance.GetPsid(),
 			Admin:        true,
 			AdminStyle:   false,
 		})
@@ -78,7 +78,7 @@ func runWebServer(uiport string, rt *core.Runtime, pipestance *core.Pipestance) 
 		func(p martini.Params) string {
 			state := map[string]interface{}{}
 			state["error"] = nil
-			if pipestance.GetOverallState() == "failed" {
+			if pipestance.GetState() == "failed" {
 				fqname, errpath, summary, log := pipestance.GetFatalError()
 				state["error"] = map[string]string{
 					"fqname":  fqname,
@@ -87,10 +87,7 @@ func runWebServer(uiport string, rt *core.Runtime, pipestance *core.Pipestance) 
 					"log":     log,
 				}
 			}
-			state["nodes"] = []interface{}{}
-			for _, node := range pipestance.Node().AllNodes() {
-				state["nodes"] = append(state["nodes"].([]interface{}), node.Serialize())
-			}
+			state["nodes"] = pipestance.Serialize()
 			bytes, _ := json.Marshal(state)
 			return string(bytes)
 		})
@@ -111,8 +108,7 @@ func runWebServer(uiport string, rt *core.Runtime, pipestance *core.Pipestance) 
 	// Restart failed stage.
 	app.Post("/api/restart/:container/:pname/:psid/:fqname",
 		func(p martini.Params) string {
-			node := pipestance.Node().Find(p["fqname"])
-			node.RestartFromFailed()
+			pipestance.RestartFailedNode(p["fqname"])
 			return ""
 		})
 

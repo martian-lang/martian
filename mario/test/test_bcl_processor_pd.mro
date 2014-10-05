@@ -1,3 +1,5 @@
+@include "bcl_processor_pd.mro"
+
 call BCL_PROCESSOR_PD(
     run_path = "$MROTEST/mnt/sequencing/sequencers/miseq00V/mini-bcl",
     seq_run_id = null,

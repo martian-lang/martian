@@ -33,6 +33,15 @@ func (self *PipestanceExistsError) Error() string {
 	return fmt.Sprintf("PipestanceExistsError: '%s'.", self.psid)
 }
 
+// StagestanceExistsError
+type StagestanceExistsError struct {
+	ssid string
+}
+
+func (self *StagestanceExistsError) Error() string {
+	return fmt.Sprintf("StagestanceExistsError: '%s'.", self.ssid)
+}
+
 // PreprocessError
 type PreprocessError struct {
 	files []string
@@ -51,8 +60,8 @@ type AstError struct {
 
 func (self *AstError) Error() string {
 	return fmt.Sprintf("MRO %s at %s:%d.", self.msg,
-		self.global.locmap[self.locable.Loc()].fname,
-		self.global.locmap[self.locable.Loc()].loc)
+		self.global.locmap[self.locable.getLoc()].fname,
+		self.global.locmap[self.locable.getLoc()].loc)
 }
 
 // ParseError

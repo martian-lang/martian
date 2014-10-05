@@ -164,13 +164,13 @@ func NewBinding(node *Node, bindStm *BindStm) *Binding {
 	self := &Binding{}
 	self.node = node
 	self.id = bindStm.id
-	self.tname = bindStm.Tname
+	self.tname = bindStm.tname
 	self.sweep = bindStm.sweep
 	self.waiting = false
-	switch valueExp := bindStm.Exp.(type) {
+	switch valueExp := bindStm.exp.(type) {
 	case *RefExp:
-		if valueExp.Kind == "self" {
-			parentBinding := self.node.parent.Node().argbindings[valueExp.Id]
+		if valueExp.kind == "self" {
+			parentBinding := self.node.parent.getNode().argbindings[valueExp.id]
 			if parentBinding != nil {
 				self.node = parentBinding.node
 				self.tname = parentBinding.tname
@@ -182,21 +182,21 @@ func NewBinding(node *Node, bindStm *BindStm) *Binding {
 				self.value = parentBinding.value
 			}
 			self.id = bindStm.id
-			self.valexp = "self." + valueExp.Id
-		} else if valueExp.Kind == "call" {
+			self.valexp = "self." + valueExp.id
+		} else if valueExp.kind == "call" {
 			self.mode = "reference"
-			self.boundNode = self.node.parent.Node().subnodes[valueExp.Id]
+			self.boundNode = self.node.parent.getNode().subnodes[valueExp.id]
 			self.output = valueExp.outputId
 			if valueExp.outputId == "default" {
-				self.valexp = valueExp.Id
+				self.valexp = valueExp.id
 			} else {
-				self.valexp = valueExp.Id + "." + valueExp.outputId
+				self.valexp = valueExp.id + "." + valueExp.outputId
 			}
 		}
 	case *ValExp:
 		self.mode = "value"
 		self.boundNode = node
-		self.value = expToInterface(bindStm.Exp)
+		self.value = expToInterface(bindStm.exp)
 	}
 	return self
 }
@@ -207,20 +207,20 @@ func expToInterface(exp Exp) interface{} {
 	if !ok {
 		return nil
 	}
-	if valExp.Kind == "array" {
+	if valExp.kind == "array" {
 		varray := []interface{}{}
-		for _, exp := range valExp.Value.([]Exp) {
+		for _, exp := range valExp.value.([]Exp) {
 			varray = append(varray, expToInterface(exp))
 		}
 		return varray
-	} else if valExp.Kind == "map" {
+	} else if valExp.kind == "map" {
 		vmap := map[string]interface{}{}
-		for k, exp := range valExp.Value.(map[string]Exp) {
+		for k, exp := range valExp.value.(map[string]Exp) {
 			vmap[k] = expToInterface(exp)
 		}
 		return vmap
 	} else {
-		return valExp.Value
+		return valExp.value
 	}
 }
 
@@ -228,15 +228,15 @@ func NewReturnBinding(node *Node, bindStm *BindStm) *Binding {
 	self := &Binding{}
 	self.node = node
 	self.id = bindStm.id
-	self.tname = bindStm.Tname
+	self.tname = bindStm.tname
 	self.mode = "reference"
-	valueExp := bindStm.Exp.(*RefExp)
-	self.boundNode = self.node.subnodes[valueExp.Id] // from node, NOT parent; this is diff from Binding
+	valueExp := bindStm.exp.(*RefExp)
+	self.boundNode = self.node.subnodes[valueExp.id] // from node, NOT parent; this is diff from Binding
 	self.output = valueExp.outputId
 	if valueExp.outputId == "default" {
-		self.valexp = valueExp.Id
+		self.valexp = valueExp.id
 	} else {
-		self.valexp = valueExp.Id + "." + valueExp.outputId
+		self.valexp = valueExp.id + "." + valueExp.outputId
 	}
 	return self
 }
@@ -259,7 +259,7 @@ func (self *Binding) resolve(argPermute map[string]interface{}) interface{} {
 		return nil
 	}
 	if self.boundNode != nil {
-		matchedFork := self.boundNode.Node().matchFork(argPermute)
+		matchedFork := self.boundNode.getNode().matchFork(argPermute)
 		outputs, ok := matchedFork.metadata.read("outs").(map[string]interface{})
 		if ok {
 			output, ok := outputs[self.output]
@@ -276,8 +276,8 @@ func (self *Binding) serialize(argPermute map[string]interface{}) interface{} {
 	var node interface{} = nil
 	var matchedFork interface{} = nil
 	if self.boundNode != nil {
-		node = self.boundNode.Node().name
-		f := self.boundNode.Node().matchFork(argPermute)
+		node = self.boundNode.getNode().name
+		f := self.boundNode.getNode().matchFork(argPermute)
 		if f != nil {
 			matchedFork = f.index
 		}
@@ -308,10 +308,10 @@ func resolveBindings(bindings map[string]*Binding, argPermute map[string]interfa
 func makeOutArgs(outParams *Params, filesPath string) map[string]interface{} {
 	args := map[string]interface{}{}
 	for id, param := range outParams.table {
-		if param.IsFile() {
-			args[id] = path.Join(filesPath, param.Id()+"."+param.Tname())
-		} else if param.Tname() == "path" {
-			args[id] = path.Join(filesPath, param.Id())
+		if param.getIsFile() {
+			args[id] = path.Join(filesPath, param.getId()+"."+param.getTname())
+		} else if param.getTname() == "path" {
+			args[id] = path.Join(filesPath, param.getId())
 		} else {
 			args[id] = nil
 		}
@@ -335,7 +335,7 @@ type Chunk struct {
 
 func NewChunk(nodable Nodable, fork *Fork, index int, chunkDef map[string]interface{}) *Chunk {
 	self := &Chunk{}
-	self.node = nodable.Node()
+	self.node = nodable.getNode()
 	self.fork = fork
 	self.index = index
 	self.chunkDef = chunkDef
@@ -369,7 +369,7 @@ func (self *Chunk) getState() string {
 	}
 }
 
-func (self *Chunk) Step() {
+func (self *Chunk) step() {
 	if self.getState() != "ready" {
 		return
 	}
@@ -432,7 +432,7 @@ func (self *Chunk) Step() {
 	self.metadata.write("outs", makeOutArgs(self.node.outparams, self.metadata.filesPath))
 
 	// Run the chunk.
-	self.node.RunChunk(self.fqname, self.metadata, threads, memGB)
+	self.node.runChunk(self.fqname, self.metadata, threads, memGB)
 }
 
 func (self *Chunk) serialize() interface{} {
@@ -463,7 +463,7 @@ type Fork struct {
 
 func NewFork(nodable Nodable, index int, argPermute map[string]interface{}) *Fork {
 	self := &Fork{}
-	self.node = nodable.Node()
+	self.node = nodable.getNode()
 	self.index = index
 	self.path = path.Join(self.node.path, fmt.Sprintf("fork%d", index))
 	self.fqname = self.node.fqname + fmt.Sprintf(".fork%d", index)
@@ -548,7 +548,7 @@ func (self *Fork) getState() string {
 	return "ready"
 }
 
-func (self *Fork) Step() {
+func (self *Fork) step() {
 	if self.node.kind == "stage" {
 		state := self.getState()
 		if !strings.HasSuffix(state, "_running") && !strings.HasSuffix(state, "_queued") {
@@ -562,7 +562,7 @@ func (self *Fork) Step() {
 				if !self.split_has_run {
 					self.split_has_run = true
 					// Default memory to -1 for no limit.
-					self.node.RunSplit(self.fqname, self.split_metadata)
+					self.node.runSplit(self.fqname, self.split_metadata)
 				}
 			} else {
 				self.split_metadata.write("chunk_defs", []interface{}{map[string]interface{}{}})
@@ -578,7 +578,7 @@ func (self *Fork) Step() {
 				}
 			}
 			for _, chunk := range self.chunks {
-				chunk.Step()
+				chunk.step()
 			}
 		} else if state == "chunks_complete" {
 			self.join_metadata.write("args", resolveBindings(self.node.argbindings, self.argPermute))
@@ -593,7 +593,7 @@ func (self *Fork) Step() {
 				self.join_metadata.write("outs", makeOutArgs(self.node.outparams, self.metadata.filesPath))
 				if !self.join_has_run {
 					self.join_has_run = true
-					self.node.RunJoin(self.fqname, self.join_metadata)
+					self.node.runJoin(self.fqname, self.join_metadata)
 				}
 			} else {
 				self.join_metadata.write("outs", self.chunks[0].metadata.read("outs"))
@@ -643,7 +643,7 @@ func (self *Fork) serialize() interface{} {
 // Node
 //=============================================================================
 type Nodable interface {
-	Node() *Node
+	getNode() *Node
 }
 
 type Node struct {
@@ -671,21 +671,21 @@ type Node struct {
 	stagecodePath  string
 }
 
-func (self *Node) Node() *Node { return self }
+func (self *Node) getNode() *Node { return self }
 
 func NewNode(parent Nodable, kind string, callStm *CallStm, callables *Callables) *Node {
 	self := &Node{}
 	self.parent = parent
 
-	self.rt = parent.Node().rt
+	self.rt = parent.getNode().rt
 	self.kind = kind
-	self.name = callStm.Id
-	self.fqname = parent.Node().fqname + "." + self.name
-	self.path = path.Join(parent.Node().path, self.name)
+	self.name = callStm.id
+	self.fqname = parent.getNode().fqname + "." + self.name
+	self.path = path.Join(parent.getNode().path, self.name)
 	self.metadata = NewMetadata(self.fqname, self.path)
 	self.volatile = callStm.volatile
 
-	self.outparams = callables.table[self.name].OutParams()
+	self.outparams = callables.table[self.name].getOutParams()
 	self.argbindings = map[string]*Binding{}
 	self.argbindingList = []*Binding{}
 	self.retbindings = map[string]*Binding{}
@@ -694,14 +694,14 @@ func NewNode(parent Nodable, kind string, callStm *CallStm, callables *Callables
 	self.prenodes = map[string]Nodable{}
 	self.prenodeList = []Nodable{}
 
-	for id, bindStm := range callStm.Bindings.table {
+	for id, bindStm := range callStm.bindings.table {
 		binding := NewBinding(self, bindStm)
 		self.argbindings[id] = binding
 		self.argbindingList = append(self.argbindingList, binding)
 	}
 	for _, binding := range self.argbindingList {
 		if binding.mode == "reference" && binding.boundNode != nil {
-			self.prenodes[binding.boundNode.Node().name] = binding.boundNode
+			self.prenodes[binding.boundNode.getNode().name] = binding.boundNode
 			self.prenodeList = append(self.prenodeList, binding.boundNode)
 		}
 	}
@@ -710,6 +710,9 @@ func NewNode(parent Nodable, kind string, callStm *CallStm, callables *Callables
 	return self
 }
 
+//
+// Folder construction
+//
 func (self *Node) mkdirs(wg *sync.WaitGroup) {
 	mkdir(self.path)
 	for _, fork := range self.forks {
@@ -722,42 +725,15 @@ func (self *Node) mkdirs(wg *sync.WaitGroup) {
 	for _, subnode := range self.subnodes {
 		wg.Add(1)
 		go func(n Nodable) {
-			n.Node().mkdirs(wg)
+			n.getNode().mkdirs(wg)
 			wg.Done()
 		}(subnode)
 	}
 }
 
-// State and dataflow management (synchronous)
-func (self *Node) GetState() string {
-	// If every fork is complete, we're complete.
-	complete := true
-	for _, fork := range self.forks {
-		if fork.getState() != "complete" {
-			complete = false
-			break
-		}
-	}
-	if complete {
-		return "complete"
-	}
-	// If any fork is failed, we're failed.
-	for _, fork := range self.forks {
-		if fork.getState() == "failed" {
-			return "failed"
-		}
-	}
-	// If any prenode is not complete, we're waiting.
-	for _, prenode := range self.prenodes {
-		if prenode.Node().GetState() != "complete" {
-			return "waiting"
-		}
-	}
-	// Otherwise we're running.
-	return "running"
-}
-
+//
 // Sweep management
+//
 func (self *Node) buildForks(bindings map[string]*Binding) {
 	// Use a map to uniquify bindings by id.
 	bindingTable := map[string]*Binding{}
@@ -770,7 +746,7 @@ func (self *Node) buildForks(bindings map[string]*Binding) {
 	}
 	// Add upstream sweep bindings (from prenodes).
 	for _, prenode := range self.prenodes {
-		for _, binding := range prenode.Node().sweepbindings {
+		for _, binding := range prenode.getNode().sweepbindings {
 			bindingTable[binding.id] = binding
 		}
 	}
@@ -817,6 +793,33 @@ func (self *Node) matchFork(targetArgPermute map[string]interface{}) *Fork {
 	return nil
 }
 
+//
+// Subnode management
+//
+func (self *Node) allNodes() []*Node {
+	all := []*Node{self}
+	for _, subnode := range self.subnodes {
+		all = append(all, subnode.getNode().allNodes()...)
+	}
+	return all
+}
+
+func (self *Node) find(fqname string) *Node {
+	if self.fqname == fqname {
+		return self
+	}
+	for _, subnode := range self.subnodes {
+		node := subnode.getNode().find(fqname)
+		if node != nil {
+			return node
+		}
+	}
+	return nil
+}
+
+//
+// State management
+//
 func (self *Node) collectMetadatas() []*Metadata {
 	metadatas := []*Metadata{self.metadata}
 	for _, fork := range self.forks {
@@ -825,15 +828,43 @@ func (self *Node) collectMetadatas() []*Metadata {
 	return metadatas
 }
 
-func (self *Node) RefreshMetadata() {
+func (self *Node) refreshMetadata() {
 	metadatas := self.collectMetadatas()
 	for _, metadata := range metadatas {
 		metadata.cache()
 	}
-	self.state = self.GetState()
+	self.state = self.getState()
 }
 
-func (self *Node) RestartFromFailed() {
+func (self *Node) getState() string {
+	// If every fork is complete, we're complete.
+	complete := true
+	for _, fork := range self.forks {
+		if fork.getState() != "complete" {
+			complete = false
+			break
+		}
+	}
+	if complete {
+		return "complete"
+	}
+	// If any fork is failed, we're failed.
+	for _, fork := range self.forks {
+		if fork.getState() == "failed" {
+			return "failed"
+		}
+	}
+	// If any prenode is not complete, we're waiting.
+	for _, prenode := range self.prenodes {
+		if prenode.getNode().getState() != "complete" {
+			return "waiting"
+		}
+	}
+	// Otherwise we're running.
+	return "running"
+}
+
+func (self *Node) restartFromFailed() {
 	// Blow away the entire stage node.
 	os.RemoveAll(self.path)
 
@@ -844,7 +875,7 @@ func (self *Node) RestartFromFailed() {
 	rewg.Wait()
 
 	// Refresh the metadata (clear it all).
-	self.RefreshMetadata()
+	self.refreshMetadata()
 
 	// Clear chunks in the forks so they can be rebuilt on split.
 	for _, fork := range self.forks {
@@ -852,54 +883,37 @@ func (self *Node) RestartFromFailed() {
 	}
 }
 
-func (self *Node) GetFatalError() (string, string, string, string) {
+func (self *Node) getFatalError() (string, string, string, string) {
 	for _, metadata := range self.collectMetadatas() {
-		if metadata.exists("errors") {
-			errlog := metadata.readRaw("errors")
-			summary := "<none>"
-			if self.stagecodeLang == "Python" {
-				errlines := strings.Split(errlog, "\n")
-				if len(errlines) >= 2 {
-					summary = errlines[len(errlines)-2]
-				}
-			}
-			return metadata.fqname, metadata.makePath("errors"),
-				summary, errlog
+		if !metadata.exists("errors") {
+			continue
 		}
+		errlog := metadata.readRaw("errors")
+		summary := "<none>"
+		if self.stagecodeLang == "Python" {
+			errlines := strings.Split(errlog, "\n")
+			if len(errlines) >= 2 {
+				summary = errlines[len(errlines)-2]
+			}
+		}
+		return metadata.fqname, metadata.makePath("errors"),
+			summary, errlog
 	}
 	return "", "", "", ""
 }
 
-func (self *Node) Step() {
+func (self *Node) step() {
 	if self.state == "running" {
 		for _, fork := range self.forks {
-			fork.Step()
+			fork.step()
 		}
 	}
 }
 
-func (self *Node) AllNodes() []*Node {
-	all := []*Node{self}
-	for _, subnode := range self.subnodes {
-		all = append(all, subnode.Node().AllNodes()...)
-	}
-	return all
-}
-
-func (self *Node) Find(fqname string) *Node {
-	if self.fqname == fqname {
-		return self
-	}
-	for _, subnode := range self.subnodes {
-		node := subnode.Node().Find(fqname)
-		if node != nil {
-			return node
-		}
-	}
-	return nil
-}
-
-func (self *Node) Serialize() interface{} {
+//
+// Serialization
+//
+func (self *Node) serialize() interface{} {
 	sweepbindings := []interface{}{}
 	for _, sweepbinding := range self.sweepbindings {
 		sweepbindings = append(sweepbindings, sweepbinding.serialize(nil))
@@ -911,13 +925,13 @@ func (self *Node) Serialize() interface{} {
 	edges := []interface{}{}
 	for _, prenode := range self.prenodeList {
 		edges = append(edges, map[string]string{
-			"from": prenode.Node().name,
+			"from": prenode.getNode().name,
 			"to":   self.name,
 		})
 	}
 	var err interface{} = nil
 	if self.state == "failed" {
-		fqname, errpath, summary, log := self.GetFatalError()
+		fqname, errpath, summary, log := self.getFatalError()
 		err = map[string]string{
 			"fqname":  fqname,
 			"path":    errpath,
@@ -944,6 +958,45 @@ func (self *Node) Serialize() interface{} {
 //=============================================================================
 // Job Runners
 //=============================================================================
+func (self *Node) runSplit(fqname string, metadata *Metadata) {
+	self.runJob("split", fqname, metadata, 1, -1)
+}
+
+func (self *Node) runJoin(fqname string, metadata *Metadata) {
+	self.runJob("join", fqname, metadata, 1, -1)
+}
+
+func (self *Node) runChunk(fqname string, metadata *Metadata, threads int, memGB int) {
+	self.runJob("main", fqname, metadata, threads, memGB)
+}
+
+func (self *Node) runJob(shellName string, fqname string, metadata *Metadata,
+	threads int, memGB int) {
+
+	// Log the job run.
+	modePad := strings.Repeat(" ", 15-(len(self.rt.jobMode)+4))
+	LogInfo("runtime", "(run:%s)%s %s.%s", self.rt.jobMode, modePad, fqname, shellName)
+	metadata.write("jobinfo", map[string]interface{}{"type": nil, "childpid": nil})
+
+	// Construct path to the shell.
+	shellCmd := path.Join(self.rt.adaptersPath, "python", shellName+".py")
+
+	// Configure profiling.
+	profile := "disable"
+	if self.rt.enableProfiling {
+		profile = "profile"
+	}
+
+	switch self.rt.jobMode {
+	case "local":
+		self.execLocalJob(shellCmd, self.stagecodePath, metadata, threads, memGB, profile)
+	case "sge":
+		self.execSGEJob(fqname, shellName, shellCmd, self.stagecodePath, metadata, threads, memGB, profile)
+	default:
+		panic(fmt.Sprintf("Unknown jobMode: %s", self.rt.jobMode))
+	}
+}
+
 func (self *Node) execLocalJob(shellCmd string, stagecodePath string,
 	metadata *Metadata, threads int, memGB int, profile string) {
 
@@ -1007,53 +1060,12 @@ func (self *Node) execSGEJob(fqname string, shellName string, shellCmd string,
 	metadata.writeRaw("qsub", strings.Join(cmd.Args, " ")+"\n\n"+out)
 }
 
-func (self *Node) RunSplit(fqname string, metadata *Metadata) {
-	self.RunJob("split", fqname, metadata, 1, -1)
-}
-
-func (self *Node) RunJoin(fqname string, metadata *Metadata) {
-	self.RunJob("join", fqname, metadata, 1, -1)
-}
-
-func (self *Node) RunChunk(fqname string, metadata *Metadata, threads int, memGB int) {
-	self.RunJob("main", fqname, metadata, threads, memGB)
-}
-
-func (self *Node) RunJob(shellName string, fqname string, metadata *Metadata,
-	threads int, memGB int) {
-
-	// Log the job run.
-	modePad := strings.Repeat(" ", 15-(len(self.rt.jobMode)+4))
-	LogInfo("runtime", "(run:%s)%s %s.%s", self.rt.jobMode, modePad, fqname, shellName)
-	metadata.write("jobinfo", map[string]interface{}{"type": nil, "childpid": nil})
-
-	// Construct path to the shell.
-	shellCmd := path.Join(self.rt.adaptersPath, "python", shellName+".py")
-
-	// Configure profiling.
-	profile := "disable"
-	if self.rt.enableProfiling {
-		profile = "profile"
-	}
-
-	switch self.rt.jobMode {
-	case "local":
-		self.execLocalJob(shellCmd, self.stagecodePath, metadata, threads, memGB, profile)
-	case "sge":
-		self.execSGEJob(fqname, shellName, shellCmd, self.stagecodePath, metadata, threads, memGB, profile)
-	default:
-		panic(fmt.Sprintf("Unknown jobMode: %s", self.rt.jobMode))
-	}
-}
-
 //=============================================================================
 // Stagestance
 //=============================================================================
 type Stagestance struct {
 	node *Node
 }
-
-func (self *Stagestance) Node() *Node { return self.node }
 
 func NewStagestance(parent Nodable, callStm *CallStm, callables *Callables) *Stagestance {
 	langMap := map[string]string{
@@ -1066,11 +1078,19 @@ func NewStagestance(parent Nodable, callStm *CallStm, callables *Callables) *Sta
 	if !ok {
 		return nil
 	}
-	self.node.stagecodePath = path.Join(self.node.rt.MroPath, stage.src.path)
+	self.node.stagecodePath = path.Join(self.node.rt.mroPath, stage.src.path)
 	self.node.stagecodeLang = langMap[stage.src.lang]
 	self.node.split = len(stage.splitParams.list) > 0
 	self.node.buildForks(self.node.argbindings)
 	return self
+}
+
+func (self *Stagestance) getNode() *Node   { return self.node }
+func (self *Stagestance) RefreshMetadata() { self.getNode().refreshMetadata() }
+func (self *Stagestance) GetState() string { return self.getNode().getState() }
+func (self *Stagestance) Step()            { self.getNode().step() }
+func (self *Stagestance) GetFatalError() (string, string, string, string) {
+	return self.getNode().getFatalError()
 }
 
 //=============================================================================
@@ -1080,24 +1100,19 @@ type Pipestance struct {
 	node *Node
 }
 
-func (self *Pipestance) Node() *Node { return self.node }
-
-func (self *Pipestance) Pname() string { return self.node.name }
-func (self *Pipestance) Psid() string  { return self.node.parent.Node().name }
-
 func NewPipestance(parent Nodable, callStm *CallStm, callables *Callables) *Pipestance {
 	self := &Pipestance{}
 	self.node = NewNode(parent, "pipeline", callStm, callables)
 
 	// Build subcall tree.
 	pipeline := callables.table[self.node.name].(*Pipeline)
-	for _, subcallStm := range pipeline.Calls {
-		callable := callables.table[subcallStm.Id]
+	for _, subcallStm := range pipeline.calls {
+		callable := callables.table[subcallStm.id]
 		switch callable.(type) {
 		case *Stage:
-			self.node.subnodes[subcallStm.Id] = NewStagestance(self.Node(), subcallStm, callables)
+			self.node.subnodes[subcallStm.id] = NewStagestance(self.node, subcallStm, callables)
 		case *Pipeline:
-			self.node.subnodes[subcallStm.Id] = NewPipestance(self.Node(), subcallStm, callables)
+			self.node.subnodes[subcallStm.id] = NewPipestance(self.node, subcallStm, callables)
 		}
 	}
 
@@ -1108,7 +1123,7 @@ func NewPipestance(parent Nodable, callStm *CallStm, callables *Callables) *Pipe
 		self.node.retbindings[id] = binding
 		self.node.retbindingList = append(self.node.retbindingList, binding)
 		if binding.mode == "reference" && binding.boundNode != nil {
-			self.node.prenodes[binding.boundNode.Node().name] = binding.boundNode
+			self.node.prenodes[binding.boundNode.getNode().name] = binding.boundNode
 			self.node.prenodeList = append(self.node.prenodeList, binding.boundNode)
 		}
 	}
@@ -1117,22 +1132,21 @@ func NewPipestance(parent Nodable, callStm *CallStm, callables *Callables) *Pipe
 	return self
 }
 
-func (self *Pipestance) GetFQName() string {
-	return self.Node().fqname
-}
+func (self *Pipestance) getNode() *Node    { return self.node }
+func (self *Pipestance) GetPname() string  { return self.node.name }
+func (self *Pipestance) GetPsid() string   { return self.node.parent.getNode().name }
+func (self *Pipestance) GetFQName() string { return self.node.fqname }
 
-func (self *Pipestance) GetFatalError() (string, string, string, string) {
-	nodes := self.Node().AllNodes()
-	for _, node := range nodes {
-		if node.state == "failed" {
-			return node.GetFatalError()
-		}
+func (self *Pipestance) RefreshMetadata() {
+	// We used to make this concurrent but ended up with too many
+	// goroutines (Pranav's 96-sample run).
+	for _, node := range self.node.allNodes() {
+		node.refreshMetadata()
 	}
-	return "", "", "", ""
 }
 
-func (self *Pipestance) GetOverallState() string {
-	nodes := self.Node().AllNodes()
+func (self *Pipestance) GetState() string {
+	nodes := self.node.allNodes()
 	for _, node := range nodes {
 		if node.state == "failed" {
 			return "failed"
@@ -1156,20 +1170,51 @@ func (self *Pipestance) GetOverallState() string {
 	return "waiting"
 }
 
-func (self *Pipestance) Immortalize() {
-	metadata := NewMetadata(self.Node().parent.Node().fqname,
-		self.Node().parent.Node().path)
-	all := []interface{}{}
-	for _, node := range self.Node().AllNodes() {
-		all = append(all, node.Serialize())
+func (self *Pipestance) GetFatalError() (string, string, string, string) {
+	nodes := self.node.allNodes()
+	for _, node := range nodes {
+		if node.state == "failed" {
+			return node.getFatalError()
+		}
 	}
-	metadata.write("finalstate", all)
+	return "", "", "", ""
+}
+
+func (self *Pipestance) StepNodes() {
+	for _, node := range self.node.allNodes() {
+		node.step()
+	}
+}
+
+func (self *Pipestance) RestartFailedNode(fqname string) {
+	self.node.find(fqname).restartFromFailed()
+}
+
+func (self *Pipestance) Serialize() interface{} {
+	ser := []interface{}{}
+	for _, node := range self.node.allNodes() {
+		ser = append(ser, node.serialize())
+	}
+	return ser
+}
+
+func (self *Pipestance) Immortalize() {
+	metadata := NewMetadata(self.node.parent.getNode().fqname,
+		self.node.parent.getNode().path)
+	metadata.write("finalstate", self.Serialize())
 }
 
 func (self *Pipestance) Unimmortalize() {
-	metadata := NewMetadata(self.Node().parent.Node().fqname,
-		self.Node().parent.Node().path)
+	metadata := NewMetadata(self.node.parent.getNode().fqname,
+		self.node.parent.getNode().path)
 	metadata.remove("finalstate")
+}
+
+func (self *Pipestance) GetOuts(forki int) interface{} {
+	if v := self.getNode().forks[forki].metadata.read("outs"); v != nil {
+		return v
+	}
+	return map[string]interface{}{}
 }
 
 type VDRKillReport struct {
@@ -1183,7 +1228,7 @@ func (self *Pipestance) VDRKill() *VDRKillReport {
 	killPaths := []string{}
 
 	// Iterate over all nodes.
-	for _, node := range self.Node().AllNodes() {
+	for _, node := range self.node.allNodes() {
 		// Iterate over all forks.
 		for _, fork := range node.forks {
 			// For volatile nodes, kill fork-level files.
@@ -1227,18 +1272,10 @@ func (self *Pipestance) VDRKill() *VDRKillReport {
 		killReport.Paths = append(killReport.Paths, p)
 		os.RemoveAll(p)
 	}
-	metadata := NewMetadata(self.Node().parent.Node().fqname,
-		self.Node().parent.Node().path)
+	metadata := NewMetadata(self.node.parent.getNode().fqname,
+		self.node.parent.getNode().path)
 	metadata.write("vdrkill", &killReport)
 	return &killReport
-}
-
-func (self *Pipestance) GetOuts(forki int) interface{} {
-	v := self.Node().forks[forki].metadata.read("outs")
-	if v == nil {
-		return map[string]interface{}{}
-	}
-	return v
 }
 
 //=============================================================================
@@ -1248,7 +1285,7 @@ type TopNode struct {
 	node *Node
 }
 
-func (self *TopNode) Node() *Node { return self.node }
+func (self *TopNode) getNode() *Node { return self.node }
 
 func NewTopNode(rt *Runtime, psid string, p string) *TopNode {
 	self := &TopNode{}
@@ -1264,171 +1301,105 @@ func NewTopNode(rt *Runtime, psid string, p string) *TopNode {
 // Runtime
 //=============================================================================
 type Runtime struct {
-	MroPath         string
+	mroPath         string
 	adaptersPath    string
-	globalTable     map[string]*Ast
-	srcTable        map[string]string
-	typeTable       map[string]string
-	MarioVersion    string
-	CodeVersion     string
+	marioVersion    string
+	mroVersion      string
+	pipelineTable   map[string]*Pipeline
+	PipelineNames   []string
 	jobMode         string
 	scheduler       *Scheduler
 	enableProfiling bool
 }
 
-func NewRuntime(jobMode string, mroPath string, marioVersion string, enableProfiling bool) *Runtime {
-	return NewRuntimeWithCores(jobMode, mroPath, -1, -1, marioVersion, enableProfiling)
+func NewRuntime(jobMode string, mroPath string, marioVersion string,
+	mroVersion string, enableProfiling bool) *Runtime {
+	return NewRuntimeWithCores(jobMode, mroPath, marioVersion, mroVersion,
+		-1, -1, enableProfiling)
 }
 
-func NewRuntimeWithCores(jobMode string, mroPath string, reqCores int, reqMem int,
-	marioVersion string, enableProfiling bool) *Runtime {
+func NewRuntimeWithCores(jobMode string, mroPath string, marioVersion string,
+	mroVersion string, reqCores int, reqMem int, enableProfiling bool) *Runtime {
 
 	self := &Runtime{}
-	self.MroPath = mroPath
+	self.mroPath = mroPath
 	self.adaptersPath = RelPath(path.Join("..", "adapters"))
-	self.globalTable = map[string]*Ast{}
-	self.srcTable = map[string]string{}
-	self.typeTable = map[string]string{}
-	self.MarioVersion = marioVersion
-	self.CodeVersion = getGitTag(mroPath)
+	self.marioVersion = marioVersion
+	self.mroVersion = mroVersion
 	self.jobMode = jobMode
 	self.scheduler = NewScheduler(reqCores, reqMem)
 	self.enableProfiling = enableProfiling
+	self.pipelineTable = map[string]*Pipeline{}
+	self.PipelineNames = []string{}
+
+	// Parse all MROs in MROPATH and cache pipelines by name.
+	fpaths, _ := filepath.Glob(self.mroPath + "/[^_]*.mro")
+	for _, fpath := range fpaths {
+		if data, err := ioutil.ReadFile(fpath); err == nil {
+			if _, ast, err := parseSource(string(data), fpath, []string{self.mroPath}, true); err == nil {
+				for _, pipeline := range ast.pipelines {
+					self.pipelineTable[pipeline.getId()] = pipeline
+					self.PipelineNames = append(self.PipelineNames, pipeline.getId())
+				}
+			}
+		}
+	}
 	return self
 }
 
-func getGitTag(p string) string {
-	oldCwd, _ := os.Getwd()
-	os.Chdir(p)
-	out, err := exec.Command("git", "describe", "--tags", "--dirty", "--always").Output()
-	os.Chdir(oldCwd)
-	if err == nil {
-		return strings.TrimSpace(string(out))
-	}
-	return "noversion"
-}
-
-func (self *Runtime) GetPipelineNames() []string {
-	names := []string{}
-	for name, _ := range self.globalTable {
-		names = append(names, name)
-	}
-	return names
-}
-
-func (self *Runtime) compileCore(fname string, checkSrcPath bool) (*Ast, error) {
-	processedSrc, global, err := parseFile(fname, self.MroPath, checkSrcPath)
-	if err != nil {
-		return nil, err
-	}
-	for _, pipeline := range global.Pipelines {
-		self.globalTable[pipeline.Id] = global
-		self.srcTable[pipeline.Id] = processedSrc
-	}
-	return global, nil
-}
-
 // Compile an MRO file in cwd or self.mroPath.
-func (self *Runtime) Compile(fname string, checkSrcPath bool) (*Ast, error) {
-	// Look for file in cwd, then in MROPATH.
-	if _, err := os.Stat(fname); os.IsNotExist(err) {
-		fname = path.Join(self.MroPath, fname)
+func (self *Runtime) Compile(fpath string, checkSrcPath bool) (string, *Ast, error) {
+	if data, err := ioutil.ReadFile(fpath); err != nil {
+		return "", nil, err
+	} else {
+		return parseSource(string(data), fpath, []string{self.mroPath}, checkSrcPath)
 	}
-	return self.compileCore(fname, checkSrcPath)
 }
 
 // Compile all the MRO files in self.mroPath.
 func (self *Runtime) CompileAll(checkSrcPath bool) (int, error) {
-	paths, err := filepath.Glob(self.MroPath + "/[^_]*.mro")
-	if err != nil {
-		return 0, err
-	}
-	for _, p := range paths {
-		_, err := self.compileCore(p, checkSrcPath)
-		if err != nil {
+	fpaths, _ := filepath.Glob(self.mroPath + "/[^_]*.mro")
+	for _, fpath := range fpaths {
+		if _, _, err := self.Compile(fpath, checkSrcPath); err != nil {
 			return 0, err
 		}
 	}
-	return len(paths), nil
+	return len(fpaths), nil
 }
 
 // Instantiate a pipestance object given a psid, MRO source, and a
 // pipestance path. This is the core (private) method called by the
 // public InvokeWithSource and Reattach methods.
-func (self *Runtime) instantiate(psid string, src string, pipestancePath string) (*Pipestance, error) {
-	// Parse the invocation call.
-	callGlobal, err := parseCall(src)
+func (self *Runtime) instantiatePipeline(src string, srcPath string, psid string,
+	pipestancePath string) (string, *Pipestance, error) {
+	// Parse the invocation source.
+	postsrc, ast, err := parseSource(src, srcPath, []string{self.mroPath}, true)
 	if err != nil {
-		return nil, err
-	}
-	callStm := callGlobal.call
-
-	// Get the global scope that defines the called pipeline.
-	global, ok := self.globalTable[callStm.Id]
-	if !ok {
-		return nil, &MarioError{fmt.Sprintf("PipelineNotFoundError: '%s'", callStm.Id)}
-	}
-
-	// Get the actual pipeline definition and check call bindings.
-	pipeline := global.callables.table[callStm.Id].(*Pipeline)
-	if err := callStm.Bindings.check(global, pipeline, pipeline.InParams()); err != nil {
-		return nil, err
+		return "", nil, err
 	}
 
 	// Instantiate the pipeline.
-	pipestance := NewPipestance(NewTopNode(self, psid, pipestancePath), callStm, global.callables)
-	return pipestance, nil
-}
-
-// Instantiate a stagestance.
-func (self *Runtime) InstantiateStage(src string, stagestancePath string) (*Stagestance, error) {
-	src = os.ExpandEnv(src)
-
-	// Parse the invocation call.
-	callGlobal, err := parseCall(src)
-	if err != nil {
-		return nil, err
+	if ast.call == nil {
+		return "", nil, &MarioError{"NoCallError: cannot start a pipeline without a call statement."}
 	}
-	callStm := callGlobal.call
-
-	// Search through all globals for the named stage.
-	for _, global := range self.globalTable {
-		if stage, ok := global.callables.table[callStm.Id]; ok {
-			err := callStm.Bindings.check(global, nil, stage.InParams())
-			DieIf(err)
-
-			stagestance := NewStagestance(NewTopNode(self, "", stagestancePath), callStm, global.callables)
-			if stagestance == nil {
-				return nil, &MarioError{fmt.Sprintf("NotAStageError: '%s'", callStm.Id)}
-			}
-
-			// Create stagestance folder graph concurrently.
-			var wg sync.WaitGroup
-			stagestance.Node().mkdirs(&wg)
-			wg.Wait()
-
-			return stagestance, nil
-		}
-	}
-	return nil, &MarioError{fmt.Sprintf("StageNotFoundError: '%s'", callStm.Id)}
+	pipestance := NewPipestance(NewTopNode(self, psid, pipestancePath), ast.call, ast.callables)
+	return postsrc, pipestance, nil
 }
 
 // Invokes a new pipestance.
-func (self *Runtime) InvokeWithSource(psid string, src string, pipestancePath string) (*Pipestance, error) {
-	src = os.ExpandEnv(src)
+func (self *Runtime) InvokePipeline(src string, srcPath string, psid string,
+	pipestancePath string) (*Pipestance, error) {
 
-	// Check if pipestance path already exists.
+	// Error if pipestance exists, otherwise create.
 	if _, err := os.Stat(pipestancePath); err == nil {
 		return nil, &PipestanceExistsError{psid}
-	}
-
-	// Create the pipestance path.
-	if err := os.MkdirAll(pipestancePath, 0755); err != nil {
+	} else if err := os.MkdirAll(pipestancePath, 0755); err != nil {
 		return nil, err
 	}
 
-	// Instantiate the pipestance.
-	pipestance, err := self.instantiate(psid, src, pipestancePath)
+	// Expand env vars in invocation source and instantiate.
+	src = os.ExpandEnv(src)
+	postsrc, pipestance, err := self.instantiatePipeline(src, srcPath, psid, pipestancePath)
 	if err != nil {
 		// If instantiation failed, delete the pipestance folder.
 		os.RemoveAll(pipestancePath)
@@ -1438,31 +1409,68 @@ func (self *Runtime) InvokeWithSource(psid string, src string, pipestancePath st
 	// Write top-level metadata files.
 	metadata := NewMetadata("ID."+psid, pipestancePath)
 	metadata.writeRaw("invocation", src)
-	metadata.writeRaw("mrosource", self.srcTable[pipestance.Node().name])
+	metadata.writeRaw("mrosource", postsrc)
 	metadata.write("versions", map[string]string{
-		"mario":     self.MarioVersion,
-		"pipelines": self.CodeVersion,
+		"mario":     GetVersion(),
+		"pipelines": GetGitTag(self.mroPath),
 	})
 	metadata.writeTime("timestamp")
 
 	// Create pipestance folder graph concurrently.
 	var wg sync.WaitGroup
-	pipestance.Node().mkdirs(&wg)
+	pipestance.getNode().mkdirs(&wg)
 	wg.Wait()
 
 	return pipestance, nil
 }
 
 // Reattaches to an existing pipestance.
-func (self *Runtime) Reattach(psid string, pipestancePath string) (*Pipestance, error) {
+func (self *Runtime) ReattachToPipestance(psid string, pipestancePath string) (*Pipestance, error) {
+	fname := "_invocation"
+
 	// Read in the existing _invocation file.
-	bytes, err := ioutil.ReadFile(path.Join(pipestancePath, "_invocation"))
+	data, err := ioutil.ReadFile(path.Join(pipestancePath, fname))
 	if err != nil {
 		return nil, err
 	}
 
 	// Instantiate the pipestance.
-	return self.instantiate(psid, string(bytes), pipestancePath)
+	_, pipestance, err := self.instantiatePipeline(string(data), fname, psid, pipestancePath)
+	return pipestance, err
+}
+
+// Instantiate a stagestance.
+func (self *Runtime) InvokeStage(src string, srcPath string, ssid string,
+	stagestancePath string) (*Stagestance, error) {
+	// Check if stagestance path already exists.
+	if _, err := os.Stat(stagestancePath); err == nil {
+		return nil, &StagestanceExistsError{ssid}
+	} else if err := os.MkdirAll(stagestancePath, 0755); err != nil {
+		return nil, err
+	}
+
+	// Parse the invocation source.
+	src = os.ExpandEnv(src)
+	_, ast, err := parseSource(src, srcPath, []string{self.mroPath}, true)
+	if err != nil {
+		return nil, err
+	}
+
+	// Create stagestance.
+	if ast.call == nil {
+		return nil, &MarioError{"NoCallError: cannot start a stage without a call statement."}
+	}
+	stagestance := NewStagestance(NewTopNode(self, "", stagestancePath), ast.call, ast.callables)
+	if stagestance == nil {
+		return nil, &MarioError{fmt.Sprintf("NotAStageError: '%s'", ast.call.id)}
+	}
+
+	// Create stagestance folder graph concurrently.
+	var wg sync.WaitGroup
+	stagestance.getNode().mkdirs(&wg)
+	wg.Wait()
+
+	return stagestance, nil
 }
 
 func (self *Runtime) GetSerialization(pipestancePath string) (interface{}, bool) {
@@ -1474,25 +1482,28 @@ func (self *Runtime) GetSerialization(pipestancePath string) (interface{}, bool)
 	return nil, false
 }
 
+/****************************************************************************
+ * Used Only for MARSOC
+ */
 func (self *Runtime) buildVal(param Param, val interface{}) string {
-	if param.IsFile() {
+	if param.getIsFile() {
 		return fmt.Sprintf("\"%s\"", val)
 	}
-	if param.Tname() == "path" {
+	if param.getTname() == "path" {
 		return fmt.Sprintf("\"%s\"", val)
 	}
-	if param.Tname() == "string" {
+	if param.getTname() == "string" {
 		return fmt.Sprintf("\"%s\"", val)
 	}
-	if param.Tname() == "float" {
+	if param.getTname() == "float" {
 		return fmt.Sprintf("%f", val)
 	}
-	if param.Tname() == "int" {
+	if param.getTname() == "int" {
 		if fval, ok := val.(float64); ok {
 			return fmt.Sprintf("%d", int(fval))
 		}
 	}
-	if param.Tname() == "bool" {
+	if param.getTname() == "bool" {
 		return fmt.Sprintf("%t", val)
 	}
 	return fmt.Sprintf("%v", val)
@@ -1500,9 +1511,9 @@ func (self *Runtime) buildVal(param Param, val interface{}) string {
 
 func (self *Runtime) BuildCallSource(pname string, args map[string]interface{}) string {
 	lines := []string{}
-	for _, param := range self.globalTable[pname].callables.table[pname].InParams().list {
+	for _, param := range self.pipelineTable[pname].getInParams().list {
 		valstr := ""
-		val, ok := args[param.Id()]
+		val, ok := args[param.getId()]
 		if !ok || val == nil {
 			valstr = "null"
 		} else if reflect.TypeOf(val).Kind() == reflect.Slice {
@@ -1516,7 +1527,7 @@ func (self *Runtime) BuildCallSource(pname string, args map[string]interface{}) 
 		} else {
 			valstr = self.buildVal(param, val)
 		}
-		lines = append(lines, fmt.Sprintf("    %s = %s,", param.Id(), valstr))
+		lines = append(lines, fmt.Sprintf("    %s = %s,", param.getId(), valstr))
 	}
-	return fmt.Sprintf("call %s(\n%s\n)", pname, strings.Join(lines, "\n"))
+	return fmt.Sprintf("@include \"%s.mro\"\n\ncall %s(\n%s\n)", strings.ToLower(pname), pname, strings.Join(lines, "\n"))
 }

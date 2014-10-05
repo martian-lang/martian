@@ -8,9 +8,6 @@ package core
 import (
 	"fmt"
 	"io/ioutil"
-	"os"
-	"path"
-	"path/filepath"
 	"regexp"
 	"strings"
 )
@@ -42,15 +39,12 @@ func printSourceMap(src string, locmap []FileLoc) {
 /*
  * Inject contents of included files, recursively.
  */
-func preprocess(src string, filename string, incFolder string) (string, []FileLoc, *PreprocessError) {
-	filebase := filepath.Base(filename)
-	filedir := filepath.Dir(filename)
-
+func preprocess(src string, fname string, incPaths []string) (string, []FileLoc, *PreprocessError) {
 	// Locmap tracks original filenames and line numbers and captures
 	// the source insertion mechanics.
 	locmap := make([]FileLoc, lineCount(src))
 	for i, _ := range locmap {
-		locmap[i] = FileLoc{filebase, i}
+		locmap[i] = FileLoc{fname, i}
 	}
 	insertOffset := 0
 
@@ -59,17 +53,23 @@ func preprocess(src string, filename string, incFolder string) (string, []FileLo
 	offsets := re.FindAllStringIndex(src, -1)
 	fileNotFoundError := &PreprocessError{[]string{}}
 	processedSrc := re.ReplaceAllStringFunc(src, func(match string) string {
-		// Get the source to be included.
+		// Get name of file to be included.
 		ifname := re.FindStringSubmatch(match)[1]
-		includeFilename := filepath.Join(filedir, ifname)
-		if _, err := os.Stat(includeFilename); os.IsNotExist(err) {
-			includeFilename = path.Join(incFolder, ifname)
+		if ifname == fname {
+			fileNotFoundError.files = append(fileNotFoundError.files, "Cannot include self.")
+			return ""
 		}
-		if _, err := os.Stat(includeFilename); os.IsNotExist(err) {
+
+		// Search incPaths for the file.
+		// If not found, add this file to error list.
+		ifpath, found := searchPaths(ifname, incPaths)
+		if !found {
 			fileNotFoundError.files = append(fileNotFoundError.files, ifname)
 			return ""
 		}
-		data, _ := ioutil.ReadFile(includeFilename)
+
+		// Open the file to be included.
+		data, _ := ioutil.ReadFile(ifpath)
 		includeSrc := string(data)
 
 		// Determine line number of src to insert included source.
@@ -77,7 +77,7 @@ func preprocess(src string, filename string, incFolder string) (string, []FileLo
 		offsets = offsets[1:] // shift()
 
 		// Recursively preprocess the included source.
-		processedIncludeSrc, processedIncludeLocmap, err := preprocess(includeSrc, includeFilename, incFolder)
+		processedIncludeSrc, processedIncludeLocmap, err := preprocess(includeSrc, ifname, incPaths)
 		if err != nil {
 			fileNotFoundError.files = append(fileNotFoundError.files, err.files...)
 		}
