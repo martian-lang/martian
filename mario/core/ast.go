@@ -72,6 +72,7 @@ type (
 		getLoc() int
 		getMode() string
 		getTname() string
+		getIsArray() bool
 		getId() string
 		getHelp() string
 		getIsFile() bool
@@ -233,6 +234,7 @@ func (s *CallStm) getLoc() int { return s.node.loc }
 func (s *InParam) getNode() *AstNode { return &s.node }
 func (s *InParam) getMode() string   { return "in" }
 func (s *InParam) getTname() string  { return s.tname }
+func (s *InParam) getIsArray() bool  { return s.isarray }
 func (s *InParam) getId() string     { return s.id }
 func (s *InParam) getHelp() string   { return s.help }
 func (s *InParam) getLoc() int       { return s.node.loc }
@@ -242,6 +244,7 @@ func (s *InParam) setIsFile(b bool)  { s.isfile = b }
 func (s *OutParam) getNode() *AstNode { return &s.node }
 func (s *OutParam) getMode() string   { return "out" }
 func (s *OutParam) getTname() string  { return s.tname }
+func (s *OutParam) getIsArray() bool  { return s.isarray }
 func (s *OutParam) getId() string     { return s.id }
 func (s *OutParam) getHelp() string   { return s.help }
 func (s *OutParam) getLoc() int       { return s.node.loc }

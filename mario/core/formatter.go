@@ -96,6 +96,12 @@ func paramFormat(param Param, modeWidth int, typeWidth int, idWidth int) string 
 	fsrc := fmt.Sprintf("%s%s%s%s %s", param.getNode().comments, INDENT,
 		param.getMode(), modePad, param.getTname())
 
+	// If type is annotated as array, add brackets and shrink padding.
+	if param.getIsArray() {
+		fsrc += "[]"
+		typePad = typePad[2:]
+	}
+
 	// Add id if not default.
 	if id != "" {
 		fsrc += fmt.Sprintf("%s %s", typePad, id)
@@ -117,7 +123,11 @@ func (self *Params) getWidths() (int, int, int) {
 	idWidth := 0
 	for _, param := range self.list {
 		modeWidth = max(modeWidth, len(param.getMode()))
-		typeWidth = max(typeWidth, len(param.getTname()))
+		if param.getIsArray() {
+			typeWidth = max(typeWidth, len(param.getTname())+2)
+		} else {
+			typeWidth = max(typeWidth, len(param.getTname()))
+		}
 		idWidth = max(idWidth, len(param.getId()))
 	}
 	return modeWidth, typeWidth, idWidth
