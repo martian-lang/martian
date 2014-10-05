@@ -1292,7 +1292,6 @@ func NewRuntimeWithCores(jobMode string, mroPath string, reqCores int, reqMem in
 	self.pipelineTable = map[string]*Pipeline{}
 
 	// Parse all MROs in MROPATH and cache pipelines by name.
-
 	fpaths, _ := filepath.Glob(self.MroPath + "/[^_]*.mro")
 	for _, fpath := range fpaths {
 		if data, err := ioutil.ReadFile(fpath); err == nil {
@@ -1463,6 +1462,9 @@ func (self *Runtime) GetSerialization(pipestancePath string) (interface{}, bool)
 	return nil, false
 }
 
+/****************************************************************************
+ * Used Only for MARSOC
+ */
 func (self *Runtime) buildVal(param Param, val interface{}) string {
 	if param.IsFile() {
 		return fmt.Sprintf("\"%s\"", val)
@@ -1507,5 +1509,5 @@ func (self *Runtime) BuildCallSource(pname string, args map[string]interface{}) 
 		}
 		lines = append(lines, fmt.Sprintf("    %s = %s,", param.Id(), valstr))
 	}
-	return fmt.Sprintf("call %s(\n%s\n)", pname, strings.Join(lines, "\n"))
+	return fmt.Sprintf("@include \"%s.mro\"\n\ncall %s(\n%s\n)", strings.ToLower(pname), pname, strings.Join(lines, "\n"))
 }
