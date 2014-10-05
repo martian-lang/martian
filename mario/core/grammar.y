@@ -74,6 +74,11 @@ file
             global := NewAst($1, $2)
             mmlex.(*mmLexInfo).global = global
         }}
+    | call_stm
+        {{
+            global := NewAst([]Dec{}, $1)
+            mmlex.(*mmLexInfo).global = global
+        }}
     ;
 
 dec_list

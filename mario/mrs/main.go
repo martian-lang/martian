@@ -8,6 +8,7 @@ package main
 import (
 	"fmt"
 	"github.com/docopt/docopt-go"
+	"io/ioutil"
 	"mario/core"
 	"os"
 	"path"
@@ -76,7 +77,9 @@ Options:
 	rt := core.NewRuntime(jobMode, mroPath, core.GetVersion(), profile)
 
 	// Invoke stagestance.
-	stagestance, err := rt.InvokeStageWithFile(invocationPath, ssid, stagestancePath)
+	data, err := ioutil.ReadFile(invocationPath)
+	core.DieIf(err)
+	stagestance, err := rt.InvokeStage(string(data), invocationPath, ssid, stagestancePath)
 	core.DieIf(err)
 
 	//=========================================================================

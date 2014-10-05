@@ -1267,6 +1267,7 @@ type Runtime struct {
 	MroPath         string
 	adaptersPath    string
 	pipelineTable   map[string]*Pipeline
+	PipelineNames   []string
 	MarioVersion    string
 	CodeVersion     string
 	jobMode         string
@@ -1290,6 +1291,7 @@ func NewRuntimeWithCores(jobMode string, mroPath string, reqCores int, reqMem in
 	self.scheduler = NewScheduler(reqCores, reqMem)
 	self.enableProfiling = enableProfiling
 	self.pipelineTable = map[string]*Pipeline{}
+	self.PipelineNames = []string{}
 
 	// Parse all MROs in MROPATH and cache pipelines by name.
 	fpaths, _ := filepath.Glob(self.MroPath + "/[^_]*.mro")
@@ -1298,22 +1300,12 @@ func NewRuntimeWithCores(jobMode string, mroPath string, reqCores int, reqMem in
 			if _, ast, err := parseSource(string(data), fpath, []string{self.MroPath}, true); err == nil {
 				for _, pipeline := range ast.Pipelines {
 					self.pipelineTable[pipeline.GetId()] = pipeline
+					self.PipelineNames = append(self.PipelineNames, pipeline.GetId())
 				}
 			}
 		}
 	}
 	return self
-}
-
-func getGitTag(p string) string {
-	oldCwd, _ := os.Getwd()
-	os.Chdir(p)
-	out, err := exec.Command("git", "describe", "--tags", "--dirty", "--always").Output()
-	os.Chdir(oldCwd)
-	if err == nil {
-		return strings.TrimSpace(string(out))
-	}
-	return "noversion"
 }
 
 // Compile an MRO file in cwd or self.mroPath.
@@ -1336,18 +1328,11 @@ func (self *Runtime) CompileAll(checkSrcPath bool) (int, error) {
 	return len(fpaths), nil
 }
 
-func (self *Runtime) GetPipelineNames() []string {
-	names := []string{}
-	for name, _ := range self.pipelineTable {
-		names = append(names, name)
-	}
-	return names
-}
-
 // Instantiate a pipestance object given a psid, MRO source, and a
 // pipestance path. This is the core (private) method called by the
 // public InvokeWithSource and Reattach methods.
-func (self *Runtime) instantiate(src string, srcPath string, psid string, pipestancePath string) (string, *Pipestance, error) {
+func (self *Runtime) instantiatePipeline(src string, srcPath string, psid string,
+	pipestancePath string) (string, *Pipestance, error) {
 	// Parse the invocation source.
 	postsrc, ast, err := parseSource(src, srcPath, []string{self.MroPath}, true)
 	if err != nil {
@@ -1355,20 +1340,16 @@ func (self *Runtime) instantiate(src string, srcPath string, psid string, pipest
 	}
 
 	// Instantiate the pipeline.
+	if ast.call == nil {
+		return "", nil, &MarioError{"NoCallError: cannot start a pipeline without a call statement."}
+	}
 	pipestance := NewPipestance(NewTopNode(self, psid, pipestancePath), ast.call, ast.callables)
 	return postsrc, pipestance, nil
 }
 
-func (self *Runtime) InvokeWithFile(srcPath string, psid string, pipestancePath string) (*Pipestance, error) {
-	if data, err := ioutil.ReadFile(srcPath); err != nil {
-		return nil, err
-	} else {
-		return self.InvokeWithSource(string(data), srcPath, psid, pipestancePath)
-	}
-}
-
 // Invokes a new pipestance.
-func (self *Runtime) InvokeWithSource(src string, srcPath string, psid string, pipestancePath string) (*Pipestance, error) {
+func (self *Runtime) InvokePipeline(src string, srcPath string, psid string,
+	pipestancePath string) (*Pipestance, error) {
 
 	// Error if pipestance exists, otherwise create.
 	if _, err := os.Stat(pipestancePath); err == nil {
@@ -1379,7 +1360,7 @@ func (self *Runtime) InvokeWithSource(src string, srcPath string, psid string, p
 
 	// Expand env vars in invocation source and instantiate.
 	src = os.ExpandEnv(src)
-	postsrc, pipestance, err := self.instantiate(src, srcPath, psid, pipestancePath)
+	postsrc, pipestance, err := self.instantiatePipeline(src, srcPath, psid, pipestancePath)
 	if err != nil {
 		// If instantiation failed, delete the pipestance folder.
 		os.RemoveAll(pipestancePath)
@@ -1404,8 +1385,24 @@ func (self *Runtime) InvokeWithSource(src string, srcPath string, psid string, p
 	return pipestance, nil
 }
 
+// Reattaches to an existing pipestance.
+func (self *Runtime) ReattachToPipestance(psid string, pipestancePath string) (*Pipestance, error) {
+	fname := "_invocation"
+
+	// Read in the existing _invocation file.
+	data, err := ioutil.ReadFile(path.Join(pipestancePath, fname))
+	if err != nil {
+		return nil, err
+	}
+
+	// Instantiate the pipestance.
+	_, pipestance, err := self.instantiatePipeline(string(data), fname, psid, pipestancePath)
+	return pipestance, err
+}
+
 // Instantiate a stagestance.
-func (self *Runtime) InvokeStageWithFile(srcPath string, ssid string, stagestancePath string) (*Stagestance, error) {
+func (self *Runtime) InvokeStage(src string, srcPath string, ssid string,
+	stagestancePath string) (*Stagestance, error) {
 	// Check if stagestance path already exists.
 	if _, err := os.Stat(stagestancePath); err == nil {
 		return nil, &StagestanceExistsError{ssid}
@@ -1414,17 +1411,16 @@ func (self *Runtime) InvokeStageWithFile(srcPath string, ssid string, stagestanc
 	}
 
 	// Parse the invocation source.
-	data, err := ioutil.ReadFile(srcPath)
-	if err != nil {
-		return nil, err
-	}
-	src := os.ExpandEnv(string(data))
+	src = os.ExpandEnv(src)
 	_, ast, err := parseSource(src, srcPath, []string{self.MroPath}, true)
 	if err != nil {
 		return nil, err
 	}
 
 	// Create stagestance.
+	if ast.call == nil {
+		return nil, &MarioError{"NoCallError: cannot start a stage without a call statement."}
+	}
 	stagestance := NewStagestance(NewTopNode(self, "", stagestancePath), ast.call, ast.callables)
 	if stagestance == nil {
 		return nil, &MarioError{fmt.Sprintf("NotAStageError: '%s'", ast.call.Id)}
@@ -1436,21 +1432,6 @@ func (self *Runtime) InvokeStageWithFile(srcPath string, ssid string, stagestanc
 	wg.Wait()
 
 	return stagestance, nil
-}
-
-// Reattaches to an existing pipestance.
-func (self *Runtime) Reattach(psid string, pipestancePath string) (*Pipestance, error) {
-	fname := "_invocation"
-
-	// Read in the existing _invocation file.
-	data, err := ioutil.ReadFile(path.Join(pipestancePath, fname))
-	if err != nil {
-		return nil, err
-	}
-
-	// Instantiate the pipestance.
-	_, pipestance, err := self.instantiate(string(data), fname, psid, pipestancePath)
-	return pipestance, err
 }
 
 func (self *Runtime) GetSerialization(pipestancePath string) (interface{}, bool) {

@@ -134,6 +134,9 @@ func (bindings *BindStms) check(global *Ast, callable Callable, params *Params) 
 		if _, ok := bindings.table[binding.id]; ok {
 			return global.err(binding, "DuplicateBinding: '%s' already bound in this call", binding.id)
 		}
+		// Building the bindings table could also happen in the grammar rules,
+		// but then we lose the ability to detect duplicate parameters as we're
+		// doing right above this comment. So leave this here.
 		bindings.table[binding.id] = binding
 
 		// Make sure the bound-to id is a declared parameter of the callable.
@@ -283,9 +286,12 @@ func (global *Ast) check(incPaths []string, checkSrcPath bool) error {
 		}
 	}
 
-	// If call statement present, check its bindings.
+	// If call statement present, check the call and its bindings.
 	if global.call != nil {
-		callable := global.callables.table[global.call.Id]
+		callable, ok := global.callables.table[global.call.Id]
+		if !ok {
+			return global.err(global.call, "ScopeNameError: '%s' is not defined in this scope", global.call.Id)
+		}
 		if err := global.call.Bindings.check(global, callable, callable.InParams()); err != nil {
 			return err
 		}

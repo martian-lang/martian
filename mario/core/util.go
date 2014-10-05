@@ -9,7 +9,9 @@ import (
 	"fmt"
 	"github.com/10XDev/osext"
 	"os"
+	"os/exec"
 	"path"
+	"strings"
 	"time"
 )
 
@@ -55,6 +57,17 @@ func cartesianProduct(valueSets []interface{}) []interface{} {
 		perms = newPerms
 	}
 	return perms
+}
+
+func getGitTag(dir string) string {
+	oldCwd, _ := os.Getwd()
+	os.Chdir(dir)
+	out, err := exec.Command("git", "describe", "--tags", "--dirty", "--always").Output()
+	os.Chdir(oldCwd)
+	if err == nil {
+		return strings.TrimSpace(string(out))
+	}
+	return "noversion"
 }
 
 const TIMEFMT = "2006-01-02 15:04:05"

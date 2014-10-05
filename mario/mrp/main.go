@@ -9,6 +9,7 @@ import (
 	"fmt"
 	"github.com/docopt/docopt-go"
 	"github.com/dustin/go-humanize"
+	"io/ioutil"
 	"mario/core"
 	"os"
 	"path"
@@ -186,11 +187,13 @@ Options:
 	//=========================================================================
 	// Invoke pipestance or Reattach if exists.
 	//=========================================================================
-	pipestance, err := rt.InvokeWithFile(invocationPath, psid, pipestancePath)
+	data, err := ioutil.ReadFile(invocationPath)
+	core.DieIf(err)
+	pipestance, err := rt.InvokePipeline(string(data), invocationPath, psid, pipestancePath)
 	if err != nil {
 		if _, ok := err.(*core.PipestanceExistsError); ok {
 			// If it already exists, try to reattach to it.
-			pipestance, err = rt.Reattach(psid, pipestancePath)
+			pipestance, err = rt.ReattachToPipestance(psid, pipestancePath)
 			core.DieIf(err)
 		}
 		core.DieIf(err)
