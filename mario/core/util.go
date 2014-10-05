@@ -29,6 +29,16 @@ func idemMkdir(p string) {
 	os.Mkdir(p, 0755)
 }
 
+func searchPaths(fname string, searchPaths []string) (string, bool) {
+	for _, searchPath := range searchPaths {
+		fpath := path.Join(searchPath, fname)
+		if _, err := os.Stat(fpath); !os.IsNotExist(err) {
+			return fpath, true
+		}
+	}
+	return "", false
+}
+
 func cartesianProduct(valueSets []interface{}) []interface{} {
 	perms := []interface{}{[]interface{}{}}
 	for _, valueSet := range valueSets {

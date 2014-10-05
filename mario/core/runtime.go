@@ -1266,9 +1266,7 @@ func NewTopNode(rt *Runtime, psid string, p string) *TopNode {
 type Runtime struct {
 	MroPath         string
 	adaptersPath    string
-	globalTable     map[string]*Ast
-	srcTable        map[string]string
-	typeTable       map[string]string
+	pipelineTable   map[string]*Pipeline
 	MarioVersion    string
 	CodeVersion     string
 	jobMode         string
@@ -1286,14 +1284,24 @@ func NewRuntimeWithCores(jobMode string, mroPath string, reqCores int, reqMem in
 	self := &Runtime{}
 	self.MroPath = mroPath
 	self.adaptersPath = RelPath(path.Join("..", "adapters"))
-	self.globalTable = map[string]*Ast{}
-	self.srcTable = map[string]string{}
-	self.typeTable = map[string]string{}
 	self.MarioVersion = marioVersion
 	self.CodeVersion = getGitTag(mroPath)
 	self.jobMode = jobMode
 	self.scheduler = NewScheduler(reqCores, reqMem)
 	self.enableProfiling = enableProfiling
+	self.pipelineTable = map[string]*Pipeline{}
+
+	// Parse all MROs in MROPATH and cache pipelines by name.
+	fpaths, _ := filepath.Glob(self.MroPath + "/[^_]*.mro")
+	for _, fpath := range fpaths {
+		if data, err := ioutil.ReadFile(fpath); err == nil {
+			if _, ast, err := parseSource(string(data), fpath, []string{self.MroPath}, true); err == nil {
+				for _, pipeline := range ast.Pipelines {
+					self.pipelineTable[pipeline.GetId()] = pipeline
+				}
+			}
+		}
+	}
 	return self
 }
 
@@ -1308,127 +1316,69 @@ func getGitTag(p string) string {
 	return "noversion"
 }
 
+// Compile an MRO file in cwd or self.mroPath.
+func (self *Runtime) Compile(fpath string, checkSrcPath bool) (string, *Ast, error) {
+	if data, err := ioutil.ReadFile(fpath); err != nil {
+		return "", nil, err
+	} else {
+		return parseSource(string(data), fpath, []string{self.MroPath}, checkSrcPath)
+	}
+}
+
+// Compile all the MRO files in self.mroPath.
+func (self *Runtime) CompileAll(checkSrcPath bool) (int, error) {
+	fpaths, _ := filepath.Glob(self.MroPath + "/[^_]*.mro")
+	for _, fpath := range fpaths {
+		if _, _, err := self.Compile(fpath, checkSrcPath); err != nil {
+			return 0, err
+		}
+	}
+	return len(fpaths), nil
+}
+
 func (self *Runtime) GetPipelineNames() []string {
 	names := []string{}
-	for name, _ := range self.globalTable {
+	for name, _ := range self.pipelineTable {
 		names = append(names, name)
 	}
 	return names
 }
 
-func (self *Runtime) compileCore(fname string, checkSrcPath bool) (*Ast, error) {
-	processedSrc, global, err := parseFile(fname, self.MroPath, checkSrcPath)
-	if err != nil {
-		return nil, err
-	}
-	for _, pipeline := range global.Pipelines {
-		self.globalTable[pipeline.Id] = global
-		self.srcTable[pipeline.Id] = processedSrc
-	}
-	return global, nil
-}
-
-// Compile an MRO file in cwd or self.mroPath.
-func (self *Runtime) Compile(fname string, checkSrcPath bool) (*Ast, error) {
-	// Look for file in cwd, then in MROPATH.
-	if _, err := os.Stat(fname); os.IsNotExist(err) {
-		fname = path.Join(self.MroPath, fname)
-	}
-	return self.compileCore(fname, checkSrcPath)
-}
-
-// Compile all the MRO files in self.mroPath.
-func (self *Runtime) CompileAll(checkSrcPath bool) (int, error) {
-	paths, err := filepath.Glob(self.MroPath + "/[^_]*.mro")
-	if err != nil {
-		return 0, err
-	}
-	for _, p := range paths {
-		_, err := self.compileCore(p, checkSrcPath)
-		if err != nil {
-			return 0, err
-		}
-	}
-	return len(paths), nil
-}
-
 // Instantiate a pipestance object given a psid, MRO source, and a
 // pipestance path. This is the core (private) method called by the
 // public InvokeWithSource and Reattach methods.
-func (self *Runtime) instantiate(psid string, src string, pipestancePath string) (*Pipestance, error) {
-	// Parse the invocation call.
-	callGlobal, err := parseCall(src)
+func (self *Runtime) instantiate(src string, srcPath string, psid string, pipestancePath string) (string, *Pipestance, error) {
+	// Parse the invocation source.
+	postsrc, ast, err := parseSource(src, srcPath, []string{self.MroPath}, true)
 	if err != nil {
-		return nil, err
-	}
-	callStm := callGlobal.call
-
-	// Get the global scope that defines the called pipeline.
-	global, ok := self.globalTable[callStm.Id]
-	if !ok {
-		return nil, &MarioError{fmt.Sprintf("PipelineNotFoundError: '%s'", callStm.Id)}
-	}
-
-	// Get the actual pipeline definition and check call bindings.
-	pipeline := global.callables.table[callStm.Id].(*Pipeline)
-	if err := callStm.Bindings.check(global, pipeline, pipeline.InParams()); err != nil {
-		return nil, err
+		return "", nil, err
 	}
 
 	// Instantiate the pipeline.
-	pipestance := NewPipestance(NewTopNode(self, psid, pipestancePath), callStm, global.callables)
-	return pipestance, nil
+	pipestance := NewPipestance(NewTopNode(self, psid, pipestancePath), ast.call, ast.callables)
+	return postsrc, pipestance, nil
 }
 
-// Instantiate a stagestance.
-func (self *Runtime) InstantiateStage(src string, stagestancePath string) (*Stagestance, error) {
-	src = os.ExpandEnv(src)
-
-	// Parse the invocation call.
-	callGlobal, err := parseCall(src)
-	if err != nil {
+func (self *Runtime) InvokeWithFile(srcPath string, psid string, pipestancePath string) (*Pipestance, error) {
+	if data, err := ioutil.ReadFile(srcPath); err != nil {
 		return nil, err
+	} else {
+		return self.InvokeWithSource(string(data), srcPath, psid, pipestancePath)
 	}
-	callStm := callGlobal.call
-
-	// Search through all globals for the named stage.
-	for _, global := range self.globalTable {
-		if stage, ok := global.callables.table[callStm.Id]; ok {
-			err := callStm.Bindings.check(global, nil, stage.InParams())
-			DieIf(err)
-
-			stagestance := NewStagestance(NewTopNode(self, "", stagestancePath), callStm, global.callables)
-			if stagestance == nil {
-				return nil, &MarioError{fmt.Sprintf("NotAStageError: '%s'", callStm.Id)}
-			}
-
-			// Create stagestance folder graph concurrently.
-			var wg sync.WaitGroup
-			stagestance.Node().mkdirs(&wg)
-			wg.Wait()
-
-			return stagestance, nil
-		}
-	}
-	return nil, &MarioError{fmt.Sprintf("StageNotFoundError: '%s'", callStm.Id)}
 }
 
 // Invokes a new pipestance.
-func (self *Runtime) InvokeWithSource(psid string, src string, pipestancePath string) (*Pipestance, error) {
-	src = os.ExpandEnv(src)
+func (self *Runtime) InvokeWithSource(src string, srcPath string, psid string, pipestancePath string) (*Pipestance, error) {
 
-	// Check if pipestance path already exists.
+	// Error if pipestance exists, otherwise create.
 	if _, err := os.Stat(pipestancePath); err == nil {
 		return nil, &PipestanceExistsError{psid}
-	}
-
-	// Create the pipestance path.
-	if err := os.MkdirAll(pipestancePath, 0755); err != nil {
+	} else if err := os.MkdirAll(pipestancePath, 0755); err != nil {
 		return nil, err
 	}
 
-	// Instantiate the pipestance.
-	pipestance, err := self.instantiate(psid, src, pipestancePath)
+	// Expand env vars in invocation source and instantiate.
+	postsrc, pipestance, err := self.instantiate(src, srcPath, psid, pipestancePath)
 	if err != nil {
 		// If instantiation failed, delete the pipestance folder.
 		os.RemoveAll(pipestancePath)
@@ -1438,7 +1388,7 @@ func (self *Runtime) InvokeWithSource(psid string, src string, pipestancePath st
 	// Write top-level metadata files.
 	metadata := NewMetadata("ID."+psid, pipestancePath)
 	metadata.writeRaw("invocation", src)
-	metadata.writeRaw("mrosource", self.srcTable[pipestance.Node().name])
+	metadata.writeRaw("mrosource", postsrc)
 	metadata.write("versions", map[string]string{
 		"mario":     self.MarioVersion,
 		"pipelines": self.CodeVersion,
@@ -1453,16 +1403,63 @@ func (self *Runtime) InvokeWithSource(psid string, src string, pipestancePath st
 	return pipestance, nil
 }
 
+// Instantiate a stagestance.
+func (self *Runtime) InvokeStageWithFile(srcPath string, ssid string, stagestancePath string) (*Stagestance, error) {
+	// Check if stagestance path already exists.
+	if _, err := os.Stat(stagestancePath); err == nil {
+		return nil, &StagestanceExistsError{ssid}
+	} else if err := os.MkdirAll(stagestancePath, 0755); err != nil {
+		return nil, err
+	}
+
+	// Parse the invocation source.
+	data, err := ioutil.ReadFile(srcPath)
+	if err != nil {
+		return nil, err
+	}
+	_, ast, err := parseSource(string(data), srcPath, []string{self.MroPath}, true)
+	if err != nil {
+		return nil, err
+	}
+
+	// Search through all globals for the named stage.
+	stage, ok := ast.callables.table[ast.call.Id]
+	if !ok {
+		return nil, &MarioError{fmt.Sprintf("StageNotFoundError: '%s'", ast.call.Id)}
+	}
+
+	// Check bindings.
+	if err := ast.call.Bindings.check(ast, nil, stage.InParams()); err != nil {
+		return nil, err
+	}
+
+	// Create stagestance.
+	stagestance := NewStagestance(NewTopNode(self, "", stagestancePath), ast.call, ast.callables)
+	if stagestance == nil {
+		return nil, &MarioError{fmt.Sprintf("NotAStageError: '%s'", ast.call.Id)}
+	}
+
+	// Create stagestance folder graph concurrently.
+	var wg sync.WaitGroup
+	stagestance.Node().mkdirs(&wg)
+	wg.Wait()
+
+	return stagestance, nil
+}
+
 // Reattaches to an existing pipestance.
 func (self *Runtime) Reattach(psid string, pipestancePath string) (*Pipestance, error) {
+	fname := "_invocation"
+
 	// Read in the existing _invocation file.
-	bytes, err := ioutil.ReadFile(path.Join(pipestancePath, "_invocation"))
+	data, err := ioutil.ReadFile(path.Join(pipestancePath, fname))
 	if err != nil {
 		return nil, err
 	}
 
 	// Instantiate the pipestance.
-	return self.instantiate(psid, string(bytes), pipestancePath)
+	_, pipestance, err := self.instantiate(string(data), fname, psid, pipestancePath)
+	return pipestance, err
 }
 
 func (self *Runtime) GetSerialization(pipestancePath string) (interface{}, bool) {
@@ -1500,7 +1497,7 @@ func (self *Runtime) buildVal(param Param, val interface{}) string {
 
 func (self *Runtime) BuildCallSource(pname string, args map[string]interface{}) string {
 	lines := []string{}
-	for _, param := range self.globalTable[pname].callables.table[pname].InParams().list {
+	for _, param := range self.pipelineTable[pname].InParams().list {
 		valstr := ""
 		val, ok := args[param.Id()]
 		if !ok || val == nil {

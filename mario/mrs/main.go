@@ -8,7 +8,6 @@ package main
 import (
 	"fmt"
 	"github.com/docopt/docopt-go"
-	"io/ioutil"
 	"mario/core"
 	"os"
 	"path"
@@ -68,28 +67,16 @@ Options:
 	// Setup invocation-specific values.
 	invocationPath := opts["<call.mro>"].(string)
 	ssid := opts["<stagestance_name>"].(string)
-	stagestancePath := path.Join(cwd, ssid)
-	fmt.Println(stagestancePath)
+	stagestancePath := cwd
 	stepSecs := 1
 
 	//=========================================================================
 	// Configure Mario runtime.
 	//=========================================================================
 	rt := core.NewRuntime(jobMode, mroPath, core.GetVersion(), profile)
-	_, err := rt.CompileAll(true)
-	core.DieIf(err)
-
-	// Create the stagestance path.
-	if _, err := os.Stat(stagestancePath); err == nil {
-		core.DieIf(&core.MarioError{fmt.Sprintf("StagestanceExistsError: '%s'",
-			stagestancePath)})
-	}
-	err = os.MkdirAll(stagestancePath, 0700)
-	core.DieIf(err)
 
 	// Invoke stagestance.
-	callSrc, _ := ioutil.ReadFile(invocationPath)
-	stagestance, err := rt.InstantiateStage(string(callSrc), stagestancePath)
+	stagestance, err := rt.InvokeStageWithFile(invocationPath, ssid, stagestancePath)
 	core.DieIf(err)
 
 	//=========================================================================

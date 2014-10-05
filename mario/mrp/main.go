@@ -9,7 +9,6 @@ import (
 	"fmt"
 	"github.com/docopt/docopt-go"
 	"github.com/dustin/go-humanize"
-	"io/ioutil"
 	"mario/core"
 	"os"
 	"path"
@@ -183,15 +182,11 @@ Options:
 	//=========================================================================
 	rt := core.NewRuntimeWithCores(jobMode, mroPath, reqCores, reqMem,
 		core.GetVersion(), profile)
-	_, err := rt.CompileAll(true)
-	core.DieIf(err)
 
 	//=========================================================================
 	// Invoke pipestance or Reattach if exists.
 	//=========================================================================
-	callSrc, err := ioutil.ReadFile(invocationPath)
-	core.DieIf(err)
-	pipestance, err := rt.InvokeWithSource(psid, string(callSrc), pipestancePath)
+	pipestance, err := rt.InvokeWithFile(invocationPath, psid, pipestancePath)
 	if err != nil {
 		if _, ok := err.(*core.PipestanceExistsError); ok {
 			// If it already exists, try to reattach to it.

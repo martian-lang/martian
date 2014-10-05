@@ -33,6 +33,15 @@ func (self *PipestanceExistsError) Error() string {
 	return fmt.Sprintf("PipestanceExistsError: '%s'.", self.psid)
 }
 
+// StagestanceExistsError
+type StagestanceExistsError struct {
+	ssid string
+}
+
+func (self *StagestanceExistsError) Error() string {
+	return fmt.Sprintf("StagestanceExistsError: '%s'.", self.ssid)
+}
+
 // PreprocessError
 type PreprocessError struct {
 	files []string

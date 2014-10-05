@@ -52,7 +52,7 @@ Options:
 	} else {
 		// Compile just the specified MRO files.
 		for _, fname := range opts["<file.mro>"].([]string) {
-			_, err := rt.Compile(fname, checkSrcPath)
+			_, _, err := rt.Compile(path.Join(cwd, fname), checkSrcPath)
 			core.DieIf(err)
 			count++
 		}

@@ -7,9 +7,8 @@ package core
 
 import (
 	"fmt"
-	"io/ioutil"
 	"os"
-	"path"
+	"path/filepath"
 	"strings"
 )
 
@@ -165,7 +164,7 @@ func (bindings *BindStms) check(global *Ast, pipeline *Pipeline, params *Params)
 	return nil
 }
 
-func (global *Ast) check(incFolder string, checkSrcPath bool) error {
+func (global *Ast) check(incPaths []string, checkSrcPath bool) error {
 	// Build type table, starting with builtins. Duplicates allowed.
 	types := []string{"string", "int", "float", "bool", "path", "file", "map"}
 	for _, filetype := range global.filetypes {
@@ -193,9 +192,7 @@ func (global *Ast) check(incFolder string, checkSrcPath bool) error {
 		}
 		if checkSrcPath {
 			// Check existence of src path.
-			srcPath := path.Join(incFolder, stage.src.path)
-			_, err := os.Stat(srcPath)
-			if os.IsNotExist(err) {
+			if srcPath, found := searchPaths(stage.src.path, incPaths); !found {
 				return global.err(stage, "SourcePathError: stage source path does not exist '%s'", srcPath)
 			}
 		}
@@ -287,45 +284,28 @@ func (global *Ast) check(incFolder string, checkSrcPath bool) error {
 //
 // Parser interface, called by runtime.
 //
-func parseString(src string, locmap []FileLoc, incFolder string, checkSrc bool) (*Ast, error) {
-	// Parse the source into an AST and attach the locmap.
-	global, err := yaccParse(src)
-	if err != nil { // err is an mmLexInfo struct
-		return nil, &ParseError{err.token, locmap[err.loc].fname, locmap[err.loc].loc}
-	}
-	global.locmap = locmap
+func parseSource(src string, srcPath string, incPaths []string, checkSrc bool) (string, *Ast, error) {
+	// Expand env vars in top-level invocation source only.
+	src = os.ExpandEnv(src)
 
-	// Run semantic checks.
-	if err := global.check(incFolder, checkSrc); err != nil {
-		return nil, err
-	}
-	return global, nil
-}
-
-func parseFile(filename string, incFolder string, checkSrc bool) (string, *Ast, error) {
-	// Read in the file.
-	data, err := ioutil.ReadFile(filename)
+	// Preprocess: generate new source and a locmap.
+	postsrc, locmap, err := preprocess(src, filepath.Base(srcPath),
+		append([]string{filepath.Dir(srcPath)}, incPaths...))
 	if err != nil {
 		return "", nil, err
 	}
-
-	// Preprocess, generating new source and a locmap.
-	postsrc, locmap, perr := preprocess(string(data), filename, incFolder)
-	if perr != nil {
-		return "", nil, perr
-	}
 	//printSourceMap(postsrc, locmap)
 
-	// Go ahead and parse the full source.
-	global, err := parseString(postsrc, locmap, incFolder, checkSrc)
-	return postsrc, global, err
-}
-
-func parseCall(src string) (*Ast, error) {
-	global, err := yaccParse(src)
-	if err != nil {
-		return nil, &ParseError{err.token, "[invocation]", err.loc}
+	// Parse the source into an AST and attach the locmap.
+	ast, perr := yaccParse(postsrc)
+	if perr != nil { // err is an mmLexInfo struct
+		return "", nil, &ParseError{perr.token, locmap[perr.loc].fname, locmap[perr.loc].loc}
 	}
+	ast.locmap = locmap
 
-	return global, nil
+	// Run semantic checks.
+	if err := ast.check(incPaths, checkSrc); err != nil {
+		return "", nil, err
+	}
+	return postsrc, ast, nil
 }
