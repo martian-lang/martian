@@ -1292,6 +1292,7 @@ func NewRuntimeWithCores(jobMode string, mroPath string, reqCores int, reqMem in
 	self.pipelineTable = map[string]*Pipeline{}
 
 	// Parse all MROs in MROPATH and cache pipelines by name.
+
 	fpaths, _ := filepath.Glob(self.MroPath + "/[^_]*.mro")
 	for _, fpath := range fpaths {
 		if data, err := ioutil.ReadFile(fpath); err == nil {
@@ -1378,6 +1379,7 @@ func (self *Runtime) InvokeWithSource(src string, srcPath string, psid string, p
 	}
 
 	// Expand env vars in invocation source and instantiate.
+	src = os.ExpandEnv(src)
 	postsrc, pipestance, err := self.instantiate(src, srcPath, psid, pipestancePath)
 	if err != nil {
 		// If instantiation failed, delete the pipestance folder.
@@ -1417,19 +1419,9 @@ func (self *Runtime) InvokeStageWithFile(srcPath string, ssid string, stagestanc
 	if err != nil {
 		return nil, err
 	}
-	_, ast, err := parseSource(string(data), srcPath, []string{self.MroPath}, true)
+	src := os.ExpandEnv(string(data))
+	_, ast, err := parseSource(src, srcPath, []string{self.MroPath}, true)
 	if err != nil {
-		return nil, err
-	}
-
-	// Search through all globals for the named stage.
-	stage, ok := ast.callables.table[ast.call.Id]
-	if !ok {
-		return nil, &MarioError{fmt.Sprintf("StageNotFoundError: '%s'", ast.call.Id)}
-	}
-
-	// Check bindings.
-	if err := ast.call.Bindings.check(ast, nil, stage.InParams()); err != nil {
 		return nil, err
 	}
 

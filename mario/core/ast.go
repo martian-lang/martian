@@ -131,7 +131,7 @@ type (
 		exp()
 		Node() *AstNode
 		GetKind() string
-		ResolveType(*Ast, *Pipeline) ([]string, error)
+		ResolveType(*Ast, Callable) ([]string, error)
 		format() string
 	}
 
@@ -159,6 +159,32 @@ type (
 		call          *CallStm
 	}
 )
+
+func NewAst(decs []Dec, call *CallStm) *Ast {
+	self := &Ast{}
+	self.locmap = []FileLoc{}
+	self.typeTable = map[string]bool{}
+	self.filetypes = []*Filetype{}
+	self.FiletypeTable = map[string]bool{}
+	self.Stages = []*Stage{}
+	self.Pipelines = []*Pipeline{}
+	self.callables = &Callables{[]Callable{}, map[string]Callable{}}
+	self.call = call
+
+	for _, dec := range decs {
+		switch dec := dec.(type) {
+		case *Filetype:
+			self.filetypes = append(self.filetypes, dec)
+		case *Stage:
+			self.Stages = append(self.Stages, dec)
+			self.callables.list = append(self.callables.list, dec)
+		case *Pipeline:
+			self.Pipelines = append(self.Pipelines, dec)
+			self.callables.list = append(self.callables.list, dec)
+		}
+	}
+	return self
+}
 
 func NewAstNode(lval *mmSymType) AstNode {
 	// Process the accumulated comments/whitespace.

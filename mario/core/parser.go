@@ -7,7 +7,6 @@ package core
 
 import (
 	"fmt"
-	"os"
 	"path/filepath"
 	"strings"
 )
@@ -51,7 +50,7 @@ func (params *Params) check(global *Ast) error {
 	return nil
 }
 
-func (exp *ValExp) ResolveType(global *Ast, pipeline *Pipeline) ([]string, error) {
+func (exp *ValExp) ResolveType(global *Ast, callable Callable) ([]string, error) {
 	switch exp.GetKind() {
 
 	// Handle scalar types.
@@ -84,35 +83,40 @@ func (exp *ValExp) ResolveType(global *Ast, pipeline *Pipeline) ([]string, error
 	return []string{"unknown"}, nil
 }
 
-func (exp *RefExp) ResolveType(global *Ast, pipeline *Pipeline) ([]string, error) {
-	if pipeline == nil {
-		global.err(exp, "ReferenceError: this binding cannot be resolved outside of a pipeline.")
+func (exp *RefExp) ResolveType(global *Ast, callable Callable) ([]string, error) {
+	if callable == nil {
+		global.err(exp, "ReferenceError: this binding cannot be resolved outside of a stage or pipeline.")
 	}
 
 	switch exp.GetKind() {
 
 	// Param: self.myparam
 	case "self":
-		param, ok := pipeline.inParams.table[exp.Id]
+		param, ok := callable.InParams().table[exp.Id]
 		if !ok {
-			return []string{""}, global.err(exp, "ScopeNameError: '%s' is not an input parameter of pipeline '%s'", exp.Id, pipeline.Id)
+			return []string{""}, global.err(exp, "ScopeNameError: '%s' is not an input parameter of pipeline '%s'", exp.Id, callable.GetId())
 		}
 		return []string{param.Tname()}, nil
 
 	// Call: STAGE.myoutparam or STAGE
 	case "call":
 		// Check referenced callable is acutally called in this scope.
-		callable, ok := pipeline.callables.table[exp.Id]
+		pipeline, ok := callable.(*Pipeline)
 		if !ok {
-			return []string{""}, global.err(exp, "ScopeNameError: '%s' is not called in pipeline '%s'", exp.Id, pipeline.Id)
-		}
+			return []string{""}, global.err(exp, "ScopeNameError: '%s' is not called in pipeline '%s'", exp.Id, callable.GetId())
+		} else {
+			callable, ok := pipeline.callables.table[exp.Id]
+			if !ok {
+				return []string{""}, global.err(exp, "ScopeNameError: '%s' is not called in pipeline '%s'", exp.Id, pipeline.Id)
+			}
+			// Check referenced output is actually an output of the callable.
+			param, ok := callable.OutParams().table[exp.outputId]
+			if !ok {
+				return []string{""}, global.err(exp, "NoSuchOutputError: '%s' is not an output parameter of '%s'", exp.outputId, callable.GetId())
+			}
 
-		// Check referenced output is actually an output of the callable.
-		param, ok := callable.OutParams().table[exp.outputId]
-		if !ok {
-			return []string{""}, global.err(exp, "NoSuchOutputError: '%s' is not an output parameter of '%s'", exp.outputId, callable.GetId())
+			return []string{param.Tname()}, nil
 		}
-		return []string{param.Tname()}, nil
 	}
 	return []string{"call"}, nil
 }
@@ -123,7 +127,7 @@ func checkTypeMatch(paramType string, valueType string) bool {
 		(paramType == "path" && valueType == "string"))
 }
 
-func (bindings *BindStms) check(global *Ast, pipeline *Pipeline, params *Params) error {
+func (bindings *BindStms) check(global *Ast, callable Callable, params *Params) error {
 	// Check the bindings
 	for _, binding := range bindings.List {
 		// Collect bindings by id so we can check that all params are bound.
@@ -139,7 +143,7 @@ func (bindings *BindStms) check(global *Ast, pipeline *Pipeline, params *Params)
 		}
 
 		// Typecheck the binding and cache the type.
-		valueTypes, err := binding.Exp.ResolveType(global, pipeline)
+		valueTypes, err := binding.Exp.ResolveType(global, callable)
 		if err != nil {
 			return err
 		}
@@ -278,6 +282,15 @@ func (global *Ast) check(incPaths []string, checkSrcPath bool) error {
 			return err
 		}
 	}
+
+	// If call statement present, check its bindings.
+	if global.call != nil {
+		callable := global.callables.table[global.call.Id]
+		if err := global.call.Bindings.check(global, callable, callable.InParams()); err != nil {
+			return err
+		}
+	}
+
 	return nil
 }
 
@@ -285,9 +298,6 @@ func (global *Ast) check(incPaths []string, checkSrcPath bool) error {
 // Parser interface, called by runtime.
 //
 func parseSource(src string, srcPath string, incPaths []string, checkSrc bool) (string, *Ast, error) {
-	// Expand env vars in top-level invocation source only.
-	src = os.ExpandEnv(src)
-
 	// Preprocess: generate new source and a locmap.
 	postsrc, locmap, err := preprocess(src, filepath.Base(srcPath),
 		append([]string{filepath.Dir(srcPath)}, incPaths...))

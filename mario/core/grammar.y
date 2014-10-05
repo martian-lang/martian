@@ -66,25 +66,13 @@ func unquote(qs string) string {
 file
     : dec_list
         {{ 
-            global := Ast{[]FileLoc{}, map[string]bool{}, []*Filetype{}, map[string]bool{}, []*Stage{}, []*Pipeline{}, &Callables{[]Callable{}, map[string]Callable{}}, nil}
-            for _, dec := range $1 {
-                switch dec := dec.(type) {
-                case *Filetype:
-                    global.filetypes      = append(global.filetypes, dec)
-                case *Stage:
-                    global.Stages         = append(global.Stages, dec)
-                    global.callables.list = append(global.callables.list, dec)
-                case *Pipeline:
-                    global.Pipelines      = append(global.Pipelines, dec)
-                    global.callables.list = append(global.callables.list, dec)
-                }
-            }
-            mmlex.(*mmLexInfo).global = &global
+            global := NewAst($1, nil)
+            mmlex.(*mmLexInfo).global = global
         }}
-    | call_stm
+    | dec_list call_stm
         {{ 
-            global := Ast{[]FileLoc{}, map[string]bool{}, []*Filetype{}, map[string]bool{}, []*Stage{}, []*Pipeline{}, &Callables{[]Callable{}, map[string]Callable{}}, $1} 
-            mmlex.(*mmLexInfo).global = &global
+            global := NewAst($1, $2)
+            mmlex.(*mmLexInfo).global = global
         }}
     ;
 

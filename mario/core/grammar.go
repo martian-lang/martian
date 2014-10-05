@@ -141,7 +141,7 @@ const mmEofCode = 1
 const mmErrCode = 2
 const mmMaxDepth = 200
 
-//line core/grammar.y:285
+//line core/grammar.y:273
 
 //line yacctab:1
 var mmExca = []int{
@@ -160,48 +160,48 @@ const mmLast = 184
 
 var mmAct = []int{
 
-	23, 22, 28, 48, 87, 39, 3, 86, 83, 27,
-	82, 70, 37, 19, 77, 91, 91, 89, 117, 108,
-	50, 75, 103, 32, 51, 102, 69, 34, 91, 79,
-	36, 30, 35, 36, 62, 32, 88, 90, 90, 61,
-	56, 54, 55, 139, 67, 68, 63, 50, 65, 124,
-	90, 51, 52, 53, 76, 57, 58, 59, 49, 24,
-	65, 62, 24, 47, 24, 31, 61, 56, 54, 55,
-	112, 105, 104, 92, 94, 26, 46, 96, 17, 52,
-	53, 24, 57, 58, 59, 45, 40, 41, 43, 42,
-	50, 44, 15, 109, 51, 38, 66, 11, 14, 13,
-	71, 116, 114, 138, 62, 118, 10, 29, 38, 61,
-	56, 54, 55, 5, 38, 123, 29, 125, 29, 128,
-	127, 121, 52, 53, 107, 57, 58, 59, 5, 132,
-	6, 7, 8, 5, 135, 133, 137, 95, 32, 36,
-	99, 136, 6, 7, 8, 110, 120, 100, 119, 115,
-	84, 134, 131, 97, 81, 80, 98, 18, 73, 25,
-	21, 20, 16, 93, 33, 129, 122, 111, 72, 130,
-	101, 4, 1, 126, 9, 113, 78, 74, 60, 64,
-	106, 2, 85, 12,
+	28, 56, 24, 23, 75, 7, 27, 42, 35, 33,
+	74, 79, 95, 94, 54, 17, 41, 36, 37, 39,
+	38, 125, 40, 26, 89, 79, 32, 77, 45, 32,
+	58, 87, 118, 78, 59, 112, 79, 47, 139, 91,
+	111, 49, 98, 51, 70, 71, 76, 78, 45, 69,
+	64, 62, 63, 49, 29, 53, 44, 80, 78, 29,
+	88, 29, 60, 61, 58, 65, 66, 67, 59, 114,
+	15, 113, 29, 102, 52, 57, 82, 22, 70, 14,
+	21, 99, 13, 69, 64, 62, 63, 105, 12, 104,
+	34, 50, 55, 11, 25, 34, 60, 61, 138, 65,
+	66, 67, 25, 115, 97, 117, 34, 119, 124, 121,
+	58, 25, 126, 31, 59, 9, 9, 4, 5, 6,
+	9, 122, 131, 130, 70, 4, 5, 6, 108, 69,
+	64, 62, 63, 135, 128, 109, 137, 45, 32, 136,
+	43, 83, 60, 61, 127, 65, 66, 67, 123, 72,
+	132, 129, 106, 93, 92, 107, 16, 85, 30, 20,
+	19, 18, 100, 81, 46, 133, 116, 101, 84, 134,
+	110, 3, 1, 120, 8, 103, 90, 86, 68, 48,
+	96, 2, 73, 10,
 }
 var mmPact = []int{
 
-	114, -1000, 126, -1000, -1000, 77, 70, 69, 63, -1000,
-	150, 49, 151, -20, 149, 148, 35, 147, -1000, 46,
-	92, 92, 52, -1000, 155, 35, -1000, 81, -1000, 47,
-	81, -1000, -1000, 37, 33, 68, -1000, -1000, 47, 16,
-	-1000, -1000, -1000, -1000, -1000, -1000, -22, 87, 160, 146,
-	10, -1, 143, 142, -1000, -1000, -1000, -1000, -1000, -1000,
-	-1000, -23, -25, -1000, 137, -1000, -27, 7, 8, 152,
-	45, 123, -1000, 80, 145, -1000, -1000, -1000, 132, 163,
-	-5, -8, 43, 42, 102, -11, -1000, -1000, 8, 134,
-	159, -1000, -1000, 41, -1000, 109, 136, 80, -1000, -12,
-	-1000, 80, 135, 133, -1000, -1000, -1000, 98, 158, -1000,
-	20, -1000, 8, 94, -1000, 157, -1000, 162, -1000, -1000,
-	-1000, 140, -1000, -1000, 8, -1000, 120, -1000, 139, -1000,
-	80, 92, -1000, -1000, 35, -1000, 90, 30, -1000, -1000,
+	109, -1000, 101, -1000, 64, 59, 53, -1000, -1000, 50,
+	150, -18, 149, 148, 147, 51, -1000, 48, 76, 76,
+	30, 146, -1000, 68, -1000, -22, 68, 43, -1000, 155,
+	30, 63, -1000, -1000, -22, 45, -1000, -1000, -1000, -1000,
+	-1000, -1000, -19, 79, -1000, -1000, 54, 32, 136, -1000,
+	-24, 17, 28, 152, 47, 127, 160, 145, 20, 9,
+	142, 141, -1000, -1000, -1000, -1000, -1000, -1000, -1000, -20,
+	-21, -1000, 82, 12, -1000, -1000, 28, 151, 159, -1000,
+	-1000, 44, -1000, 97, -1000, 100, 144, -1000, -1000, -1000,
+	120, 163, 10, 5, 42, 40, -1000, 80, 158, -1000,
+	3, -1000, 28, 96, -1000, 135, 100, -1000, -9, -1000,
+	100, 131, 121, -1000, -1000, 139, -1000, -1000, 28, -1000,
+	107, -1000, 138, 157, -1000, 162, -1000, -1000, -1000, 76,
+	-1000, -1000, 30, -1000, 100, 85, 25, -1000, -1000, -1000,
 }
 var mmPgo = []int{
 
-	0, 183, 5, 4, 182, 171, 181, 2, 12, 9,
-	32, 180, 179, 3, 178, 177, 176, 6, 175, 0,
-	1, 173, 172,
+	0, 183, 8, 4, 182, 171, 181, 2, 9, 3,
+	113, 180, 179, 1, 178, 177, 176, 5, 175, 0,
+	6, 173, 172,
 }
 var mmR1 = []int{
 
@@ -215,7 +215,7 @@ var mmR1 = []int{
 }
 var mmR2 = []int{
 
-	0, 1, 1, 2, 1, 3, 7, 8, 10, 3,
+	0, 1, 2, 2, 1, 3, 7, 8, 10, 3,
 	1, 2, 1, 4, 6, 2, 1, 3, 4, 5,
 	6, 4, 2, 1, 1, 1, 1, 1, 1, 1,
 	1, 3, 1, 5, 4, 2, 1, 5, 6, 2,
@@ -225,37 +225,37 @@ var mmR2 = []int{
 }
 var mmChk = []int{
 
-	-1000, -22, -6, -17, -5, 19, 16, 17, 18, -5,
-	29, 20, -1, 29, 29, 29, 12, 29, 6, 33,
-	12, 12, -20, -19, 29, 12, 29, -9, -7, 26,
-	-9, 13, -19, 9, -20, -10, -7, -8, 27, -2,
-	39, 40, 42, 41, 44, 38, 29, -10, -13, 21,
-	10, 14, 42, 43, 31, 32, 30, 45, 46, 47,
-	-14, 29, 24, 13, -12, -8, 28, -2, 29, 10,
-	33, 13, 8, 12, -15, 11, -13, 15, -16, 30,
-	12, 12, 33, 33, 13, -4, 34, -3, 29, 10,
-	30, 8, -3, 11, 29, 14, -13, 8, 11, 8,
-	15, 7, 30, 30, 29, 29, -11, 22, 30, -3,
-	11, 8, 29, -18, -17, 13, -13, 30, -13, 13,
-	13, 23, 8, -3, 29, -3, -21, -17, 25, 8,
-	7, 12, -3, 15, 12, -13, -9, -20, 13, 13,
+	-1000, -22, -6, -5, 16, 17, 18, -17, -5, 19,
+	-1, 29, 29, 29, 29, 20, 6, 33, 12, 12,
+	12, 29, 29, -9, -7, 26, -9, -20, -19, 29,
+	12, -10, -7, -8, 27, -2, 39, 40, 42, 41,
+	44, 38, 29, -10, 13, -19, 9, -20, -12, -8,
+	28, -2, 29, 10, 33, 13, -13, 21, 10, 14,
+	42, 43, 31, 32, 30, 45, 46, 47, -14, 29,
+	24, 13, 13, -4, 34, -3, 29, 10, 30, 8,
+	-3, 11, 29, 14, 8, 12, -15, 11, -13, 15,
+	-16, 30, 12, 12, 33, 33, -11, 22, 30, -3,
+	11, 8, 29, -18, -17, -13, 8, 11, 8, 15,
+	7, 30, 30, 29, 29, 23, 8, -3, 29, -3,
+	-21, -17, 25, 13, -13, 30, -13, 13, 13, 12,
+	-3, 15, 12, 8, 7, -9, -20, -13, 13, 13,
 }
 var mmDef = []int{
 
-	0, -2, 1, 2, 4, 0, 0, 0, 0, 3,
-	0, 0, 0, 10, 0, 0, 0, 0, 5, 0,
-	0, 0, 0, 40, 0, 0, 9, 0, 12, 0,
-	0, 37, 39, 0, 0, 0, 11, 16, 0, 0,
-	24, 25, 26, 27, 28, 29, 30, 0, 0, 0,
-	0, 0, 0, 0, 53, 54, 55, 56, 57, 58,
-	59, 61, 0, 38, 0, 15, 0, 0, 0, 0,
-	0, 0, 41, 0, 0, 48, 44, 49, 0, 0,
-	0, 0, 0, 0, 6, 0, 32, 17, 0, 0,
-	0, 23, 13, 0, 31, 0, 0, 0, 47, 0,
-	50, 0, 0, 0, 60, 62, 7, 0, 0, 18,
-	0, 22, 0, 0, 36, 0, 43, 0, 46, 51,
-	52, 0, 21, 19, 0, 14, 0, 35, 0, 42,
-	0, 0, 20, 8, 0, 45, 0, 0, 33, 34,
+	0, -2, 1, 4, 0, 0, 0, 2, 3, 0,
+	0, 10, 0, 0, 0, 0, 5, 0, 0, 0,
+	0, 0, 9, 0, 12, 0, 0, 0, 40, 0,
+	0, 0, 11, 16, 0, 0, 24, 25, 26, 27,
+	28, 29, 30, 0, 37, 39, 0, 0, 0, 15,
+	0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+	0, 0, 53, 54, 55, 56, 57, 58, 59, 61,
+	0, 38, 6, 0, 32, 17, 0, 0, 0, 23,
+	13, 0, 31, 0, 41, 0, 0, 48, 44, 49,
+	0, 0, 0, 0, 0, 0, 7, 0, 0, 18,
+	0, 22, 0, 0, 36, 0, 0, 47, 0, 50,
+	0, 0, 0, 60, 62, 0, 21, 19, 0, 14,
+	0, 35, 0, 0, 43, 0, 46, 51, 52, 0,
+	20, 8, 0, 42, 0, 0, 0, 45, 33, 34,
 }
 var mmTok1 = []int{
 
@@ -502,74 +502,62 @@ mmdefault:
 		//line core/grammar.y:68
 		{
 			{
-				global := Ast{[]FileLoc{}, map[string]bool{}, []*Filetype{}, map[string]bool{}, []*Stage{}, []*Pipeline{}, &Callables{[]Callable{}, map[string]Callable{}}, nil}
-				for _, dec := range mmS[mmpt-0].decs {
-					switch dec := dec.(type) {
-					case *Filetype:
-						global.filetypes = append(global.filetypes, dec)
-					case *Stage:
-						global.Stages = append(global.Stages, dec)
-						global.callables.list = append(global.callables.list, dec)
-					case *Pipeline:
-						global.Pipelines = append(global.Pipelines, dec)
-						global.callables.list = append(global.callables.list, dec)
-					}
-				}
-				mmlex.(*mmLexInfo).global = &global
+				global := NewAst(mmS[mmpt-0].decs, nil)
+				mmlex.(*mmLexInfo).global = global
 			}
 		}
 	case 2:
-		//line core/grammar.y:85
+		//line core/grammar.y:73
 		{
 			{
-				global := Ast{[]FileLoc{}, map[string]bool{}, []*Filetype{}, map[string]bool{}, []*Stage{}, []*Pipeline{}, &Callables{[]Callable{}, map[string]Callable{}}, mmS[mmpt-0].call}
-				mmlex.(*mmLexInfo).global = &global
+				global := NewAst(mmS[mmpt-1].decs, mmS[mmpt-0].call)
+				mmlex.(*mmLexInfo).global = global
 			}
 		}
 	case 3:
-		//line core/grammar.y:93
+		//line core/grammar.y:81
 		{
 			{
 				mmVAL.decs = append(mmS[mmpt-1].decs, mmS[mmpt-0].dec)
 			}
 		}
 	case 4:
-		//line core/grammar.y:95
+		//line core/grammar.y:83
 		{
 			{
 				mmVAL.decs = []Dec{mmS[mmpt-0].dec}
 			}
 		}
 	case 5:
-		//line core/grammar.y:100
+		//line core/grammar.y:88
 		{
 			{
 				mmVAL.dec = &Filetype{NewAstNode(&mmlval), mmS[mmpt-1].val}
 			}
 		}
 	case 6:
-		//line core/grammar.y:102
+		//line core/grammar.y:90
 		{
 			{
 				mmVAL.dec = &Stage{NewAstNode(&mmlval), mmS[mmpt-5].val, mmS[mmpt-3].params, mmS[mmpt-2].params, mmS[mmpt-1].src, &Params{[]Param{}, map[string]Param{}}}
 			}
 		}
 	case 7:
-		//line core/grammar.y:104
+		//line core/grammar.y:92
 		{
 			{
 				mmVAL.dec = &Stage{NewAstNode(&mmlval), mmS[mmpt-6].val, mmS[mmpt-4].params, mmS[mmpt-3].params, mmS[mmpt-2].src, mmS[mmpt-0].params}
 			}
 		}
 	case 8:
-		//line core/grammar.y:106
+		//line core/grammar.y:94
 		{
 			{
 				mmVAL.dec = &Pipeline{NewAstNode(&mmlval), mmS[mmpt-8].val, mmS[mmpt-6].params, mmS[mmpt-5].params, mmS[mmpt-2].calls, &Callables{[]Callable{}, map[string]Callable{}}, mmS[mmpt-1].retstm}
 			}
 		}
 	case 9:
-		//line core/grammar.y:111
+		//line core/grammar.y:99
 		{
 			{
 				mmVAL.val = mmS[mmpt-2].val + mmS[mmpt-1].val + mmS[mmpt-0].val
@@ -578,7 +566,7 @@ mmdefault:
 	case 10:
 		mmVAL.val = mmS[mmpt-0].val
 	case 11:
-		//line core/grammar.y:117
+		//line core/grammar.y:105
 		{
 			{
 				mmS[mmpt-1].params.list = append(mmS[mmpt-1].params.list, mmS[mmpt-0].inparam)
@@ -586,28 +574,28 @@ mmdefault:
 			}
 		}
 	case 12:
-		//line core/grammar.y:122
+		//line core/grammar.y:110
 		{
 			{
 				mmVAL.params = &Params{[]Param{mmS[mmpt-0].inparam}, map[string]Param{}}
 			}
 		}
 	case 13:
-		//line core/grammar.y:127
+		//line core/grammar.y:115
 		{
 			{
 				mmVAL.inparam = &InParam{NewAstNode(&mmlval), mmS[mmpt-2].val, false, mmS[mmpt-1].val, unquote(mmS[mmpt-0].val), false}
 			}
 		}
 	case 14:
-		//line core/grammar.y:129
+		//line core/grammar.y:117
 		{
 			{
 				mmVAL.inparam = &InParam{NewAstNode(&mmlval), mmS[mmpt-4].val, true, mmS[mmpt-1].val, unquote(mmS[mmpt-0].val), false}
 			}
 		}
 	case 15:
-		//line core/grammar.y:134
+		//line core/grammar.y:122
 		{
 			{
 				mmS[mmpt-1].params.list = append(mmS[mmpt-1].params.list, mmS[mmpt-0].outparam)
@@ -615,56 +603,56 @@ mmdefault:
 			}
 		}
 	case 16:
-		//line core/grammar.y:139
+		//line core/grammar.y:127
 		{
 			{
 				mmVAL.params = &Params{[]Param{mmS[mmpt-0].outparam}, map[string]Param{}}
 			}
 		}
 	case 17:
-		//line core/grammar.y:144
+		//line core/grammar.y:132
 		{
 			{
 				mmVAL.outparam = &OutParam{NewAstNode(&mmlval), mmS[mmpt-1].val, false, "default", unquote(mmS[mmpt-0].val), false}
 			}
 		}
 	case 18:
-		//line core/grammar.y:146
+		//line core/grammar.y:134
 		{
 			{
 				mmVAL.outparam = &OutParam{NewAstNode(&mmlval), mmS[mmpt-2].val, false, mmS[mmpt-1].val, unquote(mmS[mmpt-0].val), false}
 			}
 		}
 	case 19:
-		//line core/grammar.y:148
+		//line core/grammar.y:136
 		{
 			{
 				mmVAL.outparam = &OutParam{NewAstNode(&mmlval), mmS[mmpt-3].val, true, "default", unquote(mmS[mmpt-0].val), false}
 			}
 		}
 	case 20:
-		//line core/grammar.y:150
+		//line core/grammar.y:138
 		{
 			{
 				mmVAL.outparam = &OutParam{NewAstNode(&mmlval), mmS[mmpt-4].val, true, mmS[mmpt-1].val, unquote(mmS[mmpt-0].val), false}
 			}
 		}
 	case 21:
-		//line core/grammar.y:155
+		//line core/grammar.y:143
 		{
 			{
 				mmVAL.src = &SrcParam{NewAstNode(&mmlval), mmS[mmpt-2].val, unquote(mmS[mmpt-1].val)}
 			}
 		}
 	case 22:
-		//line core/grammar.y:160
+		//line core/grammar.y:148
 		{
 			{
 				mmVAL.val = mmS[mmpt-1].val
 			}
 		}
 	case 23:
-		//line core/grammar.y:162
+		//line core/grammar.y:150
 		{
 			{
 				mmVAL.val = ""
@@ -685,7 +673,7 @@ mmdefault:
 	case 30:
 		mmVAL.val = mmS[mmpt-0].val
 	case 31:
-		//line core/grammar.y:174
+		//line core/grammar.y:162
 		{
 			{
 				mmVAL.val = mmS[mmpt-2].val + "." + mmS[mmpt-0].val
@@ -694,49 +682,49 @@ mmdefault:
 	case 32:
 		mmVAL.val = mmS[mmpt-0].val
 	case 33:
-		//line core/grammar.y:186
+		//line core/grammar.y:174
 		{
 			{
 				mmVAL.params = mmS[mmpt-1].params
 			}
 		}
 	case 34:
-		//line core/grammar.y:191
+		//line core/grammar.y:179
 		{
 			{
 				mmVAL.retstm = &ReturnStm{NewAstNode(&mmlval), mmS[mmpt-1].bindings}
 			}
 		}
 	case 35:
-		//line core/grammar.y:196
+		//line core/grammar.y:184
 		{
 			{
 				mmVAL.calls = append(mmS[mmpt-1].calls, mmS[mmpt-0].call)
 			}
 		}
 	case 36:
-		//line core/grammar.y:198
+		//line core/grammar.y:186
 		{
 			{
 				mmVAL.calls = []*CallStm{mmS[mmpt-0].call}
 			}
 		}
 	case 37:
-		//line core/grammar.y:203
+		//line core/grammar.y:191
 		{
 			{
 				mmVAL.call = &CallStm{NewAstNode(&mmlval), false, mmS[mmpt-3].val, mmS[mmpt-1].bindings}
 			}
 		}
 	case 38:
-		//line core/grammar.y:205
+		//line core/grammar.y:193
 		{
 			{
 				mmVAL.call = &CallStm{NewAstNode(&mmlval), true, mmS[mmpt-3].val, mmS[mmpt-1].bindings}
 			}
 		}
 	case 39:
-		//line core/grammar.y:210
+		//line core/grammar.y:198
 		{
 			{
 				mmS[mmpt-1].bindings.List = append(mmS[mmpt-1].bindings.List, mmS[mmpt-0].binding)
@@ -744,42 +732,42 @@ mmdefault:
 			}
 		}
 	case 40:
-		//line core/grammar.y:215
+		//line core/grammar.y:203
 		{
 			{
 				mmVAL.bindings = &BindStms{[]*BindStm{mmS[mmpt-0].binding}, map[string]*BindStm{}}
 			}
 		}
 	case 41:
-		//line core/grammar.y:220
+		//line core/grammar.y:208
 		{
 			{
 				mmVAL.binding = &BindStm{NewAstNode(&mmlval), mmS[mmpt-3].val, mmS[mmpt-1].exp, false, ""}
 			}
 		}
 	case 42:
-		//line core/grammar.y:222
+		//line core/grammar.y:210
 		{
 			{
 				mmVAL.binding = &BindStm{NewAstNode(&mmlval), mmS[mmpt-6].val, mmS[mmpt-2].exp, true, ""}
 			}
 		}
 	case 43:
-		//line core/grammar.y:227
+		//line core/grammar.y:215
 		{
 			{
 				mmVAL.exps = append(mmS[mmpt-2].exps, mmS[mmpt-0].exp)
 			}
 		}
 	case 44:
-		//line core/grammar.y:229
+		//line core/grammar.y:217
 		{
 			{
 				mmVAL.exps = []Exp{mmS[mmpt-0].exp}
 			}
 		}
 	case 45:
-		//line core/grammar.y:234
+		//line core/grammar.y:222
 		{
 			{
 				mmS[mmpt-4].kvpairs[unquote(mmS[mmpt-2].val)] = mmS[mmpt-0].exp
@@ -787,56 +775,56 @@ mmdefault:
 			}
 		}
 	case 46:
-		//line core/grammar.y:239
+		//line core/grammar.y:227
 		{
 			{
 				mmVAL.kvpairs = map[string]Exp{unquote(mmS[mmpt-2].val): mmS[mmpt-0].exp}
 			}
 		}
 	case 47:
-		//line core/grammar.y:244
+		//line core/grammar.y:232
 		{
 			{
 				mmVAL.exp = &ValExp{node: NewAstNode(&mmlval), Kind: "array", Value: mmS[mmpt-1].exps}
 			}
 		}
 	case 48:
-		//line core/grammar.y:246
+		//line core/grammar.y:234
 		{
 			{
 				mmVAL.exp = &ValExp{node: NewAstNode(&mmlval), Kind: "array", Value: []Exp{}}
 			}
 		}
 	case 49:
-		//line core/grammar.y:248
+		//line core/grammar.y:236
 		{
 			{
 				mmVAL.exp = &ValExp{node: NewAstNode(&mmlval), Kind: "map", Value: map[string]interface{}{}}
 			}
 		}
 	case 50:
-		//line core/grammar.y:250
+		//line core/grammar.y:238
 		{
 			{
 				mmVAL.exp = &ValExp{node: NewAstNode(&mmlval), Kind: "map", Value: mmS[mmpt-1].kvpairs}
 			}
 		}
 	case 51:
-		//line core/grammar.y:252
+		//line core/grammar.y:240
 		{
 			{
 				mmVAL.exp = &ValExp{node: NewAstNode(&mmlval), Kind: mmS[mmpt-3].val, Value: unquote(mmS[mmpt-1].val)}
 			}
 		}
 	case 52:
-		//line core/grammar.y:254
+		//line core/grammar.y:242
 		{
 			{
 				mmVAL.exp = &ValExp{node: NewAstNode(&mmlval), Kind: mmS[mmpt-3].val, Value: unquote(mmS[mmpt-1].val)}
 			}
 		}
 	case 53:
-		//line core/grammar.y:256
+		//line core/grammar.y:244
 		{
 			{ // Lexer guarantees parseable float strings.
 				f, _ := strconv.ParseFloat(mmS[mmpt-0].val, 64)
@@ -844,7 +832,7 @@ mmdefault:
 			}
 		}
 	case 54:
-		//line core/grammar.y:261
+		//line core/grammar.y:249
 		{
 			{ // Lexer guarantees parseable int strings.
 				i, _ := strconv.ParseInt(mmS[mmpt-0].val, 0, 64)
@@ -852,56 +840,56 @@ mmdefault:
 			}
 		}
 	case 55:
-		//line core/grammar.y:266
+		//line core/grammar.y:254
 		{
 			{
 				mmVAL.exp = &ValExp{node: NewAstNode(&mmlval), Kind: "string", Value: unquote(mmS[mmpt-0].val)}
 			}
 		}
 	case 56:
-		//line core/grammar.y:268
+		//line core/grammar.y:256
 		{
 			{
 				mmVAL.exp = &ValExp{node: NewAstNode(&mmlval), Kind: "bool", Value: true}
 			}
 		}
 	case 57:
-		//line core/grammar.y:270
+		//line core/grammar.y:258
 		{
 			{
 				mmVAL.exp = &ValExp{node: NewAstNode(&mmlval), Kind: "bool", Value: false}
 			}
 		}
 	case 58:
-		//line core/grammar.y:272
+		//line core/grammar.y:260
 		{
 			{
 				mmVAL.exp = &ValExp{node: NewAstNode(&mmlval), Kind: "null", Value: nil}
 			}
 		}
 	case 59:
-		//line core/grammar.y:274
+		//line core/grammar.y:262
 		{
 			{
 				mmVAL.exp = mmS[mmpt-0].exp
 			}
 		}
 	case 60:
-		//line core/grammar.y:279
+		//line core/grammar.y:267
 		{
 			{
 				mmVAL.exp = &RefExp{NewAstNode(&mmlval), "call", mmS[mmpt-2].val, mmS[mmpt-0].val}
 			}
 		}
 	case 61:
-		//line core/grammar.y:281
+		//line core/grammar.y:269
 		{
 			{
 				mmVAL.exp = &RefExp{NewAstNode(&mmlval), "call", mmS[mmpt-0].val, "default"}
 			}
 		}
 	case 62:
-		//line core/grammar.y:283
+		//line core/grammar.y:271
 		{
 			{
 				mmVAL.exp = &RefExp{NewAstNode(&mmlval), "self", mmS[mmpt-0].val, ""}

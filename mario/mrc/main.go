@@ -47,13 +47,19 @@ Options:
 	if opts["--all"].(bool) {
 		// Compile all MRO files in MRO path.
 		num, err := rt.CompileAll(checkSrcPath)
-		core.DieIf(err)
+		if err != nil {
+			fmt.Println(err.Error())
+			os.Exit(1)
+		}
 		count += num
 	} else {
 		// Compile just the specified MRO files.
 		for _, fname := range opts["<file.mro>"].([]string) {
 			_, _, err := rt.Compile(path.Join(cwd, fname), checkSrcPath)
-			core.DieIf(err)
+			if err != nil {
+				fmt.Println(err.Error())
+				os.Exit(1)
+			}
 			count++
 		}
 	}

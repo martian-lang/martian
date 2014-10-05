@@ -67,7 +67,7 @@ Options:
 	// Setup invocation-specific values.
 	invocationPath := opts["<call.mro>"].(string)
 	ssid := opts["<stagestance_name>"].(string)
-	stagestancePath := cwd
+	stagestancePath := path.Join(cwd, ssid)
 	stepSecs := 1
 
 	//=========================================================================

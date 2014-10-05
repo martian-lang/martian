@@ -55,10 +55,14 @@ func preprocess(src string, fname string, incPaths []string) (string, []FileLoc,
 	processedSrc := re.ReplaceAllStringFunc(src, func(match string) string {
 		// Get name of file to be included.
 		ifname := re.FindStringSubmatch(match)[1]
+		if ifname == fname {
+			fileNotFoundError.files = append(fileNotFoundError.files, "Cannot include self.")
+			return ""
+		}
 
 		// Search incPaths for the file.
 		// If not found, add this file to error list.
-		ifpath, found := searchPaths(fname, incPaths)
+		ifpath, found := searchPaths(ifname, incPaths)
 		if !found {
 			fileNotFoundError.files = append(fileNotFoundError.files, ifname)
 			return ""
