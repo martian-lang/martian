@@ -132,7 +132,7 @@ type (
 		getExp()
 		getNode() *AstNode
 		getKind() string
-		resolveType(*Ast, Callable) ([]string, error)
+		resolveType(*Ast, Callable) ([]string, bool, error)
 		format() string
 	}
 

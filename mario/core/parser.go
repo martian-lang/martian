@@ -50,40 +50,40 @@ func (params *Params) check(global *Ast) error {
 	return nil
 }
 
-func (exp *ValExp) resolveType(global *Ast, callable Callable) ([]string, error) {
+func (exp *ValExp) resolveType(global *Ast, callable Callable) ([]string, bool, error) {
 	switch exp.getKind() {
 
 	// Handle scalar types.
 	case "int", "float", "bool", "path", "null":
-		return []string{exp.getKind()}, nil
+		return []string{exp.getKind()}, false, nil
 
 	// Handle strings (which could be files too).
 	case "string":
 		for filetype, _ := range global.filetypeTable {
 			if strings.HasSuffix(exp.value.(string), filetype) {
-				return []string{"string", filetype}, nil
+				return []string{"string", filetype}, false, nil
 			}
 		}
-		return []string{"string"}, nil
+		return []string{"string"}, false, nil
 
 	// Array: [ 1, 2 ]
 	case "array":
 		for _, subexp := range exp.value.([]Exp) {
-			return []string{subexp.getKind()}, nil
+			return []string{subexp.getKind()}, true, nil
 		}
-		return []string{"null"}, nil
+		return []string{"null"}, true, nil
 	// File: look for matching filetype in type table
 	case "file":
 		for filetype, _ := range global.filetypeTable {
 			if strings.HasSuffix(exp.value.(string), filetype) {
-				return []string{filetype}, nil
+				return []string{filetype}, false, nil
 			}
 		}
 	}
-	return []string{"unknown"}, nil
+	return []string{"unknown"}, false, nil
 }
 
-func (exp *RefExp) resolveType(global *Ast, callable Callable) ([]string, error) {
+func (exp *RefExp) resolveType(global *Ast, callable Callable) ([]string, bool, error) {
 	if callable == nil {
 		global.err(exp, "ReferenceError: this binding cannot be resolved outside of a stage or pipeline.")
 	}
@@ -94,31 +94,31 @@ func (exp *RefExp) resolveType(global *Ast, callable Callable) ([]string, error)
 	case "self":
 		param, ok := callable.getInParams().table[exp.id]
 		if !ok {
-			return []string{""}, global.err(exp, "ScopeNameError: '%s' is not an input parameter of pipeline '%s'", exp.id, callable.getId())
+			return []string{""}, false, global.err(exp, "ScopeNameError: '%s' is not an input parameter of pipeline '%s'", exp.id, callable.getId())
 		}
-		return []string{param.getTname()}, nil
+		return []string{param.getTname()}, param.getIsArray(), nil
 
 	// Call: STAGE.myoutparam or STAGE
 	case "call":
 		// Check referenced callable is acutally called in this scope.
 		pipeline, ok := callable.(*Pipeline)
 		if !ok {
-			return []string{""}, global.err(exp, "ScopeNameError: '%s' is not called in pipeline '%s'", exp.id, callable.getId())
+			return []string{""}, false, global.err(exp, "ScopeNameError: '%s' is not called in pipeline '%s'", exp.id, callable.getId())
 		} else {
 			callable, ok := pipeline.callables.table[exp.id]
 			if !ok {
-				return []string{""}, global.err(exp, "ScopeNameError: '%s' is not called in pipeline '%s'", exp.id, pipeline.id)
+				return []string{""}, false, global.err(exp, "ScopeNameError: '%s' is not called in pipeline '%s'", exp.id, pipeline.id)
 			}
 			// Check referenced output is actually an output of the callable.
 			param, ok := callable.getOutParams().table[exp.outputId]
 			if !ok {
-				return []string{""}, global.err(exp, "NoSuchOutputError: '%s' is not an output parameter of '%s'", exp.outputId, callable.getId())
+				return []string{""}, false, global.err(exp, "NoSuchOutputError: '%s' is not an output parameter of '%s'", exp.outputId, callable.getId())
 			}
 
-			return []string{param.getTname()}, nil
+			return []string{param.getTname()}, param.getIsArray(), nil
 		}
 	}
-	return []string{"call"}, nil
+	return []string{"unknown"}, false, nil
 }
 
 func checkTypeMatch(paramType string, valueType string) bool {
@@ -146,10 +146,19 @@ func (bindings *BindStms) check(global *Ast, callable Callable, params *Params) 
 		}
 
 		// Typecheck the binding and cache the type.
-		valueTypes, err := binding.exp.resolveType(global, callable)
+		valueTypes, isarray, err := binding.exp.resolveType(global, callable)
 		if err != nil {
 			return err
 		}
+
+		// Check for array match.
+		if param.getIsArray() && !isarray {
+			return global.err(param, "TypeMismatchError: expected array of '%s' for '%s'", param.getTname(), param.getId())
+		}
+		if !param.getIsArray() && isarray {
+			return global.err(param, "TypeMismatchError: got array value for non-array parameter '%s'", param.getId())
+		}
+
 		anymatch := false
 		lastType := ""
 		for _, valueType := range valueTypes {
