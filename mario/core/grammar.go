@@ -738,7 +738,7 @@ mmdefault:
 		//line core/grammar.y:203
 		{
 			{
-				mmS[mmpt-1].bindings.List = append(mmS[mmpt-1].bindings.List, mmS[mmpt-0].binding)
+				mmS[mmpt-1].bindings.list = append(mmS[mmpt-1].bindings.list, mmS[mmpt-0].binding)
 				mmVAL.bindings = mmS[mmpt-1].bindings
 			}
 		}
@@ -796,42 +796,42 @@ mmdefault:
 		//line core/grammar.y:237
 		{
 			{
-				mmVAL.exp = &ValExp{node: NewAstNode(&mmlval), Kind: "array", Value: mmS[mmpt-1].exps}
+				mmVAL.exp = &ValExp{node: NewAstNode(&mmlval), kind: "array", value: mmS[mmpt-1].exps}
 			}
 		}
 	case 49:
 		//line core/grammar.y:239
 		{
 			{
-				mmVAL.exp = &ValExp{node: NewAstNode(&mmlval), Kind: "array", Value: []Exp{}}
+				mmVAL.exp = &ValExp{node: NewAstNode(&mmlval), kind: "array", value: []Exp{}}
 			}
 		}
 	case 50:
 		//line core/grammar.y:241
 		{
 			{
-				mmVAL.exp = &ValExp{node: NewAstNode(&mmlval), Kind: "map", Value: map[string]interface{}{}}
+				mmVAL.exp = &ValExp{node: NewAstNode(&mmlval), kind: "map", value: map[string]interface{}{}}
 			}
 		}
 	case 51:
 		//line core/grammar.y:243
 		{
 			{
-				mmVAL.exp = &ValExp{node: NewAstNode(&mmlval), Kind: "map", Value: mmS[mmpt-1].kvpairs}
+				mmVAL.exp = &ValExp{node: NewAstNode(&mmlval), kind: "map", value: mmS[mmpt-1].kvpairs}
 			}
 		}
 	case 52:
 		//line core/grammar.y:245
 		{
 			{
-				mmVAL.exp = &ValExp{node: NewAstNode(&mmlval), Kind: mmS[mmpt-3].val, Value: unquote(mmS[mmpt-1].val)}
+				mmVAL.exp = &ValExp{node: NewAstNode(&mmlval), kind: mmS[mmpt-3].val, value: unquote(mmS[mmpt-1].val)}
 			}
 		}
 	case 53:
 		//line core/grammar.y:247
 		{
 			{
-				mmVAL.exp = &ValExp{node: NewAstNode(&mmlval), Kind: mmS[mmpt-3].val, Value: unquote(mmS[mmpt-1].val)}
+				mmVAL.exp = &ValExp{node: NewAstNode(&mmlval), kind: mmS[mmpt-3].val, value: unquote(mmS[mmpt-1].val)}
 			}
 		}
 	case 54:
@@ -839,7 +839,7 @@ mmdefault:
 		{
 			{ // Lexer guarantees parseable float strings.
 				f, _ := strconv.ParseFloat(mmS[mmpt-0].val, 64)
-				mmVAL.exp = &ValExp{node: NewAstNode(&mmlval), Kind: "float", Value: f}
+				mmVAL.exp = &ValExp{node: NewAstNode(&mmlval), kind: "float", value: f}
 			}
 		}
 	case 55:
@@ -847,35 +847,35 @@ mmdefault:
 		{
 			{ // Lexer guarantees parseable int strings.
 				i, _ := strconv.ParseInt(mmS[mmpt-0].val, 0, 64)
-				mmVAL.exp = &ValExp{node: NewAstNode(&mmlval), Kind: "int", Value: i}
+				mmVAL.exp = &ValExp{node: NewAstNode(&mmlval), kind: "int", value: i}
 			}
 		}
 	case 56:
 		//line core/grammar.y:259
 		{
 			{
-				mmVAL.exp = &ValExp{node: NewAstNode(&mmlval), Kind: "string", Value: unquote(mmS[mmpt-0].val)}
+				mmVAL.exp = &ValExp{node: NewAstNode(&mmlval), kind: "string", value: unquote(mmS[mmpt-0].val)}
 			}
 		}
 	case 57:
 		//line core/grammar.y:261
 		{
 			{
-				mmVAL.exp = &ValExp{node: NewAstNode(&mmlval), Kind: "bool", Value: true}
+				mmVAL.exp = &ValExp{node: NewAstNode(&mmlval), kind: "bool", value: true}
 			}
 		}
 	case 58:
 		//line core/grammar.y:263
 		{
 			{
-				mmVAL.exp = &ValExp{node: NewAstNode(&mmlval), Kind: "bool", Value: false}
+				mmVAL.exp = &ValExp{node: NewAstNode(&mmlval), kind: "bool", value: false}
 			}
 		}
 	case 59:
 		//line core/grammar.y:265
 		{
 			{
-				mmVAL.exp = &ValExp{node: NewAstNode(&mmlval), Kind: "null", Value: nil}
+				mmVAL.exp = &ValExp{node: NewAstNode(&mmlval), kind: "null", value: nil}
 			}
 		}
 	case 60:

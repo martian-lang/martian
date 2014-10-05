@@ -201,7 +201,7 @@ call_stm
 bind_stm_list
     : bind_stm_list bind_stm
         {{ 
-            $1.List = append($1.List, $2)
+            $1.list = append($1.list, $2)
             $$ = $1
         }}
     | bind_stm
@@ -234,35 +234,35 @@ kvpair_list
 
 exp
     : LBRACKET exp_list RBRACKET        
-        {{ $$ = &ValExp{node:NewAstNode(&mmlval), Kind: "array", Value: $2} }}
+        {{ $$ = &ValExp{node:NewAstNode(&mmlval), kind: "array", value: $2} }}
     | LBRACKET RBRACKET
-        {{ $$ = &ValExp{node:NewAstNode(&mmlval), Kind: "array", Value: []Exp{}} }}
+        {{ $$ = &ValExp{node:NewAstNode(&mmlval), kind: "array", value: []Exp{}} }}
     | LBRACE RBRACE
-        {{ $$ = &ValExp{node:NewAstNode(&mmlval), Kind: "map", Value: map[string]interface{}{}} }}
+        {{ $$ = &ValExp{node:NewAstNode(&mmlval), kind: "map", value: map[string]interface{}{}} }}
     | LBRACE kvpair_list RBRACE
-        {{ $$ = &ValExp{node:NewAstNode(&mmlval), Kind: "map", Value: $2} }}
+        {{ $$ = &ValExp{node:NewAstNode(&mmlval), kind: "map", value: $2} }}
     | PATH LPAREN LITSTRING RPAREN
-        {{ $$ = &ValExp{node:NewAstNode(&mmlval), Kind: $1, Value: unquote($3)} }}
+        {{ $$ = &ValExp{node:NewAstNode(&mmlval), kind: $1, value: unquote($3)} }}
     | FILE LPAREN LITSTRING RPAREN
-        {{ $$ = &ValExp{node:NewAstNode(&mmlval), Kind: $1, Value: unquote($3)} }}
+        {{ $$ = &ValExp{node:NewAstNode(&mmlval), kind: $1, value: unquote($3)} }}
     | NUM_FLOAT
         {{  // Lexer guarantees parseable float strings.
             f, _ := strconv.ParseFloat($1, 64)
-            $$ = &ValExp{node:NewAstNode(&mmlval), Kind: "float", Value: f } 
+            $$ = &ValExp{node:NewAstNode(&mmlval), kind: "float", value: f } 
         }}
     | NUM_INT
         {{  // Lexer guarantees parseable int strings.
             i, _ := strconv.ParseInt($1, 0, 64)
-            $$ = &ValExp{node:NewAstNode(&mmlval), Kind: "int", Value: i } 
+            $$ = &ValExp{node:NewAstNode(&mmlval), kind: "int", value: i } 
         }}
     | LITSTRING
-        {{ $$ = &ValExp{node:NewAstNode(&mmlval), Kind: "string", Value: unquote($1)} }}
+        {{ $$ = &ValExp{node:NewAstNode(&mmlval), kind: "string", value: unquote($1)} }}
     | TRUE
-        {{ $$ = &ValExp{node:NewAstNode(&mmlval), Kind: "bool", Value: true} }}
+        {{ $$ = &ValExp{node:NewAstNode(&mmlval), kind: "bool", value: true} }}
     | FALSE
-        {{ $$ = &ValExp{node:NewAstNode(&mmlval), Kind: "bool", Value: false} }}
+        {{ $$ = &ValExp{node:NewAstNode(&mmlval), kind: "bool", value: false} }}
     | NULL
-        {{ $$ = &ValExp{node:NewAstNode(&mmlval), Kind: "null", Value: nil} }}
+        {{ $$ = &ValExp{node:NewAstNode(&mmlval), kind: "null", value: nil} }}
     | ref_exp
         {{ $$ = $1 }}
     ;

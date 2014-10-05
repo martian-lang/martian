@@ -17,7 +17,6 @@ import (
 	"runtime"
 	"strconv"
 	"strings"
-	"sync"
 	"time"
 )
 
@@ -25,21 +24,11 @@ import (
 // Pipestance runner.
 //=============================================================================
 func runLoop(pipestance *core.Pipestance, stepSecs int, disableVDR bool, noExit bool) {
-	nodes := pipestance.Node().AllNodes()
 	for {
-		// Concurrently run metadata refreshes.
-		var wg sync.WaitGroup
-		for _, node := range nodes {
-			wg.Add(1)
-			go func(node *core.Node) {
-				node.RefreshMetadata()
-				wg.Done()
-			}(node)
-		}
-		wg.Wait()
+		pipestance.RefreshMetadata()
 
 		// Check for completion states.
-		if pipestance.GetOverallState() == "complete" {
+		if pipestance.GetState() == "complete" {
 			pipestance.Immortalize()
 			if disableVDR {
 				core.LogInfo("runtime",
@@ -61,7 +50,7 @@ func runLoop(pipestance *core.Pipestance, stepSecs int, disableVDR bool, noExit 
 				os.Exit(0)
 			}
 		}
-		if pipestance.GetOverallState() == "failed" {
+		if pipestance.GetState() == "failed" {
 			fqname, errpath, _, log := pipestance.GetFatalError()
 			fmt.Printf("\nPipestance failed at:\n%s\n\nErrors written to:\n%s\n\n%s\n",
 				fqname, errpath, log)
@@ -76,9 +65,7 @@ func runLoop(pipestance *core.Pipestance, stepSecs int, disableVDR bool, noExit 
 		}
 
 		// Step all nodes.
-		for _, node := range nodes {
-			node.Step()
-		}
+		pipestance.StepNodes()
 
 		// Wait for a bit.
 		time.Sleep(time.Second * time.Duration(stepSecs))
@@ -112,9 +99,10 @@ Options:
                      (--maxcores and --maxmem will be ignored)
     -h --help        Show this message.
     --version        Show version.`
-	opts, _ := docopt.Parse(doc, nil, true, core.GetVersion(), false)
+	marioVersion := core.GetVersion()
+	opts, _ := docopt.Parse(doc, nil, true, marioVersion, false)
 	core.LogInfo("*", "Mario Run Pipeline")
-	core.LogInfo("version", core.GetVersion())
+	core.LogInfo("version", marioVersion)
 	core.LogInfo("cmdline", strings.Join(os.Args, " "))
 
 	// Required job mode and SGE environment variables.
@@ -161,6 +149,8 @@ Options:
 	if value := os.Getenv("MROPATH"); len(value) > 0 {
 		mroPath = value
 	}
+	mroVersion := core.GetGitTag(mroPath)
+	core.LogInfo("version", "MRO_STAGES = %s", mroVersion)
 	core.LogInfo("environ", "MROPATH = %s", mroPath)
 
 	// Compute profiling flag.
@@ -181,8 +171,8 @@ Options:
 	//=========================================================================
 	// Configure Mario runtime.
 	//=========================================================================
-	rt := core.NewRuntimeWithCores(jobMode, mroPath, reqCores, reqMem,
-		core.GetVersion(), profile)
+	rt := core.NewRuntimeWithCores(jobMode, mroPath, marioVersion, mroVersion,
+		reqCores, reqMem, profile)
 
 	//=========================================================================
 	// Invoke pipestance or Reattach if exists.

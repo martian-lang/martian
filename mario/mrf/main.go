@@ -30,7 +30,8 @@ Options:
     --all         Rewrite all files in MROPATH.
     -h --help     Show this message.
     --version     Show version.`
-	opts, _ := docopt.Parse(doc, nil, true, core.GetVersion(), false)
+	marioVersion := core.GetVersion()
+	opts, _ := docopt.Parse(doc, nil, true, marioVersion, false)
 
 	// Mario environment variables.
 	cwd, _ := filepath.Abs(path.Dir(os.Args[0]))

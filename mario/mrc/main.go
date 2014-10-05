@@ -28,7 +28,8 @@ Options:
     --checksrcpath  Check that stage source paths exist.
     -h --help       Show this message.
     --version       Show version.`
-	opts, _ := docopt.Parse(doc, nil, true, core.GetVersion(), false)
+	marioVersion := core.GetVersion()
+	opts, _ := docopt.Parse(doc, nil, true, marioVersion, false)
 
 	core.ENABLE_LOGGING = false
 
@@ -39,9 +40,10 @@ Options:
 		mroPath = value
 	}
 	checkSrcPath := opts["--checksrcpath"].(bool)
+	mroVersion := core.GetGitTag(mroPath)
 
 	// Setup runtime with MRO path.
-	rt := core.NewRuntime("local", mroPath, core.GetVersion(), false)
+	rt := core.NewRuntime("local", mroPath, marioVersion, mroVersion, false)
 
 	count := 0
 	if opts["--all"].(bool) {

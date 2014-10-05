@@ -27,34 +27,34 @@ func max(x int, y int) int {
 // Expression
 //
 func (self *ValExp) format() string {
-	if self.Value == nil {
+	if self.value == nil {
 		return "null"
 	}
-	if self.Kind == "float" {
+	if self.kind == "float" {
 		// %v prints using exponential notation, which we don't want.
 		// Also, strip trailing zeroes.
 		re := regexp.MustCompile("0+$")
-		return re.ReplaceAllString(fmt.Sprintf("%f", self.Value), "")
+		return re.ReplaceAllString(fmt.Sprintf("%f", self.value), "")
 	}
-	if self.Kind == "string" {
-		return fmt.Sprintf("\"%s\"", self.Value)
+	if self.kind == "string" {
+		return fmt.Sprintf("\"%s\"", self.value)
 	}
-	if self.Kind == "map" || self.Kind == "array" {
+	if self.kind == "map" || self.kind == "array" {
 		bytes, _ := json.Marshal(expToInterface(self))
 		return string(bytes)
 	}
-	return fmt.Sprintf("%v", self.Value)
+	return fmt.Sprintf("%v", self.value)
 }
 
 func (self *RefExp) format() string {
-	if self.Kind == "call" {
-		fsrc := self.Id
+	if self.kind == "call" {
+		fsrc := self.id
 		if self.outputId != "default" {
 			fsrc += "." + self.outputId
 		}
 		return fsrc
 	}
-	return "self." + self.Id
+	return "self." + self.id
 }
 
 //
@@ -62,17 +62,17 @@ func (self *RefExp) format() string {
 //
 func (self *BindStm) format(idWidth int) string {
 	idPad := strings.Repeat(" ", idWidth-len(self.id))
-	return fmt.Sprintf("%s%s%s%s%s = %s,  ", self.Exp.Node().comments,
-		INDENT, INDENT, self.id, idPad, self.Exp.format())
+	return fmt.Sprintf("%s%s%s%s%s = %s,  ", self.exp.getNode().comments,
+		INDENT, INDENT, self.id, idPad, self.exp.format())
 }
 
 func (self *BindStms) format() string {
 	idWidth := 0
-	for _, bindstm := range self.List {
+	for _, bindstm := range self.list {
 		idWidth = max(idWidth, len(bindstm.id))
 	}
 	fsrc := ""
-	for _, bindstm := range self.List {
+	for _, bindstm := range self.list {
 		fsrc += bindstm.format(idWidth)
 	}
 	return fsrc
@@ -81,20 +81,20 @@ func (self *BindStms) format() string {
 //
 // Parameter
 //
-func paramFormat(self Param, modeWidth int, typeWidth int, idWidth int) string {
-	id := self.Id()
+func paramFormat(param Param, modeWidth int, typeWidth int, idWidth int) string {
+	id := param.getId()
 	if id == "default" {
 		id = ""
 	}
 
 	// Generate column alignment paddings.
-	modePad := strings.Repeat(" ", modeWidth-len(self.Mode()))
-	typePad := strings.Repeat(" ", typeWidth-len(self.Tname()))
+	modePad := strings.Repeat(" ", modeWidth-len(param.getMode()))
+	typePad := strings.Repeat(" ", typeWidth-len(param.getTname()))
 	idPad := strings.Repeat(" ", idWidth-len(id))
 
 	// Common columns up to type name.
-	fsrc := fmt.Sprintf("%s%s%s%s %s", self.Node().comments, INDENT,
-		self.Mode(), modePad, self.Tname())
+	fsrc := fmt.Sprintf("%s%s%s%s %s", param.getNode().comments, INDENT,
+		param.getMode(), modePad, param.getTname())
 
 	// Add id if not default.
 	if id != "" {
@@ -102,11 +102,11 @@ func paramFormat(self Param, modeWidth int, typeWidth int, idWidth int) string {
 	}
 
 	// Add help string if it exists.
-	if len(self.Help()) > 0 {
+	if len(param.getHelp()) > 0 {
 		if id == "" {
 			fsrc += fmt.Sprintf("%s ", typePad)
 		}
-		fsrc += fmt.Sprintf("%s  \"%s\"", idPad, self.Help())
+		fsrc += fmt.Sprintf("%s  \"%s\"", idPad, param.getHelp())
 	}
 	return fsrc + ",  "
 }
@@ -116,9 +116,9 @@ func (self *Params) getWidths() (int, int, int) {
 	typeWidth := 0
 	idWidth := 0
 	for _, param := range self.list {
-		modeWidth = max(modeWidth, len(param.Mode()))
-		typeWidth = max(typeWidth, len(param.Tname()))
-		idWidth = max(idWidth, len(param.Id()))
+		modeWidth = max(modeWidth, len(param.getMode()))
+		typeWidth = max(typeWidth, len(param.getTname()))
+		idWidth = max(idWidth, len(param.getId()))
 	}
 	return modeWidth, typeWidth, idWidth
 }
@@ -153,18 +153,18 @@ func (self *Pipeline) format() string {
 	})
 
 	// Steal the first param's comment.
-	fsrc := self.inParams.list[0].Node().comments
-	self.inParams.list[0].Node().comments = NEWLINE
+	fsrc := self.inParams.list[0].getNode().comments
+	self.inParams.list[0].getNode().comments = NEWLINE
 
 	fsrc += NEWLINE
-	fsrc += fmt.Sprintf("pipeline %s(", self.Id)
+	fsrc += fmt.Sprintf("pipeline %s(", self.id)
 	fsrc += self.inParams.format(modeWidth, typeWidth, idWidth)
 	fsrc += self.outParams.format(modeWidth, typeWidth, idWidth)
 	fsrc += self.node.comments
 	fsrc += ")"
 	fsrc += NEWLINE
 	fsrc += "{"
-	for _, callstm := range self.Calls {
+	for _, callstm := range self.calls {
 		fsrc += callstm.format()
 	}
 	fsrc += self.ret.format()
@@ -173,14 +173,14 @@ func (self *Pipeline) format() string {
 }
 
 func (self *CallStm) format() string {
-	fsrc := self.Bindings.List[0].Exp.Node().comments
-	self.Bindings.List[0].Exp.Node().comments = ""
+	fsrc := self.bindings.list[0].exp.getNode().comments
+	self.bindings.list[0].exp.getNode().comments = ""
 	volatile := ""
 	if self.volatile {
 		volatile = "volatile "
 	}
-	fsrc += fmt.Sprintf("%scall %s%s(%s", INDENT, volatile, self.Id, NEWLINE)
-	fsrc += self.Bindings.format()
+	fsrc += fmt.Sprintf("%scall %s%s(%s", INDENT, volatile, self.id, NEWLINE)
+	fsrc += self.bindings.format()
 	fsrc += self.node.comments
 	fsrc += fmt.Sprintf("%s)", INDENT)
 	fsrc += NEWLINE
@@ -206,10 +206,10 @@ func (self *Stage) format() string {
 	})
 
 	// Steal comment from first in param.
-	fsrc := self.inParams.list[0].Node().comments
-	self.inParams.list[0].Node().comments = NEWLINE
+	fsrc := self.inParams.list[0].getNode().comments
+	self.inParams.list[0].getNode().comments = NEWLINE
 
-	fsrc += fmt.Sprintf("stage %s(", self.Id)
+	fsrc += fmt.Sprintf("stage %s(", self.id)
 	fsrc += self.inParams.format(modeWidth, typeWidth, idWidth)
 	fsrc += self.outParams.format(modeWidth, typeWidth, idWidth)
 	fsrc += self.src.format(modeWidth, typeWidth, idWidth)
@@ -246,7 +246,7 @@ func (self *Callables) format() string {
 //
 func (self *Filetype) format() string {
 	fsrc := self.node.comments
-	fsrc += fmt.Sprintf("filetype %s;  ", self.Id)
+	fsrc += fmt.Sprintf("filetype %s;  ", self.id)
 	return fsrc
 }
 
