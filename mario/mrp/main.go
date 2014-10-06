@@ -14,7 +14,6 @@ import (
 	"os"
 	"path"
 	"path/filepath"
-	"runtime"
 	"strconv"
 	"strings"
 	"time"
@@ -71,9 +70,8 @@ func runLoop(pipestance *core.Pipestance, stepSecs int, disableVDR bool, noExit 
 		time.Sleep(time.Second * time.Duration(stepSecs))
 	}
 }
-
 func main() {
-	runtime.GOMAXPROCS(2)
+	core.SetupSignalHandlers()
 
 	//=========================================================================
 	// Commandline argument and environment variables.

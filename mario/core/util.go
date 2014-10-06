@@ -9,7 +9,9 @@ import (
 	"fmt"
 	"github.com/10XDev/osext"
 	"os"
+	"os/signal"
 	"path"
+	"syscall"
 	"time"
 )
 
@@ -55,6 +57,17 @@ func cartesianProduct(valueSets []interface{}) []interface{} {
 		perms = newPerms
 	}
 	return perms
+}
+
+func SetupSignalHandlers() {
+	// Handle CTRL-C and kill.
+	sigchan := make(chan os.Signal, 1)
+	signal.Notify(sigchan, os.Interrupt)
+	signal.Notify(sigchan, syscall.SIGTERM)
+	go func() {
+		<-sigchan
+		os.Exit(1)
+	}()
 }
 
 const TIMEFMT = "2006-01-02 15:04:05"
