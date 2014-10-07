@@ -1486,48 +1486,50 @@ func (self *Runtime) GetSerialization(pipestancePath string) (interface{}, bool)
  * Used Only for MARSOC
  */
 func (self *Runtime) buildVal(param Param, val interface{}) string {
-	if param.getIsFile() {
+	switch {
+	case val == nil:
+		return "null"
+
+	case reflect.TypeOf(val).Kind() == reflect.Slice:
+		a := []string{}
+		slice := reflect.ValueOf(val)
+		for i := 0; i < slice.Len(); i++ {
+			v := slice.Index(i).Interface()
+			a = append(a, self.buildVal(param, v))
+		}
+		return fmt.Sprintf("[%s]", strings.Join(a, ", "))
+
+	case param.getIsFile():
 		return fmt.Sprintf("\"%s\"", val)
 	}
-	if param.getTname() == "path" {
+
+	switch param.getTname() {
+	case "path", "string":
 		return fmt.Sprintf("\"%s\"", val)
-	}
-	if param.getTname() == "string" {
-		return fmt.Sprintf("\"%s\"", val)
-	}
-	if param.getTname() == "float" {
+	case "float":
 		return fmt.Sprintf("%f", val)
-	}
-	if param.getTname() == "int" {
+	case "bool":
+		return fmt.Sprintf("%t", val)
+	case "int":
 		if fval, ok := val.(float64); ok {
 			return fmt.Sprintf("%d", int(fval))
 		}
-	}
-	if param.getTname() == "bool" {
-		return fmt.Sprintf("%t", val)
+	case "map":
+		if data, err := json.Marshal(val); err == nil {
+			return string(data)
+		}
 	}
 	return fmt.Sprintf("%v", val)
 }
 
 func (self *Runtime) BuildCallSource(pname string, args map[string]interface{}) string {
+	// Loop over the pipeline's in params and print a binding
+	// whether the args bag has a value for it not.
 	lines := []string{}
 	for _, param := range self.pipelineTable[pname].getInParams().list {
-		valstr := ""
-		val, ok := args[param.getId()]
-		if !ok || val == nil {
-			valstr = "null"
-		} else if reflect.TypeOf(val).Kind() == reflect.Slice {
-			a := []string{}
-			slice := reflect.ValueOf(val)
-			for i := 0; i < slice.Len(); i++ {
-				v := slice.Index(i).Interface()
-				a = append(a, self.buildVal(param, v))
-			}
-			valstr = fmt.Sprintf("[%s]", strings.Join(a, ", "))
-		} else {
-			valstr = self.buildVal(param, val)
-		}
+		valstr := self.buildVal(param, args[param.getId()])
 		lines = append(lines, fmt.Sprintf("    %s = %s,", param.getId(), valstr))
 	}
-	return fmt.Sprintf("@include \"%s.mro\"\n\ncall %s(\n%s\n)", strings.ToLower(pname), pname, strings.Join(lines, "\n"))
+	return fmt.Sprintf("@include \"%s.mro\"\n\ncall %s(\n%s\n)", strings.ToLower(pname),
+		pname, strings.Join(lines, "\n"))
 }
