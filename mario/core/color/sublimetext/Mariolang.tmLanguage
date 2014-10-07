@@ -30,7 +30,7 @@
 		</dict>
 		<dict>
 			<key>match</key>
-			<string>([^\w]|^)(in|out|src|py|int|string|float|path|bool)([^\w]|$)</string>
+			<string>([^\w]|^)(in|out|src|py|int|string|float|path|bool|null)([^\w]|$)</string>
 			<key>name</key>
 			<string>storage.modifier</string>
 		</dict>
