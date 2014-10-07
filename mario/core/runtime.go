@@ -13,7 +13,6 @@ import (
 	"os/exec"
 	"path"
 	"path/filepath"
-	"reflect"
 	"sort"
 	"strings"
 	"sync"
@@ -1486,40 +1485,75 @@ func (self *Runtime) GetSerialization(pipestancePath string) (interface{}, bool)
  * Used Only for MARSOC
  */
 func (self *Runtime) buildVal(param Param, val interface{}) string {
+	// MRO value expression syntax is identical to JSON. Just need to make
+	// sure floats get printed with decimal points.
 	switch {
-	case val == nil:
-		return "null"
-
-	case reflect.TypeOf(val).Kind() == reflect.Slice:
-		a := []string{}
-		slice := reflect.ValueOf(val)
-		for i := 0; i < slice.Len(); i++ {
-			v := slice.Index(i).Interface()
-			a = append(a, self.buildVal(param, v))
-		}
-		return fmt.Sprintf("[%s]", strings.Join(a, ", "))
-
-	case param.getIsFile():
-		return fmt.Sprintf("\"%s\"", val)
-	}
-
-	switch param.getTname() {
-	case "path", "string":
-		return fmt.Sprintf("\"%s\"", val)
-	case "float":
+	case param.getTname() == "float":
 		return fmt.Sprintf("%f", val)
-	case "bool":
-		return fmt.Sprintf("%t", val)
-	case "int":
-		if fval, ok := val.(float64); ok {
-			return fmt.Sprintf("%d", int(fval))
+	default:
+		indent := "    "
+		if data, err := json.MarshalIndent(val, "", indent); err == nil {
+			// Indent multi-line values (but not first line).
+			sublines := strings.Split(string(data), "\n")
+			for i, _ := range sublines[1:] {
+				sublines[i+1] = indent + sublines[i+1]
+			}
+			return strings.Join(sublines, "\n")
 		}
-	case "map":
-		if data, err := json.Marshal(val); err == nil {
-			return string(data)
-		}
+		return fmt.Sprintf("<ParseError: %v>", val)
 	}
-	return fmt.Sprintf("%v", val)
+	/*
+			    indent := strings.Repeat("    ", indentLevel+1)
+		    	switch {
+				case val == nil:
+					return "null"
+
+				case reflect.TypeOf(val).Kind() == reflect.Slice:
+					valstr := "[\n"
+					a := []string{}
+					slice := reflect.ValueOf(val)
+					for i := 0; i < slice.Len(); i++ {
+						v := slice.Index(i).Interface()
+						a = append(a, indent+self.buildVal(param, v, indentLevel+1))
+					}
+					valstr += strings.Join(a, ",\n")
+					valstr += "\n    ]"
+					return valstr
+
+				case param.getIsFile():
+					return fmt.Sprintf("\"%s\"", val)
+				}
+
+				switch param.getTname() {
+				case "path", "string":
+					return fmt.Sprintf("\"%s\"", val)
+				case "float":
+					return fmt.Sprintf("%f", val)
+				case "bool":
+					return fmt.Sprintf("%t", val)
+				case "int":
+					if fval, ok := val.(float64); ok {
+						return fmt.Sprintf("%d", int(fval))
+					}
+				case "map":
+					// MRO map syntax is the same as JSON, so just generate JSON.
+					if data, err := json.MarshalIndent(val, "", "    "); err == nil {
+						valstr := string(data)
+						// Indent nicely.
+						sublines := strings.Split(valstr, "\n")
+						if len(sublines) > 1 {
+							for i, _ := range sublines {
+								if i > 0 {
+									// Don't indent the first line.
+									sublines[i] = strings.Repeat("    ", indentLevel) + sublines[i]
+								}
+							}
+							valstr = strings.Join(sublines, "\n")
+						}
+						return valstr
+					}
+				}
+	*/
 }
 
 func (self *Runtime) BuildCallSource(pname string, args map[string]interface{}) string {
