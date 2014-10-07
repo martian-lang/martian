@@ -1502,58 +1502,6 @@ func (self *Runtime) buildVal(param Param, val interface{}) string {
 		}
 		return fmt.Sprintf("<ParseError: %v>", val)
 	}
-	/*
-			    indent := strings.Repeat("    ", indentLevel+1)
-		    	switch {
-				case val == nil:
-					return "null"
-
-				case reflect.TypeOf(val).Kind() == reflect.Slice:
-					valstr := "[\n"
-					a := []string{}
-					slice := reflect.ValueOf(val)
-					for i := 0; i < slice.Len(); i++ {
-						v := slice.Index(i).Interface()
-						a = append(a, indent+self.buildVal(param, v, indentLevel+1))
-					}
-					valstr += strings.Join(a, ",\n")
-					valstr += "\n    ]"
-					return valstr
-
-				case param.getIsFile():
-					return fmt.Sprintf("\"%s\"", val)
-				}
-
-				switch param.getTname() {
-				case "path", "string":
-					return fmt.Sprintf("\"%s\"", val)
-				case "float":
-					return fmt.Sprintf("%f", val)
-				case "bool":
-					return fmt.Sprintf("%t", val)
-				case "int":
-					if fval, ok := val.(float64); ok {
-						return fmt.Sprintf("%d", int(fval))
-					}
-				case "map":
-					// MRO map syntax is the same as JSON, so just generate JSON.
-					if data, err := json.MarshalIndent(val, "", "    "); err == nil {
-						valstr := string(data)
-						// Indent nicely.
-						sublines := strings.Split(valstr, "\n")
-						if len(sublines) > 1 {
-							for i, _ := range sublines {
-								if i > 0 {
-									// Don't indent the first line.
-									sublines[i] = strings.Repeat("    ", indentLevel) + sublines[i]
-								}
-							}
-							valstr = strings.Join(sublines, "\n")
-						}
-						return valstr
-					}
-				}
-	*/
 }
 
 func (self *Runtime) BuildCallSource(pname string, args map[string]interface{}) string {
