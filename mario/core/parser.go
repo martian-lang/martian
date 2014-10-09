@@ -151,12 +151,14 @@ func (bindings *BindStms) check(global *Ast, callable Callable, params *Params) 
 			return err
 		}
 
-		// Check for array match.
-		if param.getIsArray() && !isarray {
-			return global.err(binding, "TypeMismatchError: expected array of '%s' for '%s'", param.getTname(), param.getId())
-		}
-		if !param.getIsArray() && isarray {
-			return global.err(binding, "TypeMismatchError: got array value for non-array parameter '%s'", param.getId())
+		// Check for array match unless the value expression is being swept.
+		if !binding.sweep {
+			if param.getIsArray() && !isarray {
+				return global.err(binding, "TypeMismatchError: expected array of '%s' for '%s'", param.getTname(), param.getId())
+			}
+			if !param.getIsArray() && isarray {
+				return global.err(binding, "TypeMismatchError: got array value for non-array parameter '%s'", param.getId())
+			}
 		}
 
 		anymatch := false

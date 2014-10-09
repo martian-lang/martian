@@ -211,8 +211,8 @@ bind_stm_list
 bind_stm
     : ID EQUALS exp COMMA
         {{ $$ = &BindStm{NewAstNode(&mmlval), $1, $3, false, ""} }}
-    | ID EQUALS SWEEP LPAREN exp RPAREN COMMA
-        {{ $$ = &BindStm{NewAstNode(&mmlval), $1, $5, true, ""} }}
+    | ID EQUALS SWEEP LPAREN exp_list RPAREN COMMA
+        {{ $$ = &BindStm{NewAstNode(&mmlval), $1, &ValExp{node:NewAstNode(&mmlval), kind: "array", value: $5}, true, ""} }}
     ;
 
 exp_list
