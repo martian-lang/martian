@@ -1488,7 +1488,7 @@ func (self *Runtime) buildVal(param Param, val interface{}) string {
 	// MRO value expression syntax is identical to JSON. Just need to make
 	// sure floats get printed with decimal points.
 	switch {
-	case param.getTname() == "float":
+	case param.getTname() == "float" && val != nil:
 		return fmt.Sprintf("%f", val)
 	default:
 		indent := "    "
