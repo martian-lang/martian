@@ -1,3 +1,5 @@
+@include "analyzer_pd.mro"
+
 call ANALYZER_PD(
     input_mode = "BCL_PROCESSOR",
     exclude_non_bc_reads = false,

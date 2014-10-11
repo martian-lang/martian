@@ -24,22 +24,22 @@ func (self *MarioError) Error() string {
 	return self.Msg
 }
 
+// RuntimeError
+type RuntimeError struct {
+	Msg string
+}
+
+func (self *RuntimeError) Error() string {
+	return fmt.Sprintf("RuntimeError: %s.", self.Msg)
+}
+
 // PipestanceExistsError
 type PipestanceExistsError struct {
 	psid string
 }
 
 func (self *PipestanceExistsError) Error() string {
-	return fmt.Sprintf("PipestanceExistsError: '%s'.", self.psid)
-}
-
-// StagestanceExistsError
-type StagestanceExistsError struct {
-	ssid string
-}
-
-func (self *StagestanceExistsError) Error() string {
-	return fmt.Sprintf("StagestanceExistsError: '%s'.", self.ssid)
+	return fmt.Sprintf("RuntimeError: pipestance '%s' already exists.", self.psid)
 }
 
 // PreprocessError
@@ -59,9 +59,16 @@ type AstError struct {
 }
 
 func (self *AstError) Error() string {
+	// If there's no newline at the end of the source and the error is in the
+	// node at the end of the file, the loc can be one larger than the size
+	// of the locmap. So cap it so we don't have an array out of bounds.
+	loc := self.locable.getLoc()
+	if loc >= len(self.global.locmap) {
+		loc = len(self.global.locmap) - 1
+	}
 	return fmt.Sprintf("MRO %s at %s:%d.", self.msg,
-		self.global.locmap[self.locable.getLoc()].fname,
-		self.global.locmap[self.locable.getLoc()].loc)
+		self.global.locmap[loc].fname,
+		self.global.locmap[loc].loc)
 }
 
 // ParseError

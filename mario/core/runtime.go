@@ -1104,7 +1104,10 @@ func NewPipestance(parent Nodable, callStm *CallStm, callables *Callables) *Pipe
 	self.node = NewNode(parent, "pipeline", callStm, callables)
 
 	// Build subcall tree.
-	pipeline := callables.table[self.node.name].(*Pipeline)
+	pipeline, ok := callables.table[self.node.name].(*Pipeline)
+	if !ok {
+		return nil
+	}
 	for _, subcallStm := range pipeline.calls {
 		callable := callables.table[subcallStm.id]
 		switch callable.(type) {
@@ -1378,11 +1381,20 @@ func (self *Runtime) instantiatePipeline(src string, srcPath string, psid string
 		return "", nil, err
 	}
 
-	// Instantiate the pipeline.
+	// Check there's a call.
 	if ast.call == nil {
-		return "", nil, &MarioError{"NoCallError: cannot start a pipeline without a call statement."}
+		return "", nil, &RuntimeError{"cannot start a pipeline without a call statement"}
 	}
+	// Make sure it's a pipeline we're calling.
+	if pipeline := ast.callables.table[ast.call.id]; pipeline == nil {
+		return "", nil, &RuntimeError{fmt.Sprintf("'%s' is not a declared pipeline", ast.call.id)}
+	}
+
+	// Instantiate the pipeline.
 	pipestance := NewPipestance(NewTopNode(self, psid, pipestancePath), ast.call, ast.callables)
+	if pipestance == nil {
+		return "", nil, &RuntimeError{fmt.Sprintf("'%s' is not a declared pipeline", ast.call.id)}
+	}
 	return postsrc, pipestance, nil
 }
 
@@ -1444,7 +1456,7 @@ func (self *Runtime) InvokeStage(src string, srcPath string, ssid string,
 	stagestancePath string) (*Stagestance, error) {
 	// Check if stagestance path already exists.
 	if _, err := os.Stat(stagestancePath); err == nil {
-		return nil, &StagestanceExistsError{ssid}
+		return nil, &RuntimeError{fmt.Sprintf("stagestance '%s' already exists", ssid)}
 	} else if err := os.MkdirAll(stagestancePath, 0755); err != nil {
 		return nil, err
 	}
@@ -1456,13 +1468,19 @@ func (self *Runtime) InvokeStage(src string, srcPath string, ssid string,
 		return nil, err
 	}
 
-	// Create stagestance.
+	// Check there's a call.
 	if ast.call == nil {
-		return nil, &MarioError{"NoCallError: cannot start a stage without a call statement."}
+		return nil, &RuntimeError{"cannot start a stage without a call statement"}
 	}
+	// Make sure it's a stage we're calling.
+	if stage := ast.callables.table[ast.call.id].(*Stage); stage == nil {
+		return nil, &RuntimeError{fmt.Sprintf("'%s' is not a declared stage", ast.call.id)}
+	}
+
+	// Instantiate stagestance.
 	stagestance := NewStagestance(NewTopNode(self, "", stagestancePath), ast.call, ast.callables)
 	if stagestance == nil {
-		return nil, &MarioError{fmt.Sprintf("NotAStageError: '%s'", ast.call.id)}
+		return nil, &RuntimeError{fmt.Sprintf("'%s' is not a declared stage", ast.call.id)}
 	}
 
 	// Create stagestance folder graph concurrently.
