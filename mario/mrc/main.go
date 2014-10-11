@@ -43,7 +43,7 @@ Options:
 	mroVersion := core.GetGitTag(mroPath)
 
 	// Setup runtime with MRO path.
-	rt := core.NewRuntime("local", mroPath, marioVersion, mroVersion, false)
+	rt := core.NewRuntime("local", mroPath, marioVersion, mroVersion, false, false)
 
 	count := 0
 	if opts["--all"].(bool) {

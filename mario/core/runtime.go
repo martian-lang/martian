@@ -1312,13 +1312,14 @@ type Runtime struct {
 }
 
 func NewRuntime(jobMode string, mroPath string, marioVersion string,
-	mroVersion string, enableProfiling bool) *Runtime {
+	mroVersion string, enableProfiling bool, debug bool) *Runtime {
 	return NewRuntimeWithCores(jobMode, mroPath, marioVersion, mroVersion,
-		-1, -1, enableProfiling)
+		-1, -1, enableProfiling, debug)
 }
 
 func NewRuntimeWithCores(jobMode string, mroPath string, marioVersion string,
-	mroVersion string, reqCores int, reqMem int, enableProfiling bool) *Runtime {
+	mroVersion string, reqCores int, reqMem int, enableProfiling bool,
+	debug bool) *Runtime {
 
 	self := &Runtime{}
 	self.mroPath = mroPath
@@ -1326,7 +1327,7 @@ func NewRuntimeWithCores(jobMode string, mroPath string, marioVersion string,
 	self.marioVersion = marioVersion
 	self.mroVersion = mroVersion
 	self.jobMode = jobMode
-	self.scheduler = NewScheduler(reqCores, reqMem)
+	self.scheduler = NewScheduler(reqCores, reqMem, debug)
 	self.enableProfiling = enableProfiling
 	self.pipelineTable = map[string]*Pipeline{}
 	self.PipelineNames = []string{}

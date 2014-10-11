@@ -33,6 +33,7 @@ type Scheduler struct {
 	coreSem  semaphore
 	memGBSem semaphore
 	queue    []*exec.Cmd
+	debug    bool
 }
 
 func pluralize(n int) string {
@@ -42,8 +43,9 @@ func pluralize(n int) string {
 	return "s"
 }
 
-func NewScheduler(userMaxCores int, userMaxMemGB int) *Scheduler {
+func NewScheduler(userMaxCores int, userMaxMemGB int, debug bool) *Scheduler {
 	self := &Scheduler{}
+	self.debug = debug
 
 	// Set max number of cores usable at one time.
 	if userMaxCores > 0 {
@@ -90,8 +92,6 @@ func (self *Scheduler) Enqueue(cmd *exec.Cmd, threads int, memGB int,
 	stdoutFile *os.File, stderrFile *os.File, errorsPath string) {
 
 	go func() {
-		log := false // convenience flag for toggling debug logging
-
 		defer stdoutFile.Close()
 		defer stderrFile.Close()
 
@@ -100,7 +100,7 @@ func (self *Scheduler) Enqueue(cmd *exec.Cmd, threads int, memGB int,
 			threads = 1
 		}
 		if threads > self.maxCores {
-			if log {
+			if self.debug {
 				LogInfo("schedlr", "Need %d core%s but settling for %d.", threads,
 					pluralize(threads), self.maxCores)
 			}
@@ -112,7 +112,7 @@ func (self *Scheduler) Enqueue(cmd *exec.Cmd, threads int, memGB int,
 			memGB = 1
 		}
 		if memGB > self.maxMemGB {
-			if log {
+			if self.debug {
 				LogInfo("schedlr", "Need %d GB but settling for %d.", memGB,
 					self.maxMemGB)
 			}
@@ -120,21 +120,21 @@ func (self *Scheduler) Enqueue(cmd *exec.Cmd, threads int, memGB int,
 		}
 
 		// Acquire cores.
-		if log {
+		if self.debug {
 			LogInfo("schedlr", "Waiting for %d core%s.", threads, pluralize(threads))
 		}
 		self.coreSem.P(threads)
-		if log {
+		if self.debug {
 			LogInfo("schedlr", "Acquiring %d core%s (%d/%d in use).", threads,
 				pluralize(threads), len(self.coreSem), self.maxCores)
 		}
 
 		// Acquire memory.
-		if log {
+		if self.debug {
 			LogInfo("schedlr", "Waiting for %d GB.", memGB)
 		}
 		self.memGBSem.P(memGB)
-		if log {
+		if self.debug {
 			LogInfo("schedlr", "Acquiring %d GB (%d/%d in use).", memGB,
 				len(self.memGBSem), self.maxMemGB)
 		}
@@ -148,12 +148,12 @@ func (self *Scheduler) Enqueue(cmd *exec.Cmd, threads int, memGB int,
 		}
 
 		self.coreSem.V(threads)
-		if log {
+		if self.debug {
 			LogInfo("schedlr", "Releasing %d core%s (%d/%d in use).", threads,
 				pluralize(threads), len(self.coreSem), self.maxCores)
 		}
 		self.memGBSem.V(memGB)
-		if log {
+		if self.debug {
 			LogInfo("schedlr", "Releasing %d GB (%d/%d in use).", memGB,
 				len(self.memGBSem), self.maxMemGB)
 		}

@@ -95,6 +95,7 @@ Options:
     --maxmem=<num>   Set max GB the pipeline may request at one time.
     --sge            Run jobs on Sun Grid Engine instead of locally.
                      (--maxcores and --maxmem will be ignored)
+    --debug          Enable debug logging for local scheduler.
     -h --help        Show this message.
     --version        Show version.`
 	marioVersion := core.GetVersion()
@@ -165,12 +166,13 @@ Options:
 	invocationPath := opts["<call.mro>"].(string)
 	pipestancePath := path.Join(cwd, psid)
 	stepSecs := 1
+	debug := opts["--debug"].(bool)
 
 	//=========================================================================
 	// Configure Mario runtime.
 	//=========================================================================
 	rt := core.NewRuntimeWithCores(jobMode, mroPath, marioVersion, mroVersion,
-		reqCores, reqMem, profile)
+		reqCores, reqMem, profile, debug)
 
 	//=========================================================================
 	// Invoke pipestance or Reattach if exists.

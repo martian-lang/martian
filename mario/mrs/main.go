@@ -31,10 +31,11 @@ Usage:
     mrs -h | --help | --version
 
 Options:
-    --sge         Run jobs on Sun Grid Engine instead of locally.
-    --profile     Enable stage performance profiling.
-    -h --help     Show this message.
-    --version     Show version.`
+    --sge        Run jobs on Sun Grid Engine instead of locally.
+    --profile    Enable stage performance profiling.
+    --debug      Enable debug logging for local scheduler. 
+    -h --help    Show this message.
+    --version    Show version.`
 	marioVersion := core.GetVersion()
 	opts, _ := docopt.Parse(doc, nil, true, marioVersion, false)
 	core.LogInfo("*", "Mario Run Stage")
@@ -72,11 +73,12 @@ Options:
 	ssid := opts["<stagestance_name>"].(string)
 	stagestancePath := path.Join(cwd, ssid)
 	stepSecs := 1
+	debug := opts["--debug"].(bool)
 
 	//=========================================================================
 	// Configure Mario runtime.
 	//=========================================================================
-	rt := core.NewRuntime(jobMode, mroPath, marioVersion, mroVersion, profile)
+	rt := core.NewRuntime(jobMode, mroPath, marioVersion, mroVersion, profile, debug)
 
 	// Invoke stagestance.
 	data, err := ioutil.ReadFile(invocationPath)
