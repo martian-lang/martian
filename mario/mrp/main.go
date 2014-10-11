@@ -25,9 +25,11 @@ import (
 func runLoop(pipestance *core.Pipestance, stepSecs int, disableVDR bool, noExit bool) {
 	for {
 		pipestance.RefreshMetadata()
+		showedFailed := false
 
 		// Check for completion states.
-		if pipestance.GetState() == "complete" {
+		state := pipestance.GetState()
+		if state == "complete" {
 			pipestance.Immortalize()
 			if disableVDR {
 				core.LogInfo("runtime",
@@ -48,19 +50,26 @@ func runLoop(pipestance *core.Pipestance, stepSecs int, disableVDR bool, noExit 
 				core.LogInfo("runtime", "Pipestance is complete, exiting.")
 				os.Exit(0)
 			}
-		}
-		if pipestance.GetState() == "failed" {
+		} else if state == "failed" {
 			fqname, errpath, _, log := pipestance.GetFatalError()
 			fmt.Printf("\nPipestance failed at:\n%s\n\nErrors written to:\n%s\n\n%s\n",
 				fqname, errpath, log)
 			if noExit {
-				core.LogInfo("runtime",
-					"Pipestance failed, staying alive because --noexit given.")
-				break
+				// If pipestance failed but we're staying alive, only print this once
+				// as long as we stay failed.
+				if !showedFailed {
+					showedFailed = true
+					core.LogInfo("runtime",
+						"Pipestance failed, staying alive because --noexit given.")
+				}
 			} else {
-				core.LogInfo("runtime", "Pipestance failed, exiting.")
+				core.LogInfo("runtime", "Pipestance failed, exiting. Use --noexit option to stay alive after failure.")
 				os.Exit(1)
 			}
+		} else {
+			// If we went from failed to something else, allow the failure message to
+			// be shown once if we fail again.
+			showedFailed = false
 		}
 
 		// Step all nodes.
