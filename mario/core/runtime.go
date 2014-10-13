@@ -1004,16 +1004,12 @@ func (self *Node) execLocalJob(shellCmd string, stagecodePath string,
 	cmd := exec.Command(shellCmd, argv...)
 
 	// Connect child to _stdout and _stderr metadata files.
-	stdoutFile, _ := os.Create(metadata.makePath("stdout"))
-	stderrFile, _ := os.Create(metadata.makePath("stderr"))
-	stdoutFile.WriteString("[stdout]\n")
-	stderrFile.WriteString("[stderr]\n")
-	cmd.Stdout = stdoutFile
-	cmd.Stderr = stderrFile
+	stdoutPath := metadata.makePath("stdout")
+	stderrPath := metadata.makePath("stderr")
 	errorsPath := metadata.makePath("errors")
 
 	// Enqueue the command to the local scheduler.
-	self.rt.scheduler.Enqueue(cmd, threads, memGB, stdoutFile, stderrFile, errorsPath)
+	self.rt.scheduler.Enqueue(cmd, threads, memGB, stdoutPath, stderrPath, errorsPath)
 }
 
 func (self *Node) execSGEJob(fqname string, shellName string, shellCmd string,
@@ -1077,6 +1073,7 @@ func NewStagestance(parent Nodable, callStm *CallStm, callables *Callables) *Sta
 	if !ok {
 		return nil
 	}
+	//self.node.stagecodePath = RelPath(path.Join("..", "adapters", "python", "tester"))
 	self.node.stagecodePath = path.Join(self.node.rt.mroPath, stage.src.path)
 	self.node.stagecodeLang = langMap[stage.src.lang]
 	self.node.split = len(stage.splitParams.list) > 0

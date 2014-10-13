@@ -6,11 +6,13 @@
 package core
 
 import (
+	"fmt"
 	"github.com/cloudfoundry/gosigar"
 	"io/ioutil"
 	"os"
 	"os/exec"
 	"runtime"
+	"strings"
 )
 
 type semaphore chan bool
@@ -88,13 +90,19 @@ func NewScheduler(userMaxCores int, userMaxMemGB int, debug bool) *Scheduler {
 	return self
 }
 
+func countOpenFiles() int {
+	out, err := exec.Command("/bin/sh", "-c", fmt.Sprintf("lsof -p %v", os.Getpid())).Output()
+	if err != nil {
+		return -1
+	}
+	lines := strings.Split(string(out), "\n")
+	return len(lines) - 1
+}
+
 func (self *Scheduler) Enqueue(cmd *exec.Cmd, threads int, memGB int,
-	stdoutFile *os.File, stderrFile *os.File, errorsPath string) {
+	stdoutPath string, stderrPath string, errorsPath string) {
 
 	go func() {
-		defer stdoutFile.Close()
-		defer stderrFile.Close()
-
 		// Sanity check and cap to self.maxCores.
 		if threads < 1 {
 			threads = 1
@@ -139,6 +147,26 @@ func (self *Scheduler) Enqueue(cmd *exec.Cmd, threads int, memGB int,
 				len(self.memGBSem), self.maxMemGB)
 		}
 
+		// Set up _stdout and _stderr for the job.
+		if self.debug {
+			fmt.Printf("%d open files\n", countOpenFiles())
+		}
+		if stdoutFile, err := os.Create(stdoutPath); err == nil {
+			stdoutFile.WriteString("[stdout]\n")
+			cmd.Stdout = stdoutFile
+			defer stdoutFile.Close()
+		}
+		if stderrFile, err := os.Create(stderrPath); err == nil {
+			stderrFile.WriteString("[stderr]\n")
+			cmd.Stderr = stderrFile
+			defer stderrFile.Close()
+		}
+		if self.debug {
+			fmt.Printf("%d open files\n", countOpenFiles())
+			defer fmt.Printf("%d open files\n", countOpenFiles())
+		}
+
+		// Run the command and wait for completion.
 		if err := cmd.Start(); err != nil {
 			ioutil.WriteFile(errorsPath, []byte(err.Error()), 0600)
 		} else {
@@ -147,11 +175,13 @@ func (self *Scheduler) Enqueue(cmd *exec.Cmd, threads int, memGB int,
 			}
 		}
 
+		// Release cores.
 		self.coreSem.V(threads)
 		if self.debug {
 			LogInfo("schedlr", "Releasing %d core%s (%d/%d in use).", threads,
 				pluralize(threads), len(self.coreSem), self.maxCores)
 		}
+		// Release memory.
 		self.memGBSem.V(memGB)
 		if self.debug {
 			LogInfo("schedlr", "Releasing %d GB (%d/%d in use).", memGB,
