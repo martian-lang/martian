@@ -75,6 +75,9 @@ Options:
 	stepSecs := 1
 	debug := opts["--debug"].(bool)
 
+	// Validate psid.
+	core.DieIf(core.ValidateID(ssid))
+
 	//=========================================================================
 	// Configure Mario runtime.
 	//=========================================================================

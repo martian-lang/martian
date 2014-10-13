@@ -179,6 +179,9 @@ Options:
 	debug := opts["--debug"].(bool)
 	stest := opts["--stest"].(bool)
 
+	// Validate psid.
+	core.DieIf(core.ValidateID(psid))
+
 	//=========================================================================
 	// Configure Mario runtime.
 	//=========================================================================

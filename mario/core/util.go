@@ -11,6 +11,7 @@ import (
 	"os"
 	"os/signal"
 	"path"
+	"regexp"
 	"syscall"
 	"time"
 )
@@ -68,6 +69,13 @@ func SetupSignalHandlers() {
 		<-sigchan
 		os.Exit(1)
 	}()
+}
+
+func ValidateID(id string) error {
+	if ok, _ := regexp.MatchString("^(\\d|\\w)+$", id); !ok {
+		return &MarioError{fmt.Sprintf("Invalid name: %s (only numbers, letters, dash, and underscore allowed)", id)}
+	}
+	return nil
 }
 
 const TIMEFMT = "2006-01-02 15:04:05"
