@@ -1051,6 +1051,7 @@ func (self *Node) execSGEJob(fqname string, shellName string, shellCmd string,
 		out = string(data)
 	} else {
 		out = err.Error()
+		metadata.writeRaw("errors", "qsub error:\n"+out)
 	}
 	metadata.writeRaw("qsub", strings.Join(cmd.Args, " ")+"\n\n"+out)
 }
