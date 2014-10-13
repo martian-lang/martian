@@ -2,7 +2,7 @@
 #
 # Copyright (c) 2014 10X Technologies, Inc. All rights reserved.
 #
-# Runs alignment code
+# Accelerated stress-tester for Mario runtime.
 #
 import mario
 import time
