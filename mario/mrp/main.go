@@ -105,6 +105,7 @@ Options:
     --sge            Run jobs on Sun Grid Engine instead of locally.
                      (--maxcores and --maxmem will be ignored)
     --debug          Enable debug logging for local scheduler.
+    --stest          Substitute real stages with stress-testing stage.
     -h --help        Show this message.
     --version        Show version.`
 	marioVersion := core.GetVersion()
@@ -176,12 +177,13 @@ Options:
 	pipestancePath := path.Join(cwd, psid)
 	stepSecs := 1
 	debug := opts["--debug"].(bool)
+	stest := opts["--stest"].(bool)
 
 	//=========================================================================
 	// Configure Mario runtime.
 	//=========================================================================
 	rt := core.NewRuntimeWithCores(jobMode, mroPath, marioVersion, mroVersion,
-		reqCores, reqMem, profile, debug)
+		reqCores, reqMem, profile, debug, stest)
 
 	//=========================================================================
 	// Invoke pipestance or Reattach if exists.

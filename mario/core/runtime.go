@@ -1073,8 +1073,11 @@ func NewStagestance(parent Nodable, callStm *CallStm, callables *Callables) *Sta
 	if !ok {
 		return nil
 	}
-	//self.node.stagecodePath = RelPath(path.Join("..", "adapters", "python", "tester"))
-	self.node.stagecodePath = path.Join(self.node.rt.mroPath, stage.src.path)
+	if self.node.rt.stest {
+		self.node.stagecodePath = RelPath(path.Join("..", "adapters", "python", "tester"))
+	} else {
+		self.node.stagecodePath = path.Join(self.node.rt.mroPath, stage.src.path)
+	}
 	self.node.stagecodeLang = langMap[stage.src.lang]
 	self.node.split = len(stage.splitParams.list) > 0
 	self.node.buildForks(self.node.argbindings)
@@ -1309,17 +1312,18 @@ type Runtime struct {
 	jobMode         string
 	scheduler       *Scheduler
 	enableProfiling bool
+	stest           bool
 }
 
 func NewRuntime(jobMode string, mroPath string, marioVersion string,
 	mroVersion string, enableProfiling bool, debug bool) *Runtime {
 	return NewRuntimeWithCores(jobMode, mroPath, marioVersion, mroVersion,
-		-1, -1, enableProfiling, debug)
+		-1, -1, enableProfiling, debug, false)
 }
 
 func NewRuntimeWithCores(jobMode string, mroPath string, marioVersion string,
 	mroVersion string, reqCores int, reqMem int, enableProfiling bool,
-	debug bool) *Runtime {
+	debug bool, stest bool) *Runtime {
 
 	self := &Runtime{}
 	self.mroPath = mroPath
@@ -1331,6 +1335,7 @@ func NewRuntimeWithCores(jobMode string, mroPath string, marioVersion string,
 	self.enableProfiling = enableProfiling
 	self.pipelineTable = map[string]*Pipeline{}
 	self.PipelineNames = []string{}
+	self.stest = stest
 
 	// Parse all MROs in MROPATH and cache pipelines by name.
 	fpaths, _ := filepath.Glob(self.mroPath + "/[^_]*.mro")

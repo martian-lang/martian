@@ -76,6 +76,13 @@ func Timestamp() string {
 	return time.Now().Format(TIMEFMT)
 }
 
+func Pluralize(n int) string {
+	if n == 1 {
+		return ""
+	}
+	return "s"
+}
+
 func EnvRequire(reqs [][]string, log bool) map[string]string {
 	e := map[string]string{}
 	for _, req := range reqs {

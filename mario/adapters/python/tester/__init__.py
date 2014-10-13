@@ -6,14 +6,18 @@
 #
 import mario
 import time
+import random
 
-SLEEPSECS = 1
+SLEEPSECS = 0
 THREADS = 1
 MEMGB = 1.0
-CHUNKS = 100
+CHUNKS = 10
+random.seed()
 
 def split(args):
     time.sleep(SLEEPSECS)
+    THREADS = random.randint(1,8)
+    CHUNKS = random.randint(10,50)
     return [{'__threads': THREADS, '__mem_gb': MEMGB} for i in range(0, CHUNKS)]
 
 def main(args, outs):

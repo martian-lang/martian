@@ -6,43 +6,61 @@
 package core
 
 import (
-	"fmt"
 	"github.com/cloudfoundry/gosigar"
 	"io/ioutil"
 	"os"
 	"os/exec"
 	"runtime"
-	"strings"
+	"sync"
 )
 
-type semaphore chan bool
+//
+// Semaphore implementation
+//
+type Semaphore struct {
+	counter chan bool
+	pmutex  *sync.Mutex
+	vmutex  *sync.Mutex
+}
 
-func (s semaphore) P(n int) {
-	for i := 0; i < n; i++ {
-		s <- true
+func NewSemaphore(capacity int) *Semaphore {
+	return &Semaphore{
+		make(chan bool, capacity),
+		&sync.Mutex{},
+		&sync.Mutex{},
 	}
 }
 
-func (s semaphore) V(n int) {
+func (self *Semaphore) P(n int) {
+	self.pmutex.Lock()
 	for i := 0; i < n; i++ {
-		<-s
+		self.counter <- true
 	}
+	self.pmutex.Unlock()
 }
 
+func (self *Semaphore) V(n int) {
+	self.vmutex.Lock()
+	for i := 0; i < n; i++ {
+		<-self.counter
+	}
+	self.vmutex.Unlock()
+}
+
+func (self *Semaphore) len() int {
+	return len(self.counter)
+}
+
+//
+// Local Scheduler
+//
 type Scheduler struct {
 	maxCores int
 	maxMemGB int
-	coreSem  semaphore
-	memGBSem semaphore
+	coreSem  *Semaphore
+	memGBSem *Semaphore
 	queue    []*exec.Cmd
 	debug    bool
-}
-
-func pluralize(n int) string {
-	if n == 1 {
-		return ""
-	}
-	return "s"
 }
 
 func NewScheduler(userMaxCores int, userMaxMemGB int, debug bool) *Scheduler {
@@ -54,13 +72,13 @@ func NewScheduler(userMaxCores int, userMaxMemGB int, debug bool) *Scheduler {
 		// If user specified --maxcores, use that value for max usable cores.
 		self.maxCores = userMaxCores
 		LogInfo("schedlr", "Using %d core%s, per --maxcores option.",
-			self.maxCores, pluralize(self.maxCores))
+			self.maxCores, Pluralize(self.maxCores))
 	} else {
 		// Otherwise, set max usable cores to total number of cores reported
 		// by the system.
 		self.maxCores = runtime.NumCPU()
 		LogInfo("schedlr", "Using %d core%s available on system.",
-			self.maxCores, pluralize(self.maxCores))
+			self.maxCores, Pluralize(self.maxCores))
 	}
 
 	// Set max GB of memory usable at one time.
@@ -84,19 +102,10 @@ func NewScheduler(userMaxCores int, userMaxMemGB int, debug bool) *Scheduler {
 			int(MAXMEM_FRACTION*100))
 	}
 
-	self.coreSem = make(semaphore, self.maxCores)
-	self.memGBSem = make(semaphore, self.maxMemGB)
+	self.coreSem = NewSemaphore(self.maxCores)
+	self.memGBSem = NewSemaphore(self.maxMemGB)
 	self.queue = []*exec.Cmd{}
 	return self
-}
-
-func countOpenFiles() int {
-	out, err := exec.Command("/bin/sh", "-c", fmt.Sprintf("lsof -p %v", os.Getpid())).Output()
-	if err != nil {
-		return -1
-	}
-	lines := strings.Split(string(out), "\n")
-	return len(lines) - 1
 }
 
 func (self *Scheduler) Enqueue(cmd *exec.Cmd, threads int, memGB int,
@@ -110,7 +119,7 @@ func (self *Scheduler) Enqueue(cmd *exec.Cmd, threads int, memGB int,
 		if threads > self.maxCores {
 			if self.debug {
 				LogInfo("schedlr", "Need %d core%s but settling for %d.", threads,
-					pluralize(threads), self.maxCores)
+					Pluralize(threads), self.maxCores)
 			}
 			threads = self.maxCores
 		}
@@ -129,28 +138,28 @@ func (self *Scheduler) Enqueue(cmd *exec.Cmd, threads int, memGB int,
 
 		// Acquire cores.
 		if self.debug {
-			LogInfo("schedlr", "Waiting for %d core%s.", threads, pluralize(threads))
+			LogInfo("schedlr", "Waiting for %d core%s", threads, Pluralize(threads))
 		}
 		self.coreSem.P(threads)
 		if self.debug {
-			LogInfo("schedlr", "Acquiring %d core%s (%d/%d in use).", threads,
-				pluralize(threads), len(self.coreSem), self.maxCores)
+			LogInfo("schedlr", "Acquiring %d core%s (%d/%d in use)", threads,
+				Pluralize(threads), self.coreSem.len(), self.maxCores)
 		}
 
 		// Acquire memory.
 		if self.debug {
-			LogInfo("schedlr", "Waiting for %d GB.", memGB)
+			LogInfo("schedlr", "Waiting for %d GB", memGB)
 		}
 		self.memGBSem.P(memGB)
 		if self.debug {
-			LogInfo("schedlr", "Acquiring %d GB (%d/%d in use).", memGB,
-				len(self.memGBSem), self.maxMemGB)
+			LogInfo("schedlr", "Acquired %d GB (%d/%d in use)", memGB,
+				self.memGBSem.len(), self.maxMemGB)
+		}
+		if self.debug {
+			LogInfo("schedlr", "%d goroutines", runtime.NumGoroutine())
 		}
 
 		// Set up _stdout and _stderr for the job.
-		if self.debug {
-			fmt.Printf("%d open files\n", countOpenFiles())
-		}
 		if stdoutFile, err := os.Create(stdoutPath); err == nil {
 			stdoutFile.WriteString("[stdout]\n")
 			cmd.Stdout = stdoutFile
@@ -160,10 +169,6 @@ func (self *Scheduler) Enqueue(cmd *exec.Cmd, threads int, memGB int,
 			stderrFile.WriteString("[stderr]\n")
 			cmd.Stderr = stderrFile
 			defer stderrFile.Close()
-		}
-		if self.debug {
-			fmt.Printf("%d open files\n", countOpenFiles())
-			defer fmt.Printf("%d open files\n", countOpenFiles())
 		}
 
 		// Run the command and wait for completion.
@@ -178,14 +183,14 @@ func (self *Scheduler) Enqueue(cmd *exec.Cmd, threads int, memGB int,
 		// Release cores.
 		self.coreSem.V(threads)
 		if self.debug {
-			LogInfo("schedlr", "Releasing %d core%s (%d/%d in use).", threads,
-				pluralize(threads), len(self.coreSem), self.maxCores)
+			LogInfo("schedlr", "Released %d core%s (%d/%d in use)", threads,
+				Pluralize(threads), self.coreSem.len(), self.maxCores)
 		}
 		// Release memory.
 		self.memGBSem.V(memGB)
 		if self.debug {
-			LogInfo("schedlr", "Releasing %d GB (%d/%d in use).", memGB,
-				len(self.memGBSem), self.maxMemGB)
+			LogInfo("schedlr", "Released %d GB (%d/%d in use)", memGB,
+				self.memGBSem.len(), self.maxMemGB)
 		}
 	}()
 }
