@@ -72,7 +72,7 @@ func SetupSignalHandlers() {
 }
 
 func ValidateID(id string) error {
-	if ok, _ := regexp.MatchString("^(\\d|\\w)+$", id); !ok {
+	if ok, _ := regexp.MatchString("^(\\d|\\w|-)+$", id); !ok {
 		return &MarioError{fmt.Sprintf("Invalid name: %s (only numbers, letters, dash, and underscore allowed)", id)}
 	}
 	return nil
