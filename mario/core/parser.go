@@ -154,7 +154,10 @@ func (bindings *BindStms) check(global *Ast, callable Callable, params *Params) 
 		// Check for array match unless the value expression is being swept.
 		if !binding.sweep {
 			if param.getIsArray() && !isarray {
-				return global.err(binding, "TypeMismatchError: expected array of '%s' for '%s'", param.getTname(), param.getId())
+				// Allow an array-decorated parameter to accept null values.
+				if len(valueTypes) < 1 || valueTypes[0] != "null" {
+					return global.err(binding, "TypeMismatchError: expected array of '%s' for '%s'", param.getTname(), param.getId())
+				}
 			}
 			if !param.getIsArray() && isarray {
 				return global.err(binding, "TypeMismatchError: got array value for non-array parameter '%s'", param.getId())
