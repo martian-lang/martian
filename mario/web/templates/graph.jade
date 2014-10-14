@@ -40,7 +40,7 @@ html(ng-app="app" ng-controller="MarioGraphCtrl")
                 a(href="#") {{node.name}}                
                 | {{node.type}} 
             
-            div.alert.alert-danger.fixed(ng-show="node.error")
+            div.alert.alert-danger.fixed(ng-show="node.error" ng-cloak)
                 div 
                     b Failed in {{node.error.fqname.substr(node.fqname.length+1)}}
                     br

@@ -86,7 +86,7 @@
     if (admin) {
       $scope.stopRefresh = $interval(function() {
         return $scope.refresh();
-      }, 5000);
+      }, 3000);
     }
     $scope.copyToClipboard = function() {
       return '';
@@ -106,7 +106,13 @@
     $scope.restart = function() {
       $scope.showRestart = false;
       return $http.post("/api/restart/" + container + "/" + pname + "/" + psid + "/" + $scope.node.fqname).success(function(data) {
-        return console.log(data);
+        console.log(data);
+        return $scope.stopRefresh = $interval(function() {
+          return $scope.refresh();
+        }, 3000);
+      }).error(function() {
+        $scope.showRestart = true;
+        return alert('mrp is no longer running.\n\nPlease run mrp again with the --noexit option to continue running the pipeline.');
       });
     };
     $scope.selectMetadata = function(view, name, path) {

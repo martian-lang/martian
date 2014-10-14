@@ -23,9 +23,10 @@ import (
 // Pipestance runner.
 //=============================================================================
 func runLoop(pipestance *core.Pipestance, stepSecs int, disableVDR bool, noExit bool) {
+	showedFailed := false
+
 	for {
 		pipestance.RefreshMetadata()
-		showedFailed := false
 
 		// Check for completion states.
 		state := pipestance.GetState()
@@ -46,14 +47,16 @@ func runLoop(pipestance *core.Pipestance, stepSecs int, disableVDR bool, noExit 
 				break
 			} else {
 				// Give time for web ui client to get last update.
-				time.Sleep(time.Second * 10)
+				time.Sleep(time.Second * 6)
 				core.LogInfo("runtime", "Pipestance is complete, exiting.")
 				os.Exit(0)
 			}
 		} else if state == "failed" {
-			fqname, errpath, _, log := pipestance.GetFatalError()
-			fmt.Printf("\nPipestance failed at:\n%s\n\nErrors written to:\n%s\n\n%s\n",
-				fqname, errpath, log)
+			if !showedFailed {
+				fqname, errpath, _, log := pipestance.GetFatalError()
+				fmt.Printf("\nPipestance failed at:\n%s\n\nErrors written to:\n%s\n\n%s\n",
+					fqname, errpath, log)
+			}
 			if noExit {
 				// If pipestance failed but we're staying alive, only print this once
 				// as long as we stay failed.
@@ -63,6 +66,8 @@ func runLoop(pipestance *core.Pipestance, stepSecs int, disableVDR bool, noExit 
 						"Pipestance failed, staying alive because --noexit given.")
 				}
 			} else {
+				// Give time for web ui client to get last update.
+				time.Sleep(time.Second * 6)
 				core.LogInfo("runtime", "Pipestance failed, exiting. Use --noexit option to stay alive after failure.")
 				os.Exit(1)
 			}
@@ -125,19 +130,6 @@ Options:
 		}, true)
 	}
 
-	// Compute UI port.
-	uiport := "3600"
-	if value := os.Getenv("MROPORT"); len(value) > 0 {
-		core.LogInfo("environ", "MROPORT = %s", value)
-		uiport = value
-	}
-	if value := opts["--port"]; value != nil {
-		uiport = value.(string)
-	}
-	if opts["--noui"].(bool) {
-		uiport = ""
-	}
-
 	// Requested cores.
 	reqCores := -1
 	if value := opts["--maxcores"]; value != nil {
@@ -159,8 +151,21 @@ Options:
 		mroPath = value
 	}
 	mroVersion := core.GetGitTag(mroPath)
-	core.LogInfo("version", "MRO_STAGES = %s", mroVersion)
 	core.LogInfo("environ", "MROPATH = %s", mroPath)
+	core.LogInfo("version", "MROPATH = %s", mroVersion)
+
+	// Compute UI port.
+	uiport := "3600"
+	if value := os.Getenv("MROPORT"); len(value) > 0 {
+		core.LogInfo("environ", "MROPORT = %s", value)
+		uiport = value
+	}
+	if value := opts["--port"]; value != nil {
+		uiport = value.(string)
+	}
+	if opts["--noui"].(bool) {
+		uiport = ""
+	}
 
 	// Compute profiling flag.
 	profile := opts["--profile"].(bool)
@@ -188,6 +193,10 @@ Options:
 	rt := core.NewRuntimeWithCores(jobMode, mroPath, marioVersion, mroVersion,
 		reqCores, reqMem, profile, debug, stest)
 
+	// Print this here because the log makes more sense when this appears before
+	// the runloop messages start to appear.
+	core.LogInfo("webserv", "Serving UI at http://localhost:%s", uiport)
+
 	//=========================================================================
 	// Invoke pipestance or Reattach if exists.
 	//=========================================================================
@@ -204,11 +213,6 @@ Options:
 	}
 
 	//=========================================================================
-	// Start run loop.
-	//=========================================================================
-	go runLoop(pipestance, stepSecs, disableVDR, noExit)
-
-	//=========================================================================
 	// Start web server.
 	//=========================================================================
 	if len(uiport) > 0 {
@@ -216,6 +220,11 @@ Options:
 	} else {
 		core.LogInfo("webserv", "UI disabled by --noui option.")
 	}
+
+	//=========================================================================
+	// Start run loop.
+	//=========================================================================
+	go runLoop(pipestance, stepSecs, disableVDR, noExit)
 
 	// Let daemons take over.
 	done := make(chan bool)

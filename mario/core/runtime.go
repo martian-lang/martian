@@ -501,6 +501,7 @@ func (self *Fork) mkdirs() {
 	self.metadata.mkdirs()
 	self.split_metadata.mkdirs()
 	self.join_metadata.mkdirs()
+	self.split_has_run = false
 }
 
 func (self *Fork) getState() string {
@@ -863,7 +864,7 @@ func (self *Node) getState() string {
 	return "running"
 }
 
-func (self *Node) restartFromFailed() {
+func (self *Node) reset() {
 	// Blow away the entire stage node.
 	os.RemoveAll(self.path)
 
@@ -873,13 +874,15 @@ func (self *Node) restartFromFailed() {
 	self.mkdirs(&rewg)
 	rewg.Wait()
 
-	// Refresh the metadata (clear it all).
+	// Refresh the metadata.
 	self.refreshMetadata()
 
 	// Clear chunks in the forks so they can be rebuilt on split.
 	for _, fork := range self.forks {
 		fork.clearChunks()
 	}
+
+	LogInfo("runtime", "(reset)           %s", self.fqname)
 }
 
 func (self *Node) getFatalError() (string, string, string, string) {
@@ -1173,6 +1176,21 @@ func (self *Pipestance) GetState() string {
 	return "waiting"
 }
 
+func (self *Pipestance) RestartRunningNodes() {
+	self.RefreshMetadata()
+	nodes := self.node.allNodes()
+	for _, node := range nodes {
+		if node.state == "running" {
+			LogInfo("runtime", "Found orphaned stage: %s", node.name)
+		}
+	}
+	for _, node := range nodes {
+		if node.state == "running" {
+			node.reset()
+		}
+	}
+}
+
 func (self *Pipestance) GetFatalError() (string, string, string, string) {
 	nodes := self.node.allNodes()
 	for _, node := range nodes {
@@ -1189,8 +1207,8 @@ func (self *Pipestance) StepNodes() {
 	}
 }
 
-func (self *Pipestance) RestartFailedNode(fqname string) {
-	self.node.find(fqname).restartFromFailed()
+func (self *Pipestance) ResetNode(fqname string) {
+	self.node.find(fqname).reset()
 }
 
 func (self *Pipestance) Serialize() interface{} {
@@ -1451,6 +1469,15 @@ func (self *Runtime) ReattachToPipestance(psid string, pipestancePath string) (*
 
 	// Instantiate the pipestance.
 	_, pipestance, err := self.instantiatePipeline(string(data), fname, psid, pipestancePath)
+
+	// If we're reattaching in local mode, restart any stages that were
+	// left in a running state from last mrp run. The actual job would
+	// have been killed by the CTRL-C.
+	if err == nil && self.jobMode == "local" {
+		LogInfo("runtime", "Reattaching in local mode.")
+		pipestance.RestartRunningNodes()
+	}
+
 	return pipestance, err
 }
 

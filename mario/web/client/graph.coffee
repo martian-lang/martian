@@ -67,7 +67,7 @@ app.controller('MarioGraphCtrl', ($scope, $compile, $http, $interval) ->
     if admin 
         $scope.stopRefresh = $interval(() ->
             $scope.refresh()
-        , 5000)
+        , 3000)
 
     $scope.copyToClipboard = () ->
         return ''
@@ -83,6 +83,12 @@ app.controller('MarioGraphCtrl', ($scope, $compile, $http, $interval) ->
         $scope.showRestart = false
         $http.post("/api/restart/#{container}/#{pname}/#{psid}/#{$scope.node.fqname}").success((data) ->
             console.log(data)
+            $scope.stopRefresh = $interval(() ->
+                $scope.refresh()
+            , 3000)
+        ).error(() ->
+            $scope.showRestart = true
+            alert('mrp is no longer running.\n\nPlease run mrp again with the --noexit option to continue running the pipeline.')
         )
 
     $scope.selectMetadata = (view, name, path) ->

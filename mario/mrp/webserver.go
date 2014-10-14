@@ -108,14 +108,13 @@ func runWebServer(uiport string, rt *core.Runtime, pipestance *core.Pipestance) 
 	// Restart failed stage.
 	app.Post("/api/restart/:container/:pname/:psid/:fqname",
 		func(p martini.Params) string {
-			pipestance.RestartFailedNode(p["fqname"])
+			pipestance.ResetNode(p["fqname"])
 			return ""
 		})
 
 	//=========================================================================
 	// Start webserver.
 	//=========================================================================
-	core.LogInfo("webserv", "Serving UI at http://localhost:%s", uiport)
 	if err := http.ListenAndServe(":"+uiport, app); err != nil {
 		// Don't continue starting if we detect another instance running.
 		fmt.Println(err.Error())
