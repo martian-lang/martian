@@ -570,15 +570,25 @@ func (self *Fork) step() {
 			}
 		} else if state == "split_complete" {
 			chunkDefs := self.split_metadata.read("chunk_defs")
-			if len(self.chunks) == 0 {
-				for i, chunkDef := range chunkDefs.([]interface{}) {
-					chunk := NewChunk(self.node, self, i, chunkDef.(map[string]interface{}))
-					self.chunks = append(self.chunks, chunk)
-					chunk.mkdirs()
+			if _, ok := chunkDefs.([]interface{}); !ok {
+				self.split_metadata.idemMkdirs()
+				self.split_metadata.writeRaw("errors", "The split method must return an array of chunk def dicts but did not.\n")
+			} else {
+				if len(self.chunks) == 0 {
+					for i, chunkDef := range chunkDefs.([]interface{}) {
+						if _, ok := chunkDef.(map[string]interface{}); !ok {
+							self.split_metadata.idemMkdirs()
+							self.split_metadata.writeRaw("errors", "The split method must return an array of chunk def dicts but did not.\n")
+							break
+						}
+						chunk := NewChunk(self.node, self, i, chunkDef.(map[string]interface{}))
+						self.chunks = append(self.chunks, chunk)
+						chunk.mkdirs()
+					}
 				}
-			}
-			for _, chunk := range self.chunks {
-				chunk.step()
+				for _, chunk := range self.chunks {
+					chunk.step()
+				}
 			}
 		} else if state == "chunks_complete" {
 			self.join_metadata.write("args", resolveBindings(self.node.argbindings, self.argPermute))
