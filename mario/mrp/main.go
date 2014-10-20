@@ -10,6 +10,7 @@ import (
 	"github.com/docopt/docopt-go"
 	"github.com/dustin/go-humanize"
 	"io/ioutil"
+    "os/exec"
 	"mario/core"
 	"os"
 	"path"
@@ -22,7 +23,8 @@ import (
 //=============================================================================
 // Pipestance runner.
 //=============================================================================
-func runLoop(pipestance *core.Pipestance, stepSecs int, disableVDR bool, noExit bool) {
+func runLoop(pipestance *core.Pipestance, stepSecs int, disableVDR bool, 
+    noExit bool, noDump bool) {
 	showedFailed := false
 
 	for {
@@ -56,6 +58,17 @@ func runLoop(pipestance *core.Pipestance, stepSecs int, disableVDR bool, noExit 
 				fqname, errpath, _, log := pipestance.GetFatalError()
 				fmt.Printf("\nPipestance failed at:\n%s\n\nErrors written to:\n%s\n\n%s\n",
 					fqname, errpath, log)
+
+                if !noDump {
+                    // Generate debug tarball.
+                    fmt.Printf("Generating debug tarball...")
+                    cmd := exec.Command("tar", "jcf", fmt.Sprintf("%s-debug.tar.bz2", pipestance.GetPsid()), "--exclude=*files*", pipestance.GetPsid())
+                    if _, err := cmd.CombinedOutput(); err != nil {
+                        fmt.Printf("failed.\n%s\n", err.Error())
+                    } else {
+                        fmt.Printf("done.\n\n")
+                    }
+                }
 			}
 			if noExit {
 				// If pipestance failed but we're staying alive, only print this once
@@ -172,7 +185,14 @@ Options:
 	if value := os.Getenv("MROPROFILE"); len(value) > 0 {
 		profile = true
 	}
-	core.LogInfo("environ", "MROPROFILE = %v", profile)
+    core.LogInfo("environ", "MROPROFILE = %v", profile)
+
+    // Compute no debug dump flag.
+    noDump := false
+    if value := os.Getenv("MRONODUMP"); len(value) > 0 {
+        noDump = true
+    }
+    core.LogInfo("environ", "MRONODUMP = %v", noDump)
 
 	// Setup invocation-specific values.
 	disableVDR := opts["--novdr"].(bool)
@@ -224,7 +244,7 @@ Options:
 	//=========================================================================
 	// Start run loop.
 	//=========================================================================
-	go runLoop(pipestance, stepSecs, disableVDR, noExit)
+	go runLoop(pipestance, stepSecs, disableVDR, noExit, noDump)
 
 	// Let daemons take over.
 	done := make(chan bool)

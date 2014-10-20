@@ -1453,6 +1453,10 @@ func (self *Runtime) InvokePipeline(src string, srcPath string, psid string,
 	metadata := NewMetadata("ID."+psid, pipestancePath)
 	metadata.writeRaw("invocation", src)
 	metadata.writeRaw("mrosource", postsrc)
+	cmd := exec.Command("uname", "-a")
+	if output, err := cmd.CombinedOutput(); err == nil {
+		metadata.writeRaw("uname", string(output))
+	}
 	metadata.write("versions", map[string]string{
 		"mario":     GetVersion(),
 		"pipelines": GetGitTag(self.mroPath),
