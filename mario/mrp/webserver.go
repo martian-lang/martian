@@ -79,7 +79,11 @@ func runWebServer(uiport string, rt *core.Runtime, pipestance *core.Pipestance) 
 			state := map[string]interface{}{}
 			state["error"] = nil
 			if pipestance.GetState() == "failed" {
-				fqname, errpath, summary, log := pipestance.GetFatalError()
+				fqname, summary, log, errpaths := pipestance.GetFatalError()
+				errpath := ""
+				if len(errpaths) > 0 {
+					errpath = errpaths[0]
+				}
 				state["error"] = map[string]string{
 					"fqname":  fqname,
 					"path":    errpath,

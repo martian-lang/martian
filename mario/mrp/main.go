@@ -24,7 +24,7 @@ import (
 // Pipestance runner.
 //=============================================================================
 func runLoop(pipestance *core.Pipestance, stepSecs int, disableVDR bool,
-	noExit bool, noDump bool) {
+	noExit bool, noDump bool, noUI bool) {
 	showedFailed := false
 
 	for {
@@ -55,20 +55,24 @@ func runLoop(pipestance *core.Pipestance, stepSecs int, disableVDR bool,
 			}
 		} else if state == "failed" {
 			if !showedFailed {
-				fqname, errpath, _, log := pipestance.GetFatalError()
-				fmt.Printf("\nPipestance failed at:\n%s\n\nErrors written to:\n%s\n\n%s\n",
-					fqname, errpath, log)
+				fqname, _, log, errpaths := pipestance.GetFatalError()
+				fmt.Printf("\nPipestance failed at:\n  %s\n\nError logs written to:\n", fqname)
+				for _, errpath := range errpaths {
+					fmt.Printf("  %s\n", errpath)
+				}
+				fmt.Printf("\n%s\n", log)
 
 				if !noDump {
 					// Generate debug tarball.
-					fmt.Printf("Generating debug tarball...")
-					t := time.Now()
-					cmd := exec.Command("tar", "jcf", fmt.Sprintf("%s-debug-%s.tar.bz2", pipestance.GetPsid(), t.Format("20060102150405")), "--exclude=*files*", pipestance.GetPsid())
+					fmt.Printf("Generating debug dump tarball...")
+					debugFile := fmt.Sprintf("%s-debug-dump.tar.bz2", pipestance.GetPsid())
+					cmd := exec.Command("tar", "jcf", debugFile, "--exclude=*files*", pipestance.GetPsid())
 					if _, err := cmd.CombinedOutput(); err != nil {
-						fmt.Printf("failed.\n%s\n", err.Error())
+						fmt.Printf("failed.\n  %s\n", err.Error())
 					} else {
-						fmt.Printf("done.\n\n")
+						fmt.Printf("complete.\n  %s\n", debugFile)
 					}
+					fmt.Print("\n")
 				}
 			}
 			if noExit {
@@ -80,9 +84,13 @@ func runLoop(pipestance *core.Pipestance, stepSecs int, disableVDR bool,
 						"Pipestance failed, staying alive because --noexit given.")
 				}
 			} else {
-				// Give time for web ui client to get last update.
-				time.Sleep(time.Second * 6)
-				core.LogInfo("runtime", "Pipestance failed, exiting. Use --noexit option to stay alive after failure.")
+				if !noUI {
+					// Give time for web ui client to get last update.
+					WAIT_SECS := 6
+					core.LogInfo("runtime", "Waiting %d seconds for UI to do final refresh.", WAIT_SECS)
+					time.Sleep(time.Second * time.Duration(WAIT_SECS))
+				}
+				core.LogInfo("runtime", "Pipestance failed, exiting. Use --noexit option to keep UI running after failure.")
 				os.Exit(1)
 			}
 		} else {
@@ -170,6 +178,7 @@ Options:
 
 	// Compute UI port.
 	uiport := "3600"
+	noUI := false
 	if value := os.Getenv("MROPORT"); len(value) > 0 {
 		core.LogInfo("environ", "MROPORT = %s", value)
 		uiport = value
@@ -179,6 +188,7 @@ Options:
 	}
 	if opts["--noui"].(bool) {
 		uiport = ""
+		noUI = true
 	}
 
 	// Compute profiling flag.
@@ -216,7 +226,11 @@ Options:
 
 	// Print this here because the log makes more sense when this appears before
 	// the runloop messages start to appear.
-	core.LogInfo("webserv", "Serving UI at http://localhost:%s", uiport)
+	if noUI {
+		core.LogInfo("webserv", "UI disabled by --noui option.")
+	} else {
+		core.LogInfo("webserv", "Serving UI at http://localhost:%s", uiport)
+	}
 
 	//=========================================================================
 	// Invoke pipestance or Reattach if exists.
@@ -236,16 +250,14 @@ Options:
 	//=========================================================================
 	// Start web server.
 	//=========================================================================
-	if len(uiport) > 0 {
+	if !noUI && len(uiport) > 0 {
 		go runWebServer(uiport, rt, pipestance)
-	} else {
-		core.LogInfo("webserv", "UI disabled by --noui option.")
 	}
 
 	//=========================================================================
 	// Start run loop.
 	//=========================================================================
-	go runLoop(pipestance, stepSecs, disableVDR, noExit, noDump)
+	go runLoop(pipestance, stepSecs, disableVDR, noExit, noDump, noUI)
 
 	// Let daemons take over.
 	done := make(chan bool)

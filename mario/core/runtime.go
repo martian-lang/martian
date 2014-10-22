@@ -875,8 +875,13 @@ func (self *Node) getState() string {
 }
 
 func (self *Node) reset() {
+	LogInfo("runtime", "(reset)           %s", self.fqname)
+
 	// Blow away the entire stage node.
-	os.RemoveAll(self.path)
+	if err := os.RemoveAll(self.path); err != nil {
+		LogInfo("runtime", "mrp cannot reset the stage because its folder contents could not be deleted. Error was:\n\n%s\n\nPlease resolve the error in order to continue running the pipeline.", err.Error())
+		os.Exit(1)
+	}
 
 	// Re-create the folders.
 	// This will also clear all the metadata in-memory caches.
@@ -891,11 +896,9 @@ func (self *Node) reset() {
 	for _, fork := range self.forks {
 		fork.clearChunks()
 	}
-
-	LogInfo("runtime", "(reset)           %s", self.fqname)
 }
 
-func (self *Node) getFatalError() (string, string, string, string) {
+func (self *Node) getFatalError() (string, string, string, []string) {
 	for _, metadata := range self.collectMetadatas() {
 		if !metadata.exists("errors") {
 			continue
@@ -908,10 +911,13 @@ func (self *Node) getFatalError() (string, string, string, string) {
 				summary = errlines[len(errlines)-2]
 			}
 		}
-		return metadata.fqname, metadata.makePath("errors"),
-			summary, errlog
+		return metadata.fqname, summary, errlog, []string{
+			metadata.makePath("errors"),
+			metadata.makePath("stdout"),
+			metadata.makePath("stderr"),
+		}
 	}
-	return "", "", "", ""
+	return "", "", "", []string{}
 }
 
 func (self *Node) step() {
@@ -943,7 +949,11 @@ func (self *Node) serialize() interface{} {
 	}
 	var err interface{} = nil
 	if self.state == "failed" {
-		fqname, errpath, summary, log := self.getFatalError()
+		fqname, summary, log, errpaths := self.getFatalError()
+		errpath := ""
+		if len(errpaths) > 0 {
+			errpath = errpaths[0]
+		}
 		err = map[string]string{
 			"fqname":  fqname,
 			"path":    errpath,
@@ -1102,7 +1112,7 @@ func (self *Stagestance) getNode() *Node   { return self.node }
 func (self *Stagestance) RefreshMetadata() { self.getNode().refreshMetadata() }
 func (self *Stagestance) GetState() string { return self.getNode().getState() }
 func (self *Stagestance) Step()            { self.getNode().step() }
-func (self *Stagestance) GetFatalError() (string, string, string, string) {
+func (self *Stagestance) GetFatalError() (string, string, string, []string) {
 	return self.getNode().getFatalError()
 }
 
@@ -1201,14 +1211,14 @@ func (self *Pipestance) RestartRunningNodes() {
 	}
 }
 
-func (self *Pipestance) GetFatalError() (string, string, string, string) {
+func (self *Pipestance) GetFatalError() (string, string, string, []string) {
 	nodes := self.node.allNodes()
 	for _, node := range nodes {
 		if node.state == "failed" {
 			return node.getFatalError()
 		}
 	}
-	return "", "", "", ""
+	return "", "", "", []string{}
 }
 
 func (self *Pipestance) StepNodes() {
