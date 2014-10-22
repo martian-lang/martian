@@ -329,6 +329,12 @@ func parseSource(src string, srcPath string, incPaths []string, checkSrc bool) (
 	// Parse the source into an AST and attach the locmap.
 	ast, perr := yaccParse(postsrc)
 	if perr != nil { // err is an mmLexInfo struct
+		// Guard against index out of range, which can happen if there is syntax error
+		// at the end of the file, e.g. forgetting to put a close paren at the end of
+		// and invocation call/file.
+		if perr.loc >= len(locmap) {
+			perr.loc = len(locmap) - 1
+		}
 		return "", nil, &ParseError{perr.token, locmap[perr.loc].fname, locmap[perr.loc].loc}
 	}
 	ast.locmap = locmap

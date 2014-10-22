@@ -32,7 +32,7 @@ func lineNumOfOffset(src string, offset int) int {
 func printSourceMap(src string, locmap []FileLoc) {
 	lines := strings.Split(src, "\n")
 	for i, line := range lines {
-		fmt.Println(locmap[i].fname, locmap[i].loc+1, line)
+		fmt.Println(i, locmap[i].fname, locmap[i].loc+1, line)
 	}
 }
 
