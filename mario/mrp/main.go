@@ -26,6 +26,7 @@ import (
 func runLoop(pipestance *core.Pipestance, stepSecs int, disableVDR bool,
 	noExit bool, noDump bool, noUI bool) {
 	showedFailed := false
+	WAIT_SECS := 6
 
 	for {
 		pipestance.RefreshMetadata()
@@ -48,8 +49,11 @@ func runLoop(pipestance *core.Pipestance, stepSecs int, disableVDR bool,
 					"Pipestance is complete, staying alive because --noexit given.")
 				break
 			} else {
-				// Give time for web ui client to get last update.
-				time.Sleep(time.Second * 6)
+				if !noUI {
+					// Give time for web ui client to get last update.
+					core.LogInfo("runtime", "Waiting %d seconds for UI to do final refresh.", WAIT_SECS)
+					time.Sleep(time.Second * time.Duration(WAIT_SECS))
+				}
 				core.LogInfo("runtime", "Pipestance is complete, exiting.")
 				os.Exit(0)
 			}
@@ -86,7 +90,6 @@ func runLoop(pipestance *core.Pipestance, stepSecs int, disableVDR bool,
 			} else {
 				if !noUI {
 					// Give time for web ui client to get last update.
-					WAIT_SECS := 6
 					core.LogInfo("runtime", "Waiting %d seconds for UI to do final refresh.", WAIT_SECS)
 					time.Sleep(time.Second * time.Duration(WAIT_SECS))
 				}
