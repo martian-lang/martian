@@ -214,7 +214,7 @@ Options:
 	psid := opts["<pipestance_name>"].(string)
 	invocationPath := opts["<call.mro>"].(string)
 	pipestancePath := path.Join(cwd, psid)
-	stepSecs := 1
+	stepSecs := 4
 	debug := opts["--debug"].(bool)
 	stest := opts["--stest"].(bool)
 

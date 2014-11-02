@@ -45,11 +45,11 @@ Options:
 		fnames, err := filepath.Glob(mroPath + "/*.mro")
 		core.DieIf(err)
 		for _, fname := range fnames {
-			fmt.Printf("Reformatting %s...\n", fname)
 			fsrc, err := core.FormatFile(fname)
 			core.DieIf(err)
 			ioutil.WriteFile(fname, []byte(fsrc), 0600)
 		}
+        fmt.Printf("Successfully reformatted %d files.\n", len(fnames))
 	} else {
 		// Format just the specified MRO files.
 		for _, fname := range opts["<file.mro>"].([]string) {
