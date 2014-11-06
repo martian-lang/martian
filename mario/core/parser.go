@@ -213,8 +213,9 @@ func (global *Ast) check(incPaths []string, checkSrcPath bool) error {
 		}
 		if checkSrcPath {
 			// Check existence of src path.
-			if srcPath, found := searchPaths(stage.src.path, incPaths); !found {
-				return global.err(stage, "SourcePathError: stage source path does not exist '%s'", srcPath)
+			if _, found := searchPaths(stage.src.path, incPaths); !found {
+				incPathsList := strings.Join(incPaths, ", ")
+				return global.err(stage, "SourcePathError: searched (%s) but stage source path not found '%s'", incPathsList, stage.src.path)
 			}
 		}
 		// Check split parameters.
@@ -318,9 +319,12 @@ func (global *Ast) check(incPaths []string, checkSrcPath bool) error {
 // Parser interface, called by runtime.
 //
 func parseSource(src string, srcPath string, incPaths []string, checkSrc bool) (string, *Ast, error) {
+	// Add the source file's own folder to the include path for
+	// resolving both @includes and stage src paths.
+	incPaths = append([]string{filepath.Dir(srcPath)}, incPaths...)
+
 	// Preprocess: generate new source and a locmap.
-	postsrc, locmap, err := preprocess(src, filepath.Base(srcPath),
-		append([]string{filepath.Dir(srcPath)}, incPaths...))
+	postsrc, locmap, err := preprocess(src, filepath.Base(srcPath), incPaths)
 	if err != nil {
 		return "", nil, err
 	}
