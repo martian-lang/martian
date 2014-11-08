@@ -1577,7 +1577,13 @@ func (self *Runtime) buildVal(param Param, val interface{}) string {
 	}
 }
 
-func (self *Runtime) BuildCallSource(pname string, args map[string]interface{}) string {
+func (self *Runtime) BuildCallSource(incpaths []string, pname string,
+	args map[string]interface{}) string {
+	// Build @include statements.
+	includes := []string{}
+	for _, incpath := range incpaths {
+		includes = append(includes, fmt.Sprintf("@include \"%s\"", incpath))
+	}
 	// Loop over the pipeline's in params and print a binding
 	// whether the args bag has a value for it not.
 	lines := []string{}
@@ -1585,6 +1591,6 @@ func (self *Runtime) BuildCallSource(pname string, args map[string]interface{}) 
 		valstr := self.buildVal(param, args[param.getId()])
 		lines = append(lines, fmt.Sprintf("    %s = %s,", param.getId(), valstr))
 	}
-	return fmt.Sprintf("@include \"%s.mro\"\n\ncall %s(\n%s\n)", strings.ToLower(pname),
-		pname, strings.Join(lines, "\n"))
+	return fmt.Sprintf("%s\n\ncall %s(\n%s\n)", strings.Join(includes, "\n"),
+		strings.ToLower(pname), pname, strings.Join(lines, "\n"))
 }
