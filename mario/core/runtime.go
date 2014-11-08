@@ -113,14 +113,14 @@ func (self *Metadata) read(name string) interface{} {
 	return v
 }
 func (self *Metadata) writeRaw(name string, text string) {
-	ioutil.WriteFile(self.makePath(name), []byte(text), 0600)
+	ioutil.WriteFile(self.makePath(name), []byte(text), 0644)
 }
 func (self *Metadata) write(name string, object interface{}) {
 	bytes, _ := json.MarshalIndent(object, "", "    ")
 	self.writeRaw(name, string(bytes))
 }
 func (self *Metadata) append(name string, text string) {
-	f, _ := os.OpenFile(self.makePath(name), os.O_WRONLY|os.O_CREATE, 0600)
+	f, _ := os.OpenFile(self.makePath(name), os.O_WRONLY|os.O_CREATE, 0644)
 	f.Write([]byte(text))
 	f.Close()
 }
@@ -1446,7 +1446,7 @@ func (self *Runtime) InvokePipeline(src string, srcPath string, psid string,
 	// Error if pipestance exists, otherwise create.
 	if _, err := os.Stat(pipestancePath); err == nil {
 		return nil, &PipestanceExistsError{psid}
-	} else if err := os.MkdirAll(pipestancePath, 0700); err != nil {
+	} else if err := os.MkdirAll(pipestancePath, 0755); err != nil {
 		return nil, err
 	}
 
@@ -1511,7 +1511,7 @@ func (self *Runtime) InvokeStage(src string, srcPath string, ssid string,
 	// Check if stagestance path already exists.
 	if _, err := os.Stat(stagestancePath); err == nil {
 		return nil, &RuntimeError{fmt.Sprintf("stagestance '%s' already exists", ssid)}
-	} else if err := os.MkdirAll(stagestancePath, 0700); err != nil {
+	} else if err := os.MkdirAll(stagestancePath, 0755); err != nil {
 		return nil, err
 	}
 

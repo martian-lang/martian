@@ -47,9 +47,9 @@ Options:
 		for _, fname := range fnames {
 			fsrc, err := core.FormatFile(fname)
 			core.DieIf(err)
-			ioutil.WriteFile(fname, []byte(fsrc), 0600)
+			ioutil.WriteFile(fname, []byte(fsrc), 0644)
 		}
-        fmt.Printf("Successfully reformatted %d files.\n", len(fnames))
+		fmt.Printf("Successfully reformatted %d files.\n", len(fnames))
 	} else {
 		// Format just the specified MRO files.
 		for _, fname := range opts["<file.mro>"].([]string) {
@@ -57,7 +57,7 @@ Options:
 			core.DieIf(err)
 			fmt.Print(fsrc)
 			if opts["--rewrite"].(bool) {
-				ioutil.WriteFile(fname, []byte(fsrc), 0600)
+				ioutil.WriteFile(fname, []byte(fsrc), 0644)
 			}
 		}
 	}

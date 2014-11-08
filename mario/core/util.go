@@ -17,7 +17,7 @@ import (
 )
 
 func mkdir(p string) {
-	err := os.Mkdir(p, 0700)
+	err := os.Mkdir(p, 0755)
 	if err != nil {
 		panic(err.Error())
 	}
@@ -29,7 +29,7 @@ func RelPath(p string) string {
 }
 
 func idemMkdir(p string) {
-	os.Mkdir(p, 0700)
+	os.Mkdir(p, 0755)
 }
 
 func searchPaths(fname string, searchPaths []string) (string, bool) {

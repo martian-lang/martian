@@ -173,10 +173,10 @@ func (self *Scheduler) Enqueue(cmd *exec.Cmd, threads int, memGB int,
 
 		// Run the command and wait for completion.
 		if err := cmd.Start(); err != nil {
-			ioutil.WriteFile(errorsPath, []byte(err.Error()), 0600)
+			ioutil.WriteFile(errorsPath, []byte(err.Error()), 0644)
 		} else {
 			if err := cmd.Wait(); err != nil {
-				ioutil.WriteFile(errorsPath, []byte(err.Error()), 0600)
+				ioutil.WriteFile(errorsPath, []byte(err.Error()), 0644)
 			}
 		}
 
