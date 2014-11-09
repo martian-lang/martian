@@ -62,7 +62,7 @@ func (self *RefExp) format() string {
 //
 func (self *BindStm) format(idWidth int) string {
 	idPad := strings.Repeat(" ", idWidth-len(self.id))
-	return fmt.Sprintf("%s%s%s%s%s = %s,  ", self.exp.getNode().comments,
+	return fmt.Sprintf("%s%s%s%s%s = %s,", self.exp.getNode().comments,
 		INDENT, INDENT, self.id, idPad, self.exp.format())
 }
 
@@ -114,7 +114,7 @@ func paramFormat(param Param, modeWidth int, typeWidth int, idWidth int) string 
 		}
 		fsrc += fmt.Sprintf("%s  \"%s\"", idPad, param.getHelp())
 	}
-	return fsrc + ",  "
+	return fsrc + ","
 }
 
 func (self *Params) getWidths() (int, int, int) {
@@ -235,7 +235,7 @@ func (self *Stage) format() string {
 
 func (self *SrcParam) format(modeWidth int, typeWidth int, idWidth int) string {
 	langPad := strings.Repeat(" ", typeWidth-len(self.lang))
-	return fmt.Sprintf("%s%ssrc %s%s \"%s\", ", self.node.comments, INDENT,
+	return fmt.Sprintf("%s%ssrc %s%s \"%s\",", self.node.comments, INDENT,
 		self.lang, langPad, self.path)
 }
 
@@ -256,7 +256,7 @@ func (self *Callables) format() string {
 //
 func (self *Filetype) format() string {
 	fsrc := self.node.comments
-	fsrc += fmt.Sprintf("filetype %s;  ", self.id)
+	fsrc += fmt.Sprintf("filetype %s;", self.id)
 	return fsrc
 }
 
