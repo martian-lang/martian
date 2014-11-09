@@ -86,7 +86,7 @@
     if (admin) {
       $scope.stopRefresh = $interval(function() {
         return $scope.refresh();
-      }, 3000);
+      }, 30000);
     }
     $scope.copyToClipboard = function() {
       return '';

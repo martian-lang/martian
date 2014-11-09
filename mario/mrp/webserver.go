@@ -9,15 +9,17 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
-	"github.com/go-martini/martini"
-	"github.com/martini-contrib/binding"
 	"html/template"
 	"io/ioutil"
 	"mario/core"
+	"mario/gzip"
 	"net/http"
 	"os"
 	"path"
 	"strings"
+
+	"github.com/go-martini/martini"
+	"github.com/martini-contrib/binding"
 )
 
 //=============================================================================
@@ -51,6 +53,7 @@ func runWebServer(uiport string, rt *core.Runtime, pipestance *core.Pipestance) 
 	m.MapTo(r, (*martini.Routes)(nil))
 	m.Action(r.Handle)
 	app := &martini.ClassicMartini{m, r}
+	app.Use(gzip.All())
 
 	//=========================================================================
 	// Page renderers.

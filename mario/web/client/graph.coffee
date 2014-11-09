@@ -64,10 +64,10 @@ app.controller('MarioGraphCtrl', ($scope, $compile, $http, $interval) ->
     $scope.showLog = false
 
     # Only admin pages get auto-refresh.
-    if admin 
+    if admin
         $scope.stopRefresh = $interval(() ->
             $scope.refresh()
-        , 3000)
+        , 30000)
 
     $scope.copyToClipboard = () ->
         return ''
