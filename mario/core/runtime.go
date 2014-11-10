@@ -1592,5 +1592,5 @@ func (self *Runtime) BuildCallSource(incpaths []string, pname string,
 		lines = append(lines, fmt.Sprintf("    %s = %s,", param.getId(), valstr))
 	}
 	return fmt.Sprintf("%s\n\ncall %s(\n%s\n)", strings.Join(includes, "\n"),
-		strings.ToLower(pname), pname, strings.Join(lines, "\n"))
+		pname, strings.Join(lines, "\n"))
 }
