@@ -808,7 +808,18 @@ func (self *Node) matchFork(targetArgPermute map[string]interface{}) *Fork {
 //
 func (self *Node) allNodes() []*Node {
 	all := []*Node{self}
-	for _, subnode := range self.subnodes {
+
+	// Enumerate and sort the keys in subnodes first.
+	// This ensures a stable chirality for the dag UI.
+	ids := []string{}
+	for id, _ := range self.subnodes {
+		ids = append(ids, id)
+	}
+	sort.Strings(ids)
+
+	// Build a list of all subnodes.
+	for _, id := range ids {
+		subnode := self.subnodes[id]
 		all = append(all, subnode.getNode().allNodes()...)
 	}
 	return all

@@ -17,13 +17,24 @@ func GetVersion() string {
 	return __VERSION__
 }
 
-func GetGitTag(dir string) string {
+func runGit(dir string, args ...string) (string, error) {
 	oldCwd, _ := os.Getwd()
 	os.Chdir(dir)
-	out, err := exec.Command("git", "describe", "--tags", "--dirty", "--always").Output()
+	out, err := exec.Command("git", args...).Output()
 	os.Chdir(oldCwd)
-	if err == nil {
-		return strings.TrimSpace(string(out))
+	return strings.TrimSpace(string(out)), err
+}
+
+func GetGitTag(dir string) string {
+	if out, err := runGit(dir, "describe", "--tags", "--dirty", "--always"); err == nil {
+		return out
 	}
 	return "noversion"
+}
+
+func GetGitBranch(dir string) string {
+	if out, err := runGit(dir, "rev-parse", "--abbrev-ref", "HEAD"); err == nil {
+		return out
+	}
+	return "nobranch"
 }
