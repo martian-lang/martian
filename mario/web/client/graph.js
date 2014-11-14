@@ -21,7 +21,7 @@
     for (_i = 0, _len = _ref.length; _i < _len; _i++) {
       node = _ref[_i];
       node.label = node.name;
-      g.addNode(node.name, node);
+      g.addNode(node.fqname, node);
     }
     _ref1 = _.values($scope.nodes);
     for (_j = 0, _len1 = _ref1.length; _j < _len1; _j++) {
@@ -38,7 +38,7 @@
       var xCoord;
       d3.select(this).classed(g.node(id).type, true);
       d3.select(this).attr('ng-click', "selectNode('" + id + "')");
-      d3.select(this).attr('ng-class', "[node.name=='" + id + "'?'seled':'',nodes['" + id + "'].state]");
+      d3.select(this).attr('ng-class', "[node.fqname=='" + id + "'?'seled':'',nodes['" + id + "'].state]");
       xCoord = parseFloat(d3.select(this).attr('transform').substr(10).split(',')[0]);
       if (xCoord > maxX) {
         return maxX = xCoord;
@@ -68,7 +68,7 @@
     $scope.adminstyle = adminstyle;
     $scope.urlprefix = adminstyle ? '/admin' : '/';
     $http.get("/api/get-state/" + container + "/" + pname + "/" + psid).success(function(state) {
-      $scope.nodes = _.indexBy(state.nodes, 'name');
+      $scope.nodes = _.indexBy(state.nodes, 'fqname');
       $scope.error = state.error;
       return renderGraph($scope, $compile);
     });
@@ -106,7 +106,6 @@
     $scope.restart = function() {
       $scope.showRestart = false;
       return $http.post("/api/restart/" + container + "/" + pname + "/" + psid + "/" + $scope.node.fqname).success(function(data) {
-        console.log(data);
         return $scope.stopRefresh = $interval(function() {
           return $scope.refresh();
         }, 3000);
@@ -129,7 +128,7 @@
     };
     return $scope.refresh = function() {
       return $http.get("/api/get-state/" + container + "/" + pname + "/" + psid).success(function(state) {
-        $scope.nodes = _.indexBy(state.nodes, 'name');
+        $scope.nodes = _.indexBy(state.nodes, 'fqname');
         if ($scope.id) {
           $scope.node = $scope.nodes[$scope.id];
         }

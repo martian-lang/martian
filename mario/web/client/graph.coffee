@@ -15,7 +15,7 @@ renderGraph = ($scope, $compile) ->
     g = new dagreD3.Digraph()
     for node in _.values($scope.nodes)
         node.label = node.name
-        g.addNode(node.name, node)
+        g.addNode(node.fqname, node)
     for node in _.values($scope.nodes)
         for edge in node.edges
             g.addEdge(null, edge.from, edge.to, {})
@@ -24,7 +24,7 @@ renderGraph = ($scope, $compile) ->
     d3.selectAll("g.node").each((id) ->
         d3.select(this).classed(g.node(id).type, true)
         d3.select(this).attr('ng-click', "selectNode('#{id}')")
-        d3.select(this).attr('ng-class', "[node.name=='#{id}'?'seled':'',nodes['#{id}'].state]")
+        d3.select(this).attr('ng-class', "[node.fqname=='#{id}'?'seled':'',nodes['#{id}'].state]")
         xCoord = parseFloat(d3.select(this).attr('transform').substr(10).split(',')[0])
         if xCoord > maxX
             maxX = xCoord
@@ -51,7 +51,7 @@ app.controller('MarioGraphCtrl', ($scope, $compile, $http, $interval) ->
     $scope.urlprefix = if adminstyle then '/admin' else '/'
 
     $http.get("/api/get-state/#{container}/#{pname}/#{psid}").success((state) ->
-        $scope.nodes = _.indexBy(state.nodes, 'name')
+        $scope.nodes = _.indexBy(state.nodes, 'fqname')
         $scope.error = state.error
         renderGraph($scope, $compile)
     )
@@ -82,7 +82,6 @@ app.controller('MarioGraphCtrl', ($scope, $compile, $http, $interval) ->
     $scope.restart = () ->
         $scope.showRestart = false
         $http.post("/api/restart/#{container}/#{pname}/#{psid}/#{$scope.node.fqname}").success((data) ->
-            console.log(data)
             $scope.stopRefresh = $interval(() ->
                 $scope.refresh()
             , 3000)
@@ -98,7 +97,7 @@ app.controller('MarioGraphCtrl', ($scope, $compile, $http, $interval) ->
 
     $scope.refresh = () ->
         $http.get("/api/get-state/#{container}/#{pname}/#{psid}").success((state) ->
-            $scope.nodes = _.indexBy(state.nodes, 'name')
+            $scope.nodes = _.indexBy(state.nodes, 'fqname')
             if $scope.id then $scope.node = $scope.nodes[$scope.id]
             $scope.showRestart = true
             $scope.error = state.error

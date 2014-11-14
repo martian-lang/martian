@@ -954,8 +954,8 @@ func (self *Node) serialize() interface{} {
 	edges := []interface{}{}
 	for _, prenode := range self.prenodeList {
 		edges = append(edges, map[string]string{
-			"from": prenode.getNode().name,
-			"to":   self.name,
+			"from": prenode.getNode().fqname,
+			"to":   self.fqname,
 		})
 	}
 	var err interface{} = nil
