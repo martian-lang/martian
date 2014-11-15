@@ -1131,12 +1131,15 @@ func (self *Stagestance) GetFatalError() (string, string, string, []string) {
 // Pipestance
 //=============================================================================
 type Pipestance struct {
-	node *Node
+	node      *Node
+	invokeSrc string
 }
 
-func NewPipestance(parent Nodable, callStm *CallStm, callables *Callables) *Pipestance {
+func NewPipestance(parent Nodable, invokeSrc string, callStm *CallStm,
+	callables *Callables) *Pipestance {
 	self := &Pipestance{}
 	self.node = NewNode(parent, "pipeline", callStm, callables)
+	self.invokeSrc = invokeSrc
 
 	// Build subcall tree.
 	pipeline, ok := callables.table[self.node.name].(*Pipeline)
@@ -1149,7 +1152,7 @@ func NewPipestance(parent Nodable, callStm *CallStm, callables *Callables) *Pipe
 		case *Stage:
 			self.node.subnodes[subcallStm.id] = NewStagestance(self.node, subcallStm, callables)
 		case *Pipeline:
-			self.node.subnodes[subcallStm.id] = NewPipestance(self.node, subcallStm, callables)
+			self.node.subnodes[subcallStm.id] = NewPipestance(self.node, "", subcallStm, callables)
 		}
 	}
 
@@ -1169,10 +1172,11 @@ func NewPipestance(parent Nodable, callStm *CallStm, callables *Callables) *Pipe
 	return self
 }
 
-func (self *Pipestance) getNode() *Node    { return self.node }
-func (self *Pipestance) GetPname() string  { return self.node.name }
-func (self *Pipestance) GetPsid() string   { return self.node.parent.getNode().name }
-func (self *Pipestance) GetFQName() string { return self.node.fqname }
+func (self *Pipestance) getNode() *Node       { return self.node }
+func (self *Pipestance) GetPname() string     { return self.node.name }
+func (self *Pipestance) GetPsid() string      { return self.node.parent.getNode().name }
+func (self *Pipestance) GetFQName() string    { return self.node.fqname }
+func (self *Pipestance) GetInvokeSrc() string { return self.invokeSrc }
 
 func (self *Pipestance) RefreshMetadata() {
 	// We used to make this concurrent but ended up with too many
@@ -1443,7 +1447,7 @@ func (self *Runtime) instantiatePipeline(src string, srcPath string, psid string
 	}
 
 	// Instantiate the pipeline.
-	pipestance := NewPipestance(NewTopNode(self, psid, pipestancePath), ast.call, ast.callables)
+	pipestance := NewPipestance(NewTopNode(self, psid, pipestancePath), src, ast.call, ast.callables)
 	if pipestance == nil {
 		return "", nil, &RuntimeError{fmt.Sprintf("'%s' is not a declared pipeline", ast.call.id)}
 	}

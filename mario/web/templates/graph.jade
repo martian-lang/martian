@@ -59,14 +59,14 @@ html(ng-app="app" ng-controller="MarioGraphCtrl")
                     td MROPORT={{info.MROPORT}}, MROPROFILE={{info.MROPROFILE}}, MRONODUMP={{info.MRONODUMP}}
                 tr
                     td Versions
-                    td mrp={{info.version}}, MROPATH={{info.mrobranch}}:{{info.mroversion}}
+                    td mario={{info.version}}, MROPATH={{info.mrobranch}}:{{info.mroversion}}
             h5 Paths
             table.table(style="margin-bottom: 0px")
                 tr
-                    td mrp 
-                    td {{info.mrppath}}/mrp
-                tr
-                    td cwd
+                    td Bin
+                    td {{info.binpath}}
+                tr(ng-if="info.cwd")
+                    td Cwd
                     td {{info.cwd}}
                 tr
                     td MROPATH

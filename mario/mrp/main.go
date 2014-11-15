@@ -284,7 +284,9 @@ Options:
 		}
 	}
 
-	// Collect pipestance static info
+	//=========================================================================
+	// Collect pipestance static info.
+	//=========================================================================
 	hostname, err := os.Hostname()
 	if err != nil {
 		hostname = "unknown"
@@ -298,7 +300,7 @@ Options:
 		"hostname":   hostname,
 		"username":   username,
 		"cwd":        cwd,
-		"mrppath":    core.RelPath(""),
+		"binpath":    core.RelPath(os.Args[0]),
 		"cmdline":    strings.Join(os.Args, " "),
 		"pid":        strconv.Itoa(os.Getpid()),
 		"version":    marioVersion,
