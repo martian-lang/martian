@@ -69,6 +69,7 @@
     $scope.urlprefix = adminstyle ? '/admin' : '/';
     $http.get("/api/get-state/" + container + "/" + pname + "/" + psid).success(function(state) {
       $scope.nodes = _.indexBy(state.nodes, 'fqname');
+      $scope.info = state.info;
       $scope.error = state.error;
       return renderGraph($scope, $compile);
     });
@@ -132,6 +133,7 @@
         if ($scope.id) {
           $scope.node = $scope.nodes[$scope.id];
         }
+        $scope.info = state.info;
         $scope.showRestart = true;
         return $scope.error = state.error;
       }).error(function() {

@@ -7,8 +7,6 @@ package main
 
 import (
 	"fmt"
-	"github.com/docopt/docopt-go"
-	"github.com/dustin/go-humanize"
 	"io/ioutil"
 	"mario/core"
 	"net/http"
@@ -21,6 +19,9 @@ import (
 	"strconv"
 	"strings"
 	"time"
+
+	"github.com/docopt/docopt-go"
+	"github.com/dustin/go-humanize"
 )
 
 //=============================================================================
@@ -243,7 +244,8 @@ Options:
 	//=========================================================================
 	data, err := ioutil.ReadFile(invocationPath)
 	core.DieIf(err)
-	pipestance, err := rt.InvokePipeline(string(data), invocationPath, psid, pipestancePath)
+	invocationSrc := string(data)
+	pipestance, err := rt.InvokePipeline(invocationSrc, invocationPath, psid, pipestancePath)
 	if err != nil {
 		if _, ok := err.(*core.PipestanceExistsError); ok {
 			// If it already exists, try to reattach to it.
@@ -282,11 +284,44 @@ Options:
 		}
 	}
 
+	// Collect pipestance static info
+	hostname, err := os.Hostname()
+	if err != nil {
+		hostname = "unknown"
+	}
+	user, err := user.Current()
+	username := "unknown"
+	if err == nil {
+		username = user.Username
+	}
+	info := map[string]string{
+		"hostname":   hostname,
+		"username":   username,
+		"cwd":        cwd,
+		"mrppath":    core.RelPath(""),
+		"cmdline":    strings.Join(os.Args, " "),
+		"pid":        strconv.Itoa(os.Getpid()),
+		"version":    marioVersion,
+		"pname":      pipestance.GetPname(),
+		"psid":       psid,
+		"jobmode":    jobMode,
+		"maxcores":   strconv.Itoa(rt.Scheduler.GetMaxCores()),
+		"maxmemgb":   strconv.Itoa(rt.Scheduler.GetMaxMemGB()),
+		"invokepath": invocationPath,
+		"invokesrc":  invocationSrc,
+		"MROPATH":    mroPath,
+		"MRONODUMP":  fmt.Sprintf("%v", noDump),
+		"MROPROFILE": fmt.Sprintf("%v", profile),
+		"MROPORT":    uiport,
+		"mroversion": mroVersion,
+		"mrobranch":  core.GetGitBranch(mroPath),
+	}
+
 	//=========================================================================
 	// Start web server.
 	//=========================================================================
 	if !noUI && len(uiport) > 0 {
-		go runWebServer(uiport, rt, pipestance)
+		go runWebServer(uiport, rt, pipestance, info)
 	}
 
 	//=========================================================================

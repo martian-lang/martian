@@ -81,7 +81,7 @@ a { cursor:pointer; }
 }
 
 
-#details {
+.details {
     position: absolute;
     padding: 5px 10px;
     top: 50px;
@@ -106,8 +106,18 @@ pre {
 h4#stagename {
     font-family: Menlo, Arial;
 }
-#details h5 {
+.details h5 {
     font-weight: bold;
+}
+.details td {
+}
+.details td:first-child {
+    font-weight: bold;
+    color: #999;
+    width: 80px;
+}
+#invokesrc {
+    width: 100%;
 }
 #graph {
     margin-left: 25px; 
@@ -182,7 +192,7 @@ tr.active {
     font-style: italic;
     color: #de5068;
 }
-#details td {
+.details td {
     font-family: Menlo, Arial;
     font-size: 12px;
 }
@@ -201,7 +211,7 @@ tspan {
     stroke-width: 1.5px;
     fill: none;
 }
-#details td.table-section-header {
+.details td.table-section-header {
     font-family: 'Helvetica Neue', Helvetica;
     font-size: 14px;
     font-weight: bold;

@@ -6,12 +6,13 @@
 package core
 
 import (
-	"github.com/cloudfoundry/gosigar"
 	"io/ioutil"
 	"os"
 	"os/exec"
 	"runtime"
 	"sync"
+
+	"github.com/cloudfoundry/gosigar"
 )
 
 //
@@ -67,27 +68,27 @@ func NewScheduler(userMaxCores int, userMaxMemGB int, debug bool) *Scheduler {
 	self := &Scheduler{}
 	self.debug = debug
 
-	// Set max number of cores usable at one time.
+	// Set Max number of cores usable at one time.
 	if userMaxCores > 0 {
-		// If user specified --maxcores, use that value for max usable cores.
+		// If user specified --Maxcores, use that value for Max usable cores.
 		self.maxCores = userMaxCores
-		LogInfo("schedlr", "Using %d core%s, per --maxcores option.",
+		LogInfo("schedlr", "Using %d core%s, per --Maxcores option.",
 			self.maxCores, Pluralize(self.maxCores))
 	} else {
-		// Otherwise, set max usable cores to total number of cores reported
+		// Otherwise, set Max usable cores to total number of cores reported
 		// by the system.
 		self.maxCores = runtime.NumCPU()
 		LogInfo("schedlr", "Using %d core%s available on system.",
 			self.maxCores, Pluralize(self.maxCores))
 	}
 
-	// Set max GB of memory usable at one time.
+	// Set Max GB of memory usable at one time.
 	if userMaxMemGB > 0 {
-		// If user specified --maxmem, use that value for max usable GB.
+		// If user specified --Maxmem, use that value for Max usable GB.
 		self.maxMemGB = userMaxMemGB
-		LogInfo("schedlr", "Using %d GB, per --maxmem option.", self.maxMemGB)
+		LogInfo("schedlr", "Using %d GB, per --Maxmem option.", self.maxMemGB)
 	} else {
-		// Otherwise, set max usable GB to MAXMEM_FRACTION * GB of total
+		// Otherwise, set Max usable GB to MAXMEM_FRACTION * GB of total
 		// memory reported by the system.
 		MAXMEM_FRACTION := 0.75
 		sysMem := sigar.Mem{}
@@ -195,10 +196,10 @@ func (self *Scheduler) Enqueue(cmd *exec.Cmd, threads int, memGB int,
 	}()
 }
 
-func (self *Scheduler) getMaxCores() int {
+func (self *Scheduler) GetMaxCores() int {
 	return self.maxCores
 }
 
-func (self *Scheduler) getMaxMemGB() int {
+func (self *Scheduler) GetMaxMemGB() int {
 	return self.maxMemGB
 }

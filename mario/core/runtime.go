@@ -397,7 +397,7 @@ func (self *Chunk) step() {
 		// We rewrite the chunkDef here to inform the chunk it should use less
 		// concurrency.
 		if self.node.rt.jobMode == "local" {
-			maxCores := self.node.rt.scheduler.getMaxCores()
+			maxCores := self.node.rt.Scheduler.GetMaxCores()
 			if threads > maxCores {
 				threads = maxCores
 			}
@@ -412,7 +412,7 @@ func (self *Chunk) step() {
 		memGB = int(v)
 
 		if self.node.rt.jobMode == "local" {
-			maxMemGB := self.node.rt.scheduler.getMaxMemGB()
+			maxMemGB := self.node.rt.Scheduler.GetMaxMemGB()
 			if memGB > maxMemGB {
 				memGB = maxMemGB
 			}
@@ -1043,7 +1043,7 @@ func (self *Node) execLocalJob(shellCmd string, stagecodePath string,
 	errorsPath := metadata.makePath("errors")
 
 	// Enqueue the command to the local scheduler.
-	self.rt.scheduler.Enqueue(cmd, threads, memGB, stdoutPath, stderrPath, errorsPath)
+	self.rt.Scheduler.Enqueue(cmd, threads, memGB, stdoutPath, stderrPath, errorsPath)
 }
 
 func (self *Node) execSGEJob(fqname string, shellName string, shellCmd string,
@@ -1360,7 +1360,7 @@ type Runtime struct {
 	pipelineTable   map[string]*Pipeline
 	PipelineNames   []string
 	jobMode         string
-	scheduler       *Scheduler
+	Scheduler       *Scheduler
 	enableProfiling bool
 	stest           bool
 }
@@ -1381,7 +1381,7 @@ func NewRuntimeWithCores(jobMode string, mroPath string, marioVersion string,
 	self.marioVersion = marioVersion
 	self.mroVersion = mroVersion
 	self.jobMode = jobMode
-	self.scheduler = NewScheduler(reqCores, reqMem, debug)
+	self.Scheduler = NewScheduler(reqCores, reqMem, debug)
 	self.enableProfiling = enableProfiling
 	self.pipelineTable = map[string]*Pipeline{}
 	self.PipelineNames = []string{}

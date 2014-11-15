@@ -39,7 +39,8 @@ type MetadataForm struct {
 	Name string
 }
 
-func runWebServer(uiport string, rt *core.Runtime, pipestance *core.Pipestance) {
+func runWebServer(uiport string, rt *core.Runtime, pipestance *core.Pipestance,
+	info map[string]string) {
 	//=========================================================================
 	// Configure server.
 	//=========================================================================
@@ -75,13 +76,20 @@ func runWebServer(uiport string, rt *core.Runtime, pipestance *core.Pipestance) 
 	//=========================================================================
 	// API endpoints.
 	//=========================================================================
+	// Get pipestance state: nodes and fatal error (if any).
+	app.Get("/api/get-info", func(p martini.Params) string {
+		info["state"] = pipestance.GetState()
+		bytes, _ := json.Marshal(info)
+		return string(bytes)
+	})
 
 	// Get pipestance state: nodes and fatal error (if any).
 	app.Get("/api/get-state/:container/:pname/:psid",
 		func(p martini.Params) string {
 			state := map[string]interface{}{}
 			state["error"] = nil
-			if pipestance.GetState() == "failed" {
+			info["state"] = pipestance.GetState()
+			if info["state"] == "failed" {
 				fqname, summary, log, errpaths := pipestance.GetFatalError()
 				errpath := ""
 				if len(errpaths) > 0 {
@@ -95,6 +103,7 @@ func runWebServer(uiport string, rt *core.Runtime, pipestance *core.Pipestance) 
 				}
 			}
 			state["nodes"] = pipestance.Serialize()
+			state["info"] = info
 			bytes, _ := json.Marshal(state)
 			return string(bytes)
 		})
