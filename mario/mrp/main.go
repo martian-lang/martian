@@ -256,35 +256,6 @@ Options:
 	}
 
 	//=========================================================================
-	// Register with mrv.
-	//=========================================================================
-	if mrvhost := os.Getenv("MRVHOST"); len(mrvhost) > 0 {
-		v := url.Values{}
-		user, _ := user.Current()
-		v.Set("username", user.Username)
-		v.Set("psid", psid)
-		v.Set("branch", core.GetGitBranch(mroPath))
-		u := url.URL{
-			Scheme:   "http",
-			Host:     mrvhost,
-			Path:     "/register",
-			RawQuery: v.Encode(),
-		}
-		if res, err := http.Get(u.String()); err == nil {
-			if content, err := ioutil.ReadAll(res.Body); err == nil {
-				fmt.Printf("%s\n%d %s\n", u.String(), res.StatusCode, content)
-				if res.StatusCode == 200 {
-					uiport = string(content)
-				}
-			} else {
-				core.LogError(err, "mrvcli", "Could not read response from mrv %s.", u.String())
-			}
-		} else {
-			core.LogError(err, "mrvcli", "HTTP request failed %s.", u.String())
-		}
-	}
-
-	//=========================================================================
 	// Collect pipestance static info.
 	//=========================================================================
 	hostname, err := os.Hostname()
@@ -303,9 +274,11 @@ Options:
 		"binpath":    core.RelPath(os.Args[0]),
 		"cmdline":    strings.Join(os.Args, " "),
 		"pid":        strconv.Itoa(os.Getpid()),
+		"start":      time.Now().Format(time.RFC822),
 		"version":    marioVersion,
 		"pname":      pipestance.GetPname(),
 		"psid":       psid,
+		"state":      pipestance.GetState(),
 		"jobmode":    jobMode,
 		"maxcores":   strconv.Itoa(rt.Scheduler.GetMaxCores()),
 		"maxmemgb":   strconv.Itoa(rt.Scheduler.GetMaxMemGB()),
@@ -317,6 +290,33 @@ Options:
 		"MROPORT":    uiport,
 		"mroversion": mroVersion,
 		"mrobranch":  core.GetGitBranch(mroPath),
+	}
+
+	//=========================================================================
+	// Register with mrv.
+	//=========================================================================
+	if mrvhost := os.Getenv("MRVHOST"); len(mrvhost) > 0 {
+		u := url.URL{
+			Scheme: "http",
+			Host:   mrvhost,
+			Path:   "/register",
+		}
+		form := url.Values{}
+		for k, v := range info {
+			form.Add(k, v)
+		}
+		if res, err := http.PostForm(u.String(), form); err == nil {
+			if content, err := ioutil.ReadAll(res.Body); err == nil {
+				fmt.Printf("%s\n%d %s\n", u.String(), res.StatusCode, content)
+				if res.StatusCode == 200 {
+					uiport = string(content)
+				}
+			} else {
+				core.LogError(err, "mrvcli", "Could not read response from mrv %s.", u.String())
+			}
+		} else {
+			core.LogError(err, "mrvcli", "HTTP request failed %s.", u.String())
+		}
 	}
 
 	//=========================================================================
