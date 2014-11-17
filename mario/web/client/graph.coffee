@@ -22,9 +22,9 @@ renderGraph = ($scope, $compile) ->
             from = edge.from
             to = edge.to
             if from not in $scope.nodes
-                from = $scope.simpleNodes[from].fqname
+                from = $scope.simpleNodes[from]?.fqname
             if to not in $scope.nodes
-                to = $scope.simpleNodes[to].fqname
+                to = $scope.simpleNodes[to]?.fqname
             g.addEdge(null, from, to, {})
     (new dagreD3.Renderer()).zoom(false).run(g, d3.select("g"));
     maxX = 0.0

@@ -16,7 +16,7 @@
   });
 
   renderGraph = function($scope, $compile) {
-    var edge, from, g, maxX, node, scale, to, _i, _j, _k, _len, _len1, _len2, _ref, _ref1, _ref2;
+    var edge, from, g, maxX, node, scale, to, _i, _j, _k, _len, _len1, _len2, _ref, _ref1, _ref2, _ref3, _ref4;
     g = new dagreD3.Digraph();
     _ref = _.values($scope.nodes);
     for (_i = 0, _len = _ref.length; _i < _len; _i++) {
@@ -33,10 +33,10 @@
         from = edge.from;
         to = edge.to;
         if (__indexOf.call($scope.nodes, from) < 0) {
-          from = $scope.simpleNodes[from].fqname;
+          from = (_ref3 = $scope.simpleNodes[from]) != null ? _ref3.fqname : void 0;
         }
         if (__indexOf.call($scope.nodes, to) < 0) {
-          to = $scope.simpleNodes[to].fqname;
+          to = (_ref4 = $scope.simpleNodes[to]) != null ? _ref4.fqname : void 0;
         }
         g.addEdge(null, from, to, {});
       }
