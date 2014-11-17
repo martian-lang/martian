@@ -27,18 +27,62 @@ html(ng-app="app" ng-controller="MarioGraphCtrl")
                     a(href="{{urlprefix}}" style="color:#555") 10
                         span.logo-color X
                         | &nbsp;[[.InstanceName]]
-                    | &nbsp;/ [[.Psid]] / [[.Pname]]
+                    | &nbsp;/ {{info.username}} / {{info.psid}} / {{info.pname}} 
                     span(ng-if="adminstyle")
                         | &nbsp;(
                         a.admin-exit(href="/") exit admin mode
                         | )
         #graph(style="margin-left: 10px; margin-top: 60px")
-            svg(width="750px" height="1000px")
-                g#top(transform="translate(5,5) scale(1.0)")
-        #details(ng-show="node")
+            svg(width="750px" height="1000px" ng-click="alert('l')")
+                g#top(transform="translate(5,5) scale(1.0)") 
+        .details#info(ng-show="!node")
             h4#stagename
-                a(href="#") {{node.name}}                
-                | {{node.type}} 
+                a(href="#") Pipestance Info
+            h5 Runtime
+            table.table
+                tr
+                    td State
+                    td 
+                        span.minibox(ng-class="info.state") {{info.state}}
+                tr
+                    td Cmdline
+                    td {{info.cmdline}}
+                tr
+                    td User
+                    td {{info.username}}@{{info.hostname}}, PID={{info.pid}}
+                tr
+                    td Job Mode
+                    td {{info.jobmode}} 
+                        span(ng-if="info.jobmode=='local'") ({{info.maxcores}} cores, {{info.maxmemgb}} GB)
+                tr
+                    td Env
+                    td MROPORT={{info.MROPORT}}, MROPROFILE={{info.MROPROFILE}}, MRONODUMP={{info.MRONODUMP}}
+                tr
+                    td Versions
+                    td mario={{info.version}}, MROPATH={{info.mrobranch}}:{{info.mroversion}}
+            h5 Paths
+            table.table(style="margin-bottom: 0px")
+                tr
+                    td Bin
+                    td {{info.binpath}}
+                tr(ng-if="info.cwd")
+                    td Cwd
+                    td {{info.cwd}}
+                tr
+                    td MROPATH
+                    td {{info.MROPATH}}
+                tr
+                    td MRO File
+                    td {{info.invokepath}}
+            #invokesrc
+                pre {{info.invokesrc}}
+            
+        .details#stage(ng-show="node")
+            h4#stagename
+                a(href="#" ng-click="node=null;id=null") &larr;
+                | &nbsp;
+                a(href="#") {{node.name}}&nbsp;
+                | {{node.type}}
             
             div.alert.alert-danger.fixed(ng-show="node.error" ng-cloak)
                 div 
@@ -109,7 +153,7 @@ html(ng-app="app" ng-controller="MarioGraphCtrl")
                 tr
                     td Metadata
                     td(colspan="5")
-                        span(ng-repeat="name in node.forks[forki].metadata.names") &nbsp;
+                        span(ng-repeat="name in node.forks[forki].metadata.names") 
                             a(ng-click="selectMetadata('fork', name, node.forks[forki].metadata.path)") {{name}}
                             | &nbsp;
                         pre#metadata(ng-show="mdviews['fork'].length")
@@ -119,7 +163,7 @@ html(ng-app="app" ng-controller="MarioGraphCtrl")
                 tr
                     td Split 
                     td(colspan="5")
-                        span(ng-repeat="name in node.forks[forki].split_metadata.names") &nbsp;
+                        span(ng-repeat="name in node.forks[forki].split_metadata.names") 
                             a(ng-click="selectMetadata('split', name, node.forks[forki].split_metadata.path)") {{name}}
                             | &nbsp;
                         pre#metadata(ng-show="mdviews.split.length")
@@ -129,7 +173,7 @@ html(ng-app="app" ng-controller="MarioGraphCtrl")
                 tr
                     td Join 
                     td(colspan="5")
-                        span(ng-repeat="name in node.forks[forki].join_metadata.names") &nbsp;
+                        span(ng-repeat="name in node.forks[forki].join_metadata.names") 
                             a(ng-click="selectMetadata('join', name, node.forks[forki].join_metadata.path)") {{name}}
                             | &nbsp;
                         pre#metadata(ng-show="mdviews.join.length")
@@ -184,7 +228,7 @@ html(ng-app="app" ng-controller="MarioGraphCtrl")
                 tr
                     td Metadata
                     td(colspan="5")
-                        span(ng-repeat="name in node.forks[forki].chunks[chunki].metadata.names") &nbsp; 
+                        span(ng-repeat="name in node.forks[forki].chunks[chunki].metadata.names") 
                             a(ng-click="selectMetadata('chunk', name, node.forks[forki].chunks[chunki].metadata.path)") {{name}}
                             | &nbsp;
                         pre#metadata(ng-show="mdviews.chunk.length")

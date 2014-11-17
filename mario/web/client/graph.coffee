@@ -52,6 +52,7 @@ app.controller('MarioGraphCtrl', ($scope, $compile, $http, $interval) ->
 
     $http.get("/api/get-state/#{container}/#{pname}/#{psid}").success((state) ->
         $scope.nodes = _.indexBy(state.nodes, 'fqname')
+        $scope.info = state.info
         $scope.error = state.error
         renderGraph($scope, $compile)
     )
@@ -99,6 +100,7 @@ app.controller('MarioGraphCtrl', ($scope, $compile, $http, $interval) ->
         $http.get("/api/get-state/#{container}/#{pname}/#{psid}").success((state) ->
             $scope.nodes = _.indexBy(state.nodes, 'fqname')
             if $scope.id then $scope.node = $scope.nodes[$scope.id]
+            $scope.info = state.info
             $scope.showRestart = true
             $scope.error = state.error
         ).error(() ->
