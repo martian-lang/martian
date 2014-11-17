@@ -21,9 +21,9 @@ renderGraph = ($scope, $compile) ->
             # This code supports display of old, non-fqname _finalstates.
             from = edge.from
             to = edge.to
-            if from not in $scope.nodes
+            if from not of $scope.nodes
                 from = $scope.simpleNodes[from].fqname
-            if to not in $scope.nodes
+            if to not of $scope.nodes
                 to = $scope.simpleNodes[to].fqname
             g.addEdge(null, from, to, {})
     (new dagreD3.Renderer()).zoom(false).run(g, d3.select("g"));

@@ -1,6 +1,5 @@
 (function() {
-  var app, renderGraph,
-    __indexOf = [].indexOf || function(item) { for (var i = 0, l = this.length; i < l; i++) { if (i in this && this[i] === item) return i; } return -1; };
+  var app, renderGraph;
 
   app = angular.module('app', ['ui.bootstrap', 'ngClipboard']);
 
@@ -32,10 +31,10 @@
         edge = _ref2[_k];
         from = edge.from;
         to = edge.to;
-        if (__indexOf.call($scope.nodes, from) < 0) {
+        if (!(from in $scope.nodes)) {
           from = $scope.simpleNodes[from].fqname;
         }
-        if (__indexOf.call($scope.nodes, to) < 0) {
+        if (!(to in $scope.nodes)) {
           to = $scope.simpleNodes[to].fqname;
         }
         g.addEdge(null, from, to, {});
