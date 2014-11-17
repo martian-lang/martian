@@ -1,5 +1,6 @@
 (function() {
-  var app, renderGraph;
+  var app, renderGraph,
+    __indexOf = [].indexOf || function(item) { for (var i = 0, l = this.length; i < l; i++) { if (i in this && this[i] === item) return i; } return -1; };
 
   app = angular.module('app', ['ui.bootstrap', 'ngClipboard']);
 
@@ -15,7 +16,7 @@
   });
 
   renderGraph = function($scope, $compile) {
-    var edge, g, maxX, node, scale, _i, _j, _k, _len, _len1, _len2, _ref, _ref1, _ref2;
+    var edge, from, g, maxX, node, scale, to, _i, _j, _k, _len, _len1, _len2, _ref, _ref1, _ref2;
     g = new dagreD3.Digraph();
     _ref = _.values($scope.nodes);
     for (_i = 0, _len = _ref.length; _i < _len; _i++) {
@@ -29,7 +30,15 @@
       _ref2 = node.edges;
       for (_k = 0, _len2 = _ref2.length; _k < _len2; _k++) {
         edge = _ref2[_k];
-        g.addEdge(null, edge.from, edge.to, {});
+        from = edge.from;
+        to = edge.to;
+        if (__indexOf.call($scope.nodes, from) < 0) {
+          from = $scope.simpleNodes[from].fqname;
+        }
+        if (__indexOf.call($scope.nodes, to) < 0) {
+          to = $scope.simpleNodes[to].fqname;
+        }
+        g.addEdge(null, from, to, {});
       }
     }
     (new dagreD3.Renderer()).zoom(false).run(g, d3.select("g"));
@@ -68,6 +77,7 @@
     $scope.adminstyle = adminstyle;
     $scope.urlprefix = adminstyle ? '/admin' : '/';
     $http.get("/api/get-state/" + container + "/" + pname + "/" + psid).success(function(state) {
+      $scope.simpleNodes = _.indexBy(state.nodes, 'name');
       $scope.nodes = _.indexBy(state.nodes, 'fqname');
       $scope.info = state.info;
       $scope.error = state.error;
@@ -129,6 +139,7 @@
     };
     return $scope.refresh = function() {
       return $http.get("/api/get-state/" + container + "/" + pname + "/" + psid).success(function(state) {
+        $scope.simpleNodes = _.indexBy(state.nodes, 'name');
         $scope.nodes = _.indexBy(state.nodes, 'fqname');
         if ($scope.id) {
           $scope.node = $scope.nodes[$scope.id];

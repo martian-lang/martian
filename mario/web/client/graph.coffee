@@ -18,7 +18,14 @@ renderGraph = ($scope, $compile) ->
         g.addNode(node.fqname, node)
     for node in _.values($scope.nodes)
         for edge in node.edges
-            g.addEdge(null, edge.from, edge.to, {})
+            # This code supports display of old, non-fqname _finalstates.
+            from = edge.from
+            to = edge.to
+            if from not in $scope.nodes
+                from = $scope.simpleNodes[from].fqname
+            if to not in $scope.nodes
+                to = $scope.simpleNodes[to].fqname
+            g.addEdge(null, from, to, {})
     (new dagreD3.Renderer()).zoom(false).run(g, d3.select("g"));
     maxX = 0.0
     d3.selectAll("g.node").each((id) ->
@@ -51,6 +58,7 @@ app.controller('MarioGraphCtrl', ($scope, $compile, $http, $interval) ->
     $scope.urlprefix = if adminstyle then '/admin' else '/'
 
     $http.get("/api/get-state/#{container}/#{pname}/#{psid}").success((state) ->
+        $scope.simpleNodes = _.indexBy(state.nodes, 'name')
         $scope.nodes = _.indexBy(state.nodes, 'fqname')
         $scope.info = state.info
         $scope.error = state.error
@@ -98,6 +106,7 @@ app.controller('MarioGraphCtrl', ($scope, $compile, $http, $interval) ->
 
     $scope.refresh = () ->
         $http.get("/api/get-state/#{container}/#{pname}/#{psid}").success((state) ->
+            $scope.simpleNodes = _.indexBy(state.nodes, 'name')
             $scope.nodes = _.indexBy(state.nodes, 'fqname')
             if $scope.id then $scope.node = $scope.nodes[$scope.id]
             $scope.info = state.info
