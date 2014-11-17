@@ -307,7 +307,6 @@ Options:
 		}
 		if res, err := http.PostForm(u.String(), form); err == nil {
 			if content, err := ioutil.ReadAll(res.Body); err == nil {
-				fmt.Printf("%s\n%d %s\n", u.String(), res.StatusCode, content)
 				if res.StatusCode == 200 {
 					uiport = string(content)
 				}
