@@ -14,8 +14,8 @@ import (
 )
 
 func MockRuntime() *Runtime {
-	ENABLE_LOGGING = false
-	return NewRuntime("local", os.Getenv("MROPATH"), "", "", false)
+	ENABLE_LOGGING = false // Disable core.LogInfo calls in Runtime
+	return NewRuntime("local", os.Getenv("MROPATH"), "", "", false, false)
 }
 
 func ExampleBuildCallSource() {
@@ -26,7 +26,7 @@ func ExampleBuildCallSource() {
 	var v map[string]interface{}
 	json.Unmarshal([]byte(jsonStr), &v)
 
-	src := rt.BuildCallSource("ANALYZER_PD", v)
+	src := rt.BuildCallSource([]string{"analyzer_pd.mro"}, "ANALYZER_PD", v)
 	fmt.Println(src)
 	// Output:
 	// @include "analyzer_pd.mro"
@@ -57,7 +57,6 @@ func ExampleBuildCallSource() {
 	//         "R2RC:GTGACTGGAGTTCAGACGTGTGCTCTTCCGATCT",
 	//         "R1-alt2:TTGCTCATTCCCTACACGACGCTCTTCCGATCT"
 	//     ],
-	//     variant_results = null,
 	//     sample_id = "3344",
 	//     lena_url = "lena-stagesoc",
 	//     template_mass = 5.000000,
