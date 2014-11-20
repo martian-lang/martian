@@ -46,6 +46,9 @@ func TestFormatValueExpression(t *testing.T) {
 	ve.value = 10
 	assert.Equal(t, ve.format(), "10", "Format non-zero integer.")
 
+	ve.value = 1000000
+	assert.Equal(t, ve.format(), "1000000", "Preserve integer trailing zeroes.")
+
 	//
 	// Format string ValExps.
 	//
