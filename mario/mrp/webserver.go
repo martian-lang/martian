@@ -12,7 +12,6 @@ import (
 	"html/template"
 	"io/ioutil"
 	"mario/core"
-	"mario/gzip"
 	"net/http"
 	"os"
 	"path"
@@ -20,6 +19,7 @@ import (
 
 	"github.com/go-martini/martini"
 	"github.com/martini-contrib/binding"
+	"github.com/martini-contrib/gzip"
 )
 
 //=============================================================================
