@@ -7,11 +7,12 @@ package main
 
 import (
 	"fmt"
-	"github.com/docopt/docopt-go"
 	"mario/core"
 	"os"
 	"path"
 	"path/filepath"
+
+	"github.com/docopt/docopt-go"
 )
 
 func main() {
