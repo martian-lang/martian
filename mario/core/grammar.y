@@ -106,13 +106,13 @@ file_id
     ;
 
 in_param_list
-    : in_param_list in_param
+    :
+        {{ $$ = &Params{[]Param{}, map[string]Param{}} }}
+    | in_param_list in_param
         {{ 
             $1.list = append($1.list, $2)
             $$ = $1
         }}
-    | in_param
-        {{ $$ = &Params{[]Param{$1}, map[string]Param{}} }}
     ;
 
 in_param
@@ -123,13 +123,13 @@ in_param
     ;
 
 out_param_list
-    : out_param_list out_param
+    :
+        {{ $$ = &Params{[]Param{}, map[string]Param{}} }}
+    | out_param_list out_param
         {{ 
             $1.list = append($1.list, $2)
             $$ = $1
         }}
-    | out_param
-        {{ $$ = &Params{[]Param{$1}, map[string]Param{}} }}
     ;
 
 out_param
@@ -199,13 +199,13 @@ call_stm
     ;
 
 bind_stm_list
-    : bind_stm_list bind_stm
+    :
+        {{ $$ = &BindStms{[]*BindStm{}, map[string]*BindStm{}} }}
+    | bind_stm_list bind_stm
         {{ 
             $1.list = append($1.list, $2)
             $$ = $1
         }}
-    | bind_stm
-        {{ $$ = &BindStms{[]*BindStm{$1}, map[string]*BindStm{} } }}
     ;
 
 bind_stm
