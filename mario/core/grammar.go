@@ -580,7 +580,7 @@ mmdefault:
 			}
 		}
 	case 13:
-		//line mario/core/grammar.y:115
+		//line mario/core/grammar.y:112
 		{
 			{
 				mmS[mmpt-1].params.list = append(mmS[mmpt-1].params.list, mmS[mmpt-0].inparam)
@@ -609,7 +609,7 @@ mmdefault:
 			}
 		}
 	case 17:
-		//line mario/core/grammar.y:132
+		//line mario/core/grammar.y:129
 		{
 			{
 				mmS[mmpt-1].params.list = append(mmS[mmpt-1].params.list, mmS[mmpt-0].outparam)
@@ -738,7 +738,7 @@ mmdefault:
 			}
 		}
 	case 41:
-		//line mario/core/grammar.y:208
+		//line mario/core/grammar.y:205
 		{
 			{
 				mmS[mmpt-1].bindings.list = append(mmS[mmpt-1].bindings.list, mmS[mmpt-0].binding)
