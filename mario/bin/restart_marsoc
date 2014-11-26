@@ -1,6 +1,0 @@
-#!/bin/bash
-# 
-# marsoc restart script
-#
-stop_marsoc
-start_marsoc

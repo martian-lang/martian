@@ -1,6 +1,0 @@
-#!/bin/bash
-# 
-# marsoc stop script
-#
-pkill -U $USER -f "^marsoc"
-gzip ~/logs/*.log
