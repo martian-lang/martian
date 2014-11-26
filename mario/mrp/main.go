@@ -64,23 +64,23 @@ func runLoop(pipestance *core.Pipestance, stepSecs int, disableVDR bool,
 		} else if state == "failed" {
 			if !showedFailed {
 				fqname, _, log, errpaths := pipestance.GetFatalError()
-				fmt.Printf("\nPipestance failed at:\n  %s\n\nError logs written to:\n", fqname)
+				core.Log("\nPipestance failed at:\n  %s\n\nError logs written to:\n", fqname)
 				for _, errpath := range errpaths {
-					fmt.Printf("  %s\n", errpath)
+					core.Log("  %s\n", errpath)
 				}
-				fmt.Printf("\n%s\n", log)
+				core.Log("\n%s\n", log)
 
 				if !noDump {
 					// Generate debug tarball.
-					fmt.Printf("Generating debug dump tarball...")
+					core.Log("Generating debug dump tarball...")
 					debugFile := fmt.Sprintf("%s-debug-dump.tar.bz2", pipestance.GetPsid())
 					cmd := exec.Command("tar", "jcf", debugFile, "--exclude=*files*", pipestance.GetPsid())
 					if _, err := cmd.CombinedOutput(); err != nil {
-						fmt.Printf("failed.\n  %s\n", err.Error())
+						core.Log("failed.\n  %s\n", err.Error())
 					} else {
-						fmt.Printf("complete.\n  %s\n", debugFile)
+						core.Log("complete.\n  %s\n", debugFile)
 					}
-					fmt.Print("\n")
+					core.Log("\n")
 				}
 			}
 			if noExit {
@@ -254,6 +254,8 @@ Options:
 		}
 		core.DieIf(err)
 	}
+	logfile := path.Join(pipestancePath, "_log")
+	core.LogTee(logfile)
 
 	//=========================================================================
 	// Collect pipestance static info.
