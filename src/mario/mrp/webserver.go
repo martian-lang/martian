@@ -47,9 +47,9 @@ func runWebServer(uiport string, rt *core.Runtime, pipestance *core.Pipestance,
 	m := martini.New()
 	r := martini.NewRouter()
 	m.Use(martini.Recovery())
-	m.Use(martini.Static(core.RelPath("../web/res"),
+	m.Use(martini.Static(core.RelPath("../web/mario/res"),
 		martini.StaticOptions{"", true, "index.html", nil}))
-	m.Use(martini.Static(core.RelPath("../web/client"),
+	m.Use(martini.Static(core.RelPath("../web/mario/client"),
 		martini.StaticOptions{"", true, "index.html", nil}))
 	m.MapTo(r, (*martini.Routes)(nil))
 	m.Action(r.Handle)
@@ -60,7 +60,7 @@ func runWebServer(uiport string, rt *core.Runtime, pipestance *core.Pipestance,
 	// Page renderers.
 	//=========================================================================
 	app.Get("/", func() string {
-		tmpl, _ := template.New("graph.html").Delims("[[", "]]").ParseFiles(core.RelPath("../web/templates/graph.html"))
+		tmpl, _ := template.New("graph.html").Delims("[[", "]]").ParseFiles(core.RelPath("../web/mario/templates/graph.html"))
 		var doc bytes.Buffer
 		tmpl.Execute(&doc, &GraphPage{
 			InstanceName: "Mario Pipeline Runner",
