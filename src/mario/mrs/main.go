@@ -31,26 +31,21 @@ Usage:
     mrs -h | --help | --version
 
 Options:
-    --sge        Run jobs on Sun Grid Engine instead of locally.
-    --profile    Enable stage performance profiling.
-    --debug      Enable debug logging for local scheduler. 
-    -h --help    Show this message.
-    --version    Show version.`
+    --sched=<name>   Run jobs on custom scheduler instead of locally.
+    --profile        Enable stage performance profiling.
+    --debug          Enable debug logging for local scheduler. 
+    -h --help        Show this message.
+    --version        Show version.`
 	marioVersion := core.GetVersion()
 	opts, _ := docopt.Parse(doc, nil, true, marioVersion, false)
 	core.LogInfo("*", "Mario Run Stage")
 	core.LogInfo("version", marioVersion)
 	core.LogInfo("cmdline", strings.Join(os.Args, " "))
 
-	// Required job mode and SGE environment variables.
 	jobMode := "local"
-	if opts["--sge"].(bool) {
-		jobMode = "sge"
-		core.EnvRequire([][]string{
-			{"SGE_ROOT", "path/to/sge/root"},
-			{"SGE_CLUSTER_NAME", "SGE cluster name"},
-			{"SGE_CELL", "usually 'default'"},
-		}, true)
+	if value := opts["--sched"]; value != nil {
+		jobMode = value.(string)
+		core.VerifyScheduler(jobMode)
 	}
 
 	// Compute MRO path.

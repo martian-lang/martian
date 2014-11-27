@@ -136,7 +136,7 @@ Options:
     --profile        Enable stage performance profiling.
     --maxcores=<num> Set max cores the pipeline may request at one time.
     --maxmem=<num>   Set max GB the pipeline may request at one time.
-    --sge            Run jobs on Sun Grid Engine instead of locally.
+    --sched=<name>   Run jobs on custom scheduler instead of locally.
                      (--maxcores and --maxmem will be ignored)
     --debug          Enable debug logging for local scheduler.
     --stest          Substitute real stages with stress-testing stage.
@@ -148,15 +148,10 @@ Options:
 	core.LogInfo("version", marioVersion)
 	core.LogInfo("cmdline", strings.Join(os.Args, " "))
 
-	// Required job mode and SGE environment variables.
 	jobMode := "local"
-	if opts["--sge"].(bool) {
-		jobMode = "sge"
-		core.EnvRequire([][]string{
-			{"SGE_ROOT", "path/to/sge/root"},
-			{"SGE_CLUSTER_NAME", "SGE cluster name"},
-			{"SGE_CELL", "usually 'default'"},
-		}, true)
+	if value := opts["--sched"]; value != nil {
+		jobMode = value.(string)
+		core.VerifyScheduler(jobMode)
 	}
 
 	// Requested cores.

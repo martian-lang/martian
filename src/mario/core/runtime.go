@@ -1020,74 +1020,7 @@ func (self *Node) runJob(shellName string, fqname string, metadata *Metadata,
 		profile = "profile"
 	}
 
-	switch self.rt.jobMode {
-	case "local":
-		self.execLocalJob(shellCmd, self.stagecodePath, metadata, threads, memGB, profile)
-	case "sge":
-		self.execSGEJob(fqname, shellName, shellCmd, self.stagecodePath, metadata, threads, memGB, profile)
-	default:
-		panic(fmt.Sprintf("Unknown jobMode: %s", self.rt.jobMode))
-	}
-}
-
-func (self *Node) execLocalJob(shellCmd string, stagecodePath string,
-	metadata *Metadata, threads int, memGB int, profile string) {
-
-	// Exec the shell directly.
-	argv := []string{stagecodePath, metadata.path, metadata.filesPath, profile}
-	cmd := exec.Command(shellCmd, argv...)
-
-	// Connect child to _stdout and _stderr metadata files.
-	stdoutPath := metadata.makePath("stdout")
-	stderrPath := metadata.makePath("stderr")
-	errorsPath := metadata.makePath("errors")
-
-	// Enqueue the command to the local scheduler.
-	self.rt.Scheduler.Enqueue(cmd, threads, memGB, stdoutPath, stderrPath, errorsPath)
-}
-
-func (self *Node) execSGEJob(fqname string, shellName string, shellCmd string,
-	stagecodePath string, metadata *Metadata, threads int, memGB int, profile string) {
-
-	// Generate the script that will be qsub'ed.
-	argv := []string{shellCmd, stagecodePath, metadata.path, metadata.filesPath, profile}
-	metadata.writeRaw("qscript", strings.Join(argv, " "))
-
-	// Sanity check the thread count.
-	if threads < 1 {
-		threads = 1
-	}
-
-	// Build the qsub command.
-	argv = []string{
-		"-N", fqname + "." + shellName,
-		"-V",
-		"-pe", "threads", fmt.Sprintf("%d", threads),
-	}
-	// Only append memory cap if value is sane.
-	if memGB > 0 {
-		argv = append(argv, "-l", fmt.Sprintf("h_vmem=%dG", memGB))
-	}
-	argv = append(argv,
-		"-cwd",
-		"-o", metadata.makePath("stdout"),
-		"-e", metadata.makePath("stderr"),
-		metadata.makePath("qscript"),
-	)
-
-	metadata.write("jobinfo", map[string]string{"type": "sge"})
-
-	// Exec the qsub command synchronously and write result out to _qsub.
-	cmd := exec.Command("qsub", argv...)
-	cmd.Dir = metadata.filesPath
-	out := ""
-	if data, err := cmd.CombinedOutput(); err == nil {
-		out = string(data)
-	} else {
-		out = err.Error()
-		metadata.writeRaw("errors", "qsub error:\n"+out)
-	}
-	metadata.writeRaw("qsub", strings.Join(cmd.Args, " ")+"\n\n"+out)
+	self.rt.Scheduler.execJob(shellCmd, self.stagecodePath, metadata, threads, memGB, profile, fqname, shellName)
 }
 
 //=============================================================================
@@ -1364,7 +1297,7 @@ type Runtime struct {
 	pipelineTable   map[string]*Pipeline
 	PipelineNames   []string
 	jobMode         string
-	Scheduler       *Scheduler
+	Scheduler       Scheduler
 	enableProfiling bool
 	stest           bool
 }
@@ -1385,11 +1318,16 @@ func NewRuntimeWithCores(jobMode string, mroPath string, marioVersion string,
 	self.marioVersion = marioVersion
 	self.mroVersion = mroVersion
 	self.jobMode = jobMode
-	self.Scheduler = NewScheduler(reqCores, reqMem, debug)
 	self.enableProfiling = enableProfiling
 	self.pipelineTable = map[string]*Pipeline{}
 	self.PipelineNames = []string{}
 	self.stest = stest
+
+	if self.jobMode == "local" {
+		self.Scheduler = NewLocalScheduler(reqCores, reqMem, debug)
+	} else {
+		self.Scheduler = NewRemoteScheduler(self.jobMode)
+	}
 
 	// Parse all MROs in MROPATH and cache pipelines by name.
 	fpaths, _ := filepath.Glob(self.mroPath + "/[^_]*.mro")

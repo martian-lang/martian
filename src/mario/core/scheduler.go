@@ -1,15 +1,19 @@
 //
 // Copyright (c) 2014 10X Genomics, Inc. All rights reserved.
 //
-// Mario scheduler for local mode.
+// Mario schedulers for local and remote (SGE, LSF, etc) modes.
 //
 package core
 
 import (
+	"fmt"
 	"io/ioutil"
 	"os"
 	"os/exec"
+	"path"
+	"regexp"
 	"runtime"
+	"strings"
 	"sync"
 
 	"github.com/cloudfoundry/gosigar"
@@ -53,9 +57,15 @@ func (self *Semaphore) len() int {
 }
 
 //
-// Local Scheduler
+// Schedulers
 //
-type Scheduler struct {
+type Scheduler interface {
+	execJob(string, string, *Metadata, int, int, string, string, string)
+	GetMaxCores() int
+	GetMaxMemGB() int
+}
+
+type LocalScheduler struct {
 	maxCores int
 	maxMemGB int
 	coreSem  *Semaphore
@@ -64,8 +74,8 @@ type Scheduler struct {
 	debug    bool
 }
 
-func NewScheduler(userMaxCores int, userMaxMemGB int, debug bool) *Scheduler {
-	self := &Scheduler{}
+func NewLocalScheduler(userMaxCores int, userMaxMemGB int, debug bool) *LocalScheduler {
+	self := &LocalScheduler{}
 	self.debug = debug
 
 	// Set Max number of cores usable at one time.
@@ -109,7 +119,7 @@ func NewScheduler(userMaxCores int, userMaxMemGB int, debug bool) *Scheduler {
 	return self
 }
 
-func (self *Scheduler) Enqueue(cmd *exec.Cmd, threads int, memGB int,
+func (self *LocalScheduler) Enqueue(cmd *exec.Cmd, threads int, memGB int,
 	stdoutPath string, stderrPath string, errorsPath string) {
 
 	go func() {
@@ -196,10 +206,155 @@ func (self *Scheduler) Enqueue(cmd *exec.Cmd, threads int, memGB int,
 	}()
 }
 
-func (self *Scheduler) GetMaxCores() int {
+func (self *LocalScheduler) GetMaxCores() int {
 	return self.maxCores
 }
 
-func (self *Scheduler) GetMaxMemGB() int {
+func (self *LocalScheduler) GetMaxMemGB() int {
 	return self.maxMemGB
+}
+
+func (self *LocalScheduler) execJob(shellCmd string, stagecodePath string, metadata *Metadata,
+	threads int, memGB int, profile string, fqname string, shellName string) {
+
+	// Exec the shell directly.
+	argv := []string{stagecodePath, metadata.path, metadata.filesPath, profile}
+	cmd := exec.Command(shellCmd, argv...)
+
+	// Connect child to _stdout and _stderr metadata files.
+	stdoutPath := metadata.makePath("stdout")
+	stderrPath := metadata.makePath("stderr")
+	errorsPath := metadata.makePath("errors")
+
+	// Enqueue the command to the local scheduler.
+	self.Enqueue(cmd, threads, memGB, stdoutPath, stderrPath, errorsPath)
+}
+
+type RemoteScheduler struct {
+	jobMode           string
+	schedulerFile     string
+	schedulerTemplate string
+	schedulerCmd      string
+}
+
+func NewRemoteScheduler(jobMode string) *RemoteScheduler {
+	self := &RemoteScheduler{}
+	self.jobMode = jobMode
+	self.schedulerFile, self.schedulerTemplate = verifySchedulerFile(jobMode)
+	self.schedulerCmd = verifySchedulerCmd(self.schedulerFile, self.schedulerTemplate)
+	return self
+}
+
+func (self *RemoteScheduler) GetMaxCores() int {
+	return 0
+}
+
+func (self *RemoteScheduler) GetMaxMemGB() int {
+	return 0
+}
+
+func (self *RemoteScheduler) execJob(shellCmd string, stagecodePath string, metadata *Metadata,
+	threads int, memGB int, profile string, fqname string, shellName string) {
+
+	// Sanity check the thread count.
+	if threads < 1 {
+		threads = 1
+	}
+
+	argv := []string{shellCmd, stagecodePath, metadata.path, metadata.filesPath, profile}
+	params := map[string]string{
+		"job_name": fqname + "." + shellName,
+		"threads":  fmt.Sprintf("%d", threads),
+		"stdout":   metadata.makePath("stdout"),
+		"stderr":   metadata.makePath("stderr"),
+		"cmd":      strings.Join(argv, " "),
+		"mem_gb":   "",
+	}
+
+	// Only append memory cap if value is sane.
+	if memGB > 0 {
+		params["mem_gb"] = fmt.Sprintf("%d", memGB)
+	}
+
+	// Replace template annotations with actual values
+	args := []string{}
+	template := self.schedulerTemplate
+	for key, val := range params {
+		if len(val) > 0 {
+			args = append(args, fmt.Sprintf("<%s>", key), val)
+		} else {
+			// Remove line containing parameter from template
+			for _, line := range strings.Split(template, "\n") {
+				if strings.Contains(line, fmt.Sprintf("<%s>", key)) {
+					template = strings.Replace(template, line, "", 1)
+				}
+			}
+		}
+	}
+	r := strings.NewReplacer(args...)
+	metadata.writeRaw("exec", r.Replace(template))
+	metadata.write("jobinfo", map[string]string{"type": self.jobMode})
+
+	// Exec scheduler command synchronously and write result out to _schedcmd.
+	cmd := exec.Command(self.schedulerCmd, metadata.makePath("exec"))
+	cmd.Dir = metadata.filesPath
+	out := ""
+	if data, err := cmd.CombinedOutput(); err == nil {
+		out = string(data)
+	} else {
+		out = err.Error()
+		metadata.writeRaw("errors", "schedcmd error:\n"+out)
+	}
+	metadata.writeRaw("schedcmd", strings.Join(cmd.Args, " ")+"\n\n"+out)
+}
+
+//
+// Helper functions for scheduler file parsing
+//
+const (
+	space     = "[ \\t]*"
+	equals    = space + "="
+	word      = space + "\"([^\"\n]+)\""
+	beginLine = "#" + space
+	endLine   = space + "\n"
+)
+
+func verifySchedulerFile(jobMode string) (string, string) {
+	schedulerFile := RelPath(path.Join("..", "schedulers", jobMode))
+	if _, err := os.Stat(schedulerFile); os.IsNotExist(err) {
+		LogError(err, "scheduler", fmt.Sprintf("Scheduler file %s does not exist", schedulerFile))
+		os.Exit(1)
+	}
+	bytes, _ := ioutil.ReadFile(schedulerFile)
+	return schedulerFile, string(bytes)
+}
+
+func verifySchedulerCmd(schedulerFile string, schedulerTemplate string) string {
+	r := regexp.MustCompile(beginLine + "__schedcmd__" + equals + word + endLine)
+	match := r.FindStringSubmatch(schedulerTemplate)
+	if match == nil {
+		LogInfo("scheduler", fmt.Sprintf("Scheduler file %s does not contain schedcmd field", schedulerFile))
+		os.Exit(1)
+	}
+	return match[1]
+}
+
+func verifySchedulerEnv(schedulerTemplate string) {
+	r := regexp.MustCompile(beginLine + "__env__" + equals + word + word + endLine)
+	envs := [][]string{}
+	if matches := r.FindAllStringSubmatch(schedulerTemplate, -1); matches != nil {
+		for _, match := range matches {
+			envs = append(envs, match[1:])
+		}
+	}
+	EnvRequire(envs, true)
+}
+
+func VerifyScheduler(jobMode string) {
+	if jobMode == "local" {
+		return
+	}
+	schedulerFile, schedulerTemplate := verifySchedulerFile(jobMode)
+	verifySchedulerCmd(schedulerFile, schedulerTemplate)
+	verifySchedulerEnv(schedulerTemplate)
 }
