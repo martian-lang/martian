@@ -141,6 +141,24 @@ def done():
     }
     metadata.write("jobinfo", jobinfo)
 
+def stacktrace():
+    etype, evalue, tb = sys.exc_info()
+    stacktrace = ["Traceback (most recent call last):"]
+    while tb:
+        frame = tb.tb_frame
+        filename, lineno, name, line = traceback.extract_tb(tb, limit=1)[0]
+        stacktrace.append("  File '%s', line %d, in %s" % (filename ,lineno, name))
+        if line:
+            stacktrace.append("    %s" % line.strip())
+        for key, value in frame.f_locals.items():
+            try:                   
+                stacktrace.append("        %s = %s" % (key, str(value)))
+            except:
+                pass
+        tb = tb.tb_next
+    stacktrace += [line.strip() for line in traceback.format_exception_only(etype, evalue)]
+    return "\n".join(stacktrace)
+
 def fail(stacktrace):
     metadata.write_raw("errors", stacktrace)
     done()

@@ -28,4 +28,4 @@ try:
 
 except Exception as e:
     # If stage code threw an error, package it up as JSON.
-    mario.fail(traceback.format_exc())
+    mario.fail(mario.stacktrace())
