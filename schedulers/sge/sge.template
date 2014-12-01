@@ -1,0 +1,10 @@
+#!/bin/bash
+#$ -N <job_name>
+#$ -V
+#$ -pe threads <threads>
+#$ -l h_vmem=<mem_gb>G
+#$ -cwd
+#$ -o <stdout>
+#$ -e <stderr>
+
+<cmd>

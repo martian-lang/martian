@@ -6,12 +6,12 @@
 package core
 
 import (
+	"encoding/json"
 	"fmt"
 	"io/ioutil"
 	"os"
 	"os/exec"
 	"path"
-	"regexp"
 	"runtime"
 	"strings"
 	"sync"
@@ -232,7 +232,6 @@ func (self *LocalScheduler) execJob(shellCmd string, stagecodePath string, metad
 
 type RemoteScheduler struct {
 	jobMode           string
-	schedulerFile     string
 	schedulerTemplate string
 	schedulerCmd      string
 }
@@ -240,8 +239,10 @@ type RemoteScheduler struct {
 func NewRemoteScheduler(jobMode string) *RemoteScheduler {
 	self := &RemoteScheduler{}
 	self.jobMode = jobMode
-	self.schedulerFile, self.schedulerTemplate = verifySchedulerFile(jobMode)
-	self.schedulerCmd = verifySchedulerCmd(self.schedulerFile, self.schedulerTemplate)
+
+	var schedulerJson map[string]interface{}
+	schedulerJson, self.schedulerTemplate = verifySchedulerFiles(jobMode)
+	self.schedulerCmd = verifySchedulerCmd(schedulerJson)
 	return self
 }
 
@@ -311,41 +312,79 @@ func (self *RemoteScheduler) execJob(shellCmd string, stagecodePath string, meta
 //
 // Helper functions for scheduler file parsing
 //
-const (
-	space     = "[ \\t]*"
-	equals    = space + "="
-	word      = space + "\"([^\"\n]+)\""
-	beginLine = "#" + space
-	endLine   = space + "\n"
-)
 
-func verifySchedulerFile(jobMode string) (string, string) {
-	schedulerFile := RelPath(path.Join("..", "schedulers", jobMode))
-	if _, err := os.Stat(schedulerFile); os.IsNotExist(err) {
-		LogError(err, "scheduler", fmt.Sprintf("Scheduler file %s does not exist", schedulerFile))
+func verifySchedulerFiles(jobMode string) (map[string]interface{}, string) {
+	schedulerPath := RelPath(path.Join("..", "schedulers", jobMode))
+
+	// Check for existence of scheduler JSON file
+	schedulerJsonFile := path.Join(schedulerPath, fmt.Sprintf("%s.json", jobMode))
+	if _, err := os.Stat(schedulerJsonFile); os.IsNotExist(err) {
+		LogError(err, "scheduler", "Scheduler JSON file %s does not exist", schedulerJsonFile)
 		os.Exit(1)
 	}
-	bytes, _ := ioutil.ReadFile(schedulerFile)
-	return schedulerFile, string(bytes)
-}
+	LogInfo("scheduler", "Scheduler JSON: %s", schedulerJsonFile)
+	bytes, _ := ioutil.ReadFile(schedulerJsonFile)
 
-func verifySchedulerCmd(schedulerFile string, schedulerTemplate string) string {
-	r := regexp.MustCompile(beginLine + "__schedcmd__" + equals + word + endLine)
-	match := r.FindStringSubmatch(schedulerTemplate)
-	if match == nil {
-		LogInfo("scheduler", fmt.Sprintf("Scheduler file %s does not contain schedcmd field", schedulerFile))
+	// Parse scheduler JSON file
+	var schedulerJson map[string]interface{}
+	if err := json.Unmarshal(bytes, &schedulerJson); err != nil {
+		LogError(err, "scheduler", "Scheduler json file %s does not contain valid JSON", schedulerJsonFile)
+	}
+
+	// Check for existence of scheduler template file
+	schedulerTemplateFile := path.Join(schedulerPath, fmt.Sprintf("%s.template", jobMode))
+	if _, err := os.Stat(schedulerTemplateFile); os.IsNotExist(err) {
+		LogError(err, "scheduler", fmt.Sprintf("Scheduler template file %s does not exist", schedulerTemplateFile))
 		os.Exit(1)
 	}
-	return match[1]
+	LogInfo("scheduler", "Scheduler template: %s", schedulerTemplateFile)
+	bytes, _ = ioutil.ReadFile(schedulerTemplateFile)
+	schedulerTemplate := string(bytes)
+	return schedulerJson, schedulerTemplate
 }
 
-func verifySchedulerEnv(schedulerTemplate string) {
-	r := regexp.MustCompile(beginLine + "__env__" + equals + word + word + endLine)
+func verifySchedulerCmd(schedulerJson map[string]interface{}) string {
+	val, ok := schedulerJson["schedcmd"]
+	if !ok {
+		LogInfo("scheduler", "Scheduler JSON does not contain 'schedcmd' field")
+		os.Exit(1)
+	}
+	if _, ok = val.(string); !ok {
+		LogInfo("scheduler", "Scheduler JSON 'schedcmd' field has a non-string value")
+		os.Exit(1)
+	}
+	return val.(string)
+}
+
+func verifySchedulerEnv(schedulerJson map[string]interface{}) {
+	val, ok := schedulerJson["env"]
+	if !ok {
+		LogInfo("scheduler", "Scheduler JSON does not contain 'env' field")
+		os.Exit(1)
+	}
+	if _, ok = val.([]interface{}); !ok {
+		LogInfo("scheduler", "Scheduler JSON 'env' field is not an array")
+		os.Exit(1)
+	}
+
 	envs := [][]string{}
-	if matches := r.FindAllStringSubmatch(schedulerTemplate, -1); matches != nil {
-		for _, match := range matches {
-			envs = append(envs, match[1:])
+	for _, entry := range val.([]interface{}) {
+		var envMap map[string]interface{}
+		envMap, ok = entry.(map[string]interface{})
+		if !ok {
+			LogInfo("scheduler", "Scheduler JSON 'env' field has a non-dictionary entry")
+			os.Exit(1)
 		}
+		env := []string{}
+		fields := []string{"name", "description"}
+		for _, field := range fields {
+			if _, ok = envMap[field]; !ok {
+				LogInfo("scheduler", "Scheduler JSON 'env' field has a dictionary entry without '%s' field", field)
+				os.Exit(1)
+			}
+			env = append(env, envMap[field].(string))
+		}
+		envs = append(envs, env)
 	}
 	EnvRequire(envs, true)
 }
@@ -354,7 +393,7 @@ func VerifyScheduler(jobMode string) {
 	if jobMode == "local" {
 		return
 	}
-	schedulerFile, schedulerTemplate := verifySchedulerFile(jobMode)
-	verifySchedulerCmd(schedulerFile, schedulerTemplate)
-	verifySchedulerEnv(schedulerTemplate)
+	schedulerJson, _ := verifySchedulerFiles(jobMode)
+	verifySchedulerCmd(schedulerJson)
+	verifySchedulerEnv(schedulerJson)
 }
