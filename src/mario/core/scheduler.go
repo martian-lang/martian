@@ -239,10 +239,7 @@ type RemoteScheduler struct {
 func NewRemoteScheduler(jobMode string) *RemoteScheduler {
 	self := &RemoteScheduler{}
 	self.jobMode = jobMode
-
-	var schedulerJson map[string]interface{}
-	schedulerJson, self.schedulerTemplate = verifySchedulerFiles(jobMode)
-	self.schedulerCmd = verifySchedulerCmd(schedulerJson)
+	_, self.schedulerCmd, self.schedulerTemplate = verifySchedulerFiles(jobMode)
 	return self
 }
 
@@ -264,17 +261,17 @@ func (self *RemoteScheduler) execJob(shellCmd string, stagecodePath string, meta
 
 	argv := []string{shellCmd, stagecodePath, metadata.path, metadata.filesPath, profile}
 	params := map[string]string{
-		"job_name": fqname + "." + shellName,
-		"threads":  fmt.Sprintf("%d", threads),
-		"stdout":   metadata.makePath("stdout"),
-		"stderr":   metadata.makePath("stderr"),
-		"cmd":      strings.Join(argv, " "),
-		"mem_gb":   "",
+		"JOB_NAME": fqname + "." + shellName,
+		"THREADS":  fmt.Sprintf("%d", threads),
+		"STDOUT":   metadata.makePath("stdout"),
+		"STDERR":   metadata.makePath("stderr"),
+		"CMD":      strings.Join(argv, " "),
+		"MEM_GB":   "",
 	}
 
 	// Only append memory cap if value is sane.
 	if memGB > 0 {
-		params["mem_gb"] = fmt.Sprintf("%d", memGB)
+		params["MEM_GB"] = fmt.Sprintf("%d", memGB)
 	}
 
 	// Replace template annotations with actual values
@@ -282,22 +279,20 @@ func (self *RemoteScheduler) execJob(shellCmd string, stagecodePath string, meta
 	template := self.schedulerTemplate
 	for key, val := range params {
 		if len(val) > 0 {
-			args = append(args, fmt.Sprintf("<%s>", key), val)
+			args = append(args, fmt.Sprintf("__MRO_%s__", key), val)
 		} else {
 			// Remove line containing parameter from template
 			for _, line := range strings.Split(template, "\n") {
-				if strings.Contains(line, fmt.Sprintf("<%s>", key)) {
+				if strings.Contains(line, fmt.Sprintf("__MRO_%s__", key)) {
 					template = strings.Replace(template, line, "", 1)
 				}
 			}
 		}
 	}
 	r := strings.NewReplacer(args...)
-	metadata.writeRaw("exec", r.Replace(template))
-	metadata.write("jobinfo", map[string]string{"type": self.jobMode})
+	metadata.writeRaw("schedscript", r.Replace(template))
 
-	// Exec scheduler command synchronously and write result out to _schedcmd.
-	cmd := exec.Command(self.schedulerCmd, metadata.makePath("exec"))
+	cmd := exec.Command(self.schedulerCmd, metadata.makePath("schedscript"))
 	cmd.Dir = metadata.filesPath
 	out := ""
 	if data, err := cmd.CombinedOutput(); err == nil {
@@ -306,85 +301,73 @@ func (self *RemoteScheduler) execJob(shellCmd string, stagecodePath string, meta
 		out = err.Error()
 		metadata.writeRaw("errors", "schedcmd error:\n"+out)
 	}
-	metadata.writeRaw("schedcmd", strings.Join(cmd.Args, " ")+"\n\n"+out)
+	status := strings.Join(cmd.Args, " ") + "\n\n" + out
+	metadata.write("jobinfo", map[string]string{"type": self.jobMode, "status": status})
 }
 
 //
 // Helper functions for scheduler file parsing
 //
 
-func verifySchedulerFiles(jobMode string) (map[string]interface{}, string) {
-	schedulerPath := RelPath(path.Join("..", "schedulers", jobMode))
+func verifySchedulerFiles(jobMode string) (map[string]interface{}, string, string) {
+	schedulerPath := RelPath(path.Join("..", "schedulers"))
 
 	// Check for existence of scheduler JSON file
-	schedulerJsonFile := path.Join(schedulerPath, fmt.Sprintf("%s.json", jobMode))
+	schedulerJsonFile := path.Join(schedulerPath, "config.json")
 	if _, err := os.Stat(schedulerJsonFile); os.IsNotExist(err) {
-		LogError(err, "scheduler", "Scheduler JSON file %s does not exist", schedulerJsonFile)
+		LogError(err, "scheduler", "Scheduler config file %s does not exist", schedulerJsonFile)
 		os.Exit(1)
 	}
-	LogInfo("scheduler", "Scheduler JSON: %s", schedulerJsonFile)
+	LogInfo("scheduler", "Scheduler config: %s", schedulerJsonFile)
 	bytes, _ := ioutil.ReadFile(schedulerJsonFile)
 
 	// Parse scheduler JSON file
 	var schedulerJson map[string]interface{}
 	if err := json.Unmarshal(bytes, &schedulerJson); err != nil {
-		LogError(err, "scheduler", "Scheduler json file %s does not contain valid JSON", schedulerJsonFile)
+		LogError(err, "scheduler", "Scheduler config file %s does not contain valid JSON", schedulerJsonFile)
 	}
 
+	// Check if job mode is supported by default
+	schedulerCmds := schedulerJson["schedcmd"].(map[string]interface{})
+	schedulerTemplateFile := ""
+	schedulerCmd := ""
+	val, ok := schedulerCmds[jobMode]
+	if ok {
+		schedulerCmd = val.(string)
+		schedulerTemplateFile = path.Join(schedulerPath, fmt.Sprintf("%s.template", schedulerCmd))
+	} else {
+		schedulerTemplateFile = strings.Replace(jobMode, "~", os.Getenv("HOME"), -1)
+		if !strings.HasSuffix(schedulerTemplateFile, ".template") {
+			LogInfo("Scheduler template file %s must have name <schedcmd>.template", schedulerTemplateFile)
+			os.Exit(1)
+		}
+		schedulerCmd = strings.Replace(path.Base(schedulerTemplateFile), ".template", "", 1)
+	}
+	LogInfo("scheduler", "Scheduler command: %s", schedulerCmd)
+
 	// Check for existence of scheduler template file
-	schedulerTemplateFile := path.Join(schedulerPath, fmt.Sprintf("%s.template", jobMode))
 	if _, err := os.Stat(schedulerTemplateFile); os.IsNotExist(err) {
-		LogError(err, "scheduler", fmt.Sprintf("Scheduler template file %s does not exist", schedulerTemplateFile))
+		LogError(err, "scheduler", "Scheduler template file %s does not exist", schedulerTemplateFile)
 		os.Exit(1)
 	}
 	LogInfo("scheduler", "Scheduler template: %s", schedulerTemplateFile)
 	bytes, _ = ioutil.ReadFile(schedulerTemplateFile)
 	schedulerTemplate := string(bytes)
-	return schedulerJson, schedulerTemplate
+	return schedulerJson, schedulerCmd, schedulerTemplate
 }
 
-func verifySchedulerCmd(schedulerJson map[string]interface{}) string {
-	val, ok := schedulerJson["schedcmd"]
+func verifySchedulerEnv(schedulerJson map[string]interface{}, schedulerCmd string) {
+	val := schedulerJson["env"].(map[string]interface{})
+	entries, ok := val[schedulerCmd].([]interface{})
 	if !ok {
-		LogInfo("scheduler", "Scheduler JSON does not contain 'schedcmd' field")
-		os.Exit(1)
-	}
-	if _, ok = val.(string); !ok {
-		LogInfo("scheduler", "Scheduler JSON 'schedcmd' field has a non-string value")
-		os.Exit(1)
-	}
-	return val.(string)
-}
-
-func verifySchedulerEnv(schedulerJson map[string]interface{}) {
-	val, ok := schedulerJson["env"]
-	if !ok {
-		LogInfo("scheduler", "Scheduler JSON does not contain 'env' field")
-		os.Exit(1)
-	}
-	if _, ok = val.([]interface{}); !ok {
-		LogInfo("scheduler", "Scheduler JSON 'env' field is not an array")
-		os.Exit(1)
+		// No environment variable check required for scheduler
+		return
 	}
 
 	envs := [][]string{}
-	for _, entry := range val.([]interface{}) {
-		var envMap map[string]interface{}
-		envMap, ok = entry.(map[string]interface{})
-		if !ok {
-			LogInfo("scheduler", "Scheduler JSON 'env' field has a non-dictionary entry")
-			os.Exit(1)
-		}
-		env := []string{}
-		fields := []string{"name", "description"}
-		for _, field := range fields {
-			if _, ok = envMap[field]; !ok {
-				LogInfo("scheduler", "Scheduler JSON 'env' field has a dictionary entry without '%s' field", field)
-				os.Exit(1)
-			}
-			env = append(env, envMap[field].(string))
-		}
-		envs = append(envs, env)
+	for _, entry := range entries {
+		env := entry.(map[string]interface{})
+		envs = append(envs, []string{env["name"].(string), env["description"].(string)})
 	}
 	EnvRequire(envs, true)
 }
@@ -393,7 +376,6 @@ func VerifyScheduler(jobMode string) {
 	if jobMode == "local" {
 		return
 	}
-	schedulerJson, _ := verifySchedulerFiles(jobMode)
-	verifySchedulerCmd(schedulerJson)
-	verifySchedulerEnv(schedulerJson)
+	schedulerJson, schedulerCmd, _ := verifySchedulerFiles(jobMode)
+	verifySchedulerEnv(schedulerJson, schedulerCmd)
 }

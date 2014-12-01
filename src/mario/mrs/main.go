@@ -31,7 +31,10 @@ Usage:
     mrs -h | --help | --version
 
 Options:
-    --sched=<name>   Run jobs on custom scheduler instead of locally.
+    --sched=<name>   Run jobs on custom or local scheduler.
+                       Valid schedulers are 'local', 'sge' or .template file
+                       Defaults to local.
+                       (--maxcores and --maxmem will be ignored)
     --profile        Enable stage performance profiling.
     --debug          Enable debug logging for local scheduler. 
     -h --help        Show this message.
@@ -44,8 +47,8 @@ Options:
 
 	jobMode := "local"
 	if value := os.Getenv("MROSCHED"); len(value) > 0 {
-                jobMode = value
-        }
+		jobMode = value
+	}
 	if value := opts["--sched"]; value != nil {
 		jobMode = value.(string)
 	}

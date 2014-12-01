@@ -127,21 +127,23 @@ Usage:
     mrp -h | --help | --version
 
 Options:
-    --port=<num>     Serve UI at http://localhost:<num>
-                       Overrides $MROPORT environment variable.
-                       Defaults to 3600 if not otherwise specified.
-    --noexit         Keep UI running after pipestance completes or fails.
-    --noui           Disable UI.
-    --novdr          Disable Volatile Data Removal.
-    --profile        Enable stage performance profiling.
-    --maxcores=<num> Set max cores the pipeline may request at one time.
-    --maxmem=<num>   Set max GB the pipeline may request at one time.
-    --sched=<name>   Run jobs on custom scheduler instead of locally.
-                     (--maxcores and --maxmem will be ignored)
-    --debug          Enable debug logging for local scheduler.
-    --stest          Substitute real stages with stress-testing stage.
-    -h --help        Show this message.
-    --version        Show version.`
+    --port=<num>       Serve UI at http://localhost:<num>
+                         Overrides $MROPORT environment variable.
+                         Defaults to 3600 if not otherwise specified.
+    --sched=<name>     Run jobs on custom or local scheduler.
+                         Valid schedulers are 'local', 'sge' or .template file
+                         Defaults to local.
+                         (--maxcores and --maxmem will be ignored)
+    --noexit           Keep UI running after pipestance completes or fails.
+    --noui             Disable UI.
+    --novdr            Disable Volatile Data Removal.
+    --profile          Enable stage performance profiling.
+    --maxcores=<num>   Set max cores the pipeline may request at one time.
+    --maxmem=<num>     Set max GB the pipeline may request at one time.
+    --debug            Enable debug logging for local scheduler.
+    --stest            Substitute real stages with stress-testing stage.
+    -h --help          Show this message.
+    --version          Show version.`
 	marioVersion := core.GetVersion()
 	opts, _ := docopt.Parse(doc, nil, true, marioVersion, false)
 	core.LogInfo("*", "Mario Run Pipeline")
@@ -149,9 +151,9 @@ Options:
 	core.LogInfo("cmdline", strings.Join(os.Args, " "))
 
 	jobMode := "local"
-        if value := os.Getenv("MROSCHED"); len(value) > 0 {
-                jobMode = value
-        }
+	if value := os.Getenv("MROSCHED"); len(value) > 0 {
+		jobMode = value
+	}
 	if value := opts["--sched"]; value != nil {
 		jobMode = value.(string)
 	}
