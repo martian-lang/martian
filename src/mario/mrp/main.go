@@ -149,10 +149,14 @@ Options:
 	core.LogInfo("cmdline", strings.Join(os.Args, " "))
 
 	jobMode := "local"
+        if value := os.Getenv("MROSCHED"); len(value) > 0 {
+                jobMode = value
+        }
 	if value := opts["--sched"]; value != nil {
 		jobMode = value.(string)
-		core.VerifyScheduler(jobMode)
 	}
+	core.LogInfo("environ", "MROSCHED = %s", jobMode)
+	core.VerifyScheduler(jobMode)
 
 	// Requested cores.
 	reqCores := -1

@@ -43,10 +43,14 @@ Options:
 	core.LogInfo("cmdline", strings.Join(os.Args, " "))
 
 	jobMode := "local"
+	if value := os.Getenv("MROSCHED"); len(value) > 0 {
+                jobMode = value
+        }
 	if value := opts["--sched"]; value != nil {
 		jobMode = value.(string)
-		core.VerifyScheduler(jobMode)
 	}
+	core.LogInfo("environ", "MROSCHED = %s", jobMode)
+	core.VerifyScheduler(jobMode)
 
 	// Compute MRO path.
 	cwd, _ := filepath.Abs(path.Dir(os.Args[0]))
