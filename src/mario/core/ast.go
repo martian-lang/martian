@@ -72,7 +72,7 @@ type (
 		getLoc() int
 		getMode() string
 		getTname() string
-		getIsArray() bool
+		getArrayDim() int
 		getId() string
 		getHelp() string
 		getIsFile() bool
@@ -80,21 +80,21 @@ type (
 	}
 
 	InParam struct {
-		node    AstNode
-		tname   string
-		isarray bool
-		id      string
-		help    string
-		isfile  bool
+		node     AstNode
+		tname    string
+		arrayDim int
+		id       string
+		help     string
+		isfile   bool
 	}
 
 	OutParam struct {
-		node    AstNode
-		tname   string
-		isarray bool
-		id      string
-		help    string
-		isfile  bool
+		node     AstNode
+		tname    string
+		arrayDim int
+		id       string
+		help     string
+		isfile   bool
 	}
 
 	SrcParam struct {
@@ -132,7 +132,7 @@ type (
 		getExp()
 		getNode() *AstNode
 		getKind() string
-		resolveType(*Ast, Callable) ([]string, bool, error)
+		resolveType(*Ast, Callable) ([]string, int, error)
 		format() string
 	}
 
@@ -234,7 +234,7 @@ func (s *CallStm) getLoc() int { return s.node.loc }
 func (s *InParam) getNode() *AstNode { return &s.node }
 func (s *InParam) getMode() string   { return "in" }
 func (s *InParam) getTname() string  { return s.tname }
-func (s *InParam) getIsArray() bool  { return s.isarray }
+func (s *InParam) getArrayDim() int  { return s.arrayDim }
 func (s *InParam) getId() string     { return s.id }
 func (s *InParam) getHelp() string   { return s.help }
 func (s *InParam) getLoc() int       { return s.node.loc }
@@ -244,7 +244,7 @@ func (s *InParam) setIsFile(b bool)  { s.isfile = b }
 func (s *OutParam) getNode() *AstNode { return &s.node }
 func (s *OutParam) getMode() string   { return "out" }
 func (s *OutParam) getTname() string  { return s.tname }
-func (s *OutParam) getIsArray() bool  { return s.isarray }
+func (s *OutParam) getArrayDim() int  { return s.arrayDim }
 func (s *OutParam) getId() string     { return s.id }
 func (s *OutParam) getHelp() string   { return s.help }
 func (s *OutParam) getLoc() int       { return s.node.loc }

@@ -319,15 +319,15 @@ func makeOutArgs(outParams *Params, filesPath string) map[string]interface{} {
 	return args
 }
 
-func dynamicCast(val interface{}, typename string, isarray bool) bool {
+func dynamicCast(val interface{}, typename string, arrayDim int) bool {
 	ret := true
-	if isarray {
+	if arrayDim > 0 {
 		arr, ok := val.([]interface{})
 		if !ok {
 			return false
 		}
 		for _, v := range arr {
-			ret = ret && dynamicCast(v, typename, false)
+			ret = ret && dynamicCast(v, typename, arrayDim-1)
 		}
 	} else {
 		switch typename {
@@ -555,7 +555,7 @@ func (self *Fork) verifyOutput() (bool, string) {
 			ret = false
 			continue
 		}
-		if !dynamicCast(val, param.getTname(), param.getIsArray()) {
+		if !dynamicCast(val, param.getTname(), param.getArrayDim()) {
 			msg += fmt.Sprintf("Fork returned %s parameter '%s' with incorrect type\n", param.getTname(), param.getId())
 			ret = false
 		}

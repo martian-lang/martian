@@ -101,7 +101,7 @@ func paramFormat(param Param, modeWidth int, typeWidth int, idWidth int) string 
 		param.getMode(), modePad, param.getTname())
 
 	// If type is annotated as array, add brackets and shrink padding.
-	if param.getIsArray() {
+	for i := 0; i < param.getArrayDim(); i++ {
 		fsrc += "[]"
 		typePad = typePad[2:]
 	}
@@ -127,11 +127,7 @@ func (self *Params) getWidths() (int, int, int) {
 	idWidth := 0
 	for _, param := range self.list {
 		modeWidth = max(modeWidth, len(param.getMode()))
-		if param.getIsArray() {
-			typeWidth = max(typeWidth, len(param.getTname())+2)
-		} else {
-			typeWidth = max(typeWidth, len(param.getTname()))
-		}
+		typeWidth = max(typeWidth, len(param.getTname())+2*param.getArrayDim())
 		idWidth = max(idWidth, len(param.getId()))
 	}
 	return modeWidth, typeWidth, idWidth

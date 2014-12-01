@@ -23,6 +23,7 @@ func unquote(qs string) string {
 type mmSymType struct {
 	yys      int
 	global   *Ast
+	arr      int
 	loc      int
 	val      string
 	comments string
@@ -141,7 +142,7 @@ const mmEofCode = 1
 const mmErrCode = 2
 const mmMaxDepth = 200
 
-//line src/mario/core/grammar.y:278
+//line src/mario/core/grammar.y:281
 
 //line yacctab:1
 var mmExca = []int{
@@ -150,111 +151,110 @@ var mmExca = []int{
 	-2, 0,
 }
 
-const mmNprod = 65
+const mmNprod = 64
 const mmPrivate = 57344
 
 var mmTokenNames []string
 var mmStates []string
 
-const mmLast = 173
+const mmLast = 167
 
 var mmAct = []int{
 
-	79, 23, 90, 77, 3, 26, 49, 9, 42, 68,
-	53, 78, 69, 86, 54, 48, 43, 44, 46, 45,
-	85, 47, 73, 20, 65, 138, 31, 121, 27, 64,
-	59, 57, 58, 80, 94, 94, 92, 51, 107, 106,
-	53, 30, 55, 56, 54, 60, 61, 62, 82, 53,
-	70, 52, 89, 54, 65, 91, 93, 93, 12, 64,
-	59, 57, 58, 65, 72, 115, 94, 11, 64, 59,
-	57, 58, 55, 56, 95, 60, 61, 62, 109, 99,
-	100, 55, 56, 71, 60, 61, 62, 127, 93, 37,
-	108, 28, 97, 25, 112, 41, 40, 50, 18, 16,
-	15, 14, 120, 117, 137, 30, 122, 30, 32, 5,
-	110, 41, 34, 5, 88, 118, 126, 34, 128, 6,
-	7, 8, 5, 129, 101, 74, 124, 103, 123, 119,
-	134, 133, 135, 136, 104, 66, 35, 130, 125, 101,
-	84, 83, 102, 19, 76, 24, 22, 21, 17, 113,
-	96, 36, 131, 114, 111, 75, 132, 105, 4, 1,
-	116, 10, 29, 98, 81, 63, 38, 87, 39, 33,
-	2, 67, 13,
+	78, 23, 26, 107, 3, 76, 71, 9, 53, 77,
+	42, 68, 54, 85, 69, 84, 72, 20, 79, 118,
+	110, 102, 65, 101, 88, 27, 31, 64, 59, 57,
+	58, 133, 90, 81, 104, 53, 103, 51, 92, 54,
+	55, 56, 109, 60, 61, 62, 52, 30, 37, 65,
+	49, 91, 70, 28, 64, 59, 57, 58, 25, 48,
+	43, 44, 46, 45, 30, 47, 12, 55, 56, 30,
+	60, 61, 62, 18, 16, 11, 15, 89, 94, 41,
+	40, 95, 14, 32, 34, 53, 50, 5, 110, 54,
+	90, 125, 105, 115, 87, 112, 5, 117, 114, 65,
+	41, 119, 132, 96, 64, 59, 57, 58, 116, 108,
+	109, 35, 123, 73, 121, 34, 98, 55, 56, 120,
+	60, 61, 62, 99, 66, 129, 36, 126, 130, 131,
+	6, 7, 8, 5, 122, 96, 83, 82, 97, 19,
+	75, 24, 22, 21, 17, 111, 127, 124, 106, 74,
+	128, 100, 4, 1, 113, 10, 29, 93, 80, 63,
+	38, 86, 39, 33, 2, 67, 13,
 }
 var mmPact = []int{
 
-	103, -1000, 103, -1000, -1000, 38, 72, 71, 70, -1000,
-	-1000, 136, 69, 137, -10, 135, 134, -1000, 133, -1000,
-	64, -1000, -1000, 78, -1000, -1000, 86, 86, -1000, -1000,
-	142, 76, 68, -1000, -23, 84, 30, -1000, 122, -1000,
-	-25, -23, 54, -1000, -1000, -1000, -1000, -1000, -1000, -11,
-	111, 147, 132, 0, 18, 129, 128, -1000, -1000, -1000,
-	-1000, -1000, -1000, -1000, -13, -20, 92, 22, -1000, -1000,
-	26, 27, 139, 63, 94, -1000, 39, 131, -1000, -1000,
-	-1000, 119, 150, 9, 8, 61, 49, -1000, 87, 146,
-	-1000, 27, 138, 145, -1000, -1000, 36, -1000, 90, -1000,
-	116, 39, -1000, -3, -1000, 39, 115, 113, -1000, -1000,
-	126, -1000, -1000, 58, -1000, 27, 108, -1000, 125, 144,
-	-1000, 149, -1000, -1000, -1000, -1000, -1000, 27, -1000, -1000,
-	-1000, -1000, 39, 91, -1000, 12, -1000, -1000, -1000,
+	114, -1000, 114, -1000, -1000, 46, 53, 47, 45, -1000,
+	-1000, 132, 44, 133, -16, 131, 130, -1000, 129, -1000,
+	29, -1000, -1000, 40, -1000, -1000, 58, 58, -1000, -1000,
+	117, 35, 52, -1000, 21, 73, 25, -1000, 111, -1000,
+	-23, 21, -1000, -1000, -1000, -1000, -1000, -1000, -1000, -17,
+	99, 141, 128, -2, 3, 125, 124, -1000, -1000, -1000,
+	-1000, -1000, -1000, -1000, -18, -20, 72, -6, -1000, -1000,
+	-1000, 22, 9, 77, -1000, 75, 127, -1000, -1000, -1000,
+	108, 144, -7, -9, 7, 5, -1000, 69, 140, 80,
+	134, 12, -1000, 68, -1000, 95, 75, -1000, -11, -1000,
+	75, 106, 101, -1000, -1000, 122, -1000, -1000, 12, 139,
+	-1000, -1000, -1000, 76, -1000, 115, 138, -1000, 143, -1000,
+	-1000, -1000, -1000, -1000, -1000, -1000, -1000, -1000, 75, 89,
+	18, -1000, -1000, -1000,
 }
 var mmPgo = []int{
 
-	0, 172, 8, 2, 171, 158, 170, 169, 168, 5,
-	108, 167, 166, 0, 165, 3, 164, 4, 163, 162,
-	1, 160, 159,
+	0, 166, 10, 3, 165, 6, 152, 164, 163, 162,
+	2, 83, 161, 160, 0, 159, 5, 158, 4, 157,
+	156, 1, 154, 153,
 }
 var mmR1 = []int{
 
-	0, 22, 22, 22, 6, 6, 5, 5, 5, 5,
-	1, 1, 9, 9, 7, 7, 10, 10, 8, 8,
-	8, 8, 12, 3, 3, 2, 2, 2, 2, 2,
-	2, 2, 2, 4, 4, 11, 21, 18, 18, 17,
-	17, 20, 20, 19, 19, 15, 15, 16, 16, 13,
-	13, 13, 13, 13, 13, 13, 13, 13, 13, 13,
-	13, 13, 14, 14, 14,
+	0, 23, 23, 23, 7, 7, 6, 6, 6, 6,
+	1, 1, 5, 5, 10, 10, 8, 11, 11, 9,
+	9, 13, 3, 3, 2, 2, 2, 2, 2, 2,
+	2, 2, 4, 4, 12, 22, 19, 19, 18, 18,
+	21, 21, 20, 20, 16, 16, 17, 17, 14, 14,
+	14, 14, 14, 14, 14, 14, 14, 14, 14, 14,
+	14, 15, 15, 15,
 }
 var mmR2 = []int{
 
 	0, 1, 2, 1, 2, 1, 3, 7, 8, 10,
-	3, 1, 0, 2, 4, 6, 0, 2, 3, 4,
-	5, 6, 4, 2, 1, 1, 1, 1, 1, 1,
-	1, 1, 3, 1, 1, 5, 4, 2, 1, 5,
-	6, 0, 2, 4, 7, 3, 1, 5, 3, 3,
-	2, 2, 3, 4, 4, 1, 1, 1, 1, 1,
-	1, 1, 3, 1, 3,
+	3, 1, 0, 3, 0, 2, 5, 0, 2, 4,
+	5, 4, 2, 1, 1, 1, 1, 1, 1, 1,
+	1, 3, 1, 1, 5, 4, 2, 1, 5, 6,
+	0, 2, 4, 7, 3, 1, 5, 3, 3, 2,
+	2, 3, 4, 4, 1, 1, 1, 1, 1, 1,
+	1, 3, 1, 3,
 }
 var mmChk = []int{
 
-	-1000, -22, -6, -17, -5, 19, 16, 17, 18, -17,
-	-5, 29, 20, -1, 29, 29, 29, 12, 29, 6,
-	33, 12, 12, -20, 12, 29, -9, -9, 13, -19,
-	29, -20, -10, -7, 26, -10, 9, 13, -12, -8,
+	-1000, -23, -7, -18, -6, 19, 16, 17, 18, -18,
+	-6, 29, 20, -1, 29, 29, 29, 12, 29, 6,
+	33, 12, 12, -21, 12, 29, -10, -10, 13, -20,
+	29, -21, -11, -8, 26, -11, 9, 13, -13, -9,
 	28, 27, -2, 39, 40, 42, 41, 44, 38, 29,
-	13, -13, 21, 10, 14, 42, 43, 31, 32, 30,
-	45, 46, 47, -14, 29, 24, 13, -4, 34, 37,
-	-2, 29, 10, 33, 14, 8, 12, -15, 11, -13,
-	15, -16, 30, 12, 12, 33, 33, -11, 22, 30,
-	-3, 29, 10, 30, 8, -3, 11, 29, -18, -17,
-	-15, 8, 11, 8, 15, 7, 30, 30, 29, 29,
-	23, 8, -3, 11, 8, 29, -21, -17, 25, 13,
-	-13, 30, -13, 13, 13, 12, -3, 29, -3, 15,
-	12, 8, 7, -9, -3, -20, -13, 13, 13,
+	13, -14, 21, 10, 14, 42, 43, 31, 32, 30,
+	45, 46, 47, -15, 29, 24, 13, -4, 34, 37,
+	-2, -5, 33, 14, 8, 12, -16, 11, -14, 15,
+	-17, 30, 12, 12, 33, 33, -12, 22, 30, -5,
+	10, 29, 29, -19, -18, -16, 8, 11, 8, 15,
+	7, 30, 30, 29, 29, 23, 8, -3, 29, 30,
+	8, 11, -3, -22, -18, 25, 13, -14, 30, -14,
+	13, 13, 12, -3, 8, 15, 12, 8, 7, -10,
+	-21, -14, 13, 13,
 }
 var mmDef = []int{
 
 	0, -2, 1, 3, 5, 0, 0, 0, 0, 2,
-	4, 0, 0, 0, 11, 0, 0, 41, 0, 6,
-	0, 12, 12, 0, 41, 10, 16, 16, 39, 42,
-	0, 0, 0, 13, 0, 0, 0, 40, 0, 17,
-	0, 0, 0, 25, 26, 27, 28, 29, 30, 31,
-	0, 0, 0, 0, 0, 0, 0, 55, 56, 57,
-	58, 59, 60, 61, 63, 0, 7, 0, 33, 34,
-	0, 0, 0, 0, 0, 43, 0, 0, 50, 46,
-	51, 0, 0, 0, 0, 0, 0, 8, 0, 0,
-	18, 0, 0, 0, 24, 14, 0, 32, 0, 38,
-	0, 0, 49, 0, 52, 0, 0, 0, 62, 64,
-	0, 22, 19, 0, 23, 0, 0, 37, 0, 0,
-	45, 0, 48, 53, 54, 12, 20, 0, 15, 9,
-	41, 44, 0, 0, 21, 0, 47, 35, 36,
+	4, 0, 0, 0, 11, 0, 0, 40, 0, 6,
+	0, 14, 14, 0, 40, 10, 17, 17, 38, 41,
+	0, 0, 0, 15, 0, 0, 0, 39, 0, 18,
+	0, 0, 12, 24, 25, 26, 27, 28, 29, 30,
+	0, 0, 0, 0, 0, 0, 0, 54, 55, 56,
+	57, 58, 59, 60, 62, 0, 7, 0, 32, 33,
+	12, 0, 0, 0, 42, 0, 0, 49, 45, 50,
+	0, 0, 0, 0, 0, 0, 8, 0, 0, 0,
+	0, 0, 31, 0, 37, 0, 0, 48, 0, 51,
+	0, 0, 0, 61, 63, 0, 21, 19, 0, 0,
+	23, 13, 16, 0, 36, 0, 0, 44, 0, 47,
+	52, 53, 14, 20, 22, 9, 40, 43, 0, 0,
+	0, 46, 34, 35,
 }
 var mmTok1 = []int{
 
@@ -498,7 +498,7 @@ mmdefault:
 	switch mmnt {
 
 	case 1:
-		//line src/mario/core/grammar.y:68
+		//line src/mario/core/grammar.y:70
 		{
 			{
 				global := NewAst(mmS[mmpt-0].decs, nil)
@@ -506,7 +506,7 @@ mmdefault:
 			}
 		}
 	case 2:
-		//line src/mario/core/grammar.y:73
+		//line src/mario/core/grammar.y:75
 		{
 			{
 				global := NewAst(mmS[mmpt-1].decs, mmS[mmpt-0].call)
@@ -514,7 +514,7 @@ mmdefault:
 			}
 		}
 	case 3:
-		//line src/mario/core/grammar.y:78
+		//line src/mario/core/grammar.y:80
 		{
 			{
 				global := NewAst([]Dec{}, mmS[mmpt-0].call)
@@ -522,49 +522,49 @@ mmdefault:
 			}
 		}
 	case 4:
-		//line src/mario/core/grammar.y:86
+		//line src/mario/core/grammar.y:88
 		{
 			{
 				mmVAL.decs = append(mmS[mmpt-1].decs, mmS[mmpt-0].dec)
 			}
 		}
 	case 5:
-		//line src/mario/core/grammar.y:88
+		//line src/mario/core/grammar.y:90
 		{
 			{
 				mmVAL.decs = []Dec{mmS[mmpt-0].dec}
 			}
 		}
 	case 6:
-		//line src/mario/core/grammar.y:93
+		//line src/mario/core/grammar.y:95
 		{
 			{
 				mmVAL.dec = &Filetype{NewAstNode(&mmlval), mmS[mmpt-1].val}
 			}
 		}
 	case 7:
-		//line src/mario/core/grammar.y:95
+		//line src/mario/core/grammar.y:97
 		{
 			{
 				mmVAL.dec = &Stage{NewAstNode(&mmlval), mmS[mmpt-5].val, mmS[mmpt-3].params, mmS[mmpt-2].params, mmS[mmpt-1].src, &Params{[]Param{}, map[string]Param{}}}
 			}
 		}
 	case 8:
-		//line src/mario/core/grammar.y:97
+		//line src/mario/core/grammar.y:99
 		{
 			{
 				mmVAL.dec = &Stage{NewAstNode(&mmlval), mmS[mmpt-6].val, mmS[mmpt-4].params, mmS[mmpt-3].params, mmS[mmpt-2].src, mmS[mmpt-0].params}
 			}
 		}
 	case 9:
-		//line src/mario/core/grammar.y:99
+		//line src/mario/core/grammar.y:101
 		{
 			{
 				mmVAL.dec = &Pipeline{NewAstNode(&mmlval), mmS[mmpt-8].val, mmS[mmpt-6].params, mmS[mmpt-5].params, mmS[mmpt-2].calls, &Callables{[]Callable{}, map[string]Callable{}}, mmS[mmpt-1].retstm}
 			}
 		}
 	case 10:
-		//line src/mario/core/grammar.y:104
+		//line src/mario/core/grammar.y:106
 		{
 			{
 				mmVAL.val = mmS[mmpt-2].val + mmS[mmpt-1].val + mmS[mmpt-0].val
@@ -573,98 +573,93 @@ mmdefault:
 	case 11:
 		mmVAL.val = mmS[mmpt-0].val
 	case 12:
-		//line src/mario/core/grammar.y:110
+		//line src/mario/core/grammar.y:112
+		{
+			{
+				mmVAL.arr = 0
+			}
+		}
+	case 13:
+		//line src/mario/core/grammar.y:114
+		{
+			{
+				mmVAL.arr += 1
+			}
+		}
+	case 14:
+		//line src/mario/core/grammar.y:119
 		{
 			{
 				mmVAL.params = &Params{[]Param{}, map[string]Param{}}
 			}
 		}
-	case 13:
-		//line src/mario/core/grammar.y:112
+	case 15:
+		//line src/mario/core/grammar.y:121
 		{
 			{
 				mmS[mmpt-1].params.list = append(mmS[mmpt-1].params.list, mmS[mmpt-0].inparam)
 				mmVAL.params = mmS[mmpt-1].params
 			}
 		}
-	case 14:
-		//line src/mario/core/grammar.y:120
-		{
-			{
-				mmVAL.inparam = &InParam{NewAstNode(&mmlval), mmS[mmpt-2].val, false, mmS[mmpt-1].val, unquote(mmS[mmpt-0].val), false}
-			}
-		}
-	case 15:
-		//line src/mario/core/grammar.y:122
-		{
-			{
-				mmVAL.inparam = &InParam{NewAstNode(&mmlval), mmS[mmpt-4].val, true, mmS[mmpt-1].val, unquote(mmS[mmpt-0].val), false}
-			}
-		}
 	case 16:
-		//line src/mario/core/grammar.y:127
+		//line src/mario/core/grammar.y:129
+		{
+			{
+				mmVAL.inparam = &InParam{NewAstNode(&mmlval), mmS[mmpt-3].val, mmS[mmpt-2].arr, mmS[mmpt-1].val, unquote(mmS[mmpt-0].val), false}
+			}
+		}
+	case 17:
+		//line src/mario/core/grammar.y:134
 		{
 			{
 				mmVAL.params = &Params{[]Param{}, map[string]Param{}}
 			}
 		}
-	case 17:
-		//line src/mario/core/grammar.y:129
+	case 18:
+		//line src/mario/core/grammar.y:136
 		{
 			{
 				mmS[mmpt-1].params.list = append(mmS[mmpt-1].params.list, mmS[mmpt-0].outparam)
 				mmVAL.params = mmS[mmpt-1].params
 			}
 		}
-	case 18:
-		//line src/mario/core/grammar.y:137
-		{
-			{
-				mmVAL.outparam = &OutParam{NewAstNode(&mmlval), mmS[mmpt-1].val, false, "default", unquote(mmS[mmpt-0].val), false}
-			}
-		}
 	case 19:
-		//line src/mario/core/grammar.y:139
+		//line src/mario/core/grammar.y:144
 		{
 			{
-				mmVAL.outparam = &OutParam{NewAstNode(&mmlval), mmS[mmpt-2].val, false, mmS[mmpt-1].val, unquote(mmS[mmpt-0].val), false}
+				mmVAL.outparam = &OutParam{NewAstNode(&mmlval), mmS[mmpt-2].val, mmS[mmpt-1].arr, "default", unquote(mmS[mmpt-0].val), false}
 			}
 		}
 	case 20:
-		//line src/mario/core/grammar.y:141
+		//line src/mario/core/grammar.y:146
 		{
 			{
-				mmVAL.outparam = &OutParam{NewAstNode(&mmlval), mmS[mmpt-3].val, true, "default", unquote(mmS[mmpt-0].val), false}
+				mmVAL.outparam = &OutParam{NewAstNode(&mmlval), mmS[mmpt-3].val, mmS[mmpt-2].arr, mmS[mmpt-1].val, unquote(mmS[mmpt-0].val), false}
 			}
 		}
 	case 21:
-		//line src/mario/core/grammar.y:143
-		{
-			{
-				mmVAL.outparam = &OutParam{NewAstNode(&mmlval), mmS[mmpt-4].val, true, mmS[mmpt-1].val, unquote(mmS[mmpt-0].val), false}
-			}
-		}
-	case 22:
-		//line src/mario/core/grammar.y:148
+		//line src/mario/core/grammar.y:151
 		{
 			{
 				mmVAL.src = &SrcParam{NewAstNode(&mmlval), mmS[mmpt-2].val, unquote(mmS[mmpt-1].val)}
 			}
 		}
-	case 23:
-		//line src/mario/core/grammar.y:153
+	case 22:
+		//line src/mario/core/grammar.y:156
 		{
 			{
 				mmVAL.val = mmS[mmpt-1].val
 			}
 		}
-	case 24:
-		//line src/mario/core/grammar.y:155
+	case 23:
+		//line src/mario/core/grammar.y:158
 		{
 			{
 				mmVAL.val = ""
 			}
 		}
+	case 24:
+		mmVAL.val = mmS[mmpt-0].val
 	case 25:
 		mmVAL.val = mmS[mmpt-0].val
 	case 26:
@@ -678,227 +673,225 @@ mmdefault:
 	case 30:
 		mmVAL.val = mmS[mmpt-0].val
 	case 31:
-		mmVAL.val = mmS[mmpt-0].val
-	case 32:
-		//line src/mario/core/grammar.y:167
+		//line src/mario/core/grammar.y:170
 		{
 			{
 				mmVAL.val = mmS[mmpt-2].val + "." + mmS[mmpt-0].val
 			}
 		}
+	case 32:
+		mmVAL.val = mmS[mmpt-0].val
 	case 33:
 		mmVAL.val = mmS[mmpt-0].val
 	case 34:
-		mmVAL.val = mmS[mmpt-0].val
-	case 35:
-		//line src/mario/core/grammar.y:179
+		//line src/mario/core/grammar.y:182
 		{
 			{
 				mmVAL.params = mmS[mmpt-1].params
 			}
 		}
-	case 36:
-		//line src/mario/core/grammar.y:184
+	case 35:
+		//line src/mario/core/grammar.y:187
 		{
 			{
 				mmVAL.retstm = &ReturnStm{NewAstNode(&mmlval), mmS[mmpt-1].bindings}
 			}
 		}
-	case 37:
-		//line src/mario/core/grammar.y:189
+	case 36:
+		//line src/mario/core/grammar.y:192
 		{
 			{
 				mmVAL.calls = append(mmS[mmpt-1].calls, mmS[mmpt-0].call)
 			}
 		}
-	case 38:
-		//line src/mario/core/grammar.y:191
+	case 37:
+		//line src/mario/core/grammar.y:194
 		{
 			{
 				mmVAL.calls = []*CallStm{mmS[mmpt-0].call}
 			}
 		}
-	case 39:
-		//line src/mario/core/grammar.y:196
+	case 38:
+		//line src/mario/core/grammar.y:199
 		{
 			{
 				mmVAL.call = &CallStm{NewAstNode(&mmlval), false, mmS[mmpt-3].val, mmS[mmpt-1].bindings}
 			}
 		}
-	case 40:
-		//line src/mario/core/grammar.y:198
+	case 39:
+		//line src/mario/core/grammar.y:201
 		{
 			{
 				mmVAL.call = &CallStm{NewAstNode(&mmlval), true, mmS[mmpt-3].val, mmS[mmpt-1].bindings}
 			}
 		}
-	case 41:
-		//line src/mario/core/grammar.y:203
+	case 40:
+		//line src/mario/core/grammar.y:206
 		{
 			{
 				mmVAL.bindings = &BindStms{[]*BindStm{}, map[string]*BindStm{}}
 			}
 		}
-	case 42:
-		//line src/mario/core/grammar.y:205
+	case 41:
+		//line src/mario/core/grammar.y:208
 		{
 			{
 				mmS[mmpt-1].bindings.list = append(mmS[mmpt-1].bindings.list, mmS[mmpt-0].binding)
 				mmVAL.bindings = mmS[mmpt-1].bindings
 			}
 		}
-	case 43:
-		//line src/mario/core/grammar.y:213
+	case 42:
+		//line src/mario/core/grammar.y:216
 		{
 			{
 				mmVAL.binding = &BindStm{NewAstNode(&mmlval), mmS[mmpt-3].val, mmS[mmpt-1].exp, false, ""}
 			}
 		}
-	case 44:
-		//line src/mario/core/grammar.y:215
+	case 43:
+		//line src/mario/core/grammar.y:218
 		{
 			{
 				mmVAL.binding = &BindStm{NewAstNode(&mmlval), mmS[mmpt-6].val, &ValExp{node: NewAstNode(&mmlval), kind: "array", value: mmS[mmpt-2].exps}, true, ""}
 			}
 		}
-	case 45:
-		//line src/mario/core/grammar.y:220
+	case 44:
+		//line src/mario/core/grammar.y:223
 		{
 			{
 				mmVAL.exps = append(mmS[mmpt-2].exps, mmS[mmpt-0].exp)
 			}
 		}
-	case 46:
-		//line src/mario/core/grammar.y:222
+	case 45:
+		//line src/mario/core/grammar.y:225
 		{
 			{
 				mmVAL.exps = []Exp{mmS[mmpt-0].exp}
 			}
 		}
-	case 47:
-		//line src/mario/core/grammar.y:227
+	case 46:
+		//line src/mario/core/grammar.y:230
 		{
 			{
 				mmS[mmpt-4].kvpairs[unquote(mmS[mmpt-2].val)] = mmS[mmpt-0].exp
 				mmVAL.kvpairs = mmS[mmpt-4].kvpairs
 			}
 		}
-	case 48:
-		//line src/mario/core/grammar.y:232
+	case 47:
+		//line src/mario/core/grammar.y:235
 		{
 			{
 				mmVAL.kvpairs = map[string]Exp{unquote(mmS[mmpt-2].val): mmS[mmpt-0].exp}
 			}
 		}
-	case 49:
-		//line src/mario/core/grammar.y:237
+	case 48:
+		//line src/mario/core/grammar.y:240
 		{
 			{
 				mmVAL.exp = &ValExp{node: NewAstNode(&mmlval), kind: "array", value: mmS[mmpt-1].exps}
 			}
 		}
-	case 50:
-		//line src/mario/core/grammar.y:239
+	case 49:
+		//line src/mario/core/grammar.y:242
 		{
 			{
 				mmVAL.exp = &ValExp{node: NewAstNode(&mmlval), kind: "array", value: []Exp{}}
 			}
 		}
-	case 51:
-		//line src/mario/core/grammar.y:241
+	case 50:
+		//line src/mario/core/grammar.y:244
 		{
 			{
 				mmVAL.exp = &ValExp{node: NewAstNode(&mmlval), kind: "map", value: map[string]interface{}{}}
 			}
 		}
-	case 52:
-		//line src/mario/core/grammar.y:243
+	case 51:
+		//line src/mario/core/grammar.y:246
 		{
 			{
 				mmVAL.exp = &ValExp{node: NewAstNode(&mmlval), kind: "map", value: mmS[mmpt-1].kvpairs}
 			}
 		}
+	case 52:
+		//line src/mario/core/grammar.y:248
+		{
+			{
+				mmVAL.exp = &ValExp{node: NewAstNode(&mmlval), kind: mmS[mmpt-3].val, value: unquote(mmS[mmpt-1].val)}
+			}
+		}
 	case 53:
-		//line src/mario/core/grammar.y:245
+		//line src/mario/core/grammar.y:250
 		{
 			{
 				mmVAL.exp = &ValExp{node: NewAstNode(&mmlval), kind: mmS[mmpt-3].val, value: unquote(mmS[mmpt-1].val)}
 			}
 		}
 	case 54:
-		//line src/mario/core/grammar.y:247
-		{
-			{
-				mmVAL.exp = &ValExp{node: NewAstNode(&mmlval), kind: mmS[mmpt-3].val, value: unquote(mmS[mmpt-1].val)}
-			}
-		}
-	case 55:
-		//line src/mario/core/grammar.y:249
+		//line src/mario/core/grammar.y:252
 		{
 			{ // Lexer guarantees parseable float strings.
 				f, _ := strconv.ParseFloat(mmS[mmpt-0].val, 64)
 				mmVAL.exp = &ValExp{node: NewAstNode(&mmlval), kind: "float", value: f}
 			}
 		}
-	case 56:
-		//line src/mario/core/grammar.y:254
+	case 55:
+		//line src/mario/core/grammar.y:257
 		{
 			{ // Lexer guarantees parseable int strings.
 				i, _ := strconv.ParseInt(mmS[mmpt-0].val, 0, 64)
 				mmVAL.exp = &ValExp{node: NewAstNode(&mmlval), kind: "int", value: i}
 			}
 		}
-	case 57:
-		//line src/mario/core/grammar.y:259
+	case 56:
+		//line src/mario/core/grammar.y:262
 		{
 			{
 				mmVAL.exp = &ValExp{node: NewAstNode(&mmlval), kind: "string", value: unquote(mmS[mmpt-0].val)}
 			}
 		}
-	case 58:
-		//line src/mario/core/grammar.y:261
+	case 57:
+		//line src/mario/core/grammar.y:264
 		{
 			{
 				mmVAL.exp = &ValExp{node: NewAstNode(&mmlval), kind: "bool", value: true}
 			}
 		}
-	case 59:
-		//line src/mario/core/grammar.y:263
+	case 58:
+		//line src/mario/core/grammar.y:266
 		{
 			{
 				mmVAL.exp = &ValExp{node: NewAstNode(&mmlval), kind: "bool", value: false}
 			}
 		}
-	case 60:
-		//line src/mario/core/grammar.y:265
+	case 59:
+		//line src/mario/core/grammar.y:268
 		{
 			{
 				mmVAL.exp = &ValExp{node: NewAstNode(&mmlval), kind: "null", value: nil}
 			}
 		}
-	case 61:
-		//line src/mario/core/grammar.y:267
+	case 60:
+		//line src/mario/core/grammar.y:270
 		{
 			{
 				mmVAL.exp = mmS[mmpt-0].exp
 			}
 		}
-	case 62:
-		//line src/mario/core/grammar.y:272
+	case 61:
+		//line src/mario/core/grammar.y:275
 		{
 			{
 				mmVAL.exp = &RefExp{NewAstNode(&mmlval), "call", mmS[mmpt-2].val, mmS[mmpt-0].val}
 			}
 		}
-	case 63:
-		//line src/mario/core/grammar.y:274
+	case 62:
+		//line src/mario/core/grammar.y:277
 		{
 			{
 				mmVAL.exp = &RefExp{NewAstNode(&mmlval), "call", mmS[mmpt-0].val, "default"}
 			}
 		}
-	case 64:
-		//line src/mario/core/grammar.y:276
+	case 63:
+		//line src/mario/core/grammar.y:279
 		{
 			{
 				mmVAL.exp = &RefExp{NewAstNode(&mmlval), "self", mmS[mmpt-0].val, ""}
