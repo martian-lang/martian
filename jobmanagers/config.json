@@ -1,5 +1,5 @@
 {  
-  "schedcmd":{  
+  "jobcmd":{  
     "sge":"qsub"
   },
   "env":{  

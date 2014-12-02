@@ -31,14 +31,14 @@ Usage:
     mrs -h | --help | --version
 
 Options:
-    --sched=<name>   Run jobs on custom or local scheduler.
-                       Valid schedulers are 'local', 'sge' or .template file
-                       Defaults to local.
-                       (--maxcores and --maxmem will be ignored)
-    --profile        Enable stage performance profiling.
-    --debug          Enable debug logging for local scheduler. 
-    -h --help        Show this message.
-    --version        Show version.`
+    --jobmode=<name>   Run jobs on custom or local job manager.
+                         Valid job managers are 'local', 'sge' or .template file
+                         Defaults to local.
+                         (--maxcores and --maxmem will be ignored)
+    --profile          Enable stage performance profiling.
+    --debug            Enable debug logging for local job manager. 
+    -h --help          Show this message.
+    --version          Show version.`
 	marioVersion := core.GetVersion()
 	opts, _ := docopt.Parse(doc, nil, true, marioVersion, false)
 	core.LogInfo("*", "Mario Run Stage")
@@ -46,14 +46,14 @@ Options:
 	core.LogInfo("cmdline", strings.Join(os.Args, " "))
 
 	jobMode := "local"
-	if value := os.Getenv("MROSCHED"); len(value) > 0 {
+	if value := os.Getenv("MROJOBMODE"); len(value) > 0 {
 		jobMode = value
 	}
-	if value := opts["--sched"]; value != nil {
+	if value := opts["--jobmode"]; value != nil {
 		jobMode = value.(string)
 	}
-	core.LogInfo("environ", "MROSCHED = %s", jobMode)
-	core.VerifyScheduler(jobMode)
+	core.LogInfo("environ", "MROJOBMODE = %s", jobMode)
+	core.VerifyJobManager(jobMode)
 
 	// Compute MRO path.
 	cwd, _ := filepath.Abs(path.Dir(os.Args[0]))

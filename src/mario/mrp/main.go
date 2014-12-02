@@ -130,8 +130,8 @@ Options:
     --port=<num>       Serve UI at http://localhost:<num>
                          Overrides $MROPORT environment variable.
                          Defaults to 3600 if not otherwise specified.
-    --sched=<name>     Run jobs on custom or local scheduler.
-                         Valid schedulers are 'local', 'sge' or .template file
+    --jobmode=<name>   Run jobs on custom or local job manager.
+                         Valid job managers are 'local', 'sge' or .template file
                          Defaults to local.
                          (--maxcores and --maxmem will be ignored)
     --noexit           Keep UI running after pipestance completes or fails.
@@ -140,7 +140,7 @@ Options:
     --profile          Enable stage performance profiling.
     --maxcores=<num>   Set max cores the pipeline may request at one time.
     --maxmem=<num>     Set max GB the pipeline may request at one time.
-    --debug            Enable debug logging for local scheduler.
+    --debug            Enable debug logging for local job manager.
     --stest            Substitute real stages with stress-testing stage.
     -h --help          Show this message.
     --version          Show version.`
@@ -151,14 +151,14 @@ Options:
 	core.LogInfo("cmdline", strings.Join(os.Args, " "))
 
 	jobMode := "local"
-	if value := os.Getenv("MROSCHED"); len(value) > 0 {
+	if value := os.Getenv("MROJOBMODE"); len(value) > 0 {
 		jobMode = value
 	}
-	if value := opts["--sched"]; value != nil {
+	if value := opts["--jobmode"]; value != nil {
 		jobMode = value.(string)
 	}
-	core.LogInfo("environ", "MROSCHED = %s", jobMode)
-	core.VerifyScheduler(jobMode)
+	core.LogInfo("environ", "MROJOBMODE = %s", jobMode)
+	core.VerifyJobManager(jobMode)
 
 	// Requested cores.
 	reqCores := -1
@@ -283,8 +283,8 @@ Options:
 		"psid":       psid,
 		"state":      pipestance.GetState(),
 		"jobmode":    jobMode,
-		"maxcores":   strconv.Itoa(rt.Scheduler.GetMaxCores()),
-		"maxmemgb":   strconv.Itoa(rt.Scheduler.GetMaxMemGB()),
+		"maxcores":   strconv.Itoa(rt.JobManager.GetMaxCores()),
+		"maxmemgb":   strconv.Itoa(rt.JobManager.GetMaxMemGB()),
 		"invokepath": invocationPath,
 		"invokesrc":  invocationSrc,
 		"MROPATH":    mroPath,

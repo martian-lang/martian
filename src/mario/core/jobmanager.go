@@ -1,7 +1,7 @@
 //
 // Copyright (c) 2014 10X Genomics, Inc. All rights reserved.
 //
-// Mario schedulers for local and remote (SGE, LSF, etc) modes.
+// Mario job managers for local and remote (SGE, LSF, etc) modes.
 //
 package core
 
@@ -57,15 +57,15 @@ func (self *Semaphore) len() int {
 }
 
 //
-// Schedulers
+// Job managers
 //
-type Scheduler interface {
+type JobManager interface {
 	execJob(string, []string, *Metadata, int, int, string, string)
 	GetMaxCores() int
 	GetMaxMemGB() int
 }
 
-type LocalScheduler struct {
+type LocalJobManager struct {
 	maxCores int
 	maxMemGB int
 	coreSem  *Semaphore
@@ -74,21 +74,21 @@ type LocalScheduler struct {
 	debug    bool
 }
 
-func NewLocalScheduler(userMaxCores int, userMaxMemGB int, debug bool) *LocalScheduler {
-	self := &LocalScheduler{}
+func NewLocalJobManager(userMaxCores int, userMaxMemGB int, debug bool) *LocalJobManager {
+	self := &LocalJobManager{}
 	self.debug = debug
 
 	// Set Max number of cores usable at one time.
 	if userMaxCores > 0 {
 		// If user specified --Maxcores, use that value for Max usable cores.
 		self.maxCores = userMaxCores
-		LogInfo("schedlr", "Using %d core%s, per --Maxcores option.",
+		LogInfo("jobmgr", "Using %d core%s, per --Maxcores option.",
 			self.maxCores, Pluralize(self.maxCores))
 	} else {
 		// Otherwise, set Max usable cores to total number of cores reported
 		// by the system.
 		self.maxCores = runtime.NumCPU()
-		LogInfo("schedlr", "Using %d core%s available on system.",
+		LogInfo("jobmgr", "Using %d core%s available on system.",
 			self.maxCores, Pluralize(self.maxCores))
 	}
 
@@ -96,7 +96,7 @@ func NewLocalScheduler(userMaxCores int, userMaxMemGB int, debug bool) *LocalSch
 	if userMaxMemGB > 0 {
 		// If user specified --Maxmem, use that value for Max usable GB.
 		self.maxMemGB = userMaxMemGB
-		LogInfo("schedlr", "Using %d GB, per --Maxmem option.", self.maxMemGB)
+		LogInfo("jobmgr", "Using %d GB, per --Maxmem option.", self.maxMemGB)
 	} else {
 		// Otherwise, set Max usable GB to MAXMEM_FRACTION * GB of total
 		// memory reported by the system.
@@ -109,7 +109,7 @@ func NewLocalScheduler(userMaxCores int, userMaxMemGB int, debug bool) *LocalSch
 			sysMemGB = 1
 		}
 		self.maxMemGB = sysMemGB
-		LogInfo("schedlr", "Using %d GB, %d%% of system memory.", self.maxMemGB,
+		LogInfo("jobmgr", "Using %d GB, %d%% of system memory.", self.maxMemGB,
 			int(MAXMEM_FRACTION*100))
 	}
 
@@ -119,7 +119,7 @@ func NewLocalScheduler(userMaxCores int, userMaxMemGB int, debug bool) *LocalSch
 	return self
 }
 
-func (self *LocalScheduler) Enqueue(cmd *exec.Cmd, threads int, memGB int,
+func (self *LocalJobManager) Enqueue(cmd *exec.Cmd, threads int, memGB int,
 	stdoutPath string, stderrPath string, errorsPath string) {
 
 	go func() {
@@ -129,7 +129,7 @@ func (self *LocalScheduler) Enqueue(cmd *exec.Cmd, threads int, memGB int,
 		}
 		if threads > self.maxCores {
 			if self.debug {
-				LogInfo("schedlr", "Need %d core%s but settling for %d.", threads,
+				LogInfo("jobmgr", "Need %d core%s but settling for %d.", threads,
 					Pluralize(threads), self.maxCores)
 			}
 			threads = self.maxCores
@@ -141,7 +141,7 @@ func (self *LocalScheduler) Enqueue(cmd *exec.Cmd, threads int, memGB int,
 		}
 		if memGB > self.maxMemGB {
 			if self.debug {
-				LogInfo("schedlr", "Need %d GB but settling for %d.", memGB,
+				LogInfo("jobmgr", "Need %d GB but settling for %d.", memGB,
 					self.maxMemGB)
 			}
 			memGB = self.maxMemGB
@@ -149,25 +149,25 @@ func (self *LocalScheduler) Enqueue(cmd *exec.Cmd, threads int, memGB int,
 
 		// Acquire cores.
 		if self.debug {
-			LogInfo("schedlr", "Waiting for %d core%s", threads, Pluralize(threads))
+			LogInfo("jobmgr", "Waiting for %d core%s", threads, Pluralize(threads))
 		}
 		self.coreSem.P(threads)
 		if self.debug {
-			LogInfo("schedlr", "Acquiring %d core%s (%d/%d in use)", threads,
+			LogInfo("jobmgr", "Acquiring %d core%s (%d/%d in use)", threads,
 				Pluralize(threads), self.coreSem.len(), self.maxCores)
 		}
 
 		// Acquire memory.
 		if self.debug {
-			LogInfo("schedlr", "Waiting for %d GB", memGB)
+			LogInfo("jobmgr", "Waiting for %d GB", memGB)
 		}
 		self.memGBSem.P(memGB)
 		if self.debug {
-			LogInfo("schedlr", "Acquired %d GB (%d/%d in use)", memGB,
+			LogInfo("jobmgr", "Acquired %d GB (%d/%d in use)", memGB,
 				self.memGBSem.len(), self.maxMemGB)
 		}
 		if self.debug {
-			LogInfo("schedlr", "%d goroutines", runtime.NumGoroutine())
+			LogInfo("jobmgr", "%d goroutines", runtime.NumGoroutine())
 		}
 
 		// Set up _stdout and _stderr for the job.
@@ -194,27 +194,27 @@ func (self *LocalScheduler) Enqueue(cmd *exec.Cmd, threads int, memGB int,
 		// Release cores.
 		self.coreSem.V(threads)
 		if self.debug {
-			LogInfo("schedlr", "Released %d core%s (%d/%d in use)", threads,
+			LogInfo("jobmgr", "Released %d core%s (%d/%d in use)", threads,
 				Pluralize(threads), self.coreSem.len(), self.maxCores)
 		}
 		// Release memory.
 		self.memGBSem.V(memGB)
 		if self.debug {
-			LogInfo("schedlr", "Released %d GB (%d/%d in use)", memGB,
+			LogInfo("jobmgr", "Released %d GB (%d/%d in use)", memGB,
 				self.memGBSem.len(), self.maxMemGB)
 		}
 	}()
 }
 
-func (self *LocalScheduler) GetMaxCores() int {
+func (self *LocalJobManager) GetMaxCores() int {
 	return self.maxCores
 }
 
-func (self *LocalScheduler) GetMaxMemGB() int {
+func (self *LocalJobManager) GetMaxMemGB() int {
 	return self.maxMemGB
 }
 
-func (self *LocalScheduler) execJob(shellCmd string, argv []string, metadata *Metadata,
+func (self *LocalJobManager) execJob(shellCmd string, argv []string, metadata *Metadata,
 	threads int, memGB int, fqname string, shellName string) {
 
 	// Exec the shell directly.
@@ -225,32 +225,32 @@ func (self *LocalScheduler) execJob(shellCmd string, argv []string, metadata *Me
 	stderrPath := metadata.makePath("stderr")
 	errorsPath := metadata.makePath("errors")
 
-	// Enqueue the command to the local scheduler.
+	// Enqueue the command to the local job manager.
 	self.Enqueue(cmd, threads, memGB, stdoutPath, stderrPath, errorsPath)
 }
 
-type RemoteScheduler struct {
-	jobMode           string
-	schedulerTemplate string
-	schedulerCmd      string
+type RemoteJobManager struct {
+	jobMode     string
+	jobTemplate string
+	jobCmd      string
 }
 
-func NewRemoteScheduler(jobMode string) *RemoteScheduler {
-	self := &RemoteScheduler{}
+func NewRemoteJobManager(jobMode string) *RemoteJobManager {
+	self := &RemoteJobManager{}
 	self.jobMode = jobMode
-	_, self.schedulerCmd, self.schedulerTemplate = verifySchedulerFiles(jobMode)
+	_, self.jobCmd, self.jobTemplate = verifyJobManagerFiles(jobMode)
 	return self
 }
 
-func (self *RemoteScheduler) GetMaxCores() int {
+func (self *RemoteJobManager) GetMaxCores() int {
 	return 0
 }
 
-func (self *RemoteScheduler) GetMaxMemGB() int {
+func (self *RemoteJobManager) GetMaxMemGB() int {
 	return 0
 }
 
-func (self *RemoteScheduler) execJob(shellCmd string, argv []string, metadata *Metadata,
+func (self *RemoteJobManager) execJob(shellCmd string, argv []string, metadata *Metadata,
 	threads int, memGB int, fqname string, shellName string) {
 
 	// Sanity check the thread count.
@@ -275,7 +275,7 @@ func (self *RemoteScheduler) execJob(shellCmd string, argv []string, metadata *M
 
 	// Replace template annotations with actual values
 	args := []string{}
-	template := self.schedulerTemplate
+	template := self.jobTemplate
 	for key, val := range params {
 		if len(val) > 0 {
 			args = append(args, fmt.Sprintf("__MRO_%s__", key), val)
@@ -289,77 +289,76 @@ func (self *RemoteScheduler) execJob(shellCmd string, argv []string, metadata *M
 		}
 	}
 	r := strings.NewReplacer(args...)
-	metadata.writeRaw("schedscript", r.Replace(template))
+	metadata.writeRaw("jobscript", r.Replace(template))
 
-	cmd := exec.Command(self.schedulerCmd, metadata.makePath("schedscript"))
+	cmd := exec.Command(self.jobCmd, metadata.makePath("jobscript"))
 	cmd.Dir = metadata.filesPath
 	out := ""
 	if data, err := cmd.CombinedOutput(); err == nil {
 		out = string(data)
 	} else {
 		out = err.Error()
-		metadata.writeRaw("errors", "schedcmd error:\n"+out)
+		metadata.writeRaw("errors", "jobcmd error:\n"+out)
 	}
 	status := strings.Join(cmd.Args, " ") + "\n\n" + out
 	metadata.write("jobinfo", map[string]string{"type": self.jobMode, "status": status})
 }
 
 //
-// Helper functions for scheduler file parsing
+// Helper functions for job manager file parsing
 //
 
-func verifySchedulerFiles(jobMode string) (map[string]interface{}, string, string) {
-	schedulerPath := RelPath(path.Join("..", "schedulers"))
+func verifyJobManagerFiles(jobMode string) (map[string]interface{}, string, string) {
+	jobPath := RelPath(path.Join("..", "jobmanagers"))
 
-	// Check for existence of scheduler JSON file
-	schedulerJsonFile := path.Join(schedulerPath, "config.json")
-	if _, err := os.Stat(schedulerJsonFile); os.IsNotExist(err) {
-		LogError(err, "scheduler", "Scheduler config file %s does not exist", schedulerJsonFile)
+	// Check for existence of job manager JSON file
+	jobJsonFile := path.Join(jobPath, "config.json")
+	if _, err := os.Stat(jobJsonFile); os.IsNotExist(err) {
+		LogError(err, "jobmgr", "Job config file %s does not exist", jobJsonFile)
 		os.Exit(1)
 	}
-	LogInfo("scheduler", "Scheduler config: %s", schedulerJsonFile)
-	bytes, _ := ioutil.ReadFile(schedulerJsonFile)
+	LogInfo("jobmgr", "Job config: %s", jobJsonFile)
+	bytes, _ := ioutil.ReadFile(jobJsonFile)
 
-	// Parse scheduler JSON file
-	var schedulerJson map[string]interface{}
-	if err := json.Unmarshal(bytes, &schedulerJson); err != nil {
-		LogError(err, "scheduler", "Scheduler config file %s does not contain valid JSON", schedulerJsonFile)
+	// Parse job manager JSON file
+	var jobJson map[string]interface{}
+	if err := json.Unmarshal(bytes, &jobJson); err != nil {
+		LogError(err, "jobmgr", "Job config file %s does not contain valid JSON", jobJsonFile)
 	}
 
 	// Check if job mode is supported by default
-	schedulerCmds := schedulerJson["schedcmd"].(map[string]interface{})
-	schedulerTemplateFile := ""
-	schedulerCmd := ""
-	val, ok := schedulerCmds[jobMode]
+	jobCmds := jobJson["jobcmd"].(map[string]interface{})
+	jobTemplateFile := jobMode
+	jobCmd := ""
+	val, ok := jobCmds[jobMode]
 	if ok {
-		schedulerCmd = val.(string)
-		schedulerTemplateFile = path.Join(schedulerPath, fmt.Sprintf("%s.template", schedulerCmd))
+		jobCmd = val.(string)
+		jobTemplateFile = path.Join(jobPath, fmt.Sprintf("%s.template", jobCmd))
 	} else {
-		schedulerTemplateFile = strings.Replace(jobMode, "~", os.Getenv("HOME"), -1)
-		if !strings.HasSuffix(schedulerTemplateFile, ".template") {
-			LogInfo("Scheduler template file %s must have name <schedcmd>.template", schedulerTemplateFile)
+		if !strings.HasSuffix(jobTemplateFile, ".template") {
+			LogInfo("jobmgr", "Job template file %s must have name <jobcmd>.template", jobTemplateFile)
 			os.Exit(1)
 		}
-		schedulerCmd = strings.Replace(path.Base(schedulerTemplateFile), ".template", "", 1)
+		jobCmd = strings.Replace(path.Base(jobTemplateFile), ".template", "", 1)
 	}
-	LogInfo("scheduler", "Scheduler command: %s", schedulerCmd)
+	LogInfo("jobmgr", "Job command: %s", jobCmd)
 
-	// Check for existence of scheduler template file
-	if _, err := os.Stat(schedulerTemplateFile); os.IsNotExist(err) {
-		LogError(err, "scheduler", "Scheduler template file %s does not exist", schedulerTemplateFile)
+	// Check for existence of job manager template file
+	if _, err := os.Stat(jobTemplateFile); os.IsNotExist(err) {
+		LogError(err, "jobmgr", "Job template file %s does not exist", jobTemplateFile)
 		os.Exit(1)
 	}
-	LogInfo("scheduler", "Scheduler template: %s", schedulerTemplateFile)
-	bytes, _ = ioutil.ReadFile(schedulerTemplateFile)
-	schedulerTemplate := string(bytes)
-	return schedulerJson, schedulerCmd, schedulerTemplate
+	LogInfo("jobmgr", "Job template: %s", jobTemplateFile)
+	bytes, _ = ioutil.ReadFile(jobTemplateFile)
+	jobTemplate := string(bytes)
+	return jobJson, jobCmd, jobTemplate
 }
 
-func verifySchedulerEnv(schedulerJson map[string]interface{}, schedulerCmd string) {
-	val := schedulerJson["env"].(map[string]interface{})
-	entries, ok := val[schedulerCmd].([]interface{})
+func verifyJobManagerEnv(jobJson map[string]interface{}, jobCmd string) {
+	val := jobJson["env"].(map[string]interface{})
+	entries, ok := val[jobCmd].([]interface{})
 	if !ok {
-		// No environment variable check required for scheduler
+		// No environment variable check required for job manager
 		return
 	}
 
@@ -371,10 +370,10 @@ func verifySchedulerEnv(schedulerJson map[string]interface{}, schedulerCmd strin
 	EnvRequire(envs, true)
 }
 
-func VerifyScheduler(jobMode string) {
+func VerifyJobManager(jobMode string) {
 	if jobMode == "local" {
 		return
 	}
-	schedulerJson, schedulerCmd, _ := verifySchedulerFiles(jobMode)
-	verifySchedulerEnv(schedulerJson, schedulerCmd)
+	jobManagerJson, jobManagerCmd, _ := verifyJobManagerFiles(jobMode)
+	verifyJobManagerEnv(jobManagerJson, jobManagerCmd)
 }

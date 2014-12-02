@@ -383,7 +383,7 @@ func (self *Chunk) step() {
 	//
 	// Process __threads and __mem_gb requested by stage split.
 	//
-	// __threads tells scheduler how much concurrency this chunk wants.
+	// __threads tells job manager how much concurrency this chunk wants.
 	// __mem_gb  tells SGE to kill-if-exceed. For local mode, it is
 	//           instead a consumption request like __threads.
 
@@ -392,12 +392,12 @@ func (self *Chunk) step() {
 	if v, ok := self.chunkDef["__threads"].(float64); ok {
 		threads = int(v)
 
-		// In local mode, cap to the scheduler's max cores.
-		// It is not sufficient for the scheduler to do the capping downstream.
+		// In local mode, cap to the job manager's max cores.
+		// It is not sufficient for the job manager to do the capping downstream.
 		// We rewrite the chunkDef here to inform the chunk it should use less
 		// concurrency.
 		if self.node.rt.jobMode == "local" {
-			maxCores := self.node.rt.Scheduler.GetMaxCores()
+			maxCores := self.node.rt.JobManager.GetMaxCores()
 			if threads > maxCores {
 				threads = maxCores
 			}
@@ -406,13 +406,13 @@ func (self *Chunk) step() {
 	}
 
 	// Default to -1 to impose no limit (no flag will be passed to SGE).
-	// The local mode scheduler will convert -1 to 1 downstream.
+	// The local mode job manager will convert -1 to 1 downstream.
 	memGB := -1
 	if v, ok := self.chunkDef["__mem_gb"].(float64); ok {
 		memGB = int(v)
 
 		if self.node.rt.jobMode == "local" {
-			maxMemGB := self.node.rt.Scheduler.GetMaxMemGB()
+			maxMemGB := self.node.rt.JobManager.GetMaxMemGB()
 			if memGB > maxMemGB {
 				memGB = maxMemGB
 			}
@@ -1034,7 +1034,7 @@ func (self *Node) runJob(shellName string, fqname string, metadata *Metadata,
 		panic(fmt.Sprintf("Unknown stage code language: %s", self.stagecodeLang))
 	}
 
-	self.rt.Scheduler.execJob(shellCmd, argv, metadata, threads, memGB, fqname, shellName)
+	self.rt.JobManager.execJob(shellCmd, argv, metadata, threads, memGB, fqname, shellName)
 }
 
 //=============================================================================
@@ -1318,7 +1318,7 @@ type Runtime struct {
 	pipelineTable   map[string]*Pipeline
 	PipelineNames   []string
 	jobMode         string
-	Scheduler       Scheduler
+	JobManager      JobManager
 	enableProfiling bool
 	stest           bool
 }
@@ -1345,9 +1345,9 @@ func NewRuntimeWithCores(jobMode string, mroPath string, marioVersion string,
 	self.stest = stest
 
 	if self.jobMode == "local" {
-		self.Scheduler = NewLocalScheduler(reqCores, reqMem, debug)
+		self.JobManager = NewLocalJobManager(reqCores, reqMem, debug)
 	} else {
-		self.Scheduler = NewRemoteScheduler(self.jobMode)
+		self.JobManager = NewRemoteJobManager(self.jobMode)
 	}
 
 	// Parse all MROs in MROPATH and cache pipelines by name.
