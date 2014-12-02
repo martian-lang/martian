@@ -54,7 +54,7 @@ func (exp *ValExp) resolveType(global *Ast, callable Callable) ([]string, bool, 
 	switch exp.getKind() {
 
 	// Handle scalar types.
-	case "int", "float", "bool", "path", "null":
+	case "int", "float", "bool", "path", "map", "null":
 		return []string{exp.getKind()}, false, nil
 
 	// Handle strings (which could be files too).
