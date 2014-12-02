@@ -1057,8 +1057,8 @@ func NewStagestance(parent Nodable, callStm *CallStm, callables *Callables) *Sta
 		return nil
 	}
 
-	incPaths := append([]string{self.node.rt.mroPath}, strings.Split(os.Getenv("PATH"), ":")...)
-	self.node.stagecodePath, _ = searchPaths(stage.src.path, incPaths)
+	stagecodePaths := append([]string{self.node.rt.mroPath}, strings.Split(os.Getenv("PATH"), ":")...)
+	self.node.stagecodePath, _ = searchPaths(stage.src.path, stagecodePaths)
 	if self.node.rt.stest {
 		switch stage.src.lang {
 		case "py":

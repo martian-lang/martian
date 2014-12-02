@@ -186,7 +186,7 @@ func (bindings *BindStms) check(global *Ast, callable Callable, params *Params) 
 	return nil
 }
 
-func (global *Ast) check(incPaths []string, checkSrcPath bool) error {
+func (global *Ast) check(stagecodePaths []string, checkSrcPath bool) error {
 	// Build type table, starting with builtins. Duplicates allowed.
 	types := []string{"string", "int", "float", "bool", "path", "file", "map"}
 	for _, filetype := range global.filetypes {
@@ -214,9 +214,9 @@ func (global *Ast) check(incPaths []string, checkSrcPath bool) error {
 		}
 		if checkSrcPath {
 			// Check existence of src path.
-			if _, found := searchPaths(stage.src.path, incPaths); !found {
-				incPathsList := strings.Join(incPaths, ", ")
-				return global.err(stage, "SourcePathError: searched (%s) but stage source path not found '%s'", incPathsList, stage.src.path)
+			if _, found := searchPaths(stage.src.path, stagecodePaths); !found {
+				stagecodePathsList := strings.Join(stagecodePaths, ", ")
+				return global.err(stage, "SourcePathError: searched (%s) but stage source path not found '%s'", stagecodePathsList, stage.src.path)
 			}
 		}
 		// Check split parameters.
@@ -324,8 +324,8 @@ func parseSource(src string, srcPath string, incPaths []string, checkSrc bool) (
 	// resolving both @includes and stage src paths.
 	incPaths = append([]string{filepath.Dir(srcPath)}, incPaths...)
 
-	// Add PATH environment variable to the include path
-	incPaths = append(incPaths, strings.Split(os.Getenv("PATH"), ":")...)
+	// Add PATH environment variable to the stage code path
+	stagecodePaths := append(incPaths, strings.Split(os.Getenv("PATH"), ":")...)
 
 	// Preprocess: generate new source and a locmap.
 	postsrc, locmap, err := preprocess(src, filepath.Base(srcPath), incPaths)
@@ -348,7 +348,7 @@ func parseSource(src string, srcPath string, incPaths []string, checkSrc bool) (
 	ast.locmap = locmap
 
 	// Run semantic checks.
-	if err := ast.check(incPaths, checkSrc); err != nil {
+	if err := ast.check(stagecodePaths, checkSrc); err != nil {
 		return "", nil, err
 	}
 	return postsrc, ast, nil
