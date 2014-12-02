@@ -60,7 +60,7 @@ func (self *Semaphore) len() int {
 // Schedulers
 //
 type Scheduler interface {
-	execJob(string, string, *Metadata, int, int, string, string, string)
+	execJob(string, []string, *Metadata, int, int, string, string)
 	GetMaxCores() int
 	GetMaxMemGB() int
 }
@@ -214,11 +214,10 @@ func (self *LocalScheduler) GetMaxMemGB() int {
 	return self.maxMemGB
 }
 
-func (self *LocalScheduler) execJob(shellCmd string, stagecodePath string, metadata *Metadata,
-	threads int, memGB int, profile string, fqname string, shellName string) {
+func (self *LocalScheduler) execJob(shellCmd string, argv []string, metadata *Metadata,
+	threads int, memGB int, fqname string, shellName string) {
 
 	// Exec the shell directly.
-	argv := []string{stagecodePath, metadata.path, metadata.filesPath, profile}
 	cmd := exec.Command(shellCmd, argv...)
 
 	// Connect child to _stdout and _stderr metadata files.
@@ -251,15 +250,15 @@ func (self *RemoteScheduler) GetMaxMemGB() int {
 	return 0
 }
 
-func (self *RemoteScheduler) execJob(shellCmd string, stagecodePath string, metadata *Metadata,
-	threads int, memGB int, profile string, fqname string, shellName string) {
+func (self *RemoteScheduler) execJob(shellCmd string, argv []string, metadata *Metadata,
+	threads int, memGB int, fqname string, shellName string) {
 
 	// Sanity check the thread count.
 	if threads < 1 {
 		threads = 1
 	}
 
-	argv := []string{shellCmd, stagecodePath, metadata.path, metadata.filesPath, profile}
+	argv = append([]string{shellCmd}, argv...)
 	params := map[string]string{
 		"JOB_NAME": fqname + "." + shellName,
 		"THREADS":  fmt.Sprintf("%d", threads),

@@ -1010,16 +1010,31 @@ func (self *Node) runJob(shellName string, fqname string, metadata *Metadata,
 	LogInfo("runtime", "(run:%s) %s.%s", self.rt.jobMode, fqname, shellName)
 	metadata.write("jobinfo", map[string]interface{}{"type": nil, "childpid": nil})
 
-	// Construct path to the shell.
-	shellCmd := path.Join(self.rt.adaptersPath, "python", shellName+".py")
-
 	// Configure profiling.
 	profile := "disable"
 	if self.rt.enableProfiling {
 		profile = "profile"
 	}
 
-	self.rt.Scheduler.execJob(shellCmd, self.stagecodePath, metadata, threads, memGB, profile, fqname, shellName)
+	// Construct path to the shell.
+	shellCmd := ""
+	argv := []string{}
+
+	switch self.stagecodeLang {
+	case "Python":
+		shellCmd = path.Join(self.rt.adaptersPath, "python", shellName+".py")
+		argv = []string{self.stagecodePath, metadata.path, metadata.filesPath, profile}
+		break
+	case "Executable":
+		stagecodeParts := strings.Split(self.stagecodePath, " ")
+		shellCmd = stagecodeParts[0]
+		argv = append(stagecodeParts[1:], []string{shellName, metadata.path, metadata.filesPath, profile}...)
+		break
+	default:
+		panic(fmt.Sprintf("Unknown stage code language: %s", self.stagecodeLang))
+	}
+
+	self.rt.Scheduler.execJob(shellCmd, argv, metadata, threads, memGB, fqname, shellName)
 }
 
 //=============================================================================
@@ -1032,6 +1047,7 @@ type Stagestance struct {
 func NewStagestance(parent Nodable, callStm *CallStm, callables *Callables) *Stagestance {
 	langMap := map[string]string{
 		"py": "Python",
+		"exec": "Executable",
 	}
 
 	self := &Stagestance{}
@@ -1040,10 +1056,16 @@ func NewStagestance(parent Nodable, callStm *CallStm, callables *Callables) *Sta
 	if !ok {
 		return nil
 	}
+
+	self.node.stagecodePath= path.Join(self.node.rt.mroPath, stage.src.path)
 	if self.node.rt.stest {
-		self.node.stagecodePath = RelPath(path.Join("..", "adapters", "python", "tester"))
-	} else {
-		self.node.stagecodePath = path.Join(self.node.rt.mroPath, stage.src.path)
+		switch stage.src.lang {
+		case "py":
+			self.node.stagecodePath = RelPath(path.Join("..", "adapters", "python", "tester"))
+			break
+		default:
+			panic(fmt.Sprintf("Unsupported stress test language: %s", stage.src.lang))
+		}
 	}
 	self.node.stagecodeLang = langMap[stage.src.lang]
 	self.node.split = len(stage.splitParams.list) > 0
