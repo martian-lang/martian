@@ -26,8 +26,12 @@ func ExampleBuildCallSource() {
 	var v map[string]interface{}
 	json.Unmarshal([]byte(jsonStr), &v)
 
-	src := rt.BuildCallSource([]string{"analyzer_pd.mro"}, "ANALYZER_PD", v)
-	fmt.Println(src)
+	src, err := rt.BuildCallSource([]string{"analyzer_pd.mro"}, "ANALYZER_PD", v)
+	if err == nil {
+		fmt.Println(src)
+	} else {
+		fmt.Println(err)
+	}
 	// Output:
 	// @include "analyzer_pd.mro"
 	//
