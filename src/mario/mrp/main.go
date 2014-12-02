@@ -128,12 +128,12 @@ Usage:
 
 Options:
     --port=<num>       Serve UI at http://localhost:<num>
-                         Overrides $MROPORT environment variable.
                          Defaults to 3600 if not otherwise specified.
     --jobmode=<name>   Run jobs on custom or local job manager.
                          Valid job managers are 'local', 'sge' or .template file
                          Defaults to local.
                          (--maxcores and --maxmem will be ignored)
+    --nodump           Turns off debug dump tarball generation.
     --noexit           Keep UI running after pipestance completes or fails.
     --noui             Disable UI.
     --novdr            Disable Volatile Data Removal.
@@ -150,15 +150,11 @@ Options:
 	core.LogInfo("version", marioVersion)
 	core.LogInfo("cmdline", strings.Join(os.Args, " "))
 
-	jobMode := "local"
-	if value := os.Getenv("MROJOBMODE"); len(value) > 0 {
-		jobMode = value
+	marioFlags := ""
+	if marioFlags = os.Getenv("MROFLAGS"); len(marioFlags) > 0 {
+		marioOptions := strings.Split(marioFlags, " ")
+		core.ParseMroFlags(opts, doc, marioOptions, []string{"call.mro", "pipestance"})
 	}
-	if value := opts["--jobmode"]; value != nil {
-		jobMode = value.(string)
-	}
-	core.LogInfo("environ", "MROJOBMODE = %s", jobMode)
-	core.VerifyJobManager(jobMode)
 
 	// Requested cores.
 	reqCores := -1
@@ -184,13 +180,17 @@ Options:
 	core.LogInfo("environ", "MROPATH = %s", mroPath)
 	core.LogInfo("version", "MROPATH = %s", mroVersion)
 
+	// Compute job manager.
+	jobMode := "local"
+	if value := opts["--jobmode"]; value != nil {
+		jobMode = value.(string)
+	}
+	core.LogInfo("environ", "job mode = %s", jobMode)
+	core.VerifyJobManager(jobMode)
+
 	// Compute UI port.
 	uiport := "3600"
 	noUI := false
-	if value := os.Getenv("MROPORT"); len(value) > 0 {
-		core.LogInfo("environ", "MROPORT = %s", value)
-		uiport = value
-	}
 	if value := opts["--port"]; value != nil {
 		uiport = value.(string)
 	}
@@ -198,20 +198,15 @@ Options:
 		uiport = ""
 		noUI = true
 	}
+	core.LogInfo("environ", "port = %s", uiport)
 
 	// Compute profiling flag.
 	profile := opts["--profile"].(bool)
-	if value := os.Getenv("MROPROFILE"); len(value) > 0 {
-		profile = true
-	}
-	core.LogInfo("environ", "MROPROFILE = %v", profile)
+	core.LogInfo("environ", "profile = %v", profile)
 
 	// Compute no debug dump flag.
-	noDump := false
-	if value := os.Getenv("MRONODUMP"); len(value) > 0 {
-		noDump = true
-	}
-	core.LogInfo("environ", "MRONODUMP = %v", noDump)
+	noDump := opts["--nodump"].(bool)
+	core.LogInfo("environ", "nodump = %v", noDump)
 
 	// Setup invocation-specific values.
 	disableVDR := opts["--novdr"].(bool)

@@ -45,15 +45,11 @@ Options:
 	core.LogInfo("version", marioVersion)
 	core.LogInfo("cmdline", strings.Join(os.Args, " "))
 
-	jobMode := "local"
-	if value := os.Getenv("MROJOBMODE"); len(value) > 0 {
-		jobMode = value
+	marioFlags := ""
+	if marioFlags = os.Getenv("MROFLAGS"); len(marioFlags) > 0 {
+		marioOptions := strings.Split(marioFlags, " ")
+		core.ParseMroFlags(opts, doc, marioOptions, []string{"call.mro", "stagestance"})
 	}
-	if value := opts["--jobmode"]; value != nil {
-		jobMode = value.(string)
-	}
-	core.LogInfo("environ", "MROJOBMODE = %s", jobMode)
-	core.VerifyJobManager(jobMode)
 
 	// Compute MRO path.
 	cwd, _ := filepath.Abs(path.Dir(os.Args[0]))
@@ -64,11 +60,16 @@ Options:
 	mroVersion := core.GetGitTag(mroPath)
 	core.LogInfo("version", "MRO_STAGES = %s", mroVersion)
 
+	// Compute job manager.
+	jobMode := "local"
+	if value := opts["--jobmode"]; value != nil {
+		jobMode = value.(string)
+	}
+	core.LogInfo("environ", "job mode = %s", jobMode)
+	core.VerifyJobManager(jobMode)
+
 	// Compute profiling flag.
 	profile := opts["--profile"].(bool)
-	if value := os.Getenv("MROPROFILE"); len(value) > 0 {
-		profile = true
-	}
 
 	// Setup invocation-specific values.
 	invocationPath := opts["<call.mro>"].(string)

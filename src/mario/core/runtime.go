@@ -1046,7 +1046,7 @@ type Stagestance struct {
 
 func NewStagestance(parent Nodable, callStm *CallStm, callables *Callables) *Stagestance {
 	langMap := map[string]string{
-		"py": "Python",
+		"py":   "Python",
 		"exec": "Executable",
 	}
 
@@ -1057,7 +1057,8 @@ func NewStagestance(parent Nodable, callStm *CallStm, callables *Callables) *Sta
 		return nil
 	}
 
-	self.node.stagecodePath= path.Join(self.node.rt.mroPath, stage.src.path)
+	incPaths := append([]string{self.node.rt.mroPath}, strings.Split(os.Getenv("PATH"), ":")...)
+	self.node.stagecodePath, _ = searchPaths(stage.src.path, incPaths)
 	if self.node.rt.stest {
 		switch stage.src.lang {
 		case "py":

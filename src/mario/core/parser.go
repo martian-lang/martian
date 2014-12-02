@@ -7,6 +7,7 @@ package core
 
 import (
 	"fmt"
+	"os"
 	"path/filepath"
 	"strings"
 )
@@ -322,6 +323,9 @@ func parseSource(src string, srcPath string, incPaths []string, checkSrc bool) (
 	// Add the source file's own folder to the include path for
 	// resolving both @includes and stage src paths.
 	incPaths = append([]string{filepath.Dir(srcPath)}, incPaths...)
+
+	// Add PATH environment variable to the include path
+	incPaths = append(incPaths, strings.Split(os.Getenv("PATH"), ":")...)
 
 	// Preprocess: generate new source and a locmap.
 	postsrc, locmap, err := preprocess(src, filepath.Base(srcPath), incPaths)

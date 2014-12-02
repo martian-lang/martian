@@ -12,8 +12,11 @@ import (
 	"os/signal"
 	"path"
 	"regexp"
+	"strings"
 	"syscall"
 	"time"
+
+	"github.com/docopt/docopt.go"
 )
 
 func mkdir(p string) {
@@ -110,4 +113,44 @@ func EnvRequire(reqs [][]string, log bool) map[string]string {
 		}
 	}
 	return e
+}
+
+func ParseMroFlags(opts map[string]interface{}, doc string, marioOptions []string, marioArguments []string) {
+	// Parse doc string for accepted arguments
+	r := regexp.MustCompile("--\\w+")
+	s := r.FindAllString(doc, -1)
+	if s == nil {
+		s = []string{}
+	}
+
+	allowedOptions := map[string]bool{}
+	for _, allowedOption := range s {
+		allowedOptions[allowedOption] = true
+	}
+	// Remove unallowed options
+	newMarioOptions := []string{}
+	for allowedOption, _ := range allowedOptions {
+		for _, option := range marioOptions {
+			if strings.HasPrefix(option, allowedOption) {
+				newMarioOptions = append(newMarioOptions, option)
+				break
+			}
+		}
+	}
+	newMarioOptions = append(newMarioOptions, marioArguments...)
+	defopts, err := docopt.Parse(doc, newMarioOptions, false, "", true, false)
+	if err != nil {
+		LogInfo("environ", "EnvironError: MROFLAGS environment variable has incorrect format\n")
+		fmt.Println(doc)
+		os.Exit(1)
+	}
+	for id, defval := range defopts {
+		// Only use options
+		if !strings.HasPrefix(id, "--") {
+			continue
+		}
+		if val, ok := opts[id].(bool); (ok && val == false) || (!ok && opts[id] == nil) {
+			opts[id] = defval
+		}
+	}
 }

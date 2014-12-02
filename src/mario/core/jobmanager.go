@@ -314,7 +314,7 @@ func verifyJobManagerFiles(jobMode string) (map[string]interface{}, string, stri
 	// Check for existence of job manager JSON file
 	jobJsonFile := path.Join(jobPath, "config.json")
 	if _, err := os.Stat(jobJsonFile); os.IsNotExist(err) {
-		LogError(err, "jobmgr", "Job config file %s does not exist", jobJsonFile)
+		LogError(err, "jobmgr", "JobManagerJsonPathError: job config file %s does not exist", jobJsonFile)
 		os.Exit(1)
 	}
 	LogInfo("jobmgr", "Job config: %s", jobJsonFile)
@@ -323,7 +323,7 @@ func verifyJobManagerFiles(jobMode string) (map[string]interface{}, string, stri
 	// Parse job manager JSON file
 	var jobJson map[string]interface{}
 	if err := json.Unmarshal(bytes, &jobJson); err != nil {
-		LogError(err, "jobmgr", "Job config file %s does not contain valid JSON", jobJsonFile)
+		LogError(err, "jobmgr", "JobManagerJsonError: job config file %s does not contain valid JSON", jobJsonFile)
 	}
 
 	// Check if job mode is supported by default
@@ -336,7 +336,7 @@ func verifyJobManagerFiles(jobMode string) (map[string]interface{}, string, stri
 		jobTemplateFile = path.Join(jobPath, fmt.Sprintf("%s.template", jobCmd))
 	} else {
 		if !strings.HasSuffix(jobTemplateFile, ".template") {
-			LogInfo("jobmgr", "Job template file %s must have name <jobcmd>.template", jobTemplateFile)
+			LogInfo("jobmgr", "JobTemplateFilenameError: job template file %s must have name <jobcmd>.template", jobTemplateFile)
 			os.Exit(1)
 		}
 		jobCmd = strings.Replace(path.Base(jobTemplateFile), ".template", "", 1)
@@ -345,7 +345,7 @@ func verifyJobManagerFiles(jobMode string) (map[string]interface{}, string, stri
 
 	// Check for existence of job manager template file
 	if _, err := os.Stat(jobTemplateFile); os.IsNotExist(err) {
-		LogError(err, "jobmgr", "Job template file %s does not exist", jobTemplateFile)
+		LogError(err, "jobmgr", "JobTemplatePathError: job template file %s does not exist", jobTemplateFile)
 		os.Exit(1)
 	}
 	LogInfo("jobmgr", "Job template: %s", jobTemplateFile)
@@ -355,6 +355,14 @@ func verifyJobManagerFiles(jobMode string) (map[string]interface{}, string, stri
 }
 
 func verifyJobManagerEnv(jobJson map[string]interface{}, jobCmd string) {
+	// Verify job command exists
+	incPaths := strings.Split(os.Getenv("PATH"), ":")
+	if _, found := searchPaths(jobCmd, incPaths); !found {
+		LogInfo("jobmgr", "JobCommandPathError: searched (%s) but job command %s not found '%s'", strings.Join(incPaths, ", "), jobCmd)
+		os.Exit(1)
+	}
+
+	// Verify environment variables
 	val := jobJson["env"].(map[string]interface{})
 	entries, ok := val[jobCmd].([]interface{})
 	if !ok {
