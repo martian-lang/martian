@@ -543,27 +543,24 @@ func (self *Fork) mkdirs() {
 	self.split_has_run = false
 }
 
-func (self *Fork) verifyOutput() {
-	if self.metadata.exists("verified") {
-		return
-	}
+func (self *Fork) verifyOutput() (bool, string) {
 	outputs := self.metadata.read("outs").(map[string]interface{})
 	outparams := self.node.outparams
 	msg := ""
+	ret := true
 	for _, param := range outparams.table {
 		val, ok := outputs[param.getId()]
 		if !ok || val == nil {
 			msg += fmt.Sprintf("Fork did not return parameter '%s'\n", param.getId())
+			ret = false
 			continue
 		}
 		if !dynamicCast(val, param.getTname(), param.getIsArray()) {
 			msg += fmt.Sprintf("Fork returned %s parameter '%s' with incorrect type\n", param.getTname(), param.getId())
+			ret = false
 		}
 	}
-	if len(msg) > 0 {
-		self.metadata.writeRaw("errors", msg)
-	}
-	self.metadata.writeTime("verified")
+	return ret, msg
 }
 
 func (self *Fork) getState() string {
@@ -676,14 +673,20 @@ func (self *Fork) step() {
 			}
 		} else if state == "join_complete" {
 			self.metadata.write("outs", self.join_metadata.read("outs"))
-			self.verifyOutput()
-			self.metadata.writeTime("complete")
+			if ok, msg := self.verifyOutput(); ok {
+				self.metadata.writeTime("complete")
+			} else {
+				self.metadata.writeRaw("errors", msg)
+			}
 		}
 
 	} else if self.node.kind == "pipeline" {
 		self.metadata.write("outs", resolveBindings(self.node.retbindings, self.argPermute))
-		self.verifyOutput()
-		self.metadata.writeTime("complete")
+		if ok, msg := self.verifyOutput(); ok {
+			self.metadata.writeTime("complete")
+		} else {
+			self.metadata.writeRaw("errors", msg)
+		}
 	}
 }
 
