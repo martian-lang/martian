@@ -69,7 +69,8 @@ func (exp *ValExp) resolveType(global *Ast, callable Callable) ([]string, bool, 
 	// Array: [ 1, 2 ]
 	case "array":
 		for _, subexp := range exp.value.([]Exp) {
-			return []string{subexp.getKind()}, true, nil
+			valueTypes, _, err := subexp.resolveType(global, callable)
+			return valueTypes, true, err
 		}
 		return []string{"null"}, true, nil
 	// File: look for matching filetype in type table
