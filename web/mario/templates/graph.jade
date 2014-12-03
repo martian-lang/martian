@@ -119,8 +119,8 @@ html(ng-app="app" ng-controller="MarioGraphCtrl")
                     td 
                         button.btn.btn-default.btn-xs(type="button" clip-copy="copyToClipboard()")
                             span.glyphicon.glyphicon-paperclip
-                        span.copyable {{node.stagecodePath}}
-                        span.copyable-display {{node.stagecodePath | shorten}}
+                        span.copyable {{node.stagecodeCmd}}
+                        span.copyable-display {{node.stagecodeCmd | shorten}}
                 tr
                     td(style="vertical-align: top") Sweeps
                     td

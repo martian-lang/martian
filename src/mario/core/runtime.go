@@ -748,7 +748,7 @@ type Node struct {
 	state          string
 	volatile       bool
 	stagecodeLang  string
-	stagecodePath  string
+	stagecodeCmd   string
 }
 
 func (self *Node) getNode() *Node { return self }
@@ -1053,7 +1053,7 @@ func (self *Node) serialize() interface{} {
 		"forks":         forks,
 		"edges":         edges,
 		"stagecodeLang": self.stagecodeLang,
-		"stagecodePath": self.stagecodePath,
+		"stagecodeCmd":  self.stagecodeCmd,
 		"error":         err,
 	}
 }
@@ -1088,16 +1088,16 @@ func (self *Node) runJob(shellName string, fqname string, metadata *Metadata,
 	// Construct path to the shell.
 	shellCmd := ""
 	argv := []string{}
+	stagecodeParts := strings.Split(self.stagecodeCmd, " ")
 
 	switch self.stagecodeLang {
 	case "Python":
 		shellCmd = path.Join(self.rt.adaptersPath, "python", shellName+".py")
-		argv = []string{self.stagecodePath, metadata.path, metadata.filesPath, profile}
+		argv = append(stagecodeParts, metadata.path, metadata.filesPath, profile)
 		break
 	case "Executable":
-		stagecodeParts := strings.Split(self.stagecodePath, " ")
 		shellCmd = stagecodeParts[0]
-		argv = append(stagecodeParts[1:], []string{shellName, metadata.path, metadata.filesPath, profile}...)
+		argv = append(stagecodeParts[1:], shellName, metadata.path, metadata.filesPath, profile)
 		break
 	default:
 		panic(fmt.Sprintf("Unknown stage code language: %s", self.stagecodeLang))
@@ -1128,11 +1128,12 @@ func NewStagestance(parent Nodable, callStm *CallStm, callables *Callables) *Sta
 	}
 
 	stagecodePaths := append([]string{self.node.rt.mroPath}, strings.Split(os.Getenv("PATH"), ":")...)
-	self.node.stagecodePath, _ = searchPaths(stage.src.path, stagecodePaths)
+	stagecodePath, _ := searchPaths(stage.src.path, stagecodePaths)
+	self.node.stagecodeCmd = strings.Join(append([]string{stagecodePath}, stage.src.args...), " ")
 	if self.node.rt.stest {
 		switch stage.src.lang {
 		case "py":
-			self.node.stagecodePath = RelPath(path.Join("..", "adapters", "python", "tester"))
+			self.node.stagecodeCmd = RelPath(path.Join("..", "adapters", "python", "tester"))
 			break
 		default:
 			panic(fmt.Sprintf("Unsupported stress test language: %s", stage.src.lang))

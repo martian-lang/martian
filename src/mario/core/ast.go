@@ -101,6 +101,7 @@ type (
 		node AstNode
 		lang string
 		path string
+		args []string
 	}
 
 	BindStm struct {
