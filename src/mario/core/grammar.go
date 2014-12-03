@@ -142,7 +142,7 @@ const mmEofCode = 1
 const mmErrCode = 2
 const mmMaxDepth = 200
 
-//line src/mario/core/grammar.y:281
+//line src/mario/core/grammar.y:282
 
 //line yacctab:1
 var mmExca = []int{
@@ -641,18 +641,19 @@ mmdefault:
 		//line src/mario/core/grammar.y:151
 		{
 			{
-				mmVAL.src = &SrcParam{NewAstNode(&mmlval), mmS[mmpt-2].val, unquote(mmS[mmpt-1].val)}
+				stagecodeParts := strings.Split(unquote(mmS[mmpt-1].val), " ")
+				mmVAL.src = &SrcParam{NewAstNode(&mmlval), mmS[mmpt-2].val, stagecodeParts[0], stagecodeParts[1:]}
 			}
 		}
 	case 22:
-		//line src/mario/core/grammar.y:156
+		//line src/mario/core/grammar.y:157
 		{
 			{
 				mmVAL.val = mmS[mmpt-1].val
 			}
 		}
 	case 23:
-		//line src/mario/core/grammar.y:158
+		//line src/mario/core/grammar.y:159
 		{
 			{
 				mmVAL.val = ""
@@ -673,7 +674,7 @@ mmdefault:
 	case 30:
 		mmVAL.val = mmS[mmpt-0].val
 	case 31:
-		//line src/mario/core/grammar.y:170
+		//line src/mario/core/grammar.y:171
 		{
 			{
 				mmVAL.val = mmS[mmpt-2].val + "." + mmS[mmpt-0].val
@@ -684,56 +685,56 @@ mmdefault:
 	case 33:
 		mmVAL.val = mmS[mmpt-0].val
 	case 34:
-		//line src/mario/core/grammar.y:182
+		//line src/mario/core/grammar.y:183
 		{
 			{
 				mmVAL.params = mmS[mmpt-1].params
 			}
 		}
 	case 35:
-		//line src/mario/core/grammar.y:187
+		//line src/mario/core/grammar.y:188
 		{
 			{
 				mmVAL.retstm = &ReturnStm{NewAstNode(&mmlval), mmS[mmpt-1].bindings}
 			}
 		}
 	case 36:
-		//line src/mario/core/grammar.y:192
+		//line src/mario/core/grammar.y:193
 		{
 			{
 				mmVAL.calls = append(mmS[mmpt-1].calls, mmS[mmpt-0].call)
 			}
 		}
 	case 37:
-		//line src/mario/core/grammar.y:194
+		//line src/mario/core/grammar.y:195
 		{
 			{
 				mmVAL.calls = []*CallStm{mmS[mmpt-0].call}
 			}
 		}
 	case 38:
-		//line src/mario/core/grammar.y:199
+		//line src/mario/core/grammar.y:200
 		{
 			{
 				mmVAL.call = &CallStm{NewAstNode(&mmlval), false, mmS[mmpt-3].val, mmS[mmpt-1].bindings}
 			}
 		}
 	case 39:
-		//line src/mario/core/grammar.y:201
+		//line src/mario/core/grammar.y:202
 		{
 			{
 				mmVAL.call = &CallStm{NewAstNode(&mmlval), true, mmS[mmpt-3].val, mmS[mmpt-1].bindings}
 			}
 		}
 	case 40:
-		//line src/mario/core/grammar.y:206
+		//line src/mario/core/grammar.y:207
 		{
 			{
 				mmVAL.bindings = &BindStms{[]*BindStm{}, map[string]*BindStm{}}
 			}
 		}
 	case 41:
-		//line src/mario/core/grammar.y:208
+		//line src/mario/core/grammar.y:209
 		{
 			{
 				mmS[mmpt-1].bindings.list = append(mmS[mmpt-1].bindings.list, mmS[mmpt-0].binding)
@@ -741,35 +742,35 @@ mmdefault:
 			}
 		}
 	case 42:
-		//line src/mario/core/grammar.y:216
+		//line src/mario/core/grammar.y:217
 		{
 			{
 				mmVAL.binding = &BindStm{NewAstNode(&mmlval), mmS[mmpt-3].val, mmS[mmpt-1].exp, false, ""}
 			}
 		}
 	case 43:
-		//line src/mario/core/grammar.y:218
+		//line src/mario/core/grammar.y:219
 		{
 			{
 				mmVAL.binding = &BindStm{NewAstNode(&mmlval), mmS[mmpt-6].val, &ValExp{node: NewAstNode(&mmlval), kind: "array", value: mmS[mmpt-2].exps}, true, ""}
 			}
 		}
 	case 44:
-		//line src/mario/core/grammar.y:223
+		//line src/mario/core/grammar.y:224
 		{
 			{
 				mmVAL.exps = append(mmS[mmpt-2].exps, mmS[mmpt-0].exp)
 			}
 		}
 	case 45:
-		//line src/mario/core/grammar.y:225
+		//line src/mario/core/grammar.y:226
 		{
 			{
 				mmVAL.exps = []Exp{mmS[mmpt-0].exp}
 			}
 		}
 	case 46:
-		//line src/mario/core/grammar.y:230
+		//line src/mario/core/grammar.y:231
 		{
 			{
 				mmS[mmpt-4].kvpairs[unquote(mmS[mmpt-2].val)] = mmS[mmpt-0].exp
@@ -777,56 +778,56 @@ mmdefault:
 			}
 		}
 	case 47:
-		//line src/mario/core/grammar.y:235
+		//line src/mario/core/grammar.y:236
 		{
 			{
 				mmVAL.kvpairs = map[string]Exp{unquote(mmS[mmpt-2].val): mmS[mmpt-0].exp}
 			}
 		}
 	case 48:
-		//line src/mario/core/grammar.y:240
+		//line src/mario/core/grammar.y:241
 		{
 			{
 				mmVAL.exp = &ValExp{node: NewAstNode(&mmlval), kind: "array", value: mmS[mmpt-1].exps}
 			}
 		}
 	case 49:
-		//line src/mario/core/grammar.y:242
+		//line src/mario/core/grammar.y:243
 		{
 			{
 				mmVAL.exp = &ValExp{node: NewAstNode(&mmlval), kind: "array", value: []Exp{}}
 			}
 		}
 	case 50:
-		//line src/mario/core/grammar.y:244
+		//line src/mario/core/grammar.y:245
 		{
 			{
 				mmVAL.exp = &ValExp{node: NewAstNode(&mmlval), kind: "map", value: map[string]interface{}{}}
 			}
 		}
 	case 51:
-		//line src/mario/core/grammar.y:246
+		//line src/mario/core/grammar.y:247
 		{
 			{
 				mmVAL.exp = &ValExp{node: NewAstNode(&mmlval), kind: "map", value: mmS[mmpt-1].kvpairs}
 			}
 		}
 	case 52:
-		//line src/mario/core/grammar.y:248
+		//line src/mario/core/grammar.y:249
 		{
 			{
 				mmVAL.exp = &ValExp{node: NewAstNode(&mmlval), kind: mmS[mmpt-3].val, value: unquote(mmS[mmpt-1].val)}
 			}
 		}
 	case 53:
-		//line src/mario/core/grammar.y:250
+		//line src/mario/core/grammar.y:251
 		{
 			{
 				mmVAL.exp = &ValExp{node: NewAstNode(&mmlval), kind: mmS[mmpt-3].val, value: unquote(mmS[mmpt-1].val)}
 			}
 		}
 	case 54:
-		//line src/mario/core/grammar.y:252
+		//line src/mario/core/grammar.y:253
 		{
 			{ // Lexer guarantees parseable float strings.
 				f, _ := strconv.ParseFloat(mmS[mmpt-0].val, 64)
@@ -834,7 +835,7 @@ mmdefault:
 			}
 		}
 	case 55:
-		//line src/mario/core/grammar.y:257
+		//line src/mario/core/grammar.y:258
 		{
 			{ // Lexer guarantees parseable int strings.
 				i, _ := strconv.ParseInt(mmS[mmpt-0].val, 0, 64)
@@ -842,56 +843,56 @@ mmdefault:
 			}
 		}
 	case 56:
-		//line src/mario/core/grammar.y:262
+		//line src/mario/core/grammar.y:263
 		{
 			{
 				mmVAL.exp = &ValExp{node: NewAstNode(&mmlval), kind: "string", value: unquote(mmS[mmpt-0].val)}
 			}
 		}
 	case 57:
-		//line src/mario/core/grammar.y:264
+		//line src/mario/core/grammar.y:265
 		{
 			{
 				mmVAL.exp = &ValExp{node: NewAstNode(&mmlval), kind: "bool", value: true}
 			}
 		}
 	case 58:
-		//line src/mario/core/grammar.y:266
+		//line src/mario/core/grammar.y:267
 		{
 			{
 				mmVAL.exp = &ValExp{node: NewAstNode(&mmlval), kind: "bool", value: false}
 			}
 		}
 	case 59:
-		//line src/mario/core/grammar.y:268
+		//line src/mario/core/grammar.y:269
 		{
 			{
 				mmVAL.exp = &ValExp{node: NewAstNode(&mmlval), kind: "null", value: nil}
 			}
 		}
 	case 60:
-		//line src/mario/core/grammar.y:270
+		//line src/mario/core/grammar.y:271
 		{
 			{
 				mmVAL.exp = mmS[mmpt-0].exp
 			}
 		}
 	case 61:
-		//line src/mario/core/grammar.y:275
+		//line src/mario/core/grammar.y:276
 		{
 			{
 				mmVAL.exp = &RefExp{NewAstNode(&mmlval), "call", mmS[mmpt-2].val, mmS[mmpt-0].val}
 			}
 		}
 	case 62:
-		//line src/mario/core/grammar.y:277
+		//line src/mario/core/grammar.y:278
 		{
 			{
 				mmVAL.exp = &RefExp{NewAstNode(&mmlval), "call", mmS[mmpt-0].val, "default"}
 			}
 		}
 	case 63:
-		//line src/mario/core/grammar.y:279
+		//line src/mario/core/grammar.y:280
 		{
 			{
 				mmVAL.exp = &RefExp{NewAstNode(&mmlval), "self", mmS[mmpt-0].val, ""}

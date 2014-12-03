@@ -148,7 +148,8 @@ out_param
 
 src_stm
     : SRC src_lang LITSTRING COMMA
-        {{ $$ = &SrcParam{NewAstNode(&mmlval), $2, unquote($3) } }}
+        {{ stagecodeParts := strings.Split(unquote($3), " ")
+	   $$ = &SrcParam{NewAstNode(&mmlval), $2, stagecodeParts[0], stagecodeParts[1:]} }}
     ;
 
 help
