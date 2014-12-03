@@ -11,25 +11,51 @@ import (
 	"os"
 )
 
+type Logger struct {
+	writer      io.Writer
+	cache       string
+	enableCache bool
+}
+
 var ENABLE_LOGGING bool = true
-var LOGGER io.Writer = nil
+var LOGGER *Logger = nil
 
 func logInit() {
 	if LOGGER == nil {
-		LOGGER = io.Writer(os.Stdout)
+		LOGGER = &Logger{io.Writer(os.Stdout), "", false}
 	}
 }
 
 func logWrite(msg string) {
 	logInit()
-	LOGGER.Write([]byte(msg))
+	LOGGER.writer.Write([]byte(msg))
+	if LOGGER.enableCache {
+		LOGGER.cache += msg
+	}
+}
+
+func LogEnableCache() {
+	if ENABLE_LOGGING {
+		logInit()
+		LOGGER.enableCache = true
+		LOGGER.cache = ""
+	}
+}
+
+func LogDisableCache() {
+	if ENABLE_LOGGING {
+		logInit()
+		LOGGER.enableCache = false
+		LOGGER.cache = ""
+	}
 }
 
 func LogTee(filename string) {
 	if ENABLE_LOGGING {
 		logInit()
 		f, _ := os.OpenFile(filename, os.O_WRONLY|os.O_CREATE, 0644)
-		LOGGER = io.MultiWriter(LOGGER, f)
+		LOGGER.writer = io.MultiWriter(LOGGER.writer, f)
+		f.WriteString(LOGGER.cache)
 	}
 }
 
