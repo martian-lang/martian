@@ -18,6 +18,7 @@ func unquote(qs string) string {
 
 %union{
     global    *Ast
+    arr       int
     loc       int
     val       string
     comments  string
@@ -38,6 +39,7 @@ func unquote(qs string) string {
 }
 
 %type <val>       file_id type help type src_lang
+%type <arr>       arr_list
 %type <dec>       dec 
 %type <decs>      dec_list
 %type <inparam>   in_param
@@ -105,6 +107,13 @@ file_id
     | ID
     ;
 
+arr_list
+    :
+        {{ $$ = 0 }}
+    | arr_list LBRACKET RBRACKET
+        {{ $$ += 1 }}
+    ;
+
 in_param_list
     :
         {{ $$ = &Params{[]Param{}, map[string]Param{}} }}
@@ -116,10 +125,8 @@ in_param_list
     ;
 
 in_param
-    : IN type ID help
-        {{ $$ = &InParam{NewAstNode(&mmlval), $2, false, $3, unquote($4), false } }}
-    | IN type LBRACKET RBRACKET ID help
-        {{ $$ = &InParam{NewAstNode(&mmlval), $2, true, $5, unquote($6), false } }}
+    : IN type arr_list ID help
+        {{ $$ = &InParam{NewAstNode(&mmlval), $2, $3, $4, unquote($5), false } }}
     ;
 
 out_param_list
@@ -133,14 +140,10 @@ out_param_list
     ;
 
 out_param
-    : OUT type help 
-        {{ $$ = &OutParam{NewAstNode(&mmlval), $2, false, "default", unquote($3), false } }}
-    | OUT type ID help 
-        {{ $$ = &OutParam{NewAstNode(&mmlval), $2, false, $3, unquote($4), false } }}
-    | OUT type LBRACKET RBRACKET help 
-        {{ $$ = &OutParam{NewAstNode(&mmlval), $2, true, "default", unquote($5), false } }}
-    | OUT type LBRACKET RBRACKET ID help 
-        {{ $$ = &OutParam{NewAstNode(&mmlval), $2, true, $5, unquote($6), false } }}    
+    : OUT type arr_list help 
+        {{ $$ = &OutParam{NewAstNode(&mmlval), $2, $3, "default", unquote($4), false } }}
+    | OUT type arr_list ID help 
+        {{ $$ = &OutParam{NewAstNode(&mmlval), $2, $3, $4, unquote($5), false } }}    
     ;
 
 src_stm

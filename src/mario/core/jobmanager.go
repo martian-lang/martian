@@ -294,7 +294,7 @@ func (self *RemoteJobManager) execJob(shellCmd string, argv []string, metadata *
 	cmd := exec.Command(self.jobCmd, metadata.makePath("jobscript"))
 	cmd.Dir = metadata.filesPath
 	if _, err := cmd.CombinedOutput(); err != nil {
-		metadata.writeRaw("errors", "jobcmd error:\n" + err.Error())
+		metadata.writeRaw("errors", "jobcmd error:\n"+err.Error())
 	}
 }
 
