@@ -1623,7 +1623,12 @@ func (self *Runtime) buildVal(param Param, val interface{}) string {
 }
 
 func (self *Runtime) BuildCallSource(incpaths []string, pname string,
-	args map[string]interface{}) string {
+	args map[string]interface{}) (string, error) {
+	// Make sure pipeline has been imported
+	if _, ok := self.pipelineTable[pname]; !ok {
+		return "", &RuntimeError{fmt.Sprintf("'%s' is not a declared pipeline", pname)}
+	}
+
 	// Build @include statements.
 	includes := []string{}
 	for _, incpath := range incpaths {
@@ -1637,5 +1642,5 @@ func (self *Runtime) BuildCallSource(incpaths []string, pname string,
 		lines = append(lines, fmt.Sprintf("    %s = %s,", param.getId(), valstr))
 	}
 	return fmt.Sprintf("%s\n\ncall %s(\n%s\n)", strings.Join(includes, "\n"),
-		pname, strings.Join(lines, "\n"))
+		pname, strings.Join(lines, "\n")), nil
 }
