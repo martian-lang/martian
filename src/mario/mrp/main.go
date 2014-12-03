@@ -115,6 +115,7 @@ func runLoop(pipestance *core.Pipestance, stepSecs int, disableVDR bool,
 }
 func main() {
 	core.SetupSignalHandlers()
+	core.LogEnableCache()
 
 	//=========================================================================
 	// Commandline argument and environment variables.
@@ -256,6 +257,7 @@ Options:
 	}
 	logfile := path.Join(pipestancePath, "_log")
 	core.LogTee(logfile)
+	core.LogDisableCache()
 
 	//=========================================================================
 	// Collect pipestance static info.
