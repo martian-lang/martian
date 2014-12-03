@@ -238,7 +238,7 @@ type RemoteJobManager struct {
 func NewRemoteJobManager(jobMode string) *RemoteJobManager {
 	self := &RemoteJobManager{}
 	self.jobMode = jobMode
-	_, self.jobCmd, self.jobTemplate = verifyJobManagerFiles(jobMode)
+	_, _, self.jobCmd, self.jobTemplate = verifyJobManagerFiles(jobMode)
 	return self
 }
 
@@ -302,7 +302,7 @@ func (self *RemoteJobManager) execJob(shellCmd string, argv []string, metadata *
 // Helper functions for job manager file parsing
 //
 
-func verifyJobManagerFiles(jobMode string) (map[string]interface{}, string, string) {
+func verifyJobManagerFiles(jobMode string) (string, map[string]interface{}, string, string) {
 	jobPath := RelPath(path.Join("..", "jobmanagers"))
 
 	// Check for existence of job manager JSON file
@@ -318,15 +318,28 @@ func verifyJobManagerFiles(jobMode string) (map[string]interface{}, string, stri
 	var jobJson map[string]interface{}
 	if err := json.Unmarshal(bytes, &jobJson); err != nil {
 		LogError(err, "jobmgr", "JobManagerJsonError: job config file %s does not contain valid JSON", jobJsonFile)
+		os.Exit(1)
 	}
 
 	// Check if job mode is supported by default
-	jobCmds := jobJson["jobcmd"].(map[string]interface{})
+	jobCmdsJson, ok := jobJson["jobcmd"]
+	if !ok {
+		LogInfo("jobmgr", "JobManagerJsonError: job config file %s does not contain 'jobcmd' field", jobJsonFile)
+		os.Exit(1)
+	}
+	jobCmds, ok := jobCmdsJson.(map[string]interface{})
+	if !ok {
+		LogInfo("jobmgr", "JobManagerJsonError: job config file %s has non-map 'jobcmd' field", jobJsonFile)
+		os.Exit(1)
+	}
 	jobTemplateFile := jobMode
 	jobCmd := ""
 	val, ok := jobCmds[jobMode]
 	if ok {
-		jobCmd = val.(string)
+		if jobCmd, ok = val.(string); !ok {
+			LogInfo("jobmgr", "JobManagerJsonError: job config file %s has non-string 'jobcmd[%s]' field", jobJsonFile, jobMode)
+			os.Exit(1)
+		}
 		jobTemplateFile = path.Join(jobPath, fmt.Sprintf("%s.template", jobCmd))
 	} else {
 		if !strings.HasSuffix(jobTemplateFile, ".template") {
@@ -345,10 +358,10 @@ func verifyJobManagerFiles(jobMode string) (map[string]interface{}, string, stri
 	LogInfo("jobmgr", "Job template: %s", jobTemplateFile)
 	bytes, _ = ioutil.ReadFile(jobTemplateFile)
 	jobTemplate := string(bytes)
-	return jobJson, jobCmd, jobTemplate
+	return jobJsonFile, jobJson, jobCmd, jobTemplate
 }
 
-func verifyJobManagerEnv(jobJson map[string]interface{}, jobCmd string) {
+func verifyJobManagerEnv(jobJsonFile string, jobJson map[string]interface{}, jobCmd string) {
 	// Verify job command exists
 	incPaths := strings.Split(os.Getenv("PATH"), ":")
 	if _, found := searchPaths(jobCmd, incPaths); !found {
@@ -357,17 +370,43 @@ func verifyJobManagerEnv(jobJson map[string]interface{}, jobCmd string) {
 	}
 
 	// Verify environment variables
-	val := jobJson["env"].(map[string]interface{})
-	entries, ok := val[jobCmd].([]interface{})
+	val, ok := jobJson["env"]
+	if !ok {
+		LogInfo("jobmgr", "JobManagerJsonError: job config file %s does not have 'env' field", jobJsonFile)
+		os.Exit(1)
+	}
+	valMap, ok := val.(map[string]interface{})
+	if !ok {
+		LogInfo("jobmgr", "JobManagerJsonError: job config file %s has non-map 'env' field", jobJsonFile)
+		os.Exit(1)
+	}
+	entries, ok := valMap[jobCmd].([]interface{})
 	if !ok {
 		// No environment variable check required for job manager
 		return
 	}
 
+	fields := []string{"name", "description"}
 	envs := [][]string{}
 	for _, entry := range entries {
-		env := entry.(map[string]interface{})
-		envs = append(envs, []string{env["name"].(string), env["description"].(string)})
+		envMap, ok := entry.(map[string]interface{})
+		if !ok {
+			LogInfo("jobmgr", "JobManagerJsonError: job config file %s has non-map entry in 'env[%s]'", jobJsonFile, jobCmd)
+			os.Exit(1)
+		}
+		env := []string{}
+		for _, field := range fields {
+			if _, ok := envMap[field]; !ok {
+				LogInfo("jobmgr", "JobManagerJsonError: job config file %s does not contain 'env[%s][%s]' field", jobJsonFile, jobCmd, field)
+				os.Exit(1)
+			}
+			if _, ok := envMap[field].(string); !ok {
+				LogInfo("jobmgr", "JobManagerJsonError: job config file %s has non-string 'env[%s][%s]' field", jobJsonFile, jobCmd, field)
+				os.Exit(1)
+			}
+			env = append(env, envMap[field].(string))
+		}
+		envs = append(envs, env)
 	}
 	EnvRequire(envs, true)
 }
@@ -376,6 +415,6 @@ func VerifyJobManager(jobMode string) {
 	if jobMode == "local" {
 		return
 	}
-	jobManagerJson, jobManagerCmd, _ := verifyJobManagerFiles(jobMode)
-	verifyJobManagerEnv(jobManagerJson, jobManagerCmd)
+	jobJsonFile, jobJson, jobCmd, _ := verifyJobManagerFiles(jobMode)
+	verifyJobManagerEnv(jobJsonFile, jobJson, jobCmd)
 }
