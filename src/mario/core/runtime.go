@@ -1008,7 +1008,6 @@ func (self *Node) runJob(shellName string, fqname string, metadata *Metadata,
 
 	// Log the job run.
 	LogInfo("runtime", "(run:%s) %s.%s", self.rt.jobMode, fqname, shellName)
-	metadata.write("jobinfo", map[string]interface{}{"type": nil, "childpid": nil})
 
 	// Configure profiling.
 	profile := "disable"
@@ -1034,6 +1033,7 @@ func (self *Node) runJob(shellName string, fqname string, metadata *Metadata,
 		panic(fmt.Sprintf("Unknown stage code language: %s", self.stagecodeLang))
 	}
 
+	metadata.write("jobinfo", map[string]interface{}{"name": fqname, "type": self.rt.jobMode})
 	self.rt.JobManager.execJob(shellCmd, argv, metadata, threads, memGB, fqname, shellName)
 }
 
