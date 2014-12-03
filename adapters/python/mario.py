@@ -29,6 +29,9 @@ class Record(object):
     def items(self):
         return dict((field_name, getattr(self, field_name)) for field_name in self.slots)
 
+    def __str__(self):
+        return str(self.items())
+
     def __iter__(self):
         for field_name in self.slots:
             yield getattr(self, field_name)
@@ -140,6 +143,29 @@ def done():
         "children": rusage_to_dict(resource.getrusage(resource.RUSAGE_CHILDREN))
     }
     metadata.write("jobinfo", jobinfo)
+
+def stacktrace():
+    etype, evalue, tb = sys.exc_info()
+    stacktrace = ["Traceback (most recent call last):"]
+    local = False
+    while tb:
+        frame = tb.tb_frame
+        filename, lineno, name, line = traceback.extract_tb(tb, limit=1)[0]
+        stacktrace.append("  File '%s', line %d, in %s" % (filename ,lineno, name))
+        if line:
+            stacktrace.append("    %s" % line.strip())
+        # Only start printing local variables at stage code
+        if filename.endswith("__init__.py") and name in ["main", "split", "join"]:
+            local = True
+        if local:
+            for key, value in frame.f_locals.items():
+                try:
+                    stacktrace.append("        %s = %s" % (key, str(value)))
+                except:
+                    pass
+        tb = tb.tb_next
+    stacktrace += [line.strip() for line in traceback.format_exception_only(etype, evalue)]
+    return "\n".join(stacktrace)
 
 def fail(stacktrace):
     metadata.write_raw("errors", stacktrace)
