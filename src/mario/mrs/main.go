@@ -31,26 +31,24 @@ Usage:
     mrs -h | --help | --version
 
 Options:
-    --sge        Run jobs on Sun Grid Engine instead of locally.
-    --profile    Enable stage performance profiling.
-    --debug      Enable debug logging for local scheduler. 
-    -h --help    Show this message.
-    --version    Show version.`
+    --jobmode=<name>   Run jobs on custom or local job manager.
+                         Valid job managers are 'local', 'sge' or .template file
+                         Defaults to local.
+                         (--maxcores and --maxmem will be ignored)
+    --profile          Enable stage performance profiling.
+    --debug            Enable debug logging for local job manager. 
+    -h --help          Show this message.
+    --version          Show version.`
 	marioVersion := core.GetVersion()
 	opts, _ := docopt.Parse(doc, nil, true, marioVersion, false)
 	core.LogInfo("*", "Mario Run Stage")
 	core.LogInfo("version", marioVersion)
 	core.LogInfo("cmdline", strings.Join(os.Args, " "))
 
-	// Required job mode and SGE environment variables.
-	jobMode := "local"
-	if opts["--sge"].(bool) {
-		jobMode = "sge"
-		core.EnvRequire([][]string{
-			{"SGE_ROOT", "path/to/sge/root"},
-			{"SGE_CLUSTER_NAME", "SGE cluster name"},
-			{"SGE_CELL", "usually 'default'"},
-		}, true)
+	marioFlags := ""
+	if marioFlags = os.Getenv("MROFLAGS"); len(marioFlags) > 0 {
+		marioOptions := strings.Split(marioFlags, " ")
+		core.ParseMroFlags(opts, doc, marioOptions, []string{"call.mro", "stagestance"})
 	}
 
 	// Compute MRO path.
@@ -62,11 +60,16 @@ Options:
 	mroVersion := core.GetGitTag(mroPath)
 	core.LogInfo("version", "MRO_STAGES = %s", mroVersion)
 
+	// Compute job manager.
+	jobMode := "local"
+	if value := opts["--jobmode"]; value != nil {
+		jobMode = value.(string)
+	}
+	core.LogInfo("environ", "job mode = %s", jobMode)
+	core.VerifyJobManager(jobMode)
+
 	// Compute profiling flag.
 	profile := opts["--profile"].(bool)
-	if value := os.Getenv("MROPROFILE"); len(value) > 0 {
-		profile = true
-	}
 
 	// Setup invocation-specific values.
 	invocationPath := opts["<call.mro>"].(string)

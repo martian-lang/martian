@@ -1,0 +1,21 @@
+{  
+  "jobcmd":{  
+    "sge":"qsub"
+  },
+  "env":{  
+    "qsub":[  
+      {  
+        "name":"SGE_ROOT",
+        "description":"path/to/sge/root"
+      },
+      {  
+        "name":"SGE_CLUSTER_NAME",
+        "description":"SGE cluster name"
+      },
+      {  
+        "name":"SGE_CELL",
+        "description":"usually 'default'"
+      }
+    ]
+  }
+}

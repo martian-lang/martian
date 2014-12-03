@@ -422,7 +422,7 @@ func (self *Chunk) step() {
 	//
 	// Process __threads and __mem_gb requested by stage split.
 	//
-	// __threads tells scheduler how much concurrency this chunk wants.
+	// __threads tells job manager how much concurrency this chunk wants.
 	// __mem_gb  tells SGE to kill-if-exceed. For local mode, it is
 	//           instead a consumption request like __threads.
 
@@ -431,12 +431,12 @@ func (self *Chunk) step() {
 	if v, ok := self.chunkDef["__threads"].(float64); ok {
 		threads = int(v)
 
-		// In local mode, cap to the scheduler's max cores.
-		// It is not sufficient for the scheduler to do the capping downstream.
+		// In local mode, cap to the job manager's max cores.
+		// It is not sufficient for the job manager to do the capping downstream.
 		// We rewrite the chunkDef here to inform the chunk it should use less
 		// concurrency.
 		if self.node.rt.jobMode == "local" {
-			maxCores := self.node.rt.Scheduler.GetMaxCores()
+			maxCores := self.node.rt.JobManager.GetMaxCores()
 			if threads > maxCores {
 				threads = maxCores
 			}
@@ -445,13 +445,13 @@ func (self *Chunk) step() {
 	}
 
 	// Default to -1 to impose no limit (no flag will be passed to SGE).
-	// The local mode scheduler will convert -1 to 1 downstream.
+	// The local mode job manager will convert -1 to 1 downstream.
 	memGB := -1
 	if v, ok := self.chunkDef["__mem_gb"].(float64); ok {
 		memGB = int(v)
 
 		if self.node.rt.jobMode == "local" {
-			maxMemGB := self.node.rt.Scheduler.GetMaxMemGB()
+			maxMemGB := self.node.rt.JobManager.GetMaxMemGB()
 			if memGB > maxMemGB {
 				memGB = maxMemGB
 			}
@@ -1077,12 +1077,7 @@ func (self *Node) runJob(shellName string, fqname string, metadata *Metadata,
 	threads int, memGB int) {
 
 	// Log the job run.
-	modePad := strings.Repeat(" ", 15-(len(self.rt.jobMode)+4))
-	LogInfo("runtime", "(run:%s)%s %s.%s", self.rt.jobMode, modePad, fqname, shellName)
-	metadata.write("jobinfo", map[string]interface{}{"type": nil, "childpid": nil})
-
-	// Construct path to the shell.
-	shellCmd := path.Join(self.rt.adaptersPath, "python", shellName+".py")
+	LogInfo("runtime", "(run:%s) %s.%s", self.rt.jobMode, fqname, shellName)
 
 	// Configure profiling.
 	profile := "disable"
@@ -1090,74 +1085,26 @@ func (self *Node) runJob(shellName string, fqname string, metadata *Metadata,
 		profile = "profile"
 	}
 
-	switch self.rt.jobMode {
-	case "local":
-		self.execLocalJob(shellCmd, self.stagecodePath, metadata, threads, memGB, profile)
-	case "sge":
-		self.execSGEJob(fqname, shellName, shellCmd, self.stagecodePath, metadata, threads, memGB, profile)
+	// Construct path to the shell.
+	shellCmd := ""
+	argv := []string{}
+
+	switch self.stagecodeLang {
+	case "Python":
+		shellCmd = path.Join(self.rt.adaptersPath, "python", shellName+".py")
+		argv = []string{self.stagecodePath, metadata.path, metadata.filesPath, profile}
+		break
+	case "Executable":
+		stagecodeParts := strings.Split(self.stagecodePath, " ")
+		shellCmd = stagecodeParts[0]
+		argv = append(stagecodeParts[1:], []string{shellName, metadata.path, metadata.filesPath, profile}...)
+		break
 	default:
-		panic(fmt.Sprintf("Unknown jobMode: %s", self.rt.jobMode))
-	}
-}
-
-func (self *Node) execLocalJob(shellCmd string, stagecodePath string,
-	metadata *Metadata, threads int, memGB int, profile string) {
-
-	// Exec the shell directly.
-	argv := []string{stagecodePath, metadata.path, metadata.filesPath, profile}
-	cmd := exec.Command(shellCmd, argv...)
-
-	// Connect child to _stdout and _stderr metadata files.
-	stdoutPath := metadata.makePath("stdout")
-	stderrPath := metadata.makePath("stderr")
-	errorsPath := metadata.makePath("errors")
-
-	// Enqueue the command to the local scheduler.
-	self.rt.Scheduler.Enqueue(cmd, threads, memGB, stdoutPath, stderrPath, errorsPath)
-}
-
-func (self *Node) execSGEJob(fqname string, shellName string, shellCmd string,
-	stagecodePath string, metadata *Metadata, threads int, memGB int, profile string) {
-
-	// Generate the script that will be qsub'ed.
-	argv := []string{shellCmd, stagecodePath, metadata.path, metadata.filesPath, profile}
-	metadata.writeRaw("qscript", strings.Join(argv, " "))
-
-	// Sanity check the thread count.
-	if threads < 1 {
-		threads = 1
+		panic(fmt.Sprintf("Unknown stage code language: %s", self.stagecodeLang))
 	}
 
-	// Build the qsub command.
-	argv = []string{
-		"-N", fqname + "." + shellName,
-		"-V",
-		"-pe", "threads", fmt.Sprintf("%d", threads),
-	}
-	// Only append memory cap if value is sane.
-	if memGB > 0 {
-		argv = append(argv, "-l", fmt.Sprintf("h_vmem=%dG", memGB))
-	}
-	argv = append(argv,
-		"-cwd",
-		"-o", metadata.makePath("stdout"),
-		"-e", metadata.makePath("stderr"),
-		metadata.makePath("qscript"),
-	)
-
-	metadata.write("jobinfo", map[string]string{"type": "sge"})
-
-	// Exec the qsub command synchronously and write result out to _qsub.
-	cmd := exec.Command("qsub", argv...)
-	cmd.Dir = metadata.filesPath
-	out := ""
-	if data, err := cmd.CombinedOutput(); err == nil {
-		out = string(data)
-	} else {
-		out = err.Error()
-		metadata.writeRaw("errors", "qsub error:\n"+out)
-	}
-	metadata.writeRaw("qsub", strings.Join(cmd.Args, " ")+"\n\n"+out)
+	metadata.write("jobinfo", map[string]interface{}{"name": fqname, "type": self.rt.jobMode})
+	self.rt.JobManager.execJob(shellCmd, argv, metadata, threads, memGB, fqname, shellName)
 }
 
 //=============================================================================
@@ -1169,7 +1116,8 @@ type Stagestance struct {
 
 func NewStagestance(parent Nodable, callStm *CallStm, callables *Callables) *Stagestance {
 	langMap := map[string]string{
-		"py": "Python",
+		"py":   "Python",
+		"exec": "Executable",
 	}
 
 	self := &Stagestance{}
@@ -1178,10 +1126,17 @@ func NewStagestance(parent Nodable, callStm *CallStm, callables *Callables) *Sta
 	if !ok {
 		return nil
 	}
+
+	stagecodePaths := append([]string{self.node.rt.mroPath}, strings.Split(os.Getenv("PATH"), ":")...)
+	self.node.stagecodePath, _ = searchPaths(stage.src.path, stagecodePaths)
 	if self.node.rt.stest {
-		self.node.stagecodePath = RelPath(path.Join("..", "adapters", "python", "tester"))
-	} else {
-		self.node.stagecodePath = path.Join(self.node.rt.mroPath, stage.src.path)
+		switch stage.src.lang {
+		case "py":
+			self.node.stagecodePath = RelPath(path.Join("..", "adapters", "python", "tester"))
+			break
+		default:
+			panic(fmt.Sprintf("Unsupported stress test language: %s", stage.src.lang))
+		}
 	}
 	self.node.stagecodeLang = langMap[stage.src.lang]
 	self.node.split = len(stage.splitParams.list) > 0
@@ -1434,7 +1389,7 @@ type Runtime struct {
 	pipelineTable   map[string]*Pipeline
 	PipelineNames   []string
 	jobMode         string
-	Scheduler       *Scheduler
+	JobManager      JobManager
 	enableProfiling bool
 	stest           bool
 }
@@ -1455,11 +1410,16 @@ func NewRuntimeWithCores(jobMode string, mroPath string, marioVersion string,
 	self.marioVersion = marioVersion
 	self.mroVersion = mroVersion
 	self.jobMode = jobMode
-	self.Scheduler = NewScheduler(reqCores, reqMem, debug)
 	self.enableProfiling = enableProfiling
 	self.pipelineTable = map[string]*Pipeline{}
 	self.PipelineNames = []string{}
 	self.stest = stest
+
+	if self.jobMode == "local" {
+		self.JobManager = NewLocalJobManager(reqCores, reqMem, debug)
+	} else {
+		self.JobManager = NewRemoteJobManager(self.jobMode)
+	}
 
 	// Parse all MROs in MROPATH and cache pipelines by name.
 	fpaths, _ := filepath.Glob(self.mroPath + "/[^_]*.mro")

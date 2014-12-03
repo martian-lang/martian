@@ -169,9 +169,9 @@ type
 
 src_lang
     : PY
+    | EXEC
     //| GO
     //| SH
-    //| EXEC
     ;
 
 split_param_list
