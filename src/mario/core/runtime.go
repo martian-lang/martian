@@ -9,6 +9,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
+	"math"
 	"os"
 	"os/exec"
 	"path"
@@ -318,6 +319,44 @@ func makeOutArgs(outParams *Params, filesPath string) map[string]interface{} {
 	return args
 }
 
+func dynamicCast(val interface{}, typename string, isarray bool) bool {
+	ret := true
+	if isarray {
+		arr, ok := val.([]interface{})
+		if !ok {
+			return false
+		}
+		for _, v := range arr {
+			ret = ret && dynamicCast(v, typename, false)
+		}
+	} else {
+		switch typename {
+		case "path":
+		case "file":
+		case "string":
+			_, ret = val.(string)
+			break
+		case "float":
+			_, ret = val.(float64)
+			break
+		case "int":
+			var num float64
+			num, ret = val.(float64)
+			if ret {
+				ret = num == math.Trunc(num)
+			}
+			break
+		case "bool":
+			_, ret = val.(bool)
+			break
+		case "map":
+			_, ret = val.(map[string]interface{})
+			break
+		}
+	}
+	return ret
+}
+
 //=============================================================================
 // Chunk
 //=============================================================================
@@ -504,7 +543,30 @@ func (self *Fork) mkdirs() {
 	self.split_has_run = false
 }
 
+func (self *Fork) verifyOutput() (bool, string) {
+	outputs := self.metadata.read("outs").(map[string]interface{})
+	outparams := self.node.outparams
+	msg := ""
+	ret := true
+	for _, param := range outparams.table {
+		val, ok := outputs[param.getId()]
+		if !ok || val == nil {
+			msg += fmt.Sprintf("Fork did not return parameter '%s'\n", param.getId())
+			ret = false
+			continue
+		}
+		if !dynamicCast(val, param.getTname(), param.getIsArray()) {
+			msg += fmt.Sprintf("Fork returned %s parameter '%s' with incorrect type\n", param.getTname(), param.getId())
+			ret = false
+		}
+	}
+	return ret, msg
+}
+
 func (self *Fork) getState() string {
+	if self.metadata.exists("errors") {
+		return "failed"
+	}
 	if self.metadata.exists("complete") {
 		return "complete"
 	}
@@ -611,12 +673,20 @@ func (self *Fork) step() {
 			}
 		} else if state == "join_complete" {
 			self.metadata.write("outs", self.join_metadata.read("outs"))
-			self.metadata.writeTime("complete")
+			if ok, msg := self.verifyOutput(); ok {
+				self.metadata.writeTime("complete")
+			} else {
+				self.metadata.writeRaw("errors", msg)
+			}
 		}
 
 	} else if self.node.kind == "pipeline" {
 		self.metadata.write("outs", resolveBindings(self.node.retbindings, self.argPermute))
-		self.metadata.writeTime("complete")
+		if ok, msg := self.verifyOutput(); ok {
+			self.metadata.writeTime("complete")
+		} else {
+			self.metadata.writeRaw("errors", msg)
+		}
 	}
 }
 
