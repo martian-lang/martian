@@ -7,8 +7,8 @@
 package core
 
 import (
-	"encoding/json"
-	"fmt"
+	_ "encoding/json"
+	_ "fmt"
 	"os"
 	_ "testing"
 )
