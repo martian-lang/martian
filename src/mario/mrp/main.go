@@ -131,16 +131,17 @@ Options:
     --port=<num>       Serve UI at http://localhost:<num>
                          Defaults to 3600 if not otherwise specified.
     --jobmode=<name>   Run jobs on custom or local job manager.
-                         Valid job managers are 'local', 'sge' or .template file
+                         Valid job managers are local, sge or .template file
                          Defaults to local.
-                         (--maxcores and --maxmem will be ignored)
     --nodump           Turns off debug dump tarball generation.
     --noexit           Keep UI running after pipestance completes or fails.
     --noui             Disable UI.
     --novdr            Disable Volatile Data Removal.
     --profile          Enable stage performance profiling.
     --maxcores=<num>   Set max cores the pipeline may request at one time.
+                         (Only applies in local jobmode)
     --maxmem=<num>     Set max GB the pipeline may request at one time.
+                         (Only applies in local jobmode)
     --debug            Enable debug logging for local job manager.
     --stest            Substitute real stages with stress-testing stage.
     -h --help          Show this message.
