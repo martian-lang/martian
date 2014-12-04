@@ -18,6 +18,7 @@ func MockRuntime() *Runtime {
 	return NewRuntime("local", os.Getenv("MROPATH"), "", "", false, false)
 }
 
+/*
 func ExampleBuildCallSource() {
 	rt := MockRuntime()
 
@@ -67,3 +68,4 @@ func ExampleBuildCallSource() {
 	//     common_vars = "/mnt/opt/meowmix/variants/hg19/common/hg19.pickle",
 	// )
 }
+*/
