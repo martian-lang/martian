@@ -550,9 +550,13 @@ func (self *Fork) verifyOutput() (bool, string) {
 	ret := true
 	for _, param := range outparams.table {
 		val, ok := outputs[param.getId()]
-		if !ok || val == nil {
+		if !ok {
 			msg += fmt.Sprintf("Fork did not return parameter '%s'\n", param.getId())
 			ret = false
+			continue
+		}
+		if val == nil {
+			// Allow for null output parameters
 			continue
 		}
 		if !dynamicCast(val, param.getTname(), param.getArrayDim()) {
