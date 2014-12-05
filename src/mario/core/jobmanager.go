@@ -13,8 +13,10 @@ import (
 	"os/exec"
 	"path"
 	"runtime"
+	"strconv"
 	"strings"
 	"sync"
+	"time"
 
 	"github.com/cloudfoundry/gosigar"
 )
@@ -229,16 +231,29 @@ func (self *LocalJobManager) execJob(shellCmd string, argv []string, metadata *M
 	self.Enqueue(cmd, threads, memGB, stdoutPath, stderrPath, errorsPath)
 }
 
+type JobMonitor struct {
+	jobId    int
+	metadata *Metadata
+}
+
 type RemoteJobManager struct {
-	jobMode     string
-	jobTemplate string
-	jobCmd      string
+	jobMode          string
+	jobTemplate      string
+	jobCmd           string
+	monitorCmd       string
+	monitorList      []*JobMonitor
+	monitorListMutex *sync.Mutex
 }
 
 func NewRemoteJobManager(jobMode string) *RemoteJobManager {
 	self := &RemoteJobManager{}
 	self.jobMode = jobMode
-	_, _, self.jobCmd, self.jobTemplate = verifyJobManagerFiles(jobMode)
+	self.monitorList = []*JobMonitor{}
+	self.monitorListMutex = &sync.Mutex{}
+	_, _, self.jobCmd, self.monitorCmd, self.jobTemplate = verifyJobManagerFiles(jobMode)
+	if len(self.monitorCmd) > 0 {
+		self.processMonitorList()
+	}
 	return self
 }
 
@@ -293,16 +308,67 @@ func (self *RemoteJobManager) execJob(shellCmd string, argv []string, metadata *
 
 	cmd := exec.Command(self.jobCmd, metadata.makePath("jobscript"))
 	cmd.Dir = metadata.filesPath
-	if _, err := cmd.CombinedOutput(); err != nil {
+	if output, err := cmd.CombinedOutput(); err != nil {
 		metadata.writeRaw("errors", "jobcmd error:\n"+err.Error())
+	} else {
+		// Get job ID from output and write to metadata file
+		outputList := strings.Split(string(output), " ")
+		jobId := 0
+		jobIdFound := false
+		for _, word := range outputList {
+			if id, err := strconv.Atoi(word); err == nil {
+				jobIdFound = true
+				jobId = id
+				break
+			}
+		}
+		if jobIdFound {
+			metadata.writeRaw("jobid", fmt.Sprintf("%d", jobId))
+			if len(self.monitorCmd) > 0 {
+				self.monitorListMutex.Lock()
+				self.monitorList = append(self.monitorList, &JobMonitor{jobId, metadata})
+				self.monitorListMutex.Unlock()
+			}
+		}
 	}
+}
+
+func (self *RemoteJobManager) copyAndClearMonitorList() []*JobMonitor {
+	self.monitorListMutex.Lock()
+	monitorList := make([]*JobMonitor, len(self.monitorList))
+	copy(monitorList, self.monitorList)
+	self.monitorList = []*JobMonitor{}
+	self.monitorListMutex.Unlock()
+	return monitorList
+}
+
+func (self *RemoteJobManager) processMonitorList() {
+	go func() {
+		for {
+			monitorList := self.copyAndClearMonitorList()
+			for _, monitor := range monitorList {
+				monitorCmd := fmt.Sprintf("%s %d", self.monitorCmd, monitor.jobId)
+				monitorCmdParts := strings.Split(monitorCmd, " ")
+				cmd := exec.Command(monitorCmdParts[0], monitorCmdParts[1:]...)
+				if err := cmd.Run(); err != nil {
+					monitor.metadata.writeRaw("errors", "job has been killed:\n"+err.Error())
+				} else {
+					monitorList = append(monitorList, monitor)
+				}
+			}
+			self.monitorListMutex.Lock()
+			self.monitorList = append(self.monitorList, monitorList...)
+			self.monitorListMutex.Unlock()
+			time.Sleep(time.Minute)
+		}
+	}()
 }
 
 //
 // Helper functions for job manager file parsing
 //
 
-func verifyJobManagerFiles(jobMode string) (string, map[string]interface{}, string, string) {
+func verifyJobManagerFiles(jobMode string) (string, map[string]interface{}, string, string, string) {
 	jobPath := RelPath(path.Join("..", "jobmanagers"))
 
 	// Check for existence of job manager JSON file
@@ -350,6 +416,23 @@ func verifyJobManagerFiles(jobMode string) (string, map[string]interface{}, stri
 	}
 	LogInfo("jobmgr", "Job command: %s", jobCmd)
 
+	// Check for existence of monitor command
+	monitorCmdsJson, ok := jobJson["monitorcmd"]
+	if !ok {
+		LogInfo("jobmgr", "JobManagerJsonError: job config file %s does not contain 'monitorcmd' field", jobJsonFile)
+		os.Exit(1)
+	}
+	monitorCmds, ok := monitorCmdsJson.(map[string]interface{})
+	if !ok {
+		LogInfo("jobmgr", "JobManagerJsonError: job config file %s has non-map 'monitorcmd' field", jobJsonFile)
+		os.Exit(1)
+	}
+	monitorCmd, ok := monitorCmds[jobCmd].(string)
+	if ok {
+		monitorCmdParts := strings.Split(monitorCmd, " ")
+		LogInfo("jobmgr", "Job monitor command: %s", monitorCmdParts[0])
+	}
+
 	// Check for existence of job manager template file
 	if _, err := os.Stat(jobTemplateFile); os.IsNotExist(err) {
 		LogError(err, "jobmgr", "JobTemplatePathError: job template file %s does not exist", jobTemplateFile)
@@ -358,15 +441,24 @@ func verifyJobManagerFiles(jobMode string) (string, map[string]interface{}, stri
 	LogInfo("jobmgr", "Job template: %s", jobTemplateFile)
 	bytes, _ = ioutil.ReadFile(jobTemplateFile)
 	jobTemplate := string(bytes)
-	return jobJsonFile, jobJson, jobCmd, jobTemplate
+	return jobJsonFile, jobJson, jobCmd, monitorCmd, jobTemplate
 }
 
-func verifyJobManagerEnv(jobJsonFile string, jobJson map[string]interface{}, jobCmd string) {
-	// Verify job command exists
+func verifyJobManagerEnv(jobJsonFile string, jobJson map[string]interface{}, jobCmd string, monitorCmd string) {
+	// Verify job and monitor commands exist
 	incPaths := strings.Split(os.Getenv("PATH"), ":")
 	if _, found := searchPaths(jobCmd, incPaths); !found {
-		LogInfo("jobmgr", "JobCommandPathError: searched (%s) but job command %s not found '%s'", strings.Join(incPaths, ", "), jobCmd)
+		LogInfo("jobmgr", "JobCommandPathError: searched (%s) but job command %s not found '%s'",
+			strings.Join(incPaths, ", "), jobCmd)
 		os.Exit(1)
+	}
+	if len(monitorCmd) > 0 {
+		monitorCmdPath := strings.Split(monitorCmd, " ")[0]
+		if _, found := searchPaths(monitorCmdPath, incPaths); !found {
+			LogInfo("jobmgr", "JobMonitorCommandPathError: searched (%s) but job monitor command not found '%s'",
+				strings.Join(incPaths, ", "), monitorCmdPath)
+			os.Exit(1)
+		}
 	}
 
 	// Verify environment variables
@@ -415,6 +507,6 @@ func VerifyJobManager(jobMode string) {
 	if jobMode == "local" {
 		return
 	}
-	jobJsonFile, jobJson, jobCmd, _ := verifyJobManagerFiles(jobMode)
-	verifyJobManagerEnv(jobJsonFile, jobJson, jobCmd)
+	jobJsonFile, jobJson, jobCmd, monitorCmd, _ := verifyJobManagerFiles(jobMode)
+	verifyJobManagerEnv(jobJsonFile, jobJson, jobCmd, monitorCmd)
 }
