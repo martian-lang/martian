@@ -12,6 +12,7 @@ import (
 	"os"
 	"os/exec"
 	"path"
+	"regexp"
 	"runtime"
 	"strconv"
 	"strings"
@@ -312,18 +313,10 @@ func (self *RemoteJobManager) execJob(shellCmd string, argv []string, metadata *
 		metadata.writeRaw("errors", "jobcmd error:\n"+err.Error())
 	} else {
 		// Get job ID from output and write to metadata file
-		outputList := strings.Split(string(output), " ")
-		jobId := 0
-		jobIdFound := false
-		for _, word := range outputList {
-			if id, err := strconv.Atoi(word); err == nil {
-				jobIdFound = true
-				jobId = id
-				break
-			}
-		}
-		if jobIdFound {
-			metadata.writeRaw("jobid", fmt.Sprintf("%d", jobId))
+		r := regexp.MustCompile("[0-9]+")
+		if jobIdString := r.FindString(string(output)); len(jobIdString) > 0 {
+			jobId, _ := strconv.Atoi(jobIdString)
+			metadata.writeRaw("jobid", jobIdString)
 			if len(self.monitorCmd) > 0 {
 				self.monitorListMutex.Lock()
 				self.monitorList = append(self.monitorList, &JobMonitor{jobId, metadata})
