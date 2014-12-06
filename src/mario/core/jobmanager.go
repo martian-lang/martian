@@ -22,6 +22,8 @@ import (
 	"github.com/cloudfoundry/gosigar"
 )
 
+const JOB_SUBMIT_DELAY = 10 // 10 minutes
+
 //
 // Semaphore implementation
 //
@@ -233,8 +235,9 @@ func (self *LocalJobManager) execJob(shellCmd string, argv []string, metadata *M
 }
 
 type JobMonitor struct {
-	jobId    int
-	metadata *Metadata
+	jobId      int
+	metadata   *Metadata
+	submitTime time.Time
 }
 
 type RemoteJobManager struct {
@@ -319,7 +322,7 @@ func (self *RemoteJobManager) execJob(shellCmd string, argv []string, metadata *
 			metadata.writeRaw("jobid", jobIdString)
 			if len(self.monitorCmd) > 0 {
 				self.monitorListMutex.Lock()
-				self.monitorList = append(self.monitorList, &JobMonitor{jobId, metadata})
+				self.monitorList = append(self.monitorList, &JobMonitor{jobId, metadata, time.Now()})
 				self.monitorListMutex.Unlock()
 			}
 		}
@@ -340,11 +343,24 @@ func (self *RemoteJobManager) processMonitorList() {
 		for {
 			monitorList := self.copyAndClearMonitorList()
 			for _, monitor := range monitorList {
+				if time.Since(monitor.submitTime) < time.Minute*JOB_SUBMIT_DELAY {
+					monitorList = append(monitorList, monitor)
+					continue
+				}
 				monitorCmd := fmt.Sprintf("%s %d", self.monitorCmd, monitor.jobId)
 				monitorCmdParts := strings.Split(monitorCmd, " ")
 				cmd := exec.Command(monitorCmdParts[0], monitorCmdParts[1:]...)
 				if err := cmd.Run(); err != nil {
-					monitor.metadata.writeRaw("errors", "job has been killed:\n"+err.Error())
+					monitor.metadata.cache()
+					if monitor.metadata.exists("complete") {
+						// Job has completed successfully
+						continue
+					}
+					if !monitor.metadata.exists("errors") {
+						// Job was killed by cluster resource manager
+						monitor.metadata.writeRaw("errors", fmt.Sprintf("job has been killed by %s: %s",
+							self.jobMode, err.Error()))
+					}
 				} else {
 					monitorList = append(monitorList, monitor)
 				}
@@ -352,7 +368,7 @@ func (self *RemoteJobManager) processMonitorList() {
 			self.monitorListMutex.Lock()
 			self.monitorList = append(self.monitorList, monitorList...)
 			self.monitorListMutex.Unlock()
-			time.Sleep(time.Minute)
+			time.Sleep(time.Minute * time.Duration(5))
 		}
 	}()
 }
