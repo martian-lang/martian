@@ -332,26 +332,23 @@ func dynamicCast(val interface{}, typename string, arrayDim int) bool {
 	} else {
 		switch typename {
 		case "path":
+			fallthrough
 		case "file":
+			fallthrough
 		case "string":
 			_, ret = val.(string)
-			break
 		case "float":
 			_, ret = val.(float64)
-			break
 		case "int":
 			var num float64
 			num, ret = val.(float64)
 			if ret {
 				ret = num == math.Trunc(num)
 			}
-			break
 		case "bool":
 			_, ret = val.(bool)
-			break
 		case "map":
 			_, ret = val.(map[string]interface{})
-			break
 		}
 	}
 	return ret
@@ -1098,11 +1095,9 @@ func (self *Node) runJob(shellName string, fqname string, metadata *Metadata,
 	case "Python":
 		shellCmd = path.Join(self.rt.adaptersPath, "python", shellName+".py")
 		argv = append(stagecodeParts, metadata.path, metadata.filesPath, profile)
-		break
 	case "Executable":
 		shellCmd = stagecodeParts[0]
 		argv = append(stagecodeParts[1:], shellName, metadata.path, metadata.filesPath, profile)
-		break
 	default:
 		panic(fmt.Sprintf("Unknown stage code language: %s", self.stagecodeLang))
 	}
@@ -1138,7 +1133,6 @@ func NewStagestance(parent Nodable, callStm *CallStm, callables *Callables) *Sta
 		switch stage.src.lang {
 		case "py":
 			self.node.stagecodeCmd = RelPath(path.Join("..", "adapters", "python", "tester"))
-			break
 		default:
 			panic(fmt.Sprintf("Unsupported stress test language: %s", stage.src.lang))
 		}
