@@ -35,11 +35,11 @@ func (self *RuntimeError) Error() string {
 
 // PipestanceNotExistsError
 type PipestanceNotExistsError struct {
-	psid string
+	Psid string
 }
 
 func (self *PipestanceNotExistsError) Error() string {
-	return fmt.Sprintf("RuntimeError: pipestance '%s' doesn't exist.", self.psid)
+	return fmt.Sprintf("RuntimeError: pipestance '%s' doesn't exist.", self.Psid)
 }
 
 // PipestanceExistsError
