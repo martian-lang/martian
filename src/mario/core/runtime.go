@@ -956,13 +956,13 @@ func (self *Node) getState() string {
 	return "running"
 }
 
-func (self *Node) reset() {
+func (self *Node) reset() error {
 	LogInfo("runtime", "(reset)           %s", self.fqname)
 
 	// Blow away the entire stage node.
 	if err := os.RemoveAll(self.path); err != nil {
 		LogInfo("runtime", "mrp cannot reset the stage because its folder contents could not be deleted. Error was:\n\n%s\n\nPlease resolve the error in order to continue running the pipeline.", err.Error())
-		os.Exit(1)
+		return err
 	}
 
 	// Re-create the folders.
@@ -978,6 +978,7 @@ func (self *Node) reset() {
 	for _, fork := range self.forks {
 		fork.clearChunks()
 	}
+	return nil
 }
 
 func (self *Node) getFatalError() (string, string, string, []string) {
@@ -1235,7 +1236,7 @@ func (self *Pipestance) GetState() string {
 	return "waiting"
 }
 
-func (self *Pipestance) RestartRunningNodes() {
+func (self *Pipestance) RestartRunningNodes() error {
 	self.RefreshMetadata()
 	nodes := self.node.allNodes()
 	for _, node := range nodes {
@@ -1245,9 +1246,12 @@ func (self *Pipestance) RestartRunningNodes() {
 	}
 	for _, node := range nodes {
 		if node.state == "running" {
-			node.reset()
+			if err := node.reset(); err != nil {
+				return err
+			}
 		}
 	}
+	return nil
 }
 
 func (self *Pipestance) GetFatalError() (string, string, string, []string) {
@@ -1266,8 +1270,8 @@ func (self *Pipestance) StepNodes() {
 	}
 }
 
-func (self *Pipestance) ResetNode(fqname string) {
-	self.node.find(fqname).reset()
+func (self *Pipestance) ResetNode(fqname string) error {
+	return self.node.find(fqname).reset()
 }
 
 func (self *Pipestance) Serialize() interface{} {
@@ -1543,7 +1547,7 @@ func (self *Runtime) ReattachToPipestance(psid string, pipestancePath string) (*
 	// have been killed by the CTRL-C.
 	if err == nil && self.jobMode == "local" {
 		LogInfo("runtime", "Reattaching in local mode.")
-		pipestance.RestartRunningNodes()
+		err = pipestance.RestartRunningNodes()
 	}
 
 	return pipestance, err
