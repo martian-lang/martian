@@ -32,9 +32,8 @@ Usage:
 
 Options:
     --jobmode=<name>   Run jobs on custom or local job manager.
-                         Valid job managers are 'local', 'sge' or .template file
+                         Valid job managers are local, sge or .template file
                          Defaults to local.
-                         (--maxcores and --maxmem will be ignored)
     --profile          Enable stage performance profiling.
     --debug            Enable debug logging for local job manager. 
     -h --help          Show this message.

@@ -332,26 +332,23 @@ func dynamicCast(val interface{}, typename string, arrayDim int) bool {
 	} else {
 		switch typename {
 		case "path":
+			fallthrough
 		case "file":
+			fallthrough
 		case "string":
 			_, ret = val.(string)
-			break
 		case "float":
 			_, ret = val.(float64)
-			break
 		case "int":
 			var num float64
 			num, ret = val.(float64)
 			if ret {
 				ret = num == math.Trunc(num)
 			}
-			break
 		case "bool":
 			_, ret = val.(bool)
-			break
 		case "map":
 			_, ret = val.(map[string]interface{})
-			break
 		}
 	}
 	return ret
@@ -550,9 +547,13 @@ func (self *Fork) verifyOutput() (bool, string) {
 	ret := true
 	for _, param := range outparams.table {
 		val, ok := outputs[param.getId()]
-		if !ok || val == nil {
+		if !ok {
 			msg += fmt.Sprintf("Fork did not return parameter '%s'\n", param.getId())
 			ret = false
+			continue
+		}
+		if val == nil {
+			// Allow for null output parameters
 			continue
 		}
 		if !dynamicCast(val, param.getTname(), param.getArrayDim()) {
@@ -955,13 +956,13 @@ func (self *Node) getState() string {
 	return "running"
 }
 
-func (self *Node) reset() {
+func (self *Node) reset() error {
 	LogInfo("runtime", "(reset)           %s", self.fqname)
 
 	// Blow away the entire stage node.
 	if err := os.RemoveAll(self.path); err != nil {
 		LogInfo("runtime", "mrp cannot reset the stage because its folder contents could not be deleted. Error was:\n\n%s\n\nPlease resolve the error in order to continue running the pipeline.", err.Error())
-		os.Exit(1)
+		return err
 	}
 
 	// Re-create the folders.
@@ -977,6 +978,7 @@ func (self *Node) reset() {
 	for _, fork := range self.forks {
 		fork.clearChunks()
 	}
+	return nil
 }
 
 func (self *Node) getFatalError() (string, string, string, []string) {
@@ -1094,11 +1096,9 @@ func (self *Node) runJob(shellName string, fqname string, metadata *Metadata,
 	case "Python":
 		shellCmd = path.Join(self.rt.adaptersPath, "python", shellName+".py")
 		argv = append(stagecodeParts, metadata.path, metadata.filesPath, profile)
-		break
 	case "Executable":
 		shellCmd = stagecodeParts[0]
 		argv = append(stagecodeParts[1:], shellName, metadata.path, metadata.filesPath, profile)
-		break
 	default:
 		panic(fmt.Sprintf("Unknown stage code language: %s", self.stagecodeLang))
 	}
@@ -1134,7 +1134,6 @@ func NewStagestance(parent Nodable, callStm *CallStm, callables *Callables) *Sta
 		switch stage.src.lang {
 		case "py":
 			self.node.stagecodeCmd = RelPath(path.Join("..", "adapters", "python", "tester"))
-			break
 		default:
 			panic(fmt.Sprintf("Unsupported stress test language: %s", stage.src.lang))
 		}
@@ -1237,7 +1236,7 @@ func (self *Pipestance) GetState() string {
 	return "waiting"
 }
 
-func (self *Pipestance) RestartRunningNodes() {
+func (self *Pipestance) RestartRunningNodes() error {
 	self.RefreshMetadata()
 	nodes := self.node.allNodes()
 	for _, node := range nodes {
@@ -1247,9 +1246,12 @@ func (self *Pipestance) RestartRunningNodes() {
 	}
 	for _, node := range nodes {
 		if node.state == "running" {
-			node.reset()
+			if err := node.reset(); err != nil {
+				return err
+			}
 		}
 	}
+	return nil
 }
 
 func (self *Pipestance) GetFatalError() (string, string, string, []string) {
@@ -1268,8 +1270,8 @@ func (self *Pipestance) StepNodes() {
 	}
 }
 
-func (self *Pipestance) ResetNode(fqname string) {
-	self.node.find(fqname).reset()
+func (self *Pipestance) ResetNode(fqname string) error {
+	return self.node.find(fqname).reset()
 }
 
 func (self *Pipestance) Serialize() interface{} {
@@ -1545,7 +1547,7 @@ func (self *Runtime) ReattachToPipestance(psid string, pipestancePath string) (*
 	// have been killed by the CTRL-C.
 	if err == nil && self.jobMode == "local" {
 		LogInfo("runtime", "Reattaching in local mode.")
-		pipestance.RestartRunningNodes()
+		err = pipestance.RestartRunningNodes()
 	}
 
 	return pipestance, err
@@ -1624,7 +1626,12 @@ func (self *Runtime) buildVal(param Param, val interface{}) string {
 }
 
 func (self *Runtime) BuildCallSource(incpaths []string, pname string,
-	args map[string]interface{}) string {
+	args map[string]interface{}) (string, error) {
+	// Make sure pipeline has been imported
+	if _, ok := self.pipelineTable[pname]; !ok {
+		return "", &RuntimeError{fmt.Sprintf("'%s' is not a declared pipeline", pname)}
+	}
+
 	// Build @include statements.
 	includes := []string{}
 	for _, incpath := range incpaths {
@@ -1638,5 +1645,5 @@ func (self *Runtime) BuildCallSource(incpaths []string, pname string,
 		lines = append(lines, fmt.Sprintf("    %s = %s,", param.getId(), valstr))
 	}
 	return fmt.Sprintf("%s\n\ncall %s(\n%s\n)", strings.Join(includes, "\n"),
-		pname, strings.Join(lines, "\n"))
+		pname, strings.Join(lines, "\n")), nil
 }
