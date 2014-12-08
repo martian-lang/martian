@@ -10,7 +10,7 @@ import mario
 
 try:
     # Initialize Mario with command line args.
-    mario.initialize(sys.argv)
+    mario.initialize(sys.argv, "join")
 
     args = mario.Record(mario.metadata.read("args"))
     outs = mario.Record(mario.metadata.read("outs"))

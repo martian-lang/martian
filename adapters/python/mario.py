@@ -49,9 +49,11 @@ class Record(object):
 METADATA_PREFIX = "_"
 
 class Metadata:
-    def __init__(self, path, files_path):
+    def __init__(self, path, files_path, run_file, run_type):
         self.path = path
         self.files_path = files_path
+        self.run_file = run_file
+        self.run_type = run_type
 
     def make_path(self, name):
         return os.path.join(self.path, METADATA_PREFIX + name)
@@ -88,6 +90,18 @@ class Metadata:
         f.write("%s [%s] %s\n" % (self.make_timestamp_now(), level, message))
         f.close()
 
+    def write_jobstate(self, state, msg=None):
+        if msg:
+            self.write_raw(state, msg)
+        else:
+            self.write_time(state)
+        if self.run_type == "main":
+            msg = state
+        else:
+            msg = "%s_%s" % (self.run_type, state)
+        with open(self.run_file, 'w') as f:
+            f.write(msg)
+
 class TestMetadata(Metadata):
     def log(self, level, message):
         print "%s [%s] %s\n" % (self.make_timestamp_now(), level, message)
@@ -97,14 +111,14 @@ def test_initialize(path):
     global metadata
     metadata = TestMetadata(path, path)
 
-def initialize(argv):
+def initialize(argv, run_type):
     global metadata, module, profile_flag, starttime
 
     # Take options from command line.
-    [ shell_cmd, stagecode_path, metadata_path, files_path, profile_flag ] = argv
+    [ shell_cmd, stagecode_path, metadata_path, files_path, run_file, profile_flag ] = argv
 
     # Create metadata object with metadata directory.
-    metadata = Metadata(metadata_path, files_path)
+    metadata = Metadata(metadata_path, files_path, run_file, run_type)
 
     # Write jobinfo
     write_jobinfo()
@@ -168,11 +182,11 @@ def stacktrace():
     return "\n".join(stacktrace)
 
 def fail(stacktrace):
-    metadata.write_raw("errors", stacktrace)
+    metadata.write_jobstate("errors", stacktrace)
     done()
 
 def complete():
-    metadata.write_time("complete")
+    metadata.write_jobstate("complete")
     done()
 
 def run(cmd):

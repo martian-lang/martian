@@ -15,6 +15,7 @@ import (
 	"path"
 	"path/filepath"
 	"sort"
+	"strconv"
 	"strings"
 	"sync"
 )
@@ -74,11 +75,8 @@ func (self *Metadata) getState(name string) (string, bool) {
 	if self.exists("complete") {
 		return name + "complete", true
 	}
-	if self.exists("log") {
-		return name + "running", true
-	}
 	if self.exists("jobinfo") {
-		return name + "queued", true
+		return name + "running", true
 	}
 	return "", false
 }
@@ -366,6 +364,7 @@ type Chunk struct {
 	fqname     string
 	metadata   *Metadata
 	hasBeenRun bool
+	state      string
 }
 
 func NewChunk(nodable Nodable, fork *Fork, index int, chunkDef map[string]interface{}) *Chunk {
@@ -378,6 +377,7 @@ func NewChunk(nodable Nodable, fork *Fork, index int, chunkDef map[string]interf
 	self.fqname = fork.fqname + fmt.Sprintf(".chnk%d", index)
 	self.metadata = NewMetadata(self.fqname, self.path)
 	self.hasBeenRun = false
+	self.state = "none"
 	if !self.node.split {
 		// If we're not splitting, just set the sole chunk's filesPath
 		// to the filesPath of the parent fork, to save a pseudo-join copy.
@@ -396,12 +396,23 @@ func (self *Chunk) mkdirs() {
 	self.metadata.idemMkdirs()
 }
 
-func (self *Chunk) getState() string {
+func (self *Chunk) initState() string {
 	if state, ok := self.metadata.getState(""); ok {
 		return state
 	} else {
 		return "ready"
 	}
+}
+
+func (self *Chunk) getState() string {
+	if self.state == "none" {
+		self.state = self.initState()
+	}
+	return self.state
+}
+
+func (self *Chunk) setState(state string) {
+	self.state = state
 }
 
 func (self *Chunk) step() {
@@ -415,6 +426,7 @@ func (self *Chunk) step() {
 	} else {
 		self.hasBeenRun = true
 	}
+	self.state = "running"
 
 	//
 	// Process __threads and __mem_gb requested by stage split.
@@ -487,6 +499,7 @@ type Fork struct {
 	index          int
 	path           string
 	fqname         string
+	state          string
 	metadata       *Metadata
 	split_metadata *Metadata
 	join_metadata  *Metadata
@@ -508,6 +521,7 @@ func NewFork(nodable Nodable, index int, argPermute map[string]interface{}) *For
 	self.argPermute = argPermute
 	self.split_has_run = false
 	self.join_has_run = false
+	self.state = "none"
 	// reconstruct chunks using chunk_defs on reattach, do not rely
 	// on metadata.exists('chunk_defs') since it may not be cached
 	self.chunks = []*Chunk{}
@@ -540,6 +554,14 @@ func (self *Fork) mkdirs() {
 	self.split_has_run = false
 }
 
+func (self *Fork) refreshMetadata() []*Metadata {
+	metadatas := self.collectMetadatas()
+	for _, metadata := range metadatas {
+		metadata.cache()
+	}
+	return metadatas
+}
+
 func (self *Fork) verifyOutput() (bool, string) {
 	outputs := self.metadata.read("outs").(map[string]interface{})
 	outparams := self.node.outparams
@@ -564,21 +586,12 @@ func (self *Fork) verifyOutput() (bool, string) {
 	return ret, msg
 }
 
-func (self *Fork) getState() string {
-	if self.metadata.exists("errors") {
-		return "failed"
-	}
-	if self.metadata.exists("complete") {
-		return "complete"
-	}
-	if state, ok := self.join_metadata.getState("join_"); ok {
-		return state
-	}
+func (self *Fork) getChunkState() (string, bool) {
 	if len(self.chunks) > 0 {
 		// If any chunks have failed, we're failed.
 		for _, chunk := range self.chunks {
 			if chunk.getState() == "failed" {
-				return "failed"
+				return "failed", true
 			}
 		}
 		// If every chunk is complete, we're complete.
@@ -590,11 +603,11 @@ func (self *Fork) getState() string {
 			}
 		}
 		if every {
-			return "chunks_complete"
+			return "chunks_complete", true
 		}
-		// If every chunk is queued, running, or complete, we're complete.
+		// If every chunk is running or complete, we're complete.
 		every = true
-		runningStates := map[string]bool{"queued": true, "running": true, "complete": true}
+		runningStates := map[string]bool{"running": true, "complete": true}
 		for _, chunk := range self.chunks {
 			if _, ok := runningStates[chunk.getState()]; !ok {
 				every = false
@@ -602,8 +615,24 @@ func (self *Fork) getState() string {
 			}
 		}
 		if every {
-			return "chunks_running"
+			return "chunks_running", true
 		}
+	}
+	return "", false
+}
+
+func (self *Fork) initState() string {
+	if self.metadata.exists("errors") {
+		return "failed"
+	}
+	if self.metadata.exists("complete") {
+		return "complete"
+	}
+	if state, ok := self.join_metadata.getState("join_"); ok {
+		return state
+	}
+	if state, ok := self.getChunkState(); ok {
+		return state
 	}
 	if state, ok := self.split_metadata.getState("split_"); ok {
 		return state
@@ -611,10 +640,38 @@ func (self *Fork) getState() string {
 	return "ready"
 }
 
+func (self *Fork) getState() string {
+	if self.state == "none" {
+		self.state = self.initState()
+	} else {
+		if self.state == "failed" || self.state == "complete" {
+			return self.state
+		}
+		if strings.HasPrefix(self.state, "join_") {
+			return self.state
+		}
+		if state, ok := self.getChunkState(); ok {
+			return state
+		}
+		if strings.HasPrefix(self.state, "split_") {
+			return self.state
+		}
+	}
+	return self.state
+}
+
+func (self *Fork) setState(state string) {
+	self.state = state
+}
+
+func (self *Fork) getChunk(index int) *Chunk {
+	return self.chunks[index]
+}
+
 func (self *Fork) step() {
 	if self.node.kind == "stage" {
 		state := self.getState()
-		if !strings.HasSuffix(state, "_running") && !strings.HasSuffix(state, "_queued") {
+		if !strings.HasSuffix(state, "_running") {
 			statePad := strings.Repeat(" ", 15-len(state))
 			LogInfo("runtime", "(%s)%s %s", state, statePad, self.node.fqname)
 		}
@@ -624,22 +681,26 @@ func (self *Fork) step() {
 			if self.node.split {
 				if !self.split_has_run {
 					self.split_has_run = true
+					self.state = "split_running"
 					// Default memory to -1 for no limit.
 					self.node.runSplit(self.fqname, self.split_metadata)
 				}
 			} else {
+				self.state = "split_complete"
 				self.split_metadata.write("chunk_defs", []interface{}{map[string]interface{}{}})
 				self.split_metadata.writeTime("complete")
 			}
 		} else if state == "split_complete" {
 			chunkDefs := self.split_metadata.read("chunk_defs")
 			if _, ok := chunkDefs.([]interface{}); !ok {
+				self.state = "split_failed"
 				self.split_metadata.idemMkdirs()
 				self.split_metadata.writeRaw("errors", "The split method must return an array of chunk def dicts but did not.\n")
 			} else {
 				if len(self.chunks) == 0 {
 					for i, chunkDef := range chunkDefs.([]interface{}) {
 						if _, ok := chunkDef.(map[string]interface{}); !ok {
+							self.state = "split_failed"
 							self.split_metadata.idemMkdirs()
 							self.split_metadata.writeRaw("errors", "The split method must return an array of chunk def dicts but did not.\n")
 							break
@@ -652,6 +713,7 @@ func (self *Fork) step() {
 				for _, chunk := range self.chunks {
 					chunk.step()
 				}
+				self.state = "chunks_running"
 			}
 		} else if state == "chunks_complete" {
 			self.join_metadata.write("args", resolveBindings(self.node.argbindings, self.argPermute))
@@ -666,28 +728,36 @@ func (self *Fork) step() {
 				self.join_metadata.write("outs", makeOutArgs(self.node.outparams, self.metadata.filesPath))
 				if !self.join_has_run {
 					self.join_has_run = true
+					self.state = "join_running"
 					self.node.runJoin(self.fqname, self.join_metadata)
 				}
 			} else {
+				self.state = "join_complete"
 				self.join_metadata.write("outs", self.chunks[0].metadata.read("outs"))
 				self.join_metadata.writeTime("complete")
 			}
 		} else if state == "join_complete" {
 			self.metadata.write("outs", self.join_metadata.read("outs"))
 			if ok, msg := self.verifyOutput(); ok {
+				self.state = "complete"
 				self.metadata.writeTime("complete")
 			} else {
+				self.state = "failed"
 				self.metadata.writeRaw("errors", msg)
 			}
+			self.node.updateState()
 		}
 
 	} else if self.node.kind == "pipeline" {
 		self.metadata.write("outs", resolveBindings(self.node.retbindings, self.argPermute))
 		if ok, msg := self.verifyOutput(); ok {
+			self.state = "complete"
 			self.metadata.writeTime("complete")
 		} else {
+			self.state = "failed"
 			self.metadata.writeRaw("errors", msg)
 		}
+		self.node.updateState()
 	}
 }
 
@@ -750,6 +820,7 @@ type Node struct {
 	volatile       bool
 	stagecodeLang  string
 	stagecodeCmd   string
+	runPath        string
 }
 
 func (self *Node) getNode() *Node { return self }
@@ -763,6 +834,7 @@ func NewNode(parent Nodable, kind string, callStm *CallStm, callables *Callables
 	self.name = callStm.id
 	self.fqname = parent.getNode().fqname + "." + self.name
 	self.path = path.Join(parent.getNode().path, self.name)
+	self.runPath = self.parent.getNode().runPath
 	self.metadata = NewMetadata(self.fqname, self.path)
 	self.volatile = callStm.volatile
 
@@ -788,6 +860,7 @@ func NewNode(parent Nodable, kind string, callStm *CallStm, callables *Callables
 	}
 	// Do not set state = getState here, or else nodes will wrongly report
 	// complete before the first refreshMetadata call
+	self.state = "none"
 	return self
 }
 
@@ -796,6 +869,7 @@ func NewNode(parent Nodable, kind string, callStm *CallStm, callables *Callables
 //
 func (self *Node) mkdirs(wg *sync.WaitGroup) {
 	mkdir(self.path)
+	idemMkdir(self.runPath)
 	for _, fork := range self.forks {
 		wg.Add(1)
 		go func(f *Fork) {
@@ -928,6 +1002,17 @@ func (self *Node) refreshMetadata() {
 	self.state = self.getState()
 }
 
+func (self *Node) getFork(index int) *Fork {
+	return self.forks[index]
+}
+
+func (self *Node) updateState() {
+	self.state = self.getState()
+	if self.parent != nil {
+		self.parent.getNode().updateState()
+	}
+}
+
 func (self *Node) getState() string {
 	// If every fork is complete, we're complete.
 	complete := true
@@ -964,6 +1049,10 @@ func (self *Node) reset() error {
 		LogInfo("runtime", "mrp cannot reset the stage because its folder contents could not be deleted. Error was:\n\n%s\n\nPlease resolve the error in order to continue running the pipeline.", err.Error())
 		return err
 	}
+	if err := os.RemoveAll(self.runPath); err != nil {
+		LogInfo("runtime", "mrp cannot reset the stage because the run folder could not be deleted. Error was:\n\n%s\n\nPlease resolve the error in order to continue running the pipeline.", err.Error())
+		return err
+	}
 
 	// Re-create the folders.
 	// This will also clear all the metadata in-memory caches.
@@ -982,7 +1071,14 @@ func (self *Node) reset() error {
 }
 
 func (self *Node) getFatalError() (string, string, string, []string) {
-	for _, metadata := range self.collectMetadatas() {
+	metadatas := []*Metadata{}
+	for _, fork := range self.forks {
+		if fork.getState() == "failed" {
+			metadatas = fork.refreshMetadata()
+			break
+		}
+	}
+	for _, metadata := range metadatas {
 		if !metadata.exists("errors") {
 			continue
 		}
@@ -1004,10 +1100,65 @@ func (self *Node) getFatalError() (string, string, string, []string) {
 }
 
 func (self *Node) step() {
-	if self.state == "running" {
-		for _, fork := range self.forks {
-			fork.step()
+	self.state = self.getState()
+	for {
+		prevState := self.state
+		if self.state == "running" {
+			for _, fork := range self.forks {
+				fork.step()
+			}
 		}
+		if prevState == self.state {
+			break
+		}
+	}
+}
+
+func (self *Node) parseFqname(fqname string) (string, int, int) {
+	fqnameParts := strings.Split(fqname, ".")
+	fqnameNodeList := fqnameParts[:len(fqnameParts)-2]
+	fqnameIndicesList := fqnameParts[len(fqnameParts)-2:]
+	forkIndex := -1
+	chunkIndex := -1
+	for _, fqnameIndex := range fqnameIndicesList {
+		if strings.HasPrefix(fqnameIndex, "fork") {
+			forkIndexStr := strings.TrimPrefix(fqnameIndex, "fork")
+			forkIndex, _ = strconv.Atoi(forkIndexStr)
+		} else if strings.HasPrefix(fqnameIndex, "chnk") {
+			chunkIndexStr := strings.TrimPrefix(fqnameIndex, "chnk")
+			chunkIndex, _ = strconv.Atoi(chunkIndexStr)
+		} else {
+			fqnameNodeList = append(fqnameNodeList, fqnameIndex)
+		}
+	}
+	fqnameNode := strings.Join(fqnameNodeList, ".")
+	return fqnameNode, forkIndex, chunkIndex
+}
+
+func (self *Node) refreshState() {
+	files, _ := filepath.Glob(path.Join(self.runPath, "*"))
+	for _, file := range files {
+		// Get state
+		bytes, _ := ioutil.ReadFile(file)
+		state := string(bytes)
+
+		// Parse fqname to get fork and chunk indices
+		fqname := path.Base(file)
+		fqnameNode, forkIndex, chunkIndex := self.parseFqname(fqname)
+
+		if forkIndex >= 0 {
+			node := self.find(fqnameNode)
+			fork := node.getFork(forkIndex)
+			if chunkIndex >= 0 {
+				chunk := fork.getChunk(chunkIndex)
+				chunk.setState(state)
+				chunk.state = state
+			} else {
+				fork.setState(state)
+				fork.state = state
+			}
+		}
+		os.Remove(file)
 	}
 }
 
@@ -1091,14 +1242,15 @@ func (self *Node) runJob(shellName string, fqname string, metadata *Metadata,
 	shellCmd := ""
 	argv := []string{}
 	stagecodeParts := strings.Split(self.stagecodeCmd, " ")
+	runFile := path.Join(self.runPath, fqname)
 
 	switch self.stagecodeLang {
 	case "Python":
 		shellCmd = path.Join(self.rt.adaptersPath, "python", shellName+".py")
-		argv = append(stagecodeParts, metadata.path, metadata.filesPath, profile)
+		argv = append(stagecodeParts, metadata.path, metadata.filesPath, runFile, profile)
 	case "Executable":
 		shellCmd = stagecodeParts[0]
-		argv = append(stagecodeParts[1:], shellName, metadata.path, metadata.filesPath, profile)
+		argv = append(stagecodeParts[1:], shellName, metadata.path, metadata.filesPath, runFile, profile)
 	default:
 		panic(fmt.Sprintf("Unknown stage code language: %s", self.stagecodeLang))
 	}
@@ -1148,6 +1300,7 @@ func (self *Stagestance) getNode() *Node   { return self.node }
 func (self *Stagestance) RefreshMetadata() { self.getNode().refreshMetadata() }
 func (self *Stagestance) GetState() string { return self.getNode().getState() }
 func (self *Stagestance) Step()            { self.getNode().step() }
+func (self *Stagestance) RefreshState()    { self.node.refreshState() }
 func (self *Stagestance) GetFatalError() (string, string, string, []string) {
 	return self.getNode().getFatalError()
 }
@@ -1209,6 +1362,10 @@ func (self *Pipestance) RefreshMetadata() {
 	for _, node := range self.node.allNodes() {
 		node.refreshMetadata()
 	}
+}
+
+func (self *Pipestance) RefreshState() {
+	self.node.refreshState()
 }
 
 func (self *Pipestance) GetState() string {
@@ -1385,8 +1542,10 @@ func (self *TopNode) getNode() *Node { return self.node }
 func NewTopNode(rt *Runtime, psid string, p string) *TopNode {
 	self := &TopNode{}
 	self.node = &Node{}
+	self.node.parent = nil
 	self.node.path = p
 	self.node.rt = rt
+	self.node.runPath = path.Join(self.node.path, "_run")
 	self.node.fqname = "ID." + psid
 	self.node.name = psid
 	return self
