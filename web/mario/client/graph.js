@@ -79,7 +79,6 @@
       $scope.simpleNodes = _.indexBy(state.nodes, 'name');
       $scope.nodes = _.indexBy(state.nodes, 'fqname');
       $scope.info = state.info;
-      $scope.error = state.error;
       return renderGraph($scope, $compile);
     });
     $scope.id = null;
@@ -144,8 +143,7 @@
           $scope.node = $scope.nodes[$scope.id];
         }
         $scope.info = state.info;
-        $scope.showRestart = true;
-        return $scope.error = state.error;
+        return $scope.showRestart = true;
       }).error(function() {
         console.log('Server responded with an error for /api/get-state, so stopping auto-refresh.');
         return $interval.cancel($scope.stopRefresh);

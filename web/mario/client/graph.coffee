@@ -61,7 +61,6 @@ app.controller('MarioGraphCtrl', ($scope, $compile, $http, $interval) ->
         $scope.simpleNodes = _.indexBy(state.nodes, 'name')
         $scope.nodes = _.indexBy(state.nodes, 'fqname')
         $scope.info = state.info
-        $scope.error = state.error
         renderGraph($scope, $compile)
     )
 
@@ -111,7 +110,6 @@ app.controller('MarioGraphCtrl', ($scope, $compile, $http, $interval) ->
             if $scope.id then $scope.node = $scope.nodes[$scope.id]
             $scope.info = state.info
             $scope.showRestart = true
-            $scope.error = state.error
         ).error(() ->
             console.log('Server responded with an error for /api/get-state, so stopping auto-refresh.')
             $interval.cancel($scope.stopRefresh)

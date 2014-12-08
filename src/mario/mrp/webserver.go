@@ -87,21 +87,7 @@ func runWebServer(uiport string, rt *core.Runtime, pipestance *core.Pipestance,
 	app.Get("/api/get-state/:container/:pname/:psid",
 		func(p martini.Params) string {
 			state := map[string]interface{}{}
-			state["error"] = nil
 			info["state"] = pipestance.GetState()
-			if info["state"] == "failed" {
-				fqname, summary, log, errpaths := pipestance.GetFatalError()
-				errpath := ""
-				if len(errpaths) > 0 {
-					errpath = errpaths[0]
-				}
-				state["error"] = map[string]string{
-					"fqname":  fqname,
-					"path":    errpath,
-					"summary": summary,
-					"log":     log,
-				}
-			}
 			state["nodes"] = pipestance.Serialize()
 			state["info"] = info
 			bytes, _ := json.Marshal(state)
