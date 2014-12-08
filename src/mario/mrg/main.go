@@ -66,7 +66,17 @@ Options:
 				fmt.Println("No args given.")
 				return
 			}
-			fmt.Print(rt.BuildCallSource(incpaths, pipeline, args))
+
+            src, bldErr := rt.BuildCallSource(incpaths, pipeline, args)
+
+            if bldErr == nil {
+                fmt.Print(src)
+                os.Exit(0)
+            } else {
+                fmt.Println(bldErr)
+                os.Exit(1)
+            }
 		}
 	}
+    os.Exit(1)
 }
