@@ -358,8 +358,8 @@ func (self *RemoteJobManager) processMonitorList() {
 					}
 					if !monitor.metadata.exists("errors") {
 						// Job was killed by cluster resource manager
-						monitor.metadata.writeRaw("errors", fmt.Sprintf("job has been killed by %s: %s",
-							self.jobMode, err.Error()))
+						monitor.metadata.writeRaw("errors", fmt.Sprintf("job has been killed by %s",
+							self.jobMode))
 					}
 				} else {
 					monitorList = append(monitorList, monitor)
