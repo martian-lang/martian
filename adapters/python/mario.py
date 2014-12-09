@@ -111,13 +111,14 @@ def test_initialize(path):
     global metadata
     metadata = TestMetadata(path, path)
 
-def initialize(argv, run_type):
+def initialize(argv):
     global metadata, module, profile_flag, starttime
 
     # Take options from command line.
     [ shell_cmd, stagecode_path, metadata_path, files_path, run_file, profile_flag ] = argv
 
     # Create metadata object with metadata directory.
+    run_type = os.path.basename(shell_cmd)[:-3]
     metadata = Metadata(metadata_path, files_path, run_file, run_type)
 
     # Write jobinfo

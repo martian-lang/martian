@@ -97,7 +97,7 @@ Options:
 	go func() {
 		for {
 			// Refresh metadata on the node.
-			stagestance.RefreshMetadata()
+			stagestance.RefreshState()
 
 			// Check for completion states.
 			state := stagestance.GetState()

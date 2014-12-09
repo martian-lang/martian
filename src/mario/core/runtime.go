@@ -14,6 +14,7 @@ import (
 	"os/exec"
 	"path"
 	"path/filepath"
+	"regexp"
 	"sort"
 	"strconv"
 	"strings"
@@ -554,14 +555,6 @@ func (self *Fork) mkdirs() {
 	self.split_has_run = false
 }
 
-func (self *Fork) refreshMetadata() []*Metadata {
-	metadatas := self.collectMetadatas()
-	for _, metadata := range metadatas {
-		metadata.cache()
-	}
-	return metadatas
-}
-
 func (self *Fork) verifyOutput() (bool, string) {
 	outputs := self.metadata.read("outs").(map[string]interface{})
 	outparams := self.node.outparams
@@ -653,9 +646,6 @@ func (self *Fork) getState() string {
 		if state, ok := self.getChunkState(); ok {
 			return state
 		}
-		if strings.HasPrefix(self.state, "split_") {
-			return self.state
-		}
 	}
 	return self.state
 }
@@ -745,7 +735,6 @@ func (self *Fork) step() {
 				self.state = "failed"
 				self.metadata.writeRaw("errors", msg)
 			}
-			self.node.updateState()
 		}
 
 	} else if self.node.kind == "pipeline" {
@@ -757,7 +746,6 @@ func (self *Fork) step() {
 			self.state = "failed"
 			self.metadata.writeRaw("errors", msg)
 		}
-		self.node.updateState()
 	}
 }
 
@@ -837,6 +825,7 @@ func NewNode(parent Nodable, kind string, callStm *CallStm, callables *Callables
 	self.runPath = self.parent.getNode().runPath
 	self.metadata = NewMetadata(self.fqname, self.path)
 	self.volatile = callStm.volatile
+	self.state = "none"
 
 	self.outparams = callables.table[self.name].getOutParams()
 	self.argbindings = map[string]*Binding{}
@@ -858,9 +847,6 @@ func NewNode(parent Nodable, kind string, callStm *CallStm, callables *Callables
 			self.prenodeList = append(self.prenodeList, binding.boundNode)
 		}
 	}
-	// Do not set state = getState here, or else nodes will wrongly report
-	// complete before the first refreshMetadata call
-	self.state = "none"
 	return self
 }
 
@@ -1006,13 +992,6 @@ func (self *Node) getFork(index int) *Fork {
 	return self.forks[index]
 }
 
-func (self *Node) updateState() {
-	self.state = self.getState()
-	if self.parent != nil {
-		self.parent.getNode().updateState()
-	}
-}
-
 func (self *Node) getState() string {
 	// If every fork is complete, we're complete.
 	complete := true
@@ -1071,14 +1050,8 @@ func (self *Node) reset() error {
 }
 
 func (self *Node) getFatalError() (string, string, string, []string) {
-	metadatas := []*Metadata{}
-	for _, fork := range self.forks {
-		if fork.getState() == "failed" {
-			metadatas = fork.refreshMetadata()
-			break
-		}
-	}
-	for _, metadata := range metadatas {
+	self.refreshMetadata()
+	for _, metadata := range self.collectMetadatas() {
 		if !metadata.exists("errors") {
 			continue
 		}
@@ -1100,42 +1073,33 @@ func (self *Node) getFatalError() (string, string, string, []string) {
 }
 
 func (self *Node) step() {
-	self.state = self.getState()
-	for {
-		prevState := self.state
-		if self.state == "running" {
-			for _, fork := range self.forks {
-				fork.step()
-			}
-		}
-		if prevState == self.state {
-			break
+	if self.state == "running" {
+		for _, fork := range self.forks {
+			fork.step()
 		}
 	}
+	self.state = self.getState()
 }
 
 func (self *Node) parseFqname(fqname string) (string, int, int) {
-	fqnameParts := strings.Split(fqname, ".")
-	fqnameNodeList := fqnameParts[:len(fqnameParts)-2]
-	fqnameIndicesList := fqnameParts[len(fqnameParts)-2:]
-	forkIndex := -1
-	chunkIndex := -1
-	for _, fqnameIndex := range fqnameIndicesList {
-		if strings.HasPrefix(fqnameIndex, "fork") {
-			forkIndexStr := strings.TrimPrefix(fqnameIndex, "fork")
-			forkIndex, _ = strconv.Atoi(forkIndexStr)
-		} else if strings.HasPrefix(fqnameIndex, "chnk") {
-			chunkIndexStr := strings.TrimPrefix(fqnameIndex, "chnk")
-			chunkIndex, _ = strconv.Atoi(chunkIndexStr)
-		} else {
-			fqnameNodeList = append(fqnameNodeList, fqnameIndex)
-		}
+	r := regexp.MustCompile("(.*)\\.fork(\\d+)\\.chnk(\\d+)$")
+	if match := r.FindStringSubmatch(fqname); match != nil {
+		forkIndex, _ := strconv.Atoi(match[2])
+		chunkIndex, _ := strconv.Atoi(match[3])
+		return match[1], forkIndex, chunkIndex
 	}
-	fqnameNode := strings.Join(fqnameNodeList, ".")
-	return fqnameNode, forkIndex, chunkIndex
+	r = regexp.MustCompile("(.*)\\.fork(\\d+)$")
+	if match := r.FindStringSubmatch(fqname); match != nil {
+		forkIndex, _ :=strconv.Atoi(match[2])
+		return match[1], forkIndex, -1
+	}
+	return "", -1, -1
 }
 
 func (self *Node) refreshState() {
+	if self.state == "none" {
+		self.refreshMetadata()
+	}
 	files, _ := filepath.Glob(path.Join(self.runPath, "*"))
 	for _, file := range files {
 		// Get state
@@ -1146,17 +1110,13 @@ func (self *Node) refreshState() {
 		fqname := path.Base(file)
 		fqnameNode, forkIndex, chunkIndex := self.parseFqname(fqname)
 
-		if forkIndex >= 0 {
-			node := self.find(fqnameNode)
-			fork := node.getFork(forkIndex)
-			if chunkIndex >= 0 {
-				chunk := fork.getChunk(chunkIndex)
-				chunk.setState(state)
-				chunk.state = state
-			} else {
-				fork.setState(state)
-				fork.state = state
-			}
+		node := self.find(fqnameNode)
+		fork := node.getFork(forkIndex)
+		if chunkIndex >= 0 {
+			chunk := fork.getChunk(chunkIndex)
+			chunk.setState(state)
+		} else {
+			fork.setState(state)
 		}
 		os.Remove(file)
 	}
@@ -1297,10 +1257,9 @@ func NewStagestance(parent Nodable, callStm *CallStm, callables *Callables) *Sta
 }
 
 func (self *Stagestance) getNode() *Node   { return self.node }
-func (self *Stagestance) RefreshMetadata() { self.getNode().refreshMetadata() }
 func (self *Stagestance) GetState() string { return self.getNode().getState() }
 func (self *Stagestance) Step()            { self.getNode().step() }
-func (self *Stagestance) RefreshState()    { self.node.refreshState() }
+func (self *Stagestance) RefreshState()    { self.getNode().refreshState() }
 func (self *Stagestance) GetFatalError() (string, string, string, []string) {
 	return self.getNode().getFatalError()
 }
@@ -1356,16 +1315,10 @@ func (self *Pipestance) GetPsid() string      { return self.node.parent.getNode(
 func (self *Pipestance) GetFQName() string    { return self.node.fqname }
 func (self *Pipestance) GetInvokeSrc() string { return self.invokeSrc }
 
-func (self *Pipestance) RefreshMetadata() {
-	// We used to make this concurrent but ended up with too many
-	// goroutines (Pranav's 96-sample run).
-	for _, node := range self.node.allNodes() {
-		node.refreshMetadata()
-	}
-}
-
 func (self *Pipestance) RefreshState() {
-	self.node.refreshState()
+	for _, node := range self.node.allNodes() {
+		node.refreshState()
+	}
 }
 
 func (self *Pipestance) GetState() string {
@@ -1394,7 +1347,7 @@ func (self *Pipestance) GetState() string {
 }
 
 func (self *Pipestance) RestartRunningNodes() error {
-	self.RefreshMetadata()
+	self.RefreshState()
 	nodes := self.node.allNodes()
 	for _, node := range nodes {
 		if node.state == "running" {
