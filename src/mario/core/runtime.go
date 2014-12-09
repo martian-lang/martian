@@ -131,6 +131,7 @@ func (self *Metadata) remove(name string) { os.Remove(self.makePath(name)) }
 
 func (self *Metadata) serialize() interface{} {
 	names := []string{}
+	self.cache()
 	self.mutex.Lock()
 	for content, _ := range self.contents {
 		names = append(names, content)
@@ -840,7 +841,7 @@ func NewNode(parent Nodable, kind string, callStm *CallStm, callables *Callables
 	self.name = callStm.id
 	self.fqname = parent.getNode().fqname + "." + self.name
 	self.path = path.Join(parent.getNode().path, self.name)
-	self.runPath = self.parent.getNode().runPath
+	self.runPath = parent.getNode().runPath
 	self.metadata = NewMetadata(self.fqname, self.path)
 	self.volatile = callStm.volatile
 
@@ -853,7 +854,7 @@ func NewNode(parent Nodable, kind string, callStm *CallStm, callables *Callables
 	self.prenodes = map[string]Nodable{}
 	self.prenodeList = []Nodable{}
 	self.postnodes = map[string]Nodable{}
-	self.frontierNodes = map[string]Nodable{}
+	self.frontierNodes = parent.getNode().frontierNodes
 
 	for id, bindStm := range callStm.bindings.table {
 		binding := NewBinding(self, bindStm)
@@ -961,23 +962,17 @@ func (self *Node) matchFork(targetArgPermute map[string]interface{}) *Fork {
 //
 // Subnode management
 //
-func (self *Node) initFrontierNodes() {
-	for _, node := range self.allNodes() {
-		self.addFrontierNode(node)
-	}
-}
-
 func (self *Node) addFrontierNode(node Nodable) {
-	self.parent.getNode().frontierNodes[node.getNode().name] = node
+	self.frontierNodes[node.getNode().name] = node
 }
 
 func (self *Node) removeFrontierNode(node Nodable) {
-	delete(self.parent.getNode().frontierNodes, node.getNode().name)
+	delete(self.frontierNodes, node.getNode().name)
 }
 
 func (self *Node) getFrontierNodes() []*Node {
 	frontierNodes := []*Node{}
-	for _, node := range self.parent.getNode().frontierNodes {
+	for _, node := range self.frontierNodes {
 		frontierNodes = append(frontierNodes, node.getNode())
 	}
 	return frontierNodes
@@ -1031,6 +1026,7 @@ func (self *Node) loadMetadata() {
 		fork.loadMetadata()
 	}
 	self.state = self.getState()
+	self.addFrontierNode(self)
 }
 
 func (self *Node) getFork(index int) *Fork {
@@ -1375,7 +1371,6 @@ func (self *Pipestance) LoadMetadata() {
 	for _, node := range self.node.allNodes() {
 		node.loadMetadata()
 	}
-	self.node.initFrontierNodes()
 }
 
 func (self *Pipestance) GetState() string {
