@@ -818,6 +818,8 @@ type Node struct {
 	subnodes       map[string]Nodable
 	prenodes       map[string]Nodable
 	prenodeList    []Nodable //for stable ordering
+	postnodes      map[string]Nodable
+	frontierNodes  map[string]Nodable
 	forks          []*Fork
 	split          bool
 	state          string
@@ -850,6 +852,8 @@ func NewNode(parent Nodable, kind string, callStm *CallStm, callables *Callables
 	self.subnodes = map[string]Nodable{}
 	self.prenodes = map[string]Nodable{}
 	self.prenodeList = []Nodable{}
+	self.postnodes = map[string]Nodable{}
+	self.frontierNodes = map[string]Nodable{}
 
 	for id, bindStm := range callStm.bindings.table {
 		binding := NewBinding(self, bindStm)
@@ -858,8 +862,11 @@ func NewNode(parent Nodable, kind string, callStm *CallStm, callables *Callables
 	}
 	for _, binding := range self.argbindingList {
 		if binding.mode == "reference" && binding.boundNode != nil {
-			self.prenodes[binding.boundNode.getNode().name] = binding.boundNode
-			self.prenodeList = append(self.prenodeList, binding.boundNode)
+			prenode := binding.boundNode
+			self.prenodes[prenode.getNode().name] = prenode
+			self.prenodeList = append(self.prenodeList, prenode)
+
+			prenode.getNode().postnodes[self.name] = self
 		}
 	}
 	// Do not set state = getState here, or else nodes will wrongly report
@@ -954,6 +961,28 @@ func (self *Node) matchFork(targetArgPermute map[string]interface{}) *Fork {
 //
 // Subnode management
 //
+func (self *Node) initFrontierNodes() {
+	for _, node := range self.allNodes() {
+		self.addFrontierNode(node)
+	}
+}
+
+func (self *Node) addFrontierNode(node Nodable) {
+	self.parent.getNode().frontierNodes[node.getNode().name] = node
+}
+
+func (self *Node) removeFrontierNode(node Nodable) {
+	delete(self.parent.getNode().frontierNodes, node.getNode().name)
+}
+
+func (self *Node) getFrontierNodes() []*Node {
+	frontierNodes := []*Node{}
+	for _, node := range self.parent.getNode().frontierNodes {
+		frontierNodes = append(frontierNodes, node.getNode())
+	}
+	return frontierNodes
+}
+
 func (self *Node) allNodes() []*Node {
 	all := []*Node{self}
 
@@ -1091,6 +1120,19 @@ func (self *Node) step() {
 		}
 	}
 	self.state = self.getState()
+	switch self.state {
+	case "failed":
+		self.addFrontierNode(self)
+	case "running":
+		self.addFrontierNode(self)
+	case "complete":
+		for _, node := range self.postnodes {
+			self.addFrontierNode(node)
+		}
+		self.removeFrontierNode(self)
+	case "waiting":
+		self.removeFrontierNode(self)
+	}
 }
 
 func (self *Node) parseFqname(fqname string) (string, int, int) {
@@ -1310,8 +1352,11 @@ func NewPipestance(parent Nodable, invokeSrc string, callStm *CallStm,
 		self.node.retbindings[id] = binding
 		self.node.retbindingList = append(self.node.retbindingList, binding)
 		if binding.mode == "reference" && binding.boundNode != nil {
-			self.node.prenodes[binding.boundNode.getNode().name] = binding.boundNode
-			self.node.prenodeList = append(self.node.prenodeList, binding.boundNode)
+			prenode := binding.boundNode
+			self.node.prenodes[prenode.getNode().name] = prenode
+			self.node.prenodeList = append(self.node.prenodeList, prenode)
+
+			prenode.getNode().postnodes[self.node.name] = self.node
 		}
 	}
 
@@ -1330,10 +1375,11 @@ func (self *Pipestance) LoadMetadata() {
 	for _, node := range self.node.allNodes() {
 		node.loadMetadata()
 	}
+	self.node.initFrontierNodes()
 }
 
 func (self *Pipestance) GetState() string {
-	nodes := self.node.allNodes()
+	nodes := self.node.getFrontierNodes()
 	for _, node := range nodes {
 		if node.state == "failed" {
 			return "failed"
@@ -1359,7 +1405,7 @@ func (self *Pipestance) GetState() string {
 
 func (self *Pipestance) RestartRunningNodes() error {
 	self.LoadMetadata()
-	nodes := self.node.allNodes()
+	nodes := self.node.getFrontierNodes()
 	for _, node := range nodes {
 		if node.state == "running" {
 			LogInfo("runtime", "Found orphaned stage: %s", node.name)
@@ -1376,7 +1422,7 @@ func (self *Pipestance) RestartRunningNodes() error {
 }
 
 func (self *Pipestance) GetFatalError() (string, string, string, []string) {
-	nodes := self.node.allNodes()
+	nodes := self.node.getFrontierNodes()
 	for _, node := range nodes {
 		if node.state == "failed" {
 			return node.getFatalError()
@@ -1386,7 +1432,7 @@ func (self *Pipestance) GetFatalError() (string, string, string, []string) {
 }
 
 func (self *Pipestance) StepNodes() {
-	for _, node := range self.node.allNodes() {
+	for _, node := range self.node.getFrontierNodes() {
 		node.step()
 	}
 }
@@ -1506,7 +1552,7 @@ func (self *TopNode) getNode() *Node { return self.node }
 func NewTopNode(rt *Runtime, psid string, p string) *TopNode {
 	self := &TopNode{}
 	self.node = &Node{}
-	self.node.parent = nil
+	self.node.frontierNodes = map[string]Nodable{}
 	self.node.path = p
 	self.node.rt = rt
 	self.node.runPath = path.Join(self.node.path, "run")
