@@ -416,6 +416,11 @@ func (self *Chunk) setState(state string) {
 	self.state = state
 }
 
+func (self *Chunk) loadMetadata() {
+	self.metadata.cache()
+	self.state = self.initState()
+}
+
 func (self *Chunk) step() {
 	if self.getState() != "ready" {
 		return
@@ -546,6 +551,17 @@ func (self *Fork) collectMetadatas() []*Metadata {
 		metadatas = append(metadatas, chunk.metadata)
 	}
 	return metadatas
+}
+
+func (self *Fork) loadMetadata() {
+	metadatas := []*Metadata{self.metadata, self.split_metadata, self.join_metadata}
+	for _, metadata := range metadatas {
+		metadata.cache()
+	}
+	for _, chunk := range self.chunks {
+		chunk.loadMetadata()
+	}
+	self.state = self.initState()
 }
 
 func (self *Fork) mkdirs() {
@@ -825,7 +841,6 @@ func NewNode(parent Nodable, kind string, callStm *CallStm, callables *Callables
 	self.runPath = self.parent.getNode().runPath
 	self.metadata = NewMetadata(self.fqname, self.path)
 	self.volatile = callStm.volatile
-	self.state = "none"
 
 	self.outparams = callables.table[self.name].getOutParams()
 	self.argbindings = map[string]*Binding{}
@@ -847,6 +862,8 @@ func NewNode(parent Nodable, kind string, callStm *CallStm, callables *Callables
 			self.prenodeList = append(self.prenodeList, binding.boundNode)
 		}
 	}
+	// Do not set state = getState here, or else nodes will wrongly report
+	// complete before the first refreshMetadata call
 	return self
 }
 
@@ -980,10 +997,9 @@ func (self *Node) collectMetadatas() []*Metadata {
 	return metadatas
 }
 
-func (self *Node) refreshMetadata() {
-	metadatas := self.collectMetadatas()
-	for _, metadata := range metadatas {
-		metadata.cache()
+func (self *Node) loadMetadata() {
+	for _, fork := range self.forks {
+		fork.loadMetadata()
 	}
 	self.state = self.getState()
 }
@@ -1028,10 +1044,6 @@ func (self *Node) reset() error {
 		LogInfo("runtime", "mrp cannot reset the stage because its folder contents could not be deleted. Error was:\n\n%s\n\nPlease resolve the error in order to continue running the pipeline.", err.Error())
 		return err
 	}
-	if err := os.RemoveAll(self.runPath); err != nil {
-		LogInfo("runtime", "mrp cannot reset the stage because the run folder could not be deleted. Error was:\n\n%s\n\nPlease resolve the error in order to continue running the pipeline.", err.Error())
-		return err
-	}
 
 	// Re-create the folders.
 	// This will also clear all the metadata in-memory caches.
@@ -1039,8 +1051,8 @@ func (self *Node) reset() error {
 	self.mkdirs(&rewg)
 	rewg.Wait()
 
-	// Refresh the metadata.
-	self.refreshMetadata()
+	// Reload the metadata.
+	self.loadMetadata()
 
 	// Clear chunks in the forks so they can be rebuilt on split.
 	for _, fork := range self.forks {
@@ -1050,7 +1062,7 @@ func (self *Node) reset() error {
 }
 
 func (self *Node) getFatalError() (string, string, string, []string) {
-	self.refreshMetadata()
+	self.loadMetadata()
 	for _, metadata := range self.collectMetadatas() {
 		if !metadata.exists("errors") {
 			continue
@@ -1090,16 +1102,13 @@ func (self *Node) parseFqname(fqname string) (string, int, int) {
 	}
 	r = regexp.MustCompile("(.*)\\.fork(\\d+)$")
 	if match := r.FindStringSubmatch(fqname); match != nil {
-		forkIndex, _ :=strconv.Atoi(match[2])
+		forkIndex, _ := strconv.Atoi(match[2])
 		return match[1], forkIndex, -1
 	}
 	return "", -1, -1
 }
 
 func (self *Node) refreshState() {
-	if self.state == "none" {
-		self.refreshMetadata()
-	}
 	files, _ := filepath.Glob(path.Join(self.runPath, "*"))
 	for _, file := range files {
 		// Get state
@@ -1260,6 +1269,7 @@ func (self *Stagestance) getNode() *Node   { return self.node }
 func (self *Stagestance) GetState() string { return self.getNode().getState() }
 func (self *Stagestance) Step()            { self.getNode().step() }
 func (self *Stagestance) RefreshState()    { self.getNode().refreshState() }
+func (self *Stagestance) LoadMetadata()    { self.getNode().loadMetadata() }
 func (self *Stagestance) GetFatalError() (string, string, string, []string) {
 	return self.getNode().getFatalError()
 }
@@ -1314,10 +1324,11 @@ func (self *Pipestance) GetPname() string     { return self.node.name }
 func (self *Pipestance) GetPsid() string      { return self.node.parent.getNode().name }
 func (self *Pipestance) GetFQName() string    { return self.node.fqname }
 func (self *Pipestance) GetInvokeSrc() string { return self.invokeSrc }
+func (self *Pipestance) RefreshState()        { self.node.refreshState() }
 
-func (self *Pipestance) RefreshState() {
+func (self *Pipestance) LoadMetadata() {
 	for _, node := range self.node.allNodes() {
-		node.refreshState()
+		node.loadMetadata()
 	}
 }
 
@@ -1347,7 +1358,7 @@ func (self *Pipestance) GetState() string {
 }
 
 func (self *Pipestance) RestartRunningNodes() error {
-	self.RefreshState()
+	self.LoadMetadata()
 	nodes := self.node.allNodes()
 	for _, node := range nodes {
 		if node.state == "running" {
@@ -1498,7 +1509,7 @@ func NewTopNode(rt *Runtime, psid string, p string) *TopNode {
 	self.node.parent = nil
 	self.node.path = p
 	self.node.rt = rt
-	self.node.runPath = path.Join(self.node.path, "_run")
+	self.node.runPath = path.Join(self.node.path, "run")
 	self.node.fqname = "ID." + psid
 	self.node.name = psid
 	return self

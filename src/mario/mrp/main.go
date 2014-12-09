@@ -32,6 +32,8 @@ func runLoop(pipestance *core.Pipestance, stepSecs int, disableVDR bool,
 	showedFailed := false
 	WAIT_SECS := 6
 
+	pipestance.LoadMetadata()
+
 	for {
 		pipestance.RefreshState()
 
