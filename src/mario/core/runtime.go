@@ -76,8 +76,11 @@ func (self *Metadata) getState(name string) (string, bool) {
 	if self.exists("complete") {
 		return name + "complete", true
 	}
-	if self.exists("jobinfo") {
+	if self.exists("log") {
 		return name + "running", true
+	}
+	if self.exists("jobinfo") {
+		return name + "queued", true
 	}
 	return "", false
 }
@@ -413,8 +416,10 @@ func (self *Chunk) getState() string {
 	return self.state
 }
 
-func (self *Chunk) setState(state string) {
-	self.state = state
+func (self *Chunk) updateState(state string) {
+	if self.state == "queued" || self.state == "running" {
+		self.state = state
+	}
 }
 
 func (self *Chunk) loadMetadata() {
@@ -433,7 +438,7 @@ func (self *Chunk) step() {
 	} else {
 		self.hasBeenRun = true
 	}
-	self.state = "running"
+	self.state = "queued"
 
 	//
 	// Process __threads and __mem_gb requested by stage split.
@@ -617,7 +622,7 @@ func (self *Fork) getChunkState() (string, bool) {
 		}
 		// If every chunk is running or complete, we're complete.
 		every = true
-		runningStates := map[string]bool{"running": true, "complete": true}
+		runningStates := map[string]bool{"queued": true, "running": true, "complete": true}
 		for _, chunk := range self.chunks {
 			if _, ok := runningStates[chunk.getState()]; !ok {
 				every = false
@@ -667,8 +672,10 @@ func (self *Fork) getState() string {
 	return self.state
 }
 
-func (self *Fork) setState(state string) {
-	self.state = state
+func (self *Fork) updateState(state string) {
+	if strings.HasSuffix(self.state, "_running") || strings.HasSuffix(self.state, "_queued") {
+		self.state = state
+	}
 }
 
 func (self *Fork) getChunk(index int) *Chunk {
@@ -678,7 +685,7 @@ func (self *Fork) getChunk(index int) *Chunk {
 func (self *Fork) step() {
 	if self.node.kind == "stage" {
 		state := self.getState()
-		if !strings.HasSuffix(state, "_running") {
+		if !strings.HasSuffix(state, "_running") && !strings.HasSuffix(state, "_queued") {
 			statePad := strings.Repeat(" ", 15-len(state))
 			LogInfo("runtime", "(%s)%s %s", state, statePad, self.node.fqname)
 		}
@@ -688,7 +695,7 @@ func (self *Fork) step() {
 			if self.node.split {
 				if !self.split_has_run {
 					self.split_has_run = true
-					self.state = "split_running"
+					self.state = "split_queued"
 					// Default memory to -1 for no limit.
 					self.node.runSplit(self.fqname, self.split_metadata)
 				}
@@ -735,7 +742,7 @@ func (self *Fork) step() {
 				self.join_metadata.write("outs", makeOutArgs(self.node.outparams, self.metadata.filesPath))
 				if !self.join_has_run {
 					self.join_has_run = true
-					self.state = "join_running"
+					self.state = "join_queued"
 					self.node.runJoin(self.fqname, self.join_metadata)
 				}
 			} else {
@@ -1069,6 +1076,12 @@ func (self *Node) reset() error {
 		LogInfo("runtime", "mrp cannot reset the stage because its folder contents could not be deleted. Error was:\n\n%s\n\nPlease resolve the error in order to continue running the pipeline.", err.Error())
 		return err
 	}
+	// Remove all files from run directory.
+	if files, err := filepath.Glob(path.Join(self.runPath, "*")); err == nil {
+		for _, file := range files {
+			os.Remove(file)
+		}
+	}
 
 	// Re-create the folders.
 	// This will also clear all the metadata in-memory caches.
@@ -1131,39 +1144,34 @@ func (self *Node) step() {
 	}
 }
 
-func (self *Node) parseFqname(fqname string) (string, int, int) {
-	r := regexp.MustCompile("(.*)\\.fork(\\d+)\\.chnk(\\d+)$")
+func (self *Node) parseRunFilename(fqname string) (string, int, int, string) {
+	r := regexp.MustCompile("(.*)\\.fork(\\d+)\\.chnk(\\d+)\\.(.*)$")
 	if match := r.FindStringSubmatch(fqname); match != nil {
 		forkIndex, _ := strconv.Atoi(match[2])
 		chunkIndex, _ := strconv.Atoi(match[3])
-		return match[1], forkIndex, chunkIndex
+		return match[1], forkIndex, chunkIndex, match[4]
 	}
-	r = regexp.MustCompile("(.*)\\.fork(\\d+)$")
+	r = regexp.MustCompile("(.*)\\.fork(\\d+)\\.(.*)$")
 	if match := r.FindStringSubmatch(fqname); match != nil {
 		forkIndex, _ := strconv.Atoi(match[2])
-		return match[1], forkIndex, -1
+		return match[1], forkIndex, -1, match[3]
 	}
-	return "", -1, -1
+	return "", -1, -1, ""
 }
 
 func (self *Node) refreshState() {
 	files, _ := filepath.Glob(path.Join(self.runPath, "*"))
 	for _, file := range files {
-		// Get state
-		bytes, _ := ioutil.ReadFile(file)
-		state := string(bytes)
+		filename := path.Base(file)
+		fqname, forkIndex, chunkIndex, state := self.parseRunFilename(filename)
 
-		// Parse fqname to get fork and chunk indices
-		fqname := path.Base(file)
-		fqnameNode, forkIndex, chunkIndex := self.parseFqname(fqname)
-
-		node := self.find(fqnameNode)
+		node := self.find(fqname)
 		fork := node.getFork(forkIndex)
 		if chunkIndex >= 0 {
 			chunk := fork.getChunk(chunkIndex)
-			chunk.setState(state)
+			chunk.updateState(state)
 		} else {
-			fork.setState(state)
+			fork.updateState(state)
 		}
 		os.Remove(file)
 	}
@@ -1368,8 +1376,12 @@ func (self *Pipestance) GetInvokeSrc() string { return self.invokeSrc }
 func (self *Pipestance) RefreshState()        { self.node.refreshState() }
 
 func (self *Pipestance) LoadMetadata() {
-	for _, node := range self.node.allNodes() {
+	nodes := self.node.allNodes()
+	for _, node := range nodes {
 		node.loadMetadata()
+	}
+	for _, node := range nodes {
+		node.state = node.getState()
 	}
 }
 
