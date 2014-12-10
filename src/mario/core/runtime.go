@@ -85,7 +85,28 @@ func (self *Metadata) getState(name string) (string, bool) {
 	return "", false
 }
 
-func (self *Metadata) cache() {
+func (self *Metadata) updateState(state string) {
+	if strings.HasSuffix(state, "failed") {
+		self.cache("errors")
+	}
+	if strings.HasSuffix(state, "complete") {
+		self.cache("complete")
+	}
+	if strings.HasSuffix(state, "running") {
+		self.cache("log")
+	}
+	if strings.HasSuffix(state, "queued") {
+		self.cache("jobinfo")
+	}
+}
+
+func (self *Metadata) cache(name string) {
+	self.mutex.Lock()
+	self.contents[name] = true
+	self.mutex.Unlock()
+}
+
+func (self *Metadata) loadCache() {
 	if !self.exists("complete") {
 		paths := self.glob()
 		self.mutex.Lock()
@@ -134,7 +155,6 @@ func (self *Metadata) remove(name string) { os.Remove(self.makePath(name)) }
 
 func (self *Metadata) serialize() interface{} {
 	names := []string{}
-	self.cache()
 	self.mutex.Lock()
 	for content, _ := range self.contents {
 		names = append(names, content)
@@ -369,7 +389,6 @@ type Chunk struct {
 	fqname     string
 	metadata   *Metadata
 	hasBeenRun bool
-	state      string
 }
 
 func NewChunk(nodable Nodable, fork *Fork, index int, chunkDef map[string]interface{}) *Chunk {
@@ -382,7 +401,6 @@ func NewChunk(nodable Nodable, fork *Fork, index int, chunkDef map[string]interf
 	self.fqname = fork.fqname + fmt.Sprintf(".chnk%d", index)
 	self.metadata = NewMetadata(self.fqname, self.path)
 	self.hasBeenRun = false
-	self.state = "none"
 	if !self.node.split {
 		// If we're not splitting, just set the sole chunk's filesPath
 		// to the filesPath of the parent fork, to save a pseudo-join copy.
@@ -401,7 +419,7 @@ func (self *Chunk) mkdirs() {
 	self.metadata.idemMkdirs()
 }
 
-func (self *Chunk) initState() string {
+func (self *Chunk) getState() string {
 	if state, ok := self.metadata.getState(""); ok {
 		return state
 	} else {
@@ -409,22 +427,8 @@ func (self *Chunk) initState() string {
 	}
 }
 
-func (self *Chunk) getState() string {
-	if self.state == "none" {
-		self.state = self.initState()
-	}
-	return self.state
-}
-
 func (self *Chunk) updateState(state string) {
-	if self.state == "queued" || self.state == "running" {
-		self.state = state
-	}
-}
-
-func (self *Chunk) loadMetadata() {
-	self.metadata.cache()
-	self.state = self.initState()
+	self.metadata.updateState(state)
 }
 
 func (self *Chunk) step() {
@@ -438,7 +442,7 @@ func (self *Chunk) step() {
 	} else {
 		self.hasBeenRun = true
 	}
-	self.state = "queued"
+	self.metadata.updateState("queued")
 
 	//
 	// Process __threads and __mem_gb requested by stage split.
@@ -511,7 +515,6 @@ type Fork struct {
 	index          int
 	path           string
 	fqname         string
-	state          string
 	metadata       *Metadata
 	split_metadata *Metadata
 	join_metadata  *Metadata
@@ -533,7 +536,6 @@ func NewFork(nodable Nodable, index int, argPermute map[string]interface{}) *For
 	self.argPermute = argPermute
 	self.split_has_run = false
 	self.join_has_run = false
-	self.state = "none"
 	// reconstruct chunks using chunk_defs on reattach, do not rely
 	// on metadata.exists('chunk_defs') since it may not be cached
 	self.chunks = []*Chunk{}
@@ -557,17 +559,6 @@ func (self *Fork) collectMetadatas() []*Metadata {
 		metadatas = append(metadatas, chunk.metadata)
 	}
 	return metadatas
-}
-
-func (self *Fork) loadMetadata() {
-	metadatas := []*Metadata{self.metadata, self.split_metadata, self.join_metadata}
-	for _, metadata := range metadatas {
-		metadata.cache()
-	}
-	for _, chunk := range self.chunks {
-		chunk.loadMetadata()
-	}
-	self.state = self.initState()
 }
 
 func (self *Fork) mkdirs() {
@@ -601,12 +592,21 @@ func (self *Fork) verifyOutput() (bool, string) {
 	return ret, msg
 }
 
-func (self *Fork) getChunkState() (string, bool) {
+func (self *Fork) getState() string {
+	if self.metadata.exists("errors") {
+		return "failed"
+	}
+	if self.metadata.exists("complete") {
+		return "complete"
+	}
+	if state, ok := self.join_metadata.getState("join_"); ok {
+		return state
+	}
 	if len(self.chunks) > 0 {
 		// If any chunks have failed, we're failed.
 		for _, chunk := range self.chunks {
 			if chunk.getState() == "failed" {
-				return "failed", true
+				return "failed"
 			}
 		}
 		// If every chunk is complete, we're complete.
@@ -618,9 +618,9 @@ func (self *Fork) getChunkState() (string, bool) {
 			}
 		}
 		if every {
-			return "chunks_complete", true
+			return "chunks_complete"
 		}
-		// If every chunk is running or complete, we're complete.
+		// If every chunk is queued, running, or complete, we're complete.
 		every = true
 		runningStates := map[string]bool{"queued": true, "running": true, "complete": true}
 		for _, chunk := range self.chunks {
@@ -630,24 +630,8 @@ func (self *Fork) getChunkState() (string, bool) {
 			}
 		}
 		if every {
-			return "chunks_running", true
+			return "chunks_running"
 		}
-	}
-	return "", false
-}
-
-func (self *Fork) initState() string {
-	if self.metadata.exists("errors") {
-		return "failed"
-	}
-	if self.metadata.exists("complete") {
-		return "complete"
-	}
-	if state, ok := self.join_metadata.getState("join_"); ok {
-		return state
-	}
-	if state, ok := self.getChunkState(); ok {
-		return state
 	}
 	if state, ok := self.split_metadata.getState("split_"); ok {
 		return state
@@ -655,26 +639,13 @@ func (self *Fork) initState() string {
 	return "ready"
 }
 
-func (self *Fork) getState() string {
-	if self.state == "none" {
-		self.state = self.initState()
-	} else {
-		if self.state == "failed" || self.state == "complete" {
-			return self.state
-		}
-		if strings.HasPrefix(self.state, "join_") {
-			return self.state
-		}
-		if state, ok := self.getChunkState(); ok {
-			return state
-		}
-	}
-	return self.state
-}
-
 func (self *Fork) updateState(state string) {
-	if strings.HasSuffix(self.state, "_running") || strings.HasSuffix(self.state, "_queued") {
-		self.state = state
+	if strings.HasPrefix(state, "split_") {
+		self.split_metadata.updateState(state)
+	} else if strings.HasPrefix(state, "join_") {
+		self.join_metadata.updateState(state)
+	} else {
+		self.metadata.updateState(state)
 	}
 }
 
@@ -695,26 +666,26 @@ func (self *Fork) step() {
 			if self.node.split {
 				if !self.split_has_run {
 					self.split_has_run = true
-					self.state = "split_queued"
+					self.split_metadata.updateState("split_queued")
 					// Default memory to -1 for no limit.
 					self.node.runSplit(self.fqname, self.split_metadata)
 				}
 			} else {
-				self.state = "split_complete"
+				self.split_metadata.updateState("split_complete")
 				self.split_metadata.write("chunk_defs", []interface{}{map[string]interface{}{}})
 				self.split_metadata.writeTime("complete")
 			}
 		} else if state == "split_complete" {
 			chunkDefs := self.split_metadata.read("chunk_defs")
 			if _, ok := chunkDefs.([]interface{}); !ok {
-				self.state = "split_failed"
+				self.split_metadata.updateState("split_failed")
 				self.split_metadata.idemMkdirs()
 				self.split_metadata.writeRaw("errors", "The split method must return an array of chunk def dicts but did not.\n")
 			} else {
 				if len(self.chunks) == 0 {
 					for i, chunkDef := range chunkDefs.([]interface{}) {
 						if _, ok := chunkDef.(map[string]interface{}); !ok {
-							self.state = "split_failed"
+							self.split_metadata.updateState("split_failed")
 							self.split_metadata.idemMkdirs()
 							self.split_metadata.writeRaw("errors", "The split method must return an array of chunk def dicts but did not.\n")
 							break
@@ -727,7 +698,6 @@ func (self *Fork) step() {
 				for _, chunk := range self.chunks {
 					chunk.step()
 				}
-				self.state = "chunks_running"
 			}
 		} else if state == "chunks_complete" {
 			self.join_metadata.write("args", resolveBindings(self.node.argbindings, self.argPermute))
@@ -742,21 +712,21 @@ func (self *Fork) step() {
 				self.join_metadata.write("outs", makeOutArgs(self.node.outparams, self.metadata.filesPath))
 				if !self.join_has_run {
 					self.join_has_run = true
-					self.state = "join_queued"
+					self.join_metadata.updateState("join_queued")
 					self.node.runJoin(self.fqname, self.join_metadata)
 				}
 			} else {
-				self.state = "join_complete"
+				self.join_metadata.updateState("join_complete")
 				self.join_metadata.write("outs", self.chunks[0].metadata.read("outs"))
 				self.join_metadata.writeTime("complete")
 			}
 		} else if state == "join_complete" {
 			self.metadata.write("outs", self.join_metadata.read("outs"))
 			if ok, msg := self.verifyOutput(); ok {
-				self.state = "complete"
+				self.metadata.updateState("complete")
 				self.metadata.writeTime("complete")
 			} else {
-				self.state = "failed"
+				self.metadata.updateState("failed")
 				self.metadata.writeRaw("errors", msg)
 			}
 		}
@@ -764,10 +734,10 @@ func (self *Fork) step() {
 	} else if self.node.kind == "pipeline" {
 		self.metadata.write("outs", resolveBindings(self.node.retbindings, self.argPermute))
 		if ok, msg := self.verifyOutput(); ok {
-			self.state = "complete"
+			self.metadata.updateState("complete")
 			self.metadata.writeTime("complete")
 		} else {
-			self.state = "failed"
+			self.metadata.updateState("failed")
 			self.metadata.writeRaw("errors", msg)
 		}
 	}
@@ -1029,8 +999,9 @@ func (self *Node) collectMetadatas() []*Metadata {
 }
 
 func (self *Node) loadMetadata() {
-	for _, fork := range self.forks {
-		fork.loadMetadata()
+	metadatas := self.collectMetadatas()
+	for _, metadata := range metadatas {
+		metadata.loadCache()
 	}
 	self.state = self.getState()
 	self.addFrontierNode(self)
@@ -1089,7 +1060,7 @@ func (self *Node) reset() error {
 	self.mkdirs(&rewg)
 	rewg.Wait()
 
-	// Reload the metadata.
+	// Load the metadata.
 	self.loadMetadata()
 
 	// Clear chunks in the forks so they can be rebuilt on split.
@@ -1100,7 +1071,6 @@ func (self *Node) reset() error {
 }
 
 func (self *Node) getFatalError() (string, string, string, []string) {
-	self.loadMetadata()
 	for _, metadata := range self.collectMetadatas() {
 		if !metadata.exists("errors") {
 			continue
@@ -1376,12 +1346,10 @@ func (self *Pipestance) GetInvokeSrc() string { return self.invokeSrc }
 func (self *Pipestance) RefreshState()        { self.node.refreshState() }
 
 func (self *Pipestance) LoadMetadata() {
-	nodes := self.node.allNodes()
-	for _, node := range nodes {
+	// We used to make this concurrent but ended up with too many
+	// goroutines (Pranav's 96-sample run).
+	for _, node := range self.node.allNodes() {
 		node.loadMetadata()
-	}
-	for _, node := range nodes {
-		node.state = node.getState()
 	}
 }
 
@@ -1784,7 +1752,7 @@ func (self *Runtime) InvokeStage(src string, srcPath string, ssid string,
 
 func (self *Runtime) GetSerialization(pipestancePath string) (interface{}, bool) {
 	metadata := NewMetadata("", pipestancePath)
-	metadata.cache()
+	metadata.loadCache()
 	if metadata.exists("finalstate") {
 		return metadata.read("finalstate"), true
 	}
