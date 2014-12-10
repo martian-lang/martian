@@ -29,6 +29,7 @@ type Metadata struct {
 	path      string
 	contents  map[string]bool
 	filesPath string
+	allLoaded bool
 	mutex     *sync.Mutex
 }
 
@@ -38,6 +39,7 @@ func NewMetadata(fqname string, p string) *Metadata {
 	self.path = p
 	self.contents = map[string]bool{}
 	self.filesPath = path.Join(p, "files")
+	self.allLoaded = false
 	self.mutex = &sync.Mutex{}
 	return self
 }
@@ -107,7 +109,7 @@ func (self *Metadata) cache(name string) {
 }
 
 func (self *Metadata) loadCache() {
-	if !self.exists("complete") {
+	if !self.allLoaded {
 		paths := self.glob()
 		self.mutex.Lock()
 		self.contents = map[string]bool{}
@@ -115,6 +117,9 @@ func (self *Metadata) loadCache() {
 			self.contents[path.Base(p)[1:]] = true
 		}
 		self.mutex.Unlock()
+		if self.exists("complete") {
+			self.allLoaded = true
+		}
 	}
 }
 
@@ -155,6 +160,7 @@ func (self *Metadata) remove(name string) { os.Remove(self.makePath(name)) }
 
 func (self *Metadata) serialize() interface{} {
 	names := []string{}
+	self.loadCache()
 	self.mutex.Lock()
 	for content, _ := range self.contents {
 		names = append(names, content)
