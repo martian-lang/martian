@@ -103,7 +103,7 @@ html(ng-app="app" ng-controller="MarioGraphCtrl")
                     td(style="width: 85px") State
                     td 
                         span.minibox(ng-class="node.state") {{node.state}}
-                        button.btn.btn-default.btn-xs(ng-if="node.state == 'failed' && showRestart && admin" ng-click="restart()" style="margin-left: 10px") Restart
+                        button.btn.btn-default.btn-xs(ng-if="info.state == 'failed' && node.state == 'failed' && showRestart && admin" ng-click="restart()" style="margin-left: 10px") Restart
                 tr
                     td FQName
                     td {{node.fqname}}
