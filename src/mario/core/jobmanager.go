@@ -12,12 +12,17 @@ import (
 	"os"
 	"os/exec"
 	"path"
+	"regexp"
 	"runtime"
+	"strconv"
 	"strings"
 	"sync"
+	"time"
 
 	"github.com/cloudfoundry/gosigar"
 )
+
+const JOB_SUBMIT_DELAY = 10 // 10 minutes
 
 //
 // Semaphore implementation
@@ -82,13 +87,13 @@ func NewLocalJobManager(userMaxCores int, userMaxMemGB int, debug bool) *LocalJo
 	if userMaxCores > 0 {
 		// If user specified --Maxcores, use that value for Max usable cores.
 		self.maxCores = userMaxCores
-		LogInfo("jobmgr", "Using %d core%s, per --Maxcores option.",
+		LogInfo("jobmngr", "Using %d core%s, per --maxcores option.",
 			self.maxCores, Pluralize(self.maxCores))
 	} else {
 		// Otherwise, set Max usable cores to total number of cores reported
 		// by the system.
 		self.maxCores = runtime.NumCPU()
-		LogInfo("jobmgr", "Using %d core%s available on system.",
+		LogInfo("jobmngr", "Using %d core%s available on system.",
 			self.maxCores, Pluralize(self.maxCores))
 	}
 
@@ -96,7 +101,7 @@ func NewLocalJobManager(userMaxCores int, userMaxMemGB int, debug bool) *LocalJo
 	if userMaxMemGB > 0 {
 		// If user specified --Maxmem, use that value for Max usable GB.
 		self.maxMemGB = userMaxMemGB
-		LogInfo("jobmgr", "Using %d GB, per --Maxmem option.", self.maxMemGB)
+		LogInfo("jobmngr", "Using %d GB, per --maxmem option.", self.maxMemGB)
 	} else {
 		// Otherwise, set Max usable GB to MAXMEM_FRACTION * GB of total
 		// memory reported by the system.
@@ -109,7 +114,7 @@ func NewLocalJobManager(userMaxCores int, userMaxMemGB int, debug bool) *LocalJo
 			sysMemGB = 1
 		}
 		self.maxMemGB = sysMemGB
-		LogInfo("jobmgr", "Using %d GB, %d%% of system memory.", self.maxMemGB,
+		LogInfo("jobmngr", "Using %d GB, %d%% of system memory.", self.maxMemGB,
 			int(MAXMEM_FRACTION*100))
 	}
 
@@ -129,7 +134,7 @@ func (self *LocalJobManager) Enqueue(cmd *exec.Cmd, threads int, memGB int,
 		}
 		if threads > self.maxCores {
 			if self.debug {
-				LogInfo("jobmgr", "Need %d core%s but settling for %d.", threads,
+				LogInfo("jobmngr", "Need %d core%s but settling for %d.", threads,
 					Pluralize(threads), self.maxCores)
 			}
 			threads = self.maxCores
@@ -141,7 +146,7 @@ func (self *LocalJobManager) Enqueue(cmd *exec.Cmd, threads int, memGB int,
 		}
 		if memGB > self.maxMemGB {
 			if self.debug {
-				LogInfo("jobmgr", "Need %d GB but settling for %d.", memGB,
+				LogInfo("jobmngr", "Need %d GB but settling for %d.", memGB,
 					self.maxMemGB)
 			}
 			memGB = self.maxMemGB
@@ -149,25 +154,25 @@ func (self *LocalJobManager) Enqueue(cmd *exec.Cmd, threads int, memGB int,
 
 		// Acquire cores.
 		if self.debug {
-			LogInfo("jobmgr", "Waiting for %d core%s", threads, Pluralize(threads))
+			LogInfo("jobmngr", "Waiting for %d core%s", threads, Pluralize(threads))
 		}
 		self.coreSem.P(threads)
 		if self.debug {
-			LogInfo("jobmgr", "Acquiring %d core%s (%d/%d in use)", threads,
+			LogInfo("jobmngr", "Acquiring %d core%s (%d/%d in use)", threads,
 				Pluralize(threads), self.coreSem.len(), self.maxCores)
 		}
 
 		// Acquire memory.
 		if self.debug {
-			LogInfo("jobmgr", "Waiting for %d GB", memGB)
+			LogInfo("jobmngr", "Waiting for %d GB", memGB)
 		}
 		self.memGBSem.P(memGB)
 		if self.debug {
-			LogInfo("jobmgr", "Acquired %d GB (%d/%d in use)", memGB,
+			LogInfo("jobmngr", "Acquired %d GB (%d/%d in use)", memGB,
 				self.memGBSem.len(), self.maxMemGB)
 		}
 		if self.debug {
-			LogInfo("jobmgr", "%d goroutines", runtime.NumGoroutine())
+			LogInfo("jobmngr", "%d goroutines", runtime.NumGoroutine())
 		}
 
 		// Set up _stdout and _stderr for the job.
@@ -194,13 +199,13 @@ func (self *LocalJobManager) Enqueue(cmd *exec.Cmd, threads int, memGB int,
 		// Release cores.
 		self.coreSem.V(threads)
 		if self.debug {
-			LogInfo("jobmgr", "Released %d core%s (%d/%d in use)", threads,
+			LogInfo("jobmngr", "Released %d core%s (%d/%d in use)", threads,
 				Pluralize(threads), self.coreSem.len(), self.maxCores)
 		}
 		// Release memory.
 		self.memGBSem.V(memGB)
 		if self.debug {
-			LogInfo("jobmgr", "Released %d GB (%d/%d in use)", memGB,
+			LogInfo("jobmngr", "Released %d GB (%d/%d in use)", memGB,
 				self.memGBSem.len(), self.maxMemGB)
 		}
 	}()
@@ -229,16 +234,30 @@ func (self *LocalJobManager) execJob(shellCmd string, argv []string, metadata *M
 	self.Enqueue(cmd, threads, memGB, stdoutPath, stderrPath, errorsPath)
 }
 
+type JobMonitor struct {
+	jobId      int
+	metadata   *Metadata
+	submitTime time.Time
+}
+
 type RemoteJobManager struct {
-	jobMode     string
-	jobTemplate string
-	jobCmd      string
+	jobMode          string
+	jobTemplate      string
+	jobCmd           string
+	monitorCmd       string
+	monitorList      []*JobMonitor
+	monitorListMutex *sync.Mutex
 }
 
 func NewRemoteJobManager(jobMode string) *RemoteJobManager {
 	self := &RemoteJobManager{}
 	self.jobMode = jobMode
-	_, _, self.jobCmd, self.jobTemplate = verifyJobManagerFiles(jobMode)
+	self.monitorList = []*JobMonitor{}
+	self.monitorListMutex = &sync.Mutex{}
+	_, _, self.jobCmd, self.monitorCmd, self.jobTemplate = verifyJobManagerFiles(jobMode)
+	if len(self.monitorCmd) > 0 {
+		self.processMonitorList()
+	}
 	return self
 }
 
@@ -293,43 +312,99 @@ func (self *RemoteJobManager) execJob(shellCmd string, argv []string, metadata *
 
 	cmd := exec.Command(self.jobCmd, metadata.makePath("jobscript"))
 	cmd.Dir = metadata.filesPath
-	if _, err := cmd.CombinedOutput(); err != nil {
+	if output, err := cmd.CombinedOutput(); err != nil {
 		metadata.writeRaw("errors", "jobcmd error:\n"+err.Error())
+	} else {
+		// Get job ID from output and write to metadata file
+		r := regexp.MustCompile("[0-9]+")
+		if jobIdString := r.FindString(string(output)); len(jobIdString) > 0 {
+			jobId, _ := strconv.Atoi(jobIdString)
+			metadata.writeRaw("jobid", jobIdString)
+			if len(self.monitorCmd) > 0 {
+				self.monitorListMutex.Lock()
+				self.monitorList = append(self.monitorList, &JobMonitor{jobId, metadata, time.Now()})
+				self.monitorListMutex.Unlock()
+			}
+		}
 	}
+}
+
+func (self *RemoteJobManager) copyAndClearMonitorList() []*JobMonitor {
+	self.monitorListMutex.Lock()
+	monitorList := make([]*JobMonitor, len(self.monitorList))
+	copy(monitorList, self.monitorList)
+	self.monitorList = []*JobMonitor{}
+	self.monitorListMutex.Unlock()
+	return monitorList
+}
+
+func (self *RemoteJobManager) processMonitorList() {
+	go func() {
+		for {
+			monitorList := self.copyAndClearMonitorList()
+			for _, monitor := range monitorList {
+				if time.Since(monitor.submitTime) < time.Minute*JOB_SUBMIT_DELAY {
+					monitorList = append(monitorList, monitor)
+					continue
+				}
+				monitorCmd := fmt.Sprintf("%s %d", self.monitorCmd, monitor.jobId)
+				monitorCmdParts := strings.Split(monitorCmd, " ")
+				cmd := exec.Command(monitorCmdParts[0], monitorCmdParts[1:]...)
+				if err := cmd.Run(); err != nil {
+					monitor.metadata.cache()
+					if monitor.metadata.exists("complete") {
+						// Job has completed successfully
+						continue
+					}
+					if !monitor.metadata.exists("errors") {
+						// Job was killed by cluster resource manager
+						monitor.metadata.writeRaw("errors", fmt.Sprintf("Job was killed by %s.",
+							self.jobMode))
+					}
+				} else {
+					monitorList = append(monitorList, monitor)
+				}
+			}
+			self.monitorListMutex.Lock()
+			self.monitorList = append(self.monitorList, monitorList...)
+			self.monitorListMutex.Unlock()
+			time.Sleep(time.Minute * time.Duration(5))
+		}
+	}()
 }
 
 //
 // Helper functions for job manager file parsing
 //
 
-func verifyJobManagerFiles(jobMode string) (string, map[string]interface{}, string, string) {
+func verifyJobManagerFiles(jobMode string) (string, map[string]interface{}, string, string, string) {
 	jobPath := RelPath(path.Join("..", "jobmanagers"))
 
 	// Check for existence of job manager JSON file
 	jobJsonFile := path.Join(jobPath, "config.json")
 	if _, err := os.Stat(jobJsonFile); os.IsNotExist(err) {
-		LogError(err, "jobmgr", "JobManagerJsonPathError: job config file %s does not exist", jobJsonFile)
+		LogError(err, "jobmngr", "Job manager config file %s does not exist.", jobJsonFile)
 		os.Exit(1)
 	}
-	LogInfo("jobmgr", "Job config: %s", jobJsonFile)
+	LogInfo("jobmngr", "Job config: %s", jobJsonFile)
 	bytes, _ := ioutil.ReadFile(jobJsonFile)
 
 	// Parse job manager JSON file
 	var jobJson map[string]interface{}
 	if err := json.Unmarshal(bytes, &jobJson); err != nil {
-		LogError(err, "jobmgr", "JobManagerJsonError: job config file %s does not contain valid JSON", jobJsonFile)
+		LogError(err, "jobmngr", "Job manager config file %s does not contain valid JSON.", jobJsonFile)
 		os.Exit(1)
 	}
 
 	// Check if job mode is supported by default
 	jobCmdsJson, ok := jobJson["jobcmd"]
 	if !ok {
-		LogInfo("jobmgr", "JobManagerJsonError: job config file %s does not contain 'jobcmd' field", jobJsonFile)
+		LogInfo("jobmngr", "Job manager config file %s does not contain 'jobcmd' field.", jobJsonFile)
 		os.Exit(1)
 	}
 	jobCmds, ok := jobCmdsJson.(map[string]interface{})
 	if !ok {
-		LogInfo("jobmgr", "JobManagerJsonError: job config file %s has non-map 'jobcmd' field", jobJsonFile)
+		LogInfo("jobmngr", "Job manager config file %s has non-map 'jobcmd' field.", jobJsonFile)
 		os.Exit(1)
 	}
 	jobTemplateFile := jobMode
@@ -337,47 +412,73 @@ func verifyJobManagerFiles(jobMode string) (string, map[string]interface{}, stri
 	val, ok := jobCmds[jobMode]
 	if ok {
 		if jobCmd, ok = val.(string); !ok {
-			LogInfo("jobmgr", "JobManagerJsonError: job config file %s has non-string 'jobcmd[%s]' field", jobJsonFile, jobMode)
+			LogInfo("jobmngr", "Job manager config file %s has non-string 'jobcmd[%s]' field.", jobJsonFile, jobMode)
 			os.Exit(1)
 		}
 		jobTemplateFile = path.Join(jobPath, fmt.Sprintf("%s.template", jobCmd))
 	} else {
 		if !strings.HasSuffix(jobTemplateFile, ".template") {
-			LogInfo("jobmgr", "JobTemplateFilenameError: job template file %s must have name <jobcmd>.template", jobTemplateFile)
+			LogInfo("jobmngr", "Job manager template file %s must be named <name_of_job_submit_cmd>.template.", jobTemplateFile)
 			os.Exit(1)
 		}
 		jobCmd = strings.Replace(path.Base(jobTemplateFile), ".template", "", 1)
 	}
-	LogInfo("jobmgr", "Job command: %s", jobCmd)
+	LogInfo("jobmngr", "Job submit command: %s.", jobCmd)
+
+	// Check for existence of monitor command
+	monitorCmdsJson, ok := jobJson["monitorcmd"]
+	if !ok {
+		LogInfo("jobmngr", "Job manager config file %s does not contain 'monitorcmd' field.", jobJsonFile)
+		os.Exit(1)
+	}
+	monitorCmds, ok := monitorCmdsJson.(map[string]interface{})
+	if !ok {
+		LogInfo("jobmngr", "Job manager config file %s has non-map 'monitorcmd' field.", jobJsonFile)
+		os.Exit(1)
+	}
+	monitorCmd, ok := monitorCmds[jobCmd].(string)
+	if ok {
+		monitorCmdParts := strings.Split(monitorCmd, " ")
+		LogInfo("jobmngr", "Job monitor command: %s.", monitorCmdParts[0])
+	}
 
 	// Check for existence of job manager template file
 	if _, err := os.Stat(jobTemplateFile); os.IsNotExist(err) {
-		LogError(err, "jobmgr", "JobTemplatePathError: job template file %s does not exist", jobTemplateFile)
+		LogError(err, "jobmngr", "Job manager template file %s does not exist.", jobTemplateFile)
 		os.Exit(1)
 	}
-	LogInfo("jobmgr", "Job template: %s", jobTemplateFile)
+	LogInfo("jobmngr", "Job template: %s.", jobTemplateFile)
 	bytes, _ = ioutil.ReadFile(jobTemplateFile)
 	jobTemplate := string(bytes)
-	return jobJsonFile, jobJson, jobCmd, jobTemplate
+	return jobJsonFile, jobJson, jobCmd, monitorCmd, jobTemplate
 }
 
-func verifyJobManagerEnv(jobJsonFile string, jobJson map[string]interface{}, jobCmd string) {
-	// Verify job command exists
+func verifyJobManagerEnv(jobJsonFile string, jobJson map[string]interface{}, jobCmd string, monitorCmd string) {
+	// Verify job and monitor commands exist
 	incPaths := strings.Split(os.Getenv("PATH"), ":")
 	if _, found := searchPaths(jobCmd, incPaths); !found {
-		LogInfo("jobmgr", "JobCommandPathError: searched (%s) but job command %s not found '%s'", strings.Join(incPaths, ", "), jobCmd)
+		LogInfo("jobmngr", "Searched (%s) but job command '%s' not found.",
+			strings.Join(incPaths, ", "), jobCmd)
 		os.Exit(1)
+	}
+	if len(monitorCmd) > 0 {
+		monitorCmdPath := strings.Split(monitorCmd, " ")[0]
+		if _, found := searchPaths(monitorCmdPath, incPaths); !found {
+			LogInfo("jobmngr", "JobMonitorCommandPathError: searched (%s) but job monitor command '%s' not found.",
+				strings.Join(incPaths, ", "), monitorCmdPath)
+			os.Exit(1)
+		}
 	}
 
 	// Verify environment variables
 	val, ok := jobJson["env"]
 	if !ok {
-		LogInfo("jobmgr", "JobManagerJsonError: job config file %s does not have 'env' field", jobJsonFile)
+		LogInfo("jobmngr", "Job manager config file %s does not have 'env' field.", jobJsonFile)
 		os.Exit(1)
 	}
 	valMap, ok := val.(map[string]interface{})
 	if !ok {
-		LogInfo("jobmgr", "JobManagerJsonError: job config file %s has non-map 'env' field", jobJsonFile)
+		LogInfo("jobmngr", "Job manager config file %s has non-map 'env' field.", jobJsonFile)
 		os.Exit(1)
 	}
 	entries, ok := valMap[jobCmd].([]interface{})
@@ -391,17 +492,17 @@ func verifyJobManagerEnv(jobJsonFile string, jobJson map[string]interface{}, job
 	for _, entry := range entries {
 		envMap, ok := entry.(map[string]interface{})
 		if !ok {
-			LogInfo("jobmgr", "JobManagerJsonError: job config file %s has non-map entry in 'env[%s]'", jobJsonFile, jobCmd)
+			LogInfo("jobmngr", "Job manager config file %s has non-map entry in 'env[%s]'.", jobJsonFile, jobCmd)
 			os.Exit(1)
 		}
 		env := []string{}
 		for _, field := range fields {
 			if _, ok := envMap[field]; !ok {
-				LogInfo("jobmgr", "JobManagerJsonError: job config file %s does not contain 'env[%s][%s]' field", jobJsonFile, jobCmd, field)
+				LogInfo("jobmngr", "Job manager config file %s does not contain 'env[%s][%s]' field.", jobJsonFile, jobCmd, field)
 				os.Exit(1)
 			}
 			if _, ok := envMap[field].(string); !ok {
-				LogInfo("jobmgr", "JobManagerJsonError: job config file %s has non-string 'env[%s][%s]' field", jobJsonFile, jobCmd, field)
+				LogInfo("jobmngr", "Job manager config file %s has non-string 'env[%s][%s]' field.", jobJsonFile, jobCmd, field)
 				os.Exit(1)
 			}
 			env = append(env, envMap[field].(string))
@@ -415,6 +516,6 @@ func VerifyJobManager(jobMode string) {
 	if jobMode == "local" {
 		return
 	}
-	jobJsonFile, jobJson, jobCmd, _ := verifyJobManagerFiles(jobMode)
-	verifyJobManagerEnv(jobJsonFile, jobJson, jobCmd)
+	jobJsonFile, jobJson, jobCmd, monitorCmd, _ := verifyJobManagerFiles(jobMode)
+	verifyJobManagerEnv(jobJsonFile, jobJson, jobCmd, monitorCmd)
 }

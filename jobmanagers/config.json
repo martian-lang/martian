@@ -1,4 +1,4 @@
-{  
+{
   "jobcmd":{  
     "sge":"qsub"
   },
@@ -17,5 +17,8 @@
         "description":"usually 'default'"
       }
     ]
+  },
+  "monitorcmd":{
+    "qsub":"qstat -j"
   }
 }
