@@ -9,6 +9,7 @@ import (
 	"fmt"
 	"github.com/10XDev/osext"
 	"os"
+	"os/exec"
 	"os/signal"
 	"path"
 	"regexp"
@@ -153,4 +154,13 @@ func ParseMroFlags(opts map[string]interface{}, doc string, marioOptions []strin
 			opts[id] = defval
 		}
 	}
+}
+
+func getExitCode(err error) (int, bool) {
+	if exiterr, ok := err.(*exec.ExitError); ok {
+		if status, ok := exiterr.Sys().(syscall.WaitStatus); ok {
+			return status.ExitStatus(), true
+		}
+	}
+	return 0, false
 }
