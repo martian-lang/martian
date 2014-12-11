@@ -22,7 +22,9 @@ import (
 	"github.com/cloudfoundry/gosigar"
 )
 
-const JOB_SUBMIT_DELAY = 10 // 10 minutes
+const jobSubmitDelay = 10 // 10 minutes
+const maxRetries = 5
+const retryExitCode = 513
 
 //
 // Semaphore implementation
@@ -124,10 +126,18 @@ func NewLocalJobManager(userMaxCores int, userMaxMemGB int, debug bool) *LocalJo
 	return self
 }
 
-func (self *LocalJobManager) Enqueue(cmd *exec.Cmd, threads int, memGB int,
-	stdoutPath string, stderrPath string, errorsPath string) {
+func (self *LocalJobManager) Enqueue(shellCmd string, argv []string, metadata *Metadata, threads int,
+	memGB int, fqname string, retries int, waitTime int) {
 
+	time.Sleep(time.Second * time.Duration(waitTime))
 	go func() {
+		// Exec the shell directly.
+		cmd := exec.Command(shellCmd, argv...)
+
+		stdoutPath := metadata.makePath("stdout")
+		stderrPath := metadata.makePath("stderr")
+		errorsPath := metadata.makePath("errors")
+
 		// Sanity check and cap to self.maxCores.
 		if threads < 1 {
 			threads = 1
@@ -188,11 +198,28 @@ func (self *LocalJobManager) Enqueue(cmd *exec.Cmd, threads int, memGB int,
 		}
 
 		// Run the command and wait for completion.
-		if err := cmd.Start(); err != nil {
-			ioutil.WriteFile(errorsPath, []byte(err.Error()), 0644)
-		} else {
-			if err := cmd.Wait(); err != nil {
+		var err error
+		if err = cmd.Start(); err == nil {
+			err = cmd.Wait()
+		}
+
+		// CentOS < 5.5 workaround
+		if err != nil {
+			if exitCode, ok := getExitCode(err); ok && exitCode == retryExitCode {
+				retries += 1
+				if waitTime == 0 {
+					waitTime = 2
+				} else {
+					waitTime *= 2
+				}
+			} else {
+				retries = maxRetries + 1
+			}
+			if retries > maxRetries {
 				ioutil.WriteFile(errorsPath, []byte(err.Error()), 0644)
+			} else {
+				LogInfo("jobmngr", "Job failed: %s. Retrying job %s in %d seconds", err.Error(), fqname, waitTime)
+				self.Enqueue(shellCmd, argv, metadata, threads, memGB, fqname, retries, waitTime)
 			}
 		}
 
@@ -221,17 +248,7 @@ func (self *LocalJobManager) GetMaxMemGB() int {
 
 func (self *LocalJobManager) execJob(shellCmd string, argv []string, metadata *Metadata,
 	threads int, memGB int, fqname string, shellName string) {
-
-	// Exec the shell directly.
-	cmd := exec.Command(shellCmd, argv...)
-
-	// Connect child to _stdout and _stderr metadata files.
-	stdoutPath := metadata.makePath("stdout")
-	stderrPath := metadata.makePath("stderr")
-	errorsPath := metadata.makePath("errors")
-
-	// Enqueue the command to the local job manager.
-	self.Enqueue(cmd, threads, memGB, stdoutPath, stderrPath, errorsPath)
+	self.Enqueue(shellCmd, argv, metadata, threads, memGB, fqname, 0, 0)
 }
 
 type JobMonitor struct {
@@ -343,7 +360,7 @@ func (self *RemoteJobManager) processMonitorList() {
 		for {
 			monitorList := self.copyAndClearMonitorList()
 			for _, monitor := range monitorList {
-				if time.Since(monitor.submitTime) < time.Minute*JOB_SUBMIT_DELAY {
+				if time.Since(monitor.submitTime) < time.Minute*jobSubmitDelay {
 					monitorList = append(monitorList, monitor)
 					continue
 				}
