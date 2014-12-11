@@ -33,6 +33,15 @@ func (self *RuntimeError) Error() string {
 	return fmt.Sprintf("RuntimeError: %s.", self.Msg)
 }
 
+// PipestanceNotFailedError
+type PipestanceNotFailedError struct {
+	Psid string
+}
+
+func (self *PipestanceNotFailedError) Error() string {
+	return fmt.Sprintf("RuntimeError: pipestance '%s' is not failed.", self.Psid)
+}
+
 // PipestanceNotExistsError
 type PipestanceNotExistsError struct {
 	Psid string
@@ -44,11 +53,11 @@ func (self *PipestanceNotExistsError) Error() string {
 
 // PipestanceExistsError
 type PipestanceExistsError struct {
-	psid string
+	Psid string
 }
 
 func (self *PipestanceExistsError) Error() string {
-	return fmt.Sprintf("RuntimeError: pipestance '%s' already exists.", self.psid)
+	return fmt.Sprintf("RuntimeError: pipestance '%s' already exists.", self.Psid)
 }
 
 // PreprocessError

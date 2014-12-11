@@ -1400,7 +1400,7 @@ type Runtime struct {
 	adaptersPath    string
 	marioVersion    string
 	mroVersion      string
-	pipelineTable   map[string]*Pipeline
+	callableTable   map[string]Callable
 	PipelineNames   []string
 	jobMode         string
 	JobManager      JobManager
@@ -1425,7 +1425,7 @@ func NewRuntimeWithCores(jobMode string, mroPath string, marioVersion string,
 	self.mroVersion = mroVersion
 	self.jobMode = jobMode
 	self.enableProfiling = enableProfiling
-	self.pipelineTable = map[string]*Pipeline{}
+	self.callableTable = map[string]Callable{}
 	self.PipelineNames = []string{}
 	self.stest = stest
 
@@ -1440,9 +1440,11 @@ func NewRuntimeWithCores(jobMode string, mroPath string, marioVersion string,
 	for _, fpath := range fpaths {
 		if data, err := ioutil.ReadFile(fpath); err == nil {
 			if _, ast, err := parseSource(string(data), fpath, []string{self.mroPath}, true); err == nil {
-				for _, pipeline := range ast.pipelines {
-					self.pipelineTable[pipeline.getId()] = pipeline
-					self.PipelineNames = append(self.PipelineNames, pipeline.getId())
+				for _, callable := range ast.callables.table {
+					self.callableTable[callable.getId()] = callable
+					if _, ok := callable.(*Pipeline); ok {
+						self.PipelineNames = append(self.PipelineNames, callable.getId())
+					}
 				}
 			}
 		}
@@ -1636,11 +1638,11 @@ func (self *Runtime) buildVal(param Param, val interface{}) string {
 	}
 }
 
-func (self *Runtime) BuildCallSource(incpaths []string, pname string,
+func (self *Runtime) BuildCallSource(incpaths []string, name string,
 	args map[string]interface{}) (string, error) {
 	// Make sure pipeline has been imported
-	if _, ok := self.pipelineTable[pname]; !ok {
-		return "", &RuntimeError{fmt.Sprintf("'%s' is not a declared pipeline", pname)}
+	if _, ok := self.callableTable[name]; !ok {
+		return "", &RuntimeError{fmt.Sprintf("'%s' is not a declared pipeline or stage", name)}
 	}
 
 	// Build @include statements.
@@ -1651,10 +1653,10 @@ func (self *Runtime) BuildCallSource(incpaths []string, pname string,
 	// Loop over the pipeline's in params and print a binding
 	// whether the args bag has a value for it not.
 	lines := []string{}
-	for _, param := range self.pipelineTable[pname].getInParams().list {
+	for _, param := range self.callableTable[name].getInParams().list {
 		valstr := self.buildVal(param, args[param.getId()])
 		lines = append(lines, fmt.Sprintf("    %s = %s,", param.getId(), valstr))
 	}
 	return fmt.Sprintf("%s\n\ncall %s(\n%s\n)", strings.Join(includes, "\n"),
-		pname, strings.Join(lines, "\n")), nil
+		name, strings.Join(lines, "\n")), nil
 }

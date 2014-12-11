@@ -56,9 +56,9 @@ Options:
 					}
 				}
 			}
-			pipeline, ok := input["pipeline"].(string)
+			name, ok := input["call"].(string)
 			if !ok {
-				fmt.Println("No pipeline specified.")
+				fmt.Println("No pipeline or stage specified.")
 				return
 			}
 			args, ok := input["args"].(map[string]interface{})
@@ -67,16 +67,17 @@ Options:
 				return
 			}
 
-            src, bldErr := rt.BuildCallSource(incpaths, pipeline, args)
+			src, bldErr := rt.BuildCallSource(incpaths, name, args)
 
-            if bldErr == nil {
-                fmt.Print(src)
-                os.Exit(0)
-            } else {
-                fmt.Println(bldErr)
-                os.Exit(1)
-            }
+			if bldErr == nil {
+				fmt.Print(src)
+				os.Exit(0)
+			} else {
+				fmt.Println(bldErr)
+				os.Exit(1)
+			}
 		}
+		os.Exit(1)
 	}
-    os.Exit(1)
+	os.Exit(1)
 }
