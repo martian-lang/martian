@@ -369,7 +369,6 @@ func (self *RemoteJobManager) processMonitorList() {
 				monitorCmdParts := strings.Split(monitorCmd, " ")
 				cmd := exec.Command(monitorCmdParts[0], monitorCmdParts[1:]...)
 				if err := cmd.Run(); err != nil {
-					monitor.metadata.cache()
 					if monitor.metadata.exists("complete") {
 						// Job has completed successfully
 						continue

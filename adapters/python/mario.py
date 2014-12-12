@@ -75,9 +75,9 @@ class Metadata:
         return o
 
     def write_raw(self, name, text):
-        f = open(self.make_path(name), "w")
-        f.write(text)
-        f.close()
+        with open(self.make_path(name), "w") as f:
+            f.write(text)
+        self.update_journal(name)
 
     def write(self, name, object=None):
         self.write_raw(name, json.dumps(object or "", indent=4))
@@ -90,13 +90,11 @@ class Metadata:
         f.write("%s [%s] %s\n" % (self.make_timestamp_now(), level, message))
         f.close()
 
-    def update_state(self, state):
-        if self.run_type == "main":
-            msg = state
-        else:
-            msg = "%s_%s" % (self.run_type, state)
-        run_file = "%s.%s" % (self.run_file, msg)
-        with open(run_file, 'w') as f:
+    def update_journal(self, name):
+        if self.run_type != "main":
+            name = "%s_%s" % (self.run_type, name)
+        run_file = "%s.%s" % (self.run_file, name)
+        with open(run_file, "w") as f:
             f.write(self.make_timestamp_now())
 
 class TestMetadata(Metadata):
@@ -123,7 +121,6 @@ def initialize(argv):
 
     log_time("__start__")
     starttime = time.time()
-    metadata.update_state("running")
 
     # Cache the profiling flag.
     profile_flag = (profile_flag == "profile")
@@ -182,12 +179,10 @@ def stacktrace():
 
 def fail(stacktrace):
     metadata.write_raw("errors", stacktrace)
-    metadata.update_state("failed")
     done()
 
 def complete():
     metadata.write_time("complete")
-    metadata.update_state("complete")
     done()
 
 def run(cmd):

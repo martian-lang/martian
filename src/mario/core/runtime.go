@@ -29,7 +29,6 @@ type Metadata struct {
 	path      string
 	contents  map[string]bool
 	filesPath string
-	allLoaded bool
 	mutex     *sync.Mutex
 }
 
@@ -39,7 +38,6 @@ func NewMetadata(fqname string, p string) *Metadata {
 	self.path = p
 	self.contents = map[string]bool{}
 	self.filesPath = path.Join(p, "files")
-	self.allLoaded = false
 	self.mutex = &sync.Mutex{}
 	return self
 }
@@ -87,21 +85,6 @@ func (self *Metadata) getState(name string) (string, bool) {
 	return "", false
 }
 
-func (self *Metadata) updateState(state string) {
-	if strings.HasSuffix(state, "failed") {
-		self.cache("errors")
-	}
-	if strings.HasSuffix(state, "complete") {
-		self.cache("complete")
-	}
-	if strings.HasSuffix(state, "running") {
-		self.cache("log")
-	}
-	if strings.HasSuffix(state, "queued") {
-		self.cache("jobinfo")
-	}
-}
-
 func (self *Metadata) cache(name string) {
 	self.mutex.Lock()
 	self.contents[name] = true
@@ -109,7 +92,7 @@ func (self *Metadata) cache(name string) {
 }
 
 func (self *Metadata) loadCache() {
-	if !self.allLoaded {
+	if !self.exists("complete") {
 		paths := self.glob()
 		self.mutex.Lock()
 		self.contents = map[string]bool{}
@@ -117,9 +100,6 @@ func (self *Metadata) loadCache() {
 			self.contents[path.Base(p)[1:]] = true
 		}
 		self.mutex.Unlock()
-		if self.exists("complete") {
-			self.allLoaded = true
-		}
 	}
 }
 
@@ -143,15 +123,11 @@ func (self *Metadata) read(name string) interface{} {
 }
 func (self *Metadata) writeRaw(name string, text string) {
 	ioutil.WriteFile(self.makePath(name), []byte(text), 0644)
+	self.cache(name)
 }
 func (self *Metadata) write(name string, object interface{}) {
 	bytes, _ := json.MarshalIndent(object, "", "    ")
 	self.writeRaw(name, string(bytes))
-}
-func (self *Metadata) append(name string, text string) {
-	f, _ := os.OpenFile(self.makePath(name), os.O_WRONLY|os.O_CREATE, 0644)
-	f.Write([]byte(text))
-	f.Close()
 }
 func (self *Metadata) writeTime(name string) {
 	self.writeRaw(name, Timestamp())
@@ -160,7 +136,6 @@ func (self *Metadata) remove(name string) { os.Remove(self.makePath(name)) }
 
 func (self *Metadata) serialize() interface{} {
 	names := []string{}
-	self.loadCache()
 	self.mutex.Lock()
 	for content, _ := range self.contents {
 		names = append(names, content)
@@ -434,7 +409,7 @@ func (self *Chunk) getState() string {
 }
 
 func (self *Chunk) updateState(state string) {
-	self.metadata.updateState(state)
+	self.metadata.cache(state)
 }
 
 func (self *Chunk) step() {
@@ -448,7 +423,6 @@ func (self *Chunk) step() {
 	} else {
 		self.hasBeenRun = true
 	}
-	self.metadata.updateState("queued")
 
 	//
 	// Process __threads and __mem_gb requested by stage split.
@@ -647,11 +621,11 @@ func (self *Fork) getState() string {
 
 func (self *Fork) updateState(state string) {
 	if strings.HasPrefix(state, "split_") {
-		self.split_metadata.updateState(state)
+		self.split_metadata.cache(strings.TrimPrefix(state, "split_"))
 	} else if strings.HasPrefix(state, "join_") {
-		self.join_metadata.updateState(state)
+		self.join_metadata.cache(strings.TrimPrefix(state, "join_"))
 	} else {
-		self.metadata.updateState(state)
+		self.metadata.cache(state)
 	}
 }
 
@@ -672,26 +646,22 @@ func (self *Fork) step() {
 			if self.node.split {
 				if !self.split_has_run {
 					self.split_has_run = true
-					self.split_metadata.updateState("split_queued")
 					// Default memory to -1 for no limit.
 					self.node.runSplit(self.fqname, self.split_metadata)
 				}
 			} else {
-				self.split_metadata.updateState("split_complete")
 				self.split_metadata.write("chunk_defs", []interface{}{map[string]interface{}{}})
 				self.split_metadata.writeTime("complete")
 			}
 		} else if state == "split_complete" {
 			chunkDefs := self.split_metadata.read("chunk_defs")
 			if _, ok := chunkDefs.([]interface{}); !ok {
-				self.split_metadata.updateState("split_failed")
 				self.split_metadata.idemMkdirs()
 				self.split_metadata.writeRaw("errors", "The split method must return an array of chunk def dicts but did not.\n")
 			} else {
 				if len(self.chunks) == 0 {
 					for i, chunkDef := range chunkDefs.([]interface{}) {
 						if _, ok := chunkDef.(map[string]interface{}); !ok {
-							self.split_metadata.updateState("split_failed")
 							self.split_metadata.idemMkdirs()
 							self.split_metadata.writeRaw("errors", "The split method must return an array of chunk def dicts but did not.\n")
 							break
@@ -718,21 +688,17 @@ func (self *Fork) step() {
 				self.join_metadata.write("outs", makeOutArgs(self.node.outparams, self.metadata.filesPath))
 				if !self.join_has_run {
 					self.join_has_run = true
-					self.join_metadata.updateState("join_queued")
 					self.node.runJoin(self.fqname, self.join_metadata)
 				}
 			} else {
-				self.join_metadata.updateState("join_complete")
 				self.join_metadata.write("outs", self.chunks[0].metadata.read("outs"))
 				self.join_metadata.writeTime("complete")
 			}
 		} else if state == "join_complete" {
 			self.metadata.write("outs", self.join_metadata.read("outs"))
 			if ok, msg := self.verifyOutput(); ok {
-				self.metadata.updateState("complete")
 				self.metadata.writeTime("complete")
 			} else {
-				self.metadata.updateState("failed")
 				self.metadata.writeRaw("errors", msg)
 			}
 		}
@@ -740,10 +706,8 @@ func (self *Fork) step() {
 	} else if self.node.kind == "pipeline" {
 		self.metadata.write("outs", resolveBindings(self.node.retbindings, self.argPermute))
 		if ok, msg := self.verifyOutput(); ok {
-			self.metadata.updateState("complete")
 			self.metadata.writeTime("complete")
 		} else {
-			self.metadata.updateState("failed")
 			self.metadata.writeRaw("errors", msg)
 		}
 	}
@@ -810,7 +774,7 @@ type Node struct {
 	volatile       bool
 	stagecodeLang  string
 	stagecodeCmd   string
-	runPath        string
+	journalPath    string
 }
 
 func (self *Node) getNode() *Node { return self }
@@ -824,7 +788,7 @@ func NewNode(parent Nodable, kind string, callStm *CallStm, callables *Callables
 	self.name = callStm.id
 	self.fqname = parent.getNode().fqname + "." + self.name
 	self.path = path.Join(parent.getNode().path, self.name)
-	self.runPath = parent.getNode().runPath
+	self.journalPath = parent.getNode().journalPath
 	self.metadata = NewMetadata(self.fqname, self.path)
 	self.volatile = callStm.volatile
 
@@ -863,7 +827,7 @@ func NewNode(parent Nodable, kind string, callStm *CallStm, callables *Callables
 //
 func (self *Node) mkdirs(wg *sync.WaitGroup) {
 	mkdir(self.path)
-	idemMkdir(self.runPath)
+	idemMkdir(self.journalPath)
 	for _, fork := range self.forks {
 		wg.Add(1)
 		go func(f *Fork) {
@@ -1054,7 +1018,7 @@ func (self *Node) reset() error {
 		return err
 	}
 	// Remove all files from run directory.
-	if files, err := filepath.Glob(path.Join(self.runPath, "*")); err == nil {
+	if files, err := filepath.Glob(path.Join(self.journalPath, "*")); err == nil {
 		for _, file := range files {
 			os.Remove(file)
 		}
@@ -1136,7 +1100,7 @@ func (self *Node) parseRunFilename(fqname string) (string, int, int, string) {
 }
 
 func (self *Node) refreshState() {
-	files, _ := filepath.Glob(path.Join(self.runPath, "*"))
+	files, _ := filepath.Glob(path.Join(self.journalPath, "*"))
 	for _, file := range files {
 		filename := path.Base(file)
 		fqname, forkIndex, chunkIndex, state := self.parseRunFilename(filename)
@@ -1233,7 +1197,7 @@ func (self *Node) runJob(shellName string, fqname string, metadata *Metadata,
 	shellCmd := ""
 	argv := []string{}
 	stagecodeParts := strings.Split(self.stagecodeCmd, " ")
-	runFile := path.Join(self.runPath, fqname)
+	runFile := path.Join(self.journalPath, fqname)
 
 	switch self.stagecodeLang {
 	case "Python":
@@ -1536,7 +1500,7 @@ func NewTopNode(rt *Runtime, psid string, p string) *TopNode {
 	self.node.frontierNodes = map[string]Nodable{}
 	self.node.path = p
 	self.node.rt = rt
-	self.node.runPath = path.Join(self.node.path, "run")
+	self.node.journalPath = path.Join(self.node.path, "journal")
 	self.node.fqname = "ID." + psid
 	self.node.name = psid
 	return self
