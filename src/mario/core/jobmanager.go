@@ -205,7 +205,8 @@ func (self *LocalJobManager) Enqueue(shellCmd string, argv []string, metadata *M
 
 		// CentOS < 5.5 workaround
 		if err != nil {
-			if exitCode, ok := getExitCode(err); ok && exitCode == retryExitCode {
+			exitCodeString := fmt.Sprintf("errno %d", retryExitCode)
+			if strings.Contains(err.Error(), exitCodeString) {
 				retries += 1
 				if waitTime == 0 {
 					waitTime = 2
