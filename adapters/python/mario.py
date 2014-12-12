@@ -49,9 +49,12 @@ class Record(object):
 METADATA_PREFIX = "_"
 
 class Metadata:
-    def __init__(self, path, files_path):
+    def __init__(self, path, files_path, run_file, run_type):
         self.path = path
         self.files_path = files_path
+        self.run_file = run_file
+        self.run_type = run_type
+        self.cache = {}
 
     def make_path(self, name):
         return os.path.join(self.path, METADATA_PREFIX + name)
@@ -73,9 +76,9 @@ class Metadata:
         return o
 
     def write_raw(self, name, text):
-        f = open(self.make_path(name), "w")
-        f.write(text)
-        f.close()
+        with open(self.make_path(name), "w") as f:
+            f.write(text)
+        self.update_journal(name)
 
     def write(self, name, object=None):
         self.write_raw(name, json.dumps(object or "", indent=4))
@@ -84,9 +87,18 @@ class Metadata:
         self.write_raw(name, self.make_timestamp_now())
 
     def log(self, level, message):
-        f = open(self.make_path("log"), "a")
-        f.write("%s [%s] %s\n" % (self.make_timestamp_now(), level, message))
-        f.close()
+        with open(self.make_path("log"), "a") as f:
+            f.write("%s [%s] %s\n" % (self.make_timestamp_now(), level, message))
+        self.update_journal("log")
+
+    def update_journal(self, name):
+        if name not in self.cache:
+            if self.run_type != "main":
+                name = "%s_%s" % (self.run_type, name)
+            run_file = "%s.%s" % (self.run_file, name)
+            with open(run_file, "w") as f:
+                f.write(self.make_timestamp_now())
+            self.cache[name] = True
 
 class TestMetadata(Metadata):
     def log(self, level, message):
@@ -101,10 +113,11 @@ def initialize(argv):
     global metadata, module, profile_flag, starttime
 
     # Take options from command line.
-    [ shell_cmd, stagecode_path, metadata_path, files_path, profile_flag ] = argv
+    [ shell_cmd, stagecode_path, metadata_path, files_path, run_file, profile_flag ] = argv
 
     # Create metadata object with metadata directory.
-    metadata = Metadata(metadata_path, files_path)
+    run_type = os.path.basename(shell_cmd)[:-3]
+    metadata = Metadata(metadata_path, files_path, run_file, run_type)
 
     # Write jobinfo
     write_jobinfo()
@@ -187,6 +200,7 @@ def run(cmd):
         metadata.write_raw("profile", str.getvalue())
         full_profile_path = metadata.make_path("profile_full")
         profile.dump_stats(full_profile_path)
+        metadata.update_journal("profile_full")
     else:
         import __main__
         exec(cmd, __main__.__dict__, __main__.__dict__)

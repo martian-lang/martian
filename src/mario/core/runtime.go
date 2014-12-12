@@ -14,7 +14,9 @@ import (
 	"os/exec"
 	"path"
 	"path/filepath"
+	"regexp"
 	"sort"
+	"strconv"
 	"strings"
 	"sync"
 )
@@ -83,7 +85,13 @@ func (self *Metadata) getState(name string) (string, bool) {
 	return "", false
 }
 
-func (self *Metadata) cache() {
+func (self *Metadata) cache(name string) {
+	self.mutex.Lock()
+	self.contents[name] = true
+	self.mutex.Unlock()
+}
+
+func (self *Metadata) loadCache() {
 	if !self.exists("complete") {
 		paths := self.glob()
 		self.mutex.Lock()
@@ -115,15 +123,11 @@ func (self *Metadata) read(name string) interface{} {
 }
 func (self *Metadata) writeRaw(name string, text string) {
 	ioutil.WriteFile(self.makePath(name), []byte(text), 0644)
+	self.cache(name)
 }
 func (self *Metadata) write(name string, object interface{}) {
 	bytes, _ := json.MarshalIndent(object, "", "    ")
 	self.writeRaw(name, string(bytes))
-}
-func (self *Metadata) append(name string, text string) {
-	f, _ := os.OpenFile(self.makePath(name), os.O_WRONLY|os.O_CREATE, 0644)
-	f.Write([]byte(text))
-	f.Close()
 }
 func (self *Metadata) writeTime(name string) {
 	self.writeRaw(name, Timestamp())
@@ -404,6 +408,10 @@ func (self *Chunk) getState() string {
 	}
 }
 
+func (self *Chunk) updateState(state string) {
+	self.metadata.cache(state)
+}
+
 func (self *Chunk) step() {
 	if self.getState() != "ready" {
 		return
@@ -611,6 +619,20 @@ func (self *Fork) getState() string {
 	return "ready"
 }
 
+func (self *Fork) updateState(state string) {
+	if strings.HasPrefix(state, "split_") {
+		self.split_metadata.cache(strings.TrimPrefix(state, "split_"))
+	} else if strings.HasPrefix(state, "join_") {
+		self.join_metadata.cache(strings.TrimPrefix(state, "join_"))
+	} else {
+		self.metadata.cache(state)
+	}
+}
+
+func (self *Fork) getChunk(index int) *Chunk {
+	return self.chunks[index]
+}
+
 func (self *Fork) step() {
 	if self.node.kind == "stage" {
 		state := self.getState()
@@ -744,12 +766,15 @@ type Node struct {
 	subnodes       map[string]Nodable
 	prenodes       map[string]Nodable
 	prenodeList    []Nodable //for stable ordering
+	postnodes      map[string]Nodable
+	frontierNodes  map[string]Nodable
 	forks          []*Fork
 	split          bool
 	state          string
 	volatile       bool
 	stagecodeLang  string
 	stagecodeCmd   string
+	journalPath    string
 }
 
 func (self *Node) getNode() *Node { return self }
@@ -763,6 +788,7 @@ func NewNode(parent Nodable, kind string, callStm *CallStm, callables *Callables
 	self.name = callStm.id
 	self.fqname = parent.getNode().fqname + "." + self.name
 	self.path = path.Join(parent.getNode().path, self.name)
+	self.journalPath = parent.getNode().journalPath
 	self.metadata = NewMetadata(self.fqname, self.path)
 	self.volatile = callStm.volatile
 
@@ -774,6 +800,8 @@ func NewNode(parent Nodable, kind string, callStm *CallStm, callables *Callables
 	self.subnodes = map[string]Nodable{}
 	self.prenodes = map[string]Nodable{}
 	self.prenodeList = []Nodable{}
+	self.postnodes = map[string]Nodable{}
+	self.frontierNodes = parent.getNode().frontierNodes
 
 	for id, bindStm := range callStm.bindings.table {
 		binding := NewBinding(self, bindStm)
@@ -782,8 +810,11 @@ func NewNode(parent Nodable, kind string, callStm *CallStm, callables *Callables
 	}
 	for _, binding := range self.argbindingList {
 		if binding.mode == "reference" && binding.boundNode != nil {
-			self.prenodes[binding.boundNode.getNode().name] = binding.boundNode
-			self.prenodeList = append(self.prenodeList, binding.boundNode)
+			prenode := binding.boundNode
+			self.prenodes[prenode.getNode().name] = prenode
+			self.prenodeList = append(self.prenodeList, prenode)
+
+			prenode.getNode().postnodes[self.name] = self
 		}
 	}
 	// Do not set state = getState here, or else nodes will wrongly report
@@ -796,6 +827,7 @@ func NewNode(parent Nodable, kind string, callStm *CallStm, callables *Callables
 //
 func (self *Node) mkdirs(wg *sync.WaitGroup) {
 	mkdir(self.path)
+	idemMkdir(self.journalPath)
 	for _, fork := range self.forks {
 		wg.Add(1)
 		go func(f *Fork) {
@@ -877,6 +909,22 @@ func (self *Node) matchFork(targetArgPermute map[string]interface{}) *Fork {
 //
 // Subnode management
 //
+func (self *Node) addFrontierNode(node Nodable) {
+	self.frontierNodes[node.getNode().name] = node
+}
+
+func (self *Node) removeFrontierNode(node Nodable) {
+	delete(self.frontierNodes, node.getNode().name)
+}
+
+func (self *Node) getFrontierNodes() []*Node {
+	frontierNodes := []*Node{}
+	for _, node := range self.frontierNodes {
+		frontierNodes = append(frontierNodes, node.getNode())
+	}
+	return frontierNodes
+}
+
 func (self *Node) allNodes() []*Node {
 	all := []*Node{self}
 
@@ -920,12 +968,17 @@ func (self *Node) collectMetadatas() []*Metadata {
 	return metadatas
 }
 
-func (self *Node) refreshMetadata() {
+func (self *Node) loadMetadata() {
 	metadatas := self.collectMetadatas()
 	for _, metadata := range metadatas {
-		metadata.cache()
+		metadata.loadCache()
 	}
 	self.state = self.getState()
+	self.addFrontierNode(self)
+}
+
+func (self *Node) getFork(index int) *Fork {
+	return self.forks[index]
 }
 
 func (self *Node) getState() string {
@@ -964,6 +1017,12 @@ func (self *Node) reset() error {
 		LogInfo("runtime", "mrp cannot reset the stage because its folder contents could not be deleted. Error was:\n\n%s\n\nPlease resolve the error in order to continue running the pipeline.", err.Error())
 		return err
 	}
+	// Remove all files from run directory.
+	if files, err := filepath.Glob(path.Join(self.journalPath, "*")); err == nil {
+		for _, file := range files {
+			os.Remove(file)
+		}
+	}
 
 	// Re-create the folders.
 	// This will also clear all the metadata in-memory caches.
@@ -971,8 +1030,8 @@ func (self *Node) reset() error {
 	self.mkdirs(&rewg)
 	rewg.Wait()
 
-	// Refresh the metadata.
-	self.refreshMetadata()
+	// Load the metadata.
+	self.loadMetadata()
 
 	// Clear chunks in the forks so they can be rebuilt on split.
 	for _, fork := range self.forks {
@@ -1008,6 +1067,53 @@ func (self *Node) step() {
 		for _, fork := range self.forks {
 			fork.step()
 		}
+	}
+	self.state = self.getState()
+	switch self.state {
+	case "failed":
+		self.addFrontierNode(self)
+	case "running":
+		self.addFrontierNode(self)
+	case "complete":
+		for _, node := range self.postnodes {
+			self.addFrontierNode(node)
+		}
+		self.removeFrontierNode(self)
+	case "waiting":
+		self.removeFrontierNode(self)
+	}
+}
+
+func (self *Node) parseRunFilename(fqname string) (string, int, int, string) {
+	r := regexp.MustCompile("(.*)\\.fork(\\d+)\\.chnk(\\d+)\\.(.*)$")
+	if match := r.FindStringSubmatch(fqname); match != nil {
+		forkIndex, _ := strconv.Atoi(match[2])
+		chunkIndex, _ := strconv.Atoi(match[3])
+		return match[1], forkIndex, chunkIndex, match[4]
+	}
+	r = regexp.MustCompile("(.*)\\.fork(\\d+)\\.(.*)$")
+	if match := r.FindStringSubmatch(fqname); match != nil {
+		forkIndex, _ := strconv.Atoi(match[2])
+		return match[1], forkIndex, -1, match[3]
+	}
+	return "", -1, -1, ""
+}
+
+func (self *Node) refreshState() {
+	files, _ := filepath.Glob(path.Join(self.journalPath, "*"))
+	for _, file := range files {
+		filename := path.Base(file)
+		fqname, forkIndex, chunkIndex, state := self.parseRunFilename(filename)
+
+		node := self.find(fqname)
+		fork := node.getFork(forkIndex)
+		if chunkIndex >= 0 {
+			chunk := fork.getChunk(chunkIndex)
+			chunk.updateState(state)
+		} else {
+			fork.updateState(state)
+		}
+		os.Remove(file)
 	}
 }
 
@@ -1091,14 +1197,15 @@ func (self *Node) runJob(shellName string, fqname string, metadata *Metadata,
 	shellCmd := ""
 	argv := []string{}
 	stagecodeParts := strings.Split(self.stagecodeCmd, " ")
+	runFile := path.Join(self.journalPath, fqname)
 
 	switch self.stagecodeLang {
 	case "Python":
 		shellCmd = path.Join(self.rt.adaptersPath, "python", shellName+".py")
-		argv = append(stagecodeParts, metadata.path, metadata.filesPath, profile)
+		argv = append(stagecodeParts, metadata.path, metadata.filesPath, runFile, profile)
 	case "Executable":
 		shellCmd = stagecodeParts[0]
-		argv = append(stagecodeParts[1:], shellName, metadata.path, metadata.filesPath, profile)
+		argv = append(stagecodeParts[1:], shellName, metadata.path, metadata.filesPath, runFile, profile)
 	default:
 		panic(fmt.Sprintf("Unknown stage code language: %s", self.stagecodeLang))
 	}
@@ -1145,9 +1252,10 @@ func NewStagestance(parent Nodable, callStm *CallStm, callables *Callables) *Sta
 }
 
 func (self *Stagestance) getNode() *Node   { return self.node }
-func (self *Stagestance) RefreshMetadata() { self.getNode().refreshMetadata() }
 func (self *Stagestance) GetState() string { return self.getNode().getState() }
 func (self *Stagestance) Step()            { self.getNode().step() }
+func (self *Stagestance) RefreshState()    { self.getNode().refreshState() }
+func (self *Stagestance) LoadMetadata()    { self.getNode().loadMetadata() }
 func (self *Stagestance) GetFatalError() (string, string, string, []string) {
 	return self.getNode().getFatalError()
 }
@@ -1188,8 +1296,11 @@ func NewPipestance(parent Nodable, invokeSrc string, callStm *CallStm,
 		self.node.retbindings[id] = binding
 		self.node.retbindingList = append(self.node.retbindingList, binding)
 		if binding.mode == "reference" && binding.boundNode != nil {
-			self.node.prenodes[binding.boundNode.getNode().name] = binding.boundNode
-			self.node.prenodeList = append(self.node.prenodeList, binding.boundNode)
+			prenode := binding.boundNode
+			self.node.prenodes[prenode.getNode().name] = prenode
+			self.node.prenodeList = append(self.node.prenodeList, prenode)
+
+			prenode.getNode().postnodes[self.node.name] = self.node
 		}
 	}
 
@@ -1202,17 +1313,21 @@ func (self *Pipestance) GetPname() string     { return self.node.name }
 func (self *Pipestance) GetPsid() string      { return self.node.parent.getNode().name }
 func (self *Pipestance) GetFQName() string    { return self.node.fqname }
 func (self *Pipestance) GetInvokeSrc() string { return self.invokeSrc }
+func (self *Pipestance) RefreshState()        { self.node.refreshState() }
 
-func (self *Pipestance) RefreshMetadata() {
+func (self *Pipestance) LoadMetadata() {
 	// We used to make this concurrent but ended up with too many
 	// goroutines (Pranav's 96-sample run).
 	for _, node := range self.node.allNodes() {
-		node.refreshMetadata()
+		node.loadMetadata()
+	}
+	for _, node := range self.node.allNodes() {
+		node.state = node.getState()
 	}
 }
 
 func (self *Pipestance) GetState() string {
-	nodes := self.node.allNodes()
+	nodes := self.node.getFrontierNodes()
 	for _, node := range nodes {
 		if node.state == "failed" {
 			return "failed"
@@ -1237,8 +1352,8 @@ func (self *Pipestance) GetState() string {
 }
 
 func (self *Pipestance) RestartRunningNodes() error {
-	self.RefreshMetadata()
-	nodes := self.node.allNodes()
+	self.LoadMetadata()
+	nodes := self.node.getFrontierNodes()
 	for _, node := range nodes {
 		if node.state == "running" {
 			LogInfo("runtime", "Found orphaned stage: %s", node.name)
@@ -1255,7 +1370,7 @@ func (self *Pipestance) RestartRunningNodes() error {
 }
 
 func (self *Pipestance) GetFatalError() (string, string, string, []string) {
-	nodes := self.node.allNodes()
+	nodes := self.node.getFrontierNodes()
 	for _, node := range nodes {
 		if node.state == "failed" {
 			return node.getFatalError()
@@ -1265,7 +1380,7 @@ func (self *Pipestance) GetFatalError() (string, string, string, []string) {
 }
 
 func (self *Pipestance) StepNodes() {
-	for _, node := range self.node.allNodes() {
+	for _, node := range self.node.getFrontierNodes() {
 		node.step()
 	}
 }
@@ -1385,8 +1500,10 @@ func (self *TopNode) getNode() *Node { return self.node }
 func NewTopNode(rt *Runtime, psid string, p string) *TopNode {
 	self := &TopNode{}
 	self.node = &Node{}
+	self.node.frontierNodes = map[string]Nodable{}
 	self.node.path = p
 	self.node.rt = rt
+	self.node.journalPath = path.Join(self.node.path, "journal")
 	self.node.fqname = "ID." + psid
 	self.node.name = psid
 	return self
@@ -1608,7 +1725,7 @@ func (self *Runtime) InvokeStage(src string, srcPath string, ssid string,
 
 func (self *Runtime) GetSerialization(pipestancePath string) (interface{}, bool) {
 	metadata := NewMetadata("", pipestancePath)
-	metadata.cache()
+	metadata.loadCache()
 	if metadata.exists("finalstate") {
 		return metadata.read("finalstate"), true
 	}

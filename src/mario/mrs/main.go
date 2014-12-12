@@ -95,9 +95,11 @@ Options:
 	// Start run loop.
 	//=========================================================================
 	go func() {
+		// Initialize state from metadata
+		stagestance.LoadMetadata()
 		for {
-			// Refresh metadata on the node.
-			stagestance.RefreshMetadata()
+			// Refresh state on the node.
+			stagestance.RefreshState()
 
 			// Check for completion states.
 			state := stagestance.GetState()
