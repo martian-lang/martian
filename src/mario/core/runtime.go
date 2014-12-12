@@ -1321,6 +1321,9 @@ func (self *Pipestance) LoadMetadata() {
 	for _, node := range self.node.allNodes() {
 		node.loadMetadata()
 	}
+	for _, node := range self.node.allNodes() {
+		node.state = node.getState()
+	}
 }
 
 func (self *Pipestance) GetState() string {
