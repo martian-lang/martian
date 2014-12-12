@@ -190,11 +190,13 @@ func (self *LocalJobManager) Enqueue(shellCmd string, argv []string, metadata *M
 			stdoutFile.WriteString("[stdout]\n")
 			cmd.Stdout = stdoutFile
 			defer stdoutFile.Close()
+			metadata.cache("stdout")
 		}
 		if stderrFile, err := os.Create(stderrPath); err == nil {
 			stderrFile.WriteString("[stderr]\n")
 			cmd.Stderr = stderrFile
 			defer stderrFile.Close()
+			metadata.cache("stderr")
 		}
 
 		// Run the command and wait for completion.
@@ -304,6 +306,9 @@ func (self *RemoteJobManager) execJob(shellCmd string, argv []string, metadata *
 		"CMD":      strings.Join(argv, " "),
 		"MEM_GB":   "",
 	}
+
+	metadata.cache("stdout")
+	metadata.cache("stderr")
 
 	// Only append memory cap if value is sane.
 	if memGB > 0 {
