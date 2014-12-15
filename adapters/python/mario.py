@@ -92,9 +92,9 @@ class Metadata:
         self.update_journal("log")
 
     def update_journal(self, name):
+        if self.run_type != "main":
+            name = "%s_%s" % (self.run_type, name)
         if name not in self.cache:
-            if self.run_type != "main":
-                name = "%s_%s" % (self.run_type, name)
             run_file = "%s.%s" % (self.run_file, name)
             with open(run_file, "w") as f:
                 f.write(self.make_timestamp_now())
