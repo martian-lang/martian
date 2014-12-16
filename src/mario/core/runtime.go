@@ -775,6 +775,7 @@ type Node struct {
 	stagecodeLang  string
 	stagecodeCmd   string
 	journalPath    string
+	tmpPath        string
 }
 
 func (self *Node) getNode() *Node { return self }
@@ -789,6 +790,7 @@ func NewNode(parent Nodable, kind string, callStm *CallStm, callables *Callables
 	self.fqname = parent.getNode().fqname + "." + self.name
 	self.path = path.Join(parent.getNode().path, self.name)
 	self.journalPath = parent.getNode().journalPath
+	self.tmpPath = parent.getNode().tmpPath
 	self.metadata = NewMetadata(self.fqname, self.path)
 	self.volatile = callStm.volatile
 
@@ -828,6 +830,7 @@ func NewNode(parent Nodable, kind string, callStm *CallStm, callables *Callables
 func (self *Node) mkdirs(wg *sync.WaitGroup) {
 	mkdir(self.path)
 	idemMkdir(self.journalPath)
+	idemMkdir(self.tmpPath)
 	for _, fork := range self.forks {
 		wg.Add(1)
 		go func(f *Fork) {
@@ -1211,6 +1214,9 @@ func (self *Node) runJob(shellName string, fqname string, metadata *Metadata,
 		profile = "profile"
 	}
 
+	// Set environment variables
+	os.Setenv("TMPDIR", self.tmpPath)
+
 	// Construct path to the shell.
 	shellCmd := ""
 	argv := []string{}
@@ -1522,6 +1528,7 @@ func NewTopNode(rt *Runtime, psid string, p string) *TopNode {
 	self.node.path = p
 	self.node.rt = rt
 	self.node.journalPath = path.Join(self.node.path, "journal")
+	self.node.tmpPath = path.Join(self.node.path, "tmp")
 	self.node.fqname = "ID." + psid
 	self.node.name = psid
 	return self
