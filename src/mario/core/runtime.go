@@ -152,16 +152,17 @@ func (self *Metadata) serialize() interface{} {
 // Binding
 //=============================================================================
 type Binding struct {
-	node      *Node
-	id        string
-	tname     string
-	sweep     bool
-	waiting   bool
-	valexp    string
-	mode      string
-	boundNode Nodable
-	output    string
-	value     interface{}
+	node       *Node
+	id         string
+	tname      string
+	sweep      bool
+	waiting    bool
+	valexp     string
+	mode       string
+	boundNode  Nodable
+	parentNode Nodable
+	output     string
+	value      interface{}
 }
 
 func NewBinding(node *Node, bindStm *BindStm) *Binding {
@@ -182,6 +183,7 @@ func NewBinding(node *Node, bindStm *BindStm) *Binding {
 				self.waiting = parentBinding.waiting
 				self.mode = parentBinding.mode
 				self.boundNode = parentBinding.boundNode
+				self.parentNode = parentBinding.parentNode
 				self.output = parentBinding.output
 				self.value = parentBinding.value
 			}
@@ -189,7 +191,8 @@ func NewBinding(node *Node, bindStm *BindStm) *Binding {
 			self.valexp = "self." + valueExp.id
 		} else if valueExp.kind == "call" {
 			self.mode = "reference"
-			self.boundNode = self.node.parent.getNode().subnodes[valueExp.id]
+			self.boundNode = self.node.parent.getNode().findBoundNode(valueExp.id, valueExp.outputId)
+			self.parentNode = self.node.parent.getNode().subnodes[valueExp.id]
 			self.output = valueExp.outputId
 			if valueExp.outputId == "default" {
 				self.valexp = valueExp.id
@@ -200,6 +203,7 @@ func NewBinding(node *Node, bindStm *BindStm) *Binding {
 	case *ValExp:
 		self.mode = "value"
 		self.boundNode = node
+		self.parentNode = node
 		self.value = expToInterface(bindStm.exp)
 	}
 	return self
@@ -235,7 +239,8 @@ func NewReturnBinding(node *Node, bindStm *BindStm) *Binding {
 	self.tname = bindStm.tname
 	self.mode = "reference"
 	valueExp := bindStm.exp.(*RefExp)
-	self.boundNode = self.node.subnodes[valueExp.id] // from node, NOT parent; this is diff from Binding
+	self.boundNode = self.node.findBoundNode(valueExp.id, valueExp.outputId) // from node, NOT parent; this is diff from Binding
+	self.parentNode = self.node.subnodes[valueExp.id]
 	self.output = valueExp.outputId
 	if valueExp.outputId == "default" {
 		self.valexp = valueExp.id
@@ -765,7 +770,7 @@ type Node struct {
 	sweepbindings  []*Binding
 	subnodes       map[string]Nodable
 	prenodes       map[string]Nodable
-	prenodeList    []Nodable //for stable ordering
+	directPrenodes []Nodable
 	postnodes      map[string]Nodable
 	frontierNodes  map[string]Nodable
 	forks          []*Fork
@@ -799,7 +804,7 @@ func NewNode(parent Nodable, kind string, callStm *CallStm, callables *Callables
 	self.retbindingList = []*Binding{}
 	self.subnodes = map[string]Nodable{}
 	self.prenodes = map[string]Nodable{}
-	self.prenodeList = []Nodable{}
+	self.directPrenodes = []Nodable{}
 	self.postnodes = map[string]Nodable{}
 	self.frontierNodes = parent.getNode().frontierNodes
 
@@ -812,7 +817,7 @@ func NewNode(parent Nodable, kind string, callStm *CallStm, callables *Callables
 		if binding.mode == "reference" && binding.boundNode != nil {
 			prenode := binding.boundNode
 			self.prenodes[prenode.getNode().fqname] = prenode
-			self.prenodeList = append(self.prenodeList, prenode)
+			self.directPrenodes = append(self.directPrenodes, binding.parentNode)
 
 			prenode.getNode().postnodes[self.fqname] = self
 		}
@@ -909,6 +914,21 @@ func (self *Node) matchFork(targetArgPermute map[string]interface{}) *Fork {
 //
 // Subnode management
 //
+func (self *Node) findBoundNode(id string, outputId string) Nodable {
+	subnode := self.subnodes[id]
+	for _, binding := range subnode.getNode().retbindings {
+		if binding.id == outputId {
+			boundNode := binding.boundNode.getNode()
+			if binding.mode == "reference" && boundNode.kind == "pipeline" {
+				return subnode.getNode().findBoundNode(boundNode.name, binding.output)
+			} else {
+				return binding.boundNode
+			}
+		}
+	}
+	return subnode
+}
+
 func (self *Node) addFrontierNode(node Nodable) {
 	self.frontierNodes[node.getNode().fqname] = node
 }
@@ -1130,7 +1150,7 @@ func (self *Node) serialize() interface{} {
 		forks = append(forks, fork.serialize())
 	}
 	edges := []interface{}{}
-	for _, prenode := range self.prenodeList {
+	for _, prenode := range self.directPrenodes {
 		edges = append(edges, map[string]string{
 			"from": prenode.getNode().fqname,
 			"to":   self.fqname,
@@ -1298,7 +1318,7 @@ func NewPipestance(parent Nodable, invokeSrc string, callStm *CallStm,
 		if binding.mode == "reference" && binding.boundNode != nil {
 			prenode := binding.boundNode
 			self.node.prenodes[prenode.getNode().fqname] = prenode
-			self.node.prenodeList = append(self.node.prenodeList, prenode)
+			self.node.directPrenodes = append(self.node.directPrenodes, binding.parentNode)
 
 			prenode.getNode().postnodes[self.node.fqname] = self.node
 		}
