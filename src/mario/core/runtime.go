@@ -189,7 +189,7 @@ func NewBinding(node *Node, bindStm *BindStm) *Binding {
 			self.valexp = "self." + valueExp.id
 		} else if valueExp.kind == "call" {
 			self.mode = "reference"
-			self.boundNode = self.node.parent.getNode().subnodes[valueExp.id]
+			self.boundNode = self.node.parent.getNode().findBoundNode(valueExp.id, valueExp.outputId)
 			self.output = valueExp.outputId
 			if valueExp.outputId == "default" {
 				self.valexp = valueExp.id
@@ -235,7 +235,7 @@ func NewReturnBinding(node *Node, bindStm *BindStm) *Binding {
 	self.tname = bindStm.tname
 	self.mode = "reference"
 	valueExp := bindStm.exp.(*RefExp)
-	self.boundNode = self.node.subnodes[valueExp.id] // from node, NOT parent; this is diff from Binding
+	self.boundNode = self.node.findBoundNode(valueExp.id, valueExp.outputId) // from node, NOT parent; this is diff from Binding
 	self.output = valueExp.outputId
 	if valueExp.outputId == "default" {
 		self.valexp = valueExp.id
@@ -909,6 +909,21 @@ func (self *Node) matchFork(targetArgPermute map[string]interface{}) *Fork {
 //
 // Subnode management
 //
+func (self *Node) findBoundNode(id string, outputId string) Nodable {
+	subnode := self.subnodes[id]
+	for _, binding := range subnode.getNode().retbindings {
+		if binding.id == outputId {
+			boundNode := binding.boundNode.getNode()
+			if binding.mode == "reference" && boundNode.kind == "pipeline" {
+				return subnode.getNode().findBoundNode(boundNode.name, binding.output)
+			} else {
+				return binding.boundNode
+			}
+		}
+	}
+	return subnode
+}
+
 func (self *Node) addFrontierNode(node Nodable) {
 	self.frontierNodes[node.getNode().fqname] = node
 }
