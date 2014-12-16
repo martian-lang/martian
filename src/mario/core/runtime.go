@@ -237,15 +237,24 @@ func NewReturnBinding(node *Node, bindStm *BindStm) *Binding {
 	self.node = node
 	self.id = bindStm.id
 	self.tname = bindStm.tname
-	self.mode = "reference"
-	valueExp := bindStm.exp.(*RefExp)
-	self.parentNode = self.node.subnodes[valueExp.id]
-	self.boundNode = self.node.findBoundNode(valueExp.id, valueExp.outputId) // from node, NOT parent; this is diff from Binding
-	self.output = valueExp.outputId
-	if valueExp.outputId == "default" {
-		self.valexp = valueExp.id
-	} else {
-		self.valexp = valueExp.id + "." + valueExp.outputId
+	self.sweep = bindStm.sweep
+	self.waiting = false
+	switch valueExp := bindStm.exp.(type) {
+	case *RefExp:
+		self.mode = "reference"
+		self.parentNode = self.node.subnodes[valueExp.id]
+		self.boundNode = self.node.findBoundNode(valueExp.id, valueExp.outputId) // from node, NOT parent; this is diff from Binding
+		self.output = valueExp.outputId
+		if valueExp.outputId == "default" {
+			self.valexp = valueExp.id
+		} else {
+			self.valexp = valueExp.id + "." + valueExp.outputId
+		}
+	case *ValExp:
+		self.mode = "value"
+		self.parentNode = node
+		self.boundNode = node
+		self.value = expToInterface(bindStm.exp)
 	}
 	return self
 }
