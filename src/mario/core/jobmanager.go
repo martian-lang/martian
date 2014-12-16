@@ -365,9 +365,10 @@ func (self *RemoteJobManager) processMonitorList() {
 	go func() {
 		for {
 			monitorList := self.copyAndClearMonitorList()
+			newMonitorList := []*JobMonitor{}
 			for _, monitor := range monitorList {
 				if time.Since(monitor.submitTime) < time.Minute*jobSubmitDelay {
-					monitorList = append(monitorList, monitor)
+					newMonitorList = append(newMonitorList, monitor)
 					continue
 				}
 				monitorCmd := fmt.Sprintf("%s %d", self.monitorCmd, monitor.jobId)
@@ -385,11 +386,11 @@ func (self *RemoteJobManager) processMonitorList() {
 							self.jobMode))
 					}
 				} else {
-					monitorList = append(monitorList, monitor)
+					newMonitorList = append(newMonitorList, monitor)
 				}
 			}
 			self.monitorListMutex.Lock()
-			self.monitorList = append(self.monitorList, monitorList...)
+			self.monitorList = append(self.monitorList, newMonitorList...)
 			self.monitorListMutex.Unlock()
 			time.Sleep(time.Minute * time.Duration(5))
 		}
