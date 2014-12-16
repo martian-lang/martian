@@ -165,7 +165,7 @@ type Binding struct {
 	value      interface{}
 }
 
-func NewBinding(node *Node, bindStm *BindStm) *Binding {
+func newBinding(node *Node, bindStm *BindStm, returnBinding bool) *Binding {
 	self := &Binding{}
 	self.node = node
 	self.id = bindStm.id
@@ -191,8 +191,13 @@ func NewBinding(node *Node, bindStm *BindStm) *Binding {
 			self.valexp = "self." + valueExp.id
 		} else if valueExp.kind == "call" {
 			self.mode = "reference"
-			self.parentNode = self.node.parent.getNode().subnodes[valueExp.id]
-			self.boundNode = self.node.parent.getNode().findBoundNode(valueExp.id, valueExp.outputId)
+			if returnBinding {
+				self.parentNode = self.node.subnodes[valueExp.id]
+				self.boundNode = self.node.findBoundNode(valueExp.id, valueExp.outputId)
+			} else {
+				self.parentNode = self.node.parent.getNode().subnodes[valueExp.id]
+				self.boundNode = self.node.parent.getNode().findBoundNode(valueExp.id, valueExp.outputId)
+			}
 			self.output = valueExp.outputId
 			if valueExp.outputId == "default" {
 				self.valexp = valueExp.id
@@ -207,6 +212,14 @@ func NewBinding(node *Node, bindStm *BindStm) *Binding {
 		self.value = expToInterface(bindStm.exp)
 	}
 	return self
+}
+
+func NewBinding(node *Node, bindStm *BindStm) *Binding {
+	return newBinding(node, bindStm, false)
+}
+
+func NewReturnBinding(node *Node, bindStm *BindStm) *Binding {
+	return newBinding(node, bindStm, true)
 }
 
 func expToInterface(exp Exp) interface{} {
@@ -230,33 +243,6 @@ func expToInterface(exp Exp) interface{} {
 	} else {
 		return valExp.value
 	}
-}
-
-func NewReturnBinding(node *Node, bindStm *BindStm) *Binding {
-	self := &Binding{}
-	self.node = node
-	self.id = bindStm.id
-	self.tname = bindStm.tname
-	self.sweep = bindStm.sweep
-	self.waiting = false
-	switch valueExp := bindStm.exp.(type) {
-	case *RefExp:
-		self.mode = "reference"
-		self.parentNode = self.node.subnodes[valueExp.id]
-		self.boundNode = self.node.findBoundNode(valueExp.id, valueExp.outputId) // from node, NOT parent; this is diff from Binding
-		self.output = valueExp.outputId
-		if valueExp.outputId == "default" {
-			self.valexp = valueExp.id
-		} else {
-			self.valexp = valueExp.id + "." + valueExp.outputId
-		}
-	case *ValExp:
-		self.mode = "value"
-		self.parentNode = node
-		self.boundNode = node
-		self.value = expToInterface(bindStm.exp)
-	}
-	return self
 }
 
 func (self *Binding) resolve(argPermute map[string]interface{}) interface{} {
