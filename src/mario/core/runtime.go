@@ -811,10 +811,10 @@ func NewNode(parent Nodable, kind string, callStm *CallStm, callables *Callables
 	for _, binding := range self.argbindingList {
 		if binding.mode == "reference" && binding.boundNode != nil {
 			prenode := binding.boundNode
-			self.prenodes[prenode.getNode().name] = prenode
+			self.prenodes[prenode.getNode().fqname] = prenode
 			self.prenodeList = append(self.prenodeList, prenode)
 
-			prenode.getNode().postnodes[self.name] = self
+			prenode.getNode().postnodes[self.fqname] = self
 		}
 	}
 	// Do not set state = getState here, or else nodes will wrongly report
@@ -910,11 +910,11 @@ func (self *Node) matchFork(targetArgPermute map[string]interface{}) *Fork {
 // Subnode management
 //
 func (self *Node) addFrontierNode(node Nodable) {
-	self.frontierNodes[node.getNode().name] = node
+	self.frontierNodes[node.getNode().fqname] = node
 }
 
 func (self *Node) removeFrontierNode(node Nodable) {
-	delete(self.frontierNodes, node.getNode().name)
+	delete(self.frontierNodes, node.getNode().fqname)
 }
 
 func (self *Node) getFrontierNodes() []*Node {
@@ -1297,10 +1297,10 @@ func NewPipestance(parent Nodable, invokeSrc string, callStm *CallStm,
 		self.node.retbindingList = append(self.node.retbindingList, binding)
 		if binding.mode == "reference" && binding.boundNode != nil {
 			prenode := binding.boundNode
-			self.node.prenodes[prenode.getNode().name] = prenode
+			self.node.prenodes[prenode.getNode().fqname] = prenode
 			self.node.prenodeList = append(self.node.prenodeList, prenode)
 
-			prenode.getNode().postnodes[self.node.name] = self.node
+			prenode.getNode().postnodes[self.node.fqname] = self.node
 		}
 	}
 
@@ -1356,7 +1356,7 @@ func (self *Pipestance) RestartRunningNodes() error {
 	nodes := self.node.getFrontierNodes()
 	for _, node := range nodes {
 		if node.state == "running" {
-			LogInfo("runtime", "Found orphaned stage: %s", node.name)
+			LogInfo("runtime", "Found orphaned stage: %s", node.fqname)
 		}
 	}
 	for _, node := range nodes {
