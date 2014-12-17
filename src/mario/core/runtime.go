@@ -1038,12 +1038,9 @@ func (self *Node) reset() error {
 		LogInfo("runtime", "mrp cannot reset the stage because its folder contents could not be deleted. Error was:\n\n%s\n\nPlease resolve the error in order to continue running the pipeline.", err.Error())
 		return err
 	}
-	// Remove all files from run directory.
-	if files, err := filepath.Glob(path.Join(self.journalPath, "*")); err == nil {
-		for _, file := range files {
-			os.Remove(file)
-		}
-	}
+	// Remove all files from journal and tmp directories.
+	os.RemoveAll(self.journalPath)
+	os.RemoveAll(self.tmpPath)
 
 	// Re-create the folders.
 	// This will also clear all the metadata in-memory caches.
