@@ -1735,7 +1735,7 @@ func (self *Runtime) InvokeStage(src string, srcPath string, ssid string,
 		return nil, &RuntimeError{"cannot start a stage without a call statement"}
 	}
 	// Make sure it's a stage we're calling.
-	if stage := ast.callables.table[ast.call.id].(*Stage); stage == nil {
+	if _, ok := ast.callables.table[ast.call.id].(*Stage); !ok {
 		return nil, &RuntimeError{fmt.Sprintf("'%s' is not a declared stage", ast.call.id)}
 	}
 

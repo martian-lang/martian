@@ -179,7 +179,10 @@ def stacktrace():
                     pass
         tb = tb.tb_next
     stacktrace += [line.strip() for line in traceback.format_exception_only(etype, evalue)]
-    return "\n".join(stacktrace) + "\n"
+    stacktrace.append("\n")
+    if local:
+        stacktrace.append(traceback.format_exc())
+    return "\n".join(stacktrace)
 
 def fail(stacktrace):
     metadata.write_raw("errors", stacktrace)
