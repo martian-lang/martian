@@ -35,6 +35,7 @@ Options:
                          Valid job managers are local, sge or .template file
                          Defaults to local.
     --profile          Enable stage performance profiling.
+    --locals           Print local variables in stage code stack trace.
     --debug            Enable debug logging for local job manager. 
     -h --help          Show this message.
     --version          Show version.`
@@ -70,6 +71,9 @@ Options:
 	// Compute profiling flag.
 	profile := opts["--profile"].(bool)
 
+	// Compute locals flag.
+	locals := opts["--locals"].(bool)
+
 	// Setup invocation-specific values.
 	invocationPath := opts["<call.mro>"].(string)
 	ssid := opts["<stagestance_name>"].(string)
@@ -83,7 +87,7 @@ Options:
 	//=========================================================================
 	// Configure Mario runtime.
 	//=========================================================================
-	rt := core.NewRuntime(jobMode, mroPath, marioVersion, mroVersion, profile, debug)
+	rt := core.NewRuntime(jobMode, mroPath, marioVersion, mroVersion, profile, locals, debug)
 
 	// Invoke stagestance.
 	data, err := ioutil.ReadFile(invocationPath)

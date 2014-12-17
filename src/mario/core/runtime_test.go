@@ -15,7 +15,7 @@ import (
 
 func MockRuntime() *Runtime {
 	ENABLE_LOGGING = false // Disable core.LogInfo calls in Runtime
-	return NewRuntime("local", os.Getenv("MROPATH"), "", "", false, false)
+	return NewRuntime("local", os.Getenv("MROPATH"), "", "", false, false, false)
 }
 
 /*

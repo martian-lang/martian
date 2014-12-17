@@ -110,10 +110,10 @@ def test_initialize(path):
     metadata = TestMetadata(path, path)
 
 def initialize(argv):
-    global metadata, module, profile_flag, starttime
+    global metadata, module, profile_flag, locals_flag, starttime
 
     # Take options from command line.
-    [ shell_cmd, stagecode_path, metadata_path, files_path, run_file, profile_flag ] = argv
+    [ shell_cmd, stagecode_path, metadata_path, files_path, run_file, profile_flag, locals_flag ] = argv
 
     # Create metadata object with metadata directory.
     run_type = os.path.basename(shell_cmd)[:-3]
@@ -125,8 +125,9 @@ def initialize(argv):
     log_time("__start__")
     starttime = time.time()
 
-    # Cache the profiling flag.
+    # Cache the profiling and locals flags.
     profile_flag = (profile_flag == "profile")
+    locals_flag = (locals_flag == "locals")
 
     # allow shells and stage code to import mario easily
     sys.path.append(os.path.dirname(__file__))
@@ -168,7 +169,7 @@ def stacktrace():
         if line:
             stacktrace.append("    %s" % line.strip())
         # Only start printing local variables at stage code
-        if filename.endswith("__init__.py") and name in ["main", "split", "join"]:
+        if filename.endswith("__init__.py") and name in ["main", "split", "join"] and locals_flag:
             local = True
         if local:
             for key, value in frame.f_locals.items():
@@ -178,7 +179,7 @@ def stacktrace():
                     pass
         tb = tb.tb_next
     stacktrace += [line.strip() for line in traceback.format_exception_only(etype, evalue)]
-    return "\n".join(stacktrace)
+    return "\n".join(stacktrace) + "\n"
 
 def fail(stacktrace):
     metadata.write_raw("errors", stacktrace)

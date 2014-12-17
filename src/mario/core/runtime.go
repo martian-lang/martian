@@ -1067,8 +1067,8 @@ func (self *Node) getFatalError() (string, string, string, []string) {
 		summary := "<none>"
 		if self.stagecodeLang == "Python" {
 			errlines := strings.Split(errlog, "\n")
-			if len(errlines) >= 1 {
-				summary = errlines[len(errlines)-1]
+			if len(errlines) >= 2 {
+				summary = errlines[len(errlines)-2]
 			}
 		}
 		return metadata.fqname, summary, errlog, []string{
@@ -1211,6 +1211,12 @@ func (self *Node) runJob(shellName string, fqname string, metadata *Metadata,
 		profile = "profile"
 	}
 
+	// Configure local variable dumping.
+	locals := "disable"
+	if self.rt.enableLocals {
+		locals = "locals"
+	}
+
 	// Set environment variables
 	os.Setenv("TMPDIR", self.tmpPath)
 
@@ -1223,10 +1229,10 @@ func (self *Node) runJob(shellName string, fqname string, metadata *Metadata,
 	switch self.stagecodeLang {
 	case "Python":
 		shellCmd = path.Join(self.rt.adaptersPath, "python", shellName+".py")
-		argv = append(stagecodeParts, metadata.path, metadata.filesPath, runFile, profile)
+		argv = append(stagecodeParts, metadata.path, metadata.filesPath, runFile, profile, locals)
 	case "Executable":
 		shellCmd = stagecodeParts[0]
-		argv = append(stagecodeParts[1:], shellName, metadata.path, metadata.filesPath, runFile, profile)
+		argv = append(stagecodeParts[1:], shellName, metadata.path, metadata.filesPath, runFile, profile, locals)
 	default:
 		panic(fmt.Sprintf("Unknown stage code language: %s", self.stagecodeLang))
 	}
@@ -1544,18 +1550,19 @@ type Runtime struct {
 	jobMode         string
 	JobManager      JobManager
 	enableProfiling bool
+	enableLocals    bool
 	stest           bool
 }
 
 func NewRuntime(jobMode string, mroPath string, marioVersion string,
-	mroVersion string, enableProfiling bool, debug bool) *Runtime {
+	mroVersion string, enableProfiling bool, enableLocals bool, debug bool) *Runtime {
 	return NewRuntimeWithCores(jobMode, mroPath, marioVersion, mroVersion,
-		-1, -1, enableProfiling, debug, false)
+		-1, -1, enableProfiling, enableLocals, debug, false)
 }
 
 func NewRuntimeWithCores(jobMode string, mroPath string, marioVersion string,
 	mroVersion string, reqCores int, reqMem int, enableProfiling bool,
-	debug bool, stest bool) *Runtime {
+	enableLocals bool, debug bool, stest bool) *Runtime {
 
 	self := &Runtime{}
 	self.mroPath = mroPath
@@ -1564,6 +1571,7 @@ func NewRuntimeWithCores(jobMode string, mroPath string, marioVersion string,
 	self.mroVersion = mroVersion
 	self.jobMode = jobMode
 	self.enableProfiling = enableProfiling
+	self.enableLocals = enableLocals
 	self.callableTable = map[string]Callable{}
 	self.PipelineNames = []string{}
 	self.stest = stest

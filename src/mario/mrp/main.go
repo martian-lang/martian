@@ -140,6 +140,7 @@ Options:
     --noui             Disable UI.
     --novdr            Disable Volatile Data Removal.
     --profile          Enable stage performance profiling.
+    --locals           Print local variables in stage code stack trace.
     --maxcores=<num>   Set max cores the pipeline may request at one time.
                          (Only applies in local jobmode)
     --maxmem=<num>     Set max GB the pipeline may request at one time.
@@ -208,6 +209,10 @@ Options:
 	profile := opts["--profile"].(bool)
 	core.LogInfo("environ", "profile = %v", profile)
 
+	// Compute locals flag.
+	locals := opts["--locals"].(bool)
+	core.LogInfo("environ", "locals = %v", locals)
+
 	// Compute no debug dump flag.
 	noDump := opts["--nodump"].(bool)
 	core.LogInfo("environ", "nodump = %v", noDump)
@@ -229,7 +234,7 @@ Options:
 	// Configure Mario runtime.
 	//=========================================================================
 	rt := core.NewRuntimeWithCores(jobMode, mroPath, marioVersion, mroVersion,
-		reqCores, reqMem, profile, debug, stest)
+		reqCores, reqMem, profile, locals, debug, stest)
 
 	// Print this here because the log makes more sense when this appears before
 	// the runloop messages start to appear.
