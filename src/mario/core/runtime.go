@@ -165,7 +165,7 @@ type Binding struct {
 	value      interface{}
 }
 
-func NewBinding(node *Node, bindStm *BindStm) *Binding {
+func newBinding(node *Node, bindStm *BindStm, returnBinding bool) *Binding {
 	self := &Binding{}
 	self.node = node
 	self.id = bindStm.id
@@ -191,8 +191,13 @@ func NewBinding(node *Node, bindStm *BindStm) *Binding {
 			self.valexp = "self." + valueExp.id
 		} else if valueExp.kind == "call" {
 			self.mode = "reference"
-			self.parentNode = self.node.parent.getNode().subnodes[valueExp.id]
-			self.boundNode = self.node.parent.getNode().findBoundNode(valueExp.id, valueExp.outputId)
+			if returnBinding {
+				self.parentNode = self.node.subnodes[valueExp.id]
+				self.boundNode = self.node.findBoundNode(valueExp.id, valueExp.outputId)
+			} else {
+				self.parentNode = self.node.parent.getNode().subnodes[valueExp.id]
+				self.boundNode = self.node.parent.getNode().findBoundNode(valueExp.id, valueExp.outputId)
+			}
 			self.output = valueExp.outputId
 			if valueExp.outputId == "default" {
 				self.valexp = valueExp.id
@@ -207,6 +212,14 @@ func NewBinding(node *Node, bindStm *BindStm) *Binding {
 		self.value = expToInterface(bindStm.exp)
 	}
 	return self
+}
+
+func NewBinding(node *Node, bindStm *BindStm) *Binding {
+	return newBinding(node, bindStm, false)
+}
+
+func NewReturnBinding(node *Node, bindStm *BindStm) *Binding {
+	return newBinding(node, bindStm, true)
 }
 
 func expToInterface(exp Exp) interface{} {
@@ -230,33 +243,6 @@ func expToInterface(exp Exp) interface{} {
 	} else {
 		return valExp.value
 	}
-}
-
-func NewReturnBinding(node *Node, bindStm *BindStm) *Binding {
-	self := &Binding{}
-	self.node = node
-	self.id = bindStm.id
-	self.tname = bindStm.tname
-	self.sweep = bindStm.sweep
-	self.waiting = false
-	switch valueExp := bindStm.exp.(type) {
-	case *RefExp:
-		self.mode = "reference"
-		self.parentNode = self.node.subnodes[valueExp.id]
-		self.boundNode = self.node.findBoundNode(valueExp.id, valueExp.outputId) // from node, NOT parent; this is diff from Binding
-		self.output = valueExp.outputId
-		if valueExp.outputId == "default" {
-			self.valexp = valueExp.id
-		} else {
-			self.valexp = valueExp.id + "." + valueExp.outputId
-		}
-	case *ValExp:
-		self.mode = "value"
-		self.parentNode = node
-		self.boundNode = node
-		self.value = expToInterface(bindStm.exp)
-	}
-	return self
 }
 
 func (self *Binding) resolve(argPermute map[string]interface{}) interface{} {
@@ -789,6 +775,7 @@ type Node struct {
 	stagecodeLang  string
 	stagecodeCmd   string
 	journalPath    string
+	tmpPath        string
 }
 
 func (self *Node) getNode() *Node { return self }
@@ -803,6 +790,7 @@ func NewNode(parent Nodable, kind string, callStm *CallStm, callables *Callables
 	self.fqname = parent.getNode().fqname + "." + self.name
 	self.path = path.Join(parent.getNode().path, self.name)
 	self.journalPath = parent.getNode().journalPath
+	self.tmpPath = parent.getNode().tmpPath
 	self.metadata = NewMetadata(self.fqname, self.path)
 	self.volatile = callStm.volatile
 
@@ -842,6 +830,7 @@ func NewNode(parent Nodable, kind string, callStm *CallStm, callables *Callables
 func (self *Node) mkdirs(wg *sync.WaitGroup) {
 	mkdir(self.path)
 	idemMkdir(self.journalPath)
+	idemMkdir(self.tmpPath)
 	for _, fork := range self.forks {
 		wg.Add(1)
 		go func(f *Fork) {
@@ -1049,12 +1038,9 @@ func (self *Node) reset() error {
 		LogInfo("runtime", "mrp cannot reset the stage because its folder contents could not be deleted. Error was:\n\n%s\n\nPlease resolve the error in order to continue running the pipeline.", err.Error())
 		return err
 	}
-	// Remove all files from run directory.
-	if files, err := filepath.Glob(path.Join(self.journalPath, "*")); err == nil {
-		for _, file := range files {
-			os.Remove(file)
-		}
-	}
+	// Remove all files from journal and tmp directories.
+	os.RemoveAll(self.journalPath)
+	os.RemoveAll(self.tmpPath)
 
 	// Re-create the folders.
 	// This will also clear all the metadata in-memory caches.
@@ -1224,6 +1210,9 @@ func (self *Node) runJob(shellName string, fqname string, metadata *Metadata,
 	if self.rt.enableProfiling {
 		profile = "profile"
 	}
+
+	// Set environment variables
+	os.Setenv("TMPDIR", self.tmpPath)
 
 	// Construct path to the shell.
 	shellCmd := ""
@@ -1536,6 +1525,7 @@ func NewTopNode(rt *Runtime, psid string, p string) *TopNode {
 	self.node.path = p
 	self.node.rt = rt
 	self.node.journalPath = path.Join(self.node.path, "journal")
+	self.node.tmpPath = path.Join(self.node.path, "tmp")
 	self.node.fqname = "ID." + psid
 	self.node.name = psid
 	return self
