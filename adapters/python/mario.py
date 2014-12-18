@@ -168,7 +168,7 @@ def stacktrace():
     return "\n".join(stacktrace)
 
 def fail(stacktrace):
-    metadata.write_raw("errors", stacktrace)
+    metadata.write_raw("errors", traceback.format_exc())
     done()
 
 def complete():
