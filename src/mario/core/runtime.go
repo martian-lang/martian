@@ -190,15 +190,15 @@ func newBinding(node *Node, bindStm *BindStm, returnBinding bool) *Binding {
 			self.id = bindStm.id
 			self.valexp = "self." + valueExp.id
 		} else if valueExp.kind == "call" {
-			self.mode = "reference"
 			if returnBinding {
 				self.parentNode = self.node.subnodes[valueExp.id]
-				self.boundNode = self.node.findBoundNode(valueExp.id, valueExp.outputId)
+				self.boundNode, self.output, self.mode, self.value = self.node.findBoundNode(
+					valueExp.id, valueExp.outputId, "reference", nil)
 			} else {
 				self.parentNode = self.node.parent.getNode().subnodes[valueExp.id]
-				self.boundNode = self.node.parent.getNode().findBoundNode(valueExp.id, valueExp.outputId)
+				self.boundNode, self.output, self.mode, self.value = self.node.parent.getNode().findBoundNode(
+					valueExp.id, valueExp.outputId, "reference", nil)
 			}
-			self.output = valueExp.outputId
 			if valueExp.outputId == "default" {
 				self.valexp = valueExp.id
 			} else {
@@ -912,22 +912,23 @@ func (self *Node) matchFork(targetArgPermute map[string]interface{}) *Fork {
 //
 // Subnode management
 //
-func (self *Node) findBoundNode(id string, outputId string) Nodable {
+func (self *Node) findBoundNode(id string, outputId string, mode string,
+	value interface{}) (Nodable, string, string, interface{}) {
 	if self.kind == "pipeline" {
 		subnode := self.subnodes[id]
 		for _, binding := range subnode.getNode().retbindings {
 			if binding.id == outputId {
 				if binding.mode == "reference" {
-					id = binding.parentNode.getNode().name
-					return subnode.getNode().findBoundNode(id, binding.output)
+					return subnode.getNode().findBoundNode(binding.parentNode.getNode().name,
+						binding.output, binding.mode, binding.value)
 				} else {
-					return binding.boundNode
+					return binding.boundNode, binding.output, binding.mode, binding.value
 				}
 			}
 		}
-		return subnode
+		return subnode, outputId, mode, value
 	}
-	return self
+	return self, outputId, mode, value
 }
 
 func (self *Node) addFrontierNode(node Nodable) {
