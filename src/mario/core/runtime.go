@@ -175,7 +175,12 @@ func newBinding(node *Node, bindStm *BindStm, returnBinding bool) *Binding {
 	switch valueExp := bindStm.exp.(type) {
 	case *RefExp:
 		if valueExp.kind == "self" {
-			parentBinding := self.node.parent.getNode().argbindings[valueExp.id]
+			var parentBinding *Binding
+			if returnBinding {
+				parentBinding = self.node.argbindings[valueExp.id]
+			} else {
+				parentBinding = self.node.parent.getNode().argbindings[valueExp.id]
+			}
 			if parentBinding != nil {
 				self.node = parentBinding.node
 				self.tname = parentBinding.tname
