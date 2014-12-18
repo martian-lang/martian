@@ -59,12 +59,12 @@ Options:
 			name, ok := input["call"].(string)
 			if !ok {
 				fmt.Println("No pipeline or stage specified.")
-				return
+				os.Exit(1)
 			}
 			args, ok := input["args"].(map[string]interface{})
 			if !ok {
 				fmt.Println("No args given.")
-				return
+				os.Exit(1)
 			}
 
 			src, bldErr := rt.BuildCallSource(incpaths, name, args)
