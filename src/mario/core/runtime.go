@@ -1123,6 +1123,9 @@ func (self *Node) refreshState() {
 	for _, file := range files {
 		filename := path.Base(file)
 		fqname, forkIndex, chunkIndex, state := self.parseRunFilename(filename)
+		if strings.HasSuffix(state, ".tmp") {
+			continue
+		}
 
 		node := self.find(fqname)
 		fork := node.getFork(forkIndex)
