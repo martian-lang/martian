@@ -923,12 +923,7 @@ func (self *Node) findBoundNode(id string, outputId string, mode string,
 		subnode := self.subnodes[id]
 		for _, binding := range subnode.getNode().retbindings {
 			if binding.id == outputId {
-				if binding.mode == "reference" {
-					return subnode.getNode().findBoundNode(binding.parentNode.getNode().name,
-						binding.output, binding.mode, binding.value)
-				} else {
-					return binding.boundNode, binding.output, binding.mode, binding.value
-				}
+				return binding.boundNode, binding.output, binding.mode, binding.value
 			}
 		}
 		return subnode, outputId, mode, value
