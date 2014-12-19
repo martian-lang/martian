@@ -1223,6 +1223,7 @@ func (self *Node) runJob(shellName string, fqname string, metadata *Metadata,
 
 	// Set environment variables
 	os.Setenv("TMPDIR", self.tmpPath)
+	envs := []string{fmt.Sprintf("TMPDIR=%s", self.tmpPath)}
 
 	// Construct path to the shell.
 	shellCmd := ""
@@ -1242,7 +1243,7 @@ func (self *Node) runJob(shellName string, fqname string, metadata *Metadata,
 	}
 
 	metadata.write("jobinfo", map[string]interface{}{"name": fqname, "type": self.rt.jobMode})
-	self.rt.JobManager.execJob(shellCmd, argv, metadata, threads, memGB, fqname, shellName)
+	self.rt.JobManager.execJob(shellCmd, argv, envs, metadata, threads, memGB, fqname, shellName)
 }
 
 //=============================================================================
