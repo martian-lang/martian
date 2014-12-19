@@ -15,6 +15,7 @@ import resource
 import pstats
 import StringIO
 import cProfile
+import tempfile
 import traceback
 
 class StageException(Exception):
@@ -96,8 +97,10 @@ class Metadata:
             name = "%s_%s" % (self.run_type, name)
         if name not in self.cache:
             run_file = "%s.%s" % (self.run_file, name)
-            with open(run_file, "w") as f:
+            tmp_run_file = os.path.join(tempfile.gettempdir(), os.path.basename(run_file))
+            with open(tmp_run_file, "w") as f:
                 f.write(self.make_timestamp_now())
+            os.rename(tmp_run_file, run_file)
             self.cache[name] = True
 
 class TestMetadata(Metadata):
