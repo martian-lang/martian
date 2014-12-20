@@ -374,7 +374,7 @@ func (self *RemoteJobManager) processMonitorList() {
 				monitorCmd := fmt.Sprintf("%s %d", self.monitorCmd, monitor.jobId)
 				monitorCmdParts := strings.Split(monitorCmd, " ")
 				cmd := exec.Command(monitorCmdParts[0], monitorCmdParts[1:]...)
-				if err := cmd.Run(); err != nil {
+				if output, err := cmd.CombinedOutput(); err != nil {
 					monitor.metadata.loadCache()
 					if monitor.metadata.exists("complete") {
 						// Job has completed successfully
@@ -382,8 +382,8 @@ func (self *RemoteJobManager) processMonitorList() {
 					}
 					if !monitor.metadata.exists("errors") {
 						// Job was killed by cluster resource manager
-						monitor.metadata.writeRaw("errors", fmt.Sprintf("Job was killed by %s.",
-							self.jobMode))
+						monitor.metadata.writeRaw("errors", fmt.Sprintf("Job was killed by %s: %s",
+							self.jobMode, output))
 					}
 				} else {
 					newMonitorList = append(newMonitorList, monitor)
