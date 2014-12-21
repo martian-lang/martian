@@ -58,7 +58,7 @@ func unquote(qs string) string {
 %token SKIP INVALID 
 %token SEMICOLON COLON COMMA EQUALS
 %token LBRACKET RBRACKET LPAREN RPAREN LBRACE RBRACE 
-%token FILETYPE STAGE PIPELINE CALL VOLATILE SWEEP SPLIT USING SELF RETURN
+%token FILETYPE STAGE PIPELINE CALL LOCAL VOLATILE SWEEP SPLIT USING SELF RETURN
 %token IN OUT SRC
 %token <val> ID LITSTRING NUM_FLOAT NUM_INT DOT
 %token <val> PY GO SH EXEC
@@ -197,9 +197,13 @@ call_stm_list
 
 call_stm
     : CALL ID LPAREN bind_stm_list RPAREN
-        {{ $$ = &CallStm{NewAstNode(&mmlval), false, $2, $4} }}
+        {{ $$ = &CallStm{NewAstNode(&mmlval), false, false, $2, $4} }}
     | CALL VOLATILE ID LPAREN bind_stm_list RPAREN
-        {{ $$ = &CallStm{NewAstNode(&mmlval), true, $3, $5} }}
+        {{ $$ = &CallStm{NewAstNode(&mmlval), true, false, $3, $5} }}
+    | CALL LOCAL ID LPAREN bind_stm_list RPAREN
+        {{ $$ = &CallStm{NewAstNode(&mmlval), false, true, $3, $5} }}
+    | CALL LOCAL VOLATILE ID LPAREN bind_stm_list RPAREN
+        {{ $$ = &CallStm{NewAstNode(&mmlval), true, true, $4, $6} }}
     ;
 
 bind_stm_list

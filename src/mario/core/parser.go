@@ -260,6 +260,16 @@ func (global *Ast) check(stagecodePaths []string, checkSrcPath bool) error {
 			// Save the valid callables for this scope.
 			pipeline.callables.table[call.id] = callable
 
+			// Check to make sure if volatile or local is declared, callable is a stage
+			if _, ok := callable.(*Stage); !ok {
+				if call.local {
+					return global.err(call, "UnsupportedTagError: Pipeline '%s' cannot be called with 'local' tag", call.id)
+				}
+				if call.volatile {
+					return global.err(call, "UnsupportedTagError: Pipeline '%s' cannot be called with 'volatile' tag", call.id)
+				}
+			}
+
 			// Check the bindings
 			if err := call.bindings.check(global, pipeline, callable.getInParams()); err != nil {
 				return err

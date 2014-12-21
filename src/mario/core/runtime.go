@@ -73,6 +73,9 @@ func (self *Metadata) getState(name string) (string, bool) {
 	if self.exists("errors") {
 		return "failed", true
 	}
+	if self.exists("assert") {
+		return "failed", true
+	}
 	if self.exists("complete") {
 		return name + "complete", true
 	}
@@ -578,10 +581,10 @@ func (self *Fork) verifyOutput() (bool, string) {
 }
 
 func (self *Fork) getState() string {
-	if self.metadata.exists("errors") {
+	if state, _ := self.metadata.getState(""); state == "failed" {
 		return "failed"
 	}
-	if self.metadata.exists("complete") {
+	if state, _ := self.metadata.getState(""); state == "complete" {
 		return "complete"
 	}
 	if state, ok := self.join_metadata.getState("join_"); ok {
@@ -777,6 +780,7 @@ type Node struct {
 	split          bool
 	state          string
 	volatile       bool
+	local          bool
 	stagecodeLang  string
 	stagecodeCmd   string
 	journalPath    string
@@ -798,6 +802,7 @@ func NewNode(parent Nodable, kind string, callStm *CallStm, callables *Callables
 	self.tmpPath = parent.getNode().tmpPath
 	self.metadata = NewMetadata(self.fqname, self.path)
 	self.volatile = callStm.volatile
+	self.local = callStm.local
 
 	self.outparams = callables.table[self.name].getOutParams()
 	self.argbindings = map[string]*Binding{}
@@ -1059,26 +1064,49 @@ func (self *Node) reset() error {
 	return nil
 }
 
-func (self *Node) getFatalError() (string, string, string, []string) {
+func (self *Node) getWarnings() (string, bool) {
+	warnings := ""
+	isWarnings := false
 	for _, metadata := range self.collectMetadatas() {
-		if !metadata.exists("errors") {
+		if !metadata.exists("warn") {
 			continue
 		}
-		errlog := metadata.readRaw("errors")
-		summary := "<none>"
-		if self.stagecodeLang == "Python" {
-			errlines := strings.Split(errlog, "\n")
-			if len(errlines) >= 2 {
-				summary = errlines[len(errlines)-2]
+		warnings += metadata.readRaw("warn")
+		isWarnings = true
+	}
+	return warnings, isWarnings
+}
+
+func (self *Node) getFatalError() (string, string, string, string, []string) {
+	for _, metadata := range self.collectMetadatas() {
+		if state, _ := metadata.getState(""); state != "failed" {
+			continue
+		}
+		if metadata.exists("errors") {
+			errlog := metadata.readRaw("errors")
+			summary := "<none>"
+			if self.stagecodeLang == "Python" {
+				errlines := strings.Split(errlog, "\n")
+				if len(errlines) >= 2 {
+					summary = errlines[len(errlines)-2]
+				}
+			}
+			return metadata.fqname, summary, errlog, "errors", []string{
+				metadata.makePath("errors"),
+				metadata.makePath("stdout"),
+				metadata.makePath("stderr"),
 			}
 		}
-		return metadata.fqname, summary, errlog, []string{
-			metadata.makePath("errors"),
-			metadata.makePath("stdout"),
-			metadata.makePath("stderr"),
+		if metadata.exists("assert") {
+			warnlog := metadata.readRaw("assert")
+			warnlines := strings.Split(warnlog, "\n")
+			summary := warnlines[len(warnlines)-1]
+			return metadata.fqname, summary, warnlog, "assert", []string{
+				metadata.makePath("assert"),
+			}
 		}
 	}
-	return "", "", "", []string{}
+	return "", "", "", "", []string{}
 }
 
 func (self *Node) step() {
@@ -1160,7 +1188,7 @@ func (self *Node) serialize() interface{} {
 	}
 	var err interface{} = nil
 	if self.state == "failed" {
-		fqname, summary, log, errpaths := self.getFatalError()
+		fqname, summary, log, _, errpaths := self.getFatalError()
 		errpath := ""
 		if len(errpaths) > 0 {
 			errpath = errpaths[0]
@@ -1206,9 +1234,6 @@ func (self *Node) runChunk(fqname string, metadata *Metadata, threads int, memGB
 func (self *Node) runJob(shellName string, fqname string, metadata *Metadata,
 	threads int, memGB int) {
 
-	// Log the job run.
-	LogInfo("runtime", "(run:%s) %s.%s", self.rt.jobMode, fqname, shellName)
-
 	// Configure profiling.
 	profile := "disable"
 	if self.rt.enableProfiling {
@@ -1242,8 +1267,17 @@ func (self *Node) runJob(shellName string, fqname string, metadata *Metadata,
 		panic(fmt.Sprintf("Unknown stage code language: %s", self.stagecodeLang))
 	}
 
-	metadata.write("jobinfo", map[string]interface{}{"name": fqname, "type": self.rt.jobMode})
-	self.rt.JobManager.execJob(shellCmd, argv, envs, metadata, threads, memGB, fqname, shellName)
+	// Log the job run.
+	jobMode := self.rt.jobMode
+	jobManager := self.rt.JobManager
+	if self.local {
+		jobMode = "local"
+		jobManager = self.rt.LocalJobManager
+	}
+	LogInfo("runtime", "(run:%s) %s.%s", jobMode, fqname, shellName)
+
+	metadata.write("jobinfo", map[string]interface{}{"name": fqname, "type": jobMode})
+	jobManager.execJob(shellCmd, argv, envs, metadata, threads, memGB, fqname, shellName)
 }
 
 //=============================================================================
@@ -1288,8 +1322,11 @@ func (self *Stagestance) GetState() string { return self.getNode().getState() }
 func (self *Stagestance) Step()            { self.getNode().step() }
 func (self *Stagestance) RefreshState()    { self.getNode().refreshState() }
 func (self *Stagestance) LoadMetadata()    { self.getNode().loadMetadata() }
-func (self *Stagestance) GetFatalError() (string, string, string, []string) {
+func (self *Stagestance) GetFatalError() (string, string, string, string, []string) {
 	return self.getNode().getFatalError()
+}
+func (self *Stagestance) GetWarnings() (string, bool) {
+	return self.getNode().getWarnings()
 }
 
 //=============================================================================
@@ -1401,14 +1438,27 @@ func (self *Pipestance) RestartRunningNodes() error {
 	return nil
 }
 
-func (self *Pipestance) GetFatalError() (string, string, string, []string) {
+func (self *Pipestance) GetWarnings() (string, bool) {
+	nodes := self.node.allNodes()
+	warnings := ""
+	isWarnings := false
+	for _, node := range nodes {
+		if warning, ok := node.getWarnings(); ok {
+			warnings += warning
+			isWarnings = true
+		}
+	}
+	return warnings, isWarnings
+}
+
+func (self *Pipestance) GetFatalError() (string, string, string, string, []string) {
 	nodes := self.node.getFrontierNodes()
 	for _, node := range nodes {
 		if node.state == "failed" {
 			return node.getFatalError()
 		}
 	}
-	return "", "", "", []string{}
+	return "", "", "", "", []string{}
 }
 
 func (self *Pipestance) StepNodes() {
@@ -1554,6 +1604,7 @@ type Runtime struct {
 	PipelineNames   []string
 	jobMode         string
 	JobManager      JobManager
+	LocalJobManager JobManager
 	enableProfiling bool
 	enableLocals    bool
 	stest           bool
@@ -1581,8 +1632,9 @@ func NewRuntimeWithCores(jobMode string, mroPath string, marioVersion string,
 	self.PipelineNames = []string{}
 	self.stest = stest
 
+	self.LocalJobManager = NewLocalJobManager(reqCores, reqMem, debug)
 	if self.jobMode == "local" {
-		self.JobManager = NewLocalJobManager(reqCores, reqMem, debug)
+		self.JobManager = self.LocalJobManager
 	} else {
 		self.JobManager = NewRemoteJobManager(self.jobMode)
 	}
