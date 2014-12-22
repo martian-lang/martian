@@ -67,7 +67,7 @@ func (self *Semaphore) len() int {
 // Job managers
 //
 type JobManager interface {
-	execJob(string, []string, *Metadata, int, int, string, string)
+	execJob(string, []string, []string, *Metadata, int, int, string, string)
 	GetMaxCores() int
 	GetMaxMemGB() int
 }
@@ -126,8 +126,8 @@ func NewLocalJobManager(userMaxCores int, userMaxMemGB int, debug bool) *LocalJo
 	return self
 }
 
-func (self *LocalJobManager) Enqueue(shellCmd string, argv []string, metadata *Metadata, threads int,
-	memGB int, fqname string, retries int, waitTime int) {
+func (self *LocalJobManager) Enqueue(shellCmd string, argv []string, envs []string, metadata *Metadata,
+	threads int, memGB int, fqname string, retries int, waitTime int) {
 
 	time.Sleep(time.Second * time.Duration(waitTime))
 	go func() {
@@ -222,7 +222,7 @@ func (self *LocalJobManager) Enqueue(shellCmd string, argv []string, metadata *M
 				ioutil.WriteFile(errorsPath, []byte(err.Error()), 0644)
 			} else {
 				LogInfo("jobmngr", "Job failed: %s. Retrying job %s in %d seconds", err.Error(), fqname, waitTime)
-				self.Enqueue(shellCmd, argv, metadata, threads, memGB, fqname, retries, waitTime)
+				self.Enqueue(shellCmd, argv, envs, metadata, threads, memGB, fqname, retries, waitTime)
 			}
 		}
 
@@ -249,9 +249,9 @@ func (self *LocalJobManager) GetMaxMemGB() int {
 	return self.maxMemGB
 }
 
-func (self *LocalJobManager) execJob(shellCmd string, argv []string, metadata *Metadata,
-	threads int, memGB int, fqname string, shellName string) {
-	self.Enqueue(shellCmd, argv, metadata, threads, memGB, fqname, 0, 0)
+func (self *LocalJobManager) execJob(shellCmd string, argv []string, envs []string,
+	metadata *Metadata, threads int, memGB int, fqname string, shellName string) {
+	self.Enqueue(shellCmd, argv, envs, metadata, threads, memGB, fqname, 0, 0)
 }
 
 type JobMonitor struct {
@@ -289,8 +289,8 @@ func (self *RemoteJobManager) GetMaxMemGB() int {
 	return 0
 }
 
-func (self *RemoteJobManager) execJob(shellCmd string, argv []string, metadata *Metadata,
-	threads int, memGB int, fqname string, shellName string) {
+func (self *RemoteJobManager) execJob(shellCmd string, argv []string, envs []string,
+	metadata *Metadata, threads int, memGB int, fqname string, shellName string) {
 
 	// Sanity check the thread count.
 	if threads < 1 {
@@ -298,6 +298,7 @@ func (self *RemoteJobManager) execJob(shellCmd string, argv []string, metadata *
 	}
 
 	argv = append([]string{shellCmd}, argv...)
+	argv = append(envs, argv...)
 	params := map[string]string{
 		"JOB_NAME": fqname + "." + shellName,
 		"THREADS":  fmt.Sprintf("%d", threads),
