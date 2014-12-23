@@ -1417,14 +1417,10 @@ func (self *Pipestance) StepNodes() {
 	}
 }
 
-func (self *Pipestance) ResetNode(fqname string) error {
-	return self.node.find(fqname).reset()
-}
-
 func (self *Pipestance) Reset() error {
 	for _, node := range self.node.allNodes() {
 		if node.state == "failed" {
-			if err := self.ResetNode(node.fqname); err != nil {
+			if err := node.reset(); err != nil {
 				return err
 			}
 		}

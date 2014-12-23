@@ -89,7 +89,7 @@ app.controller('MarioGraphCtrl', ($scope, $compile, $http, $interval) ->
 
     $scope.restart = () ->
         $scope.showRestart = false
-        $http.post("/api/restart/#{container}/#{pname}/#{psid}/#{$scope.node.fqname}").success((data) ->
+        $http.post("/api/restart/#{container}/#{pname}/#{psid}").success((data) ->
             $scope.stopRefresh = $interval(() ->
                 $scope.refresh()
             , 3000)

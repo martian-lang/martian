@@ -114,7 +114,7 @@
     };
     $scope.restart = function() {
       $scope.showRestart = false;
-      return $http.post("/api/restart/" + container + "/" + pname + "/" + psid + "/" + $scope.node.fqname).success(function(data) {
+      return $http.post("/api/restart/" + container + "/" + pname + "/" + psid).success(function(data) {
         return $scope.stopRefresh = $interval(function() {
           return $scope.refresh();
         }, 3000);
