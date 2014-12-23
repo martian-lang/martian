@@ -60,6 +60,15 @@ func (self *PipestanceExistsError) Error() string {
 	return fmt.Sprintf("RuntimeError: pipestance '%s' already exists.", self.Psid)
 }
 
+// PipestanceCopyingError
+type PipestanceCopyingError struct {
+        Psid string
+}
+
+func (self *PipestanceCopyingError) Error() string {
+        return fmt.Sprintf("RuntimeError: pipestance '%s' is currently being copied.", self.Psid)
+}
+
 // PreprocessError
 type PreprocessError struct {
 	files []string
