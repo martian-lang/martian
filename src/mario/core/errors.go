@@ -62,11 +62,11 @@ func (self *PipestanceExistsError) Error() string {
 
 // PipestanceCopyingError
 type PipestanceCopyingError struct {
-        Psid string
+	Psid string
 }
 
 func (self *PipestanceCopyingError) Error() string {
-        return fmt.Sprintf("RuntimeError: pipestance '%s' is currently being copied.", self.Psid)
+	return fmt.Sprintf("RuntimeError: pipestance '%s' is currently being copied.", self.Psid)
 }
 
 // PreprocessError
