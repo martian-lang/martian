@@ -181,8 +181,8 @@ def stacktrace():
                     pass
         tb = tb.tb_next
     stacktrace += [line.strip() for line in traceback.format_exception_only(etype, evalue)]
-    stacktrace.append("\n")
     if local:
+        stacktrace.append("\n")
         stacktrace.append(traceback.format_exc())
     return "\n".join(stacktrace)
 
