@@ -6,24 +6,24 @@
 #
 import sys
 import traceback
-import mario
+import martian
 
 try:
-    # Initialize Mario with command line args.
-    mario.initialize(sys.argv)
+    # Initialize Martian with command line args.
+    martian.initialize(sys.argv)
 
     # Load args and retvals from metadata.
-    args = mario.Record(mario.metadata.read("args"))
+    args = martian.Record(martian.metadata.read("args"))
 
     # Execute split code.
-    mario.run("chunk_defs = mario.module.split(args)")
+    martian.run("chunk_defs = martian.module.split(args)")
 
     # Write the output as JSON.
-    mario.metadata.write("chunk_defs", chunk_defs)
+    martian.metadata.write("chunk_defs", chunk_defs)
 
     # Write end of log and completion marker.
-    mario.complete()
+    martian.complete()
 
 except Exception as e:
     # If stage code threw an error, package it up as JSON.
-    mario.fail(mario.stacktrace())
+    martian.fail(martian.stacktrace())
