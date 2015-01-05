@@ -6,25 +6,25 @@
 #
 import sys
 import traceback
-import mario
+import martian
 
 try:
-    # Initialize Mario with command line args.
-    mario.initialize(sys.argv)
+    # Initialize Martian with command line args.
+    martian.initialize(sys.argv)
 
     # Load args and retvals from metadata.
-    args = mario.Record(mario.metadata.read("args"))
-    outs = mario.Record(mario.metadata.read("outs"))
+    args = martian.Record(martian.metadata.read("args"))
+    outs = martian.Record(martian.metadata.read("outs"))
 
     # Execute the main stage code.
-    mario.run("mario.module.main(args, outs)")
+    martian.run("martian.module.main(args, outs)")
 
     # Write the output as JSON.
-    mario.metadata.write("outs", outs.items())
+    martian.metadata.write("outs", outs.items())
 
     # Write end of log and completion marker.
-    mario.complete()
+    martian.complete()
 
 except Exception as e:
     # If stage code threw an error, package it up as JSON.
-    mario.fail(mario.stacktrace())
+    martian.fail(martian.stacktrace())
