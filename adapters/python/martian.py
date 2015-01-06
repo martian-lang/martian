@@ -94,7 +94,7 @@ class Metadata:
     def log(self, level, message):
         self._append(level, message, "log")
 
-    def Assert(self, message):
+    def _assert(self, message):
         self._append("assert", message, "assert")
 
     def warn(self, message):
@@ -274,8 +274,8 @@ def log_json(label, object):
 def throw(message):
     raise StageException(message)
 
-def Assert(message):
-    metadata.Assert(message)
+def exit(message):
+    metadata._assert(message)
     sys.exit(0)
 
 def warn(message):
