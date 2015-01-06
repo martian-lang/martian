@@ -42,6 +42,7 @@ var rules = []*rule{
 	newRule("stage\\b", STAGE),
 	newRule("pipeline\\b", PIPELINE),
 	newRule("call\\b", CALL),
+	newRule("local\\b", LOCAL),
 	newRule("volatile\\b", VOLATILE),
 	newRule("sweep\\b", SWEEP),
 	newRule("split\\b", SPLIT),

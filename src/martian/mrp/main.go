@@ -41,6 +41,9 @@ func runLoop(pipestance *core.Pipestance, stepSecs int, disableVDR bool,
 		state := pipestance.GetState()
 		if state == "complete" {
 			pipestance.Immortalize()
+			if warnings, ok := pipestance.GetWarnings(); ok {
+				core.Log(warnings)
+			}
 			if disableVDR {
 				core.LogInfo("runtime",
 					"VDR disabled by --novdr option. No files killed.")
@@ -65,24 +68,30 @@ func runLoop(pipestance *core.Pipestance, stepSecs int, disableVDR bool,
 			}
 		} else if state == "failed" {
 			if !showedFailed {
-				fqname, _, log, errpaths := pipestance.GetFatalError()
-				core.Log("\nPipestance failed at:\n  %s\n\nError logs written to:\n", fqname)
-				for _, errpath := range errpaths {
-					core.Log("  %s\n", errpath)
+				if warnings, ok := pipestance.GetWarnings(); ok {
+					core.Log(warnings)
 				}
-				core.Log("\n%s\n", log)
-
-				if !noDump {
-					// Generate debug tarball.
-					core.Log("Generating debug dump tarball...")
-					debugFile := fmt.Sprintf("%s-debug-dump.tar.bz2", pipestance.GetPsid())
-					cmd := exec.Command("tar", "jcf", debugFile, "--exclude=*files*", pipestance.GetPsid())
-					if _, err := cmd.CombinedOutput(); err != nil {
-						core.Log("failed.\n  %s\n", err.Error())
-					} else {
-						core.Log("complete.\n  %s\n", debugFile)
+				if fqname, _, log, kind, errpaths := pipestance.GetFatalError(); kind == "assert" {
+					core.Log(log)
+				} else {
+					core.Log("\nPipestance failed at:\n  %s\n\nError logs written to:\n", fqname)
+					for _, errpath := range errpaths {
+						core.Log("  %s\n", errpath)
 					}
-					core.Log("\n")
+					core.Log("\n%s\n", log)
+
+					if !noDump {
+						// Generate debug tarball.
+						core.Log("Generating debug dump tarball...")
+						debugFile := fmt.Sprintf("%s-debug-dump.tar.bz2", pipestance.GetPsid())
+						cmd := exec.Command("tar", "jcf", debugFile, "--exclude=*files*", pipestance.GetPsid())
+						if _, err := cmd.CombinedOutput(); err != nil {
+							core.Log("failed.\n  %s\n", err.Error())
+						} else {
+							core.Log("complete.\n  %s\n", debugFile)
+						}
+						core.Log("\n")
+					}
 				}
 			}
 			if noExit {

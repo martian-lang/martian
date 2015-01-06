@@ -86,10 +86,19 @@ class Metadata:
     def write_time(self, name):
         self.write_raw(name, self.make_timestamp_now())
 
-    def log(self, level, message):
-        with open(self.make_path("log"), "a") as f:
+    def _append(self, level, message, filename):
+        with open(self.make_path(filename), "a") as f:
             f.write("%s [%s] %s\n" % (self.make_timestamp_now(), level, message))
-        self.update_journal("log")
+        self.update_journal(filename)
+
+    def log(self, level, message):
+        self._append(level, message, "log")
+
+    def _assert(self, message):
+        self._append("assert", message, "assert")
+
+    def warn(self, message):
+        self._append("warn", message, "warn")
 
     def update_journal(self, name):
         if self.run_type != "main":
@@ -264,3 +273,10 @@ def log_json(label, object):
 
 def throw(message):
     raise StageException(message)
+
+def exit(message):
+    metadata._assert(message)
+    sys.exit(0)
+
+def warn(message):
+    metadata.warn(message)
