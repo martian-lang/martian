@@ -1,6 +1,7 @@
 {
   "jobcmd":{  
-    "sge":"qsub"
+    "sge":"qsub",
+    "lsf":"bsub"
   },
   "env":{  
     "qsub":[  
@@ -15,6 +16,24 @@
       {  
         "name":"SGE_CELL",
         "description":"usually 'default'"
+      }
+    ],
+    "bsub":[
+      {
+        "name":"LSF_SERVERDIR",
+        "description":"path/to/lsf/server"
+      },
+      {
+        "name":"LSF_LIBDIR",
+        "description":"path/to/lsf/lib"
+      },
+      {
+        "name":"LSF_BINDIR",
+        "description":"path/to/lsf/commands"
+      },
+      {
+	"name":"LSF_ENVDIR",
+	"description":"path/to/lsf/env"
       }
     ]
   },
