@@ -6,26 +6,26 @@
 #
 import sys
 import traceback
-import mario
+import martian
 
 try:
-    # Initialize Mario with command line args.
-    mario.initialize(sys.argv)
+    # Initialize Martian with command line args.
+    martian.initialize(sys.argv)
 
-    args = mario.Record(mario.metadata.read("args"))
-    outs = mario.Record(mario.metadata.read("outs"))
-    chunk_defs = [mario.Record(chunk_def) for chunk_def in mario.metadata.read("chunk_defs")]
-    chunk_outs = [mario.Record(chunk_out) for chunk_out in mario.metadata.read("chunk_outs")]
+    args = martian.Record(martian.metadata.read("args"))
+    outs = martian.Record(martian.metadata.read("outs"))
+    chunk_defs = [martian.Record(chunk_def) for chunk_def in martian.metadata.read("chunk_defs")]
+    chunk_outs = [martian.Record(chunk_out) for chunk_out in martian.metadata.read("chunk_outs")]
 
     # Execute stage code.
-    mario.run("mario.module.join(args, outs, chunk_defs, chunk_outs)")
+    martian.run("martian.module.join(args, outs, chunk_defs, chunk_outs)")
 
     # Write the output as JSON.
-    mario.metadata.write("outs", outs.items())
+    martian.metadata.write("outs", outs.items())
 
     # Write end of log and completion marker.
-    mario.complete()
+    martian.complete()
 
 except Exception as e:
     # If stage code threw an error, package it up as JSON.
-    mario.fail(mario.stacktrace())
+    martian.fail(martian.stacktrace())

@@ -2,9 +2,9 @@
 #
 # Copyright (c) 2014 10X Genomics, Inc. All rights reserved.
 #
-# Accelerated stress-tester for Mario runtime.
+# Accelerated stress-tester for Martian runtime.
 #
-import mario
+import martian
 import time
 import random
 
