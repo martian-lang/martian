@@ -120,6 +120,7 @@ type (
 	CallStm struct {
 		node     AstNode
 		volatile bool
+		local    bool
 		id       string
 		bindings *BindStms
 	}

@@ -332,10 +332,12 @@ func (self *RemoteJobManager) execJob(shellCmd string, argv []string, envs []str
 		}
 	}
 	r := strings.NewReplacer(args...)
-	metadata.writeRaw("jobscript", r.Replace(template))
+	jobscript := r.Replace(template)
+	metadata.writeRaw("jobscript", jobscript)
 
-	cmd := exec.Command(self.jobCmd, metadata.makePath("jobscript"))
+	cmd := exec.Command(self.jobCmd)
 	cmd.Dir = metadata.filesPath
+	cmd.Stdin = strings.NewReader(jobscript)
 	if output, err := cmd.CombinedOutput(); err != nil {
 		metadata.writeRaw("errors", "jobcmd error:\n"+err.Error())
 	} else {

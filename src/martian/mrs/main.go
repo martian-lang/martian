@@ -6,7 +6,6 @@
 package main
 
 import (
-	"fmt"
 	"github.com/docopt/docopt.go"
 	"io/ioutil"
 	"martian/core"
@@ -108,14 +107,23 @@ Options:
 			// Check for completion states.
 			state := stagestance.GetState()
 			if state == "complete" {
+				if warnings, ok := stagestance.GetWarnings(); ok {
+					core.Log(warnings)
+				}
 				core.LogInfo("runtime", "Stage completed, exiting.")
 				os.Exit(0)
 			}
 			if state == "failed" {
-				_, errpath, _, err := stagestance.GetFatalError()
-				fmt.Printf("\nStage failed, errors written to:\n%s\n\n%s\n",
-					errpath, err)
-				core.LogInfo("runtime", "Stage failed, exiting.")
+				if warnings, ok := stagestance.GetWarnings(); ok {
+					core.Log(warnings)
+				}
+				if _, errpath, log, kind, err := stagestance.GetFatalError(); kind == "assert" {
+					core.Log(log)
+				} else {
+					core.Log("\nStage failed, errors written to:\n%s\n\n%s\n",
+						errpath, err)
+					core.LogInfo("runtime", "Stage failed, exiting.")
+				}
 				os.Exit(1)
 			}
 
