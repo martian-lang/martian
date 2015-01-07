@@ -557,24 +557,26 @@ func (self *Fork) mkdirs() {
 }
 
 func (self *Fork) verifyOutput() (bool, string) {
-	outputs := self.metadata.read("outs").(map[string]interface{})
 	outparams := self.node.outparams
 	msg := ""
 	ret := true
-	for _, param := range outparams.table {
-		val, ok := outputs[param.getId()]
-		if !ok {
-			msg += fmt.Sprintf("Fork did not return parameter '%s'\n", param.getId())
-			ret = false
-			continue
-		}
-		if val == nil {
-			// Allow for null output parameters
-			continue
-		}
-		if !dynamicCast(val, param.getTname(), param.getArrayDim()) {
-			msg += fmt.Sprintf("Fork returned %s parameter '%s' with incorrect type\n", param.getTname(), param.getId())
-			ret = false
+	if len(outparams.list) > 0 {
+		outputs := self.metadata.read("outs").(map[string]interface{})
+		for _, param := range outparams.table {
+			val, ok := outputs[param.getId()]
+			if !ok {
+				msg += fmt.Sprintf("Fork did not return parameter '%s'\n", param.getId())
+				ret = false
+				continue
+			}
+			if val == nil {
+				// Allow for null output parameters
+				continue
+			}
+			if !dynamicCast(val, param.getTname(), param.getArrayDim()) {
+				msg += fmt.Sprintf("Fork returned %s parameter '%s' with incorrect type\n", param.getTname(), param.getId())
+				ret = false
+			}
 		}
 	}
 	return ret, msg
