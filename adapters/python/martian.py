@@ -94,11 +94,11 @@ class Metadata:
     def log(self, level, message):
         self._append(level, message, "log")
 
-    def _assert(self, message):
-        self._append("assert", message, "assert")
-
     def warn(self, message):
         self._append("warn", message, "warn")
+
+    def _assert(self, message):
+        self.write_raw("assert", message + "\n")
 
     def update_journal(self, name):
         if self.run_type != "main":

@@ -118,7 +118,7 @@ Options:
 					core.Log(warnings)
 				}
 				if _, errpath, log, kind, err := stagestance.GetFatalError(); kind == "assert" {
-					core.Log(log)
+					core.Log("\n%s\n", log)
 				} else {
 					core.Log("\nStage failed, errors written to:\n%s\n\n%s\n",
 						errpath, err)

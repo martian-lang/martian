@@ -72,7 +72,7 @@ func runLoop(pipestance *core.Pipestance, stepSecs int, disableVDR bool,
 					core.Log(warnings)
 				}
 				if fqname, _, log, kind, errpaths := pipestance.GetFatalError(); kind == "assert" {
-					core.Log(log)
+					core.Log("\n%s\n", log)
 				} else {
 					core.Log("\nPipestance failed at:\n  %s\n\nError logs written to:\n", fqname)
 					for _, errpath := range errpaths {
