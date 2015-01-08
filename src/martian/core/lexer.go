@@ -61,7 +61,6 @@ var rules = []*rule{
 	newRule("string\\b", STRING),
 	newRule("float\\b", FLOAT),
 	newRule("path\\b", PATH),
-	newRule("file\\b", FILE),
 	newRule("bool\\b", BOOL),
 	newRule("true\\b", TRUE),
 	newRule("false\\b", FALSE),

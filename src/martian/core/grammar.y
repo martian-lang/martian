@@ -62,7 +62,7 @@ func unquote(qs string) string {
 %token IN OUT SRC
 %token <val> ID LITSTRING NUM_FLOAT NUM_INT DOT
 %token <val> PY GO SH EXEC
-%token <val> MAP INT STRING FLOAT PATH FILE BOOL TRUE FALSE NULL DEFAULT
+%token <val> MAP INT STRING FLOAT PATH BOOL TRUE FALSE NULL DEFAULT
 
 %%
 file
@@ -249,10 +249,6 @@ exp
         {{ $$ = &ValExp{node:NewAstNode(&mmlval), kind: "map", value: map[string]interface{}{}} }}
     | LBRACE kvpair_list RBRACE
         {{ $$ = &ValExp{node:NewAstNode(&mmlval), kind: "map", value: $2} }}
-    | PATH LPAREN LITSTRING RPAREN
-        {{ $$ = &ValExp{node:NewAstNode(&mmlval), kind: $1, value: unquote($3)} }}
-    | FILE LPAREN LITSTRING RPAREN
-        {{ $$ = &ValExp{node:NewAstNode(&mmlval), kind: $1, value: unquote($3)} }}
     | NUM_FLOAT
         {{  // Lexer guarantees parseable float strings.
             f, _ := strconv.ParseFloat($1, 64)
