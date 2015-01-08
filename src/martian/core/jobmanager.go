@@ -341,12 +341,11 @@ func (self *RemoteJobManager) execJob(shellCmd string, argv []string, envs []str
 	if output, err := cmd.CombinedOutput(); err != nil {
 		metadata.writeRaw("errors", "jobcmd error:\n"+err.Error())
 	} else {
-		// Get job ID from output and write to metadata file
-		r := regexp.MustCompile("[0-9]+")
-		if jobIdString := r.FindString(string(output)); len(jobIdString) > 0 {
-			jobId, _ := strconv.Atoi(jobIdString)
-			metadata.writeRaw("jobid", jobIdString)
-			if len(self.monitorCmd) > 0 {
+		if len(self.monitorCmd) > 0 {
+			// Get job ID from output
+			r := regexp.MustCompile("[0-9]+")
+			if jobIdString := r.FindString(string(output)); len(jobIdString) > 0 {
+				jobId, _ := strconv.Atoi(jobIdString)
 				self.monitorListMutex.Lock()
 				self.monitorList = append(self.monitorList, &JobMonitor{jobId, metadata, time.Now()})
 				self.monitorListMutex.Unlock()
