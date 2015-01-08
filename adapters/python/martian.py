@@ -131,7 +131,7 @@ def initialize(argv):
     metadata = Metadata(metadata_path, files_path, run_file, run_type)
 
     # Write jobinfo
-    write_jobinfo()
+    write_jobinfo(files_path)
 
     log_time("__start__")
     starttime = time.time()
@@ -236,9 +236,9 @@ def check_call(args, stdin=None, stdout=None, stderr=None, shell=False):
 def make_path(filename):
     return os.path.join(metadata.files_path, filename)
 
-def write_jobinfo():
+def write_jobinfo(cwd):
     jobinfo = metadata.read("jobinfo")
-    jobinfo["cwd"] = os.getcwd()
+    jobinfo["cwd"] = cwd
     jobinfo["host"] = socket.gethostname()
     jobinfo["pid"] = os.getpid()
     jobinfo["python"] = {
