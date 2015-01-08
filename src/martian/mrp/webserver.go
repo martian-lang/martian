@@ -108,9 +108,9 @@ func runWebServer(uiport string, rt *core.Runtime, pipestance *core.Pipestance,
 		})
 
 	// Restart failed stage.
-	app.Post("/api/restart/:container/:pname/:psid/:fqname",
+	app.Post("/api/restart/:container/:pname/:psid",
 		func(p martini.Params) string {
-			if err := pipestance.ResetNode(p["fqname"]); err != nil {
+			if err := pipestance.Reset(); err != nil {
 				return err.Error()
 			}
 			return ""

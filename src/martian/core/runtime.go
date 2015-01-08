@@ -1089,8 +1089,8 @@ func (self *Node) getFatalError() (string, string, string, string, []string) {
 			summary := "<none>"
 			if self.stagecodeLang == "Python" {
 				errlines := strings.Split(errlog, "\n")
-				if len(errlines) >= 2 {
-					summary = errlines[len(errlines)-2]
+				if len(errlines) >= 1 {
+					summary = errlines[len(errlines)-1]
 				}
 			}
 			return metadata.fqname, summary, errlog, "errors", []string{
@@ -1100,10 +1100,13 @@ func (self *Node) getFatalError() (string, string, string, string, []string) {
 			}
 		}
 		if metadata.exists("assert") {
-			warnlog := metadata.readRaw("assert")
-			warnlines := strings.Split(warnlog, "\n")
-			summary := warnlines[len(warnlines)-1]
-			return metadata.fqname, summary, warnlog, "assert", []string{
+			assertlog := metadata.readRaw("assert")
+			summary := "<none>"
+			assertlines := strings.Split(assertlog, "\n")
+			if len(assertlines) >= 1 {
+				summary = assertlines[len(assertlines)-1]
+			}
+			return metadata.fqname, summary, assertlog, "assert", []string{
 				metadata.makePath("assert"),
 			}
 		}
@@ -1486,14 +1489,10 @@ func (self *Pipestance) StepNodes() {
 	}
 }
 
-func (self *Pipestance) ResetNode(fqname string) error {
-	return self.node.find(fqname).reset()
-}
-
 func (self *Pipestance) Reset() error {
 	for _, node := range self.node.allNodes() {
 		if node.state == "failed" {
-			if err := self.ResetNode(node.fqname); err != nil {
+			if err := node.reset(); err != nil {
 				return err
 			}
 		}
