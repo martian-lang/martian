@@ -1422,19 +1422,36 @@ func (self *Pipestance) GetState() string {
 	return "waiting"
 }
 
-func (self *Pipestance) RestartRunningNodes() error {
+func (self *Pipestance) RestartAssertedNodes() error {
 	self.LoadMetadata()
 	nodes := self.node.getFrontierNodes()
 	for _, node := range nodes {
-		if node.state == "running" {
-			LogInfo("runtime", "Found orphaned stage: %s", node.fqname)
+		if node.state == "failed" {
+			if _, _, _, kind, _ := node.getFatalError(); kind == "assert" {
+				if err := node.reset(); err != nil {
+					return err
+				}
+			}
 		}
 	}
+	return nil
+}
+
+func (self *Pipestance) RestartRunningNodes(jobMode string) error {
+	self.LoadMetadata()
+	nodes := self.node.getFrontierNodes()
+	runningNodes := []*Node{}
 	for _, node := range nodes {
-		if node.state == "running" {
-			if err := node.reset(); err != nil {
-				return err
+		if jobMode == "local" || node.local {
+			if node.state == "running" {
+				LogInfo("runtime", "Found orphaned stage: %s", node.fqname)
+				runningNodes = append(runningNodes, node)
 			}
+		}
+	}
+	for _, node := range runningNodes {
+		if err := node.reset(); err != nil {
+			return err
 		}
 	}
 	return nil
@@ -1764,9 +1781,9 @@ func (self *Runtime) ReattachToPipestance(psid string, pipestancePath string) (*
 	// If we're reattaching in local mode, restart any stages that were
 	// left in a running state from last mrp run. The actual job would
 	// have been killed by the CTRL-C.
-	if err == nil && self.jobMode == "local" {
-		LogInfo("runtime", "Reattaching in local mode.")
-		err = pipestance.RestartRunningNodes()
+	if err == nil {
+		LogInfo("runtime", "Reattaching in %s mode.", self.jobMode)
+		err = pipestance.RestartRunningNodes(self.jobMode)
 	}
 
 	return pipestance, err

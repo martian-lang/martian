@@ -263,8 +263,9 @@ Options:
 	if err != nil {
 		if _, ok := err.(*core.PipestanceExistsError); ok {
 			// If it already exists, try to reattach to it.
-			pipestance, err = rt.ReattachToPipestance(psid, pipestancePath)
-			core.DieIf(err)
+			if pipestance, err = rt.ReattachToPipestance(psid, pipestancePath); err == nil {
+				err = pipestance.RestartAssertedNodes()
+			}
 		}
 		core.DieIf(err)
 	}
