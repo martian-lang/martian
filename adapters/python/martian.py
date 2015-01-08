@@ -118,7 +118,7 @@ class TestMetadata(Metadata):
 
 def test_initialize(path):
     global metadata
-    metadata = TestMetadata(path, path)
+    metadata = TestMetadata(path, path, "", "main")
 
 def initialize(argv):
     global metadata, module, profile_flag, locals_flag, starttime
