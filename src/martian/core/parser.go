@@ -246,6 +246,8 @@ func (global *Ast) check(stagecodePaths []string, checkSrcPath bool) error {
 			return err
 		}
 
+		preflightCalls := []*CallStm{}
+
 		// Check calls.
 		for _, call := range pipeline.calls {
 			// Check for duplicate calls.
@@ -260,14 +262,25 @@ func (global *Ast) check(stagecodePaths []string, checkSrcPath bool) error {
 			// Save the valid callables for this scope.
 			pipeline.callables.table[call.id] = callable
 
-			// Check to make sure if volatile or local is declared, callable is a stage
+			// Check to make sure if local, preflight or volatile is declared, callable is a stage
 			if _, ok := callable.(*Stage); !ok {
-				if call.local {
+				if call.tags.local {
 					return global.err(call, "UnsupportedTagError: Pipeline '%s' cannot be called with 'local' tag", call.id)
 				}
-				if call.volatile {
+				if call.tags.preflight {
+					return global.err(call, "UnsupportedTagError: Pipeline '%s' cannot be called with 'preflight' tag", call.id)
+				}
+				if call.tags.volatile {
 					return global.err(call, "UnsupportedTagError: Pipeline '%s' cannot be called with 'volatile' tag", call.id)
 				}
+			}
+			if call.tags.preflight {
+				for _, binding := range call.bindings.list {
+					if binding.exp.getKind() == "call" {
+						return global.err(call, "PreflightBindingError: Preflight stage '%s' cannot have input parameter bound to output parameter of another stage or pipeline", call.id)
+					}
+				}
+				preflightCalls = append(preflightCalls, call)
 			}
 
 			// Check the bindings
@@ -282,6 +295,11 @@ func (global *Ast) check(stagecodePaths []string, checkSrcPath bool) error {
 				}
 			}
 		}
+
+		if len(preflightCalls) > 1 {
+			return global.err(pipeline, "MultiplePreflightError: Pipeline '%s' cannot have multiple preflight stages", pipeline.id)
+		}
+
 	}
 
 	// Doing these in a separate loop gives the user better incremental

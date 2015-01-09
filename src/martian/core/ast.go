@@ -117,10 +117,15 @@ type (
 		table map[string]*BindStm
 	}
 
+	Tags struct {
+		local     bool
+		preflight bool
+		volatile  bool
+	}
+
 	CallStm struct {
 		node     AstNode
-		volatile bool
-		local    bool
+		tags     *Tags
 		id       string
 		bindings *BindStms
 	}
