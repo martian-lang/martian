@@ -804,9 +804,9 @@ func NewNode(parent Nodable, kind string, callStm *CallStm, callables *Callables
 	self.journalPath = parent.getNode().journalPath
 	self.tmpPath = parent.getNode().tmpPath
 	self.metadata = NewMetadata(self.fqname, self.path)
-	self.volatile = callStm.tags.volatile
-	self.local = callStm.tags.local
-	self.preflight = callStm.tags.preflight
+	self.volatile = callStm.modifiers.volatile
+	self.local = callStm.modifiers.local
+	self.preflight = callStm.modifiers.preflight
 
 	self.outparams = callables.table[self.name].getOutParams()
 	self.argbindings = map[string]*Binding{}

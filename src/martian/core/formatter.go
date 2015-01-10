@@ -188,13 +188,13 @@ func (self *CallStm) format() string {
 	volatile := ""
 	local := ""
 	preflight := ""
-	if self.tags.local {
+	if self.modifiers.local {
 		local = "local "
 	}
-	if self.tags.preflight {
+	if self.modifiers.preflight {
 		preflight = "preflight "
 	}
-	if self.tags.volatile {
+	if self.modifiers.volatile {
 		volatile = "volatile "
 	}
 	fsrc += fmt.Sprintf("%scall %s%s%s%s(%s", INDENT, local, preflight, volatile, self.id, NEWLINE)

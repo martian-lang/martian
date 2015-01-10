@@ -22,7 +22,7 @@ func unquote(qs string) string {
     loc       int
     val       string
     comments  string
-    tags      *Tags
+    modifiers *Modifiers
     dec       Dec
     decs      []Dec
     inparam   *InParam
@@ -40,7 +40,7 @@ func unquote(qs string) string {
 }
 
 %type <val>       file_id type help type src_lang
-%type <tags>      tags
+%type <modifiers> modifiers
 %type <arr>       arr_list
 %type <dec>       dec 
 %type <decs>      dec_list
@@ -198,18 +198,18 @@ call_stm_list
     ;
 
 call_stm
-    : CALL tags ID LPAREN bind_stm_list RPAREN
+    : CALL modifiers ID LPAREN bind_stm_list RPAREN
         {{ $$ = &CallStm{NewAstNode(&mmlval), $2, $3, $5} }}
     ;
 
-tags
+modifiers
     :
-      {{ $$ = &Tags{false, false, false} }}
-    | tags LOCAL
+      {{ $$ = &Modifiers{false, false, false} }}
+    | modifiers LOCAL
       {{ $$.local = true }}
-    | tags PREFLIGHT
+    | modifiers PREFLIGHT
       {{ $$.preflight = true }}
-    | tags VOLATILE
+    | modifiers VOLATILE
       {{ $$.volatile = true }}
     ;
 

@@ -21,27 +21,27 @@ func unquote(qs string) string {
 
 //line src/martian/core/grammar.y:19
 type mmSymType struct {
-	yys      int
-	global   *Ast
-	arr      int
-	loc      int
-	val      string
-	comments string
-	tags     *Tags
-	dec      Dec
-	decs     []Dec
-	inparam  *InParam
-	outparam *OutParam
-	params   *Params
-	src      *SrcParam
-	exp      Exp
-	exps     []Exp
-	kvpairs  map[string]Exp
-	call     *CallStm
-	calls    []*CallStm
-	binding  *BindStm
-	bindings *BindStms
-	retstm   *ReturnStm
+	yys       int
+	global    *Ast
+	arr       int
+	loc       int
+	val       string
+	comments  string
+	modifiers *Modifiers
+	dec       Dec
+	decs      []Dec
+	inparam   *InParam
+	outparam  *OutParam
+	params    *Params
+	src       *SrcParam
+	exp       Exp
+	exps      []Exp
+	kvpairs   map[string]Exp
+	call      *CallStm
+	calls     []*CallStm
+	binding   *BindStm
+	bindings  *BindStms
+	retstm    *ReturnStm
 }
 
 const SKIP = 57346
@@ -715,35 +715,35 @@ mmdefault:
 		//line src/martian/core/grammar.y:202
 		{
 			{
-				mmVAL.call = &CallStm{NewAstNode(&mmlval), mmS[mmpt-4].tags, mmS[mmpt-3].val, mmS[mmpt-1].bindings}
+				mmVAL.call = &CallStm{NewAstNode(&mmlval), mmS[mmpt-4].modifiers, mmS[mmpt-3].val, mmS[mmpt-1].bindings}
 			}
 		}
 	case 39:
 		//line src/martian/core/grammar.y:207
 		{
 			{
-				mmVAL.tags = &Tags{false, false, false}
+				mmVAL.modifiers = &Modifiers{false, false, false}
 			}
 		}
 	case 40:
 		//line src/martian/core/grammar.y:209
 		{
 			{
-				mmVAL.tags.local = true
+				mmVAL.modifiers.local = true
 			}
 		}
 	case 41:
 		//line src/martian/core/grammar.y:211
 		{
 			{
-				mmVAL.tags.preflight = true
+				mmVAL.modifiers.preflight = true
 			}
 		}
 	case 42:
 		//line src/martian/core/grammar.y:213
 		{
 			{
-				mmVAL.tags.volatile = true
+				mmVAL.modifiers.volatile = true
 			}
 		}
 	case 43:

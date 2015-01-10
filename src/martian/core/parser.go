@@ -264,17 +264,17 @@ func (global *Ast) check(stagecodePaths []string, checkSrcPath bool) error {
 
 			// Check to make sure if local, preflight or volatile is declared, callable is a stage
 			if _, ok := callable.(*Stage); !ok {
-				if call.tags.local {
+				if call.modifiers.local {
 					return global.err(call, "UnsupportedTagError: Pipeline '%s' cannot be called with 'local' tag", call.id)
 				}
-				if call.tags.preflight {
+				if call.modifiers.preflight {
 					return global.err(call, "UnsupportedTagError: Pipeline '%s' cannot be called with 'preflight' tag", call.id)
 				}
-				if call.tags.volatile {
+				if call.modifiers.volatile {
 					return global.err(call, "UnsupportedTagError: Pipeline '%s' cannot be called with 'volatile' tag", call.id)
 				}
 			}
-			if call.tags.preflight {
+			if call.modifiers.preflight {
 				for _, binding := range call.bindings.list {
 					if binding.exp.getKind() == "call" {
 						return global.err(call, "PreflightBindingError: Preflight stage '%s' cannot have input parameter bound to output parameter of another stage or pipeline", call.id)
