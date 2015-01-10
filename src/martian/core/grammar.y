@@ -22,6 +22,7 @@ func unquote(qs string) string {
     loc       int
     val       string
     comments  string
+    modifiers *Modifiers
     dec       Dec
     decs      []Dec
     inparam   *InParam
@@ -39,6 +40,7 @@ func unquote(qs string) string {
 }
 
 %type <val>       file_id type help type src_lang
+%type <modifiers> modifiers
 %type <arr>       arr_list
 %type <dec>       dec 
 %type <decs>      dec_list
@@ -58,7 +60,7 @@ func unquote(qs string) string {
 %token SKIP INVALID 
 %token SEMICOLON COLON COMMA EQUALS
 %token LBRACKET RBRACKET LPAREN RPAREN LBRACE RBRACE 
-%token FILETYPE STAGE PIPELINE CALL LOCAL VOLATILE SWEEP SPLIT USING SELF RETURN
+%token FILETYPE STAGE PIPELINE CALL LOCAL PREFLIGHT VOLATILE SWEEP SPLIT USING SELF RETURN
 %token IN OUT SRC
 %token <val> ID LITSTRING NUM_FLOAT NUM_INT DOT
 %token <val> PY GO SH EXEC
@@ -196,14 +198,19 @@ call_stm_list
     ;
 
 call_stm
-    : CALL ID LPAREN bind_stm_list RPAREN
-        {{ $$ = &CallStm{NewAstNode(&mmlval), false, false, $2, $4} }}
-    | CALL VOLATILE ID LPAREN bind_stm_list RPAREN
-        {{ $$ = &CallStm{NewAstNode(&mmlval), true, false, $3, $5} }}
-    | CALL LOCAL ID LPAREN bind_stm_list RPAREN
-        {{ $$ = &CallStm{NewAstNode(&mmlval), false, true, $3, $5} }}
-    | CALL LOCAL VOLATILE ID LPAREN bind_stm_list RPAREN
-        {{ $$ = &CallStm{NewAstNode(&mmlval), true, true, $4, $6} }}
+    : CALL modifiers ID LPAREN bind_stm_list RPAREN
+        {{ $$ = &CallStm{NewAstNode(&mmlval), $2, $3, $5} }}
+    ;
+
+modifiers
+    :
+      {{ $$ = &Modifiers{false, false, false} }}
+    | modifiers LOCAL
+      {{ $$.local = true }}
+    | modifiers PREFLIGHT
+      {{ $$.preflight = true }}
+    | modifiers VOLATILE
+      {{ $$.volatile = true }}
     ;
 
 bind_stm_list

@@ -187,13 +187,17 @@ func (self *CallStm) format() string {
 	self.bindings.list[0].exp.getNode().comments = ""
 	volatile := ""
 	local := ""
-	if self.local {
+	preflight := ""
+	if self.modifiers.local {
 		local = "local "
 	}
-	if self.volatile {
+	if self.modifiers.preflight {
+		preflight = "preflight "
+	}
+	if self.modifiers.volatile {
 		volatile = "volatile "
 	}
-	fsrc += fmt.Sprintf("%scall %s%s%s(%s", INDENT, local, volatile, self.id, NEWLINE)
+	fsrc += fmt.Sprintf("%scall %s%s%s%s(%s", INDENT, local, preflight, volatile, self.id, NEWLINE)
 	fsrc += self.bindings.format()
 	fsrc += self.node.comments
 	fsrc += fmt.Sprintf("%s)", INDENT)

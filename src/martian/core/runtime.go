@@ -783,6 +783,7 @@ type Node struct {
 	state          string
 	volatile       bool
 	local          bool
+	preflight      bool
 	stagecodeLang  string
 	stagecodeCmd   string
 	journalPath    string
@@ -803,8 +804,9 @@ func NewNode(parent Nodable, kind string, callStm *CallStm, callables *Callables
 	self.journalPath = parent.getNode().journalPath
 	self.tmpPath = parent.getNode().tmpPath
 	self.metadata = NewMetadata(self.fqname, self.path)
-	self.volatile = callStm.volatile
-	self.local = callStm.local
+	self.volatile = callStm.modifiers.volatile
+	self.local = callStm.modifiers.local
+	self.preflight = callStm.modifiers.preflight
 
 	self.outparams = callables.table[self.name].getOutParams()
 	self.argbindings = map[string]*Binding{}
@@ -924,6 +926,14 @@ func (self *Node) matchFork(targetArgPermute map[string]interface{}) *Fork {
 //
 // Subnode management
 //
+func (self *Node) addPreflightDependencies(prenode Nodable) {
+	for _, subnode := range self.subnodes {
+		subnode.getNode().addPreflightDependencies(prenode)
+	}
+	self.prenodes[prenode.getNode().fqname] = prenode
+	prenode.getNode().postnodes[self.fqname] = self
+}
+
 func (self *Node) findBoundNode(id string, outputId string, mode string,
 	value interface{}) (Nodable, string, string, interface{}) {
 	if self.kind == "pipeline" {
@@ -1353,6 +1363,7 @@ func NewPipestance(parent Nodable, invokeSrc string, callStm *CallStm,
 	if !ok {
 		return nil
 	}
+	var preflightNode Nodable = nil
 	for _, subcallStm := range pipeline.calls {
 		callable := callables.table[subcallStm.id]
 		switch callable.(type) {
@@ -1360,6 +1371,9 @@ func NewPipestance(parent Nodable, invokeSrc string, callStm *CallStm,
 			self.node.subnodes[subcallStm.id] = NewStagestance(self.node, subcallStm, callables)
 		case *Pipeline:
 			self.node.subnodes[subcallStm.id] = NewPipestance(self.node, "", subcallStm, callables)
+		}
+		if self.node.subnodes[subcallStm.id].getNode().preflight {
+			preflightNode = self.node.subnodes[subcallStm.id]
 		}
 	}
 
@@ -1375,6 +1389,14 @@ func NewPipestance(parent Nodable, invokeSrc string, callStm *CallStm,
 			self.node.directPrenodes = append(self.node.directPrenodes, binding.parentNode)
 
 			prenode.getNode().postnodes[self.node.fqname] = self.node
+		}
+	}
+	// Add preflight dependencies if preflight stages exist.
+	if preflightNode != nil {
+		for _, subnode := range self.node.subnodes {
+			if subnode != preflightNode {
+				subnode.getNode().addPreflightDependencies(preflightNode)
+			}
 		}
 	}
 
