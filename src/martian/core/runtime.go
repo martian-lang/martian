@@ -1103,11 +1103,15 @@ func (self *Node) getFatalError() (string, string, string, string, []string) {
 					summary = errlines[len(errlines)-1]
 				}
 			}
-			return metadata.fqname, summary, errlog, "errors", []string{
+			errpaths := []string{
 				metadata.makePath("errors"),
 				metadata.makePath("stdout"),
 				metadata.makePath("stderr"),
 			}
+			if self.rt.enableLocalVars {
+				errpaths = append(errpaths, metadata.makePath("localvars"))
+			}
+			return metadata.fqname, summary, errlog, "errors", errpaths
 		}
 		if metadata.exists("assert") {
 			assertlog := metadata.readRaw("assert")
@@ -1256,9 +1260,9 @@ func (self *Node) runJob(shellName string, fqname string, metadata *Metadata,
 	}
 
 	// Configure local variable dumping.
-	localvars := "disable"
+	localVars := "disable"
 	if self.rt.enableLocalVars {
-		localvars = "localvars"
+		localVars = "localvars"
 	}
 
 	// Set environment variables
@@ -1274,10 +1278,10 @@ func (self *Node) runJob(shellName string, fqname string, metadata *Metadata,
 	switch self.stagecodeLang {
 	case "Python":
 		shellCmd = path.Join(self.rt.adaptersPath, "python", shellName+".py")
-		argv = append(stagecodeParts, metadata.path, metadata.filesPath, runFile, profile, localvars)
+		argv = append(stagecodeParts, metadata.path, metadata.filesPath, runFile, profile, localVars)
 	case "Executable":
 		shellCmd = stagecodeParts[0]
-		argv = append(stagecodeParts[1:], shellName, metadata.path, metadata.filesPath, runFile, profile, localvars)
+		argv = append(stagecodeParts[1:], shellName, metadata.path, metadata.filesPath, runFile, profile, localVars)
 	default:
 		panic(fmt.Sprintf("Unknown stage code language: %s", self.stagecodeLang))
 	}

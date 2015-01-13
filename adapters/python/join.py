@@ -28,4 +28,4 @@ try:
 
 except Exception as e:
     # If stage code threw an error, package it up as JSON.
-    martian.fail(martian.stacktrace())
+    martian.fail()

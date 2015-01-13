@@ -180,7 +180,7 @@ def stacktrace():
         if line:
             stacktrace.append("    %s" % line.strip())
         # Only start printing local variables at stage code
-        if filename.endswith("__init__.py") and name in ["main", "split", "join"] and localvars_flag:
+        if filename.endswith("__init__.py") and name in ["main", "split", "join"]:
             local = True
         if local:
             for key, value in frame.f_locals.items():
@@ -190,13 +190,12 @@ def stacktrace():
                     pass
         tb = tb.tb_next
     stacktrace += [line.strip() for line in traceback.format_exception_only(etype, evalue)]
-    if local:
-        stacktrace.append("\n")
-        stacktrace.append(traceback.format_exc())
     return "\n".join(stacktrace)
 
-def fail(stacktrace):
-    metadata.write_raw("errors", stacktrace)
+def fail():
+    metadata.write_raw("errors", traceback.format_exc())
+    if localvars_flag:
+        metadata.write_raw("localvars", stacktrace())
     done()
 
 def complete():
