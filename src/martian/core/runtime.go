@@ -1256,9 +1256,9 @@ func (self *Node) runJob(shellName string, fqname string, metadata *Metadata,
 	}
 
 	// Configure local variable dumping.
-	locals := "disable"
-	if self.rt.enableLocals {
-		locals = "locals"
+	localvars := "disable"
+	if self.rt.enableLocalVars {
+		localvars = "localvars"
 	}
 
 	// Set environment variables
@@ -1274,10 +1274,10 @@ func (self *Node) runJob(shellName string, fqname string, metadata *Metadata,
 	switch self.stagecodeLang {
 	case "Python":
 		shellCmd = path.Join(self.rt.adaptersPath, "python", shellName+".py")
-		argv = append(stagecodeParts, metadata.path, metadata.filesPath, runFile, profile, locals)
+		argv = append(stagecodeParts, metadata.path, metadata.filesPath, runFile, profile, localvars)
 	case "Executable":
 		shellCmd = stagecodeParts[0]
-		argv = append(stagecodeParts[1:], shellName, metadata.path, metadata.filesPath, runFile, profile, locals)
+		argv = append(stagecodeParts[1:], shellName, metadata.path, metadata.filesPath, runFile, profile, localvars)
 	default:
 		panic(fmt.Sprintf("Unknown stage code language: %s", self.stagecodeLang))
 	}
@@ -1646,19 +1646,19 @@ type Runtime struct {
 	JobManager      JobManager
 	LocalJobManager JobManager
 	enableProfiling bool
-	enableLocals    bool
+	enableLocalVars bool
 	stest           bool
 }
 
 func NewRuntime(jobMode string, mroPath string, martianVersion string,
-	mroVersion string, enableProfiling bool, enableLocals bool, debug bool) *Runtime {
+	mroVersion string, enableProfiling bool, enableLocalVars bool, debug bool) *Runtime {
 	return NewRuntimeWithCores(jobMode, mroPath, martianVersion, mroVersion,
-		-1, -1, enableProfiling, enableLocals, debug, false)
+		-1, -1, enableProfiling, enableLocalVars, debug, false)
 }
 
 func NewRuntimeWithCores(jobMode string, mroPath string, martianVersion string,
 	mroVersion string, reqCores int, reqMem int, enableProfiling bool,
-	enableLocals bool, debug bool, stest bool) *Runtime {
+	enableLocalVars bool, debug bool, stest bool) *Runtime {
 
 	self := &Runtime{}
 	self.mroPath = mroPath
@@ -1667,7 +1667,7 @@ func NewRuntimeWithCores(jobMode string, mroPath string, martianVersion string,
 	self.mroVersion = mroVersion
 	self.jobMode = jobMode
 	self.enableProfiling = enableProfiling
-	self.enableLocals = enableLocals
+	self.enableLocalVars = enableLocalVars
 	self.callableTable = map[string]Callable{}
 	self.PipelineNames = []string{}
 	self.stest = stest

@@ -34,7 +34,7 @@ Options:
                          Valid job managers are local, sge or .template file
                          Defaults to local.
     --profile          Enable stage performance profiling.
-    --locals           Print local variables in stage code stack trace.
+    --localvars        Print local variables in stage code stack trace.
     --debug            Enable debug logging for local job manager. 
     -h --help          Show this message.
     --version          Show version.`
@@ -70,8 +70,8 @@ Options:
 	// Compute profiling flag.
 	profile := opts["--profile"].(bool)
 
-	// Compute locals flag.
-	locals := opts["--locals"].(bool)
+	// Compute localvars flag.
+	localVars := opts["--localvars"].(bool)
 
 	// Setup invocation-specific values.
 	invocationPath := opts["<call.mro>"].(string)
@@ -86,7 +86,7 @@ Options:
 	//=========================================================================
 	// Configure Martian runtime.
 	//=========================================================================
-	rt := core.NewRuntime(jobMode, mroPath, martianVersion, mroVersion, profile, locals, debug)
+	rt := core.NewRuntime(jobMode, mroPath, martianVersion, mroVersion, profile, localVars, debug)
 
 	// Invoke stagestance.
 	data, err := ioutil.ReadFile(invocationPath)

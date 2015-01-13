@@ -121,10 +121,10 @@ def test_initialize(path):
     metadata = TestMetadata(path, path, "", "main")
 
 def initialize(argv):
-    global metadata, module, profile_flag, locals_flag, starttime
+    global metadata, module, profile_flag, localvars_flag, starttime
 
     # Take options from command line.
-    [ shell_cmd, stagecode_path, metadata_path, files_path, run_file, profile_flag, locals_flag ] = argv
+    [ shell_cmd, stagecode_path, metadata_path, files_path, run_file, profile_flag, localvars_flag ] = argv
 
     # Create metadata object with metadata directory.
     run_type = os.path.basename(shell_cmd)[:-3]
@@ -136,9 +136,9 @@ def initialize(argv):
     log_time("__start__")
     starttime = time.time()
 
-    # Cache the profiling and locals flags.
+    # Cache the profiling and localvars flags.
     profile_flag = (profile_flag == "profile")
-    locals_flag = (locals_flag == "locals")
+    localvars_flag = (localvars_flag == "localvars")
 
     # allow shells and stage code to import martian easily
     sys.path.append(os.path.dirname(__file__))
@@ -180,7 +180,7 @@ def stacktrace():
         if line:
             stacktrace.append("    %s" % line.strip())
         # Only start printing local variables at stage code
-        if filename.endswith("__init__.py") and name in ["main", "split", "join"] and locals_flag:
+        if filename.endswith("__init__.py") and name in ["main", "split", "join"] and localvars_flag:
             local = True
         if local:
             for key, value in frame.f_locals.items():

@@ -149,7 +149,7 @@ Options:
     --noui             Disable UI.
     --novdr            Disable Volatile Data Removal.
     --profile          Enable stage performance profiling.
-    --locals           Print local variables in stage code stack trace.
+    --localvars        Print local variables in stage code stack trace.
     --maxcores=<num>   Set max cores the pipeline may request at one time.
                          (Only applies in local jobmode)
     --maxmem=<num>     Set max GB the pipeline may request at one time.
@@ -218,9 +218,9 @@ Options:
 	profile := opts["--profile"].(bool)
 	core.LogInfo("environ", "profile = %v", profile)
 
-	// Compute locals flag.
-	locals := opts["--locals"].(bool)
-	core.LogInfo("environ", "locals = %v", locals)
+	// Compute localVars flag.
+	localVars := opts["--localvars"].(bool)
+	core.LogInfo("environ", "localvars = %v", localVars)
 
 	// Compute no debug dump flag.
 	noDump := opts["--nodump"].(bool)
@@ -243,7 +243,7 @@ Options:
 	// Configure Martian runtime.
 	//=========================================================================
 	rt := core.NewRuntimeWithCores(jobMode, mroPath, martianVersion, mroVersion,
-		reqCores, reqMem, profile, locals, debug, stest)
+		reqCores, reqMem, profile, localVars, debug, stest)
 
 	// Print this here because the log makes more sense when this appears before
 	// the runloop messages start to appear.
