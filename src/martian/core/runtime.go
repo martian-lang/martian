@@ -926,9 +926,9 @@ func (self *Node) matchFork(targetArgPermute map[string]interface{}) *Fork {
 //
 // Subnode management
 //
-func (self *Node) addPreflightDependencies(prenode Nodable) {
+func (self *Node) setPrenode(prenode Nodable) {
 	for _, subnode := range self.subnodes {
-		subnode.getNode().addPreflightDependencies(prenode)
+		subnode.getNode().setPrenode(prenode)
 	}
 	self.prenodes[prenode.getNode().fqname] = prenode
 	prenode.getNode().postnodes[self.fqname] = self
@@ -1076,6 +1076,11 @@ func (self *Node) reset() error {
 	return nil
 }
 
+func (self *Node) cleanup() {
+	os.RemoveAll(self.journalPath)
+	os.RemoveAll(self.tmpPath)
+}
+
 func (self *Node) getWarnings() (string, bool) {
 	warnings := ""
 	isWarnings := false
@@ -1169,11 +1174,11 @@ func (self *Node) refreshState() {
 	files, _ := filepath.Glob(path.Join(self.journalPath, "*"))
 	for _, file := range files {
 		filename := path.Base(file)
-		fqname, forkIndex, chunkIndex, state := self.parseRunFilename(filename)
-		if strings.HasSuffix(state, ".tmp") {
+		if strings.HasSuffix(filename, ".tmp") {
 			continue
 		}
 
+		fqname, forkIndex, chunkIndex, state := self.parseRunFilename(filename)
 		node := self.find(fqname)
 		fork := node.getFork(forkIndex)
 		if chunkIndex >= 0 {
@@ -1341,6 +1346,7 @@ func (self *Stagestance) GetState() string { return self.getNode().getState() }
 func (self *Stagestance) Step()            { self.getNode().step() }
 func (self *Stagestance) RefreshState()    { self.getNode().refreshState() }
 func (self *Stagestance) LoadMetadata()    { self.getNode().loadMetadata() }
+func (self *Stagestance) Cleanup()         { self.getNode().cleanup() }
 func (self *Stagestance) GetFatalError() (string, string, string, string, []string) {
 	return self.getNode().getFatalError()
 }
@@ -1395,11 +1401,11 @@ func NewPipestance(parent Nodable, invokeSrc string, callStm *CallStm,
 			prenode.getNode().postnodes[self.node.fqname] = self.node
 		}
 	}
-	// Add preflight dependencies if preflight stages exist.
+	// Add preflight dependency if preflight stage exists.
 	if preflightNode != nil {
 		for _, subnode := range self.node.subnodes {
 			if subnode != preflightNode {
-				subnode.getNode().addPreflightDependencies(preflightNode)
+				subnode.getNode().setPrenode(preflightNode)
 			}
 		}
 	}
@@ -1532,6 +1538,10 @@ func (self *Pipestance) Serialize() interface{} {
 		ser = append(ser, node.serialize())
 	}
 	return ser
+}
+
+func (self *Pipestance) Cleanup() {
+	self.node.cleanup()
 }
 
 func (self *Pipestance) Immortalize() {

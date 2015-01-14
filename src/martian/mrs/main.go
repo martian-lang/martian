@@ -107,6 +107,7 @@ Options:
 			// Check for completion states.
 			state := stagestance.GetState()
 			if state == "complete" {
+				stagestance.Cleanup()
 				if warnings, ok := stagestance.GetWarnings(); ok {
 					core.Log(warnings)
 				}

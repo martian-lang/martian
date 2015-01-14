@@ -40,6 +40,7 @@ func runLoop(pipestance *core.Pipestance, stepSecs int, disableVDR bool,
 		// Check for completion states.
 		state := pipestance.GetState()
 		if state == "complete" {
+			pipestance.Cleanup()
 			pipestance.Immortalize()
 			if warnings, ok := pipestance.GetWarnings(); ok {
 				core.Log(warnings)
