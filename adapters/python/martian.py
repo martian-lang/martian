@@ -11,6 +11,7 @@ import time
 import datetime
 import socket
 import subprocess
+import threading
 import resource
 import pstats
 import StringIO
@@ -120,6 +121,19 @@ def test_initialize(path):
     global metadata
     metadata = TestMetadata(path, path, "", "main")
 
+def heartbeat(fname):
+    while True:
+        with open(fname, 'a'):
+            os.utime(fname, None)
+        time.sleep(60)
+
+def start_heartbeat():
+    metadata.write_time("heartbeat")
+    fname = metadata.make_path("heartbeat")
+    t = threading.Thread(target=heartbeat, args=(fname,))
+    t.daemon = True
+    t.start()
+
 def initialize(argv):
     global metadata, module, profile_flag, localvars_flag, starttime
 
@@ -132,6 +146,9 @@ def initialize(argv):
 
     # Write jobinfo
     write_jobinfo(files_path)
+
+    # Start heartbeat thread
+    start_heartbeat()
 
     # Increase the maximum open file descriptors to the hard limit
     _, hard = resource.getrlimit(resource.RLIMIT_NOFILE)
