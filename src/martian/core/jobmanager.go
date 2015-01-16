@@ -259,6 +259,7 @@ func (self *LocalJobManager) execJob(shellCmd string, argv []string, envs []stri
 type JobMonitor struct {
 	metadata      *Metadata
 	lastHeartbeat time.Time
+	running       bool
 }
 
 type RemoteJobManager struct {
@@ -289,7 +290,7 @@ func (self *RemoteJobManager) GetMaxMemGB() int {
 
 func (self *RemoteJobManager) MonitorJob(metadata *Metadata) {
 	self.monitorListMutex.Lock()
-	self.monitorList = append(self.monitorList, &JobMonitor{metadata, time.Now()})
+	self.monitorList = append(self.monitorList, &JobMonitor{metadata, time.Now(), false})
 	self.monitorListMutex.Unlock()
 }
 
@@ -368,11 +369,12 @@ func (self *RemoteJobManager) processMonitorList() {
 				if state == "complete" || state == "failed" {
 					continue
 				}
-				if monitor.metadata.exists("heartbeat") {
-					monitor.metadata.uncache("heartbeat")
-					monitor.lastHeartbeat = time.Now()
-				}
 				if state == "running" {
+					if !monitor.running || monitor.metadata.exists("heartbeat") {
+						monitor.metadata.uncache("heartbeat")
+						monitor.lastHeartbeat = time.Now()
+						monitor.running = true
+					}
 					if time.Since(monitor.lastHeartbeat) > time.Minute*heartbeatTimeout {
 						monitor.metadata.writeRaw("errors", fmt.Sprintf("Job was killed by %s", self.jobMode))
 						monitor.metadata.cache("errors")

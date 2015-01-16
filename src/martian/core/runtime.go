@@ -1082,7 +1082,7 @@ func (self *Node) reset() error {
 	return nil
 }
 
-func (self *Node) monitor() {
+func (self *Node) resetJobMonitors() {
 	for _, metadata := range self.collectMetadatas() {
 		state, _ := metadata.getState("")
 		if state == "running" || state == "queued" {
@@ -1494,8 +1494,8 @@ func (self *Pipestance) RestartRunningNodes(jobMode string) error {
 	remoteNodes := []*Node{}
 	for _, node := range nodes {
 		if node.state == "running" {
+			LogInfo("runtime", "Found orphaned stage: %s", node.fqname)
 			if jobMode == "local" || node.local {
-				LogInfo("runtime", "Found orphaned stage: %s", node.fqname)
 				localNodes = append(localNodes, node)
 			} else {
 				remoteNodes = append(remoteNodes, node)
@@ -1508,7 +1508,7 @@ func (self *Pipestance) RestartRunningNodes(jobMode string) error {
 		}
 	}
 	for _, node := range remoteNodes {
-		node.monitor()
+		node.resetJobMonitors()
 	}
 	return nil
 }
