@@ -68,6 +68,7 @@ type JobManager interface {
 	execJob(string, []string, []string, *Metadata, int, int, string, string)
 	GetMaxCores() int
 	GetMaxMemGB() int
+	MonitorJob(*Metadata)
 }
 
 type LocalJobManager struct {
@@ -247,6 +248,9 @@ func (self *LocalJobManager) GetMaxMemGB() int {
 	return self.maxMemGB
 }
 
+func (self *LocalJobManager) MonitorJob(metadata *Metadata) {
+}
+
 func (self *LocalJobManager) execJob(shellCmd string, argv []string, envs []string,
 	metadata *Metadata, threads int, memGB int, fqname string, shellName string) {
 	self.Enqueue(shellCmd, argv, envs, metadata, threads, memGB, fqname, 0, 0)
@@ -255,7 +259,6 @@ func (self *LocalJobManager) execJob(shellCmd string, argv []string, envs []stri
 type JobMonitor struct {
 	metadata      *Metadata
 	lastHeartbeat time.Time
-	running       bool
 }
 
 type RemoteJobManager struct {
@@ -282,6 +285,12 @@ func (self *RemoteJobManager) GetMaxCores() int {
 
 func (self *RemoteJobManager) GetMaxMemGB() int {
 	return 0
+}
+
+func (self *RemoteJobManager) MonitorJob(metadata *Metadata) {
+	self.monitorListMutex.Lock()
+	self.monitorList = append(self.monitorList, &JobMonitor{metadata, time.Now()})
+	self.monitorListMutex.Unlock()
 }
 
 func (self *RemoteJobManager) execJob(shellCmd string, argv []string, envs []string,
@@ -336,9 +345,7 @@ func (self *RemoteJobManager) execJob(shellCmd string, argv []string, envs []str
 	if _, err := cmd.CombinedOutput(); err != nil {
 		metadata.writeRaw("errors", "jobcmd error:\n"+err.Error())
 	} else {
-		self.monitorListMutex.Lock()
-		self.monitorList = append(self.monitorList, &JobMonitor{metadata: metadata})
-		self.monitorListMutex.Unlock()
+		self.MonitorJob(metadata)
 	}
 }
 
@@ -364,8 +371,8 @@ func (self *RemoteJobManager) processMonitorList() {
 				if monitor.metadata.exists("heartbeat") {
 					monitor.metadata.uncache("heartbeat")
 					monitor.lastHeartbeat = time.Now()
-					monitor.running = true
-				} else if monitor.running {
+				}
+				if state == "running" {
 					if time.Since(monitor.lastHeartbeat) > time.Minute*heartbeatTimeout {
 						monitor.metadata.writeRaw("errors", fmt.Sprintf("Job was killed by %s", self.jobMode))
 						monitor.metadata.cache("errors")
