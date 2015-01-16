@@ -56,6 +56,7 @@ class Metadata:
         self.run_file = run_file
         self.run_type = run_type
         self.cache = {}
+        self.lock = threading.Lock()
 
     def make_path(self, name):
         return os.path.join(self.path, METADATA_PREFIX + name)
@@ -104,6 +105,7 @@ class Metadata:
     def update_journal(self, name, force=False):
         if self.run_type != "main":
             name = "%s_%s" % (self.run_type, name)
+        self.lock.acquire()
         if name not in self.cache or force:
             run_file = "%s.%s" % (self.run_file, name)
             tmp_run_file = "%s.tmp" % run_file
@@ -111,6 +113,7 @@ class Metadata:
                 f.write(self.make_timestamp_now())
             os.rename(tmp_run_file, run_file)
             self.cache[name] = True
+        self.lock.release()
 
 class TestMetadata(Metadata):
     def log(self, level, message):
@@ -127,7 +130,6 @@ def heartbeat():
         time.sleep(120)
 
 def start_heartbeat():
-    metadata.write_time("heartbeat")
     t = threading.Thread(target=heartbeat)
     t.daemon = True
     t.start()
