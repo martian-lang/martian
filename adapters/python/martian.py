@@ -133,6 +133,10 @@ def initialize(argv):
     # Write jobinfo
     write_jobinfo(files_path)
 
+    # Increase the maximum open file descriptors to the hard limit
+    _, hard = resource.getrlimit(resource.RLIMIT_NOFILE)
+    resource.setrlimit(resource.RLIMIT_NOFILE, (hard, hard))
+
     log_time("__start__")
     starttime = time.time()
 
