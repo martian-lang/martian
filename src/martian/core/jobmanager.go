@@ -12,9 +12,7 @@ import (
 	"os"
 	"os/exec"
 	"path"
-	"regexp"
 	"runtime"
-	"strconv"
 	"strings"
 	"sync"
 	"time"
@@ -22,7 +20,7 @@ import (
 	"github.com/cloudfoundry/gosigar"
 )
 
-const jobSubmitDelay = 10 // 10 minutes
+const heartbeatTimeout = 10 // 10 minutes
 const maxRetries = 5
 const retryExitCode = 513
 
@@ -70,6 +68,7 @@ type JobManager interface {
 	execJob(string, []string, []string, *Metadata, int, int, string, string)
 	GetMaxCores() int
 	GetMaxMemGB() int
+	MonitorJob(*Metadata)
 }
 
 type LocalJobManager struct {
@@ -249,22 +248,24 @@ func (self *LocalJobManager) GetMaxMemGB() int {
 	return self.maxMemGB
 }
 
+func (self *LocalJobManager) MonitorJob(metadata *Metadata) {
+}
+
 func (self *LocalJobManager) execJob(shellCmd string, argv []string, envs []string,
 	metadata *Metadata, threads int, memGB int, fqname string, shellName string) {
 	self.Enqueue(shellCmd, argv, envs, metadata, threads, memGB, fqname, 0, 0)
 }
 
 type JobMonitor struct {
-	jobId      int
-	metadata   *Metadata
-	submitTime time.Time
+	metadata      *Metadata
+	lastHeartbeat time.Time
+	running       bool
 }
 
 type RemoteJobManager struct {
 	jobMode          string
 	jobTemplate      string
 	jobCmd           string
-	monitorCmd       string
 	monitorList      []*JobMonitor
 	monitorListMutex *sync.Mutex
 }
@@ -274,10 +275,8 @@ func NewRemoteJobManager(jobMode string) *RemoteJobManager {
 	self.jobMode = jobMode
 	self.monitorList = []*JobMonitor{}
 	self.monitorListMutex = &sync.Mutex{}
-	_, _, self.jobCmd, self.monitorCmd, self.jobTemplate = verifyJobManagerFiles(jobMode)
-	if len(self.monitorCmd) > 0 {
-		self.processMonitorList()
-	}
+	_, _, self.jobCmd, self.jobTemplate = verifyJobManagerFiles(jobMode)
+	self.processMonitorList()
 	return self
 }
 
@@ -287,6 +286,12 @@ func (self *RemoteJobManager) GetMaxCores() int {
 
 func (self *RemoteJobManager) GetMaxMemGB() int {
 	return 0
+}
+
+func (self *RemoteJobManager) MonitorJob(metadata *Metadata) {
+	self.monitorListMutex.Lock()
+	self.monitorList = append(self.monitorList, &JobMonitor{metadata, time.Now(), false})
+	self.monitorListMutex.Unlock()
 }
 
 func (self *RemoteJobManager) execJob(shellCmd string, argv []string, envs []string,
@@ -338,19 +343,10 @@ func (self *RemoteJobManager) execJob(shellCmd string, argv []string, envs []str
 	cmd := exec.Command(self.jobCmd)
 	cmd.Dir = metadata.filesPath
 	cmd.Stdin = strings.NewReader(jobscript)
-	if output, err := cmd.CombinedOutput(); err != nil {
+	if _, err := cmd.CombinedOutput(); err != nil {
 		metadata.writeRaw("errors", "jobcmd error:\n"+err.Error())
 	} else {
-		if len(self.monitorCmd) > 0 {
-			// Get job ID from output
-			r := regexp.MustCompile("[0-9]+")
-			if jobIdString := r.FindString(string(output)); len(jobIdString) > 0 {
-				jobId, _ := strconv.Atoi(jobIdString)
-				self.monitorListMutex.Lock()
-				self.monitorList = append(self.monitorList, &JobMonitor{jobId, metadata, time.Now()})
-				self.monitorListMutex.Unlock()
-			}
-		}
+		self.MonitorJob(metadata)
 	}
 }
 
@@ -369,27 +365,22 @@ func (self *RemoteJobManager) processMonitorList() {
 			monitorList := self.copyAndClearMonitorList()
 			newMonitorList := []*JobMonitor{}
 			for _, monitor := range monitorList {
-				if time.Since(monitor.submitTime) < time.Minute*jobSubmitDelay {
-					newMonitorList = append(newMonitorList, monitor)
+				state, _ := monitor.metadata.getState("")
+				if state == "complete" || state == "failed" {
 					continue
 				}
-				monitorCmd := fmt.Sprintf("%s %d", self.monitorCmd, monitor.jobId)
-				monitorCmdParts := strings.Split(monitorCmd, " ")
-				cmd := exec.Command(monitorCmdParts[0], monitorCmdParts[1:]...)
-				if output, err := cmd.CombinedOutput(); err != nil {
-					monitor.metadata.loadCache()
-					if monitor.metadata.exists("complete") {
-						// Job has completed successfully
-						continue
+				if state == "running" {
+					if !monitor.running || monitor.metadata.exists("heartbeat") {
+						monitor.metadata.uncache("heartbeat")
+						monitor.lastHeartbeat = time.Now()
+						monitor.running = true
 					}
-					if !monitor.metadata.exists("errors") {
-						// Job was killed by cluster resource manager
-						monitor.metadata.writeRaw("errors", fmt.Sprintf("Job was killed by %s: %s",
-							self.jobMode, output))
+					if time.Since(monitor.lastHeartbeat) > time.Minute*heartbeatTimeout {
+						monitor.metadata.writeRaw("errors", fmt.Sprintf("Job was killed by %s", self.jobMode))
+						monitor.metadata.cache("errors")
 					}
-				} else {
-					newMonitorList = append(newMonitorList, monitor)
 				}
+				newMonitorList = append(newMonitorList, monitor)
 			}
 			self.monitorListMutex.Lock()
 			self.monitorList = append(self.monitorList, newMonitorList...)
@@ -409,12 +400,11 @@ type JobManagerEnv struct {
 }
 
 type JobManagerJson struct {
-	JobCmds     map[string]string           `json:"jobcmd"`
-	JobEnvs     map[string][]*JobManagerEnv `json:"env"`
-	MonitorCmds map[string]string           `json:"monitorcmd"`
+	JobCmds map[string]string           `json:"jobcmd"`
+	JobEnvs map[string][]*JobManagerEnv `json:"env"`
 }
 
-func verifyJobManagerFiles(jobMode string) (string, *JobManagerJson, string, string, string) {
+func verifyJobManagerFiles(jobMode string) (string, *JobManagerJson, string, string) {
 	jobPath := RelPath(path.Join("..", "jobmanagers"))
 
 	// Check for existence of job manager JSON file
@@ -447,13 +437,6 @@ func verifyJobManagerFiles(jobMode string) (string, *JobManagerJson, string, str
 	}
 	LogInfo("jobmngr", "Job submit command: %s.", jobCmd)
 
-	// Check for existence of monitor command
-	monitorCmd, ok := jobJson.MonitorCmds[jobCmd]
-	if ok {
-		monitorCmdParts := strings.Split(monitorCmd, " ")
-		LogInfo("jobmngr", "Job monitor command: %s.", monitorCmdParts[0])
-	}
-
 	// Check for existence of job manager template file
 	if _, err := os.Stat(jobTemplateFile); os.IsNotExist(err) {
 		LogError(err, "jobmngr", "Job manager template file %s does not exist.", jobTemplateFile)
@@ -462,24 +445,16 @@ func verifyJobManagerFiles(jobMode string) (string, *JobManagerJson, string, str
 	LogInfo("jobmngr", "Job template: %s.", jobTemplateFile)
 	bytes, _ = ioutil.ReadFile(jobTemplateFile)
 	jobTemplate := string(bytes)
-	return jobJsonFile, jobJson, jobCmd, monitorCmd, jobTemplate
+	return jobJsonFile, jobJson, jobCmd, jobTemplate
 }
 
-func verifyJobManagerEnv(jobJsonFile string, jobJson *JobManagerJson, jobCmd string, monitorCmd string) {
-	// Verify job and monitor commands exist
+func verifyJobManagerEnv(jobJsonFile string, jobJson *JobManagerJson, jobCmd string) {
+	// Verify job command exists
 	incPaths := strings.Split(os.Getenv("PATH"), ":")
 	if _, found := searchPaths(jobCmd, incPaths); !found {
 		LogInfo("jobmngr", "Searched (%s) but job command '%s' not found.",
 			strings.Join(incPaths, ", "), jobCmd)
 		os.Exit(1)
-	}
-	if len(monitorCmd) > 0 {
-		monitorCmdPath := strings.Split(monitorCmd, " ")[0]
-		if _, found := searchPaths(monitorCmdPath, incPaths); !found {
-			LogInfo("jobmngr", "JobMonitorCommandPathError: searched (%s) but job monitor command '%s' not found.",
-				strings.Join(incPaths, ", "), monitorCmdPath)
-			os.Exit(1)
-		}
 	}
 
 	// Verify environment variables
@@ -499,6 +474,6 @@ func VerifyJobManager(jobMode string) {
 	if jobMode == "local" {
 		return
 	}
-	jobJsonFile, jobJson, jobCmd, monitorCmd, _ := verifyJobManagerFiles(jobMode)
-	verifyJobManagerEnv(jobJsonFile, jobJson, jobCmd, monitorCmd)
+	jobJsonFile, jobJson, jobCmd, _ := verifyJobManagerFiles(jobMode)
+	verifyJobManagerEnv(jobJsonFile, jobJson, jobCmd)
 }

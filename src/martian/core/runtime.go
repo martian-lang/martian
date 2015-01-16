@@ -94,6 +94,12 @@ func (self *Metadata) cache(name string) {
 	self.mutex.Unlock()
 }
 
+func (self *Metadata) uncache(name string) {
+	self.mutex.Lock()
+	delete(self.contents, name)
+	self.mutex.Unlock()
+}
+
 func (self *Metadata) loadCache() {
 	if !self.exists("complete") {
 		paths := self.glob()
@@ -1076,6 +1082,15 @@ func (self *Node) reset() error {
 	return nil
 }
 
+func (self *Node) resetJobMonitors() {
+	for _, metadata := range self.collectMetadatas() {
+		state, _ := metadata.getState("")
+		if state == "running" || state == "queued" {
+			self.rt.JobManager.MonitorJob(metadata)
+		}
+	}
+}
+
 func (self *Node) cleanup() {
 	os.RemoveAll(self.journalPath)
 	os.RemoveAll(self.tmpPath)
@@ -1475,19 +1490,25 @@ func (self *Pipestance) RestartAssertedNodes() error {
 func (self *Pipestance) RestartRunningNodes(jobMode string) error {
 	self.LoadMetadata()
 	nodes := self.node.getFrontierNodes()
-	runningNodes := []*Node{}
+	localNodes := []*Node{}
+	remoteNodes := []*Node{}
 	for _, node := range nodes {
-		if jobMode == "local" || node.local {
-			if node.state == "running" {
-				LogInfo("runtime", "Found orphaned stage: %s", node.fqname)
-				runningNodes = append(runningNodes, node)
+		if node.state == "running" {
+			LogInfo("runtime", "Found orphaned stage: %s", node.fqname)
+			if jobMode == "local" || node.local {
+				localNodes = append(localNodes, node)
+			} else {
+				remoteNodes = append(remoteNodes, node)
 			}
 		}
 	}
-	for _, node := range runningNodes {
+	for _, node := range localNodes {
 		if err := node.reset(); err != nil {
 			return err
 		}
+	}
+	for _, node := range remoteNodes {
+		node.resetJobMonitors()
 	}
 	return nil
 }

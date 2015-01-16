@@ -11,6 +11,7 @@ import time
 import datetime
 import socket
 import subprocess
+import threading
 import resource
 import pstats
 import StringIO
@@ -55,6 +56,7 @@ class Metadata:
         self.run_file = run_file
         self.run_type = run_type
         self.cache = {}
+        self.lock = threading.Lock()
 
     def make_path(self, name):
         return os.path.join(self.path, METADATA_PREFIX + name)
@@ -100,16 +102,18 @@ class Metadata:
     def _assert(self, message):
         self.write_raw("assert", message + "\n")
 
-    def update_journal(self, name):
+    def update_journal(self, name, force=False):
         if self.run_type != "main":
             name = "%s_%s" % (self.run_type, name)
-        if name not in self.cache:
+        self.lock.acquire()
+        if name not in self.cache or force:
             run_file = "%s.%s" % (self.run_file, name)
             tmp_run_file = "%s.tmp" % run_file
             with open(tmp_run_file, "w") as f:
                 f.write(self.make_timestamp_now())
             os.rename(tmp_run_file, run_file)
             self.cache[name] = True
+        self.lock.release()
 
 class TestMetadata(Metadata):
     def log(self, level, message):
@@ -119,6 +123,16 @@ class TestMetadata(Metadata):
 def test_initialize(path):
     global metadata
     metadata = TestMetadata(path, path, "", "main")
+
+def heartbeat():
+    while True:
+        metadata.update_journal("heartbeat", force=True)
+        time.sleep(120)
+
+def start_heartbeat():
+    t = threading.Thread(target=heartbeat)
+    t.daemon = True
+    t.start()
 
 def initialize(argv):
     global metadata, module, profile_flag, localvars_flag, starttime
@@ -132,6 +146,9 @@ def initialize(argv):
 
     # Write jobinfo
     write_jobinfo(files_path)
+
+    # Start heartbeat thread
+    start_heartbeat()
 
     # Increase the maximum open file descriptors to the hard limit
     _, hard = resource.getrlimit(resource.RLIMIT_NOFILE)
