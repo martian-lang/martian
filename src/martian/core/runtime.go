@@ -151,6 +151,18 @@ func (self *Metadata) serialize() interface{} {
 	}
 }
 
+func (self *Metadata) serializePerf(numThreads int) *PerfInfo {
+	if self.exists("complete") && self.exists("jobinfo") {
+		data := self.readRaw("jobinfo")
+
+		var jobInfo *JobInfo
+		if err := json.Unmarshal([]byte(data), &jobInfo); err == nil {
+			return reduceJobInfo(jobInfo, numThreads)
+		}
+	}
+	return nil
+}
+
 //=============================================================================
 // Binding
 //=============================================================================
@@ -495,6 +507,18 @@ func (self *Chunk) serialize() interface{} {
 	}
 }
 
+func (self *Chunk) serializePerf() (interface{}, *PerfInfo) {
+	numThreads := 1
+	if v, ok := self.chunkDef["__threads"].(float64); ok {
+		numThreads = int(v)
+	}
+	stats := self.metadata.serializePerf(numThreads)
+	return map[string]interface{}{
+		"index":       self.index,
+		"chunk_stats": stats,
+	}, stats
+}
+
 //=============================================================================
 // Fork
 //=============================================================================
@@ -506,6 +530,7 @@ type Fork struct {
 	metadata       *Metadata
 	split_metadata *Metadata
 	join_metadata  *Metadata
+	subforks       []*Fork
 	chunks         []*Chunk
 	split_has_run  bool
 	join_has_run   bool
@@ -526,6 +551,7 @@ func NewFork(nodable Nodable, index int, argPermute map[string]interface{}) *For
 	self.join_has_run = false
 	// reconstruct chunks using chunk_defs on reattach, do not rely
 	// on metadata.exists('chunk_defs') since it may not be cached
+	self.subforks = []*Fork{}
 	self.chunks = []*Chunk{}
 	chunkDefIfaces := self.split_metadata.read("chunk_defs")
 	if chunkDefs, ok := chunkDefIfaces.([]interface{}); ok {
@@ -752,6 +778,57 @@ func (self *Fork) serialize() interface{} {
 	}
 }
 
+func (self *Fork) getStages() []map[string]interface{} {
+	stages := []map[string]interface{}{}
+	for _, subfork := range self.subforks {
+		stages = append(stages, subfork.getStages()...)
+	}
+	if self.node.kind == "stage" {
+		stages = append(stages, map[string]interface{}{"name": self.node.name, "fqname": self.node.fqname, "forki": self.index})
+	}
+	return stages
+}
+
+func (self *Fork) serializePerf() (interface{}, *PerfInfo) {
+	chunks := []interface{}{}
+	stats := []*PerfInfo{}
+
+	for _, chunk := range self.chunks {
+		chunkSer, chunkStats := chunk.serializePerf()
+		chunks = append(chunks, chunkSer)
+		if chunkStats != nil {
+			stats = append(stats, chunkStats)
+		}
+	}
+	numThreads := 1
+	splitStats := self.split_metadata.serializePerf(numThreads)
+	joinStats := self.join_metadata.serializePerf(numThreads)
+	if splitStats != nil {
+		stats = append(stats, splitStats)
+	}
+	if joinStats != nil {
+		stats = append(stats, joinStats)
+	}
+
+	for _, subfork := range self.subforks {
+		_, subforkStats := subfork.serializePerf()
+		stats = append(stats, subforkStats)
+	}
+
+	var forkStats *PerfInfo = nil
+	if len(stats) > 0 {
+		forkStats = computeStats(stats)
+	}
+	return map[string]interface{}{
+		"stages":      self.getStages(),
+		"index":       self.index,
+		"chunks":      chunks,
+		"split_stats": splitStats,
+		"join_stats":  joinStats,
+		"fork_stats":  forkStats,
+	}, forkStats
+}
+
 //=============================================================================
 // Node
 //=============================================================================
@@ -901,6 +978,13 @@ func (self *Node) buildForks(bindings map[string]*Binding) {
 			argPermute[paramId] = valPermute.([]interface{})[j]
 		}
 		self.forks = append(self.forks, NewFork(self, i, argPermute))
+	}
+
+	for _, fork := range self.forks {
+		for _, subnode := range self.subnodes {
+			matchedFork := subnode.getNode().matchFork(fork.argPermute)
+			fork.subforks = append(fork.subforks, matchedFork)
+		}
 	}
 }
 
@@ -1240,6 +1324,20 @@ func (self *Node) serialize() interface{} {
 	}
 }
 
+func (self *Node) serializePerf() interface{} {
+	forks := []interface{}{}
+	for _, fork := range self.forks {
+		forkSer, _ := fork.serializePerf()
+		forks = append(forks, forkSer)
+	}
+	return map[string]interface{}{
+		"name":   self.name,
+		"fqname": self.fqname,
+		"type":   self.kind,
+		"forks":  forks,
+	}
+}
+
 //=============================================================================
 // Job Runners
 //=============================================================================
@@ -1536,6 +1634,14 @@ func (self *Pipestance) Serialize() interface{} {
 	ser := []interface{}{}
 	for _, node := range self.node.allNodes() {
 		ser = append(ser, node.serialize())
+	}
+	return ser
+}
+
+func (self *Pipestance) SerializePerf() interface{} {
+	ser := []interface{}{}
+	for _, node := range self.node.allNodes() {
+		ser = append(ser, node.serializePerf())
 	}
 	return ser
 }

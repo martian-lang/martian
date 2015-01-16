@@ -19,7 +19,7 @@ import (
 
 	"github.com/go-martini/martini"
 	"github.com/martini-contrib/binding"
-	"github.com/martini-contrib/gzip"
+	_ "github.com/martini-contrib/gzip"
 )
 
 //=============================================================================
@@ -54,7 +54,7 @@ func runWebServer(uiport string, rt *core.Runtime, pipestance *core.Pipestance,
 	m.MapTo(r, (*martini.Routes)(nil))
 	m.Action(r.Handle)
 	app := &martini.ClassicMartini{m, r}
-	app.Use(gzip.All())
+	//app.Use(gzip.All())
 
 	//=========================================================================
 	// Page renderers.
@@ -94,6 +94,14 @@ func runWebServer(uiport string, rt *core.Runtime, pipestance *core.Pipestance,
 			return string(bytes)
 		})
 
+	app.Get("/api/get-perf/:container/:pname/:psid",
+		func(p martini.Params) string {
+			state := map[string]interface{}{}
+			state["nodes"] = pipestance.SerializePerf()
+			bytes, _ := json.Marshal(state)
+			return string(bytes)
+		})
+
 	// Get metadata file contents.
 	app.Post("/api/get-metadata/:container/:pname/:psid", binding.Bind(MetadataForm{}),
 		func(body MetadataForm, p martini.Params) string {
@@ -115,7 +123,6 @@ func runWebServer(uiport string, rt *core.Runtime, pipestance *core.Pipestance,
 			}
 			return ""
 		})
-
 	//=========================================================================
 	// Start webserver.
 	//=========================================================================

@@ -1,7 +1,7 @@
 (function() {
-  var app, renderGraph;
+  var addColumns, addRow, app, humanize, renderChart, renderGraph, _humanizeBytes, _humanizeTime, _humanizeUnits, _humanizeWithSuffixes;
 
-  app = angular.module('app', ['ui.bootstrap', 'ngClipboard']);
+  app = angular.module('app', ['ui.bootstrap', 'ngClipboard', 'googlechart']);
 
   app.filter('shorten', function() {
     return function(s) {
@@ -15,7 +15,7 @@
   });
 
   renderGraph = function($scope, $compile) {
-    var edge, from, g, maxX, node, scale, to, _i, _j, _k, _len, _len1, _len2, _ref, _ref1, _ref2;
+    var edge, g, maxX, node, scale, _i, _j, _k, _len, _len1, _len2, _ref, _ref1, _ref2;
     g = new dagreD3.Digraph();
     _ref = _.values($scope.nodes);
     for (_i = 0, _len = _ref.length; _i < _len; _i++) {
@@ -29,15 +29,7 @@
       _ref2 = node.edges;
       for (_k = 0, _len2 = _ref2.length; _k < _len2; _k++) {
         edge = _ref2[_k];
-        from = edge.from;
-        to = edge.to;
-        if (!(from in $scope.nodes)) {
-          from = $scope.simpleNodes[from].fqname;
-        }
-        if (!(to in $scope.nodes)) {
-          to = $scope.simpleNodes[to].fqname;
-        }
-        g.addEdge(null, from, to, {});
+        g.addEdge(null, edge.from, edge.to, {});
       }
     }
     (new dagreD3.Renderer()).zoom(false).run(g, d3.select("g"));
@@ -69,6 +61,137 @@
     return $compile(angular.element(document.querySelector('#top')).contents())($scope);
   };
 
+  addRow = function(chart, columns, name, units, stats) {
+    var column, row, _i, _len;
+    row = [name];
+    for (_i = 0, _len = columns.length; _i < _len; _i++) {
+      column = columns[_i];
+      row.push({
+        v: stats[column],
+        f: humanize(stats[column], units)
+      });
+    }
+    return chart.data.push(row);
+  };
+
+  addColumns = function(chart, columns) {
+    var column, _i, _len, _results;
+    chart.data = [['Stages']];
+    _results = [];
+    for (_i = 0, _len = columns.length; _i < _len; _i++) {
+      column = columns[_i];
+      _results.push(chart.data[0].push(column.replace(/_/g, ' ')));
+    }
+    return _results;
+  };
+
+  humanize = function(num, units) {
+    var s;
+    if (units === 'bytes') {
+      s = _humanizeBytes(num);
+    } else if (units === 'seconds') {
+      s = _humanizeTime(num);
+    } else {
+      s = _humanizeUnits(num, units);
+    }
+    return s.trim();
+  };
+
+  _humanizeWithSuffixes = function(num, suffixes, base) {
+    var i;
+    i = 0;
+    while (num > base && i < suffixes.length - 1) {
+      num = num / base;
+      i += 1;
+    }
+    return [num, suffixes[i]];
+  };
+
+  _humanizeTime = function(num) {
+    var suffix, _ref;
+    _ref = _humanizeWithSuffixes(num, ['seconds', 'minutes', 'hours'], 60), num = _ref[0], suffix = _ref[1];
+    num = num.toFixed(2);
+    return num.toString() + ' ' + suffix;
+  };
+
+  _humanizeBytes = function(num) {
+    var suffix, _ref;
+    _ref = _humanizeWithSuffixes(num, ['KB', 'MB', 'GB', 'TB'], 1024), num = _ref[0], suffix = _ref[1];
+    num = Math.round(num);
+    return num.toString() + ' ' + suffix;
+  };
+
+  _humanizeUnits = function(num, units) {
+    var c, i, l, s, _i, _ref;
+    if (num >= 1000) {
+      num = Math.round(num);
+      s = '';
+      l = num.toString().length;
+      _ref = num.toString();
+      for (i = _i = _ref.length - 1; _i >= 0; i = _i += -1) {
+        c = _ref[i];
+        s = c + s;
+        if ((l - i) % 3 === 0 && i > 0) {
+          s = ',' + s;
+        }
+      }
+    } else {
+      if (num % 1 !== 0) {
+        num = num.toFixed(2);
+      }
+      s = num.toString();
+    }
+    return s + ' ' + units;
+  };
+
+  renderChart = function($scope, columns, units) {
+    var chart, chunk, fork, height, name, node, pnode, stage, stages, _i, _j, _len, _len1, _ref;
+    if ($scope.node) {
+      node = $scope.node;
+    } else {
+      node = $scope.topnode;
+    }
+    pnode = $scope.pnode;
+    chart = {};
+    chart.type = $scope.charttype;
+    addColumns(chart, columns);
+    if (pnode.type === "pipeline") {
+      stages = _.sortBy(pnode.forks[$scope.forki].stages, function(stage) {
+        return stage.name;
+      });
+      for (_i = 0, _len = stages.length; _i < _len; _i++) {
+        stage = stages[_i];
+        name = $scope.pnodes[stage.fqname].name;
+        fork = $scope.pnodes[stage.fqname].forks[stage.forki];
+        addRow(chart, columns, name, units, fork.fork_stats);
+      }
+    }
+    if (pnode.type === "stage") {
+      fork = pnode.forks[$scope.forki];
+      _ref = fork.chunks;
+      for (_j = 0, _len1 = _ref.length; _j < _len1; _j++) {
+        chunk = _ref[_j];
+        addRow(chart, columns, 'chunk ' + chunk.index, units, chunk.chunk_stats);
+      }
+      if (fork.split_stats) {
+        addRow(chart, columns, 'split', units, fork.split_stats);
+      }
+      if (fork.join_stats) {
+        addRow(chart, columns, 'join', units, fork.join_stats);
+      }
+    }
+    height = Math.max(chart.data.length * 20, 100);
+    chart.options = {
+      legend: 'none',
+      height: height,
+      chartArea: {
+        width: '40%',
+        height: '90%'
+      }
+    };
+    return chart;
+  };
+
   app.controller('MartianGraphCtrl', function($scope, $compile, $http, $interval) {
     $scope.pname = pname;
     $scope.psid = psid;
@@ -76,10 +199,14 @@
     $scope.adminstyle = adminstyle;
     $scope.urlprefix = adminstyle ? '/admin' : '/';
     $http.get("/api/get-state/" + container + "/" + pname + "/" + psid).success(function(state) {
-      $scope.simpleNodes = _.indexBy(state.nodes, 'name');
+      $scope.topnode = state.nodes[0];
       $scope.nodes = _.indexBy(state.nodes, 'fqname');
       $scope.info = state.info;
       return renderGraph($scope, $compile);
+    });
+    $http.get("/api/get-perf/" + container + "/" + pname + "/" + psid).success(function(state) {
+      $scope.pnodes = _.indexBy(state.nodes, 'fqname');
+      return $scope.pnode = $scope.pnodes[$scope.topnode.fqname];
     });
     $scope.id = null;
     $scope.forki = 0;
@@ -92,25 +219,82 @@
     };
     $scope.showRestart = true;
     $scope.showLog = false;
+    $scope.perf = false;
+    $scope.charts = {};
+    $scope.charttype = 'BarChart';
+    $scope.tabs = {
+      summary: true,
+      cpu: false,
+      io: false,
+      iorate: false,
+      memory: false,
+      jobs: false
+    };
     if (admin) {
       $scope.stopRefresh = $interval(function() {
         return $scope.refresh();
       }, 30000);
     }
+    $scope.humanize = function(num, units) {
+      return humanize(num, units);
+    };
+    $scope.getActiveTab = function() {
+      var selected, tab, _ref;
+      _ref = $scope.tabs;
+      for (tab in _ref) {
+        selected = _ref[tab];
+        if (selected) {
+          return tab;
+        }
+      }
+    };
+    $scope.getChart = function() {
+      var active, columns, units;
+      active = $scope.getActiveTab();
+      columns = [];
+      units = '';
+      if (active === 'summary') {
+        return;
+      }
+      if (active === 'cpu') {
+        columns = ['core_hours'];
+      }
+      if (active === 'memory') {
+        columns = ['maxrss'];
+        units = 'bytes';
+      }
+      if (active === 'io') {
+        columns = ['total_blocks', 'in_blocks', 'out_blocks'];
+      }
+      if (active === "iorate") {
+        columns = ['total_blocks_rate', 'in_blocks_rate', 'out_blocks_rate'];
+      }
+      if (active === "jobs") {
+        columns = ['num_jobs'];
+      }
+      return $scope.charts[$scope.forki] = renderChart($scope, columns, units);
+    };
+    $scope.setChartType = function(charttype) {
+      $scope.charttype = charttype;
+      return $scope.getChart();
+    };
     $scope.copyToClipboard = function() {
       return '';
     };
     $scope.selectNode = function(id) {
       $scope.id = id;
       $scope.node = $scope.nodes[id];
+      $scope.pnode = $scope.pnodes[id];
       $scope.forki = 0;
       $scope.chunki = 0;
-      return $scope.mdviews = {
+      $scope.mdviews = {
         fork: '',
         split: '',
         join: '',
         chunk: ''
       };
+      $scope.charts = {};
+      return $scope.getChart();
     };
     $scope.restart = function() {
       $scope.showRestart = false;
@@ -137,7 +321,6 @@
     };
     return $scope.refresh = function() {
       return $http.get("/api/get-state/" + container + "/" + pname + "/" + psid).success(function(state) {
-        $scope.simpleNodes = _.indexBy(state.nodes, 'name');
         $scope.nodes = _.indexBy(state.nodes, 'fqname');
         if ($scope.id) {
           $scope.node = $scope.nodes[$scope.id];

@@ -19,6 +19,7 @@ html(ng-app="app" ng-controller="MartianGraphCtrl")
         script(src="/js/moment.min.js")
         script(src="/js/ngClip.js")
         script(src="/js/ZeroClipboard.min.js")
+        script(src="/js/ng-google-chart.js")
 
     body
         header.navbar.navbar-inverse.navbar-fixed-top(ng-class="{admin: adminstyle}")
@@ -32,10 +33,57 @@ html(ng-app="app" ng-controller="MartianGraphCtrl")
                         | &nbsp;(
                         a.admin-exit(href="/") exit admin mode
                         | )
-        #graph(style="margin-left: 10px; margin-top: 60px")
+                    .navbar-views
+                        | Views:
+                        label.btn.btn-default(ng-model="perf" btn-radio="false") Default
+                        label.btn.btn-default(ng-model="perf" btn-radio="true") Performance
+        #graph(style="margin-left: 10px; margin-top: 60px;")
             svg(width="750px" height="1000px" ng-click="alert('l')")
-                g#top(transform="translate(5,5) scale(1.0)") 
-        .details#info(ng-show="!node")
+                g#top(transform="translate(5,5) scale(1.0)")
+        .details#perf(ng-show="perf && pnode")
+            h4#stagename
+                a(href="#" ng-click="selectNode(topnode.fqname)" ng-show="pnode.fqname!=topnode.fqname") &larr;
+                | &nbsp;
+                a(href="#") {{pnode.name}} &nbsp;
+                | {{pnode.type}}
+            table.table
+                tr
+                    td(style="width: 85px") Forks
+                    td(colspan="5")
+                        .btn-group
+                            button.btn.btn-default(type="button" ng-model="$parent.forki" ng-repeat="fork in pnode.forks" btn-radio="fork.index") {{fork.index}}
+            tabset.tbs-hor
+                tab(heading="Summary" active="tabs.summary" ng-if="pnode.forks[forki].fork_stats")
+                    table.table#info(style="float:left; position: relative")
+                        tr
+                            td Walltime
+                            td {{ humanize(pnode.forks[forki].fork_stats.walltime, 'seconds') }}
+                        tr
+                            td Core hours
+                            td {{ humanize(pnode.forks[forki].fork_stats.core_hours, 'core hours') }}
+                        tr
+                            td IO
+                            td {{ humanize(pnode.forks[forki].fork_stats.total_blocks, 'blocks') }}
+                        tr
+                            td IO rate
+                            td {{ humanize(pnode.forks[forki].fork_stats.total_blocks_rate, 'blocks / sec') }}
+                        tr
+                            td Max RSS
+                            td {{ humanize(pnode.forks[forki].fork_stats.maxrss, 'bytes') }}
+                        tr
+                            td Total Jobs
+                            td {{ humanize(pnode.forks[forki].fork_stats.num_jobs, 'jobs') }}
+                tab(heading="Core Hours" active="tabs.cpu" ng-click="getChart()")
+                tab(heading="IO" active="tabs.io" ng-click="getChart()")
+                tab(heading="IO Rate" active="tabs.iorate" ng-click="getChart()")
+                tab(heading="Memory" active="tabs.memory" ng-click="getChart()")
+                tab(heading="Jobs" active="tabs.jobs" ng-click="getChart()" ng-if="pnode.type == 'pipeline'")
+            span(ng-if="!tabs.summary")
+                tabset.tbs-vert(vertical="true")
+                    tab(heading="Graph" ng-click="setChartType('BarChart')")
+                    tab(heading="Table" ng-click="setChartType('Table')")
+                div(google-chart chart="charts[forki]" ng-if="charts[forki]")
+        .details#info(ng-show="!perf && !node")
             h4#stagename
                 a(href="#") Pipestance Info
             h5 Runtime
@@ -77,7 +125,7 @@ html(ng-app="app" ng-controller="MartianGraphCtrl")
             #invokesrc
                 pre {{info.invokesrc}}
             
-        .details#stage(ng-show="node")
+        .details#stage(ng-show="!perf && node")
             h4#stagename
                 a(href="#" ng-click="node=null;id=null") &larr;
                 | &nbsp;
