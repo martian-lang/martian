@@ -101,10 +101,10 @@ class Metadata:
     def _assert(self, message):
         self.write_raw("assert", message + "\n")
 
-    def update_journal(self, name):
+    def update_journal(self, name, force=False):
         if self.run_type != "main":
             name = "%s_%s" % (self.run_type, name)
-        if name not in self.cache:
+        if name not in self.cache or force:
             run_file = "%s.%s" % (self.run_file, name)
             tmp_run_file = "%s.tmp" % run_file
             with open(tmp_run_file, "w") as f:
@@ -121,16 +121,14 @@ def test_initialize(path):
     global metadata
     metadata = TestMetadata(path, path, "", "main")
 
-def heartbeat(fname):
+def heartbeat():
     while True:
-        with open(fname, 'a'):
-            os.utime(fname, None)
-        time.sleep(60)
+        metadata.update_journal("heartbeat", force=True)
+        time.sleep(120)
 
 def start_heartbeat():
     metadata.write_time("heartbeat")
-    fname = metadata.make_path("heartbeat")
-    t = threading.Thread(target=heartbeat, args=(fname,))
+    t = threading.Thread(target=heartbeat)
     t.daemon = True
     t.start()
 

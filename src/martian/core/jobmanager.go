@@ -252,18 +252,24 @@ func (self *LocalJobManager) execJob(shellCmd string, argv []string, envs []stri
 	self.Enqueue(shellCmd, argv, envs, metadata, threads, memGB, fqname, 0, 0)
 }
 
+type JobMonitor struct {
+	metadata      *Metadata
+	lastHeartbeat time.Time
+	running       bool
+}
+
 type RemoteJobManager struct {
 	jobMode          string
 	jobTemplate      string
 	jobCmd           string
-	monitorList      []*Metadata
+	monitorList      []*JobMonitor
 	monitorListMutex *sync.Mutex
 }
 
 func NewRemoteJobManager(jobMode string) *RemoteJobManager {
 	self := &RemoteJobManager{}
 	self.jobMode = jobMode
-	self.monitorList = []*Metadata{}
+	self.monitorList = []*JobMonitor{}
 	self.monitorListMutex = &sync.Mutex{}
 	_, _, self.jobCmd, self.jobTemplate = verifyJobManagerFiles(jobMode)
 	self.processMonitorList()
@@ -331,16 +337,16 @@ func (self *RemoteJobManager) execJob(shellCmd string, argv []string, envs []str
 		metadata.writeRaw("errors", "jobcmd error:\n"+err.Error())
 	} else {
 		self.monitorListMutex.Lock()
-		self.monitorList = append(self.monitorList, metadata)
+		self.monitorList = append(self.monitorList, &JobMonitor{metadata: metadata})
 		self.monitorListMutex.Unlock()
 	}
 }
 
-func (self *RemoteJobManager) copyAndClearMonitorList() []*Metadata {
+func (self *RemoteJobManager) copyAndClearMonitorList() []*JobMonitor {
 	self.monitorListMutex.Lock()
-	monitorList := make([]*Metadata, len(self.monitorList))
+	monitorList := make([]*JobMonitor, len(self.monitorList))
 	copy(monitorList, self.monitorList)
-	self.monitorList = []*Metadata{}
+	self.monitorList = []*JobMonitor{}
 	self.monitorListMutex.Unlock()
 	return monitorList
 }
@@ -349,20 +355,23 @@ func (self *RemoteJobManager) processMonitorList() {
 	go func() {
 		for {
 			monitorList := self.copyAndClearMonitorList()
-			newMonitorList := []*Metadata{}
-			for _, metadata := range monitorList {
-				state, _ := metadata.getState("")
+			newMonitorList := []*JobMonitor{}
+			for _, monitor := range monitorList {
+				state, _ := monitor.metadata.getState("")
 				if state == "complete" || state == "failed" {
 					continue
 				}
-				if metadata.exists("heartbeat") {
-					fileInfo, _ := os.Lstat(metadata.makePath("heartbeat"))
-					if time.Since(fileInfo.ModTime()) > time.Minute*heartbeatTimeout {
-						metadata.writeRaw("errors", fmt.Sprintf("Job was killed by %s", self.jobMode))
-						metadata.cache("errors")
+				if monitor.metadata.exists("heartbeat") {
+					monitor.metadata.uncache("heartbeat")
+					monitor.lastHeartbeat = time.Now()
+					monitor.running = true
+				} else if monitor.running {
+					if time.Since(monitor.lastHeartbeat) > time.Minute*heartbeatTimeout {
+						monitor.metadata.writeRaw("errors", fmt.Sprintf("Job was killed by %s", self.jobMode))
+						monitor.metadata.cache("errors")
 					}
 				}
-				newMonitorList = append(newMonitorList, metadata)
+				newMonitorList = append(newMonitorList, monitor)
 			}
 			self.monitorListMutex.Lock()
 			self.monitorList = append(self.monitorList, newMonitorList...)

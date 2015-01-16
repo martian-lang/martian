@@ -94,6 +94,12 @@ func (self *Metadata) cache(name string) {
 	self.mutex.Unlock()
 }
 
+func (self *Metadata) uncache(name string) {
+	self.mutex.Lock()
+	delete(self.contents, name)
+	self.mutex.Unlock()
+}
+
 func (self *Metadata) loadCache() {
 	if !self.exists("complete") {
 		paths := self.glob()
