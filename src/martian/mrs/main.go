@@ -128,7 +128,7 @@ Options:
 					core.LogInfo("runtime", "VDR disabled. No files killed.")
 				} else {
 					core.LogInfo("runtime", "Starting VDR kill...")
-					killReport := stagestance.GenerateVDRKillReport()
+					killReport := stagestance.VDRKill()
 					core.LogInfo("runtime", "VDR killed %d files, %s.",
 						killReport.Count, humanize.Bytes(killReport.Size))
 				}

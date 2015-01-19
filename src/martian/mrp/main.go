@@ -76,7 +76,7 @@ func runLoop(pipestance *core.Pipestance, stepSecs int, vdrMode string,
 				core.LogInfo("runtime", "VDR disabled. No files killed.")
 			} else {
 				core.LogInfo("runtime", "Starting VDR kill...")
-				killReport := pipestance.GenerateVDRKillReport()
+				killReport := pipestance.VDRKill()
 				core.LogInfo("runtime", "VDR killed %d files, %s.",
 					killReport.Count, humanize.Bytes(killReport.Size))
 			}

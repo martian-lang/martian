@@ -740,6 +740,61 @@ func (self *Fork) step() {
 	}
 }
 
+func (self *Fork) vdrKill() *VDRKillReport {
+	killReport := &VDRKillReport{}
+	if self.node.rt.vdrMode == "disable" {
+		return killReport
+	}
+	if self.metadata.exists("vdrkill") {
+		var killReport *VDRKillReport
+		data := self.metadata.readRaw("vdrkill")
+		if err := json.Unmarshal([]byte(data), &killReport); err == nil {
+			return killReport
+		}
+	}
+
+	killPaths := []string{}
+	// For volatile nodes, kill fork-level files.
+	if self.node.volatile {
+		if paths, err := self.metadata.enumerateFiles(); err == nil {
+			killPaths = append(killPaths, paths...)
+		}
+		if paths, err := self.split_metadata.enumerateFiles(); err == nil {
+			killPaths = append(killPaths, paths...)
+		}
+		if paths, err := self.join_metadata.enumerateFiles(); err == nil {
+			killPaths = append(killPaths, paths...)
+		}
+	}
+	// If the node splits, kill chunk-level files.
+	// Must check for split here, otherwise we'll end up deleting
+	// output files of non-volatile nodes because single-chunk nodes
+	// get their output redirected to the one chunk's files path.
+	if self.node.split {
+		for _, chunk := range self.chunks {
+			if paths, err := chunk.metadata.enumerateFiles(); err == nil {
+				killPaths = append(killPaths, paths...)
+			}
+		}
+	}
+	// Actually delete the paths.
+	for _, p := range killPaths {
+		filepath.Walk(p, func(_ string, info os.FileInfo, err error) error {
+			if err == nil {
+				killReport.Size += uint64(info.Size())
+				killReport.Count++
+			} else {
+				killReport.Errors = append(killReport.Errors, err.Error())
+			}
+			return nil
+		})
+		killReport.Paths = append(killReport.Paths, p)
+		os.RemoveAll(p)
+	}
+	self.metadata.write("vdrkill", killReport)
+	return killReport
+}
+
 func (self *Fork) serialize() interface{} {
 	argbindings := []interface{}{}
 	for _, argbinding := range self.node.argbindingList {
@@ -1233,71 +1288,31 @@ type VDRKillReport struct {
 	Errors []string `json:"errors"`
 }
 
-func (self *Node) vdrKill() *VDRKillReport {
-	killReport := &VDRKillReport{}
-	if self.rt.vdrMode == "disable" || self.metadata.exists("vdrkill") {
-		return killReport
+func mergeVDRKillReports(killReports []*VDRKillReport) *VDRKillReport {
+	allKillReport := &VDRKillReport{}
+	for _, killReport := range killReports {
+		allKillReport.Size += killReport.Size
+		allKillReport.Count += killReport.Count
+		allKillReport.Errors = append(allKillReport.Errors, killReport.Errors...)
+		allKillReport.Paths = append(allKillReport.Paths, killReport.Paths...)
 	}
-	for _, node := range self.postnodes {
-		if node.getNode().state != "complete" {
-			return killReport
-		}
-	}
-
-	killPaths := []string{}
-	for _, fork := range self.forks {
-		// For volatile nodes, kill fork-level files.
-		if self.volatile {
-			if paths, err := fork.metadata.enumerateFiles(); err == nil {
-				killPaths = append(killPaths, paths...)
-			}
-			if paths, err := fork.split_metadata.enumerateFiles(); err == nil {
-				killPaths = append(killPaths, paths...)
-			}
-			if paths, err := fork.join_metadata.enumerateFiles(); err == nil {
-				killPaths = append(killPaths, paths...)
-			}
-		}
-		// If the node splits, kill chunk-level files.
-		// Must check for split here, otherwise we'll end up deleting
-		// output files of non-volatile nodes because single-chunk nodes
-		// get their output redirected to the one chunk's files path.
-		if self.split {
-			for _, chunk := range fork.chunks {
-				if paths, err := chunk.metadata.enumerateFiles(); err == nil {
-					killPaths = append(killPaths, paths...)
-				}
-			}
-		}
-	}
-
-	// Actually delete the paths.
-	for _, p := range killPaths {
-		filepath.Walk(p, func(_ string, info os.FileInfo, err error) error {
-			if err == nil {
-				killReport.Size += uint64(info.Size())
-				killReport.Count++
-			} else {
-				killReport.Errors = append(killReport.Errors, err.Error())
-			}
-			return nil
-		})
-		killReport.Paths = append(killReport.Paths, p)
-		os.RemoveAll(p)
-	}
-	self.metadata.write("vdrkill", killReport)
-	return killReport
+	return allKillReport
 }
 
-func (self *Node) generateVDRKillReport() *VDRKillReport {
-	if self.metadata.exists("vdrkill") {
-		var killReport *VDRKillReport
-		data := self.metadata.readRaw("vdrkill")
-		if err := json.Unmarshal([]byte(data), &killReport); err == nil {
-			return killReport
+func (self *Node) vdrKill() *VDRKillReport {
+	killReports := []*VDRKillReport{}
+	every := true
+	for _, node := range self.postnodes {
+		if node.getNode().state != "complete" {
+			every = false
 		}
 	}
-	return self.vdrKill()
+	if every {
+		for _, fork := range self.forks {
+			killReports = append(killReports, fork.vdrKill())
+		}
+	}
+	return mergeVDRKillReports(killReports)
 }
 
 //
@@ -1456,8 +1471,8 @@ func (self *Stagestance) Step()            { self.getNode().step() }
 func (self *Stagestance) RefreshState()    { self.getNode().refreshState() }
 func (self *Stagestance) LoadMetadata()    { self.getNode().loadMetadata() }
 func (self *Stagestance) Cleanup()         { self.getNode().cleanup() }
-func (self *Stagestance) GenerateVDRKillReport() *VDRKillReport {
-	return self.getNode().generateVDRKillReport()
+func (self *Stagestance) VDRKill() *VDRKillReport {
+	return self.getNode().vdrKill()
 }
 func (self *Stagestance) GetFatalError() (string, string, string, string, []string) {
 	return self.getNode().getFatalError()
@@ -1681,19 +1696,16 @@ func (self *Pipestance) GetOuts(forki int) interface{} {
 	return map[string]interface{}{}
 }
 
-func (self *Pipestance) GenerateVDRKillReport() *VDRKillReport {
-	psKillReport := VDRKillReport{}
+func (self *Pipestance) VDRKill() *VDRKillReport {
+	killReports := []*VDRKillReport{}
 	for _, node := range self.node.allNodes() {
-		killReport := node.generateVDRKillReport()
-		psKillReport.Size += killReport.Size
-		psKillReport.Count += killReport.Count
-		psKillReport.Errors = append(psKillReport.Errors, killReport.Errors...)
-		psKillReport.Paths = append(psKillReport.Paths, killReport.Paths...)
+		killReports = append(killReports, node.vdrKill())
 	}
+	killReport := mergeVDRKillReports(killReports)
 	metadata := NewMetadata(self.node.parent.getNode().fqname,
 		self.node.parent.getNode().path)
-	metadata.write("vdrkill", psKillReport)
-	return &psKillReport
+	metadata.write("vdrkill", killReport)
+	return killReport
 }
 
 //=============================================================================
