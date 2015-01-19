@@ -29,19 +29,16 @@ const fileSizeThreshold = 1024 * 1024 * 20 // 20 MB
 func generateDebugTarball(pipestance *core.Pipestance) {
 	core.Log("Generating debug dump tarball...")
 
-	debugFile := fmt.Sprintf("%s-debug-dump.tar.bz2", pipestance.GetPsid())
-	arguments := []string{"jcf", debugFile, "--exclude=*files*"}
+	includedFiles := []string{}
 	filepath.Walk(pipestance.GetPsid(), func(fpath string, info os.FileInfo, err error) error {
-		// All files in metadata 'files' directory are already excluded from tarball
-		if !strings.HasSuffix(path.Dir(fpath), "files") {
-			if !info.IsDir() && info.Size() > fileSizeThreshold {
-				arguments = append(arguments, "--exclude="+fpath)
-			}
+		if !info.IsDir() && info.Size() < fileSizeThreshold {
+			includedFiles = append(includedFiles, fpath)
 		}
 		return nil
 	})
-	arguments = append(arguments, pipestance.GetPsid())
-	cmd := exec.Command("tar", arguments...)
+	debugFile := fmt.Sprintf("%s-debug-dump.tar.bz2", pipestance.GetPsid())
+	cmd := exec.Command("tar", "jcf", debugFile, "--exclude=*files*", "-T", "-")
+	cmd.Stdin = strings.NewReader(strings.Join(includedFiles, "\n"))
 	if _, err := cmd.CombinedOutput(); err != nil {
 		core.Log("failed.\n  %s\n", err.Error())
 	} else {
