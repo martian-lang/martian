@@ -6,7 +6,6 @@
 package main
 
 import (
-	"github.com/docopt/docopt.go"
 	"io/ioutil"
 	"martian/core"
 	"os"
@@ -14,6 +13,9 @@ import (
 	"path/filepath"
 	"strings"
 	"time"
+
+	"github.com/docopt/docopt.go"
+	"github.com/dustin/go-humanize"
 )
 
 func main() {
@@ -33,7 +35,9 @@ Options:
     --jobmode=<name>   Run jobs on custom or local job manager.
                          Valid job managers are local, sge or .template file
                          Defaults to local.
-    --novdr            Disable Volatile Data Removal.
+    --vdrmode=<name>   Enables Volatile Data Removal.
+                         Valid options are rolling, post and disable.
+                         Defaults to rolling.
     --profile          Enable stage performance profiling.
     --localvars        Print local variables in stage code stack trace.
     --debug            Enable debug logging for local job manager.
@@ -68,6 +72,14 @@ Options:
 	core.LogInfo("environ", "job mode = %s", jobMode)
 	core.VerifyJobManager(jobMode)
 
+	// Compute vdrMode.
+	vdrMode := "rolling"
+	if value := opts["--vdrmode"]; value != nil {
+		vdrMode = value.(string)
+	}
+	core.LogInfo("environ", "vdrmode = %s", vdrMode)
+	core.VerifyVDRMode(vdrMode)
+
 	// Compute profiling flag.
 	profile := opts["--profile"].(bool)
 
@@ -75,7 +87,6 @@ Options:
 	localVars := opts["--localvars"].(bool)
 
 	// Setup invocation-specific values.
-	enableVDR := !opts["--novdr"].(bool)
 	invocationPath := opts["<call.mro>"].(string)
 	ssid := opts["<stagestance_name>"].(string)
 	stagestancePath := path.Join(cwd, ssid)
@@ -88,7 +99,7 @@ Options:
 	//=========================================================================
 	// Configure Martian runtime.
 	//=========================================================================
-	rt := core.NewRuntime(jobMode, mroPath, martianVersion, mroVersion, profile, localVars, enableVDR, debug)
+	rt := core.NewRuntime(jobMode, vdrMode, mroPath, martianVersion, mroVersion, profile, localVars, debug)
 
 	// Invoke stagestance.
 	data, err := ioutil.ReadFile(invocationPath)
@@ -112,6 +123,14 @@ Options:
 				stagestance.Cleanup()
 				if warnings, ok := stagestance.GetWarnings(); ok {
 					core.Log(warnings)
+				}
+				if vdrMode == "disable" {
+					core.LogInfo("runtime", "VDR disabled. No files killed.")
+				} else {
+					core.LogInfo("runtime", "Starting VDR kill...")
+					killReport := stagestance.GenerateVDRKillReport()
+					core.LogInfo("runtime", "VDR killed %d files, %s.",
+						killReport.Count, humanize.Bytes(killReport.Size))
 				}
 				core.LogInfo("runtime", "Stage completed, exiting.")
 				os.Exit(0)

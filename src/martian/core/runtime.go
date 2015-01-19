@@ -372,6 +372,17 @@ func dynamicCast(val interface{}, typename string, arrayDim int) bool {
 	return ret
 }
 
+func VerifyVDRMode(vdrMode string) {
+	validModes := []string{"rolling", "post", "disable"}
+	for _, validMode := range validModes {
+		if validMode == vdrMode {
+			return
+		}
+	}
+	LogInfo("runtime", "Invalid VDR mode: %s. Valid VDR modes: %s", vdrMode, strings.Join(validModes, ", "))
+	os.Exit(1)
+}
+
 //=============================================================================
 // Chunk
 //=============================================================================
@@ -1161,7 +1172,7 @@ func (self *Node) step() {
 	case "running":
 		self.addFrontierNode(self)
 	case "complete":
-		if self.rt.enableVDR {
+		if self.rt.vdrMode == "rolling" {
 			for _, node := range self.prenodes {
 				node.getNode().vdrKill()
 			}
@@ -1222,13 +1233,14 @@ type VDRKillReport struct {
 	Errors []string `json:"errors"`
 }
 
-func (self *Node) vdrKill() {
-	if self.metadata.exists("vdrkill") {
-		return
+func (self *Node) vdrKill() *VDRKillReport {
+	killReport := &VDRKillReport{}
+	if self.rt.vdrMode == "disable" || self.metadata.exists("vdrkill") {
+		return killReport
 	}
 	for _, node := range self.postnodes {
 		if node.getNode().state != "complete" {
-			return
+			return killReport
 		}
 	}
 
@@ -1260,7 +1272,6 @@ func (self *Node) vdrKill() {
 	}
 
 	// Actually delete the paths.
-	killReport := VDRKillReport{}
 	for _, p := range killPaths {
 		filepath.Walk(p, func(_ string, info os.FileInfo, err error) error {
 			if err == nil {
@@ -1274,7 +1285,8 @@ func (self *Node) vdrKill() {
 		killReport.Paths = append(killReport.Paths, p)
 		os.RemoveAll(p)
 	}
-	self.metadata.write("vdrkill", &killReport)
+	self.metadata.write("vdrkill", killReport)
+	return killReport
 }
 
 func (self *Node) generateVDRKillReport() *VDRKillReport {
@@ -1285,7 +1297,7 @@ func (self *Node) generateVDRKillReport() *VDRKillReport {
 			return killReport
 		}
 	}
-	return nil
+	return self.vdrKill()
 }
 
 //
@@ -1444,6 +1456,9 @@ func (self *Stagestance) Step()            { self.getNode().step() }
 func (self *Stagestance) RefreshState()    { self.getNode().refreshState() }
 func (self *Stagestance) LoadMetadata()    { self.getNode().loadMetadata() }
 func (self *Stagestance) Cleanup()         { self.getNode().cleanup() }
+func (self *Stagestance) GenerateVDRKillReport() *VDRKillReport {
+	return self.getNode().generateVDRKillReport()
+}
 func (self *Stagestance) GetFatalError() (string, string, string, string, []string) {
 	return self.getNode().getFatalError()
 }
@@ -1669,12 +1684,11 @@ func (self *Pipestance) GetOuts(forki int) interface{} {
 func (self *Pipestance) GenerateVDRKillReport() *VDRKillReport {
 	psKillReport := VDRKillReport{}
 	for _, node := range self.node.allNodes() {
-		if killReport := node.generateVDRKillReport(); killReport != nil {
-			psKillReport.Size += killReport.Size
-			psKillReport.Count += killReport.Count
-			psKillReport.Errors = append(psKillReport.Errors, killReport.Errors...)
-			psKillReport.Paths = append(psKillReport.Paths, killReport.Paths...)
-		}
+		killReport := node.generateVDRKillReport()
+		psKillReport.Size += killReport.Size
+		psKillReport.Count += killReport.Count
+		psKillReport.Errors = append(psKillReport.Errors, killReport.Errors...)
+		psKillReport.Paths = append(psKillReport.Paths, killReport.Paths...)
 	}
 	metadata := NewMetadata(self.node.parent.getNode().fqname,
 		self.node.parent.getNode().path)
@@ -1714,25 +1728,25 @@ type Runtime struct {
 	mroVersion      string
 	callableTable   map[string]Callable
 	PipelineNames   []string
+	vdrMode         string
 	jobMode         string
 	JobManager      JobManager
 	LocalJobManager JobManager
 	enableProfiling bool
 	enableLocalVars bool
-	enableVDR       bool
 	stest           bool
 }
 
-func NewRuntime(jobMode string, mroPath string, martianVersion string,
+func NewRuntime(jobMode string, vdrMode string, mroPath string, martianVersion string,
 	mroVersion string, enableProfiling bool, enableLocalVars bool,
-	enableVDR bool, debug bool) *Runtime {
-	return NewRuntimeWithCores(jobMode, mroPath, martianVersion, mroVersion,
-		-1, -1, enableProfiling, enableLocalVars, enableVDR, debug, false)
+	debug bool) *Runtime {
+	return NewRuntimeWithCores(jobMode, vdrMode, mroPath, martianVersion, mroVersion,
+		-1, -1, enableProfiling, enableLocalVars, debug, false)
 }
 
-func NewRuntimeWithCores(jobMode string, mroPath string, martianVersion string,
+func NewRuntimeWithCores(jobMode string, vdrMode string, mroPath string, martianVersion string,
 	mroVersion string, reqCores int, reqMem int, enableProfiling bool,
-	enableLocalVars bool, enableVDR bool, debug bool, stest bool) *Runtime {
+	enableLocalVars bool, debug bool, stest bool) *Runtime {
 
 	self := &Runtime{}
 	self.mroPath = mroPath
@@ -1740,9 +1754,9 @@ func NewRuntimeWithCores(jobMode string, mroPath string, martianVersion string,
 	self.martianVersion = martianVersion
 	self.mroVersion = mroVersion
 	self.jobMode = jobMode
+	self.vdrMode = vdrMode
 	self.enableProfiling = enableProfiling
 	self.enableLocalVars = enableLocalVars
-	self.enableVDR = enableVDR
 	self.callableTable = map[string]Callable{}
 	self.PipelineNames = []string{}
 	self.stest = stest
@@ -1753,6 +1767,7 @@ func NewRuntimeWithCores(jobMode string, mroPath string, martianVersion string,
 	} else {
 		self.JobManager = NewRemoteJobManager(self.jobMode)
 	}
+	VerifyVDRMode(self.vdrMode)
 
 	// Parse all MROs in MROPATH and cache pipelines by name.
 	fpaths, _ := filepath.Glob(self.mroPath + "/[^_]*.mro")

@@ -54,7 +54,7 @@ func generateDebugTarball(pipestance *core.Pipestance) {
 //=============================================================================
 // Pipestance runner.
 //=============================================================================
-func runLoop(pipestance *core.Pipestance, stepSecs int, enableVDR bool,
+func runLoop(pipestance *core.Pipestance, stepSecs int, vdrMode string,
 	noExit bool, noDump bool, noUI bool) {
 	showedFailed := false
 	WAIT_SECS := 6
@@ -72,14 +72,13 @@ func runLoop(pipestance *core.Pipestance, stepSecs int, enableVDR bool,
 			if warnings, ok := pipestance.GetWarnings(); ok {
 				core.Log(warnings)
 			}
-			if enableVDR {
+			if vdrMode == "disable" {
+				core.LogInfo("runtime", "VDR disabled. No files killed.")
+			} else {
 				core.LogInfo("runtime", "Starting VDR kill...")
 				killReport := pipestance.GenerateVDRKillReport()
 				core.LogInfo("runtime", "VDR killed %d files, %s.",
 					killReport.Count, humanize.Bytes(killReport.Size))
-			} else {
-				core.LogInfo("runtime",
-					"VDR disabled by --novdr option. No files killed.")
 			}
 			if noExit {
 				core.LogInfo("runtime",
@@ -164,10 +163,12 @@ Options:
     --jobmode=<name>   Run jobs on custom or local job manager.
                          Valid job managers are local, sge or .template file
                          Defaults to local.
+    --vdrmode=<name>   Enables Volatile Data Removal.
+                         Valid options are rolling, post and disable.
+                         Defaults to rolling.
     --nodump           Turns off debug dump tarball generation.
     --noexit           Keep UI running after pipestance completes or fails.
     --noui             Disable UI.
-    --novdr            Disable Volatile Data Removal.
     --profile          Enable stage performance profiling.
     --localvars        Print local variables in stage code stack trace.
     --maxcores=<num>   Set max cores the pipeline may request at one time.
@@ -222,6 +223,14 @@ Options:
 	core.LogInfo("environ", "job mode = %s", jobMode)
 	core.VerifyJobManager(jobMode)
 
+	// Compute vdrMode.
+	vdrMode := "rolling"
+	if value := opts["--vdrmode"]; value != nil {
+		vdrMode = value.(string)
+	}
+	core.LogInfo("environ", "vdrmode = %s", vdrMode)
+	core.VerifyVDRMode(vdrMode)
+
 	// Compute UI port.
 	uiport := "3600"
 	noUI := false
@@ -247,7 +256,6 @@ Options:
 	core.LogInfo("environ", "nodump = %v", noDump)
 
 	// Setup invocation-specific values.
-	enableVDR := !opts["--novdr"].(bool)
 	noExit := opts["--noexit"].(bool)
 	psid := opts["<pipestance_name>"].(string)
 	invocationPath := opts["<call.mro>"].(string)
@@ -262,8 +270,8 @@ Options:
 	//=========================================================================
 	// Configure Martian runtime.
 	//=========================================================================
-	rt := core.NewRuntimeWithCores(jobMode, mroPath, martianVersion, mroVersion,
-		reqCores, reqMem, profile, localVars, enableVDR, debug, stest)
+	rt := core.NewRuntimeWithCores(jobMode, vdrMode, mroPath, martianVersion, mroVersion,
+		reqCores, reqMem, profile, localVars, debug, stest)
 
 	// Print this here because the log makes more sense when this appears before
 	// the runloop messages start to appear.
@@ -366,7 +374,7 @@ Options:
 	//=========================================================================
 	// Start run loop.
 	//=========================================================================
-	go runLoop(pipestance, stepSecs, enableVDR, noExit, noDump, noUI)
+	go runLoop(pipestance, stepSecs, vdrMode, noExit, noDump, noUI)
 
 	// Let daemons take over.
 	done := make(chan bool)
