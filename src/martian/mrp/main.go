@@ -29,17 +29,22 @@ const fileSizeThreshold = 1024 * 1024 * 20 // 20 MB
 func generateDebugTarball(pipestance *core.Pipestance) {
 	core.Log("Generating debug dump tarball...")
 
-	includedFiles := []string{}
-	filepath.Walk(pipestance.GetPsid(), func(fpath string, info os.FileInfo, err error) error {
-		if !info.IsDir() && info.Size() < fileSizeThreshold {
-			includedFiles = append(includedFiles, fpath)
-		}
-		return nil
-	})
 	debugFile := fmt.Sprintf("%s-debug-dump.tar.bz2", pipestance.GetPsid())
-	cmd := exec.Command("tar", "jcf", debugFile, "--exclude=*files*", "-T", "-")
-	cmd.Stdin = strings.NewReader(strings.Join(includedFiles, "\n"))
-	if _, err := cmd.CombinedOutput(); err != nil {
+	includedFiles := []string{}
+	err := filepath.Walk(pipestance.GetPsid(), func(fpath string, info os.FileInfo, err error) error {
+		if err == nil {
+			if !info.IsDir() && info.Size() < fileSizeThreshold {
+				includedFiles = append(includedFiles, fpath)
+			}
+		}
+		return err
+	})
+	if err == nil {
+		cmd := exec.Command("tar", "jcf", debugFile, "--exclude=*files*", "-T", "-")
+		cmd.Stdin = strings.NewReader(strings.Join(includedFiles, "\n"))
+		_, err = cmd.CombinedOutput()
+	}
+	if err != nil {
 		core.Log("failed.\n  %s\n", err.Error())
 	} else {
 		core.Log("complete.\n  %s\n", debugFile)
