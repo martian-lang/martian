@@ -24,6 +24,31 @@ import (
 	"github.com/dustin/go-humanize"
 )
 
+const fileSizeThreshold = 1024 * 1024 * 20 // 20 MB
+
+func generateDebugTarball(pipestance *core.Pipestance) {
+	core.Log("Generating debug dump tarball...")
+
+	debugFile := fmt.Sprintf("%s-debug-dump.tar.bz2", pipestance.GetPsid())
+	arguments := []string{"jcf", debugFile, "--exclude=*files*"}
+	filepath.Walk(pipestance.GetPsid(), func(fpath string, info os.FileInfo, err error) error {
+		// All files in metadata 'files' directory are already excluded from tarball
+		if !strings.HasSuffix(path.Dir(fpath), "files") {
+			if !info.IsDir() && info.Size() > fileSizeThreshold {
+				arguments = append(arguments, "--exclude="+fpath)
+			}
+		}
+		return nil
+	})
+	arguments = append(arguments, pipestance.GetPsid())
+	cmd := exec.Command("tar", arguments...)
+	if _, err := cmd.CombinedOutput(); err != nil {
+		core.Log("failed.\n  %s\n", err.Error())
+	} else {
+		core.Log("complete.\n  %s\n", debugFile)
+	}
+}
+
 //=============================================================================
 // Pipestance runner.
 //=============================================================================
@@ -82,15 +107,7 @@ func runLoop(pipestance *core.Pipestance, stepSecs int, disableVDR bool,
 					core.Log("\n%s\n", log)
 
 					if !noDump {
-						// Generate debug tarball.
-						core.Log("Generating debug dump tarball...")
-						debugFile := fmt.Sprintf("%s-debug-dump.tar.bz2", pipestance.GetPsid())
-						cmd := exec.Command("tar", "jcf", debugFile, "--exclude=*files*", pipestance.GetPsid())
-						if _, err := cmd.CombinedOutput(); err != nil {
-							core.Log("failed.\n  %s\n", err.Error())
-						} else {
-							core.Log("complete.\n  %s\n", debugFile)
-						}
+						generateDebugTarball(pipestance)
 						core.Log("\n")
 					}
 				}
