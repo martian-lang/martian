@@ -1161,6 +1161,12 @@ func (self *Node) step() {
 	case "running":
 		self.addFrontierNode(self)
 	case "complete":
+		if self.rt.enableVDR {
+			for _, node := range self.prenodes {
+				node.getNode().vdrKill()
+			}
+			self.vdrKill()
+		}
 		for _, node := range self.postnodes {
 			self.addFrontierNode(node)
 		}
@@ -1204,6 +1210,82 @@ func (self *Node) refreshState() {
 		}
 		os.Remove(file)
 	}
+}
+
+//
+// VDR
+//
+type VDRKillReport struct {
+	Count  uint     `json:"count"`
+	Size   uint64   `json:"size"`
+	Paths  []string `json:"paths"`
+	Errors []string `json:"errors"`
+}
+
+func (self *Node) vdrKill() {
+	if self.metadata.exists("vdrkill") {
+		return
+	}
+	for _, node := range self.postnodes {
+		if node.getNode().state != "complete" {
+			return
+		}
+	}
+
+	killPaths := []string{}
+	for _, fork := range self.forks {
+		// For volatile nodes, kill fork-level files.
+		if self.volatile {
+			if paths, err := fork.metadata.enumerateFiles(); err == nil {
+				killPaths = append(killPaths, paths...)
+			}
+			if paths, err := fork.split_metadata.enumerateFiles(); err == nil {
+				killPaths = append(killPaths, paths...)
+			}
+			if paths, err := fork.join_metadata.enumerateFiles(); err == nil {
+				killPaths = append(killPaths, paths...)
+			}
+		}
+		// If the node splits, kill chunk-level files.
+		// Must check for split here, otherwise we'll end up deleting
+		// output files of non-volatile nodes because single-chunk nodes
+		// get their output redirected to the one chunk's files path.
+		if self.split {
+			for _, chunk := range fork.chunks {
+				if paths, err := chunk.metadata.enumerateFiles(); err == nil {
+					killPaths = append(killPaths, paths...)
+				}
+			}
+		}
+	}
+
+	// Actually delete the paths.
+	killReport := VDRKillReport{}
+	for _, p := range killPaths {
+		filepath.Walk(p, func(_ string, info os.FileInfo, err error) error {
+			if err == nil {
+				killReport.Size += uint64(info.Size())
+				killReport.Count++
+			} else {
+				killReport.Errors = append(killReport.Errors, err.Error())
+			}
+			return nil
+		})
+		killReport.Paths = append(killReport.Paths, p)
+		os.RemoveAll(p)
+	}
+	self.metadata.write("vdrkill", &killReport)
+}
+
+func (self *Node) generateVDRKillReport() *VDRKillReport {
+	if self.metadata.exists("vdrkill") {
+		var killReport *VDRKillReport
+		data := self.metadata.readRaw("vdrkill")
+		if err := json.Unmarshal([]byte(data), &killReport); err == nil {
+			return killReport
+		}
+	}
+	return nil
 }
 
 //
@@ -1584,65 +1666,20 @@ func (self *Pipestance) GetOuts(forki int) interface{} {
 	return map[string]interface{}{}
 }
 
-type VDRKillReport struct {
-	Count  uint     `json:"count"`
-	Size   uint64   `json:"size"`
-	Paths  []string `json:"paths"`
-	Errors []string `json:"errors"`
-}
-
-func (self *Pipestance) VDRKill() *VDRKillReport {
-	killPaths := []string{}
-
-	// Iterate over all nodes.
+func (self *Pipestance) GenerateVDRKillReport() *VDRKillReport {
+	psKillReport := VDRKillReport{}
 	for _, node := range self.node.allNodes() {
-		// Iterate over all forks.
-		for _, fork := range node.forks {
-			// For volatile nodes, kill fork-level files.
-			if node.volatile {
-				if paths, err := fork.metadata.enumerateFiles(); err == nil {
-					killPaths = append(killPaths, paths...)
-				}
-				if paths, err := fork.split_metadata.enumerateFiles(); err == nil {
-					killPaths = append(killPaths, paths...)
-				}
-				if paths, err := fork.join_metadata.enumerateFiles(); err == nil {
-					killPaths = append(killPaths, paths...)
-				}
-			}
-			// For ALL nodes, if the node splits, kill chunk-level files.
-			// Must check for split here, otherwise we'll end up deleting
-			// output files of non-volatile nodes because single-chunk nodes
-			// get their output redirected to the one chunk's files path.
-			if node.split {
-				for _, chunk := range fork.chunks {
-					if paths, err := chunk.metadata.enumerateFiles(); err == nil {
-						killPaths = append(killPaths, paths...)
-					}
-				}
-			}
+		if killReport := node.generateVDRKillReport(); killReport != nil {
+			psKillReport.Size += killReport.Size
+			psKillReport.Count += killReport.Count
+			psKillReport.Errors = append(psKillReport.Errors, killReport.Errors...)
+			psKillReport.Paths = append(psKillReport.Paths, killReport.Paths...)
 		}
-	}
-
-	// Actually delete the paths.
-	killReport := VDRKillReport{}
-	for _, p := range killPaths {
-		filepath.Walk(p, func(_ string, info os.FileInfo, err error) error {
-			if err == nil {
-				killReport.Size += uint64(info.Size())
-				killReport.Count++
-			} else {
-				killReport.Errors = append(killReport.Errors, err.Error())
-			}
-			return nil
-		})
-		killReport.Paths = append(killReport.Paths, p)
-		os.RemoveAll(p)
 	}
 	metadata := NewMetadata(self.node.parent.getNode().fqname,
 		self.node.parent.getNode().path)
-	metadata.write("vdrkill", &killReport)
-	return &killReport
+	metadata.write("vdrkill", psKillReport)
+	return &psKillReport
 }
 
 //=============================================================================
@@ -1682,18 +1719,20 @@ type Runtime struct {
 	LocalJobManager JobManager
 	enableProfiling bool
 	enableLocalVars bool
+	enableVDR       bool
 	stest           bool
 }
 
 func NewRuntime(jobMode string, mroPath string, martianVersion string,
-	mroVersion string, enableProfiling bool, enableLocalVars bool, debug bool) *Runtime {
+	mroVersion string, enableProfiling bool, enableLocalVars bool,
+	enableVDR bool, debug bool) *Runtime {
 	return NewRuntimeWithCores(jobMode, mroPath, martianVersion, mroVersion,
-		-1, -1, enableProfiling, enableLocalVars, debug, false)
+		-1, -1, enableProfiling, enableLocalVars, enableVDR, debug, false)
 }
 
 func NewRuntimeWithCores(jobMode string, mroPath string, martianVersion string,
 	mroVersion string, reqCores int, reqMem int, enableProfiling bool,
-	enableLocalVars bool, debug bool, stest bool) *Runtime {
+	enableLocalVars bool, enableVDR bool, debug bool, stest bool) *Runtime {
 
 	self := &Runtime{}
 	self.mroPath = mroPath
@@ -1703,6 +1742,7 @@ func NewRuntimeWithCores(jobMode string, mroPath string, martianVersion string,
 	self.jobMode = jobMode
 	self.enableProfiling = enableProfiling
 	self.enableLocalVars = enableLocalVars
+	self.enableVDR = enableVDR
 	self.callableTable = map[string]Callable{}
 	self.PipelineNames = []string{}
 	self.stest = stest

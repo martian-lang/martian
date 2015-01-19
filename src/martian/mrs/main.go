@@ -33,9 +33,10 @@ Options:
     --jobmode=<name>   Run jobs on custom or local job manager.
                          Valid job managers are local, sge or .template file
                          Defaults to local.
+    --novdr            Disable Volatile Data Removal.
     --profile          Enable stage performance profiling.
     --localvars        Print local variables in stage code stack trace.
-    --debug            Enable debug logging for local job manager. 
+    --debug            Enable debug logging for local job manager.
     -h --help          Show this message.
     --version          Show version.`
 	martianVersion := core.GetVersion()
@@ -74,6 +75,7 @@ Options:
 	localVars := opts["--localvars"].(bool)
 
 	// Setup invocation-specific values.
+	enableVDR := !opts["--novdr"].(bool)
 	invocationPath := opts["<call.mro>"].(string)
 	ssid := opts["<stagestance_name>"].(string)
 	stagestancePath := path.Join(cwd, ssid)
@@ -86,7 +88,7 @@ Options:
 	//=========================================================================
 	// Configure Martian runtime.
 	//=========================================================================
-	rt := core.NewRuntime(jobMode, mroPath, martianVersion, mroVersion, profile, localVars, debug)
+	rt := core.NewRuntime(jobMode, mroPath, martianVersion, mroVersion, profile, localVars, enableVDR, debug)
 
 	// Invoke stagestance.
 	data, err := ioutil.ReadFile(invocationPath)

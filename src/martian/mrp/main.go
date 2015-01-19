@@ -54,7 +54,7 @@ func generateDebugTarball(pipestance *core.Pipestance) {
 //=============================================================================
 // Pipestance runner.
 //=============================================================================
-func runLoop(pipestance *core.Pipestance, stepSecs int, disableVDR bool,
+func runLoop(pipestance *core.Pipestance, stepSecs int, enableVDR bool,
 	noExit bool, noDump bool, noUI bool) {
 	showedFailed := false
 	WAIT_SECS := 6
@@ -72,14 +72,14 @@ func runLoop(pipestance *core.Pipestance, stepSecs int, disableVDR bool,
 			if warnings, ok := pipestance.GetWarnings(); ok {
 				core.Log(warnings)
 			}
-			if disableVDR {
-				core.LogInfo("runtime",
-					"VDR disabled by --novdr option. No files killed.")
-			} else {
+			if enableVDR {
 				core.LogInfo("runtime", "Starting VDR kill...")
-				killReport := pipestance.VDRKill()
+				killReport := pipestance.GenerateVDRKillReport()
 				core.LogInfo("runtime", "VDR killed %d files, %s.",
 					killReport.Count, humanize.Bytes(killReport.Size))
+			} else {
+				core.LogInfo("runtime",
+					"VDR disabled by --novdr option. No files killed.")
 			}
 			if noExit {
 				core.LogInfo("runtime",
@@ -247,7 +247,7 @@ Options:
 	core.LogInfo("environ", "nodump = %v", noDump)
 
 	// Setup invocation-specific values.
-	disableVDR := opts["--novdr"].(bool)
+	enableVDR := !opts["--novdr"].(bool)
 	noExit := opts["--noexit"].(bool)
 	psid := opts["<pipestance_name>"].(string)
 	invocationPath := opts["<call.mro>"].(string)
@@ -263,7 +263,7 @@ Options:
 	// Configure Martian runtime.
 	//=========================================================================
 	rt := core.NewRuntimeWithCores(jobMode, mroPath, martianVersion, mroVersion,
-		reqCores, reqMem, profile, localVars, debug, stest)
+		reqCores, reqMem, profile, localVars, enableVDR, debug, stest)
 
 	// Print this here because the log makes more sense when this appears before
 	// the runloop messages start to appear.
@@ -366,7 +366,7 @@ Options:
 	//=========================================================================
 	// Start run loop.
 	//=========================================================================
-	go runLoop(pipestance, stepSecs, disableVDR, noExit, noDump, noUI)
+	go runLoop(pipestance, stepSecs, enableVDR, noExit, noDump, noUI)
 
 	// Let daemons take over.
 	done := make(chan bool)
