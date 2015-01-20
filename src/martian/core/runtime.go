@@ -646,7 +646,10 @@ func (self *Fork) updateState(state string) {
 }
 
 func (self *Fork) getChunk(index int) *Chunk {
-	return self.chunks[index]
+	if index < len(self.chunks) {
+		return self.chunks[index]
+	}
+	return nil
 }
 
 func (self *Fork) step() {
@@ -1023,7 +1026,10 @@ func (self *Node) loadMetadata() {
 }
 
 func (self *Node) getFork(index int) *Fork {
-	return self.forks[index]
+	if index < len(self.forks) {
+		return self.forks[index]
+	}
+	return nil
 }
 
 func (self *Node) getState() string {
@@ -1194,13 +1200,16 @@ func (self *Node) refreshState() {
 		}
 
 		fqname, forkIndex, chunkIndex, state := self.parseRunFilename(filename)
-		node := self.find(fqname)
-		fork := node.getFork(forkIndex)
-		if chunkIndex >= 0 {
-			chunk := fork.getChunk(chunkIndex)
-			chunk.updateState(state)
-		} else {
-			fork.updateState(state)
+		if node := self.find(fqname); node != nil {
+			if fork := node.getFork(forkIndex); fork != nil {
+				if chunkIndex >= 0 {
+					if chunk := fork.getChunk(chunkIndex); chunk != nil {
+						chunk.updateState(state)
+					}
+				} else {
+					fork.updateState(state)
+				}
+			}
 		}
 		os.Remove(file)
 	}
