@@ -67,7 +67,7 @@ app.controller('MartianGraphCtrl', ($scope, $compile, $http, $interval) ->
     $scope.id = null
     $scope.forki = 0
     $scope.chunki = 0
-    $scope.mdviews = { fork:'', split:'', join:'', chunk:'' }
+    $scope.mdviews = { forks:{}, split:{}, join:{}, chunks:{} }
     $scope.showRestart = true
     $scope.showLog = false
 
@@ -85,7 +85,7 @@ app.controller('MartianGraphCtrl', ($scope, $compile, $http, $interval) ->
         $scope.node = $scope.nodes[id]
         $scope.forki = 0
         $scope.chunki = 0
-        $scope.mdviews = { fork:'', split:'', join:'', chunk:'' }
+        $scope.mdviews = { forks:{}, split:{}, join:{}, chunks:{} }
 
     $scope.restart = () ->
         $scope.showRestart = false
@@ -98,9 +98,9 @@ app.controller('MartianGraphCtrl', ($scope, $compile, $http, $interval) ->
             alert('mrp is no longer running.\n\nPlease run mrp again with the --noexit option to continue running the pipeline.')
         )
 
-    $scope.selectMetadata = (view, name, path) ->
+    $scope.selectMetadata = (view, index, name, path) ->
         $http.post("/api/get-metadata/#{container}/#{pname}/#{psid}", { path:path, name:name }, { transformResponse: (d) -> d }).success((metadata) ->
-            $scope.mdviews[view] = metadata
+            $scope.mdviews[view][index] = metadata
         )
 
     $scope.refresh = () ->

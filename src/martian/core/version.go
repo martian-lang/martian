@@ -25,16 +25,18 @@ func runGit(dir string, args ...string) (string, error) {
 	return strings.TrimSpace(string(out)), err
 }
 
-func GetGitTag(dir string) string {
-	if out, err := runGit(dir, "describe", "--tags", "--dirty", "--always"); err == nil {
-		return out
+func GetGitTag(dir string) (string, error) {
+	out, err := runGit(dir, "describe", "--tags", "--dirty", "--always")
+	if err == nil {
+		return out, nil
 	}
-	return "noversion"
+	return "noversion", err
 }
 
-func GetGitBranch(dir string) string {
-	if out, err := runGit(dir, "rev-parse", "--abbrev-ref", "HEAD"); err == nil {
-		return out
+func GetGitBranch(dir string) (string, error) {
+	out, err := runGit(dir, "rev-parse", "--abbrev-ref", "HEAD")
+	if err == nil {
+		return out, nil
 	}
-	return "nobranch"
+	return "nobranch", err
 }

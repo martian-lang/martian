@@ -38,7 +38,7 @@ Options:
 	if value := os.Getenv("MROPATH"); len(value) > 0 {
 		mroPath = value
 	}
-	mroVersion := core.GetGitTag(mroPath)
+	mroVersion, _ := core.GetGitTag(mroPath)
 
 	// Setup runtime with MRO path.
 	rt := core.NewRuntime("local", mroPath, martianVersion, mroVersion, false, false, false)

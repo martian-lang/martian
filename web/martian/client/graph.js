@@ -85,10 +85,10 @@
     $scope.forki = 0;
     $scope.chunki = 0;
     $scope.mdviews = {
-      fork: '',
-      split: '',
-      join: '',
-      chunk: ''
+      forks: {},
+      split: {},
+      join: {},
+      chunks: {}
     };
     $scope.showRestart = true;
     $scope.showLog = false;
@@ -106,10 +106,10 @@
       $scope.forki = 0;
       $scope.chunki = 0;
       return $scope.mdviews = {
-        fork: '',
-        split: '',
-        join: '',
-        chunk: ''
+        forks: {},
+        split: {},
+        join: {},
+        chunks: {}
       };
     };
     $scope.restart = function() {
@@ -123,7 +123,7 @@
         return alert('mrp is no longer running.\n\nPlease run mrp again with the --noexit option to continue running the pipeline.');
       });
     };
-    $scope.selectMetadata = function(view, name, path) {
+    $scope.selectMetadata = function(view, index, name, path) {
       return $http.post("/api/get-metadata/" + container + "/" + pname + "/" + psid, {
         path: path,
         name: name
@@ -132,7 +132,7 @@
           return d;
         }
       }).success(function(metadata) {
-        return $scope.mdviews[view] = metadata;
+        return $scope.mdviews[view][index] = metadata;
       });
     };
     return $scope.refresh = function() {

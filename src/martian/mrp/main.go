@@ -24,6 +24,33 @@ import (
 	"github.com/dustin/go-humanize"
 )
 
+const fileSizeThreshold = 1024 * 1024 * 20 // 20 MB
+
+func generateDebugTarball(pipestance *core.Pipestance) {
+	core.Log("Generating debug dump tarball...")
+
+	debugFile := fmt.Sprintf("%s-debug-dump.tar.bz2", pipestance.GetPsid())
+	includedFiles := []string{}
+	err := filepath.Walk(pipestance.GetPsid(), func(fpath string, info os.FileInfo, err error) error {
+		if err == nil {
+			if !info.IsDir() && info.Size() < fileSizeThreshold {
+				includedFiles = append(includedFiles, fpath)
+			}
+		}
+		return err
+	})
+	if err == nil {
+		cmd := exec.Command("tar", "jcf", debugFile, "--exclude=*files*", "-T", "-")
+		cmd.Stdin = strings.NewReader(strings.Join(includedFiles, "\n"))
+		_, err = cmd.CombinedOutput()
+	}
+	if err != nil {
+		core.Log("failed.\n  %s\n", err.Error())
+	} else {
+		core.Log("complete.\n  %s\n", debugFile)
+	}
+}
+
 //=============================================================================
 // Pipestance runner.
 //=============================================================================
@@ -40,6 +67,7 @@ func runLoop(pipestance *core.Pipestance, stepSecs int, disableVDR bool,
 		// Check for completion states.
 		state := pipestance.GetState()
 		if state == "complete" {
+			pipestance.Cleanup()
 			pipestance.Immortalize()
 			if warnings, ok := pipestance.GetWarnings(); ok {
 				core.Log(warnings)
@@ -81,15 +109,7 @@ func runLoop(pipestance *core.Pipestance, stepSecs int, disableVDR bool,
 					core.Log("\n%s\n", log)
 
 					if !noDump {
-						// Generate debug tarball.
-						core.Log("Generating debug dump tarball...")
-						debugFile := fmt.Sprintf("%s-debug-dump.tar.bz2", pipestance.GetPsid())
-						cmd := exec.Command("tar", "jcf", debugFile, "--exclude=*files*", pipestance.GetPsid())
-						if _, err := cmd.CombinedOutput(); err != nil {
-							core.Log("failed.\n  %s\n", err.Error())
-						} else {
-							core.Log("complete.\n  %s\n", debugFile)
-						}
+						generateDebugTarball(pipestance)
 						core.Log("\n")
 					}
 				}
@@ -190,9 +210,14 @@ Options:
 	if value := os.Getenv("MROPATH"); len(value) > 0 {
 		mroPath = value
 	}
-	mroVersion := core.GetGitTag(mroPath)
 	core.LogInfo("environ", "MROPATH = %s", mroPath)
-	core.LogInfo("version", "MROPATH = %s", mroVersion)
+
+	// Compute version and branch.
+	mroBranch, _ := core.GetGitBranch(mroPath)
+	mroVersion, err := core.GetGitTag(mroPath)
+	if err == nil {
+		core.LogInfo("version", "MROPATH = %s", mroVersion)
+	}
 
 	// Compute job manager.
 	jobMode := "local"
@@ -307,7 +332,7 @@ Options:
 		"MROPROFILE": fmt.Sprintf("%v", profile),
 		"MROPORT":    uiport,
 		"mroversion": mroVersion,
-		"mrobranch":  core.GetGitBranch(mroPath),
+		"mrobranch":  mroBranch,
 	}
 
 	//=========================================================================

@@ -11,6 +11,7 @@ import time
 import datetime
 import socket
 import subprocess
+import multiprocessing
 import resource
 import pstats
 import StringIO
@@ -100,10 +101,10 @@ class Metadata:
     def _assert(self, message):
         self.write_raw("assert", message + "\n")
 
-    def update_journal(self, name):
+    def update_journal(self, name, force=False):
         if self.run_type != "main":
             name = "%s_%s" % (self.run_type, name)
-        if name not in self.cache:
+        if name not in self.cache or force:
             run_file = "%s.%s" % (self.run_file, name)
             tmp_run_file = "%s.tmp" % run_file
             with open(tmp_run_file, "w") as f:
@@ -120,6 +121,16 @@ def test_initialize(path):
     global metadata
     metadata = TestMetadata(path, path, "", "main")
 
+def heartbeat(metadata):
+    while True:
+        metadata.update_journal("heartbeat", force=True)
+        time.sleep(120)
+
+def start_heartbeat():
+    t = multiprocessing.Process(target=heartbeat, args=(metadata,))
+    t.daemon = True
+    t.start()
+
 def initialize(argv):
     global metadata, module, profile_flag, localvars_flag, starttime
 
@@ -132,6 +143,17 @@ def initialize(argv):
 
     # Write jobinfo
     write_jobinfo(files_path)
+
+    # Update journal for stdout / stderr
+    metadata.update_journal("stdout")
+    metadata.update_journal("stderr")
+
+    # Start heartbeat thread
+    start_heartbeat()
+
+    # Increase the maximum open file descriptors to the hard limit
+    _, hard = resource.getrlimit(resource.RLIMIT_NOFILE)
+    resource.setrlimit(resource.RLIMIT_NOFILE, (hard, hard))
 
     log_time("__start__")
     starttime = time.time()

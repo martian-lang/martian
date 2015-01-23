@@ -94,6 +94,12 @@ func (self *Metadata) cache(name string) {
 	self.mutex.Unlock()
 }
 
+func (self *Metadata) uncache(name string) {
+	self.mutex.Lock()
+	delete(self.contents, name)
+	self.mutex.Unlock()
+}
+
 func (self *Metadata) loadCache() {
 	if !self.exists("complete") {
 		paths := self.glob()
@@ -640,7 +646,10 @@ func (self *Fork) updateState(state string) {
 }
 
 func (self *Fork) getChunk(index int) *Chunk {
-	return self.chunks[index]
+	if index < len(self.chunks) {
+		return self.chunks[index]
+	}
+	return nil
 }
 
 func (self *Fork) step() {
@@ -926,9 +935,9 @@ func (self *Node) matchFork(targetArgPermute map[string]interface{}) *Fork {
 //
 // Subnode management
 //
-func (self *Node) addPreflightDependencies(prenode Nodable) {
+func (self *Node) setPrenode(prenode Nodable) {
 	for _, subnode := range self.subnodes {
-		subnode.getNode().addPreflightDependencies(prenode)
+		subnode.getNode().setPrenode(prenode)
 	}
 	self.prenodes[prenode.getNode().fqname] = prenode
 	prenode.getNode().postnodes[self.fqname] = self
@@ -1017,7 +1026,10 @@ func (self *Node) loadMetadata() {
 }
 
 func (self *Node) getFork(index int) *Fork {
-	return self.forks[index]
+	if index < len(self.forks) {
+		return self.forks[index]
+	}
+	return nil
 }
 
 func (self *Node) getState() string {
@@ -1074,6 +1086,20 @@ func (self *Node) reset() error {
 		fork.clearChunks()
 	}
 	return nil
+}
+
+func (self *Node) resetJobMonitors() {
+	for _, metadata := range self.collectMetadatas() {
+		state, _ := metadata.getState("")
+		if state == "running" || state == "queued" {
+			self.rt.JobManager.MonitorJob(metadata)
+		}
+	}
+}
+
+func (self *Node) cleanup() {
+	os.RemoveAll(self.journalPath)
+	os.RemoveAll(self.tmpPath)
 }
 
 func (self *Node) getWarnings() (string, bool) {
@@ -1169,18 +1195,21 @@ func (self *Node) refreshState() {
 	files, _ := filepath.Glob(path.Join(self.journalPath, "*"))
 	for _, file := range files {
 		filename := path.Base(file)
-		fqname, forkIndex, chunkIndex, state := self.parseRunFilename(filename)
-		if strings.HasSuffix(state, ".tmp") {
+		if strings.HasSuffix(filename, ".tmp") {
 			continue
 		}
 
-		node := self.find(fqname)
-		fork := node.getFork(forkIndex)
-		if chunkIndex >= 0 {
-			chunk := fork.getChunk(chunkIndex)
-			chunk.updateState(state)
-		} else {
-			fork.updateState(state)
+		fqname, forkIndex, chunkIndex, state := self.parseRunFilename(filename)
+		if node := self.find(fqname); node != nil {
+			if fork := node.getFork(forkIndex); fork != nil {
+				if chunkIndex >= 0 {
+					if chunk := fork.getChunk(chunkIndex); chunk != nil {
+						chunk.updateState(state)
+					}
+				} else {
+					fork.updateState(state)
+				}
+			}
 		}
 		os.Remove(file)
 	}
@@ -1341,6 +1370,7 @@ func (self *Stagestance) GetState() string { return self.getNode().getState() }
 func (self *Stagestance) Step()            { self.getNode().step() }
 func (self *Stagestance) RefreshState()    { self.getNode().refreshState() }
 func (self *Stagestance) LoadMetadata()    { self.getNode().loadMetadata() }
+func (self *Stagestance) Cleanup()         { self.getNode().cleanup() }
 func (self *Stagestance) GetFatalError() (string, string, string, string, []string) {
 	return self.getNode().getFatalError()
 }
@@ -1395,11 +1425,11 @@ func NewPipestance(parent Nodable, invokeSrc string, callStm *CallStm,
 			prenode.getNode().postnodes[self.node.fqname] = self.node
 		}
 	}
-	// Add preflight dependencies if preflight stages exist.
+	// Add preflight dependency if preflight stage exists.
 	if preflightNode != nil {
 		for _, subnode := range self.node.subnodes {
 			if subnode != preflightNode {
-				subnode.getNode().addPreflightDependencies(preflightNode)
+				subnode.getNode().setPrenode(preflightNode)
 			}
 		}
 	}
@@ -1469,19 +1499,25 @@ func (self *Pipestance) RestartAssertedNodes() error {
 func (self *Pipestance) RestartRunningNodes(jobMode string) error {
 	self.LoadMetadata()
 	nodes := self.node.getFrontierNodes()
-	runningNodes := []*Node{}
+	localNodes := []*Node{}
+	remoteNodes := []*Node{}
 	for _, node := range nodes {
-		if jobMode == "local" || node.local {
-			if node.state == "running" {
-				LogInfo("runtime", "Found orphaned stage: %s", node.fqname)
-				runningNodes = append(runningNodes, node)
+		if node.state == "running" {
+			LogInfo("runtime", "Found orphaned stage: %s", node.fqname)
+			if jobMode == "local" || node.local {
+				localNodes = append(localNodes, node)
+			} else {
+				remoteNodes = append(remoteNodes, node)
 			}
 		}
 	}
-	for _, node := range runningNodes {
+	for _, node := range localNodes {
 		if err := node.reset(); err != nil {
 			return err
 		}
+	}
+	for _, node := range remoteNodes {
+		node.resetJobMonitors()
 	}
 	return nil
 }
@@ -1532,6 +1568,10 @@ func (self *Pipestance) Serialize() interface{} {
 		ser = append(ser, node.serialize())
 	}
 	return ser
+}
+
+func (self *Pipestance) Cleanup() {
+	self.node.cleanup()
 }
 
 func (self *Pipestance) Immortalize() {
@@ -1776,9 +1816,10 @@ func (self *Runtime) InvokePipeline(src string, srcPath string, psid string,
 	if output, err := cmd.CombinedOutput(); err == nil {
 		metadata.writeRaw("uname", string(output))
 	}
+	mroVersion, _ := GetGitTag(self.mroPath)
 	metadata.write("versions", map[string]string{
 		"martian":   GetVersion(),
-		"pipelines": GetGitTag(self.mroPath),
+		"pipelines": mroVersion,
 	})
 	metadata.writeTime("timestamp")
 
