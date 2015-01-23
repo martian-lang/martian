@@ -144,6 +144,10 @@ def initialize(argv):
     # Write jobinfo
     write_jobinfo(files_path)
 
+    # Update journal for stdout / stderr
+    metadata.update_journal("stdout")
+    metadata.update_journal("stderr")
+
     # Start heartbeat thread
     start_heartbeat()
 
