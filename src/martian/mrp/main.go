@@ -210,9 +210,14 @@ Options:
 	if value := os.Getenv("MROPATH"); len(value) > 0 {
 		mroPath = value
 	}
-	mroVersion := core.GetGitTag(mroPath)
 	core.LogInfo("environ", "MROPATH = %s", mroPath)
-	core.LogInfo("version", "MROPATH = %s", mroVersion)
+
+	// Compute version and branch.
+	mroBranch, _ := core.GetGitBranch(mroPath)
+	mroVersion, err := core.GetGitTag(mroPath)
+	if err == nil {
+		core.LogInfo("version", "MROPATH = %s", mroVersion)
+	}
 
 	// Compute job manager.
 	jobMode := "local"
@@ -327,7 +332,7 @@ Options:
 		"MROPROFILE": fmt.Sprintf("%v", profile),
 		"MROPORT":    uiport,
 		"mroversion": mroVersion,
-		"mrobranch":  core.GetGitBranch(mroPath),
+		"mrobranch":  mroBranch,
 	}
 
 	//=========================================================================

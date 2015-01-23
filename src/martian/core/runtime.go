@@ -1816,9 +1816,10 @@ func (self *Runtime) InvokePipeline(src string, srcPath string, psid string,
 	if output, err := cmd.CombinedOutput(); err == nil {
 		metadata.writeRaw("uname", string(output))
 	}
+	mroVersion, _ := GetGitTag(self.mroPath)
 	metadata.write("versions", map[string]string{
 		"martian":   GetVersion(),
-		"pipelines": GetGitTag(self.mroPath),
+		"pipelines": mroVersion,
 	})
 	metadata.writeTime("timestamp")
 
