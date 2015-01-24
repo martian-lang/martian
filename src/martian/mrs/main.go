@@ -37,7 +37,7 @@ Options:
                          Defaults to local.
     --vdrmode=<name>   Enables Volatile Data Removal.
                          Valid options are rolling, post and disable.
-                         Defaults to rolling.
+                         Defaults to post.
     --profile          Enable stage performance profiling.
     --localvars        Print local variables in stage code stack trace.
     --debug            Enable debug logging for local job manager.
@@ -77,7 +77,7 @@ Options:
 	core.VerifyJobManager(jobMode)
 
 	// Compute vdrMode.
-	vdrMode := "rolling"
+	vdrMode := "post"
 	if value := opts["--vdrmode"]; value != nil {
 		vdrMode = value.(string)
 	}

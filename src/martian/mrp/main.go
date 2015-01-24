@@ -165,7 +165,7 @@ Options:
                          Defaults to local.
     --vdrmode=<name>   Enables Volatile Data Removal.
                          Valid options are rolling, post and disable.
-                         Defaults to rolling.
+                         Defaults to post.
     --nodump           Turns off debug dump tarball generation.
     --noexit           Keep UI running after pipestance completes or fails.
     --noui             Disable UI.
@@ -229,7 +229,7 @@ Options:
 	core.VerifyJobManager(jobMode)
 
 	// Compute vdrMode.
-	vdrMode := "rolling"
+	vdrMode := "post"
 	if value := opts["--vdrmode"]; value != nil {
 		vdrMode = value.(string)
 	}
