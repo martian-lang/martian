@@ -41,7 +41,7 @@ Options:
 	mroVersion, _ := core.GetGitTag(mroPath)
 
 	// Setup runtime with MRO path.
-	rt := core.NewRuntime("local", mroPath, martianVersion, mroVersion, false, false, false)
+	rt := core.NewRuntime("local", "disable", mroPath, martianVersion, mroVersion, false, false, false)
 
 	// Read and parse JSON from stdin.
 	bio := bufio.NewReader(os.Stdin)
