@@ -55,7 +55,7 @@ func generateDebugTarball(pipestance *core.Pipestance) {
 // Pipestance runner.
 //=============================================================================
 func runLoop(pipestance *core.Pipestance, stepSecs int, vdrMode string,
-	noExit bool, noDump bool, noUI bool) {
+	noExit bool, noDump bool, enableUI bool) {
 	showedFailed := false
 	WAIT_SECS := 6
 
@@ -85,7 +85,7 @@ func runLoop(pipestance *core.Pipestance, stepSecs int, vdrMode string,
 					"Pipestance is complete, staying alive because --noexit given.")
 				break
 			} else {
-				if !noUI {
+				if enableUI {
 					// Give time for web ui client to get last update.
 					core.LogInfo("runtime", "Waiting %d seconds for UI to do final refresh.", WAIT_SECS)
 					time.Sleep(time.Second * time.Duration(WAIT_SECS))
@@ -122,7 +122,7 @@ func runLoop(pipestance *core.Pipestance, stepSecs int, vdrMode string,
 						"Pipestance failed, staying alive because --noexit given.")
 				}
 			} else {
-				if !noUI {
+				if enableUI {
 					// Give time for web ui client to get last update.
 					core.LogInfo("runtime", "Waiting %d seconds for UI to do final refresh.", WAIT_SECS)
 					time.Sleep(time.Second * time.Duration(WAIT_SECS))
@@ -158,8 +158,7 @@ Usage:
     mrp -h | --help | --version
 
 Options:
-    --port=<num>       Serve UI at http://localhost:<num>
-                         Defaults to 3600 if not otherwise specified.
+    --uiport=<num>     Serve UI at http://localhost:<num>
     --jobmode=<name>   Run jobs on custom or local job manager.
                          Valid job managers are local, sge or .template file
                          Defaults to local.
@@ -168,7 +167,6 @@ Options:
                          Defaults to post.
     --nodump           Turns off debug dump tarball generation.
     --noexit           Keep UI running after pipestance completes or fails.
-    --noui             Disable UI.
     --profile          Enable stage performance profiling.
     --localvars        Print local variables in stage code stack trace.
     --maxcores=<num>   Set max cores the pipeline may request at one time.
@@ -237,16 +235,15 @@ Options:
 	core.VerifyVDRMode(vdrMode)
 
 	// Compute UI port.
-	uiport := "3600"
-	noUI := false
-	if value := opts["--port"]; value != nil {
+	uiport := ""
+	enableUI := false
+	if value := opts["--uiport"]; value != nil {
 		uiport = value.(string)
+		enableUI = true
 	}
-	if opts["--noui"].(bool) {
-		uiport = ""
-		noUI = true
+	if enableUI {
+		core.LogInfo("environ", "uiport = %s", uiport)
 	}
-	core.LogInfo("environ", "port = %s", uiport)
 
 	// Compute profiling flag.
 	profile := opts["--profile"].(bool)
@@ -280,10 +277,10 @@ Options:
 
 	// Print this here because the log makes more sense when this appears before
 	// the runloop messages start to appear.
-	if noUI {
-		core.LogInfo("webserv", "UI disabled by --noui option.")
-	} else {
+	if enableUI {
 		core.LogInfo("webserv", "Serving UI at http://localhost:%s", uiport)
+	} else {
+		core.LogInfo("webserv", "UI disabled.")
 	}
 
 	//=========================================================================
@@ -372,14 +369,14 @@ Options:
 	//=========================================================================
 	// Start web server.
 	//=========================================================================
-	if !noUI && len(uiport) > 0 {
+	if enableUI && len(uiport) > 0 {
 		go runWebServer(uiport, rt, pipestance, info)
 	}
 
 	//=========================================================================
 	// Start run loop.
 	//=========================================================================
-	go runLoop(pipestance, stepSecs, vdrMode, noExit, noDump, noUI)
+	go runLoop(pipestance, stepSecs, vdrMode, noExit, noDump, enableUI)
 
 	// Let daemons take over.
 	done := make(chan bool)
