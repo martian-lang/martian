@@ -822,11 +822,14 @@ func (self *Fork) postProcess(outsPath string) {
 	for id, param := range params {
 		value, ok := outs[id]
 		if ok && value != nil {
-			if param.getIsFile() {
+			if param.getIsFile() || param.getTname() == "path" {
 				if filePath, ok := value.(string); ok {
 					if _, err := os.Stat(filePath); err == nil {
 						idemMkdirAll(outsPath)
-						newValue := path.Join(outsPath, id+"."+param.getTname())
+						newValue := path.Join(outsPath, id)
+						if param.getTname() != "path" {
+							newValue += "." + param.getTname()
+						}
 						os.Symlink(filePath, newValue)
 						value = newValue
 					}
