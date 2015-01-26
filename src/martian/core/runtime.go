@@ -1245,8 +1245,8 @@ func (self *Node) getFatalError() (string, string, string, string, []string) {
 			summary := "<none>"
 			if self.stagecodeLang == "Python" {
 				errlines := strings.Split(errlog, "\n")
-				if len(errlines) >= 1 {
-					summary = errlines[len(errlines)-1]
+				if len(errlines) >= 2 {
+					summary = errlines[len(errlines)-2]
 				}
 			}
 			errpaths := []string{
