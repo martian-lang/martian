@@ -52,21 +52,8 @@ func (self *Metadata) enumerateFiles() ([]string, error) {
 }
 
 func (self *Metadata) mkdirs() {
-	// When making/remaking dirs, clear the cache.
-	self.mutex.Lock()
-	self.contents = map[string]bool{}
-	self.mutex.Unlock()
 	mkdir(self.path)
 	mkdir(self.filesPath)
-}
-
-func (self *Metadata) idemMkdirs() {
-	// When making/remaking dirs, clear the cache.
-	self.mutex.Lock()
-	self.contents = map[string]bool{}
-	self.mutex.Unlock()
-	idemMkdir(self.path)
-	idemMkdir(self.filesPath)
 }
 
 func (self *Metadata) getState(name string) (string, bool) {
@@ -412,17 +399,11 @@ func NewChunk(nodable Nodable, fork *Fork, index int, chunkDef map[string]interf
 		// to the filesPath of the parent fork, to save a pseudo-join copy.
 		self.metadata.filesPath = self.fork.metadata.filesPath
 	}
-	// We have to mkdirs here because runtime might have been interrupted after chunk_defs were
-	// written but before next step interval caused the actual creation of the chnk folders.
-	// in that scenario, upon restart the fork step would try to write _args into chnk folders
-	// that don't exist.
-	// This also gets run if we are restarting from a failed stage.
-	self.mkdirs()
 	return self
 }
 
 func (self *Chunk) mkdirs() {
-	self.metadata.idemMkdirs()
+	self.metadata.mkdirs()
 }
 
 func (self *Chunk) getState() string {
@@ -570,7 +551,10 @@ func (self *Fork) mkdirs() {
 	self.metadata.mkdirs()
 	self.split_metadata.mkdirs()
 	self.join_metadata.mkdirs()
-	self.split_has_run = false
+
+	for _, chunk := range self.chunks {
+		chunk.mkdirs()
+	}
 }
 
 func (self *Fork) verifyOutput() (bool, string) {
@@ -686,13 +670,11 @@ func (self *Fork) step() {
 		} else if state == "split_complete" {
 			chunkDefs := self.split_metadata.read("chunk_defs")
 			if _, ok := chunkDefs.([]interface{}); !ok {
-				self.split_metadata.idemMkdirs()
 				self.split_metadata.writeRaw("errors", "The split method must return an array of chunk def dicts but did not.\n")
 			} else {
 				if len(self.chunks) == 0 {
 					for i, chunkDef := range chunkDefs.([]interface{}) {
 						if _, ok := chunkDef.(map[string]interface{}); !ok {
-							self.split_metadata.idemMkdirs()
 							self.split_metadata.writeRaw("errors", "The split method must return an array of chunk def dicts but did not.\n")
 							break
 						}
@@ -825,7 +807,7 @@ func (self *Fork) postProcess(outsPath string) {
 			if param.getIsFile() || param.getTname() == "path" {
 				if filePath, ok := value.(string); ok {
 					if _, err := os.Stat(filePath); err == nil {
-						idemMkdirAll(outsPath)
+						mkdirAll(outsPath)
 						newValue := path.Join(outsPath, id)
 						if param.getTname() != "path" {
 							newValue += "." + param.getTname()
@@ -965,10 +947,12 @@ func NewNode(parent Nodable, kind string, callStm *CallStm, callables *Callables
 //
 // Folder construction
 //
-func (self *Node) mkdirs(wg *sync.WaitGroup) {
-	mkdir(self.path)
-	idemMkdir(self.journalPath)
-	idemMkdir(self.tmpPath)
+func (self *Node) mkdirs() {
+	mkdirAll(self.path)
+	mkdir(self.journalPath)
+	mkdir(self.tmpPath)
+
+	var wg sync.WaitGroup
 	for _, fork := range self.forks {
 		wg.Add(1)
 		go func(f *Fork) {
@@ -976,13 +960,7 @@ func (self *Node) mkdirs(wg *sync.WaitGroup) {
 			wg.Done()
 		}(fork)
 	}
-	for _, subnode := range self.subnodes {
-		wg.Add(1)
-		go func(n Nodable) {
-			n.getNode().mkdirs(wg)
-			wg.Done()
-		}(subnode)
-	}
+	wg.Wait()
 }
 
 //
@@ -1187,12 +1165,6 @@ func (self *Node) reset() error {
 	os.RemoveAll(self.journalPath)
 	os.RemoveAll(self.tmpPath)
 
-	// Re-create the folders.
-	// This will also clear all the metadata in-memory caches.
-	var rewg sync.WaitGroup
-	self.mkdirs(&rewg)
-	rewg.Wait()
-
 	// Load the metadata.
 	self.loadMetadata()
 
@@ -1280,11 +1252,15 @@ func (self *Node) step() {
 			fork.step()
 		}
 	}
+	previousState := self.state
 	self.state = self.getState()
 	switch self.state {
 	case "failed":
 		self.addFrontierNode(self)
 	case "running":
+		if self.state != previousState {
+			self.mkdirs()
+		}
 		self.addFrontierNode(self)
 	case "complete":
 		if self.rt.vdrMode == "rolling" {
@@ -1619,6 +1595,9 @@ func (self *Pipestance) LoadMetadata() {
 	}
 	for _, node := range self.node.allNodes() {
 		node.state = node.getState()
+		if node.state == "running" {
+			node.mkdirs()
+		}
 	}
 }
 
@@ -1899,6 +1878,9 @@ func (self *Runtime) instantiatePipeline(src string, srcPath string, psid string
 	if pipestance == nil {
 		return "", nil, &RuntimeError{fmt.Sprintf("'%s' is not a declared pipeline", ast.call.id)}
 	}
+
+	pipestance.getNode().mkdirs()
+
 	return postsrc, pipestance, nil
 }
 
@@ -1936,11 +1918,6 @@ func (self *Runtime) InvokePipeline(src string, srcPath string, psid string,
 		"pipelines": mroVersion,
 	})
 	metadata.writeTime("timestamp")
-
-	// Create pipestance folder graph concurrently.
-	var wg sync.WaitGroup
-	pipestance.getNode().mkdirs(&wg)
-	wg.Wait()
 
 	return pipestance, nil
 }
@@ -2001,10 +1978,7 @@ func (self *Runtime) InvokeStage(src string, srcPath string, ssid string,
 		return nil, &RuntimeError{fmt.Sprintf("'%s' is not a declared stage", ast.call.id)}
 	}
 
-	// Create stagestance folder graph concurrently.
-	var wg sync.WaitGroup
-	stagestance.getNode().mkdirs(&wg)
-	wg.Wait()
+	stagestance.getNode().mkdirs()
 
 	return stagestance, nil
 }
