@@ -35,6 +35,10 @@ func idemMkdir(p string) {
 	os.Mkdir(p, 0755)
 }
 
+func idemMkdirAll(p string) {
+	os.MkdirAll(p, 0755)
+}
+
 func searchPaths(fname string, searchPaths []string) (string, bool) {
 	for _, searchPath := range searchPaths {
 		fpath := path.Join(searchPath, fname)

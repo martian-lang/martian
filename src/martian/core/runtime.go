@@ -798,6 +798,52 @@ func (self *Fork) vdrKill() *VDRKillReport {
 	return killReport
 }
 
+func (self *Fork) postProcess(outsPath string) {
+	params := self.node.outparams.table
+
+	if len(params) == 0 {
+		return
+	}
+
+	if len(self.node.forks) > 1 {
+		outsPath = path.Join(outsPath, fmt.Sprintf("fork%d", self.index))
+		Log("\nOutput (fork%d):\n", self.index)
+	} else {
+		Log("\nOutput:\n")
+	}
+
+	outs := map[string]interface{}{}
+	if data := self.metadata.read("outs"); data != nil {
+		if v, ok := data.(map[string]interface{}); ok {
+			outs = v
+		}
+	}
+
+	for id, param := range params {
+		value, ok := outs[id]
+		if ok && value != nil {
+			if param.getIsFile() {
+				if filePath, ok := value.(string); ok {
+					if _, err := os.Stat(filePath); err == nil {
+						idemMkdirAll(outsPath)
+						newValue := path.Join(outsPath, id+"."+param.getTname())
+						os.Symlink(filePath, newValue)
+						value = newValue
+					}
+				}
+			}
+		} else {
+			value = "null"
+		}
+		key := param.getHelp()
+		if len(key) == 0 {
+			key = param.getId()
+		}
+		Log("- %s: %v\n", key, value)
+	}
+	Log("\n")
+}
+
 func (self *Fork) serialize() interface{} {
 	argbindings := []interface{}{}
 	for _, argbinding := range self.node.argbindingList {
@@ -1163,9 +1209,14 @@ func (self *Node) resetJobMonitors() {
 	}
 }
 
-func (self *Node) cleanup() {
+func (self *Node) postProcess() {
 	os.RemoveAll(self.journalPath)
 	os.RemoveAll(self.tmpPath)
+
+	pipestanceOutsPath := path.Join(self.parent.getNode().path, "outs")
+	for _, fork := range self.forks {
+		fork.postProcess(pipestanceOutsPath)
+	}
 }
 
 func (self *Node) getWarnings() (string, bool) {
@@ -1479,7 +1530,7 @@ func (self *Stagestance) GetState() string { return self.getNode().getState() }
 func (self *Stagestance) Step()            { self.getNode().step() }
 func (self *Stagestance) RefreshState()    { self.getNode().refreshState() }
 func (self *Stagestance) LoadMetadata()    { self.getNode().loadMetadata() }
-func (self *Stagestance) Cleanup()         { self.getNode().cleanup() }
+func (self *Stagestance) PostProcess()     { self.getNode().postProcess() }
 func (self *Stagestance) VDRKill() *VDRKillReport {
 	return self.getNode().vdrKill()
 }
@@ -1682,8 +1733,8 @@ func (self *Pipestance) Serialize() interface{} {
 	return ser
 }
 
-func (self *Pipestance) Cleanup() {
-	self.node.cleanup()
+func (self *Pipestance) PostProcess() {
+	self.node.postProcess()
 }
 
 func (self *Pipestance) Immortalize() {
@@ -1696,13 +1747,6 @@ func (self *Pipestance) Unimmortalize() {
 	metadata := NewMetadata(self.node.parent.getNode().fqname,
 		self.node.parent.getNode().path)
 	metadata.remove("finalstate")
-}
-
-func (self *Pipestance) GetOuts(forki int) interface{} {
-	if v := self.getNode().forks[forki].metadata.read("outs"); v != nil {
-		return v
-	}
-	return map[string]interface{}{}
 }
 
 func (self *Pipestance) VDRKill() *VDRKillReport {
