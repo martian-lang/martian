@@ -39,7 +39,7 @@ func unquote(qs string) string {
     retstm    *ReturnStm
 }
 
-%type <val>       file_id type help type src_lang
+%type <val>       id_list type help type src_lang
 %type <modifiers> modifiers
 %type <arr>       arr_list
 %type <dec>       dec 
@@ -93,7 +93,7 @@ dec_list
     ;
 
 dec
-    : FILETYPE file_id SEMICOLON
+    : FILETYPE id_list SEMICOLON
         {{ $$ = &Filetype{NewAstNode(&mmlval), $2} }}
     | STAGE ID LPAREN in_param_list out_param_list src_stm RPAREN 
         {{ $$ = &Stage{NewAstNode(&mmlval), $2, $4, $5, $6, &Params{[]Param{}, map[string]Param{}} } }}
@@ -103,8 +103,8 @@ dec
         {{ $$ = &Pipeline{NewAstNode(&mmlval), $2, $4, $5, $8, &Callables{[]Callable{}, map[string]Callable{}}, $9} }}
     ;
 
-file_id
-    : ID DOT ID
+id_list
+    : id_list DOT ID
         {{ $$ = $1 + $2 + $3 }}
     | ID
     ;
@@ -168,9 +168,7 @@ type
     | FLOAT
     | BOOL
     | MAP
-    | ID
-    | ID DOT ID
-        {{ $$ = $1 + "." + $3 }}
+    | id_list
     ;
 
 src_lang
