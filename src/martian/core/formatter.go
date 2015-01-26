@@ -16,13 +16,6 @@ import (
 var INDENT string = "    "
 var NEWLINE string = "\n"
 
-func max(x int, y int) int {
-	if x > y {
-		return x
-	}
-	return y
-}
-
 //
 // Expression
 //

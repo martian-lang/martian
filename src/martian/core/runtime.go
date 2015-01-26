@@ -1254,8 +1254,8 @@ func (self *Node) getFatalError() (string, string, string, string, []string) {
 				metadata.makePath("stdout"),
 				metadata.makePath("stderr"),
 			}
-			if self.rt.enableLocalVars {
-				errpaths = append(errpaths, metadata.makePath("localvars"))
+			if self.rt.enableStackVars {
+				errpaths = append(errpaths, metadata.makePath("stackvars"))
 			}
 			return metadata.fqname, summary, errlog, "errors", errpaths
 		}
@@ -1452,9 +1452,9 @@ func (self *Node) runJob(shellName string, fqname string, metadata *Metadata,
 	}
 
 	// Configure local variable dumping.
-	localVars := "disable"
-	if self.rt.enableLocalVars {
-		localVars = "localvars"
+	stackVars := "disable"
+	if self.rt.enableStackVars {
+		stackVars = "stackvars"
 	}
 
 	// Set environment variables
@@ -1470,10 +1470,10 @@ func (self *Node) runJob(shellName string, fqname string, metadata *Metadata,
 	switch self.stagecodeLang {
 	case "Python":
 		shellCmd = path.Join(self.rt.adaptersPath, "python", shellName+".py")
-		argv = append(stagecodeParts, metadata.path, metadata.filesPath, runFile, profile, localVars)
+		argv = append(stagecodeParts, metadata.path, metadata.filesPath, runFile, profile, stackVars)
 	case "Executable":
 		shellCmd = stagecodeParts[0]
-		argv = append(stagecodeParts[1:], shellName, metadata.path, metadata.filesPath, runFile, profile, localVars)
+		argv = append(stagecodeParts[1:], shellName, metadata.path, metadata.filesPath, runFile, profile, stackVars)
 	default:
 		panic(fmt.Sprintf("Unknown stage code language: %s", self.stagecodeLang))
 	}
@@ -1801,20 +1801,20 @@ type Runtime struct {
 	JobManager      JobManager
 	LocalJobManager JobManager
 	enableProfiling bool
-	enableLocalVars bool
+	enableStackVars bool
 	stest           bool
 }
 
 func NewRuntime(jobMode string, vdrMode string, mroPath string, martianVersion string,
-	mroVersion string, enableProfiling bool, enableLocalVars bool,
+	mroVersion string, enableProfiling bool, enableStackVars bool,
 	debug bool) *Runtime {
 	return NewRuntimeWithCores(jobMode, vdrMode, mroPath, martianVersion, mroVersion,
-		-1, -1, enableProfiling, enableLocalVars, debug, false)
+		-1, -1, -1, enableProfiling, enableStackVars, debug, false)
 }
 
 func NewRuntimeWithCores(jobMode string, vdrMode string, mroPath string, martianVersion string,
-	mroVersion string, reqCores int, reqMem int, enableProfiling bool,
-	enableLocalVars bool, debug bool, stest bool) *Runtime {
+	mroVersion string, reqCores int, reqMem int, reqMemPerCore int, enableProfiling bool,
+	enableStackVars bool, debug bool, stest bool) *Runtime {
 
 	self := &Runtime{}
 	self.mroPath = mroPath
@@ -1824,7 +1824,7 @@ func NewRuntimeWithCores(jobMode string, vdrMode string, mroPath string, martian
 	self.jobMode = jobMode
 	self.vdrMode = vdrMode
 	self.enableProfiling = enableProfiling
-	self.enableLocalVars = enableLocalVars
+	self.enableStackVars = enableStackVars
 	self.callableTable = map[string]Callable{}
 	self.PipelineNames = []string{}
 	self.stest = stest
@@ -1833,7 +1833,7 @@ func NewRuntimeWithCores(jobMode string, vdrMode string, mroPath string, martian
 	if self.jobMode == "local" {
 		self.JobManager = self.LocalJobManager
 	} else {
-		self.JobManager = NewRemoteJobManager(self.jobMode)
+		self.JobManager = NewRemoteJobManager(self.jobMode, reqMemPerCore)
 	}
 	VerifyVDRMode(self.vdrMode)
 

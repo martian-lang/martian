@@ -19,6 +19,13 @@ import (
 	"github.com/docopt/docopt.go"
 )
 
+func max(x int, y int) int {
+	if x > y {
+		return x
+	}
+	return y
+}
+
 func mkdir(p string) {
 	err := os.Mkdir(p, 0755)
 	if err != nil {

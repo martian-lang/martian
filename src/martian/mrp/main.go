@@ -158,25 +158,27 @@ Usage:
     mrp -h | --help | --version
 
 Options:
-    --uiport=<num>     Serve UI at http://localhost:<num>
-    --jobmode=<name>   Run jobs on custom or local job manager.
-                         Valid job managers are local, sge or .template file
-                         Defaults to local.
-    --vdrmode=<name>   Enables Volatile Data Removal.
-                         Valid options are rolling, post and disable.
-                         Defaults to post.
-    --nodump           Turns off debug dump tarball generation.
-    --noexit           Keep UI running after pipestance completes or fails.
-    --profile          Enable stage performance profiling.
-    --localvars        Print local variables in stage code stack trace.
-    --maxcores=<num>   Set max cores the pipeline may request at one time.
-                         (Only applies in local jobmode)
-    --maxmem=<num>     Set max GB the pipeline may request at one time.
-                         (Only applies in local jobmode)
-    --debug            Enable debug logging for local job manager.
-    --stest            Substitute real stages with stress-testing stage.
-    -h --help          Show this message.
-    --version          Show version.`
+    --uiport=<num>       Serve UI at http://localhost:<num>
+    --jobmode=<name>     Run jobs on custom or local job manager.
+                           Valid job managers are local, sge or .template file
+                           Defaults to local.
+    --vdrmode=<name>     Enables Volatile Data Removal.
+                           Valid options are rolling, post and disable.
+                           Defaults to post.
+    --nodump             Turns off debug dump tarball generation.
+    --noexit             Keep UI running after pipestance completes or fails.
+    --profile            Enable stage performance profiling.
+    --stackvars          Print local variables in stage code stack trace.
+    --localcores=<num>   Set max cores the pipeline may request at one time.
+                           (Only applies in local jobmode)
+    --localmem=<num>     Set max GB the pipeline may request at one time.
+                           (Only applies in local jobmode)
+    --mempercore=<num>   Set max GB each job may use at one time.
+                           (Only applies in non-local jobmodes)
+    --debug              Enable debug logging for local job manager.
+    --stest              Substitute real stages with stress-testing stage.
+    -h --help            Show this message.
+    --version            Show version.`
 	martianVersion := core.GetVersion()
 	opts, _ := docopt.Parse(doc, nil, true, martianVersion, false)
 	core.LogInfo("*", "Martian Run Pipeline")
@@ -189,17 +191,23 @@ Options:
 		core.ParseMroFlags(opts, doc, martianOptions, []string{"call.mro", "pipestance"})
 	}
 
-	// Requested cores.
+	// Requested cores and memory.
 	reqCores := -1
-	if value := opts["--maxcores"]; value != nil {
+	if value := opts["--localcores"]; value != nil {
 		if value, err := strconv.Atoi(value.(string)); err == nil {
 			reqCores = value
 		}
 	}
 	reqMem := -1
-	if value := opts["--maxmem"]; value != nil {
+	if value := opts["--localmem"]; value != nil {
 		if value, err := strconv.Atoi(value.(string)); err == nil {
 			reqMem = value
+		}
+	}
+	reqMemPerCore := -1
+	if value := opts["--mempercore"]; value != nil {
+		if value, err := strconv.Atoi(value.(string)); err == nil {
+			reqMemPerCore = value
 		}
 	}
 
@@ -249,9 +257,9 @@ Options:
 	profile := opts["--profile"].(bool)
 	core.LogInfo("environ", "profile = %v", profile)
 
-	// Compute localVars flag.
-	localVars := opts["--localvars"].(bool)
-	core.LogInfo("environ", "localvars = %v", localVars)
+	// Compute stackVars flag.
+	stackVars := opts["--stackvars"].(bool)
+	core.LogInfo("environ", "stackvars = %v", stackVars)
 
 	// Compute no debug dump flag.
 	noDump := opts["--nodump"].(bool)
@@ -273,7 +281,7 @@ Options:
 	// Configure Martian runtime.
 	//=========================================================================
 	rt := core.NewRuntimeWithCores(jobMode, vdrMode, mroPath, martianVersion, mroVersion,
-		reqCores, reqMem, profile, localVars, debug, stest)
+		reqCores, reqMem, reqMemPerCore, profile, stackVars, debug, stest)
 
 	// Print this here because the log makes more sense when this appears before
 	// the runloop messages start to appear.
