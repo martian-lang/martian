@@ -798,12 +798,18 @@ func (self *Fork) vdrKill() *VDRKillReport {
 	return killReport
 }
 
-func (self *Fork) postProcess(pipestanceOutsPath string) {
-	forkOutsPath := path.Join(pipestanceOutsPath, fmt.Sprintf("fork%d", self.index))
+func (self *Fork) postProcess(outsPath string) {
 	params := self.node.outparams.table
 
 	if len(params) == 0 {
 		return
+	}
+
+	if len(self.node.forks) > 1 {
+		outsPath = path.Join(outsPath, fmt.Sprintf("fork%d", self.index))
+		Log("\nOutput (fork%d):\n", self.index)
+	} else {
+		Log("\nOutput:\n")
 	}
 
 	outs := map[string]interface{}{}
@@ -813,15 +819,14 @@ func (self *Fork) postProcess(pipestanceOutsPath string) {
 		}
 	}
 
-	Log("\nOutput (fork%d):\n", self.index)
 	for id, param := range params {
 		value, ok := outs[id]
 		if ok && value != nil {
 			if param.getIsFile() {
 				if filePath, ok := value.(string); ok {
 					if _, err := os.Stat(filePath); err == nil {
-						idemMkdirAll(forkOutsPath)
-						newValue := path.Join(forkOutsPath, id+"."+param.getTname())
+						idemMkdirAll(outsPath)
+						newValue := path.Join(outsPath, id+"."+param.getTname())
 						os.Symlink(filePath, newValue)
 						value = newValue
 					}
