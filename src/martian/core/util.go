@@ -19,6 +19,13 @@ import (
 	"github.com/docopt/docopt.go"
 )
 
+func max(x int, y int) int {
+	if x > y {
+		return x
+	}
+	return y
+}
+
 func RelPath(p string) string {
 	folder, _ := osext.ExecutableFolder()
 	return path.Join(folder, p)

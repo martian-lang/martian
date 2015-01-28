@@ -11,6 +11,7 @@ import (
 	"os"
 	"path"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"time"
 
@@ -32,17 +33,24 @@ Usage:
     mrs -h | --help | --version
 
 Options:
-    --jobmode=<name>   Run jobs on custom or local job manager.
-                         Valid job managers are local, sge or .template file
-                         Defaults to local.
-    --vdrmode=<name>   Enables Volatile Data Removal.
-                         Valid options are rolling, post and disable.
-                         Defaults to post.
-    --profile          Enable stage performance profiling.
-    --localvars        Print local variables in stage code stack trace.
-    --debug            Enable debug logging for local job manager.
-    -h --help          Show this message.
-    --version          Show version.`
+    --jobmode=<name>     Run jobs on custom or local job manager.
+                           Valid job managers are local, sge or .template file
+                           Defaults to local.
+    --vdrmode=<name>     Enables Volatile Data Removal.
+                           Valid options are rolling, post and disable.
+                           Defaults to post.
+    --profile            Enable stage performance profiling.
+    --stackvars          Print local variables in stage code stack trace.
+    --localcores=<num>   Set max cores the pipeline may request at one time.
+                           (Only applies in local jobmode)
+    --localmem=<num>     Set max GB the pipeline may request at one time.
+                           (Only applies in local jobmode)
+    --mempercore=<num>   Set max GB each job may use at one time.
+                           Defaults to 4 GB.
+                           (Only applies in non-local jobmodes)
+    --debug              Enable debug logging for local job manager.
+    -h --help            Show this message.
+    --version            Show version.`
 	martianVersion := core.GetVersion()
 	opts, _ := docopt.Parse(doc, nil, true, martianVersion, false)
 	core.LogInfo("*", "Martian Run Stage")
@@ -53,6 +61,26 @@ Options:
 	if martianFlags = os.Getenv("MROFLAGS"); len(martianFlags) > 0 {
 		martianOptions := strings.Split(martianFlags, " ")
 		core.ParseMroFlags(opts, doc, martianOptions, []string{"call.mro", "stagestance"})
+	}
+
+	// Requested cores and memory.
+	reqCores := -1
+	if value := opts["--localcores"]; value != nil {
+		if value, err := strconv.Atoi(value.(string)); err == nil {
+			reqCores = value
+		}
+	}
+	reqMem := -1
+	if value := opts["--localmem"]; value != nil {
+		if value, err := strconv.Atoi(value.(string)); err == nil {
+			reqMem = value
+		}
+	}
+	reqMemPerCore := -1
+	if value := opts["--mempercore"]; value != nil {
+		if value, err := strconv.Atoi(value.(string)); err == nil {
+			reqMemPerCore = value
+		}
 	}
 
 	// Compute MRO path.
@@ -87,8 +115,8 @@ Options:
 	// Compute profiling flag.
 	profile := opts["--profile"].(bool)
 
-	// Compute localvars flag.
-	localVars := opts["--localvars"].(bool)
+	// Compute stackvars flag.
+	stackVars := opts["--stackvars"].(bool)
 
 	// Setup invocation-specific values.
 	invocationPath := opts["<call.mro>"].(string)
@@ -103,7 +131,8 @@ Options:
 	//=========================================================================
 	// Configure Martian runtime.
 	//=========================================================================
-	rt := core.NewRuntime(jobMode, vdrMode, mroPath, martianVersion, mroVersion, profile, localVars, debug)
+	rt := core.NewRuntimeWithCores(jobMode, vdrMode, mroPath, martianVersion, mroVersion,
+		reqCores, reqMem, reqMemPerCore, profile, stackVars, debug, false)
 
 	// Invoke stagestance.
 	data, err := ioutil.ReadFile(invocationPath)

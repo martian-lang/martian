@@ -132,10 +132,10 @@ def start_heartbeat():
     t.start()
 
 def initialize(argv):
-    global metadata, module, profile_flag, localvars_flag, starttime
+    global metadata, module, profile_flag, stackvars_flag, starttime
 
     # Take options from command line.
-    [ shell_cmd, stagecode_path, metadata_path, files_path, run_file, profile_flag, localvars_flag ] = argv
+    [ shell_cmd, stagecode_path, metadata_path, files_path, run_file, profile_flag, stackvars_flag ] = argv
 
     # Create metadata object with metadata directory.
     run_type = os.path.basename(shell_cmd)[:-3]
@@ -158,9 +158,9 @@ def initialize(argv):
     log_time("__start__")
     starttime = time.time()
 
-    # Cache the profiling and localvars flags.
+    # Cache the profiling and stackvars flags.
     profile_flag = (profile_flag == "profile")
-    localvars_flag = (localvars_flag == "localvars")
+    stackvars_flag = (stackvars_flag == "stackvars")
 
     # allow shells and stage code to import martian easily
     sys.path.append(os.path.dirname(__file__))
@@ -216,8 +216,8 @@ def stacktrace():
 
 def fail():
     metadata.write_raw("errors", traceback.format_exc())
-    if localvars_flag:
-        metadata.write_raw("localvars", stacktrace())
+    if stackvars_flag:
+        metadata.write_raw("stackvars", stacktrace())
     done()
 
 def complete():
