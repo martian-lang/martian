@@ -33,6 +33,17 @@ func (self *RuntimeError) Error() string {
 	return fmt.Sprintf("RuntimeError: %s.", self.Msg)
 }
 
+// PipestanceInvocationError
+type PipestanceInvocationError struct {
+	Psid           string
+	InvocationPath string
+}
+
+func (self *PipestanceInvocationError) Error() string {
+	return fmt.Sprintf("RuntimeError: pipestance '%s' already exists with different invocation file %s",
+		self.Psid, self.InvocationPath)
+}
+
 // PipestanceNotFailedError
 type PipestanceNotFailedError struct {
 	Psid string

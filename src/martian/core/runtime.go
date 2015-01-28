@@ -1647,21 +1647,6 @@ func (self *Pipestance) GetState() string {
 	return "waiting"
 }
 
-func (self *Pipestance) RestartAssertedNodes() error {
-	self.LoadMetadata()
-	nodes := self.node.getFrontierNodes()
-	for _, node := range nodes {
-		if node.state == "failed" {
-			if _, _, _, kind, _ := node.getFatalError(); kind == "assert" {
-				if err := node.reset(); err != nil {
-					return err
-				}
-			}
-		}
-	}
-	return nil
-}
-
 func (self *Pipestance) RestartRunningNodes(jobMode string) error {
 	self.LoadMetadata()
 	nodes := self.node.getFrontierNodes()
@@ -1946,13 +1931,19 @@ func (self *Runtime) InvokePipeline(src string, srcPath string, psid string,
 }
 
 // Reattaches to an existing pipestance.
-func (self *Runtime) ReattachToPipestance(psid string, pipestancePath string) (*Pipestance, error) {
+func (self *Runtime) ReattachToPipestance(psid string, pipestancePath string, src string, checkSrc bool) (*Pipestance, error) {
 	fname := "_invocation"
+	invocationPath := path.Join(pipestancePath, fname)
 
 	// Read in the existing _invocation file.
-	data, err := ioutil.ReadFile(path.Join(pipestancePath, fname))
+	data, err := ioutil.ReadFile(invocationPath)
 	if err != nil {
 		return nil, err
+	}
+
+	// Check if _invocation has changed.
+	if checkSrc && src != string(data) {
+		return nil, &PipestanceInvocationError{psid, invocationPath}
 	}
 
 	// Instantiate the pipestance.
