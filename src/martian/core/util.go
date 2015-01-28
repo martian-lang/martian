@@ -26,23 +26,16 @@ func max(x int, y int) int {
 	return y
 }
 
-func mkdir(p string) {
-	err := os.Mkdir(p, 0755)
-	if err != nil {
-		panic(err.Error())
-	}
-}
-
 func RelPath(p string) string {
 	folder, _ := osext.ExecutableFolder()
 	return path.Join(folder, p)
 }
 
-func idemMkdir(p string) {
+func mkdir(p string) {
 	os.Mkdir(p, 0755)
 }
 
-func idemMkdirAll(p string) {
+func mkdirAll(p string) {
 	os.MkdirAll(p, 0755)
 }
 
