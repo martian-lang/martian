@@ -174,7 +174,9 @@ Options:
     --localmem=<num>     Set max GB the pipeline may request at one time.
                            (Only applies in local jobmode)
     --mempercore=<num>   Set max GB each job may use at one time.
+                           Defaults to 4 GB.
                            (Only applies in non-local jobmodes)
+    --inspect            Inspect pipestance without resetting failed stages.
     --debug              Enable debug logging for local job manager.
     --stest              Substitute real stages with stress-testing stage.
     -h --help            Show this message.
@@ -271,6 +273,8 @@ Options:
 	invocationPath := opts["<call.mro>"].(string)
 	pipestancePath := path.Join(cwd, psid)
 	stepSecs := 4
+	checkSrc := true
+	inspect := opts["--inspect"].(bool)
 	debug := opts["--debug"].(bool)
 	stest := opts["--stest"].(bool)
 
@@ -301,8 +305,10 @@ Options:
 	if err != nil {
 		if _, ok := err.(*core.PipestanceExistsError); ok {
 			// If it already exists, try to reattach to it.
-			if pipestance, err = rt.ReattachToPipestance(psid, pipestancePath); err == nil {
-				err = pipestance.RestartAssertedNodes()
+			if pipestance, err = rt.ReattachToPipestance(psid, pipestancePath, invocationSrc, checkSrc); err == nil {
+				if !inspect {
+					err = pipestance.Reset()
+				}
 			}
 		}
 		core.DieIf(err)

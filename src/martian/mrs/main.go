@@ -46,6 +46,7 @@ Options:
     --localmem=<num>     Set max GB the pipeline may request at one time.
                            (Only applies in local jobmode)
     --mempercore=<num>   Set max GB each job may use at one time.
+                           Defaults to 4 GB.
                            (Only applies in non-local jobmodes)
     --debug              Enable debug logging for local job manager.
     -h --help            Show this message.

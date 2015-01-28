@@ -20,8 +20,10 @@ import (
 	"github.com/cloudfoundry/gosigar"
 )
 
+const defaultThreads = 1
+const defaultMemGB = 4
 const defaultMemGBPerCore = 4
-const heartbeatTimeout = 10 // 10 minutes
+const heartbeatTimeout = 60 // 60 minutes
 const maxRetries = 5
 const retryExitCode = 513
 
@@ -140,7 +142,7 @@ func (self *LocalJobManager) Enqueue(shellCmd string, argv []string, envs []stri
 
 		// Sanity check and cap to self.maxCores.
 		if threads < 1 {
-			threads = 1
+			threads = defaultThreads
 		}
 		if threads > self.maxCores {
 			if self.debug {
@@ -152,7 +154,7 @@ func (self *LocalJobManager) Enqueue(shellCmd string, argv []string, envs []stri
 
 		// Sanity check and cap to self.maxMemGB.
 		if memGB < 1 {
-			memGB = 1
+			memGB = defaultMemGB
 		}
 		if memGB > self.maxMemGB {
 			if self.debug {
@@ -302,7 +304,12 @@ func (self *RemoteJobManager) execJob(shellCmd string, argv []string, envs []str
 
 	// Sanity check the thread count.
 	if threads < 1 {
-		threads = 1
+		threads = defaultThreads
+	}
+
+	// Sanity check memory requirements.
+	if memGB < 1 {
+		memGB = defaultMemGB
 	}
 
 	// Compute threads needed based on memory requirements.
@@ -316,12 +323,7 @@ func (self *RemoteJobManager) execJob(shellCmd string, argv []string, envs []str
 		"STDOUT":   metadata.makePath("stdout"),
 		"STDERR":   metadata.makePath("stderr"),
 		"CMD":      strings.Join(argv, " "),
-		"MEM_GB":   "",
-	}
-
-	// Only append memory cap if value is sane.
-	if memGB > 0 {
-		params["MEM_GB"] = fmt.Sprintf("%d", memGB)
+		"MEM_GB":   fmt.Sprintf("%d", memGB),
 	}
 
 	// Replace template annotations with actual values
