@@ -20,7 +20,7 @@ import (
 	"github.com/cloudfoundry/gosigar"
 )
 
-const heartbeatTimeout = 10 // 10 minutes
+const heartbeatTimeout = 60 // 60 minutes
 const maxRetries = 5
 const retryExitCode = 513
 
