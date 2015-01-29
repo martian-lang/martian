@@ -16,13 +16,6 @@ import (
 var INDENT string = "    "
 var NEWLINE string = "\n"
 
-func max(x int, y int) int {
-	if x > y {
-		return x
-	}
-	return y
-}
-
 //
 // Expression
 //
@@ -163,8 +156,11 @@ func (self *Pipeline) format() string {
 	})
 
 	// Steal the first param's comment.
-	fsrc := self.inParams.list[0].getNode().comments
-	self.inParams.list[0].getNode().comments = NEWLINE
+	fsrc := ""
+	if len(self.inParams.list) > 0 {
+		fsrc += self.inParams.list[0].getNode().comments
+		self.inParams.list[0].getNode().comments = NEWLINE
+	}
 
 	fsrc += NEWLINE
 	fsrc += fmt.Sprintf("pipeline %s(", self.id)
@@ -175,16 +171,19 @@ func (self *Pipeline) format() string {
 	fsrc += NEWLINE
 	fsrc += "{"
 	for _, callstm := range self.calls {
-		fsrc += callstm.format()
+		fsrc += callstm.format(INDENT)
 	}
 	fsrc += self.ret.format()
 	fsrc += "}"
 	return fsrc
 }
 
-func (self *CallStm) format() string {
-	fsrc := self.bindings.list[0].exp.getNode().comments
-	self.bindings.list[0].exp.getNode().comments = ""
+func (self *CallStm) format(prefix string) string {
+	fsrc := ""
+	if len(self.bindings.list) > 0 {
+		fsrc += self.bindings.list[0].exp.getNode().comments
+		self.bindings.list[0].exp.getNode().comments = ""
+	}
 	volatile := ""
 	local := ""
 	preflight := ""
@@ -197,10 +196,10 @@ func (self *CallStm) format() string {
 	if self.modifiers.volatile {
 		volatile = "volatile "
 	}
-	fsrc += fmt.Sprintf("%scall %s%s%s%s(%s", INDENT, local, preflight, volatile, self.id, NEWLINE)
+	fsrc += fmt.Sprintf("%scall %s%s%s%s(%s", prefix, local, preflight, volatile, self.id, NEWLINE)
 	fsrc += self.bindings.format()
 	fsrc += self.node.comments
-	fsrc += fmt.Sprintf("%s)", INDENT)
+	fsrc += fmt.Sprintf("%s)", prefix)
 	fsrc += NEWLINE
 	return fsrc
 }
@@ -224,8 +223,11 @@ func (self *Stage) format() string {
 	})
 
 	// Steal comment from first in param.
-	fsrc := self.inParams.list[0].getNode().comments
-	self.inParams.list[0].getNode().comments = NEWLINE
+	fsrc := ""
+	if len(self.inParams.list) > 0 {
+		fsrc += self.inParams.list[0].getNode().comments
+		self.inParams.list[0].getNode().comments = NEWLINE
+	}
 
 	fsrc += fmt.Sprintf("stage %s(", self.id)
 	fsrc += self.inParams.format(modeWidth, typeWidth, idWidth)
@@ -280,6 +282,11 @@ func (self *Ast) format() string {
 	}
 	if len(self.filetypes) > 0 {
 		fsrc += NEWLINE
+	}
+
+	// call.
+	if self.call != nil {
+		fsrc += self.call.format("")
 	}
 
 	// callables.

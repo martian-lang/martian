@@ -19,11 +19,11 @@ import (
 	"github.com/docopt/docopt.go"
 )
 
-func mkdir(p string) {
-	err := os.Mkdir(p, 0755)
-	if err != nil {
-		panic(err.Error())
+func max(x int, y int) int {
+	if x > y {
+		return x
 	}
+	return y
 }
 
 func RelPath(p string) string {
@@ -31,8 +31,12 @@ func RelPath(p string) string {
 	return path.Join(folder, p)
 }
 
-func idemMkdir(p string) {
+func mkdir(p string) {
 	os.Mkdir(p, 0755)
+}
+
+func mkdirAll(p string) {
+	os.MkdirAll(p, 0755)
 }
 
 func searchPaths(fname string, searchPaths []string) (string, bool) {

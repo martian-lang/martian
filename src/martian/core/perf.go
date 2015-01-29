@@ -5,6 +5,7 @@
 package core
 
 import (
+	"os"
 	"time"
 )
 
@@ -66,9 +67,15 @@ type PerfInfo struct {
 	Start           time.Time `json:"start"`
 	End             time.Time `json:"end"`
 	WallTime        float64   `json:"walltime"`
+	TotalFiles      uint      `json:"total_files"`
+	TotalBytes      uint64    `json:"total_bytes"`
+	OutputFiles     uint      `json:"output_files"`
+	OutputBytes     uint64    `json:"output_bytes"`
+	VdrFiles        uint      `json:"vdr_files"`
+	VdrBytes        uint64    `json:"vdr_bytes"`
 }
 
-func reduceJobInfo(jobInfo *JobInfo, numThreads int) *PerfInfo {
+func reduceJobInfo(metadata *Metadata, jobInfo *JobInfo, numThreads int) *PerfInfo {
 	perfInfo := &PerfInfo{}
 	timeLayout := "2006-01-02 15:04:05"
 
@@ -93,17 +100,32 @@ func reduceJobInfo(jobInfo *JobInfo, numThreads int) *PerfInfo {
 		perfInfo.OutBlocksRate = float64(perfInfo.OutBlocks) / perfInfo.Duration
 		perfInfo.TotalBlocksRate = float64(perfInfo.TotalBlocks) / perfInfo.Duration
 	}
+	fpaths, _ := metadata.enumerateFiles()
+	for _, fpath := range fpaths {
+		if fileInfo, err := os.Stat(fpath); err == nil {
+			perfInfo.OutputFiles += 1
+			perfInfo.OutputBytes += uint64(fileInfo.Size())
+		}
+	}
+	perfInfo.TotalFiles = perfInfo.OutputFiles
+	perfInfo.TotalBytes = perfInfo.OutputBytes
+
 	return perfInfo
 }
 
-func computeStats(perfInfos []*PerfInfo) *PerfInfo {
-	aggPerfInfo := &PerfInfo{Start: perfInfos[0].Start, End: perfInfos[0].End}
-	for _, perfInfo := range perfInfos {
-		if aggPerfInfo.Start.After(perfInfo.Start) {
+func computeStats(perfInfos []*PerfInfo, vdrKillReport *VDRKillReport) *PerfInfo {
+	aggPerfInfo := &PerfInfo{}
+	for i, perfInfo := range perfInfos {
+		if i == 0 {
 			aggPerfInfo.Start = perfInfo.Start
-		}
-		if aggPerfInfo.End.Before(perfInfo.End) {
 			aggPerfInfo.End = perfInfo.End
+		} else {
+			if aggPerfInfo.Start.After(perfInfo.Start) {
+				aggPerfInfo.Start = perfInfo.Start
+			}
+			if aggPerfInfo.End.Before(perfInfo.End) {
+				aggPerfInfo.End = perfInfo.End
+			}
 		}
 
 		aggPerfInfo.NumJobs += perfInfo.NumJobs
@@ -114,10 +136,16 @@ func computeStats(perfInfos []*PerfInfo) *PerfInfo {
 		aggPerfInfo.OutBlocks += perfInfo.OutBlocks
 		aggPerfInfo.InBlocks += perfInfo.InBlocks
 		aggPerfInfo.TotalBlocks += perfInfo.TotalBlocks
+		aggPerfInfo.OutputFiles += perfInfo.OutputFiles
+		aggPerfInfo.OutputBytes += perfInfo.OutputBytes
 	}
 	aggPerfInfo.WallTime = aggPerfInfo.End.Sub(aggPerfInfo.Start).Seconds()
 	aggPerfInfo.InBlocksRate = float64(aggPerfInfo.InBlocks) / aggPerfInfo.Duration
 	aggPerfInfo.OutBlocksRate = float64(aggPerfInfo.OutBlocks) / aggPerfInfo.Duration
 	aggPerfInfo.TotalBlocksRate = float64(aggPerfInfo.TotalBlocks) / aggPerfInfo.Duration
+	aggPerfInfo.VdrFiles = vdrKillReport.Count
+	aggPerfInfo.VdrBytes = vdrKillReport.Size
+	aggPerfInfo.TotalFiles = aggPerfInfo.OutputFiles + aggPerfInfo.VdrFiles
+	aggPerfInfo.TotalBytes = aggPerfInfo.OutputBytes + aggPerfInfo.VdrBytes
 	return aggPerfInfo
 }

@@ -36,7 +36,5 @@
 	"description":"path/to/lsf/env"
       }
     ]
-  },
-  "monitorcmd":{
   }
 }

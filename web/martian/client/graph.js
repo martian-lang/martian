@@ -89,6 +89,8 @@
     var s;
     if (units === 'bytes') {
       s = _humanizeBytes(num);
+    } else if (units === 'kilobytes') {
+      s = _humanizeBytes(num * 1024);
     } else if (units === 'seconds') {
       s = _humanizeTime(num);
     } else {
@@ -116,7 +118,7 @@
 
   _humanizeBytes = function(num) {
     var suffix, _ref;
-    _ref = _humanizeWithSuffixes(num, ['KB', 'MB', 'GB', 'TB'], 1024), num = _ref[0], suffix = _ref[1];
+    _ref = _humanizeWithSuffixes(num, ['B', 'KB', 'MB', 'GB', 'TB'], 1024), num = _ref[0], suffix = _ref[1];
     num = Math.round(num);
     return num.toString() + ' ' + suffix;
   };
@@ -212,10 +214,10 @@
     $scope.forki = 0;
     $scope.chunki = 0;
     $scope.mdviews = {
-      fork: '',
-      split: '',
-      join: '',
-      chunk: ''
+      forks: {},
+      split: {},
+      join: {},
+      chunks: {}
     };
     $scope.showRestart = true;
     $scope.showLog = false;
@@ -228,7 +230,8 @@
       io: false,
       iorate: false,
       memory: false,
-      jobs: false
+      jobs: false,
+      vdr: false
     };
     if (admin) {
       $scope.stopRefresh = $interval(function() {
@@ -261,7 +264,7 @@
       }
       if (active === 'memory') {
         columns = ['maxrss'];
-        units = 'bytes';
+        units = 'kilobytes';
       }
       if (active === 'io') {
         columns = ['total_blocks', 'in_blocks', 'out_blocks'];
@@ -269,8 +272,12 @@
       if (active === "iorate") {
         columns = ['total_blocks_rate', 'in_blocks_rate', 'out_blocks_rate'];
       }
-      if (active === "jobs") {
+      if (active === 'jobs') {
         columns = ['num_jobs'];
+      }
+      if (active === 'vdr') {
+        columns = ['vdr_bytes'];
+        units = 'bytes';
       }
       return $scope.charts[$scope.forki] = renderChart($scope, columns, units);
     };
@@ -287,14 +294,12 @@
       $scope.pnode = $scope.pnodes[id];
       $scope.forki = 0;
       $scope.chunki = 0;
-      $scope.mdviews = {
-        fork: '',
-        split: '',
-        join: '',
-        chunk: ''
+      return $scope.mdviews = {
+        forks: {},
+        split: {},
+        join: {},
+        chunks: {}
       };
-      $scope.charts = {};
-      return $scope.getChart();
     };
     $scope.restart = function() {
       $scope.showRestart = false;
@@ -307,7 +312,7 @@
         return alert('mrp is no longer running.\n\nPlease run mrp again with the --noexit option to continue running the pipeline.');
       });
     };
-    $scope.selectMetadata = function(view, name, path) {
+    $scope.selectMetadata = function(view, index, name, path) {
       return $http.post("/api/get-metadata/" + container + "/" + pname + "/" + psid, {
         path: path,
         name: name
@@ -316,7 +321,7 @@
           return d;
         }
       }).success(function(metadata) {
-        return $scope.mdviews[view] = metadata;
+        return $scope.mdviews[view][index] = metadata;
       });
     };
     return $scope.refresh = function() {

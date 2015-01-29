@@ -52,21 +52,8 @@ func (self *Metadata) enumerateFiles() ([]string, error) {
 }
 
 func (self *Metadata) mkdirs() {
-	// When making/remaking dirs, clear the cache.
-	self.mutex.Lock()
-	self.contents = map[string]bool{}
-	self.mutex.Unlock()
 	mkdir(self.path)
 	mkdir(self.filesPath)
-}
-
-func (self *Metadata) idemMkdirs() {
-	// When making/remaking dirs, clear the cache.
-	self.mutex.Lock()
-	self.contents = map[string]bool{}
-	self.mutex.Unlock()
-	idemMkdir(self.path)
-	idemMkdir(self.filesPath)
 }
 
 func (self *Metadata) getState(name string) (string, bool) {
@@ -91,6 +78,12 @@ func (self *Metadata) getState(name string) (string, bool) {
 func (self *Metadata) cache(name string) {
 	self.mutex.Lock()
 	self.contents[name] = true
+	self.mutex.Unlock()
+}
+
+func (self *Metadata) uncache(name string) {
+	self.mutex.Lock()
+	delete(self.contents, name)
 	self.mutex.Unlock()
 }
 
@@ -157,7 +150,7 @@ func (self *Metadata) serializePerf(numThreads int) *PerfInfo {
 
 		var jobInfo *JobInfo
 		if err := json.Unmarshal([]byte(data), &jobInfo); err == nil {
-			return reduceJobInfo(jobInfo, numThreads)
+			return reduceJobInfo(self, jobInfo, numThreads)
 		}
 	}
 	return nil
@@ -378,6 +371,17 @@ func dynamicCast(val interface{}, typename string, arrayDim int) bool {
 	return ret
 }
 
+func VerifyVDRMode(vdrMode string) {
+	validModes := []string{"rolling", "post", "disable"}
+	for _, validMode := range validModes {
+		if validMode == vdrMode {
+			return
+		}
+	}
+	LogInfo("runtime", "Invalid VDR mode: %s. Valid VDR modes: %s", vdrMode, strings.Join(validModes, ", "))
+	os.Exit(1)
+}
+
 //=============================================================================
 // Chunk
 //=============================================================================
@@ -407,17 +411,11 @@ func NewChunk(nodable Nodable, fork *Fork, index int, chunkDef map[string]interf
 		// to the filesPath of the parent fork, to save a pseudo-join copy.
 		self.metadata.filesPath = self.fork.metadata.filesPath
 	}
-	// We have to mkdirs here because runtime might have been interrupted after chunk_defs were
-	// written but before next step interval caused the actual creation of the chnk folders.
-	// in that scenario, upon restart the fork step would try to write _args into chnk folders
-	// that don't exist.
-	// This also gets run if we are restarting from a failed stage.
-	self.mkdirs()
 	return self
 }
 
 func (self *Chunk) mkdirs() {
-	self.metadata.idemMkdirs()
+	self.metadata.mkdirs()
 }
 
 func (self *Chunk) getState() string {
@@ -444,45 +442,7 @@ func (self *Chunk) step() {
 		self.hasBeenRun = true
 	}
 
-	//
-	// Process __threads and __mem_gb requested by stage split.
-	//
-	// __threads tells job manager how much concurrency this chunk wants.
-	// __mem_gb  tells SGE to kill-if-exceed. For local mode, it is
-	//           instead a consumption request like __threads.
-
-	// A chunk consumes 1 thread unless stage split explicitly asks for more.
-	threads := 1
-	if v, ok := self.chunkDef["__threads"].(float64); ok {
-		threads = int(v)
-
-		// In local mode, cap to the job manager's max cores.
-		// It is not sufficient for the job manager to do the capping downstream.
-		// We rewrite the chunkDef here to inform the chunk it should use less
-		// concurrency.
-		if self.node.rt.jobMode == "local" {
-			maxCores := self.node.rt.JobManager.GetMaxCores()
-			if threads > maxCores {
-				threads = maxCores
-			}
-			self.chunkDef["__threads"] = threads
-		}
-	}
-
-	// Default to -1 to impose no limit (no flag will be passed to SGE).
-	// The local mode job manager will convert -1 to 1 downstream.
-	memGB := -1
-	if v, ok := self.chunkDef["__mem_gb"].(float64); ok {
-		memGB = int(v)
-
-		if self.node.rt.jobMode == "local" {
-			maxMemGB := self.node.rt.JobManager.GetMaxMemGB()
-			if memGB > maxMemGB {
-				memGB = maxMemGB
-			}
-			self.chunkDef["__mem_gb"] = memGB
-		}
-	}
+	threads, memGB := self.node.getJobReqs(self.chunkDef)
 
 	// Resolve input argument bindings and merge in the chunk defs.
 	resolvedBindings := resolveBindings(self.node.argbindings, self.fork.argPermute)
@@ -535,6 +495,7 @@ type Fork struct {
 	split_has_run  bool
 	join_has_run   bool
 	argPermute     map[string]interface{}
+	stageDefs      *StageDefs
 }
 
 func NewFork(nodable Nodable, index int, argPermute map[string]interface{}) *Fork {
@@ -549,14 +510,11 @@ func NewFork(nodable Nodable, index int, argPermute map[string]interface{}) *For
 	self.argPermute = argPermute
 	self.split_has_run = false
 	self.join_has_run = false
-	// reconstruct chunks using chunk_defs on reattach, do not rely
-	// on metadata.exists('chunk_defs') since it may not be cached
 	self.subforks = []*Fork{}
 	self.chunks = []*Chunk{}
-	chunkDefIfaces := self.split_metadata.read("chunk_defs")
-	if chunkDefs, ok := chunkDefIfaces.([]interface{}); ok {
-		for i, chunkDef := range chunkDefs {
-			chunk := NewChunk(self.node, self, i, chunkDef.(map[string]interface{}))
+	if err := json.Unmarshal([]byte(self.split_metadata.readRaw("stage_defs")), &self.stageDefs); err == nil {
+		for i, chunkDef := range self.stageDefs.ChunkDefs {
+			chunk := NewChunk(self.node, self, i, chunkDef)
 			self.chunks = append(self.chunks, chunk)
 		}
 	}
@@ -579,7 +537,10 @@ func (self *Fork) mkdirs() {
 	self.metadata.mkdirs()
 	self.split_metadata.mkdirs()
 	self.join_metadata.mkdirs()
-	self.split_has_run = false
+
+	for _, chunk := range self.chunks {
+		chunk.mkdirs()
+	}
 }
 
 func (self *Fork) verifyOutput() (bool, string) {
@@ -666,7 +627,15 @@ func (self *Fork) updateState(state string) {
 }
 
 func (self *Fork) getChunk(index int) *Chunk {
-	return self.chunks[index]
+	if index < len(self.chunks) {
+		return self.chunks[index]
+	}
+	return nil
+}
+
+type StageDefs struct {
+	ChunkDefs []map[string]interface{} `json:"chunks"`
+	JoinDef   map[string]interface{}   `json:"join"`
 }
 
 func (self *Fork) step() {
@@ -686,23 +655,20 @@ func (self *Fork) step() {
 					self.node.runSplit(self.fqname, self.split_metadata)
 				}
 			} else {
-				self.split_metadata.write("chunk_defs", []interface{}{map[string]interface{}{}})
+				// Initialize stage defs with one chunk
+				stageDefs := &StageDefs{ChunkDefs: []map[string]interface{}{}}
+				stageDefs.ChunkDefs = append(stageDefs.ChunkDefs, map[string]interface{}{})
+				self.split_metadata.write("stage_defs", stageDefs)
 				self.split_metadata.writeTime("complete")
 			}
 		} else if state == "split_complete" {
-			chunkDefs := self.split_metadata.read("chunk_defs")
-			if _, ok := chunkDefs.([]interface{}); !ok {
-				self.split_metadata.idemMkdirs()
-				self.split_metadata.writeRaw("errors", "The split method must return an array of chunk def dicts but did not.\n")
+			if err := json.Unmarshal([]byte(self.split_metadata.readRaw("stage_defs")), &self.stageDefs); err != nil {
+				self.split_metadata.writeRaw("errors",
+					"The split method must return a dictionary {'chunks': [chunk def dicts], 'join': join def dict} but did not.\n")
 			} else {
 				if len(self.chunks) == 0 {
-					for i, chunkDef := range chunkDefs.([]interface{}) {
-						if _, ok := chunkDef.(map[string]interface{}); !ok {
-							self.split_metadata.idemMkdirs()
-							self.split_metadata.writeRaw("errors", "The split method must return an array of chunk def dicts but did not.\n")
-							break
-						}
-						chunk := NewChunk(self.node, self, i, chunkDef.(map[string]interface{}))
+					for i, chunkDef := range self.stageDefs.ChunkDefs {
+						chunk := NewChunk(self.node, self, i, chunkDef)
 						self.chunks = append(self.chunks, chunk)
 						chunk.mkdirs()
 					}
@@ -712,8 +678,13 @@ func (self *Fork) step() {
 				}
 			}
 		} else if state == "chunks_complete" {
-			self.join_metadata.write("args", resolveBindings(self.node.argbindings, self.argPermute))
-			self.join_metadata.write("chunk_defs", self.split_metadata.read("chunk_defs"))
+			threads, memGB := self.node.getJobReqs(self.stageDefs.JoinDef)
+			resolvedBindings := resolveBindings(self.node.argbindings, self.argPermute)
+			for id, value := range self.stageDefs.JoinDef {
+				resolvedBindings[id] = value
+			}
+			self.join_metadata.write("args", resolvedBindings)
+			self.join_metadata.write("chunk_defs", self.stageDefs.ChunkDefs)
 			if self.node.split {
 				chunkOuts := []interface{}{}
 				for _, chunk := range self.chunks {
@@ -724,7 +695,7 @@ func (self *Fork) step() {
 				self.join_metadata.write("outs", makeOutArgs(self.node.outparams, self.metadata.filesPath))
 				if !self.join_has_run {
 					self.join_has_run = true
-					self.node.runJoin(self.fqname, self.join_metadata)
+					self.node.runJoin(self.fqname, self.join_metadata, threads, memGB)
 				}
 			} else {
 				self.join_metadata.write("outs", self.chunks[0].metadata.read("outs"))
@@ -747,6 +718,110 @@ func (self *Fork) step() {
 			self.metadata.writeRaw("errors", msg)
 		}
 	}
+}
+
+func (self *Fork) vdrKill() *VDRKillReport {
+	killReport := &VDRKillReport{}
+	if self.node.rt.vdrMode == "disable" {
+		return killReport
+	}
+	if self.metadata.exists("vdrkill") {
+		var killReport *VDRKillReport
+		data := self.metadata.readRaw("vdrkill")
+		if err := json.Unmarshal([]byte(data), &killReport); err == nil {
+			return killReport
+		}
+	}
+
+	killPaths := []string{}
+	// For volatile nodes, kill fork-level files.
+	if self.node.volatile {
+		if paths, err := self.metadata.enumerateFiles(); err == nil {
+			killPaths = append(killPaths, paths...)
+		}
+		if paths, err := self.split_metadata.enumerateFiles(); err == nil {
+			killPaths = append(killPaths, paths...)
+		}
+		if paths, err := self.join_metadata.enumerateFiles(); err == nil {
+			killPaths = append(killPaths, paths...)
+		}
+	}
+	// If the node splits, kill chunk-level files.
+	// Must check for split here, otherwise we'll end up deleting
+	// output files of non-volatile nodes because single-chunk nodes
+	// get their output redirected to the one chunk's files path.
+	if self.node.split {
+		for _, chunk := range self.chunks {
+			if paths, err := chunk.metadata.enumerateFiles(); err == nil {
+				killPaths = append(killPaths, paths...)
+			}
+		}
+	}
+	// Actually delete the paths.
+	for _, p := range killPaths {
+		filepath.Walk(p, func(_ string, info os.FileInfo, err error) error {
+			if err == nil {
+				killReport.Size += uint64(info.Size())
+				killReport.Count++
+			} else {
+				killReport.Errors = append(killReport.Errors, err.Error())
+			}
+			return nil
+		})
+		killReport.Paths = append(killReport.Paths, p)
+		os.RemoveAll(p)
+	}
+	self.metadata.write("vdrkill", killReport)
+	return killReport
+}
+
+func (self *Fork) postProcess(outsPath string) {
+	params := self.node.outparams.table
+
+	if len(params) == 0 {
+		return
+	}
+
+	if len(self.node.forks) > 1 {
+		outsPath = path.Join(outsPath, fmt.Sprintf("fork%d", self.index))
+		Log("\nOutput (fork%d):\n", self.index)
+	} else {
+		Log("\nOutput:\n")
+	}
+
+	outs := map[string]interface{}{}
+	if data := self.metadata.read("outs"); data != nil {
+		if v, ok := data.(map[string]interface{}); ok {
+			outs = v
+		}
+	}
+
+	for id, param := range params {
+		value, ok := outs[id]
+		if ok && value != nil {
+			if param.getIsFile() || param.getTname() == "path" {
+				if filePath, ok := value.(string); ok {
+					if _, err := os.Stat(filePath); err == nil {
+						mkdirAll(outsPath)
+						newValue := path.Join(outsPath, id)
+						if param.getTname() != "path" {
+							newValue += "." + param.getTname()
+						}
+						os.Symlink(filePath, newValue)
+						value = newValue
+					}
+				}
+			}
+		} else {
+			value = "null"
+		}
+		key := param.getHelp()
+		if len(key) == 0 {
+			key = param.getId()
+		}
+		Log("- %s: %v\n", key, value)
+	}
+	Log("\n")
 }
 
 func (self *Fork) serialize() interface{} {
@@ -789,7 +864,7 @@ func (self *Fork) getStages() []map[string]interface{} {
 	return stages
 }
 
-func (self *Fork) serializePerf() (interface{}, *PerfInfo) {
+func (self *Fork) serializePerf() (interface{}, *PerfInfo, *VDRKillReport) {
 	chunks := []interface{}{}
 	stats := []*PerfInfo{}
 
@@ -810,14 +885,17 @@ func (self *Fork) serializePerf() (interface{}, *PerfInfo) {
 		stats = append(stats, joinStats)
 	}
 
+	killReports := []*VDRKillReport{self.vdrKill()}
 	for _, subfork := range self.subforks {
-		_, subforkStats := subfork.serializePerf()
+		_, subforkStats, subforkKillReport := subfork.serializePerf()
 		stats = append(stats, subforkStats)
+		killReports = append(killReports, subforkKillReport)
 	}
+	killReport := mergeVDRKillReports(killReports)
 
-	var forkStats *PerfInfo = nil
+	forkStats := &PerfInfo{}
 	if len(stats) > 0 {
-		forkStats = computeStats(stats)
+		forkStats = computeStats(stats, killReport)
 	}
 	return map[string]interface{}{
 		"stages":      self.getStages(),
@@ -826,7 +904,7 @@ func (self *Fork) serializePerf() (interface{}, *PerfInfo) {
 		"split_stats": splitStats,
 		"join_stats":  joinStats,
 		"fork_stats":  forkStats,
-	}, forkStats
+	}, forkStats, killReport
 }
 
 //=============================================================================
@@ -918,10 +996,12 @@ func NewNode(parent Nodable, kind string, callStm *CallStm, callables *Callables
 //
 // Folder construction
 //
-func (self *Node) mkdirs(wg *sync.WaitGroup) {
-	mkdir(self.path)
-	idemMkdir(self.journalPath)
-	idemMkdir(self.tmpPath)
+func (self *Node) mkdirs() {
+	mkdirAll(self.path)
+	mkdir(self.journalPath)
+	mkdir(self.tmpPath)
+
+	var wg sync.WaitGroup
 	for _, fork := range self.forks {
 		wg.Add(1)
 		go func(f *Fork) {
@@ -929,13 +1009,7 @@ func (self *Node) mkdirs(wg *sync.WaitGroup) {
 			wg.Done()
 		}(fork)
 	}
-	for _, subnode := range self.subnodes {
-		wg.Add(1)
-		go func(n Nodable) {
-			n.getNode().mkdirs(wg)
-			wg.Done()
-		}(subnode)
-	}
+	wg.Wait()
 }
 
 //
@@ -1101,7 +1175,10 @@ func (self *Node) loadMetadata() {
 }
 
 func (self *Node) getFork(index int) *Fork {
-	return self.forks[index]
+	if index < len(self.forks) {
+		return self.forks[index]
+	}
+	return nil
 }
 
 func (self *Node) getState() string {
@@ -1144,12 +1221,6 @@ func (self *Node) reset() error {
 	os.RemoveAll(self.journalPath)
 	os.RemoveAll(self.tmpPath)
 
-	// Re-create the folders.
-	// This will also clear all the metadata in-memory caches.
-	var rewg sync.WaitGroup
-	self.mkdirs(&rewg)
-	rewg.Wait()
-
 	// Load the metadata.
 	self.loadMetadata()
 
@@ -1160,9 +1231,23 @@ func (self *Node) reset() error {
 	return nil
 }
 
-func (self *Node) cleanup() {
+func (self *Node) resetJobMonitors() {
+	for _, metadata := range self.collectMetadatas() {
+		state, _ := metadata.getState("")
+		if state == "running" || state == "queued" {
+			self.rt.JobManager.MonitorJob(metadata)
+		}
+	}
+}
+
+func (self *Node) postProcess() {
 	os.RemoveAll(self.journalPath)
 	os.RemoveAll(self.tmpPath)
+
+	pipestanceOutsPath := path.Join(self.parent.getNode().path, "outs")
+	for _, fork := range self.forks {
+		fork.postProcess(pipestanceOutsPath)
+	}
 }
 
 func (self *Node) getWarnings() (string, bool) {
@@ -1188,8 +1273,8 @@ func (self *Node) getFatalError() (string, string, string, string, []string) {
 			summary := "<none>"
 			if self.stagecodeLang == "Python" {
 				errlines := strings.Split(errlog, "\n")
-				if len(errlines) >= 1 {
-					summary = errlines[len(errlines)-1]
+				if len(errlines) >= 2 {
+					summary = errlines[len(errlines)-2]
 				}
 			}
 			errpaths := []string{
@@ -1197,8 +1282,8 @@ func (self *Node) getFatalError() (string, string, string, string, []string) {
 				metadata.makePath("stdout"),
 				metadata.makePath("stderr"),
 			}
-			if self.rt.enableLocalVars {
-				errpaths = append(errpaths, metadata.makePath("localvars"))
+			if self.rt.enableStackVars {
+				errpaths = append(errpaths, metadata.makePath("stackvars"))
 			}
 			return metadata.fqname, summary, errlog, "errors", errpaths
 		}
@@ -1223,13 +1308,23 @@ func (self *Node) step() {
 			fork.step()
 		}
 	}
+	previousState := self.state
 	self.state = self.getState()
 	switch self.state {
 	case "failed":
 		self.addFrontierNode(self)
 	case "running":
+		if self.state != previousState {
+			self.mkdirs()
+		}
 		self.addFrontierNode(self)
 	case "complete":
+		if self.rt.vdrMode == "rolling" {
+			for _, node := range self.prenodes {
+				node.getNode().vdrKill()
+			}
+			self.vdrKill()
+		}
 		for _, node := range self.postnodes {
 			self.addFrontierNode(node)
 		}
@@ -1263,16 +1358,56 @@ func (self *Node) refreshState() {
 		}
 
 		fqname, forkIndex, chunkIndex, state := self.parseRunFilename(filename)
-		node := self.find(fqname)
-		fork := node.getFork(forkIndex)
-		if chunkIndex >= 0 {
-			chunk := fork.getChunk(chunkIndex)
-			chunk.updateState(state)
-		} else {
-			fork.updateState(state)
+		if node := self.find(fqname); node != nil {
+			if fork := node.getFork(forkIndex); fork != nil {
+				if chunkIndex >= 0 {
+					if chunk := fork.getChunk(chunkIndex); chunk != nil {
+						chunk.updateState(state)
+					}
+				} else {
+					fork.updateState(state)
+				}
+			}
 		}
 		os.Remove(file)
 	}
+}
+
+//
+// VDR
+//
+type VDRKillReport struct {
+	Count  uint     `json:"count"`
+	Size   uint64   `json:"size"`
+	Paths  []string `json:"paths"`
+	Errors []string `json:"errors"`
+}
+
+func mergeVDRKillReports(killReports []*VDRKillReport) *VDRKillReport {
+	allKillReport := &VDRKillReport{}
+	for _, killReport := range killReports {
+		allKillReport.Size += killReport.Size
+		allKillReport.Count += killReport.Count
+		allKillReport.Errors = append(allKillReport.Errors, killReport.Errors...)
+		allKillReport.Paths = append(allKillReport.Paths, killReport.Paths...)
+	}
+	return allKillReport
+}
+
+func (self *Node) vdrKill() *VDRKillReport {
+	killReports := []*VDRKillReport{}
+	every := true
+	for _, node := range self.postnodes {
+		if node.getNode().state != "complete" {
+			every = false
+		}
+	}
+	if every {
+		for _, fork := range self.forks {
+			killReports = append(killReports, fork.vdrKill())
+		}
+	}
+	return mergeVDRKillReports(killReports)
 }
 
 //
@@ -1327,7 +1462,7 @@ func (self *Node) serialize() interface{} {
 func (self *Node) serializePerf() interface{} {
 	forks := []interface{}{}
 	for _, fork := range self.forks {
-		forkSer, _ := fork.serializePerf()
+		forkSer, _, _ := fork.serializePerf()
 		forks = append(forks, forkSer)
 	}
 	return map[string]interface{}{
@@ -1341,12 +1476,47 @@ func (self *Node) serializePerf() interface{} {
 //=============================================================================
 // Job Runners
 //=============================================================================
-func (self *Node) runSplit(fqname string, metadata *Metadata) {
-	self.runJob("split", fqname, metadata, 1, -1)
+func (self *Node) getJobReqs(jobDef map[string]interface{}) (int, int) {
+	threads := -1
+	if v, ok := jobDef["__threads"].(float64); ok {
+		threads = int(v)
+
+		// In local mode, cap to the job manager's max cores.
+		// It is not sufficient for the job manager to do the capping downstream.
+		// We rewrite the chunkDef here to inform the chunk it should use less
+		// concurrency.
+		if self.rt.jobMode == "local" {
+			maxCores := self.rt.JobManager.GetMaxCores()
+			if threads > maxCores {
+				threads = maxCores
+			}
+			jobDef["__threads"] = threads
+		}
+	}
+
+	// Default to -1 to impose no limit (no flag will be passed to SGE).
+	// The local mode job manager will convert -1 to 1 downstream.
+	memGB := -1
+	if v, ok := jobDef["__mem_gb"].(float64); ok {
+		memGB = int(v)
+
+		if self.rt.jobMode == "local" {
+			maxMemGB := self.rt.JobManager.GetMaxMemGB()
+			if memGB > maxMemGB {
+				memGB = maxMemGB
+			}
+			jobDef["__mem_gb"] = memGB
+		}
+	}
+	return threads, memGB
 }
 
-func (self *Node) runJoin(fqname string, metadata *Metadata) {
-	self.runJob("join", fqname, metadata, 1, -1)
+func (self *Node) runSplit(fqname string, metadata *Metadata) {
+	self.runJob("split", fqname, metadata, -1, -1)
+}
+
+func (self *Node) runJoin(fqname string, metadata *Metadata, threads int, memGB int) {
+	self.runJob("join", fqname, metadata, threads, memGB)
 }
 
 func (self *Node) runChunk(fqname string, metadata *Metadata, threads int, memGB int) {
@@ -1363,9 +1533,9 @@ func (self *Node) runJob(shellName string, fqname string, metadata *Metadata,
 	}
 
 	// Configure local variable dumping.
-	localVars := "disable"
-	if self.rt.enableLocalVars {
-		localVars = "localvars"
+	stackVars := "disable"
+	if self.rt.enableStackVars {
+		stackVars = "stackvars"
 	}
 
 	// Set environment variables
@@ -1381,10 +1551,10 @@ func (self *Node) runJob(shellName string, fqname string, metadata *Metadata,
 	switch self.stagecodeLang {
 	case "Python":
 		shellCmd = path.Join(self.rt.adaptersPath, "python", shellName+".py")
-		argv = append(stagecodeParts, metadata.path, metadata.filesPath, runFile, profile, localVars)
+		argv = append(stagecodeParts, metadata.path, metadata.filesPath, runFile, profile, stackVars)
 	case "Executable":
 		shellCmd = stagecodeParts[0]
-		argv = append(stagecodeParts[1:], shellName, metadata.path, metadata.filesPath, runFile, profile, localVars)
+		argv = append(stagecodeParts[1:], shellName, metadata.path, metadata.filesPath, runFile, profile, stackVars)
 	default:
 		panic(fmt.Sprintf("Unknown stage code language: %s", self.stagecodeLang))
 	}
@@ -1444,7 +1614,10 @@ func (self *Stagestance) GetState() string { return self.getNode().getState() }
 func (self *Stagestance) Step()            { self.getNode().step() }
 func (self *Stagestance) RefreshState()    { self.getNode().refreshState() }
 func (self *Stagestance) LoadMetadata()    { self.getNode().loadMetadata() }
-func (self *Stagestance) Cleanup()         { self.getNode().cleanup() }
+func (self *Stagestance) PostProcess()     { self.getNode().postProcess() }
+func (self *Stagestance) VDRKill() *VDRKillReport {
+	return self.getNode().vdrKill()
+}
 func (self *Stagestance) GetFatalError() (string, string, string, string, []string) {
 	return self.getNode().getFatalError()
 }
@@ -1527,6 +1700,9 @@ func (self *Pipestance) LoadMetadata() {
 	}
 	for _, node := range self.node.allNodes() {
 		node.state = node.getState()
+		if node.state == "running" {
+			node.mkdirs()
+		}
 	}
 }
 
@@ -1555,37 +1731,28 @@ func (self *Pipestance) GetState() string {
 	return "waiting"
 }
 
-func (self *Pipestance) RestartAssertedNodes() error {
-	self.LoadMetadata()
-	nodes := self.node.getFrontierNodes()
-	for _, node := range nodes {
-		if node.state == "failed" {
-			if _, _, _, kind, _ := node.getFatalError(); kind == "assert" {
-				if err := node.reset(); err != nil {
-					return err
-				}
-			}
-		}
-	}
-	return nil
-}
-
 func (self *Pipestance) RestartRunningNodes(jobMode string) error {
 	self.LoadMetadata()
 	nodes := self.node.getFrontierNodes()
-	runningNodes := []*Node{}
+	localNodes := []*Node{}
+	remoteNodes := []*Node{}
 	for _, node := range nodes {
-		if jobMode == "local" || node.local {
-			if node.state == "running" {
-				LogInfo("runtime", "Found orphaned stage: %s", node.fqname)
-				runningNodes = append(runningNodes, node)
+		if node.state == "running" {
+			LogInfo("runtime", "Found orphaned stage: %s", node.fqname)
+			if jobMode == "local" || node.local {
+				localNodes = append(localNodes, node)
+			} else {
+				remoteNodes = append(remoteNodes, node)
 			}
 		}
 	}
-	for _, node := range runningNodes {
+	for _, node := range localNodes {
 		if err := node.reset(); err != nil {
 			return err
 		}
+	}
+	for _, node := range remoteNodes {
+		node.resetJobMonitors()
 	}
 	return nil
 }
@@ -1646,8 +1813,11 @@ func (self *Pipestance) SerializePerf() interface{} {
 	return ser
 }
 
-func (self *Pipestance) Cleanup() {
-	self.node.cleanup()
+func (self *Pipestance) PostProcess() {
+	metadata := NewMetadata(self.node.parent.getNode().fqname,
+		self.node.parent.getNode().path)
+	metadata.writeRaw("timestamp", metadata.readRaw("timestamp")+"\nend: "+Timestamp())
+	self.node.postProcess()
 }
 
 func (self *Pipestance) Immortalize() {
@@ -1662,72 +1832,16 @@ func (self *Pipestance) Unimmortalize() {
 	metadata.remove("finalstate")
 }
 
-func (self *Pipestance) GetOuts(forki int) interface{} {
-	if v := self.getNode().forks[forki].metadata.read("outs"); v != nil {
-		return v
-	}
-	return map[string]interface{}{}
-}
-
-type VDRKillReport struct {
-	Count  uint     `json:"count"`
-	Size   uint64   `json:"size"`
-	Paths  []string `json:"paths"`
-	Errors []string `json:"errors"`
-}
-
 func (self *Pipestance) VDRKill() *VDRKillReport {
-	killPaths := []string{}
-
-	// Iterate over all nodes.
+	killReports := []*VDRKillReport{}
 	for _, node := range self.node.allNodes() {
-		// Iterate over all forks.
-		for _, fork := range node.forks {
-			// For volatile nodes, kill fork-level files.
-			if node.volatile {
-				if paths, err := fork.metadata.enumerateFiles(); err == nil {
-					killPaths = append(killPaths, paths...)
-				}
-				if paths, err := fork.split_metadata.enumerateFiles(); err == nil {
-					killPaths = append(killPaths, paths...)
-				}
-				if paths, err := fork.join_metadata.enumerateFiles(); err == nil {
-					killPaths = append(killPaths, paths...)
-				}
-			}
-			// For ALL nodes, if the node splits, kill chunk-level files.
-			// Must check for split here, otherwise we'll end up deleting
-			// output files of non-volatile nodes because single-chunk nodes
-			// get their output redirected to the one chunk's files path.
-			if node.split {
-				for _, chunk := range fork.chunks {
-					if paths, err := chunk.metadata.enumerateFiles(); err == nil {
-						killPaths = append(killPaths, paths...)
-					}
-				}
-			}
-		}
+		killReports = append(killReports, node.vdrKill())
 	}
-
-	// Actually delete the paths.
-	killReport := VDRKillReport{}
-	for _, p := range killPaths {
-		filepath.Walk(p, func(_ string, info os.FileInfo, err error) error {
-			if err == nil {
-				killReport.Size += uint64(info.Size())
-				killReport.Count++
-			} else {
-				killReport.Errors = append(killReport.Errors, err.Error())
-			}
-			return nil
-		})
-		killReport.Paths = append(killReport.Paths, p)
-		os.RemoveAll(p)
-	}
+	killReport := mergeVDRKillReports(killReports)
 	metadata := NewMetadata(self.node.parent.getNode().fqname,
 		self.node.parent.getNode().path)
-	metadata.write("vdrkill", &killReport)
-	return &killReport
+	metadata.write("vdrkill", killReport)
+	return killReport
 }
 
 //=============================================================================
@@ -1762,23 +1876,25 @@ type Runtime struct {
 	mroVersion      string
 	callableTable   map[string]Callable
 	PipelineNames   []string
+	vdrMode         string
 	jobMode         string
 	JobManager      JobManager
 	LocalJobManager JobManager
 	enableProfiling bool
-	enableLocalVars bool
+	enableStackVars bool
 	stest           bool
 }
 
-func NewRuntime(jobMode string, mroPath string, martianVersion string,
-	mroVersion string, enableProfiling bool, enableLocalVars bool, debug bool) *Runtime {
-	return NewRuntimeWithCores(jobMode, mroPath, martianVersion, mroVersion,
-		-1, -1, enableProfiling, enableLocalVars, debug, false)
+func NewRuntime(jobMode string, vdrMode string, mroPath string, martianVersion string,
+	mroVersion string, enableProfiling bool, enableStackVars bool,
+	debug bool) *Runtime {
+	return NewRuntimeWithCores(jobMode, vdrMode, mroPath, martianVersion, mroVersion,
+		-1, -1, -1, enableProfiling, enableStackVars, debug, false)
 }
 
-func NewRuntimeWithCores(jobMode string, mroPath string, martianVersion string,
-	mroVersion string, reqCores int, reqMem int, enableProfiling bool,
-	enableLocalVars bool, debug bool, stest bool) *Runtime {
+func NewRuntimeWithCores(jobMode string, vdrMode string, mroPath string, martianVersion string,
+	mroVersion string, reqCores int, reqMem int, reqMemPerCore int, enableProfiling bool,
+	enableStackVars bool, debug bool, stest bool) *Runtime {
 
 	self := &Runtime{}
 	self.mroPath = mroPath
@@ -1786,8 +1902,9 @@ func NewRuntimeWithCores(jobMode string, mroPath string, martianVersion string,
 	self.martianVersion = martianVersion
 	self.mroVersion = mroVersion
 	self.jobMode = jobMode
+	self.vdrMode = vdrMode
 	self.enableProfiling = enableProfiling
-	self.enableLocalVars = enableLocalVars
+	self.enableStackVars = enableStackVars
 	self.callableTable = map[string]Callable{}
 	self.PipelineNames = []string{}
 	self.stest = stest
@@ -1796,8 +1913,9 @@ func NewRuntimeWithCores(jobMode string, mroPath string, martianVersion string,
 	if self.jobMode == "local" {
 		self.JobManager = self.LocalJobManager
 	} else {
-		self.JobManager = NewRemoteJobManager(self.jobMode)
+		self.JobManager = NewRemoteJobManager(self.jobMode, reqMemPerCore)
 	}
+	VerifyVDRMode(self.vdrMode)
 
 	// Parse all MROs in MROPATH and cache pipelines by name.
 	fpaths, _ := filepath.Glob(self.mroPath + "/[^_]*.mro")
@@ -1861,6 +1979,9 @@ func (self *Runtime) instantiatePipeline(src string, srcPath string, psid string
 	if pipestance == nil {
 		return "", nil, &RuntimeError{fmt.Sprintf("'%s' is not a declared pipeline", ast.call.id)}
 	}
+
+	pipestance.getNode().mkdirs()
+
 	return postsrc, pipestance, nil
 }
 
@@ -1892,28 +2013,30 @@ func (self *Runtime) InvokePipeline(src string, srcPath string, psid string,
 	if output, err := cmd.CombinedOutput(); err == nil {
 		metadata.writeRaw("uname", string(output))
 	}
+	mroVersion, _ := GetGitTag(self.mroPath)
 	metadata.write("versions", map[string]string{
 		"martian":   GetVersion(),
-		"pipelines": GetGitTag(self.mroPath),
+		"pipelines": mroVersion,
 	})
-	metadata.writeTime("timestamp")
-
-	// Create pipestance folder graph concurrently.
-	var wg sync.WaitGroup
-	pipestance.getNode().mkdirs(&wg)
-	wg.Wait()
+	metadata.writeRaw("timestamp", "start: "+Timestamp())
 
 	return pipestance, nil
 }
 
 // Reattaches to an existing pipestance.
-func (self *Runtime) ReattachToPipestance(psid string, pipestancePath string) (*Pipestance, error) {
+func (self *Runtime) ReattachToPipestance(psid string, pipestancePath string, src string, checkSrc bool) (*Pipestance, error) {
 	fname := "_invocation"
+	invocationPath := path.Join(pipestancePath, fname)
 
 	// Read in the existing _invocation file.
-	data, err := ioutil.ReadFile(path.Join(pipestancePath, fname))
+	data, err := ioutil.ReadFile(invocationPath)
 	if err != nil {
 		return nil, err
+	}
+
+	// Check if _invocation has changed.
+	if checkSrc && src != string(data) {
+		return nil, &PipestanceInvocationError{psid, invocationPath}
 	}
 
 	// Instantiate the pipestance.
@@ -1962,10 +2085,7 @@ func (self *Runtime) InvokeStage(src string, srcPath string, ssid string,
 		return nil, &RuntimeError{fmt.Sprintf("'%s' is not a declared stage", ast.call.id)}
 	}
 
-	// Create stagestance folder graph concurrently.
-	var wg sync.WaitGroup
-	stagestance.getNode().mkdirs(&wg)
-	wg.Wait()
+	stagestance.getNode().mkdirs()
 
 	return stagestance, nil
 }

@@ -11,6 +11,7 @@ import time
 import datetime
 import socket
 import subprocess
+import multiprocessing
 import resource
 import pstats
 import StringIO
@@ -100,10 +101,10 @@ class Metadata:
     def _assert(self, message):
         self.write_raw("assert", message + "\n")
 
-    def update_journal(self, name):
+    def update_journal(self, name, force=False):
         if self.run_type != "main":
             name = "%s_%s" % (self.run_type, name)
-        if name not in self.cache:
+        if name not in self.cache or force:
             run_file = "%s.%s" % (self.run_file, name)
             tmp_run_file = "%s.tmp" % run_file
             with open(tmp_run_file, "w") as f:
@@ -120,11 +121,21 @@ def test_initialize(path):
     global metadata
     metadata = TestMetadata(path, path, "", "main")
 
+def heartbeat(metadata):
+    while True:
+        metadata.update_journal("heartbeat", force=True)
+        time.sleep(120)
+
+def start_heartbeat():
+    t = multiprocessing.Process(target=heartbeat, args=(metadata,))
+    t.daemon = True
+    t.start()
+
 def initialize(argv):
-    global metadata, module, profile_flag, localvars_flag, starttime
+    global metadata, module, profile_flag, stackvars_flag, starttime
 
     # Take options from command line.
-    [ shell_cmd, stagecode_path, metadata_path, files_path, run_file, profile_flag, localvars_flag ] = argv
+    [ shell_cmd, stagecode_path, metadata_path, files_path, run_file, profile_flag, stackvars_flag ] = argv
 
     # Create metadata object with metadata directory.
     run_type = os.path.basename(shell_cmd)[:-3]
@@ -133,12 +144,23 @@ def initialize(argv):
     # Write jobinfo
     write_jobinfo(files_path)
 
+    # Update journal for stdout / stderr
+    metadata.update_journal("stdout")
+    metadata.update_journal("stderr")
+
+    # Start heartbeat thread
+    start_heartbeat()
+
+    # Increase the maximum open file descriptors to the hard limit
+    _, hard = resource.getrlimit(resource.RLIMIT_NOFILE)
+    resource.setrlimit(resource.RLIMIT_NOFILE, (hard, hard))
+
     log_time("__start__")
     starttime = time.time()
 
-    # Cache the profiling and localvars flags.
+    # Cache the profiling and stackvars flags.
     profile_flag = (profile_flag == "profile")
-    localvars_flag = (localvars_flag == "localvars")
+    stackvars_flag = (stackvars_flag == "stackvars")
 
     # allow shells and stage code to import martian easily
     sys.path.append(os.path.dirname(__file__))
@@ -194,8 +216,8 @@ def stacktrace():
 
 def fail():
     metadata.write_raw("errors", traceback.format_exc())
-    if localvars_flag:
-        metadata.write_raw("localvars", stacktrace())
+    if stackvars_flag:
+        metadata.write_raw("stackvars", stacktrace())
     done()
 
 def complete():

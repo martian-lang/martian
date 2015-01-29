@@ -69,15 +69,28 @@ html(ng-app="app" ng-controller="MartianGraphCtrl")
                             td {{ humanize(pnode.forks[forki].fork_stats.total_blocks_rate, 'blocks / sec') }}
                         tr
                             td Max RSS
-                            td {{ humanize(pnode.forks[forki].fork_stats.maxrss, 'bytes') }}
+                            td {{ humanize(pnode.forks[forki].fork_stats.maxrss, 'kilobytes') }}
                         tr
-                            td Total Jobs
+                            td Jobs
                             td {{ humanize(pnode.forks[forki].fork_stats.num_jobs, 'jobs') }}
+                        tr
+                            td Output files
+                            td {{ humanize(pnode.forks[forki].fork_stats.output_files, 'files') }}
+                        tr
+                            td Output bytes
+                            td {{ humanize(pnode.forks[forki].fork_stats.output_bytes, 'bytes') }}
+                        tr
+                            td VDR files
+                            td {{ humanize(pnode.forks[forki].fork_stats.vdr_files, 'files') }}
+                        tr
+                            td VDR bytes
+                            td {{ humanize(pnode.forks[forki].fork_stats.vdr_bytes, 'bytes') }}
                 tab(heading="Core Hours" active="tabs.cpu" ng-click="getChart()")
                 tab(heading="IO" active="tabs.io" ng-click="getChart()")
                 tab(heading="IO Rate" active="tabs.iorate" ng-click="getChart()")
                 tab(heading="Memory" active="tabs.memory" ng-click="getChart()")
                 tab(heading="Jobs" active="tabs.jobs" ng-click="getChart()" ng-if="pnode.type == 'pipeline'")
+                tab(heading="VDR" active="tabs.vdr" ng-click="getChart()" ng-if="pnode.type == 'pipeline'")
             span(ng-if="!tabs.summary")
                 tabset.tbs-vert(vertical="true")
                     tab(heading="Graph" ng-click="setChartType('BarChart')")
@@ -202,31 +215,31 @@ html(ng-app="app" ng-controller="MartianGraphCtrl")
                     td Metadata
                     td(colspan="5")
                         span(ng-repeat="name in node.forks[forki].metadata.names") 
-                            a(ng-click="selectMetadata('fork', name, node.forks[forki].metadata.path)") {{name}}
+                            a(ng-click="selectMetadata('forks', forki, name, node.forks[forki].metadata.path)") {{name}}
                             | &nbsp;
-                        pre#metadata(ng-show="mdviews['fork'].length")
-                            button.close(type="button" ng-click="mdviews['fork']=''") &times;
-                            | {{mdviews.fork}}
+                        pre#metadata(ng-show="mdviews.forks[forki].length")
+                            button.close(type="button" ng-click="mdviews.forks[forki]=''") &times;
+                            | {{mdviews.forks[forki]}}
 
                 tr
                     td Split 
                     td(colspan="5")
                         span(ng-repeat="name in node.forks[forki].split_metadata.names") 
-                            a(ng-click="selectMetadata('split', name, node.forks[forki].split_metadata.path)") {{name}}
+                            a(ng-click="selectMetadata('split', forki, name, node.forks[forki].split_metadata.path)") {{name}}
                             | &nbsp;
-                        pre#metadata(ng-show="mdviews.split.length")
-                            button.close(type="button" ng-click="mdviews.split=''") &times;
-                            | {{mdviews.split}}
+                        pre#metadata(ng-show="mdviews.split[forki].length")
+                            button.close(type="button" ng-click="mdviews.split[forki]=''") &times;
+                            | {{mdviews.split[forki]}}
 
                 tr
                     td Join 
                     td(colspan="5")
                         span(ng-repeat="name in node.forks[forki].join_metadata.names") 
-                            a(ng-click="selectMetadata('join', name, node.forks[forki].join_metadata.path)") {{name}}
+                            a(ng-click="selectMetadata('join', forki, name, node.forks[forki].join_metadata.path)") {{name}}
                             | &nbsp;
-                        pre#metadata(ng-show="mdviews.join.length")
-                            button.close(type="button" ng-click="mdviews.join=''") &times;
-                            | {{mdviews.join}}
+                        pre#metadata(ng-show="mdviews.join[forki].length")
+                            button.close(type="button" ng-click="mdviews.join[forki]=''") &times;
+                            | {{mdviews.join[forki]}}
 
                 tr(ng-repeat-start="(bindtype, bindings) in node.forks[forki].bindings").active
                     th(colspan="3") {{bindtype}} Bindings
@@ -277,11 +290,11 @@ html(ng-app="app" ng-controller="MartianGraphCtrl")
                     td Metadata
                     td(colspan="5")
                         span(ng-repeat="name in node.forks[forki].chunks[chunki].metadata.names") 
-                            a(ng-click="selectMetadata('chunk', name, node.forks[forki].chunks[chunki].metadata.path)") {{name}}
+                            a(ng-click="selectMetadata('chunks', chunki, name, node.forks[forki].chunks[chunki].metadata.path)") {{name}}
                             | &nbsp;
-                        pre#metadata(ng-show="mdviews.chunk.length")
-                            button.close(type="button" ng-click="mdviews.chunk=''") &times;
-                            | {{mdviews.chunk}}
+                        pre#metadata(ng-show="mdviews.chunks[chunki].length")
+                            button.close(type="button" ng-click="mdviews.chunks[chunki]=''") &times;
+                            | {{mdviews.chunks[chunki]}}
 
     script
         | container = '[[.Container]]';
