@@ -277,7 +277,9 @@ func NewRemoteJobManager(jobMode string, memGBPerCore int) *RemoteJobManager {
 	self.jobMode = jobMode
 	self.monitorList = []*JobMonitor{}
 	self.monitorListMutex = &sync.Mutex{}
-	if memGBPerCore <= 0 {
+	if memGBPerCore > 0 {
+		self.memGBPerCore = memGBPerCore
+	} else {
 		self.memGBPerCore = defaultMemGBPerCore
 	}
 	_, _, self.jobCmd, self.jobTemplate = verifyJobManagerFiles(jobMode)
