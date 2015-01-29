@@ -1705,6 +1705,9 @@ func (self *Pipestance) Serialize() interface{} {
 }
 
 func (self *Pipestance) PostProcess() {
+	metadata := NewMetadata(self.node.parent.getNode().fqname,
+		self.node.parent.getNode().path)
+	metadata.writeRaw("timestamp", metadata.readRaw("timestamp")+"\nend: "+Timestamp())
 	self.node.postProcess()
 }
 
@@ -1906,7 +1909,7 @@ func (self *Runtime) InvokePipeline(src string, srcPath string, psid string,
 		"martian":   GetVersion(),
 		"pipelines": mroVersion,
 	})
-	metadata.writeTime("timestamp")
+	metadata.writeRaw("timestamp", "start: "+Timestamp())
 
 	return pipestance, nil
 }
