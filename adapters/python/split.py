@@ -16,10 +16,10 @@ try:
     args = martian.Record(martian.metadata.read("args"))
 
     # Execute split code.
-    martian.run("chunk_defs = martian.module.split(args)")
+    martian.run("stage_defs = martian.module.split(args)")
 
     # Write the output as JSON.
-    martian.metadata.write("chunk_defs", chunk_defs)
+    martian.metadata.write("stage_defs", stage_defs)
 
     # Write end of log and completion marker.
     martian.complete()

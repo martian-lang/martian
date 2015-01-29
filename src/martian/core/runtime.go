@@ -430,45 +430,7 @@ func (self *Chunk) step() {
 		self.hasBeenRun = true
 	}
 
-	//
-	// Process __threads and __mem_gb requested by stage split.
-	//
-	// __threads tells job manager how much concurrency this chunk wants.
-	// __mem_gb  tells SGE to kill-if-exceed. For local mode, it is
-	//           instead a consumption request like __threads.
-
-	// A chunk consumes 1 thread unless stage split explicitly asks for more.
-	threads := 1
-	if v, ok := self.chunkDef["__threads"].(float64); ok {
-		threads = int(v)
-
-		// In local mode, cap to the job manager's max cores.
-		// It is not sufficient for the job manager to do the capping downstream.
-		// We rewrite the chunkDef here to inform the chunk it should use less
-		// concurrency.
-		if self.node.rt.jobMode == "local" {
-			maxCores := self.node.rt.JobManager.GetMaxCores()
-			if threads > maxCores {
-				threads = maxCores
-			}
-			self.chunkDef["__threads"] = threads
-		}
-	}
-
-	// Default to -1 to impose no limit (no flag will be passed to SGE).
-	// The local mode job manager will convert -1 to 1 downstream.
-	memGB := -1
-	if v, ok := self.chunkDef["__mem_gb"].(float64); ok {
-		memGB = int(v)
-
-		if self.node.rt.jobMode == "local" {
-			maxMemGB := self.node.rt.JobManager.GetMaxMemGB()
-			if memGB > maxMemGB {
-				memGB = maxMemGB
-			}
-			self.chunkDef["__mem_gb"] = memGB
-		}
-	}
+	threads, memGB := self.node.getJobReqs(self.chunkDef)
 
 	// Resolve input argument bindings and merge in the chunk defs.
 	resolvedBindings := resolveBindings(self.node.argbindings, self.fork.argPermute)
@@ -508,6 +470,7 @@ type Fork struct {
 	split_has_run  bool
 	join_has_run   bool
 	argPermute     map[string]interface{}
+	stageDefs      *StageDefs
 }
 
 func NewFork(nodable Nodable, index int, argPermute map[string]interface{}) *Fork {
@@ -522,13 +485,10 @@ func NewFork(nodable Nodable, index int, argPermute map[string]interface{}) *For
 	self.argPermute = argPermute
 	self.split_has_run = false
 	self.join_has_run = false
-	// reconstruct chunks using chunk_defs on reattach, do not rely
-	// on metadata.exists('chunk_defs') since it may not be cached
 	self.chunks = []*Chunk{}
-	chunkDefIfaces := self.split_metadata.read("chunk_defs")
-	if chunkDefs, ok := chunkDefIfaces.([]interface{}); ok {
-		for i, chunkDef := range chunkDefs {
-			chunk := NewChunk(self.node, self, i, chunkDef.(map[string]interface{}))
+	if err := json.Unmarshal([]byte(self.split_metadata.readRaw("stage_defs")), &self.stageDefs); err == nil {
+		for i, chunkDef := range self.stageDefs.ChunkDefs {
+			chunk := NewChunk(self.node, self, i, chunkDef)
 			self.chunks = append(self.chunks, chunk)
 		}
 	}
@@ -647,6 +607,11 @@ func (self *Fork) getChunk(index int) *Chunk {
 	return nil
 }
 
+type StageDefs struct {
+	ChunkDefs []map[string]interface{} `json:"chunks"`
+	JoinDef   map[string]interface{}   `json:"join"`
+}
+
 func (self *Fork) step() {
 	if self.node.kind == "stage" {
 		state := self.getState()
@@ -664,21 +629,20 @@ func (self *Fork) step() {
 					self.node.runSplit(self.fqname, self.split_metadata)
 				}
 			} else {
-				self.split_metadata.write("chunk_defs", []interface{}{map[string]interface{}{}})
+				// Initialize stage defs with one chunk
+				stageDefs := &StageDefs{ChunkDefs: []map[string]interface{}{}}
+				stageDefs.ChunkDefs = append(stageDefs.ChunkDefs, map[string]interface{}{})
+				self.split_metadata.write("stage_defs", stageDefs)
 				self.split_metadata.writeTime("complete")
 			}
 		} else if state == "split_complete" {
-			chunkDefs := self.split_metadata.read("chunk_defs")
-			if _, ok := chunkDefs.([]interface{}); !ok {
-				self.split_metadata.writeRaw("errors", "The split method must return an array of chunk def dicts but did not.\n")
+			if err := json.Unmarshal([]byte(self.split_metadata.readRaw("stage_defs")), &self.stageDefs); err != nil {
+				self.split_metadata.writeRaw("errors",
+					"The split method must return a dictionary {'chunks': [chunk def dicts], 'join': join def dict} but did not.\n")
 			} else {
 				if len(self.chunks) == 0 {
-					for i, chunkDef := range chunkDefs.([]interface{}) {
-						if _, ok := chunkDef.(map[string]interface{}); !ok {
-							self.split_metadata.writeRaw("errors", "The split method must return an array of chunk def dicts but did not.\n")
-							break
-						}
-						chunk := NewChunk(self.node, self, i, chunkDef.(map[string]interface{}))
+					for i, chunkDef := range self.stageDefs.ChunkDefs {
+						chunk := NewChunk(self.node, self, i, chunkDef)
 						self.chunks = append(self.chunks, chunk)
 						chunk.mkdirs()
 					}
@@ -688,8 +652,13 @@ func (self *Fork) step() {
 				}
 			}
 		} else if state == "chunks_complete" {
-			self.join_metadata.write("args", resolveBindings(self.node.argbindings, self.argPermute))
-			self.join_metadata.write("chunk_defs", self.split_metadata.read("chunk_defs"))
+			threads, memGB := self.node.getJobReqs(self.stageDefs.JoinDef)
+			resolvedBindings := resolveBindings(self.node.argbindings, self.argPermute)
+			for id, value := range self.stageDefs.JoinDef {
+				resolvedBindings[id] = value
+			}
+			self.join_metadata.write("args", resolvedBindings)
+			self.join_metadata.write("chunk_defs", self.stageDefs.ChunkDefs)
 			if self.node.split {
 				chunkOuts := []interface{}{}
 				for _, chunk := range self.chunks {
@@ -700,7 +669,7 @@ func (self *Fork) step() {
 				self.join_metadata.write("outs", makeOutArgs(self.node.outparams, self.metadata.filesPath))
 				if !self.join_has_run {
 					self.join_has_run = true
-					self.node.runJoin(self.fqname, self.join_metadata)
+					self.node.runJoin(self.fqname, self.join_metadata, threads, memGB)
 				}
 			} else {
 				self.join_metadata.write("outs", self.chunks[0].metadata.read("outs"))
@@ -1406,12 +1375,47 @@ func (self *Node) serialize() interface{} {
 //=============================================================================
 // Job Runners
 //=============================================================================
-func (self *Node) runSplit(fqname string, metadata *Metadata) {
-	self.runJob("split", fqname, metadata, 1, -1)
+func (self *Node) getJobReqs(jobDef map[string]interface{}) (int, int) {
+	threads := -1
+	if v, ok := jobDef["__threads"].(float64); ok {
+		threads = int(v)
+
+		// In local mode, cap to the job manager's max cores.
+		// It is not sufficient for the job manager to do the capping downstream.
+		// We rewrite the chunkDef here to inform the chunk it should use less
+		// concurrency.
+		if self.rt.jobMode == "local" {
+			maxCores := self.rt.JobManager.GetMaxCores()
+			if threads > maxCores {
+				threads = maxCores
+			}
+			jobDef["__threads"] = threads
+		}
+	}
+
+	// Default to -1 to impose no limit (no flag will be passed to SGE).
+	// The local mode job manager will convert -1 to 1 downstream.
+	memGB := -1
+	if v, ok := jobDef["__mem_gb"].(float64); ok {
+		memGB = int(v)
+
+		if self.rt.jobMode == "local" {
+			maxMemGB := self.rt.JobManager.GetMaxMemGB()
+			if memGB > maxMemGB {
+				memGB = maxMemGB
+			}
+			jobDef["__mem_gb"] = memGB
+		}
+	}
+	return threads, memGB
 }
 
-func (self *Node) runJoin(fqname string, metadata *Metadata) {
-	self.runJob("join", fqname, metadata, 1, -1)
+func (self *Node) runSplit(fqname string, metadata *Metadata) {
+	self.runJob("split", fqname, metadata, -1, -1)
+}
+
+func (self *Node) runJoin(fqname string, metadata *Metadata, threads int, memGB int) {
+	self.runJob("join", fqname, metadata, threads, memGB)
 }
 
 func (self *Node) runChunk(fqname string, metadata *Metadata, threads int, memGB int) {
