@@ -1153,6 +1153,15 @@ func (self *Node) resetJobMonitors() {
 	}
 }
 
+func (self *Node) kill() {
+	for _, metadata := range self.collectMetadatas() {
+		if state, _ := metadata.getState(""); state == "failed" {
+			continue
+		}
+		metadata.writeRaw("errors", "Job was killed by Martian.")
+	}
+}
+
 func (self *Node) postProcess() {
 	os.RemoveAll(self.journalPath)
 	os.RemoveAll(self.tmpPath)
@@ -1628,6 +1637,15 @@ func (self *Pipestance) GetState() string {
 		return "complete"
 	}
 	return "waiting"
+}
+
+func (self *Pipestance) Kill() {
+	nodes := self.node.getFrontierNodes()
+	for _, node := range nodes {
+		if node.state == "running" {
+			node.kill()
+		}
+	}
 }
 
 func (self *Pipestance) RestartRunningNodes(jobMode string) error {

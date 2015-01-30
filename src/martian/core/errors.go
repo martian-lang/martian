@@ -53,6 +53,15 @@ func (self *PipestanceNotFailedError) Error() string {
 	return fmt.Sprintf("RuntimeError: pipestance '%s' is not failed.", self.Psid)
 }
 
+// PipestanceNotRunningError
+type PipestanceNotRunningError struct {
+	Psid string
+}
+
+func (self *PipestanceNotRunningError) Error() string {
+	return fmt.Sprintf("RuntimeError: pipestance '%s' is not running.", self.Psid)
+}
+
 // PipestanceNotExistsError
 type PipestanceNotExistsError struct {
 	Psid string
