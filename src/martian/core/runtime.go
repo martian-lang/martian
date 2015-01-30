@@ -1134,6 +1134,9 @@ func (self *Node) reset() error {
 	os.RemoveAll(self.journalPath)
 	os.RemoveAll(self.tmpPath)
 
+	// Create stage node directories.
+	self.mkdirs()
+
 	// Load the metadata.
 	self.loadMetadata()
 
