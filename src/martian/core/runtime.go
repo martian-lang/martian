@@ -1906,9 +1906,11 @@ func (self *Runtime) instantiatePipeline(src string, srcPath string, psid string
 func (self *Runtime) InvokePipeline(src string, srcPath string, psid string,
 	pipestancePath string) (*Pipestance, error) {
 
-	// Error if pipestance exists, otherwise create.
+	// Error if pipestance directory is non-empty, otherwise create.
 	if _, err := os.Stat(pipestancePath); err == nil {
-		return nil, &PipestanceExistsError{psid}
+		if fileInfos, err := ioutil.ReadDir(pipestancePath); err != nil || len(fileInfos) > 0 {
+			return nil, &PipestanceExistsError{psid}
+		}
 	} else if err := os.MkdirAll(pipestancePath, 0755); err != nil {
 		return nil, err
 	}
