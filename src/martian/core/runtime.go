@@ -1642,9 +1642,7 @@ func (self *Pipestance) GetState() string {
 func (self *Pipestance) Kill() {
 	nodes := self.node.getFrontierNodes()
 	for _, node := range nodes {
-		if node.state == "running" {
-			node.kill()
-		}
+		node.kill()
 	}
 }
 
