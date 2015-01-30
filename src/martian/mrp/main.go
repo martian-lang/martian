@@ -284,9 +284,8 @@ Options:
 	//=========================================================================
 	// Configure Martian runtime.
 	//=========================================================================
-	runToExhaustion := false
 	rt := core.NewRuntimeWithCores(jobMode, vdrMode, mroPath, martianVersion, mroVersion,
-		reqCores, reqMem, reqMemPerCore, runToExhaustion, profile, stackVars, debug, stest)
+		reqCores, reqMem, reqMemPerCore, profile, stackVars, debug, stest)
 
 	// Print this here because the log makes more sense when this appears before
 	// the runloop messages start to appear.

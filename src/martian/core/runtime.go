@@ -1607,30 +1607,6 @@ func (self *Pipestance) LoadMetadata() {
 
 func (self *Pipestance) GetState() string {
 	nodes := self.node.getFrontierNodes()
-	if self.node.rt.runToExhaustion {
-		every := true
-		for _, node := range nodes {
-			if node.state == "running" {
-				// At least one node is running
-				return "running"
-			}
-			if node.state != "complete" {
-				every = false
-			}
-		}
-		if every {
-			// All nodes are complete
-			return "complete"
-		}
-		for _, node := range nodes {
-			if node.state == "waiting" {
-				// At least one node is waiting and the rest are failed, complete or waiting
-				return "waiting"
-			}
-		}
-		// All nodes are failed or complete
-		return "failed"
-	}
 	for _, node := range nodes {
 		if node.state == "failed" {
 			return "failed"
@@ -1795,7 +1771,6 @@ type Runtime struct {
 	jobMode         string
 	JobManager      JobManager
 	LocalJobManager JobManager
-	runToExhaustion bool
 	enableProfiling bool
 	enableStackVars bool
 	stest           bool
@@ -1805,12 +1780,12 @@ func NewRuntime(jobMode string, vdrMode string, mroPath string, martianVersion s
 	mroVersion string, enableProfiling bool, enableStackVars bool,
 	debug bool) *Runtime {
 	return NewRuntimeWithCores(jobMode, vdrMode, mroPath, martianVersion, mroVersion,
-		-1, -1, -1, false, enableProfiling, enableStackVars, debug, false)
+		-1, -1, -1, enableProfiling, enableStackVars, debug, false)
 }
 
 func NewRuntimeWithCores(jobMode string, vdrMode string, mroPath string, martianVersion string,
-	mroVersion string, reqCores int, reqMem int, reqMemPerCore int, runToExhaustion bool,
-	enableProfiling bool, enableStackVars bool, debug bool, stest bool) *Runtime {
+	mroVersion string, reqCores int, reqMem int, reqMemPerCore int, enableProfiling bool,
+	enableStackVars bool, debug bool, stest bool) *Runtime {
 
 	self := &Runtime{}
 	self.mroPath = mroPath
@@ -1819,7 +1794,6 @@ func NewRuntimeWithCores(jobMode string, vdrMode string, mroPath string, martian
 	self.mroVersion = mroVersion
 	self.jobMode = jobMode
 	self.vdrMode = vdrMode
-	self.runToExhaustion = runToExhaustion
 	self.enableProfiling = enableProfiling
 	self.enableStackVars = enableStackVars
 	self.callableTable = map[string]Callable{}
