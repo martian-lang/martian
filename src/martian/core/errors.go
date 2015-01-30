@@ -80,6 +80,15 @@ func (self *PipestanceCopyingError) Error() string {
 	return fmt.Sprintf("RuntimeError: pipestance '%s' is currently being copied.", self.Psid)
 }
 
+// PipestanceWipeError
+type PipestanceWipeError struct {
+	Psid string
+}
+
+func (self *PipestanceWipeError) Error() string {
+	return fmt.Sprintf("RuntimeError: pipestance '%s' cannot be wiped.", self.Psid)
+}
+
 // PreprocessError
 type PreprocessError struct {
 	files []string
