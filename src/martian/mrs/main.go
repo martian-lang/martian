@@ -131,8 +131,9 @@ Options:
 	//=========================================================================
 	// Configure Martian runtime.
 	//=========================================================================
+	runToExhaustion := false
 	rt := core.NewRuntimeWithCores(jobMode, vdrMode, mroPath, martianVersion, mroVersion,
-		reqCores, reqMem, reqMemPerCore, profile, stackVars, debug, false)
+		reqCores, reqMem, reqMemPerCore, runToExhaustion, profile, stackVars, debug, false)
 
 	// Invoke stagestance.
 	data, err := ioutil.ReadFile(invocationPath)
