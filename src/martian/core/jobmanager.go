@@ -268,11 +268,12 @@ type RemoteJobManager struct {
 	jobTemplate      string
 	jobCmd           string
 	memGBPerCore     int
+	memGBPerJob      int
 	monitorList      []*JobMonitor
 	monitorListMutex *sync.Mutex
 }
 
-func NewRemoteJobManager(jobMode string, memGBPerCore int) *RemoteJobManager {
+func NewRemoteJobManager(jobMode string, memGBPerCore int, memGBPerJob int) *RemoteJobManager {
 	self := &RemoteJobManager{}
 	self.jobMode = jobMode
 	self.monitorList = []*JobMonitor{}
@@ -281,6 +282,11 @@ func NewRemoteJobManager(jobMode string, memGBPerCore int) *RemoteJobManager {
 		self.memGBPerCore = memGBPerCore
 	} else {
 		self.memGBPerCore = defaultMemGBPerCore
+	}
+	if memGBPerJob > 0 {
+		self.memGBPerJob = memGBPerJob
+	} else {
+		self.memGBPerJob = defaultMemGB
 	}
 	_, _, self.jobCmd, self.jobTemplate = verifyJobManagerFiles(jobMode)
 	self.processMonitorList()
@@ -311,7 +317,7 @@ func (self *RemoteJobManager) execJob(shellCmd string, argv []string, envs []str
 
 	// Sanity check memory requirements.
 	if memGB < 1 {
-		memGB = defaultMemGB
+		memGB = self.memGBPerJob
 	}
 
 	// Compute threads needed based on memory requirements.

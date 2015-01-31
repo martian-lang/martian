@@ -1783,12 +1783,12 @@ func NewRuntime(jobMode string, vdrMode string, mroPath string, martianVersion s
 	mroVersion string, enableProfiling bool, enableStackVars bool,
 	debug bool) *Runtime {
 	return NewRuntimeWithCores(jobMode, vdrMode, mroPath, martianVersion, mroVersion,
-		-1, -1, -1, enableProfiling, enableStackVars, debug, false)
+		-1, -1, -1, -1, enableProfiling, enableStackVars, debug, false)
 }
 
 func NewRuntimeWithCores(jobMode string, vdrMode string, mroPath string, martianVersion string,
-	mroVersion string, reqCores int, reqMem int, reqMemPerCore int, enableProfiling bool,
-	enableStackVars bool, debug bool, stest bool) *Runtime {
+	mroVersion string, reqCores int, reqMem int, reqMemPerCore int, reqMemPerJob int,
+	enableProfiling bool, enableStackVars bool, debug bool, stest bool) *Runtime {
 
 	self := &Runtime{}
 	self.mroPath = mroPath
@@ -1807,7 +1807,7 @@ func NewRuntimeWithCores(jobMode string, vdrMode string, mroPath string, martian
 	if self.jobMode == "local" {
 		self.JobManager = self.LocalJobManager
 	} else {
-		self.JobManager = NewRemoteJobManager(self.jobMode, reqMemPerCore)
+		self.JobManager = NewRemoteJobManager(self.jobMode, reqMemPerCore, reqMemPerJob)
 	}
 	VerifyVDRMode(self.vdrMode)
 
