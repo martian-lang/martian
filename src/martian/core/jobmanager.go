@@ -321,7 +321,8 @@ func (self *RemoteJobManager) execJob(shellCmd string, argv []string, envs []str
 	}
 
 	// Compute threads needed based on memory requirements.
-	threads = max(threads, (memGB+self.memGBPerCore-1)/self.memGBPerCore)
+	// TODO: Enable when ready to enforce memory requirements!!!
+	// threads = max(threads, (memGB+self.memGBPerCore-1)/self.memGBPerCore)
 
 	argv = append([]string{shellCmd}, argv...)
 	argv = append(envs, argv...)
