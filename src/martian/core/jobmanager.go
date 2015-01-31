@@ -20,8 +20,6 @@ import (
 	"github.com/cloudfoundry/gosigar"
 )
 
-const defaultThreads = 1
-const defaultMemGB = 4
 const defaultMemGBPerCore = 4
 const heartbeatTimeout = 60 // 60 minutes
 const maxRetries = 5
@@ -75,17 +73,19 @@ type JobManager interface {
 }
 
 type LocalJobManager struct {
-	maxCores int
-	maxMemGB int
-	coreSem  *Semaphore
-	memGBSem *Semaphore
-	queue    []*exec.Cmd
-	debug    bool
+	maxCores    int
+	maxMemGB    int
+	jobSettings *JobManagerSettings
+	coreSem     *Semaphore
+	memGBSem    *Semaphore
+	queue       []*exec.Cmd
+	debug       bool
 }
 
 func NewLocalJobManager(userMaxCores int, userMaxMemGB int, debug bool) *LocalJobManager {
 	self := &LocalJobManager{}
 	self.debug = debug
+	_, _, self.jobSettings, _, _ = verifyJobManager("local")
 
 	// Set Max number of cores usable at one time.
 	if userMaxCores > 0 {
@@ -142,7 +142,7 @@ func (self *LocalJobManager) Enqueue(shellCmd string, argv []string, envs []stri
 
 		// Sanity check and cap to self.maxCores.
 		if threads < 1 {
-			threads = defaultThreads
+			threads = self.jobSettings.ThreadsPerJob
 		}
 		if threads > self.maxCores {
 			if self.debug {
@@ -154,7 +154,7 @@ func (self *LocalJobManager) Enqueue(shellCmd string, argv []string, envs []stri
 
 		// Sanity check and cap to self.maxMemGB.
 		if memGB < 1 {
-			memGB = defaultMemGB
+			memGB = self.jobSettings.MemGBPerJob
 		}
 		if memGB > self.maxMemGB {
 			if self.debug {
@@ -267,13 +267,13 @@ type RemoteJobManager struct {
 	jobMode          string
 	jobTemplate      string
 	jobCmd           string
+	jobSettings      *JobManagerSettings
 	memGBPerCore     int
-	memGBPerJob      int
 	monitorList      []*JobMonitor
 	monitorListMutex *sync.Mutex
 }
 
-func NewRemoteJobManager(jobMode string, memGBPerCore int, memGBPerJob int) *RemoteJobManager {
+func NewRemoteJobManager(jobMode string, memGBPerCore int) *RemoteJobManager {
 	self := &RemoteJobManager{}
 	self.jobMode = jobMode
 	self.monitorList = []*JobMonitor{}
@@ -283,12 +283,7 @@ func NewRemoteJobManager(jobMode string, memGBPerCore int, memGBPerJob int) *Rem
 	} else {
 		self.memGBPerCore = defaultMemGBPerCore
 	}
-	if memGBPerJob > 0 {
-		self.memGBPerJob = memGBPerJob
-	} else {
-		self.memGBPerJob = defaultMemGB
-	}
-	_, _, self.jobCmd, self.jobTemplate = verifyJobManagerFiles(jobMode)
+	_, _, self.jobSettings, self.jobCmd, self.jobTemplate = verifyJobManager(jobMode)
 	self.processMonitorList()
 	return self
 }
@@ -312,17 +307,16 @@ func (self *RemoteJobManager) execJob(shellCmd string, argv []string, envs []str
 
 	// Sanity check the thread count.
 	if threads < 1 {
-		threads = defaultThreads
+		threads = self.jobSettings.ThreadsPerJob
 	}
 
 	// Sanity check memory requirements.
 	if memGB < 1 {
-		memGB = self.memGBPerJob
+		memGB = self.jobSettings.MemGBPerJob
 	}
 
 	// Compute threads needed based on memory requirements.
-	// TODO: Enable when ready to enforce memory requirements!!!
-	// threads = max(threads, (memGB+self.memGBPerCore-1)/self.memGBPerCore)
+	threads = max(threads, (memGB+self.memGBPerCore-1)/self.memGBPerCore)
 
 	argv = append([]string{shellCmd}, argv...)
 	argv = append(envs, argv...)
@@ -412,12 +406,18 @@ type JobManagerEnv struct {
 	Description string `json:"description"`
 }
 
-type JobManagerJson struct {
-	JobCmds map[string]string           `json:"jobcmd"`
-	JobEnvs map[string][]*JobManagerEnv `json:"env"`
+type JobManagerSettings struct {
+	ThreadsPerJob int `json:"threads_per_job"`
+	MemGBPerJob   int `json:"memGB_per_job"`
 }
 
-func verifyJobManagerFiles(jobMode string) (string, *JobManagerJson, string, string) {
+type JobManagerJson struct {
+	JobSettings *JobManagerSettings         `json:"settings"`
+	JobCmds     map[string]string           `json:"jobcmd"`
+	JobEnvs     map[string][]*JobManagerEnv `json:"env"`
+}
+
+func verifyJobManager(jobMode string) (string, *JobManagerJson, *JobManagerSettings, string, string) {
 	jobPath := RelPath(path.Join("..", "jobmanagers"))
 
 	// Check for existence of job manager JSON file
@@ -426,7 +426,7 @@ func verifyJobManagerFiles(jobMode string) (string, *JobManagerJson, string, str
 		LogError(err, "jobmngr", "Job manager config file %s does not exist.", jobJsonFile)
 		os.Exit(1)
 	}
-	LogInfo("jobmngr", "Job config: %s", jobJsonFile)
+	LogInfo("jobmngr", "Job config = %s", jobJsonFile)
 	bytes, _ := ioutil.ReadFile(jobJsonFile)
 
 	// Parse job manager JSON file
@@ -434,6 +434,26 @@ func verifyJobManagerFiles(jobMode string) (string, *JobManagerJson, string, str
 	if err := json.Unmarshal(bytes, &jobJson); err != nil {
 		LogError(err, "jobmngr", "Job manager config file %s does not contain valid JSON.", jobJsonFile)
 		os.Exit(1)
+	}
+
+	// Validate settings fields
+	jobSettings := jobJson.JobSettings
+	if jobSettings == nil {
+		LogInfo("jobmngr", "Job manager config file %s should contain 'settings' field.", jobJsonFile)
+		os.Exit(1)
+	}
+	if jobSettings.ThreadsPerJob <= 0 {
+		LogInfo("jobmngr", "Job manager config %s contains invalid default threads per job.", jobJsonFile)
+		os.Exit(1)
+	}
+	if jobSettings.MemGBPerJob <= 0 {
+		LogInfo("jobmngr", "Job manager config %s contains invalid default memory (GB) per job.", jobJsonFile)
+		os.Exit(1)
+	}
+
+	if jobMode == "local" {
+		// Local job mode only needs to verify settings parameters
+		return jobJsonFile, jobJson, jobSettings, "", ""
 	}
 
 	// Check if job mode is supported by default
@@ -448,20 +468,17 @@ func verifyJobManagerFiles(jobMode string) (string, *JobManagerJson, string, str
 		}
 		jobCmd = strings.Replace(path.Base(jobTemplateFile), ".template", "", 1)
 	}
-	LogInfo("jobmngr", "Job submit command: %s.", jobCmd)
+	LogInfo("jobmngr", "Job submit command = %s", jobCmd)
 
 	// Check for existence of job manager template file
 	if _, err := os.Stat(jobTemplateFile); os.IsNotExist(err) {
 		LogError(err, "jobmngr", "Job manager template file %s does not exist.", jobTemplateFile)
 		os.Exit(1)
 	}
-	LogInfo("jobmngr", "Job template: %s.", jobTemplateFile)
+	LogInfo("jobmngr", "Job template = %s", jobTemplateFile)
 	bytes, _ = ioutil.ReadFile(jobTemplateFile)
 	jobTemplate := string(bytes)
-	return jobJsonFile, jobJson, jobCmd, jobTemplate
-}
 
-func verifyJobManagerEnv(jobJsonFile string, jobJson *JobManagerJson, jobCmd string) {
 	// Verify job command exists
 	incPaths := strings.Split(os.Getenv("PATH"), ":")
 	if _, found := searchPaths(jobCmd, incPaths); !found {
@@ -472,21 +489,13 @@ func verifyJobManagerEnv(jobJsonFile string, jobJson *JobManagerJson, jobCmd str
 
 	// Verify environment variables
 	entries, ok := jobJson.JobEnvs[jobCmd]
-	if !ok {
-		// No environment variable check required for job manager
-		return
+	if ok {
+		envs := [][]string{}
+		for _, entry := range entries {
+			envs = append(envs, []string{entry.Name, entry.Description})
+		}
+		EnvRequire(envs, true)
 	}
-	envs := [][]string{}
-	for _, entry := range entries {
-		envs = append(envs, []string{entry.Name, entry.Description})
-	}
-	EnvRequire(envs, true)
-}
 
-func VerifyJobManager(jobMode string) {
-	if jobMode == "local" {
-		return
-	}
-	jobJsonFile, jobJson, jobCmd, _ := verifyJobManagerFiles(jobMode)
-	verifyJobManagerEnv(jobJsonFile, jobJson, jobCmd)
+	return jobJsonFile, jobJson, jobSettings, jobCmd, jobTemplate
 }
