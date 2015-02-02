@@ -655,9 +655,12 @@ func (self *Fork) step() {
 	if self.node.kind == "stage" {
 		state := self.getState()
 		if !strings.HasSuffix(state, "_running") && !strings.HasSuffix(state, "_queued") {
-			statePad := strings.Repeat(" ", 15-len(state))
-			if !self.node.preflight {
-				PrintInfo("runtime", "(%s)%s %s", state, statePad, self.node.fqname)
+			statePad := strings.Repeat(" ", int(math.Max(0, float64(15-len(state)))))
+			msg := fmt.Sprintf("(%s)%s %s", state, statePad, self.node.fqname)
+			if self.node.preflight {
+				LogInfo("runtime", msg)
+			} else {
+				PrintInfo("runtime", msg)
 			}
 		}
 
@@ -1323,9 +1326,12 @@ func (self *Node) runJob(shellName string, fqname string, metadata *Metadata,
 		jobMode = "local"
 		jobManager = self.rt.LocalJobManager
 	}
-	padding := strings.Repeat(" ", 10-len(jobMode))
-	if !self.preflight {
-		PrintInfo("runtime", "(run:%s) %s %s.%s", jobMode, padding, fqname, shellName)
+	padding := strings.Repeat(" ", int(math.Max(0, float64(10-len(jobMode)))))
+	msg := fmt.Sprintf("(run:%s) %s %s.%s", jobMode, padding, fqname, shellName)
+	if self.preflight {
+		LogInfo("runtime", msg)
+	} else {
+		PrintInfo("runtime", msg)
 	}
 
 	metadata.write("jobinfo", map[string]interface{}{"name": fqname, "type": jobMode})

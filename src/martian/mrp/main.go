@@ -66,7 +66,6 @@ func runLoop(pipestance *core.Pipestance, stepSecs int, disableVDR bool,
 				os.Exit(0)
 			}
 		} else if state == "failed" {
-			pipestance.Cleanup()
 			if !showedFailed {
 				if warnings, ok := pipestance.GetWarnings(); ok {
 					core.Println(warnings)
@@ -147,7 +146,6 @@ Options:
 	martianVersion := core.GetVersion()
 	opts, _ := docopt.Parse(doc, nil, true, martianVersion, false)
 	core.Println("Martian Runtime (%s)", martianVersion)
-	core.LogInfo("version", martianVersion)
 	core.LogInfo("cmdline", strings.Join(os.Args, " "))
 
 	martianFlags := ""
@@ -178,7 +176,7 @@ Options:
 	}
 	mroVersion := core.GetGitTag(mroPath)
 	core.LogInfo("environ", "MROPATH=%s", mroPath)
-	core.LogInfo("version", "MROPATH=%s", mroVersion)
+	core.LogInfo("version", "MRO Version=%s", mroVersion)
 
 	// Compute job manager.
 	jobMode := "local"
