@@ -11,7 +11,6 @@ import (
 	"io/ioutil"
 	"math"
 	"os"
-	"os/exec"
 	"path"
 	"path/filepath"
 	"regexp"
@@ -657,7 +656,9 @@ func (self *Fork) step() {
 		state := self.getState()
 		if !strings.HasSuffix(state, "_running") && !strings.HasSuffix(state, "_queued") {
 			statePad := strings.Repeat(" ", 15-len(state))
-			LogInfo("runtime", "(%s)%s %s", state, statePad, self.node.fqname)
+			if !self.node.preflight {
+				PrintInfo("runtime", "(%s)%s %s", state, statePad, self.node.fqname)
+			}
 		}
 
 		if state == "ready" {
@@ -1061,11 +1062,11 @@ func (self *Node) getState() string {
 }
 
 func (self *Node) reset() error {
-	LogInfo("runtime", "(reset)           %s", self.fqname)
+	PrintInfo("runtime", "(reset)           %s", self.fqname)
 
 	// Blow away the entire stage node.
 	if err := os.RemoveAll(self.path); err != nil {
-		LogInfo("runtime", "mrp cannot reset the stage because its folder contents could not be deleted. Error was:\n\n%s\n\nPlease resolve the error in order to continue running the pipeline.", err.Error())
+		PrintInfo("runtime", "mrp cannot reset the stage because its folder contents could not be deleted. Error was:\n\n%s\n\nPlease resolve the error in order to continue running the pipeline.", err.Error())
 		return err
 	}
 	// Remove all files from journal and tmp directories.
@@ -1322,7 +1323,10 @@ func (self *Node) runJob(shellName string, fqname string, metadata *Metadata,
 		jobMode = "local"
 		jobManager = self.rt.LocalJobManager
 	}
-	LogInfo("runtime", "(run:%s) %s.%s", jobMode, fqname, shellName)
+	padding := strings.Repeat(" ", 10-len(jobMode))
+	if !self.preflight {
+		PrintInfo("runtime", "(run:%s) %s %s.%s", jobMode, padding, fqname, shellName)
+	}
 
 	metadata.write("jobinfo", map[string]interface{}{"name": fqname, "type": jobMode})
 	jobManager.execJob(shellCmd, argv, envs, metadata, threads, memGB, fqname, shellName)
@@ -1503,7 +1507,7 @@ func (self *Pipestance) RestartRunningNodes(jobMode string) error {
 	remoteNodes := []*Node{}
 	for _, node := range nodes {
 		if node.state == "running" {
-			LogInfo("runtime", "Found orphaned stage: %s", node.fqname)
+			PrintInfo("runtime", "Found orphaned stage: %s", node.fqname)
 			if jobMode == "local" || node.local {
 				localNodes = append(localNodes, node)
 			} else {
@@ -1812,10 +1816,6 @@ func (self *Runtime) InvokePipeline(src string, srcPath string, psid string,
 	metadata := NewMetadata("ID."+psid, pipestancePath)
 	metadata.writeRaw("invocation", src)
 	metadata.writeRaw("mrosource", postsrc)
-	cmd := exec.Command("uname", "-a")
-	if output, err := cmd.CombinedOutput(); err == nil {
-		metadata.writeRaw("uname", string(output))
-	}
 	metadata.write("versions", map[string]string{
 		"martian":   GetVersion(),
 		"pipelines": GetGitTag(self.mroPath),
@@ -1847,7 +1847,7 @@ func (self *Runtime) ReattachToPipestance(psid string, pipestancePath string) (*
 	// left in a running state from last mrp run. The actual job would
 	// have been killed by the CTRL-C.
 	if err == nil {
-		LogInfo("runtime", "Reattaching in %s mode.", self.jobMode)
+		PrintInfo("runtime", "Reattaching in %s mode.", self.jobMode)
 		err = pipestance.RestartRunningNodes(self.jobMode)
 	}
 

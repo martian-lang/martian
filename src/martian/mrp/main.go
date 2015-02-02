@@ -12,7 +12,6 @@ import (
 	"net/http"
 	"net/url"
 	"os"
-	"os/exec"
 	"os/user"
 	"path"
 	"path/filepath"
@@ -24,38 +23,11 @@ import (
 	"github.com/dustin/go-humanize"
 )
 
-const fileSizeThreshold = 1024 * 1024 * 20 // 20 MB
-
-func generateDebugTarball(pipestance *core.Pipestance) {
-	core.Log("Generating debug dump tarball...")
-
-	debugFile := fmt.Sprintf("%s-debug-dump.tar.bz2", pipestance.GetPsid())
-	includedFiles := []string{}
-	err := filepath.Walk(pipestance.GetPsid(), func(fpath string, info os.FileInfo, err error) error {
-		if err == nil {
-			if !info.IsDir() && info.Size() < fileSizeThreshold {
-				includedFiles = append(includedFiles, fpath)
-			}
-		}
-		return err
-	})
-	if err == nil {
-		cmd := exec.Command("tar", "jcf", debugFile, "--exclude=*files*", "-T", "-")
-		cmd.Stdin = strings.NewReader(strings.Join(includedFiles, "\n"))
-		_, err = cmd.CombinedOutput()
-	}
-	if err != nil {
-		core.Log("failed.\n  %s\n", err.Error())
-	} else {
-		core.Log("complete.\n  %s\n", debugFile)
-	}
-}
-
 //=============================================================================
 // Pipestance runner.
 //=============================================================================
 func runLoop(pipestance *core.Pipestance, stepSecs int, disableVDR bool,
-	noExit bool, noDump bool, noUI bool) {
+	noExit bool, noUI bool) {
 	showedFailed := false
 	WAIT_SECS := 6
 
@@ -70,7 +42,7 @@ func runLoop(pipestance *core.Pipestance, stepSecs int, disableVDR bool,
 			pipestance.Cleanup()
 			pipestance.Immortalize()
 			if warnings, ok := pipestance.GetWarnings(); ok {
-				core.Log(warnings)
+				core.Println("%s", warnings)
 			}
 			if disableVDR {
 				core.LogInfo("runtime",
@@ -82,36 +54,31 @@ func runLoop(pipestance *core.Pipestance, stepSecs int, disableVDR bool,
 					killReport.Count, humanize.Bytes(killReport.Size))
 			}
 			if noExit {
-				core.LogInfo("runtime",
-					"Pipestance is complete, staying alive because --noexit given.")
+				core.Println("Pipestance is complete, staying alive because --noexit given.")
 				break
 			} else {
 				if !noUI {
 					// Give time for web ui client to get last update.
-					core.LogInfo("runtime", "Waiting %d seconds for UI to do final refresh.", WAIT_SECS)
+					core.Println("Waiting %d seconds for UI to do final refresh.", WAIT_SECS)
 					time.Sleep(time.Second * time.Duration(WAIT_SECS))
 				}
-				core.LogInfo("runtime", "Pipestance is complete, exiting.")
+				core.Println("Pipestance is complete, exiting.")
 				os.Exit(0)
 			}
 		} else if state == "failed" {
+			pipestance.Cleanup()
 			if !showedFailed {
 				if warnings, ok := pipestance.GetWarnings(); ok {
-					core.Log(warnings)
+					core.Println(warnings)
 				}
-				if fqname, _, log, kind, errpaths := pipestance.GetFatalError(); kind == "assert" {
-					core.Log("\n%s\n", log)
+				if fqname, _, log, kind, _ := pipestance.GetFatalError(); kind == "assert" {
+					// Print pre-flight check failures.
+					core.Println("\n[\033[35merror\033[0m] %s", log)
+					os.Exit(2)
 				} else {
-					core.Log("\nPipestance failed at:\n  %s\n\nError logs written to:\n", fqname)
-					for _, errpath := range errpaths {
-						core.Log("  %s\n", errpath)
-					}
-					core.Log("\n%s\n", log)
-
-					if !noDump {
-						generateDebugTarball(pipestance)
-						core.Log("\n")
-					}
+					// Convert fqname into path
+					errpath := strings.Replace(fqname[3:], ".", "/", -1)
+					core.Println("\n[\033[35merror\033[0m] Pipestance failed. Please see log at:\n\033[36m%s/_errors\033[0m\n", errpath)
 				}
 			}
 			if noExit {
@@ -119,16 +86,15 @@ func runLoop(pipestance *core.Pipestance, stepSecs int, disableVDR bool,
 				// as long as we stay failed.
 				if !showedFailed {
 					showedFailed = true
-					core.LogInfo("runtime",
-						"Pipestance failed, staying alive because --noexit given.")
+					core.Println("Pipestance failed, staying alive because --noexit given.")
 				}
 			} else {
 				if !noUI {
 					// Give time for web ui client to get last update.
-					core.LogInfo("runtime", "Waiting %d seconds for UI to do final refresh.", WAIT_SECS)
+					core.Println("Waiting %d seconds for UI to do final refresh.", WAIT_SECS)
 					time.Sleep(time.Second * time.Duration(WAIT_SECS))
+					core.Println("Pipestance failed, exiting. Use --noexit option to keep UI running after failure.")
 				}
-				core.LogInfo("runtime", "Pipestance failed, exiting. Use --noexit option to keep UI running after failure.")
 				os.Exit(1)
 			}
 		} else {
@@ -144,9 +110,9 @@ func runLoop(pipestance *core.Pipestance, stepSecs int, disableVDR bool,
 		time.Sleep(time.Second * time.Duration(stepSecs))
 	}
 }
+
 func main() {
 	core.SetupSignalHandlers()
-	core.LogEnableCache()
 
 	//=========================================================================
 	// Commandline argument and environment variables.
@@ -180,7 +146,7 @@ Options:
     --version          Show version.`
 	martianVersion := core.GetVersion()
 	opts, _ := docopt.Parse(doc, nil, true, martianVersion, false)
-	core.LogInfo("*", "Martian Run Pipeline")
+	core.Println("Martian Runtime (%s)", martianVersion)
 	core.LogInfo("version", martianVersion)
 	core.LogInfo("cmdline", strings.Join(os.Args, " "))
 
@@ -211,15 +177,15 @@ Options:
 		mroPath = value
 	}
 	mroVersion := core.GetGitTag(mroPath)
-	core.LogInfo("environ", "MROPATH = %s", mroPath)
-	core.LogInfo("version", "MROPATH = %s", mroVersion)
+	core.LogInfo("environ", "MROPATH=%s", mroPath)
+	core.LogInfo("version", "MROPATH=%s", mroVersion)
 
 	// Compute job manager.
 	jobMode := "local"
 	if value := opts["--jobmode"]; value != nil {
 		jobMode = value.(string)
 	}
-	core.LogInfo("environ", "job mode = %s", jobMode)
+	core.LogInfo("options", "--jobmode=%s", jobMode)
 	core.VerifyJobManager(jobMode)
 
 	// Compute UI port.
@@ -232,27 +198,27 @@ Options:
 		uiport = ""
 		noUI = true
 	}
-	core.LogInfo("environ", "port = %s", uiport)
+	core.LogInfo("options", "--port=%s", uiport)
 
 	// Compute profiling flag.
 	profile := opts["--profile"].(bool)
-	core.LogInfo("environ", "profile = %v", profile)
+	core.LogInfo("options", "--profile=%v", profile)
 
 	// Compute localVars flag.
 	localVars := opts["--localvars"].(bool)
-	core.LogInfo("environ", "localvars = %v", localVars)
-
-	// Compute no debug dump flag.
-	noDump := opts["--nodump"].(bool)
-	core.LogInfo("environ", "nodump = %v", noDump)
+	core.LogInfo("options", "--localvars=%v", localVars)
 
 	// Setup invocation-specific values.
 	disableVDR := opts["--novdr"].(bool)
+	core.LogInfo("options", "--novdr=%v", disableVDR)
+
 	noExit := opts["--noexit"].(bool)
+	core.LogInfo("options", "--noexit=%v", noExit)
+
 	psid := opts["<pipestance_name>"].(string)
 	invocationPath := opts["<call.mro>"].(string)
 	pipestancePath := path.Join(cwd, psid)
-	stepSecs := 4
+	stepSecs := 3
 	debug := opts["--debug"].(bool)
 	stest := opts["--stest"].(bool)
 
@@ -270,7 +236,7 @@ Options:
 	if noUI {
 		core.LogInfo("webserv", "UI disabled by --noui option.")
 	} else {
-		core.LogInfo("webserv", "Serving UI at http://localhost:%s", uiport)
+		core.Println("Serving UI at http://localhost:%s", uiport)
 	}
 
 	//=========================================================================
@@ -289,9 +255,9 @@ Options:
 		}
 		core.DieIf(err)
 	}
+	core.Println("\nRunning pre-flight checks (15 seconds)...")
 	logfile := path.Join(pipestancePath, "_log")
 	core.LogTee(logfile)
-	core.LogDisableCache()
 
 	//=========================================================================
 	// Collect pipestance static info.
@@ -323,7 +289,6 @@ Options:
 		"invokepath": invocationPath,
 		"invokesrc":  invocationSrc,
 		"MROPATH":    mroPath,
-		"MRONODUMP":  fmt.Sprintf("%v", noDump),
 		"MROPROFILE": fmt.Sprintf("%v", profile),
 		"MROPORT":    uiport,
 		"mroversion": mroVersion,
@@ -366,7 +331,7 @@ Options:
 	//=========================================================================
 	// Start run loop.
 	//=========================================================================
-	go runLoop(pipestance, stepSecs, disableVDR, noExit, noDump, noUI)
+	go runLoop(pipestance, stepSecs, disableVDR, noExit, noUI)
 
 	// Let daemons take over.
 	done := make(chan bool)

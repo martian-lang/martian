@@ -12,67 +12,88 @@ import (
 )
 
 type Logger struct {
-	writer      io.Writer
-	cache       string
-	enableCache bool
+	stdoutWriter io.Writer
+	fileWriter   io.Writer
+	cache        string
 }
 
 var ENABLE_LOGGING bool = true
 var LOGGER *Logger = nil
 
-func logInit() {
-	if LOGGER == nil {
-		LOGGER = &Logger{io.Writer(os.Stdout), "", false}
-	}
-}
-
-func logWrite(msg string) {
-	logInit()
-	LOGGER.writer.Write([]byte(msg))
-	if LOGGER.enableCache {
-		LOGGER.cache += msg
-	}
-}
-
-func LogEnableCache() {
+func logInit() bool {
 	if ENABLE_LOGGING {
-		logInit()
-		LOGGER.enableCache = true
-		LOGGER.cache = ""
+		if LOGGER == nil {
+			LOGGER = &Logger{io.Writer(os.Stdout), nil, ""}
+		}
+		return true
+	}
+	return false
+}
+
+func log(msg string) {
+	if logInit() {
+		if LOGGER.fileWriter != nil {
+			LOGGER.fileWriter.Write([]byte(msg))
+		} else {
+			LOGGER.cache += msg
+		}
 	}
 }
 
-func LogDisableCache() {
-	if ENABLE_LOGGING {
-		logInit()
-		LOGGER.enableCache = false
-		LOGGER.cache = ""
+func print(msg string) {
+	if logInit() {
+		LOGGER.stdoutWriter.Write([]byte(msg))
+		log(msg)
 	}
 }
 
 func LogTee(filename string) {
-	if ENABLE_LOGGING {
-		logInit()
-		f, _ := os.OpenFile(filename, os.O_WRONLY|os.O_CREATE, 0644)
-		LOGGER.writer = io.MultiWriter(LOGGER.writer, f)
-		f.WriteString(LOGGER.cache)
+	if logInit() {
+		if LOGGER.fileWriter == nil {
+			logInit()
+			f, _ := os.OpenFile(filename, os.O_WRONLY|os.O_CREATE, 0644)
+			LOGGER.fileWriter = io.Writer(f)
+			log(LOGGER.cache)
+		}
 	}
+}
+
+func formatRaw(format string, v ...interface{}) string {
+	return fmt.Sprintf(format, v...)
+}
+
+func formatInfo(component string, format string, v ...interface{}) string {
+	return fmt.Sprintf("%s [%s] %s\n", Timestamp(), component, fmt.Sprintf(format, v...))
+}
+
+func formatError(err error, component string, format string, v ...interface{}) string {
+	return fmt.Sprintf("%s [%s] %s\n          %s\n", Timestamp(), component, fmt.Sprintf(format, v...), err.Error())
 }
 
 func Log(format string, v ...interface{}) {
-	if ENABLE_LOGGING {
-		logWrite(fmt.Sprintf(format, v...))
-	}
+	log(formatRaw(format, v...))
 }
 
 func LogInfo(component string, format string, v ...interface{}) {
-	if ENABLE_LOGGING {
-		logWrite(fmt.Sprintf("%s [%s] %s\n", Timestamp(), component, fmt.Sprintf(format, v...)))
-	}
+	log(formatInfo(component, format, v...))
 }
 
 func LogError(err error, component string, format string, v ...interface{}) {
-	if ENABLE_LOGGING {
-		logWrite(fmt.Sprintf("%s [%s] %s\n          %s\n", Timestamp(), component, fmt.Sprintf(format, v...), err.Error()))
-	}
+	log(formatError(err, component, format, v...))
+}
+
+func Print(format string, v ...interface{}) {
+	print(formatRaw(format, v...))
+}
+
+func Println(format string, v ...interface{}) {
+	print(formatRaw(format, v...) + "\n")
+}
+
+func PrintInfo(component string, format string, v ...interface{}) {
+	print(formatInfo(component, format, v...))
+}
+
+func PrintError(err error, component string, format string, v ...interface{}) {
+	print(formatError(err, component, format, v...))
 }
