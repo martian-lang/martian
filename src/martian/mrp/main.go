@@ -72,12 +72,12 @@ func runLoop(pipestance *core.Pipestance, stepSecs int, disableVDR bool,
 				}
 				if fqname, _, log, kind, _ := pipestance.GetFatalError(); kind == "assert" {
 					// Print pre-flight check failures.
-					core.Println("\n[\033[35merror\033[0m] %s", log)
+					core.Println("\n[%s] %s", core.Colorize("error", core.ANSI_MAGENTA), log)
 					os.Exit(2)
 				} else {
 					// Convert fqname into path
 					errpath := strings.Replace(fqname[3:], ".", "/", -1)
-					core.Println("\n[\033[35merror\033[0m] Pipestance failed. Please see log at:\n\033[36m%s/_errors\033[0m\n", errpath)
+					core.Println("\n[%s] Pipestance failed. Please see log at:\n%s\n", core.Colorize("error", core.ANSI_MAGENTA), core.Colorize(fmt.Sprintf("%s/_errors", errpath), core.ANSI_CYAN))
 				}
 			}
 			if noExit {

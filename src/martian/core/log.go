@@ -20,6 +20,17 @@ type Logger struct {
 var ENABLE_LOGGING bool = true
 var LOGGER *Logger = nil
 
+const (
+	ANSI_BLACK   = 30
+	ANSI_RED     = 31
+	ANSI_GREEN   = 32
+	ANSI_YELLOW  = 33
+	ANSI_BLUE    = 34
+	ANSI_MAGENTA = 35
+	ANSI_CYAN    = 36
+	ANSI_WHITE   = 37
+)
+
 func logInit() bool {
 	if ENABLE_LOGGING {
 		if LOGGER == nil {
@@ -96,4 +107,8 @@ func PrintInfo(component string, format string, v ...interface{}) {
 
 func PrintError(err error, component string, format string, v ...interface{}) {
 	print(formatError(err, component, format, v...))
+}
+
+func Colorize(s string, c int) string {
+	return fmt.Sprintf("\033[%dm%s\033[0m", c, s)
 }
