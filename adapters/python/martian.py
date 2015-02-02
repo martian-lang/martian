@@ -99,7 +99,7 @@ class Metadata:
         self._append("warn", message, "warn")
 
     def _assert(self, message):
-        self.write_raw("assert", message + "\n")
+        self.write_raw("assert", message)
 
     def update_journal(self, name, force=False):
         if self.run_type != "main":
