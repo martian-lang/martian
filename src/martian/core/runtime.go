@@ -1134,16 +1134,17 @@ func (self *Node) reset() error {
 	os.RemoveAll(self.journalPath)
 	os.RemoveAll(self.tmpPath)
 
+	// Clear chunks in the forks so they can be rebuilt on split.
+	for _, fork := range self.forks {
+		fork.clearChunks()
+	}
+
 	// Create stage node directories.
 	self.mkdirs()
 
 	// Load the metadata.
 	self.loadMetadata()
 
-	// Clear chunks in the forks so they can be rebuilt on split.
-	for _, fork := range self.forks {
-		fork.clearChunks()
-	}
 	return nil
 }
 
