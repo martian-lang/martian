@@ -1690,12 +1690,16 @@ func (self *Pipestance) StepNodes() {
 }
 
 func (self *Pipestance) Reset() error {
-	for _, node := range self.node.allNodes() {
+	nodes := self.node.allNodes()
+	for _, node := range nodes {
 		if node.state == "failed" {
 			if err := node.reset(); err != nil {
 				return err
 			}
 		}
+	}
+	for _, node := range nodes {
+		node.state = node.getState()
 	}
 	return nil
 }
