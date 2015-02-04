@@ -145,7 +145,7 @@ Options:
     --version          Show version.`
 	martianVersion := core.GetVersion()
 	opts, _ := docopt.Parse(doc, nil, true, martianVersion, false)
-	core.Println("Martian Runtime (%s)", martianVersion)
+	core.Println("Martian Runtime - %s", martianVersion)
 	core.LogInfo("cmdline", strings.Join(os.Args, " "))
 
 	martianFlags := ""
