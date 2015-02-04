@@ -390,7 +390,7 @@ func (self *RemoteJobManager) processMonitorList() {
 						monitor.running = true
 					}
 					if time.Since(monitor.lastHeartbeat) > time.Minute*heartbeatTimeout {
-						monitor.metadata.writeRaw("errors", fmt.Sprintf("Job was killed by %s", self.jobMode))
+						monitor.metadata.writeRaw("errors", fmt.Sprintf("Heartbeat not detected for %d minutes. Assuming job has failed", heartbeatTimeout))
 					}
 				}
 				newMonitorList = append(newMonitorList, monitor)
