@@ -40,7 +40,7 @@ html(ng-app="app" ng-controller="MartianGraphCtrl")
         #graph(style="margin-left: 10px; margin-top: 60px;")
             svg(width="750px" height="1000px" ng-click="alert('l')")
                 g#top(transform="translate(5,5) scale(1.0)")
-        .details#perf(ng-show="perf && pnode")
+        .details#perf(ng-if="perf && pnode")
             h4#stagename
                 a(href="#" ng-click="selectNode(topnode.fqname)" ng-show="pnode.fqname!=topnode.fqname") &larr;
                 | &nbsp;
@@ -53,44 +53,51 @@ html(ng-app="app" ng-controller="MartianGraphCtrl")
                         .btn-group
                             button.btn.btn-default(type="button" ng-model="$parent.forki" ng-repeat="fork in pnode.forks" btn-radio="fork.index") {{fork.index}}
             tabset.tbs-hor
-                tab(heading="Summary" active="tabs.summary" ng-if="pnode.forks[forki].fork_stats")
+                tab(heading="Summary" active="tabs.summary")
                     table.table#info(style="float:left; position: relative")
                         tr
                             td Walltime
-                            td {{ humanize(pnode.forks[forki].fork_stats.walltime, 'seconds') }}
+                            td {{ humanize('walltime', 'seconds') }}
                         tr
                             td Core hours
-                            td {{ humanize(pnode.forks[forki].fork_stats.core_hours, 'core hours') }}
+                            td {{ humanize('core_hours', 'core hours') }}
+                        tr
+                            td User time
+                            td {{ humanize('usertime', 'seconds') }}
+                        tr
+                            td System time
+                            td {{ humanize('systemtime', 'seconds') }}
                         tr
                             td IO
-                            td {{ humanize(pnode.forks[forki].fork_stats.total_blocks, 'blocks') }}
+                            td {{ humanize('total_blocks', 'blocks') }}
                         tr
                             td IO rate
-                            td {{ humanize(pnode.forks[forki].fork_stats.total_blocks_rate, 'blocks / sec') }}
+                            td {{ humanize('total_blocks_rate', 'blocks / sec') }}
                         tr
                             td Max RSS
-                            td {{ humanize(pnode.forks[forki].fork_stats.maxrss, 'kilobytes') }}
+                            td {{ humanize('maxrss', 'kilobytes') }}
                         tr
                             td Jobs
-                            td {{ humanize(pnode.forks[forki].fork_stats.num_jobs, 'jobs') }}
+                            td {{ humanize('num_jobs', 'jobs') }}
                         tr
                             td Output files
-                            td {{ humanize(pnode.forks[forki].fork_stats.output_files, 'files') }}
+                            td {{ humanize('output_files', 'files') }}
                         tr
                             td Output bytes
-                            td {{ humanize(pnode.forks[forki].fork_stats.output_bytes, 'bytes') }}
+                            td {{ humanize('output_bytes', 'bytes') }}
                         tr
                             td VDR files
-                            td {{ humanize(pnode.forks[forki].fork_stats.vdr_files, 'files') }}
+                            td {{ humanize('vdr_files', 'files') }}
                         tr
                             td VDR bytes
-                            td {{ humanize(pnode.forks[forki].fork_stats.vdr_bytes, 'bytes') }}
-                tab(heading="Core Hours" active="tabs.cpu" ng-click="getChart()")
-                tab(heading="IO" active="tabs.io" ng-click="getChart()")
-                tab(heading="IO Rate" active="tabs.iorate" ng-click="getChart()")
-                tab(heading="Memory" active="tabs.memory" ng-click="getChart()")
-                tab(heading="Jobs" active="tabs.jobs" ng-click="getChart()" ng-if="pnode.type == 'pipeline'")
-                tab(heading="VDR" active="tabs.vdr" ng-click="getChart()" ng-if="pnode.type == 'pipeline'")
+                            td {{ humanize('vdr_bytes', 'bytes') }}
+                tab(heading="Core Hours" active="tabs.cpu")
+                tab(heading="Time" active="tabs.time")
+                tab(heading="IO" active="tabs.io")
+                tab(heading="IO Rate" active="tabs.iorate")
+                tab(heading="Memory" active="tabs.memory")
+                tab(heading="Jobs" active="tabs.jobs" ng-if="pnode.type == 'pipeline'")
+                tab(heading="VDR" active="tabs.vdr" ng-if="pnode.type == 'pipeline'")
             span(ng-if="!tabs.summary")
                 tabset.tbs-vert(vertical="true")
                     tab(heading="Graph" ng-click="setChartType('BarChart')")

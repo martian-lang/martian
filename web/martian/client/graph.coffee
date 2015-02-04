@@ -140,11 +140,6 @@ app.controller('MartianGraphCtrl', ($scope, $compile, $http, $interval) ->
         renderGraph($scope, $compile)
     )
 
-    $http.get("/api/get-perf/#{container}/#{pname}/#{psid}").success((state) ->
-        $scope.pnodes = _.indexBy(state.nodes, 'fqname')
-        $scope.pnode = $scope.pnodes[$scope.topnode.fqname]
-    )
-
     $scope.id = null
     $scope.forki = 0
     $scope.chunki = 0
@@ -155,7 +150,16 @@ app.controller('MartianGraphCtrl', ($scope, $compile, $http, $interval) ->
 
     $scope.charts = {}
     $scope.charttype = 'BarChart'
-    $scope.tabs = {summary: true, cpu: false, io: false, iorate: false, memory: false, jobs: false, vdr: false}
+    $scope.tabs = {summary: true, time: false, cpu: false, io: false, iorate: false, memory: false, jobs: false, vdr: false}
+    $scope.chartopts = {
+        time: {columns: ['usertime', 'systemtime'], units: 'seconds'},
+        cpu: {columns: ['core_hours']},
+        memory: {columns: ['maxrss'], units: 'kilobytes'},
+        io: {columns: ['total_blocks', 'in_blocks', 'out_blocks']},
+        iorate: {columns: ['total_blocks_rate', 'in_blocks_rate', 'out_blocks_rate']},
+        jobs: {columns: ['num_jobs']},
+        vdr: {columns: ['vdr_bytes'], units: 'bytes'},
+    }
 
     # Only admin pages get auto-refresh.
     if admin
@@ -163,8 +167,22 @@ app.controller('MartianGraphCtrl', ($scope, $compile, $http, $interval) ->
             $scope.refresh()
         , 30000)
 
-    $scope.humanize = (num, units) ->
-        return humanize(num, units)
+    $scope.$watch('perf', () ->
+        if $scope.perf
+            $http.get("/api/get-perf/#{container}/#{pname}/#{psid}").success((state) ->
+                $scope.pnodes = _.indexBy(state.nodes, 'fqname')
+                $scope.pnode = $scope.pnodes[$scope.topnode.fqname]
+            )
+    )
+
+    for tab, selected of $scope.tabs
+        $scope.$watch('tabs.'+tab, () ->
+            $scope.getChart()
+        )
+
+    $scope.humanize = (name, units) ->
+        fork = $scope.pnode.forks[$scope.forki]
+        return humanize(fork.fork_stats[name], units)
 
     $scope.getActiveTab = () ->
         for tab, selected of $scope.tabs
@@ -173,25 +191,10 @@ app.controller('MartianGraphCtrl', ($scope, $compile, $http, $interval) ->
 
     $scope.getChart = () ->
         active = $scope.getActiveTab()
-        columns = []
-        units = ''
-        if active == 'summary'
-            return
-        if active == 'cpu'
-            columns = ['core_hours']
-        if active == 'memory'
-            columns = ['maxrss']
-            units = 'kilobytes'
-        if active == 'io'
-            columns = ['total_blocks', 'in_blocks', 'out_blocks']
-        if active == "iorate"
-            columns = ['total_blocks_rate', 'in_blocks_rate', 'out_blocks_rate']
-        if active == 'jobs'
-            columns = ['num_jobs']
-        if active == 'vdr'
-            columns = ['vdr_bytes']
-            units = 'bytes'
-        $scope.charts[$scope.forki] = renderChart($scope, columns, units)
+        if $scope.chartopts[active]
+            columns = $scope.chartopts[active].columns
+            units = if $scope.chartopts[active].units then $scope.chartopts[active].units else ''
+            $scope.charts[$scope.forki] = renderChart($scope, columns, units)
 
     $scope.setChartType = (charttype) ->
         $scope.charttype = charttype
@@ -203,10 +206,12 @@ app.controller('MartianGraphCtrl', ($scope, $compile, $http, $interval) ->
     $scope.selectNode = (id) ->
         $scope.id = id
         $scope.node = $scope.nodes[id]
-        $scope.pnode = $scope.pnodes[id]
         $scope.forki = 0
         $scope.chunki = 0
         $scope.mdviews = { forks:{}, split:{}, join:{}, chunks:{} }
+        if $scope.perf
+            $scope.pnode = $scope.pnodes[id]
+            $scope.getChart()
 
     $scope.restart = () ->
         $scope.showRestart = false

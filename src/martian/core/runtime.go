@@ -130,7 +130,7 @@ func (self *Metadata) writeTime(name string) {
 }
 func (self *Metadata) remove(name string) { os.Remove(self.makePath(name)) }
 
-func (self *Metadata) serialize() interface{} {
+func (self *Metadata) serializeState() interface{} {
 	names := []string{}
 	self.mutex.Lock()
 	for content, _ := range self.contents {
@@ -150,7 +150,8 @@ func (self *Metadata) serializePerf(numThreads int) *PerfInfo {
 
 		var jobInfo *JobInfo
 		if err := json.Unmarshal([]byte(data), &jobInfo); err == nil {
-			return reduceJobInfo(self, jobInfo, numThreads)
+			fpaths, _ := self.enumerateFiles()
+			return reduceJobInfo(jobInfo, fpaths, numThreads)
 		}
 	}
 	return nil
@@ -289,7 +290,7 @@ func (self *Binding) resolve(argPermute map[string]interface{}) interface{} {
 	return nil
 }
 
-func (self *Binding) serialize(argPermute map[string]interface{}) interface{} {
+func (self *Binding) serializeState(argPermute map[string]interface{}) interface{} {
 	var node interface{} = nil
 	var matchedFork interface{} = nil
 	if self.boundNode != nil {
@@ -458,12 +459,12 @@ func (self *Chunk) step() {
 	self.node.runChunk(self.fqname, self.metadata, threads, memGB)
 }
 
-func (self *Chunk) serialize() interface{} {
+func (self *Chunk) serializeState() interface{} {
 	return map[string]interface{}{
 		"index":    self.index,
 		"chunkDef": self.chunkDef,
 		"state":    self.getState(),
-		"metadata": self.metadata.serialize(),
+		"metadata": self.metadata.serializeState(),
 	}
 }
 
@@ -824,14 +825,14 @@ func (self *Fork) postProcess(outsPath string) {
 	Log("\n")
 }
 
-func (self *Fork) serialize() interface{} {
+func (self *Fork) serializeState() interface{} {
 	argbindings := []interface{}{}
 	for _, argbinding := range self.node.argbindingList {
-		argbindings = append(argbindings, argbinding.serialize(self.argPermute))
+		argbindings = append(argbindings, argbinding.serializeState(self.argPermute))
 	}
 	retbindings := []interface{}{}
 	for _, retbinding := range self.node.retbindingList {
-		retbindings = append(retbindings, retbinding.serialize(self.argPermute))
+		retbindings = append(retbindings, retbinding.serializeState(self.argPermute))
 	}
 	bindings := map[string]interface{}{
 		"Argument": argbindings,
@@ -839,15 +840,15 @@ func (self *Fork) serialize() interface{} {
 	}
 	chunks := []interface{}{}
 	for _, chunk := range self.chunks {
-		chunks = append(chunks, chunk.serialize())
+		chunks = append(chunks, chunk.serializeState())
 	}
 	return map[string]interface{}{
 		"index":          self.index,
 		"argPermute":     self.argPermute,
 		"state":          self.getState(),
-		"metadata":       self.metadata.serialize(),
-		"split_metadata": self.split_metadata.serialize(),
-		"join_metadata":  self.join_metadata.serialize(),
+		"metadata":       self.metadata.serializeState(),
+		"split_metadata": self.split_metadata.serializeState(),
+		"join_metadata":  self.join_metadata.serializeState(),
 		"chunks":         chunks,
 		"bindings":       bindings,
 	}
@@ -1413,14 +1414,14 @@ func (self *Node) vdrKill() *VDRKillReport {
 //
 // Serialization
 //
-func (self *Node) serialize() interface{} {
+func (self *Node) serializeState() interface{} {
 	sweepbindings := []interface{}{}
 	for _, sweepbinding := range self.sweepbindings {
-		sweepbindings = append(sweepbindings, sweepbinding.serialize(nil))
+		sweepbindings = append(sweepbindings, sweepbinding.serializeState(nil))
 	}
 	forks := []interface{}{}
 	for _, fork := range self.forks {
-		forks = append(forks, fork.serialize())
+		forks = append(forks, fork.serializeState())
 	}
 	edges := []interface{}{}
 	for _, prenode := range self.directPrenodes {
@@ -1449,7 +1450,7 @@ func (self *Node) serialize() interface{} {
 		"type":          self.kind,
 		"path":          self.path,
 		"state":         self.state,
-		"metadata":      self.metadata.serialize(),
+		"metadata":      self.metadata.serializeState(),
 		"sweepbindings": sweepbindings,
 		"forks":         forks,
 		"edges":         edges,
@@ -1797,18 +1798,17 @@ func (self *Pipestance) Reset() error {
 	return nil
 }
 
-func (self *Pipestance) Serialize() interface{} {
+func (self *Pipestance) Serialize(name string) interface{} {
 	ser := []interface{}{}
 	for _, node := range self.node.allNodes() {
-		ser = append(ser, node.serialize())
-	}
-	return ser
-}
-
-func (self *Pipestance) SerializePerf() interface{} {
-	ser := []interface{}{}
-	for _, node := range self.node.allNodes() {
-		ser = append(ser, node.serializePerf())
+		switch name {
+		case "finalstate":
+			ser = append(ser, node.serializeState())
+		case "perf":
+			ser = append(ser, node.serializePerf())
+		default:
+			panic(fmt.Sprintf("Unsupported serialization type: %s", name))
+		}
 	}
 	return ser
 }
@@ -1823,13 +1823,15 @@ func (self *Pipestance) PostProcess() {
 func (self *Pipestance) Immortalize() {
 	metadata := NewMetadata(self.node.parent.getNode().fqname,
 		self.node.parent.getNode().path)
-	metadata.write("finalstate", self.Serialize())
+	metadata.write("finalstate", self.Serialize("finalstate"))
+	metadata.write("perf", self.Serialize("perf"))
 }
 
 func (self *Pipestance) Unimmortalize() {
 	metadata := NewMetadata(self.node.parent.getNode().fqname,
 		self.node.parent.getNode().path)
 	metadata.remove("finalstate")
+	metadata.remove("perf")
 }
 
 func (self *Pipestance) VDRKill() *VDRKillReport {
@@ -2090,11 +2092,11 @@ func (self *Runtime) InvokeStage(src string, srcPath string, ssid string,
 	return stagestance, nil
 }
 
-func (self *Runtime) GetSerialization(pipestancePath string) (interface{}, bool) {
+func (self *Runtime) GetSerialization(pipestancePath string, name string) (interface{}, bool) {
 	metadata := NewMetadata("", pipestancePath)
 	metadata.loadCache()
-	if metadata.exists("finalstate") {
-		return metadata.read("finalstate"), true
+	if metadata.exists(name) {
+		return metadata.read(name), true
 	}
 	return nil, false
 }

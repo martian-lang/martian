@@ -67,6 +67,8 @@ type PerfInfo struct {
 	Start           time.Time `json:"start"`
 	End             time.Time `json:"end"`
 	WallTime        float64   `json:"walltime"`
+	UserTime        float64   `json:"usertime"`
+	SystemTime      float64   `json:"systemtime"`
 	TotalFiles      uint      `json:"total_files"`
 	TotalBytes      uint64    `json:"total_bytes"`
 	OutputFiles     uint      `json:"output_files"`
@@ -75,7 +77,7 @@ type PerfInfo struct {
 	VdrBytes        uint64    `json:"vdr_bytes"`
 }
 
-func reduceJobInfo(metadata *Metadata, jobInfo *JobInfo, numThreads int) *PerfInfo {
+func reduceJobInfo(jobInfo *JobInfo, fpaths []string, numThreads int) *PerfInfo {
 	perfInfo := &PerfInfo{}
 	timeLayout := "2006-01-02 15:04:05"
 
@@ -96,11 +98,13 @@ func reduceJobInfo(metadata *Metadata, jobInfo *JobInfo, numThreads int) *PerfIn
 		perfInfo.InBlocks = self.InBlocks + children.InBlocks
 		perfInfo.OutBlocks = self.OutBlocks + children.OutBlocks
 		perfInfo.TotalBlocks = perfInfo.InBlocks + perfInfo.OutBlocks
+		perfInfo.UserTime = self.UserTime + children.UserTime
+		perfInfo.SystemTime = self.SystemTime + children.SystemTime
 		perfInfo.InBlocksRate = float64(perfInfo.InBlocks) / perfInfo.Duration
 		perfInfo.OutBlocksRate = float64(perfInfo.OutBlocks) / perfInfo.Duration
 		perfInfo.TotalBlocksRate = float64(perfInfo.TotalBlocks) / perfInfo.Duration
 	}
-	fpaths, _ := metadata.enumerateFiles()
+
 	for _, fpath := range fpaths {
 		if fileInfo, err := os.Stat(fpath); err == nil {
 			perfInfo.OutputFiles += 1
@@ -138,6 +142,8 @@ func computeStats(perfInfos []*PerfInfo, vdrKillReport *VDRKillReport) *PerfInfo
 		aggPerfInfo.TotalBlocks += perfInfo.TotalBlocks
 		aggPerfInfo.OutputFiles += perfInfo.OutputFiles
 		aggPerfInfo.OutputBytes += perfInfo.OutputBytes
+		aggPerfInfo.UserTime += perfInfo.UserTime
+		aggPerfInfo.SystemTime += perfInfo.SystemTime
 	}
 	aggPerfInfo.WallTime = aggPerfInfo.End.Sub(aggPerfInfo.Start).Seconds()
 	aggPerfInfo.InBlocksRate = float64(aggPerfInfo.InBlocks) / aggPerfInfo.Duration

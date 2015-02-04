@@ -195,6 +195,7 @@
   };
 
   app.controller('MartianGraphCtrl', function($scope, $compile, $http, $interval) {
+    var selected, tab, _ref;
     $scope.pname = pname;
     $scope.psid = psid;
     $scope.admin = admin;
@@ -205,10 +206,6 @@
       $scope.nodes = _.indexBy(state.nodes, 'fqname');
       $scope.info = state.info;
       return renderGraph($scope, $compile);
-    });
-    $http.get("/api/get-perf/" + container + "/" + pname + "/" + psid).success(function(state) {
-      $scope.pnodes = _.indexBy(state.nodes, 'fqname');
-      return $scope.pnode = $scope.pnodes[$scope.topnode.fqname];
     });
     $scope.id = null;
     $scope.forki = 0;
@@ -226,6 +223,7 @@
     $scope.charttype = 'BarChart';
     $scope.tabs = {
       summary: true,
+      time: false,
       cpu: false,
       io: false,
       iorate: false,
@@ -233,19 +231,62 @@
       jobs: false,
       vdr: false
     };
+    $scope.chartopts = {
+      time: {
+        columns: ['usertime', 'systemtime'],
+        units: 'seconds'
+      },
+      cpu: {
+        columns: ['core_hours']
+      },
+      memory: {
+        columns: ['maxrss'],
+        units: 'kilobytes'
+      },
+      io: {
+        columns: ['total_blocks', 'in_blocks', 'out_blocks']
+      },
+      iorate: {
+        columns: ['total_blocks_rate', 'in_blocks_rate', 'out_blocks_rate']
+      },
+      jobs: {
+        columns: ['num_jobs']
+      },
+      vdr: {
+        columns: ['vdr_bytes'],
+        units: 'bytes'
+      }
+    };
     if (admin) {
       $scope.stopRefresh = $interval(function() {
         return $scope.refresh();
       }, 30000);
     }
-    $scope.humanize = function(num, units) {
-      return humanize(num, units);
+    $scope.$watch('perf', function() {
+      if ($scope.perf) {
+        return $http.get("/api/get-perf/" + container + "/" + pname + "/" + psid).success(function(state) {
+          $scope.pnodes = _.indexBy(state.nodes, 'fqname');
+          return $scope.pnode = $scope.pnodes[$scope.topnode.fqname];
+        });
+      }
+    });
+    _ref = $scope.tabs;
+    for (tab in _ref) {
+      selected = _ref[tab];
+      $scope.$watch('tabs.' + tab, function() {
+        return $scope.getChart();
+      });
+    }
+    $scope.humanize = function(name, units) {
+      var fork;
+      fork = $scope.pnode.forks[$scope.forki];
+      return humanize(fork.fork_stats[name], units);
     };
     $scope.getActiveTab = function() {
-      var selected, tab, _ref;
-      _ref = $scope.tabs;
-      for (tab in _ref) {
-        selected = _ref[tab];
+      var _ref1;
+      _ref1 = $scope.tabs;
+      for (tab in _ref1) {
+        selected = _ref1[tab];
         if (selected) {
           return tab;
         }
@@ -254,32 +295,11 @@
     $scope.getChart = function() {
       var active, columns, units;
       active = $scope.getActiveTab();
-      columns = [];
-      units = '';
-      if (active === 'summary') {
-        return;
+      if ($scope.chartopts[active]) {
+        columns = $scope.chartopts[active].columns;
+        units = $scope.chartopts[active].units ? $scope.chartopts[active].units : '';
+        return $scope.charts[$scope.forki] = renderChart($scope, columns, units);
       }
-      if (active === 'cpu') {
-        columns = ['core_hours'];
-      }
-      if (active === 'memory') {
-        columns = ['maxrss'];
-        units = 'kilobytes';
-      }
-      if (active === 'io') {
-        columns = ['total_blocks', 'in_blocks', 'out_blocks'];
-      }
-      if (active === "iorate") {
-        columns = ['total_blocks_rate', 'in_blocks_rate', 'out_blocks_rate'];
-      }
-      if (active === 'jobs') {
-        columns = ['num_jobs'];
-      }
-      if (active === 'vdr') {
-        columns = ['vdr_bytes'];
-        units = 'bytes';
-      }
-      return $scope.charts[$scope.forki] = renderChart($scope, columns, units);
     };
     $scope.setChartType = function(charttype) {
       $scope.charttype = charttype;
@@ -291,15 +311,18 @@
     $scope.selectNode = function(id) {
       $scope.id = id;
       $scope.node = $scope.nodes[id];
-      $scope.pnode = $scope.pnodes[id];
       $scope.forki = 0;
       $scope.chunki = 0;
-      return $scope.mdviews = {
+      $scope.mdviews = {
         forks: {},
         split: {},
         join: {},
         chunks: {}
       };
+      if ($scope.perf) {
+        $scope.pnode = $scope.pnodes[id];
+        return $scope.getChart();
+      }
     };
     $scope.restart = function() {
       $scope.showRestart = false;

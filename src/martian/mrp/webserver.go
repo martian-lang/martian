@@ -19,7 +19,7 @@ import (
 
 	"github.com/go-martini/martini"
 	"github.com/martini-contrib/binding"
-	_ "github.com/martini-contrib/gzip"
+	"github.com/martini-contrib/gzip"
 )
 
 //=============================================================================
@@ -54,7 +54,7 @@ func runWebServer(uiport string, rt *core.Runtime, pipestance *core.Pipestance,
 	m.MapTo(r, (*martini.Routes)(nil))
 	m.Action(r.Handle)
 	app := &martini.ClassicMartini{m, r}
-	//app.Use(gzip.All())
+	app.Use(gzip.All())
 
 	//=========================================================================
 	// Page renderers.
@@ -88,7 +88,7 @@ func runWebServer(uiport string, rt *core.Runtime, pipestance *core.Pipestance,
 		func(p martini.Params) string {
 			state := map[string]interface{}{}
 			info["state"] = pipestance.GetState()
-			state["nodes"] = pipestance.Serialize()
+			state["nodes"] = pipestance.Serialize("finalstate")
 			state["info"] = info
 			bytes, _ := json.Marshal(state)
 			return string(bytes)
@@ -97,7 +97,7 @@ func runWebServer(uiport string, rt *core.Runtime, pipestance *core.Pipestance,
 	app.Get("/api/get-perf/:container/:pname/:psid",
 		func(p martini.Params) string {
 			state := map[string]interface{}{}
-			state["nodes"] = pipestance.SerializePerf()
+			state["nodes"] = pipestance.Serialize("perf")
 			bytes, _ := json.Marshal(state)
 			return string(bytes)
 		})
@@ -123,6 +123,7 @@ func runWebServer(uiport string, rt *core.Runtime, pipestance *core.Pipestance,
 			}
 			return ""
 		})
+
 	//=========================================================================
 	// Start webserver.
 	//=========================================================================
