@@ -495,8 +495,10 @@ func NewFork(nodable Nodable, index int, argPermute map[string]interface{}) *For
 	return self
 }
 
-func (self *Fork) clearChunks() {
+func (self *Fork) reset() {
 	self.chunks = []*Chunk{}
+	self.split_has_run = false
+	self.join_has_run = false
 }
 
 func (self *Fork) collectMetadatas() []*Metadata {
@@ -1139,7 +1141,7 @@ func (self *Node) reset() error {
 
 	// Clear chunks in the forks so they can be rebuilt on split.
 	for _, fork := range self.forks {
-		fork.clearChunks()
+		fork.reset()
 	}
 
 	// Create stage node directories.
