@@ -100,9 +100,11 @@ func reduceJobInfo(jobInfo *JobInfo, fpaths []string, numThreads int) *PerfInfo 
 		perfInfo.TotalBlocks = perfInfo.InBlocks + perfInfo.OutBlocks
 		perfInfo.UserTime = self.UserTime + children.UserTime
 		perfInfo.SystemTime = self.SystemTime + children.SystemTime
-		perfInfo.InBlocksRate = float64(perfInfo.InBlocks) / perfInfo.Duration
-		perfInfo.OutBlocksRate = float64(perfInfo.OutBlocks) / perfInfo.Duration
-		perfInfo.TotalBlocksRate = float64(perfInfo.TotalBlocks) / perfInfo.Duration
+		if perfInfo.Duration > 0 {
+			perfInfo.InBlocksRate = float64(perfInfo.InBlocks) / perfInfo.Duration
+			perfInfo.OutBlocksRate = float64(perfInfo.OutBlocks) / perfInfo.Duration
+			perfInfo.TotalBlocksRate = float64(perfInfo.TotalBlocks) / perfInfo.Duration
+		}
 	}
 
 	for _, fpath := range fpaths {
@@ -145,10 +147,12 @@ func computeStats(perfInfos []*PerfInfo, vdrKillReport *VDRKillReport) *PerfInfo
 		aggPerfInfo.UserTime += perfInfo.UserTime
 		aggPerfInfo.SystemTime += perfInfo.SystemTime
 	}
+	if aggPerfInfo.Duration > 0 {
+		aggPerfInfo.InBlocksRate = float64(aggPerfInfo.InBlocks) / aggPerfInfo.Duration
+		aggPerfInfo.OutBlocksRate = float64(aggPerfInfo.OutBlocks) / aggPerfInfo.Duration
+		aggPerfInfo.TotalBlocksRate = float64(aggPerfInfo.TotalBlocks) / aggPerfInfo.Duration
+	}
 	aggPerfInfo.WallTime = aggPerfInfo.End.Sub(aggPerfInfo.Start).Seconds()
-	aggPerfInfo.InBlocksRate = float64(aggPerfInfo.InBlocks) / aggPerfInfo.Duration
-	aggPerfInfo.OutBlocksRate = float64(aggPerfInfo.OutBlocks) / aggPerfInfo.Duration
-	aggPerfInfo.TotalBlocksRate = float64(aggPerfInfo.TotalBlocks) / aggPerfInfo.Duration
 	aggPerfInfo.VdrFiles = vdrKillReport.Count
 	aggPerfInfo.VdrBytes = vdrKillReport.Size
 	aggPerfInfo.TotalFiles = aggPerfInfo.OutputFiles + aggPerfInfo.VdrFiles

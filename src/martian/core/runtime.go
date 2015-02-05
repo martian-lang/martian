@@ -860,7 +860,11 @@ func (self *Fork) getStages() []map[string]interface{} {
 		stages = append(stages, subfork.getStages()...)
 	}
 	if self.node.kind == "stage" {
-		stages = append(stages, map[string]interface{}{"name": self.node.name, "fqname": self.node.fqname, "forki": self.index})
+		stages = append(stages, map[string]interface{}{
+			"name":   self.node.name,
+			"fqname": self.node.fqname,
+			"forki":  self.index,
+		})
 	}
 	return stages
 }
