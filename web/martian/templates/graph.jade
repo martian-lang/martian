@@ -51,7 +51,7 @@ html(ng-app="app" ng-controller="MartianGraphCtrl")
                     td(style="width: 85px") Forks
                     td(colspan="5")
                         .btn-group
-                            button.btn.btn-default(type="button" ng-model="$parent.forki" ng-repeat="fork in pnode.forks" btn-radio="fork.index") {{fork.index}}
+                            button.btn.btn-default(type="button" ng-model="$parent.$parent.forki" ng-repeat="fork in pnode.forks" btn-radio="fork.index") {{fork.index}}
             tabset.tbs-hor
                 tab(heading="Summary" active="tabs.summary")
                     table.table#info(style="float:left; position: relative")

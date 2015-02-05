@@ -179,6 +179,10 @@ app.controller('MartianGraphCtrl', ($scope, $compile, $http, $interval) ->
         $scope.$watch('tabs.'+tab, () ->
             $scope.getChart()
         )
+    $scope.$watch('forki', () ->
+        if $scope.perf
+            $scope.getChart()
+    )
 
     $scope.humanize = (name, units) ->
         fork = $scope.pnode.forks[$scope.forki]

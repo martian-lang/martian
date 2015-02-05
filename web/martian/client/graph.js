@@ -277,6 +277,11 @@
         return $scope.getChart();
       });
     }
+    $scope.$watch('forki', function() {
+      if ($scope.perf) {
+        return $scope.getChart();
+      }
+    });
     $scope.humanize = function(name, units) {
       var fork;
       fork = $scope.pnode.forks[$scope.forki];
