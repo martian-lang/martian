@@ -1817,23 +1817,24 @@ func (self *Pipestance) Serialize(name string) interface{} {
 	return ser
 }
 
+func (self *Pipestance) GetPath() string {
+	return self.node.parent.getNode().path
+}
+
 func (self *Pipestance) PostProcess() {
-	metadata := NewMetadata(self.node.parent.getNode().fqname,
-		self.node.parent.getNode().path)
+	metadata := NewMetadata(self.node.parent.getNode().fqname, self.GetPath())
 	metadata.writeRaw("timestamp", metadata.readRaw("timestamp")+"\nend: "+Timestamp())
 	self.node.postProcess()
 }
 
 func (self *Pipestance) Immortalize() {
-	metadata := NewMetadata(self.node.parent.getNode().fqname,
-		self.node.parent.getNode().path)
+	metadata := NewMetadata(self.node.parent.getNode().fqname, self.GetPath())
 	metadata.write("finalstate", self.Serialize("finalstate"))
 	metadata.write("perf", self.Serialize("perf"))
 }
 
 func (self *Pipestance) Unimmortalize() {
-	metadata := NewMetadata(self.node.parent.getNode().fqname,
-		self.node.parent.getNode().path)
+	metadata := NewMetadata(self.node.parent.getNode().fqname, self.GetPath())
 	metadata.remove("finalstate")
 	metadata.remove("perf")
 }
@@ -1844,8 +1845,7 @@ func (self *Pipestance) VDRKill() *VDRKillReport {
 		killReports = append(killReports, node.vdrKill())
 	}
 	killReport := mergeVDRKillReports(killReports)
-	metadata := NewMetadata(self.node.parent.getNode().fqname,
-		self.node.parent.getNode().path)
+	metadata := NewMetadata(self.node.parent.getNode().fqname, self.GetPath())
 	metadata.write("vdrkill", killReport)
 	return killReport
 }
