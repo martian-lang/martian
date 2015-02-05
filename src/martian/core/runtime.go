@@ -1474,8 +1474,10 @@ func (self *Node) runJob(shellName string, fqname string, metadata *Metadata,
 	}
 	LogInfo("runtime", "(run:%s) %s.%s", jobMode, fqname, shellName)
 
+	EnterCriticalSection()
 	metadata.write("jobinfo", map[string]interface{}{"name": fqname, "type": jobMode})
 	jobManager.execJob(shellCmd, argv, envs, metadata, threads, memGB, fqname, shellName)
+	ExitCriticalSection()
 }
 
 //=============================================================================
