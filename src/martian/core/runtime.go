@@ -88,15 +88,13 @@ func (self *Metadata) uncache(name string) {
 }
 
 func (self *Metadata) loadCache() {
-	if !self.exists("complete") {
-		paths := self.glob()
-		self.mutex.Lock()
-		self.contents = map[string]bool{}
-		for _, p := range paths {
-			self.contents[path.Base(p)[1:]] = true
-		}
-		self.mutex.Unlock()
+	paths := self.glob()
+	self.mutex.Lock()
+	self.contents = map[string]bool{}
+	for _, p := range paths {
+		self.contents[path.Base(p)[1:]] = true
 	}
+	self.mutex.Unlock()
 }
 
 func (self *Metadata) makePath(name string) string {
@@ -1695,16 +1693,12 @@ func (self *Pipestance) StepNodes() {
 }
 
 func (self *Pipestance) Reset() error {
-	nodes := self.node.allNodes()
-	for _, node := range nodes {
+	for _, node := range self.node.allNodes() {
 		if node.state == "failed" {
 			if err := node.reset(); err != nil {
 				return err
 			}
 		}
-	}
-	for _, node := range nodes {
-		node.state = node.getState()
 	}
 	return nil
 }
