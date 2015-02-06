@@ -69,9 +69,6 @@ func runLoop(pipestance *core.Pipestance, stepSecs int, vdrMode string,
 		if state == "complete" {
 			pipestance.PostProcess()
 			pipestance.Immortalize()
-			if warnings, ok := pipestance.GetWarnings(); ok {
-				core.Log(warnings)
-			}
 			if vdrMode == "disable" {
 				core.LogInfo("runtime", "VDR disabled. No files killed.")
 			} else {
@@ -95,9 +92,6 @@ func runLoop(pipestance *core.Pipestance, stepSecs int, vdrMode string,
 			}
 		} else if state == "failed" {
 			if !showedFailed {
-				if warnings, ok := pipestance.GetWarnings(); ok {
-					core.Log(warnings)
-				}
 				if fqname, _, log, kind, errpaths := pipestance.GetFatalError(); kind == "assert" {
 					core.Log("\n%s\n", log)
 				} else {
@@ -285,7 +279,7 @@ Options:
 	// Configure Martian runtime.
 	//=========================================================================
 	rt := core.NewRuntimeWithCores(jobMode, vdrMode, mroPath, martianVersion, mroVersion,
-		reqCores, reqMem, reqMemPerCore, profile, stackVars, debug, stest)
+		reqCores, reqMem, reqMemPerCore, -1, profile, stackVars, debug, stest)
 
 	// Print this here because the log makes more sense when this appears before
 	// the runloop messages start to appear.

@@ -9,11 +9,9 @@ import (
 	"fmt"
 	"github.com/10XDev/osext"
 	"os"
-	"os/signal"
 	"path"
 	"regexp"
 	"strings"
-	"syscall"
 	"time"
 
 	"github.com/docopt/docopt.go"
@@ -65,17 +63,6 @@ func cartesianProduct(valueSets []interface{}) []interface{} {
 		perms = newPerms
 	}
 	return perms
-}
-
-func SetupSignalHandlers() {
-	// Handle CTRL-C and kill.
-	sigchan := make(chan os.Signal, 1)
-	signal.Notify(sigchan, os.Interrupt)
-	signal.Notify(sigchan, syscall.SIGTERM)
-	go func() {
-		<-sigchan
-		os.Exit(1)
-	}()
 }
 
 func ValidateID(id string) error {

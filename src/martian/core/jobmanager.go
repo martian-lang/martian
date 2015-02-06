@@ -268,11 +268,12 @@ type RemoteJobManager struct {
 	jobTemplate      string
 	jobCmd           string
 	memGBPerCore     int
+	memGBPerJob      int
 	monitorList      []*JobMonitor
 	monitorListMutex *sync.Mutex
 }
 
-func NewRemoteJobManager(jobMode string, memGBPerCore int) *RemoteJobManager {
+func NewRemoteJobManager(jobMode string, memGBPerCore int, memGBPerJob int) *RemoteJobManager {
 	self := &RemoteJobManager{}
 	self.jobMode = jobMode
 	self.monitorList = []*JobMonitor{}
@@ -281,6 +282,11 @@ func NewRemoteJobManager(jobMode string, memGBPerCore int) *RemoteJobManager {
 		self.memGBPerCore = memGBPerCore
 	} else {
 		self.memGBPerCore = defaultMemGBPerCore
+	}
+	if memGBPerJob > 0 {
+		self.memGBPerJob = memGBPerJob
+	} else {
+		self.memGBPerJob = defaultMemGB
 	}
 	_, _, self.jobCmd, self.jobTemplate = verifyJobManagerFiles(jobMode)
 	self.processMonitorList()
@@ -311,11 +317,12 @@ func (self *RemoteJobManager) execJob(shellCmd string, argv []string, envs []str
 
 	// Sanity check memory requirements.
 	if memGB < 1 {
-		memGB = defaultMemGB
+		memGB = self.memGBPerJob
 	}
 
 	// Compute threads needed based on memory requirements.
-	threads = max(threads, (memGB+self.memGBPerCore-1)/self.memGBPerCore)
+	// TODO: Enable when ready to enforce memory requirements!!!
+	// threads = max(threads, (memGB+self.memGBPerCore-1)/self.memGBPerCore)
 
 	argv = append([]string{shellCmd}, argv...)
 	argv = append(envs, argv...)
@@ -383,7 +390,7 @@ func (self *RemoteJobManager) processMonitorList() {
 						monitor.running = true
 					}
 					if time.Since(monitor.lastHeartbeat) > time.Minute*heartbeatTimeout {
-						monitor.metadata.writeRaw("errors", fmt.Sprintf("Job was killed by %s", self.jobMode))
+						monitor.metadata.writeRaw("errors", fmt.Sprintf("Heartbeat not detected for %d minutes. Assuming job has failed", heartbeatTimeout))
 					}
 				}
 				newMonitorList = append(newMonitorList, monitor)

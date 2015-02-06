@@ -74,6 +74,10 @@ a { cursor:pointer; }
     cursor: pointer;
 }
 
+.navbar-views {
+    float: right;
+}
+
 /*******************************************/
 .close {
     top: -1px;
@@ -263,4 +267,15 @@ table#bindings td, table#info td {
 }
 td.tight {
     padding: 8px 4px;
+}
+
+.tbs-hor {
+    width: 800px;
+}
+
+.tbs-vert {
+    width: 100px;
+    float: right;
+    z-index: 1;
+    position: relative;
 }

@@ -39,6 +39,13 @@ type MetadataForm struct {
 	Name string
 }
 
+func getSerialization(rt *core.Runtime, pipestance *core.Pipestance, name string) interface{} {
+	if ser, ok := rt.GetSerialization(pipestance.GetPath(), name); ok {
+		return ser
+	}
+	return pipestance.Serialize(name)
+}
+
 func runWebServer(uiport string, rt *core.Runtime, pipestance *core.Pipestance,
 	info map[string]string) {
 	//=========================================================================
@@ -88,8 +95,16 @@ func runWebServer(uiport string, rt *core.Runtime, pipestance *core.Pipestance,
 		func(p martini.Params) string {
 			state := map[string]interface{}{}
 			info["state"] = pipestance.GetState()
-			state["nodes"] = pipestance.Serialize()
+			state["nodes"] = getSerialization(rt, pipestance, "finalstate")
 			state["info"] = info
+			bytes, _ := json.Marshal(state)
+			return string(bytes)
+		})
+
+	app.Get("/api/get-perf/:container/:pname/:psid",
+		func(p martini.Params) string {
+			state := map[string]interface{}{}
+			state["nodes"] = getSerialization(rt, pipestance, "perf")
 			bytes, _ := json.Marshal(state)
 			return string(bytes)
 		})

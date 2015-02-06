@@ -88,15 +88,13 @@ func (self *Metadata) uncache(name string) {
 }
 
 func (self *Metadata) loadCache() {
-	if !self.exists("complete") {
-		paths := self.glob()
-		self.mutex.Lock()
-		self.contents = map[string]bool{}
-		for _, p := range paths {
-			self.contents[path.Base(p)[1:]] = true
-		}
-		self.mutex.Unlock()
+	paths := self.glob()
+	self.mutex.Lock()
+	self.contents = map[string]bool{}
+	for _, p := range paths {
+		self.contents[path.Base(p)[1:]] = true
 	}
+	self.mutex.Unlock()
 }
 
 func (self *Metadata) makePath(name string) string {
@@ -130,7 +128,7 @@ func (self *Metadata) writeTime(name string) {
 }
 func (self *Metadata) remove(name string) { os.Remove(self.makePath(name)) }
 
-func (self *Metadata) serialize() interface{} {
+func (self *Metadata) serializeState() interface{} {
 	names := []string{}
 	self.mutex.Lock()
 	for content, _ := range self.contents {
@@ -142,6 +140,19 @@ func (self *Metadata) serialize() interface{} {
 		"path":  self.path,
 		"names": names,
 	}
+}
+
+func (self *Metadata) serializePerf(numThreads int) *PerfInfo {
+	if self.exists("complete") && self.exists("jobinfo") {
+		data := self.readRaw("jobinfo")
+
+		var jobInfo *JobInfo
+		if err := json.Unmarshal([]byte(data), &jobInfo); err == nil {
+			fpaths, _ := self.enumerateFiles()
+			return reduceJobInfo(jobInfo, fpaths, numThreads)
+		}
+	}
+	return nil
 }
 
 //=============================================================================
@@ -277,7 +288,7 @@ func (self *Binding) resolve(argPermute map[string]interface{}) interface{} {
 	return nil
 }
 
-func (self *Binding) serialize(argPermute map[string]interface{}) interface{} {
+func (self *Binding) serializeState(argPermute map[string]interface{}) interface{} {
 	var node interface{} = nil
 	var matchedFork interface{} = nil
 	if self.boundNode != nil {
@@ -446,13 +457,25 @@ func (self *Chunk) step() {
 	self.node.runChunk(self.fqname, self.metadata, threads, memGB)
 }
 
-func (self *Chunk) serialize() interface{} {
+func (self *Chunk) serializeState() interface{} {
 	return map[string]interface{}{
 		"index":    self.index,
 		"chunkDef": self.chunkDef,
 		"state":    self.getState(),
-		"metadata": self.metadata.serialize(),
+		"metadata": self.metadata.serializeState(),
 	}
+}
+
+func (self *Chunk) serializePerf() (interface{}, *PerfInfo) {
+	numThreads := 1
+	if v, ok := self.chunkDef["__threads"].(float64); ok {
+		numThreads = int(v)
+	}
+	stats := self.metadata.serializePerf(numThreads)
+	return map[string]interface{}{
+		"index":       self.index,
+		"chunk_stats": stats,
+	}, stats
 }
 
 //=============================================================================
@@ -466,6 +489,7 @@ type Fork struct {
 	metadata       *Metadata
 	split_metadata *Metadata
 	join_metadata  *Metadata
+	subforks       []*Fork
 	chunks         []*Chunk
 	split_has_run  bool
 	join_has_run   bool
@@ -485,6 +509,7 @@ func NewFork(nodable Nodable, index int, argPermute map[string]interface{}) *For
 	self.argPermute = argPermute
 	self.split_has_run = false
 	self.join_has_run = false
+	self.subforks = []*Fork{}
 	self.chunks = []*Chunk{}
 	if err := json.Unmarshal([]byte(self.split_metadata.readRaw("stage_defs")), &self.stageDefs); err == nil {
 		for i, chunkDef := range self.stageDefs.ChunkDefs {
@@ -495,8 +520,10 @@ func NewFork(nodable Nodable, index int, argPermute map[string]interface{}) *For
 	return self
 }
 
-func (self *Fork) clearChunks() {
+func (self *Fork) reset() {
 	self.chunks = []*Chunk{}
+	self.split_has_run = false
+	self.join_has_run = false
 }
 
 func (self *Fork) collectMetadatas() []*Metadata {
@@ -694,17 +721,25 @@ func (self *Fork) step() {
 	}
 }
 
+func (self *Fork) getVdrKillReport() (*VDRKillReport, bool) {
+	killReport := &VDRKillReport{}
+	ok := false
+	if self.metadata.exists("vdrkill") {
+		data := self.metadata.readRaw("vdrkill")
+		if err := json.Unmarshal([]byte(data), &killReport); err == nil {
+			ok = true
+		}
+	}
+	return killReport, ok
+}
+
 func (self *Fork) vdrKill() *VDRKillReport {
 	killReport := &VDRKillReport{}
 	if self.node.rt.vdrMode == "disable" {
 		return killReport
 	}
-	if self.metadata.exists("vdrkill") {
-		var killReport *VDRKillReport
-		data := self.metadata.readRaw("vdrkill")
-		if err := json.Unmarshal([]byte(data), &killReport); err == nil {
-			return killReport
-		}
+	if killReport, ok := self.getVdrKillReport(); ok {
+		return killReport
 	}
 
 	killPaths := []string{}
@@ -796,16 +831,39 @@ func (self *Fork) postProcess(outsPath string) {
 		Log("- %s: %v\n", key, value)
 	}
 	Log("\n")
+
+	if alarms := self.getAlarms(); len(alarms) > 0 {
+		if len(self.node.forks) > 1 {
+			Log("\nAlarms (fork%d):\n", self.index)
+		} else {
+			Log("\nAlarms:\n")
+		}
+		Log(alarms + "\n")
+	}
 }
 
-func (self *Fork) serialize() interface{} {
+func (self *Fork) getAlarms() string {
+	alarms := ""
+	for _, metadata := range self.collectMetadatas() {
+		if !metadata.exists("alarm") {
+			continue
+		}
+		alarms += metadata.readRaw("alarm")
+	}
+	for _, subfork := range self.subforks {
+		alarms += subfork.getAlarms()
+	}
+	return alarms
+}
+
+func (self *Fork) serializeState() interface{} {
 	argbindings := []interface{}{}
 	for _, argbinding := range self.node.argbindingList {
-		argbindings = append(argbindings, argbinding.serialize(self.argPermute))
+		argbindings = append(argbindings, argbinding.serializeState(self.argPermute))
 	}
 	retbindings := []interface{}{}
 	for _, retbinding := range self.node.retbindingList {
-		retbindings = append(retbindings, retbinding.serialize(self.argPermute))
+		retbindings = append(retbindings, retbinding.serializeState(self.argPermute))
 	}
 	bindings := map[string]interface{}{
 		"Argument": argbindings,
@@ -813,18 +871,77 @@ func (self *Fork) serialize() interface{} {
 	}
 	chunks := []interface{}{}
 	for _, chunk := range self.chunks {
-		chunks = append(chunks, chunk.serialize())
+		chunks = append(chunks, chunk.serializeState())
 	}
 	return map[string]interface{}{
 		"index":          self.index,
 		"argPermute":     self.argPermute,
 		"state":          self.getState(),
-		"metadata":       self.metadata.serialize(),
-		"split_metadata": self.split_metadata.serialize(),
-		"join_metadata":  self.join_metadata.serialize(),
+		"metadata":       self.metadata.serializeState(),
+		"split_metadata": self.split_metadata.serializeState(),
+		"join_metadata":  self.join_metadata.serializeState(),
 		"chunks":         chunks,
 		"bindings":       bindings,
 	}
+}
+
+func (self *Fork) getStages() []map[string]interface{} {
+	stages := []map[string]interface{}{}
+	for _, subfork := range self.subforks {
+		stages = append(stages, subfork.getStages()...)
+	}
+	if self.node.kind == "stage" {
+		stages = append(stages, map[string]interface{}{
+			"name":   self.node.name,
+			"fqname": self.node.fqname,
+			"forki":  self.index,
+		})
+	}
+	return stages
+}
+
+func (self *Fork) serializePerf() (interface{}, *PerfInfo, *VDRKillReport) {
+	chunks := []interface{}{}
+	stats := []*PerfInfo{}
+
+	for _, chunk := range self.chunks {
+		chunkSer, chunkStats := chunk.serializePerf()
+		chunks = append(chunks, chunkSer)
+		if chunkStats != nil {
+			stats = append(stats, chunkStats)
+		}
+	}
+	numThreads := 1
+	splitStats := self.split_metadata.serializePerf(numThreads)
+	joinStats := self.join_metadata.serializePerf(numThreads)
+	if splitStats != nil {
+		stats = append(stats, splitStats)
+	}
+	if joinStats != nil {
+		stats = append(stats, joinStats)
+	}
+
+	killReport, _ := self.getVdrKillReport()
+	killReports := []*VDRKillReport{killReport}
+	for _, subfork := range self.subforks {
+		_, subforkStats, subforkKillReport := subfork.serializePerf()
+		stats = append(stats, subforkStats)
+		killReports = append(killReports, subforkKillReport)
+	}
+	killReport = mergeVDRKillReports(killReports)
+
+	forkStats := &PerfInfo{}
+	if len(stats) > 0 {
+		forkStats = computeStats(stats, killReport)
+	}
+	return map[string]interface{}{
+		"stages":      self.getStages(),
+		"index":       self.index,
+		"chunks":      chunks,
+		"split_stats": splitStats,
+		"join_stats":  joinStats,
+		"fork_stats":  forkStats,
+	}, forkStats, killReport
 }
 
 //=============================================================================
@@ -972,6 +1089,13 @@ func (self *Node) buildForks(bindings map[string]*Binding) {
 			argPermute[paramId] = valPermute.([]interface{})[j]
 		}
 		self.forks = append(self.forks, NewFork(self, i, argPermute))
+	}
+
+	for _, fork := range self.forks {
+		for _, subnode := range self.subnodes {
+			matchedFork := subnode.getNode().matchFork(fork.argPermute)
+			fork.subforks = append(fork.subforks, matchedFork)
+		}
 	}
 }
 
@@ -1130,9 +1254,17 @@ func (self *Node) reset() error {
 		LogInfo("runtime", "mrp cannot reset the stage because its folder contents could not be deleted. Error was:\n\n%s\n\nPlease resolve the error in order to continue running the pipeline.", err.Error())
 		return err
 	}
-	// Remove all files from journal and tmp directories.
-	os.RemoveAll(self.journalPath)
-	os.RemoveAll(self.tmpPath)
+	// Remove all related files from journal directory.
+	if files, err := filepath.Glob(path.Join(self.journalPath, self.fqname+"*")); err == nil {
+		for _, file := range files {
+			os.Remove(file)
+		}
+	}
+
+	// Clear chunks in the forks so they can be rebuilt on split.
+	for _, fork := range self.forks {
+		fork.reset()
+	}
 
 	// Create stage node directories.
 	self.mkdirs()
@@ -1140,10 +1272,6 @@ func (self *Node) reset() error {
 	// Load the metadata.
 	self.loadMetadata()
 
-	// Clear chunks in the forks so they can be rebuilt on split.
-	for _, fork := range self.forks {
-		fork.clearChunks()
-	}
 	return nil
 }
 
@@ -1173,19 +1301,6 @@ func (self *Node) postProcess() {
 	for _, fork := range self.forks {
 		fork.postProcess(pipestanceOutsPath)
 	}
-}
-
-func (self *Node) getWarnings() (string, bool) {
-	warnings := ""
-	isWarnings := false
-	for _, metadata := range self.collectMetadatas() {
-		if !metadata.exists("warn") {
-			continue
-		}
-		warnings += metadata.readRaw("warn")
-		isWarnings = true
-	}
-	return warnings, isWarnings
 }
 
 func (self *Node) getFatalError() (string, string, string, string, []string) {
@@ -1338,14 +1453,14 @@ func (self *Node) vdrKill() *VDRKillReport {
 //
 // Serialization
 //
-func (self *Node) serialize() interface{} {
+func (self *Node) serializeState() interface{} {
 	sweepbindings := []interface{}{}
 	for _, sweepbinding := range self.sweepbindings {
-		sweepbindings = append(sweepbindings, sweepbinding.serialize(nil))
+		sweepbindings = append(sweepbindings, sweepbinding.serializeState(nil))
 	}
 	forks := []interface{}{}
 	for _, fork := range self.forks {
-		forks = append(forks, fork.serialize())
+		forks = append(forks, fork.serializeState())
 	}
 	edges := []interface{}{}
 	for _, prenode := range self.directPrenodes {
@@ -1374,13 +1489,27 @@ func (self *Node) serialize() interface{} {
 		"type":          self.kind,
 		"path":          self.path,
 		"state":         self.state,
-		"metadata":      self.metadata.serialize(),
+		"metadata":      self.metadata.serializeState(),
 		"sweepbindings": sweepbindings,
 		"forks":         forks,
 		"edges":         edges,
 		"stagecodeLang": self.stagecodeLang,
 		"stagecodeCmd":  self.stagecodeCmd,
 		"error":         err,
+	}
+}
+
+func (self *Node) serializePerf() interface{} {
+	forks := []interface{}{}
+	for _, fork := range self.forks {
+		forkSer, _, _ := fork.serializePerf()
+		forks = append(forks, forkSer)
+	}
+	return map[string]interface{}{
+		"name":   self.name,
+		"fqname": self.fqname,
+		"type":   self.kind,
+		"forks":  forks,
 	}
 }
 
@@ -1479,8 +1608,10 @@ func (self *Node) runJob(shellName string, fqname string, metadata *Metadata,
 	}
 	LogInfo("runtime", "(run:%s) %s.%s", jobMode, fqname, shellName)
 
+	EnterCriticalSection()
 	metadata.write("jobinfo", map[string]interface{}{"name": fqname, "type": jobMode})
 	jobManager.execJob(shellCmd, argv, envs, metadata, threads, memGB, fqname, shellName)
+	ExitCriticalSection()
 }
 
 //=============================================================================
@@ -1531,9 +1662,6 @@ func (self *Stagestance) VDRKill() *VDRKillReport {
 }
 func (self *Stagestance) GetFatalError() (string, string, string, string, []string) {
 	return self.getNode().getFatalError()
-}
-func (self *Stagestance) GetWarnings() (string, bool) {
-	return self.getNode().getWarnings()
 }
 
 //=============================================================================
@@ -1675,19 +1803,6 @@ func (self *Pipestance) RestartRunningNodes(jobMode string) error {
 	return nil
 }
 
-func (self *Pipestance) GetWarnings() (string, bool) {
-	nodes := self.node.allNodes()
-	warnings := ""
-	isWarnings := false
-	for _, node := range nodes {
-		if warning, ok := node.getWarnings(); ok {
-			warnings += warning
-			isWarnings = true
-		}
-	}
-	return warnings, isWarnings
-}
-
 func (self *Pipestance) GetFatalError() (string, string, string, string, []string) {
 	nodes := self.node.getFrontierNodes()
 	for _, node := range nodes {
@@ -1715,31 +1830,41 @@ func (self *Pipestance) Reset() error {
 	return nil
 }
 
-func (self *Pipestance) Serialize() interface{} {
+func (self *Pipestance) Serialize(name string) interface{} {
 	ser := []interface{}{}
 	for _, node := range self.node.allNodes() {
-		ser = append(ser, node.serialize())
+		switch name {
+		case "finalstate":
+			ser = append(ser, node.serializeState())
+		case "perf":
+			ser = append(ser, node.serializePerf())
+		default:
+			panic(fmt.Sprintf("Unsupported serialization type: %s", name))
+		}
 	}
 	return ser
 }
 
+func (self *Pipestance) GetPath() string {
+	return self.node.parent.getNode().path
+}
+
 func (self *Pipestance) PostProcess() {
-	metadata := NewMetadata(self.node.parent.getNode().fqname,
-		self.node.parent.getNode().path)
+	metadata := NewMetadata(self.node.parent.getNode().fqname, self.GetPath())
 	metadata.writeRaw("timestamp", metadata.readRaw("timestamp")+"\nend: "+Timestamp())
 	self.node.postProcess()
 }
 
 func (self *Pipestance) Immortalize() {
-	metadata := NewMetadata(self.node.parent.getNode().fqname,
-		self.node.parent.getNode().path)
-	metadata.write("finalstate", self.Serialize())
+	metadata := NewMetadata(self.node.parent.getNode().fqname, self.GetPath())
+	metadata.write("finalstate", self.Serialize("finalstate"))
+	metadata.write("perf", self.Serialize("perf"))
 }
 
 func (self *Pipestance) Unimmortalize() {
-	metadata := NewMetadata(self.node.parent.getNode().fqname,
-		self.node.parent.getNode().path)
+	metadata := NewMetadata(self.node.parent.getNode().fqname, self.GetPath())
 	metadata.remove("finalstate")
+	metadata.remove("perf")
 }
 
 func (self *Pipestance) VDRKill() *VDRKillReport {
@@ -1748,8 +1873,7 @@ func (self *Pipestance) VDRKill() *VDRKillReport {
 		killReports = append(killReports, node.vdrKill())
 	}
 	killReport := mergeVDRKillReports(killReports)
-	metadata := NewMetadata(self.node.parent.getNode().fqname,
-		self.node.parent.getNode().path)
+	metadata := NewMetadata(self.node.parent.getNode().fqname, self.GetPath())
 	metadata.write("vdrkill", killReport)
 	return killReport
 }
@@ -1799,12 +1923,12 @@ func NewRuntime(jobMode string, vdrMode string, mroPath string, martianVersion s
 	mroVersion string, enableProfiling bool, enableStackVars bool,
 	debug bool) *Runtime {
 	return NewRuntimeWithCores(jobMode, vdrMode, mroPath, martianVersion, mroVersion,
-		-1, -1, -1, enableProfiling, enableStackVars, debug, false)
+		-1, -1, -1, -1, enableProfiling, enableStackVars, debug, false)
 }
 
 func NewRuntimeWithCores(jobMode string, vdrMode string, mroPath string, martianVersion string,
-	mroVersion string, reqCores int, reqMem int, reqMemPerCore int, enableProfiling bool,
-	enableStackVars bool, debug bool, stest bool) *Runtime {
+	mroVersion string, reqCores int, reqMem int, reqMemPerCore int, reqMemPerJob int,
+	enableProfiling bool, enableStackVars bool, debug bool, stest bool) *Runtime {
 
 	self := &Runtime{}
 	self.mroPath = mroPath
@@ -1823,7 +1947,7 @@ func NewRuntimeWithCores(jobMode string, vdrMode string, mroPath string, martian
 	if self.jobMode == "local" {
 		self.JobManager = self.LocalJobManager
 	} else {
-		self.JobManager = NewRemoteJobManager(self.jobMode, reqMemPerCore)
+		self.JobManager = NewRemoteJobManager(self.jobMode, reqMemPerCore, reqMemPerJob)
 	}
 	VerifyVDRMode(self.vdrMode)
 
@@ -2002,11 +2126,11 @@ func (self *Runtime) InvokeStage(src string, srcPath string, ssid string,
 	return stagestance, nil
 }
 
-func (self *Runtime) GetSerialization(pipestancePath string) (interface{}, bool) {
+func (self *Runtime) GetSerialization(pipestancePath string, name string) (interface{}, bool) {
 	metadata := NewMetadata("", pipestancePath)
 	metadata.loadCache()
-	if metadata.exists("finalstate") {
-		return metadata.read("finalstate"), true
+	if metadata.exists(name) {
+		return metadata.read(name), true
 	}
 	return nil, false
 }
