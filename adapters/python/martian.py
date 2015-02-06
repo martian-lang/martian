@@ -87,16 +87,16 @@ class Metadata:
     def write_time(self, name):
         self.write_raw(name, self.make_timestamp_now())
 
-    def _append(self, level, message, filename):
+    def _append(self, message, filename):
         with open(self.make_path(filename), "a") as f:
-            f.write("%s [%s] %s\n" % (self.make_timestamp_now(), level, message))
+            f.write(message + "\n")
         self.update_journal(filename)
 
     def log(self, level, message):
-        self._append(level, message, "log")
+        self._append("%s [%s] %s" % (self.make_timestamp_now(), level, message), "log")
 
-    def warn(self, message):
-        self._append("warn", message, "warn")
+    def alarm(self, message):
+        self._append(message, "alarm")
 
     def _assert(self, message):
         self.write_raw("assert", message + "\n")
@@ -299,5 +299,5 @@ def exit(message):
     metadata._assert(message)
     sys.exit(0)
 
-def warn(message):
-    metadata.warn(message)
+def alarm(message):
+    metadata.alarm(message)

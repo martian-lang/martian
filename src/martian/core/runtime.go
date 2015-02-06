@@ -823,6 +823,29 @@ func (self *Fork) postProcess(outsPath string) {
 		Log("- %s: %v\n", key, value)
 	}
 	Log("\n")
+
+	if alarms := self.getAlarms(); len(alarms) > 0 {
+		if len(self.node.forks) > 1 {
+			Log("\nAlarms (fork%d):\n", self.index)
+		} else {
+			Log("\nAlarms:\n")
+		}
+		Log(alarms + "\n")
+	}
+}
+
+func (self *Fork) getAlarms() string {
+	alarms := ""
+	for _, metadata := range self.collectMetadatas() {
+		if !metadata.exists("alarm") {
+			continue
+		}
+		alarms += metadata.readRaw("alarm")
+	}
+	for _, subfork := range self.subforks {
+		alarms += subfork.getAlarms()
+	}
+	return alarms
 }
 
 func (self *Fork) serializeState() interface{} {
@@ -1262,19 +1285,6 @@ func (self *Node) postProcess() {
 	}
 }
 
-func (self *Node) getWarnings() (string, bool) {
-	warnings := ""
-	isWarnings := false
-	for _, metadata := range self.collectMetadatas() {
-		if !metadata.exists("warn") {
-			continue
-		}
-		warnings += metadata.readRaw("warn")
-		isWarnings = true
-	}
-	return warnings, isWarnings
-}
-
 func (self *Node) getFatalError() (string, string, string, string, []string) {
 	for _, metadata := range self.collectMetadatas() {
 		if state, _ := metadata.getState(""); state != "failed" {
@@ -1635,9 +1645,6 @@ func (self *Stagestance) VDRKill() *VDRKillReport {
 func (self *Stagestance) GetFatalError() (string, string, string, string, []string) {
 	return self.getNode().getFatalError()
 }
-func (self *Stagestance) GetWarnings() (string, bool) {
-	return self.getNode().getWarnings()
-}
 
 //=============================================================================
 // Pipestance
@@ -1769,19 +1776,6 @@ func (self *Pipestance) RestartRunningNodes(jobMode string) error {
 		node.resetJobMonitors()
 	}
 	return nil
-}
-
-func (self *Pipestance) GetWarnings() (string, bool) {
-	nodes := self.node.allNodes()
-	warnings := ""
-	isWarnings := false
-	for _, node := range nodes {
-		if warning, ok := node.getWarnings(); ok {
-			warnings += warning
-			isWarnings = true
-		}
-	}
-	return warnings, isWarnings
 }
 
 func (self *Pipestance) GetFatalError() (string, string, string, string, []string) {
