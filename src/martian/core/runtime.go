@@ -721,17 +721,25 @@ func (self *Fork) step() {
 	}
 }
 
+func (self *Fork) getVdrKillReport() (*VDRKillReport, bool) {
+	killReport := &VDRKillReport{}
+	ok := false
+	if self.metadata.exists("vdrkill") {
+		data := self.metadata.readRaw("vdrkill")
+		if err := json.Unmarshal([]byte(data), &killReport); err == nil {
+			ok = true
+		}
+	}
+	return killReport, ok
+}
+
 func (self *Fork) vdrKill() *VDRKillReport {
 	killReport := &VDRKillReport{}
 	if self.node.rt.vdrMode == "disable" {
 		return killReport
 	}
-	if self.metadata.exists("vdrkill") {
-		var killReport *VDRKillReport
-		data := self.metadata.readRaw("vdrkill")
-		if err := json.Unmarshal([]byte(data), &killReport); err == nil {
-			return killReport
-		}
+	if killReport, ok := self.getVdrKillReport(); ok {
+		return killReport
 	}
 
 	killPaths := []string{}
@@ -913,13 +921,14 @@ func (self *Fork) serializePerf() (interface{}, *PerfInfo, *VDRKillReport) {
 		stats = append(stats, joinStats)
 	}
 
-	killReports := []*VDRKillReport{self.vdrKill()}
+	killReport, _ := self.getVdrKillReport()
+	killReports := []*VDRKillReport{killReport}
 	for _, subfork := range self.subforks {
 		_, subforkStats, subforkKillReport := subfork.serializePerf()
 		stats = append(stats, subforkStats)
 		killReports = append(killReports, subforkKillReport)
 	}
-	killReport := mergeVDRKillReports(killReports)
+	killReport = mergeVDRKillReports(killReports)
 
 	forkStats := &PerfInfo{}
 	if len(stats) > 0 {
