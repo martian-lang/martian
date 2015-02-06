@@ -26,6 +26,7 @@ func EnterCriticalSection() {
 	signalHandler.mutex.Lock()
 	if signalHandler.exit {
 		// Block other goroutines from entering critical section if exit flag has been set
+		signalHandler.mutex.Unlock()
 		<-signalHandler.block
 	}
 	signalHandler.count += 1
