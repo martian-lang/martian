@@ -22,7 +22,7 @@ type SignalHandler struct {
 	exit    bool
 	mutex   *sync.Mutex
 	block   chan int
-	objects []HandlerObject
+	objects map[HandlerObject]bool
 }
 
 var signalHandler *SignalHandler = nil
@@ -44,9 +44,15 @@ func ExitCriticalSection() {
 	signalHandler.mutex.Unlock()
 }
 
-func registerSignalHandler(object HandlerObject) {
+func RegisterSignalHandler(object HandlerObject) {
 	signalHandler.mutex.Lock()
-	signalHandler.objects = append(signalHandler.objects, object)
+	signalHandler.objects[object] = true
+	signalHandler.mutex.Unlock()
+}
+
+func UnregisterSignalHandler(object HandlerObject) {
+	signalHandler.mutex.Lock()
+	delete(signalHandler.objects, object)
 	signalHandler.mutex.Unlock()
 }
 
@@ -54,7 +60,7 @@ func newSignalHandler() *SignalHandler {
 	self := &SignalHandler{}
 	self.mutex = &sync.Mutex{}
 	self.block = make(chan int)
-	self.objects = []HandlerObject{}
+	self.objects = map[HandlerObject]bool{}
 	return self
 }
 
@@ -78,7 +84,7 @@ func SetupSignalHandlers() {
 			time.Sleep(1)
 			signalHandler.mutex.Lock()
 		}
-		for _, object := range signalHandler.objects {
+		for object, _ := range signalHandler.objects {
 			object.handleSignal()
 		}
 		os.Exit(1)
