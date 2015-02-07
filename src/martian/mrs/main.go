@@ -153,9 +153,6 @@ Options:
 			state := stagestance.GetState()
 			if state == "complete" {
 				stagestance.PostProcess()
-				if warnings, ok := stagestance.GetWarnings(); ok {
-					core.Log(warnings)
-				}
 				if vdrMode == "disable" {
 					core.LogInfo("runtime", "VDR disabled. No files killed.")
 				} else {
@@ -168,9 +165,6 @@ Options:
 				os.Exit(0)
 			}
 			if state == "failed" {
-				if warnings, ok := stagestance.GetWarnings(); ok {
-					core.Log(warnings)
-				}
 				if _, errpath, log, kind, err := stagestance.GetFatalError(); kind == "assert" {
 					core.Log("\n%s\n", log)
 				} else {

@@ -16,6 +16,7 @@ import (
 )
 
 func main() {
+	core.SetupSignalHandlers()
 	// Command-line arguments.
 	doc := `Martian Formatter.
 

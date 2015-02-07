@@ -67,11 +67,8 @@ func runLoop(pipestance *core.Pipestance, stepSecs int, vdrMode string,
 		// Check for completion states.
 		state := pipestance.GetState()
 		if state == "complete" {
+			pipestance.Unlock()
 			pipestance.PostProcess()
-			pipestance.Immortalize()
-			if warnings, ok := pipestance.GetWarnings(); ok {
-				core.Log(warnings)
-			}
 			if vdrMode == "disable" {
 				core.LogInfo("runtime", "VDR disabled. No files killed.")
 			} else {
@@ -94,10 +91,8 @@ func runLoop(pipestance *core.Pipestance, stepSecs int, vdrMode string,
 				os.Exit(0)
 			}
 		} else if state == "failed" {
+			pipestance.Unlock()
 			if !showedFailed {
-				if warnings, ok := pipestance.GetWarnings(); ok {
-					core.Log(warnings)
-				}
 				if fqname, _, log, kind, errpaths := pipestance.GetFatalError(); kind == "assert" {
 					core.Log("\n%s\n", log)
 				} else {
