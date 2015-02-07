@@ -1858,18 +1858,23 @@ func (self *Pipestance) Lock() error {
 	if metadata.exists("lock") {
 		return &PipestanceLockedError{self.node.parent.getNode().name, self.GetPath()}
 	}
-	registerSignalHandler(self)
+	RegisterSignalHandler(self)
 	metadata.writeTime("lock")
 	return nil
 }
 
-func (self *Pipestance) Unlock() {
+func (self *Pipestance) unlock() {
 	metadata := NewMetadata(self.node.parent.getNode().fqname, self.GetPath())
 	metadata.remove("lock")
 }
 
+func (self *Pipestance) Unlock() {
+	self.unlock()
+	UnregisterSignalHandler(self)
+}
+
 func (self *Pipestance) handleSignal() {
-	self.Unlock()
+	self.unlock()
 }
 
 //=============================================================================
