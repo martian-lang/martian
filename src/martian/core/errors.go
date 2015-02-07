@@ -44,6 +44,16 @@ func (self *PipestanceInvocationError) Error() string {
 		self.Psid, self.InvocationPath)
 }
 
+// PipestanceLockedError
+type PipestanceLockedError struct {
+	Psid           string
+	PipestancePath string
+}
+
+func (self *PipestanceLockedError) Error() string {
+	return fmt.Sprintf("RuntimeError: pipestance '%s' already exists and is locked by another Martian instance. If you are sure no other Martian instance is running, delete the _lock file in %s and start Martian again.", self.Psid, self.PipestancePath)
+}
+
 // PipestanceNotFailedError
 type PipestanceNotFailedError struct {
 	Psid string

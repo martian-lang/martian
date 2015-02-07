@@ -1850,21 +1850,11 @@ func (self *Pipestance) GetPath() string {
 }
 
 func (self *Pipestance) PostProcess() {
+	self.node.postProcess()
 	metadata := NewMetadata(self.node.parent.getNode().fqname, self.GetPath())
 	metadata.writeRaw("timestamp", metadata.readRaw("timestamp")+"\nend: "+Timestamp())
-	self.node.postProcess()
-}
-
-func (self *Pipestance) Immortalize() {
-	metadata := NewMetadata(self.node.parent.getNode().fqname, self.GetPath())
 	metadata.write("finalstate", self.Serialize("finalstate"))
 	metadata.write("perf", self.Serialize("perf"))
-}
-
-func (self *Pipestance) Unimmortalize() {
-	metadata := NewMetadata(self.node.parent.getNode().fqname, self.GetPath())
-	metadata.remove("finalstate")
-	metadata.remove("perf")
 }
 
 func (self *Pipestance) VDRKill() *VDRKillReport {
@@ -1876,6 +1866,26 @@ func (self *Pipestance) VDRKill() *VDRKillReport {
 	metadata := NewMetadata(self.node.parent.getNode().fqname, self.GetPath())
 	metadata.write("vdrkill", killReport)
 	return killReport
+}
+
+func (self *Pipestance) Lock() error {
+	metadata := NewMetadata(self.node.parent.getNode().fqname, self.GetPath())
+	metadata.loadCache()
+	if metadata.exists("lock") {
+		return &PipestanceLockedError{self.node.parent.getNode().name, self.GetPath()}
+	}
+	registerSignalHandler(self)
+	metadata.writeTime("lock")
+	return nil
+}
+
+func (self *Pipestance) Unlock() {
+	metadata := NewMetadata(self.node.parent.getNode().fqname, self.GetPath())
+	metadata.remove("lock")
+}
+
+func (self *Pipestance) handleSignal() {
+	self.Unlock()
 }
 
 //=============================================================================
@@ -2012,6 +2022,11 @@ func (self *Runtime) instantiatePipeline(src string, srcPath string, psid string
 	pipestance := NewPipestance(NewTopNode(self, psid, pipestancePath), src, ast.call, ast.callables)
 	if pipestance == nil {
 		return "", nil, &RuntimeError{fmt.Sprintf("'%s' is not a declared pipeline", ast.call.id)}
+	}
+
+	// Lock the pipestance.
+	if err := pipestance.Lock(); err != nil {
+		return "", nil, err
 	}
 
 	pipestance.getNode().mkdirs()
