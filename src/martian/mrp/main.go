@@ -7,55 +7,26 @@ package main
 
 import (
 	"fmt"
+	"github.com/docopt/docopt.go"
+	"github.com/dustin/go-humanize"
 	"io/ioutil"
 	"martian/core"
 	"net/http"
 	"net/url"
 	"os"
-	"os/exec"
 	"os/user"
 	"path"
 	"path/filepath"
 	"strconv"
 	"strings"
 	"time"
-
-	"github.com/docopt/docopt.go"
-	"github.com/dustin/go-humanize"
 )
-
-const fileSizeThreshold = 1024 * 1024 * 20 // 20 MB
-
-func generateDebugTarball(pipestance *core.Pipestance) {
-	core.Log("Generating debug dump tarball...")
-
-	debugFile := fmt.Sprintf("%s-debug-dump.tar.bz2", pipestance.GetPsid())
-	includedFiles := []string{}
-	err := filepath.Walk(pipestance.GetPsid(), func(fpath string, info os.FileInfo, err error) error {
-		if err == nil {
-			if !info.IsDir() && info.Size() < fileSizeThreshold {
-				includedFiles = append(includedFiles, fpath)
-			}
-		}
-		return err
-	})
-	if err == nil {
-		cmd := exec.Command("tar", "jcf", debugFile, "--exclude=*files*", "-T", "-")
-		cmd.Stdin = strings.NewReader(strings.Join(includedFiles, "\n"))
-		_, err = cmd.CombinedOutput()
-	}
-	if err != nil {
-		core.Log("failed.\n  %s\n", err.Error())
-	} else {
-		core.Log("complete.\n  %s\n", debugFile)
-	}
-}
 
 //=============================================================================
 // Pipestance runner.
 //=============================================================================
 func runLoop(pipestance *core.Pipestance, stepSecs int, vdrMode string,
-	noExit bool, noDump bool, enableUI bool) {
+	noExit bool, enableUI bool) {
 	showedFailed := false
 	WAIT_SECS := 6
 
@@ -78,34 +49,28 @@ func runLoop(pipestance *core.Pipestance, stepSecs int, vdrMode string,
 					killReport.Count, humanize.Bytes(killReport.Size))
 			}
 			if noExit {
-				core.LogInfo("runtime",
-					"Pipestance is complete, staying alive because --noexit given.")
+				core.Println("Pipestance is complete, staying alive because --noexit given.")
 				break
 			} else {
 				if enableUI {
 					// Give time for web ui client to get last update.
-					core.LogInfo("runtime", "Waiting %d seconds for UI to do final refresh.", WAIT_SECS)
+					core.Println("Waiting %d seconds for UI to do final refresh.", WAIT_SECS)
 					time.Sleep(time.Second * time.Duration(WAIT_SECS))
 				}
-				core.LogInfo("runtime", "Pipestance is complete, exiting.")
+				core.Println("Pipestance is complete, exiting.")
 				os.Exit(0)
 			}
 		} else if state == "failed" {
 			pipestance.Unlock()
 			if !showedFailed {
-				if fqname, _, log, kind, errpaths := pipestance.GetFatalError(); kind == "assert" {
-					core.Log("\n%s\n", log)
+				if fqname, _, log, kind, _ := pipestance.GetFatalError(); kind == "assert" {
+					// Print pre-flight check failures.
+					core.Println("\n[%s] %s", core.Colorize("error", core.ANSI_MAGENTA), log)
+					os.Exit(2)
 				} else {
-					core.Log("\nPipestance failed at:\n  %s\n\nError logs written to:\n", fqname)
-					for _, errpath := range errpaths {
-						core.Log("  %s\n", errpath)
-					}
-					core.Log("\n%s\n", log)
-
-					if !noDump {
-						generateDebugTarball(pipestance)
-						core.Log("\n")
-					}
+					// Convert fqname into path
+					errpath := strings.Replace(fqname[3:], ".", "/", -1)
+					core.Println("\n[%s] Pipestance failed. Please see log at:\n%s\n", core.Colorize("error", core.ANSI_MAGENTA), core.Colorize(fmt.Sprintf("%s/_errors", errpath), core.ANSI_CYAN))
 				}
 			}
 			if noExit {
@@ -113,16 +78,15 @@ func runLoop(pipestance *core.Pipestance, stepSecs int, vdrMode string,
 				// as long as we stay failed.
 				if !showedFailed {
 					showedFailed = true
-					core.LogInfo("runtime",
-						"Pipestance failed, staying alive because --noexit given.")
+					core.Println("Pipestance failed, staying alive because --noexit given.")
 				}
 			} else {
 				if enableUI {
 					// Give time for web ui client to get last update.
-					core.LogInfo("runtime", "Waiting %d seconds for UI to do final refresh.", WAIT_SECS)
+					core.Println("Waiting %d seconds for UI to do final refresh.", WAIT_SECS)
 					time.Sleep(time.Second * time.Duration(WAIT_SECS))
+					core.Println("Pipestance failed, exiting. Use --noexit option to keep UI running after failure.")
 				}
-				core.LogInfo("runtime", "Pipestance failed, exiting. Use --noexit option to keep UI running after failure.")
 				os.Exit(1)
 			}
 		} else {
@@ -138,9 +102,9 @@ func runLoop(pipestance *core.Pipestance, stepSecs int, vdrMode string,
 		time.Sleep(time.Second * time.Duration(stepSecs))
 	}
 }
+
 func main() {
 	core.SetupSignalHandlers()
-	core.LogEnableCache()
 
 	//=========================================================================
 	// Commandline argument and environment variables.
@@ -178,8 +142,7 @@ Options:
     --version            Show version.`
 	martianVersion := core.GetVersion()
 	opts, _ := docopt.Parse(doc, nil, true, martianVersion, false)
-	core.LogInfo("*", "Martian Run Pipeline")
-	core.LogInfo("version", martianVersion)
+	core.Println("Martian Runtime - %s", martianVersion)
 	core.LogInfo("cmdline", strings.Join(os.Args, " "))
 
 	martianFlags := ""
@@ -214,21 +177,16 @@ Options:
 	if value := os.Getenv("MROPATH"); len(value) > 0 {
 		mroPath = value
 	}
-	core.LogInfo("environ", "MROPATH = %s", mroPath)
-
-	// Compute version and branch.
-	mroBranch, _ := core.GetGitBranch(mroPath)
-	mroVersion, err := core.GetGitTag(mroPath)
-	if err == nil {
-		core.LogInfo("version", "MROPATH = %s", mroVersion)
-	}
+	mroVersion := core.GetGitTag(mroPath)
+	core.LogInfo("environ", "MROPATH=%s", mroPath)
+	core.LogInfo("version", "MRO Version=%s", mroVersion)
 
 	// Compute job manager.
 	jobMode := "local"
 	if value := opts["--jobmode"]; value != nil {
 		jobMode = value.(string)
 	}
-	core.LogInfo("environ", "job mode = %s", jobMode)
+	core.LogInfo("options", "--jobmode=%s", jobMode)
 	core.VerifyJobManager(jobMode)
 
 	// Compute vdrMode.
@@ -236,7 +194,7 @@ Options:
 	if value := opts["--vdrmode"]; value != nil {
 		vdrMode = value.(string)
 	}
-	core.LogInfo("environ", "vdrmode = %s", vdrMode)
+	core.LogInfo("environ", "--vdrmode=%s", vdrMode)
 	core.VerifyVDRMode(vdrMode)
 
 	// Compute UI port.
@@ -249,25 +207,23 @@ Options:
 	if enableUI {
 		core.LogInfo("environ", "uiport = %s", uiport)
 	}
+	core.LogInfo("options", "--port=%s", uiport)
 
 	// Compute profiling flag.
 	profile := opts["--profile"].(bool)
-	core.LogInfo("environ", "profile = %v", profile)
+	core.LogInfo("options", "--profile=%v", profile)
 
 	// Compute stackVars flag.
 	stackVars := opts["--stackvars"].(bool)
 	core.LogInfo("environ", "stackvars = %v", stackVars)
 
-	// Compute no debug dump flag.
-	noDump := opts["--nodump"].(bool)
-	core.LogInfo("environ", "nodump = %v", noDump)
-
-	// Setup invocation-specific values.
 	noExit := opts["--noexit"].(bool)
+	core.LogInfo("options", "--noexit=%v", noExit)
+
 	psid := opts["<pipestance_name>"].(string)
 	invocationPath := opts["<call.mro>"].(string)
 	pipestancePath := path.Join(cwd, psid)
-	stepSecs := 4
+	stepSecs := 3
 	checkSrc := true
 	inspect := opts["--inspect"].(bool)
 	debug := opts["--debug"].(bool)
@@ -285,7 +241,7 @@ Options:
 	// Print this here because the log makes more sense when this appears before
 	// the runloop messages start to appear.
 	if enableUI {
-		core.LogInfo("webserv", "Serving UI at http://localhost:%s", uiport)
+		core.Println("Serving UI at http://localhost:%s", uiport)
 	} else {
 		core.LogInfo("webserv", "UI disabled.")
 	}
@@ -308,9 +264,9 @@ Options:
 		}
 		core.DieIf(err)
 	}
+	core.Println("\nRunning pre-flight checks (15 seconds)...")
 	logfile := path.Join(pipestancePath, "_log")
 	core.LogTee(logfile)
-	core.LogDisableCache()
 
 	//=========================================================================
 	// Collect pipestance static info.
@@ -342,11 +298,9 @@ Options:
 		"invokepath": invocationPath,
 		"invokesrc":  invocationSrc,
 		"MROPATH":    mroPath,
-		"MRONODUMP":  fmt.Sprintf("%v", noDump),
 		"MROPROFILE": fmt.Sprintf("%v", profile),
 		"MROPORT":    uiport,
 		"mroversion": mroVersion,
-		"mrobranch":  mroBranch,
 	}
 
 	//=========================================================================
@@ -385,7 +339,7 @@ Options:
 	//=========================================================================
 	// Start run loop.
 	//=========================================================================
-	go runLoop(pipestance, stepSecs, vdrMode, noExit, noDump, enableUI)
+	go runLoop(pipestance, stepSecs, vdrMode, noExit, enableUI)
 
 	// Let daemons take over.
 	done := make(chan bool)
