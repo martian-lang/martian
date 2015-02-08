@@ -141,6 +141,10 @@ def initialize(argv):
     run_type = os.path.basename(shell_cmd)[:-3]
     metadata = Metadata(metadata_path, files_path, run_file, run_type)
 
+    # Log the start time (do not call this before metadata is initialized)
+    log_time("__start__")
+    starttime = time.time()
+
     # Write jobinfo
     write_jobinfo(files_path)
 
@@ -153,10 +157,13 @@ def initialize(argv):
 
     # Increase the maximum open file descriptors to the hard limit
     _, hard = resource.getrlimit(resource.RLIMIT_NOFILE)
-    resource.setrlimit(resource.RLIMIT_NOFILE, (hard, hard))
-
-    log_time("__start__")
-    starttime = time.time()
+    try:
+        resource.setrlimit(resource.RLIMIT_NOFILE, (hard, hard))
+    except Exception as e:
+        # Since we are still initializing, do not allow an unhandled exception.
+        # If the limit is not high enough, a pre-flight will catch it.
+        metadata.log("adapter", "Adapter could not increase file handle ulimit to %s: %s" % (str(hard), str(e)))
+        pass
 
     # Cache the profiling and stackvars flags.
     profile_flag = (profile_flag == "profile")

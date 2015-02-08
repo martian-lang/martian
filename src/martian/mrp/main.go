@@ -63,14 +63,18 @@ func runLoop(pipestance *core.Pipestance, stepSecs int, vdrMode string,
 		} else if state == "failed" {
 			pipestance.Unlock()
 			if !showedFailed {
-				if fqname, _, log, kind, _ := pipestance.GetFatalError(); kind == "assert" {
+				if _, _, log, kind, errPaths := pipestance.GetFatalError(); kind == "assert" {
 					// Print pre-flight check failures.
 					core.Println("\n[%s] %s", core.Colorize("error", core.ANSI_MAGENTA), log)
 					os.Exit(2)
-				} else {
-					// Convert fqname into path
-					errpath := strings.Replace(fqname[3:], ".", "/", -1)
-					core.Println("\n[%s] Pipestance failed. Please see log at:\n%s\n", core.Colorize("error", core.ANSI_MAGENTA), core.Colorize(fmt.Sprintf("%s/_errors", errpath), core.ANSI_CYAN))
+				} else if len(errPaths) > 0 {
+					// Build relative path to _errors file
+					errPath, _ := filepath.Rel(filepath.Dir(pipestance.GetPath()), errPaths[0])
+
+					// Print path to _errors metadata file in failed stage.
+					core.Println("\n[%s] Pipestance failed. Please see log at:\n%s\n",
+						core.Colorize("error", core.ANSI_MAGENTA),
+						core.Colorize(errPath, core.ANSI_CYAN))
 				}
 			}
 			if noExit {
