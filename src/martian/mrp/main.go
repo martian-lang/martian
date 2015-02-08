@@ -225,6 +225,7 @@ Options:
 	pipestancePath := path.Join(cwd, psid)
 	stepSecs := 3
 	checkSrc := true
+	readOnly := false
 	inspect := opts["--inspect"].(bool)
 	debug := opts["--debug"].(bool)
 	stest := opts["--stest"].(bool)
@@ -256,7 +257,7 @@ Options:
 	if err != nil {
 		if _, ok := err.(*core.PipestanceExistsError); ok {
 			// If it already exists, try to reattach to it.
-			if pipestance, err = rt.ReattachToPipestance(psid, pipestancePath, invocationSrc, checkSrc); err == nil {
+			if pipestance, err = rt.ReattachToPipestance(psid, pipestancePath, invocationSrc, checkSrc, readOnly); err == nil {
 				if !inspect {
 					err = pipestance.Reset()
 				}

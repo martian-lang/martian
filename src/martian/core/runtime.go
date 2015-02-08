@@ -2017,7 +2017,7 @@ func (self *Runtime) CompileAll(checkSrcPath bool) (int, error) {
 // pipestance path. This is the core (private) method called by the
 // public InvokeWithSource and Reattach methods.
 func (self *Runtime) instantiatePipeline(src string, srcPath string, psid string,
-	pipestancePath string) (string, *Pipestance, error) {
+	pipestancePath string, readOnly bool) (string, *Pipestance, error) {
 	// Parse the invocation source.
 	postsrc, ast, err := parseSource(src, srcPath, []string{self.mroPath}, true)
 	if err != nil {
@@ -2039,9 +2039,11 @@ func (self *Runtime) instantiatePipeline(src string, srcPath string, psid string
 		return "", nil, &RuntimeError{fmt.Sprintf("'%s' is not a declared pipeline", ast.call.id)}
 	}
 
-	// Lock the pipestance.
-	if err := pipestance.Lock(); err != nil {
-		return "", nil, err
+	// Lock the pipestance if not in read-only mode.
+	if !readOnly {
+		if err := pipestance.Lock(); err != nil {
+			return "", nil, err
+		}
 	}
 
 	pipestance.getNode().mkdirs()
@@ -2064,7 +2066,8 @@ func (self *Runtime) InvokePipeline(src string, srcPath string, psid string,
 
 	// Expand env vars in invocation source and instantiate.
 	src = os.ExpandEnv(src)
-	postsrc, pipestance, err := self.instantiatePipeline(src, srcPath, psid, pipestancePath)
+	readOnly := false
+	postsrc, pipestance, err := self.instantiatePipeline(src, srcPath, psid, pipestancePath, readOnly)
 	if err != nil {
 		// If instantiation failed, delete the pipestance folder.
 		os.RemoveAll(pipestancePath)
@@ -2085,7 +2088,8 @@ func (self *Runtime) InvokePipeline(src string, srcPath string, psid string,
 }
 
 // Reattaches to an existing pipestance.
-func (self *Runtime) ReattachToPipestance(psid string, pipestancePath string, src string, checkSrc bool) (*Pipestance, error) {
+func (self *Runtime) ReattachToPipestance(psid string, pipestancePath string, src string, checkSrc bool,
+	readOnly bool) (*Pipestance, error) {
 	fname := "_invocation"
 	invocationPath := path.Join(pipestancePath, fname)
 
@@ -2101,7 +2105,7 @@ func (self *Runtime) ReattachToPipestance(psid string, pipestancePath string, sr
 	}
 
 	// Instantiate the pipestance.
-	_, pipestance, err := self.instantiatePipeline(string(data), fname, psid, pipestancePath)
+	_, pipestance, err := self.instantiatePipeline(string(data), fname, psid, pipestancePath, readOnly)
 
 	// If we're reattaching in local mode, restart any stages that were
 	// left in a running state from last mrp run. The actual job would
