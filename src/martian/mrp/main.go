@@ -153,6 +153,7 @@ Options:
 	if martianFlags = os.Getenv("MROFLAGS"); len(martianFlags) > 0 {
 		martianOptions := strings.Split(martianFlags, " ")
 		core.ParseMroFlags(opts, doc, martianOptions, []string{"call.mro", "pipestance"})
+		core.LogInfo("environ", "MROFLAGS=%s", martianFlags)
 	}
 
 	// Requested cores and memory.
@@ -160,18 +161,21 @@ Options:
 	if value := opts["--localcores"]; value != nil {
 		if value, err := strconv.Atoi(value.(string)); err == nil {
 			reqCores = value
+			core.LogInfo("options", "--localcores=%s", reqCores)
 		}
 	}
 	reqMem := -1
 	if value := opts["--localmem"]; value != nil {
 		if value, err := strconv.Atoi(value.(string)); err == nil {
 			reqMem = value
+			core.LogInfo("options", "--localmem=%s", reqMem)
 		}
 	}
 	reqMemPerCore := -1
 	if value := opts["--mempercore"]; value != nil {
 		if value, err := strconv.Atoi(value.(string)); err == nil {
 			reqMemPerCore = value
+			core.LogInfo("options", "--mempercore=%s", reqMemPerCore)
 		}
 	}
 
@@ -198,7 +202,7 @@ Options:
 	if value := opts["--vdrmode"]; value != nil {
 		vdrMode = value.(string)
 	}
-	core.LogInfo("environ", "--vdrmode=%s", vdrMode)
+	core.LogInfo("options", "--vdrmode=%s", vdrMode)
 	core.VerifyVDRMode(vdrMode)
 
 	// Compute UI port.
@@ -209,9 +213,8 @@ Options:
 		enableUI = true
 	}
 	if enableUI {
-		core.LogInfo("environ", "uiport = %s", uiport)
+		core.LogInfo("options", "--uiport=%s", uiport)
 	}
-	core.LogInfo("options", "--port=%s", uiport)
 
 	// Compute profiling flag.
 	profile := opts["--profile"].(bool)
@@ -219,7 +222,7 @@ Options:
 
 	// Compute stackVars flag.
 	stackVars := opts["--stackvars"].(bool)
-	core.LogInfo("environ", "stackvars = %v", stackVars)
+	core.LogInfo("options", "--stackvars=%v", stackVars)
 
 	noExit := opts["--noexit"].(bool)
 	core.LogInfo("options", "--noexit=%v", noExit)
@@ -269,8 +272,9 @@ Options:
 		core.DieIf(err)
 	}
 	core.Println("\nRunning pre-flight checks (15 seconds)...")
-	logfile := path.Join(pipestancePath, "_log")
-	core.LogTee(logfile)
+
+	// Start writing (including cached entries) to log file.
+	core.LogTee(path.Join(pipestancePath, "_log"))
 
 	//=========================================================================
 	// Collect pipestance static info.

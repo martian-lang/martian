@@ -53,14 +53,14 @@ Options:
     --version            Show version.`
 	martianVersion := core.GetVersion()
 	opts, _ := docopt.Parse(doc, nil, true, martianVersion, false)
-	core.LogInfo("*", "Martian Run Stage")
-	core.LogInfo("version", martianVersion)
+	core.Println("Martian Single-Stage Runtime - %s", martianVersion)
 	core.LogInfo("cmdline", strings.Join(os.Args, " "))
 
 	martianFlags := ""
 	if martianFlags = os.Getenv("MROFLAGS"); len(martianFlags) > 0 {
 		martianOptions := strings.Split(martianFlags, " ")
 		core.ParseMroFlags(opts, doc, martianOptions, []string{"call.mro", "stagestance"})
+		core.LogInfo("environ", "MROFLAGS=%s", martianFlags)
 	}
 
 	// Requested cores and memory.
@@ -68,18 +68,21 @@ Options:
 	if value := opts["--localcores"]; value != nil {
 		if value, err := strconv.Atoi(value.(string)); err == nil {
 			reqCores = value
+			core.LogInfo("options", "--localcores=%s", reqCores)
 		}
 	}
 	reqMem := -1
 	if value := opts["--localmem"]; value != nil {
 		if value, err := strconv.Atoi(value.(string)); err == nil {
 			reqMem = value
+			core.LogInfo("options", "--localmem=%s", reqMem)
 		}
 	}
 	reqMemPerCore := -1
 	if value := opts["--mempercore"]; value != nil {
 		if value, err := strconv.Atoi(value.(string)); err == nil {
 			reqMemPerCore = value
+			core.LogInfo("options", "--mempercore=%s", reqMemPerCore)
 		}
 	}
 
@@ -89,9 +92,8 @@ Options:
 	if value := os.Getenv("MROPATH"); len(value) > 0 {
 		mroPath = value
 	}
-
-	// Compute version.
 	mroVersion := core.GetGitTag(mroPath)
+	core.LogInfo("environ", "MROPATH=%s", mroPath)
 	core.LogInfo("version", "MRO Version=%s", mroVersion)
 
 	// Compute job manager.
@@ -99,7 +101,7 @@ Options:
 	if value := opts["--jobmode"]; value != nil {
 		jobMode = value.(string)
 	}
-	core.LogInfo("environ", "job mode = %s", jobMode)
+	core.LogInfo("options", "--jobmode=%s", jobMode)
 	core.VerifyJobManager(jobMode)
 
 	// Compute vdrMode.
@@ -107,14 +109,16 @@ Options:
 	if value := opts["--vdrmode"]; value != nil {
 		vdrMode = value.(string)
 	}
-	core.LogInfo("environ", "vdrmode = %s", vdrMode)
+	core.LogInfo("options", "--vdrmode=%s", vdrMode)
 	core.VerifyVDRMode(vdrMode)
 
 	// Compute profiling flag.
 	profile := opts["--profile"].(bool)
+	core.LogInfo("options", "--profile=%v", profile)
 
 	// Compute stackvars flag.
 	stackVars := opts["--stackvars"].(bool)
+	core.LogInfo("options", "--stackvars=%v", stackVars)
 
 	// Setup invocation-specific values.
 	invocationPath := opts["<call.mro>"].(string)
@@ -137,6 +141,9 @@ Options:
 	core.DieIf(err)
 	stagestance, err := rt.InvokeStage(string(data), invocationPath, ssid, stagestancePath)
 	core.DieIf(err)
+
+	// Start writing (including cached entries) to log file.
+	core.LogTee(path.Join(stagestancePath, "_log"))
 
 	//=========================================================================
 	// Start run loop.
