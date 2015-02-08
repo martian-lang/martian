@@ -465,8 +465,8 @@ func verifyJobManagerEnv(jobJsonFile string, jobJson *JobManagerJson, jobCmd str
 	// Verify job command exists
 	incPaths := strings.Split(os.Getenv("PATH"), ":")
 	if _, found := searchPaths(jobCmd, incPaths); !found {
-		LogInfo("jobmngr", "Searched (%s) but job command '%s' not found.",
-			strings.Join(incPaths, ", "), jobCmd)
+		Println("Job command '%s' not found in (%s)",
+			jobCmd, strings.Join(incPaths, ", "))
 		os.Exit(1)
 	}
 
