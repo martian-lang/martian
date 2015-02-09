@@ -1288,6 +1288,15 @@ func (self *Node) resetJobMonitors() {
 	}
 }
 
+func (self *Node) kill() {
+	for _, metadata := range self.collectMetadatas() {
+		if state, _ := metadata.getState(""); state == "failed" {
+			continue
+		}
+		metadata.writeRaw("errors", "Job was killed by Martian.")
+	}
+}
+
 func (self *Node) postProcess() {
 	os.RemoveAll(self.journalPath)
 	os.RemoveAll(self.tmpPath)
@@ -1771,6 +1780,13 @@ func (self *Pipestance) GetState() string {
 	return "waiting"
 }
 
+func (self *Pipestance) Kill() {
+	nodes := self.node.getFrontierNodes()
+	for _, node := range nodes {
+		node.kill()
+	}
+}
+
 func (self *Pipestance) RestartRunningNodes(jobMode string) error {
 	self.LoadMetadata()
 	nodes := self.node.getFrontierNodes()
@@ -2001,7 +2017,7 @@ func (self *Runtime) CompileAll(checkSrcPath bool) (int, error) {
 // pipestance path. This is the core (private) method called by the
 // public InvokeWithSource and Reattach methods.
 func (self *Runtime) instantiatePipeline(src string, srcPath string, psid string,
-	pipestancePath string) (string, *Pipestance, error) {
+	pipestancePath string, readOnly bool) (string, *Pipestance, error) {
 	// Parse the invocation source.
 	postsrc, ast, err := parseSource(src, srcPath, []string{self.mroPath}, true)
 	if err != nil {
@@ -2023,9 +2039,11 @@ func (self *Runtime) instantiatePipeline(src string, srcPath string, psid string
 		return "", nil, &RuntimeError{fmt.Sprintf("'%s' is not a declared pipeline", ast.call.id)}
 	}
 
-	// Lock the pipestance.
-	if err := pipestance.Lock(); err != nil {
-		return "", nil, err
+	// Lock the pipestance if not in read-only mode.
+	if !readOnly {
+		if err := pipestance.Lock(); err != nil {
+			return "", nil, err
+		}
 	}
 
 	pipestance.getNode().mkdirs()
@@ -2037,16 +2055,19 @@ func (self *Runtime) instantiatePipeline(src string, srcPath string, psid string
 func (self *Runtime) InvokePipeline(src string, srcPath string, psid string,
 	pipestancePath string) (*Pipestance, error) {
 
-	// Error if pipestance exists, otherwise create.
+	// Error if pipestance directory is non-empty, otherwise create.
 	if _, err := os.Stat(pipestancePath); err == nil {
-		return nil, &PipestanceExistsError{psid}
+		if fileInfos, err := ioutil.ReadDir(pipestancePath); err != nil || len(fileInfos) > 0 {
+			return nil, &PipestanceExistsError{psid}
+		}
 	} else if err := os.MkdirAll(pipestancePath, 0755); err != nil {
 		return nil, err
 	}
 
 	// Expand env vars in invocation source and instantiate.
 	src = os.ExpandEnv(src)
-	postsrc, pipestance, err := self.instantiatePipeline(src, srcPath, psid, pipestancePath)
+	readOnly := false
+	postsrc, pipestance, err := self.instantiatePipeline(src, srcPath, psid, pipestancePath, readOnly)
 	if err != nil {
 		// If instantiation failed, delete the pipestance folder.
 		os.RemoveAll(pipestancePath)
@@ -2067,7 +2088,8 @@ func (self *Runtime) InvokePipeline(src string, srcPath string, psid string,
 }
 
 // Reattaches to an existing pipestance.
-func (self *Runtime) ReattachToPipestance(psid string, pipestancePath string, src string, checkSrc bool) (*Pipestance, error) {
+func (self *Runtime) ReattachToPipestance(psid string, pipestancePath string, src string, checkSrc bool,
+	readOnly bool) (*Pipestance, error) {
 	fname := "_invocation"
 	invocationPath := path.Join(pipestancePath, fname)
 
@@ -2083,7 +2105,7 @@ func (self *Runtime) ReattachToPipestance(psid string, pipestancePath string, sr
 	}
 
 	// Instantiate the pipestance.
-	_, pipestance, err := self.instantiatePipeline(string(data), fname, psid, pipestancePath)
+	_, pipestance, err := self.instantiatePipeline(string(data), fname, psid, pipestancePath, readOnly)
 
 	// If we're reattaching in local mode, restart any stages that were
 	// left in a running state from last mrp run. The actual job would

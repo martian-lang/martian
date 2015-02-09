@@ -158,7 +158,6 @@ Options:
 			// Check for completion states.
 			state := stagestance.GetState()
 			if state == "complete" {
-				stagestance.PostProcess()
 				if vdrMode == "disable" {
 					core.LogInfo("runtime", "VDR disabled. No files killed.")
 				} else {
@@ -167,6 +166,7 @@ Options:
 					core.LogInfo("runtime", "VDR killed %d files, %s.",
 						killReport.Count, humanize.Bytes(killReport.Size))
 				}
+				stagestance.PostProcess()
 				core.LogInfo("runtime", "Stage completed, exiting.")
 				os.Exit(0)
 			}

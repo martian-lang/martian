@@ -6,6 +6,7 @@ package core
 
 import (
 	"os"
+	"path/filepath"
 	"time"
 )
 
@@ -77,7 +78,7 @@ type PerfInfo struct {
 	VdrBytes        uint64    `json:"vdr_bytes"`
 }
 
-func reduceJobInfo(jobInfo *JobInfo, fpaths []string, numThreads int) *PerfInfo {
+func reduceJobInfo(jobInfo *JobInfo, outputPaths []string, numThreads int) *PerfInfo {
 	perfInfo := &PerfInfo{}
 	timeLayout := "2006-01-02 15:04:05"
 
@@ -107,11 +108,14 @@ func reduceJobInfo(jobInfo *JobInfo, fpaths []string, numThreads int) *PerfInfo 
 		}
 	}
 
-	for _, fpath := range fpaths {
-		if fileInfo, err := os.Stat(fpath); err == nil {
-			perfInfo.OutputFiles += 1
-			perfInfo.OutputBytes += uint64(fileInfo.Size())
-		}
+	for _, outputPath := range outputPaths {
+		filepath.Walk(outputPath, func(_ string, info os.FileInfo, err error) error {
+			if err == nil {
+				perfInfo.OutputBytes += uint64(info.Size())
+				perfInfo.OutputFiles++
+			}
+			return nil
+		})
 	}
 	perfInfo.TotalFiles = perfInfo.OutputFiles
 	perfInfo.TotalBytes = perfInfo.OutputBytes
@@ -121,17 +125,12 @@ func reduceJobInfo(jobInfo *JobInfo, fpaths []string, numThreads int) *PerfInfo 
 
 func computeStats(perfInfos []*PerfInfo, vdrKillReport *VDRKillReport) *PerfInfo {
 	aggPerfInfo := &PerfInfo{}
-	for i, perfInfo := range perfInfos {
-		if i == 0 {
+	for _, perfInfo := range perfInfos {
+		if aggPerfInfo.Start.IsZero() || (!perfInfo.Start.IsZero() && aggPerfInfo.Start.After(perfInfo.Start)) {
 			aggPerfInfo.Start = perfInfo.Start
+		}
+		if aggPerfInfo.End.Before(perfInfo.End) {
 			aggPerfInfo.End = perfInfo.End
-		} else {
-			if aggPerfInfo.Start.After(perfInfo.Start) {
-				aggPerfInfo.Start = perfInfo.Start
-			}
-			if aggPerfInfo.End.Before(perfInfo.End) {
-				aggPerfInfo.End = perfInfo.End
-			}
 		}
 
 		aggPerfInfo.NumJobs += perfInfo.NumJobs
