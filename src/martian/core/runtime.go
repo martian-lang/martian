@@ -1863,8 +1863,18 @@ func (self *Pipestance) PostProcess() {
 	self.node.postProcess()
 	metadata := NewMetadata(self.node.parent.getNode().fqname, self.GetPath())
 	metadata.writeRaw("timestamp", metadata.readRaw("timestamp")+"\nend: "+Timestamp())
-	metadata.write("finalstate", self.Serialize("finalstate"))
-	metadata.write("perf", self.Serialize("perf"))
+	self.Immortalize()
+}
+
+func (self *Pipestance) Immortalize() {
+	metadata := NewMetadata(self.node.parent.getNode().fqname, self.GetPath())
+	metadata.loadCache()
+	if !metadata.exists("finalstate") {
+		metadata.write("finalstate", self.Serialize("finalstate"))
+	}
+	if !metadata.exists("perf") {
+		metadata.write("perf", self.Serialize("perf"))
+	}
 }
 
 func (self *Pipestance) VDRKill() *VDRKillReport {
