@@ -20,7 +20,10 @@ import (
 	"github.com/cloudfoundry/gosigar"
 )
 
-const heartbeatTimeout = 10 // 10 minutes
+const defaultThreads = 1
+const defaultMemGB = 4
+const defaultMemGBPerCore = 4
+const heartbeatTimeout = 60 // 60 minutes
 const maxRetries = 5
 const retryExitCode = 513
 
@@ -139,7 +142,7 @@ func (self *LocalJobManager) Enqueue(shellCmd string, argv []string, envs []stri
 
 		// Sanity check and cap to self.maxCores.
 		if threads < 1 {
-			threads = 1
+			threads = defaultThreads
 		}
 		if threads > self.maxCores {
 			if self.debug {
@@ -151,7 +154,7 @@ func (self *LocalJobManager) Enqueue(shellCmd string, argv []string, envs []stri
 
 		// Sanity check and cap to self.maxMemGB.
 		if memGB < 1 {
-			memGB = 1
+			memGB = defaultMemGB
 		}
 		if memGB > self.maxMemGB {
 			if self.debug {
@@ -264,15 +267,27 @@ type RemoteJobManager struct {
 	jobMode          string
 	jobTemplate      string
 	jobCmd           string
+	memGBPerCore     int
+	memGBPerJob      int
 	monitorList      []*JobMonitor
 	monitorListMutex *sync.Mutex
 }
 
-func NewRemoteJobManager(jobMode string) *RemoteJobManager {
+func NewRemoteJobManager(jobMode string, memGBPerCore int, memGBPerJob int) *RemoteJobManager {
 	self := &RemoteJobManager{}
 	self.jobMode = jobMode
 	self.monitorList = []*JobMonitor{}
 	self.monitorListMutex = &sync.Mutex{}
+	if memGBPerCore > 0 {
+		self.memGBPerCore = memGBPerCore
+	} else {
+		self.memGBPerCore = defaultMemGBPerCore
+	}
+	if memGBPerJob > 0 {
+		self.memGBPerJob = memGBPerJob
+	} else {
+		self.memGBPerJob = defaultMemGB
+	}
 	_, _, self.jobCmd, self.jobTemplate = verifyJobManagerFiles(jobMode)
 	self.processMonitorList()
 	return self
@@ -297,8 +312,17 @@ func (self *RemoteJobManager) execJob(shellCmd string, argv []string, envs []str
 
 	// Sanity check the thread count.
 	if threads < 1 {
-		threads = 1
+		threads = defaultThreads
 	}
+
+	// Sanity check memory requirements.
+	if memGB < 1 {
+		memGB = self.memGBPerJob
+	}
+
+	// Compute threads needed based on memory requirements.
+	// TODO: Enable when ready to enforce memory requirements!!!
+	// threads = max(threads, (memGB+self.memGBPerCore-1)/self.memGBPerCore)
 
 	argv = append([]string{shellCmd}, argv...)
 	argv = append(envs, argv...)
@@ -308,12 +332,7 @@ func (self *RemoteJobManager) execJob(shellCmd string, argv []string, envs []str
 		"STDOUT":   metadata.makePath("stdout"),
 		"STDERR":   metadata.makePath("stderr"),
 		"CMD":      strings.Join(argv, " "),
-		"MEM_GB":   "",
-	}
-
-	// Only append memory cap if value is sane.
-	if memGB > 0 {
-		params["MEM_GB"] = fmt.Sprintf("%d", memGB)
+		"MEM_GB":   fmt.Sprintf("%d", memGB),
 	}
 
 	// Replace template annotations with actual values
@@ -371,7 +390,7 @@ func (self *RemoteJobManager) processMonitorList() {
 						monitor.running = true
 					}
 					if time.Since(monitor.lastHeartbeat) > time.Minute*heartbeatTimeout {
-						monitor.metadata.writeRaw("errors", fmt.Sprintf("Job was killed by %s", self.jobMode))
+						monitor.metadata.writeRaw("errors", fmt.Sprintf("Heartbeat not detected for %d minutes. Assuming job has failed", heartbeatTimeout))
 					}
 				}
 				newMonitorList = append(newMonitorList, monitor)
@@ -446,8 +465,8 @@ func verifyJobManagerEnv(jobJsonFile string, jobJson *JobManagerJson, jobCmd str
 	// Verify job command exists
 	incPaths := strings.Split(os.Getenv("PATH"), ":")
 	if _, found := searchPaths(jobCmd, incPaths); !found {
-		LogInfo("jobmngr", "Searched (%s) but job command '%s' not found.",
-			strings.Join(incPaths, ", "), jobCmd)
+		Println("Job command '%s' not found in (%s)",
+			jobCmd, strings.Join(incPaths, ", "))
 		os.Exit(1)
 	}
 

@@ -17,10 +17,7 @@ a { cursor:pointer; }
 .admin .navbar-brand a {
     color: white !important;
 }
-.navbar-inverse.admin .navbar-brand {
-    color: white;
-}
-.navbar-inverse.admin .navbar-brand:hover {
+.navbar-upper.admin {
     color: white;
 }
 .admin .navbar-brand a.admin-exit {
@@ -72,6 +69,10 @@ a { cursor:pointer; }
 .navbar-left a, .navbar-right a {
     color: #888;
     cursor: pointer;
+}
+
+.navbar-views {
+    float: right;
 }
 
 /*******************************************/
@@ -263,4 +264,15 @@ table#bindings td, table#info td {
 }
 td.tight {
     padding: 8px 4px;
+}
+
+.tbs-hor {
+    width: 800px;
+}
+
+.tbs-vert {
+    width: 100px;
+    float: right;
+    z-index: 1;
+    position: relative;
 }

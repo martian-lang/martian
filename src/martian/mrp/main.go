@@ -7,55 +7,26 @@ package main
 
 import (
 	"fmt"
+	"github.com/docopt/docopt.go"
+	"github.com/dustin/go-humanize"
 	"io/ioutil"
 	"martian/core"
 	"net/http"
 	"net/url"
 	"os"
-	"os/exec"
 	"os/user"
 	"path"
 	"path/filepath"
 	"strconv"
 	"strings"
 	"time"
-
-	"github.com/docopt/docopt.go"
-	"github.com/dustin/go-humanize"
 )
-
-const fileSizeThreshold = 1024 * 1024 * 20 // 20 MB
-
-func generateDebugTarball(pipestance *core.Pipestance) {
-	core.Log("Generating debug dump tarball...")
-
-	debugFile := fmt.Sprintf("%s-debug-dump.tar.bz2", pipestance.GetPsid())
-	includedFiles := []string{}
-	err := filepath.Walk(pipestance.GetPsid(), func(fpath string, info os.FileInfo, err error) error {
-		if err == nil {
-			if !info.IsDir() && info.Size() < fileSizeThreshold {
-				includedFiles = append(includedFiles, fpath)
-			}
-		}
-		return err
-	})
-	if err == nil {
-		cmd := exec.Command("tar", "jcf", debugFile, "--exclude=*files*", "-T", "-")
-		cmd.Stdin = strings.NewReader(strings.Join(includedFiles, "\n"))
-		_, err = cmd.CombinedOutput()
-	}
-	if err != nil {
-		core.Log("failed.\n  %s\n", err.Error())
-	} else {
-		core.Log("complete.\n  %s\n", debugFile)
-	}
-}
 
 //=============================================================================
 // Pipestance runner.
 //=============================================================================
-func runLoop(pipestance *core.Pipestance, stepSecs int, disableVDR bool,
-	noExit bool, noDump bool, noUI bool) {
+func runLoop(pipestance *core.Pipestance, stepSecs int, vdrMode string,
+	noExit bool, enableUI bool) {
 	showedFailed := false
 	WAIT_SECS := 6
 
@@ -67,51 +38,43 @@ func runLoop(pipestance *core.Pipestance, stepSecs int, disableVDR bool,
 		// Check for completion states.
 		state := pipestance.GetState()
 		if state == "complete" {
-			pipestance.Cleanup()
-			pipestance.Immortalize()
-			if warnings, ok := pipestance.GetWarnings(); ok {
-				core.Log(warnings)
-			}
-			if disableVDR {
-				core.LogInfo("runtime",
-					"VDR disabled by --novdr option. No files killed.")
+			if vdrMode == "disable" {
+				core.LogInfo("runtime", "VDR disabled. No files killed.")
 			} else {
 				core.LogInfo("runtime", "Starting VDR kill...")
 				killReport := pipestance.VDRKill()
 				core.LogInfo("runtime", "VDR killed %d files, %s.",
 					killReport.Count, humanize.Bytes(killReport.Size))
 			}
+			pipestance.Unlock()
+			pipestance.PostProcess()
 			if noExit {
-				core.LogInfo("runtime",
-					"Pipestance is complete, staying alive because --noexit given.")
+				core.Println("Pipestance is complete, staying alive because --noexit given.")
 				break
 			} else {
-				if !noUI {
+				if enableUI {
 					// Give time for web ui client to get last update.
-					core.LogInfo("runtime", "Waiting %d seconds for UI to do final refresh.", WAIT_SECS)
+					core.Println("Waiting %d seconds for UI to do final refresh.", WAIT_SECS)
 					time.Sleep(time.Second * time.Duration(WAIT_SECS))
 				}
-				core.LogInfo("runtime", "Pipestance is complete, exiting.")
+				core.Println("Pipestance is complete, exiting.")
 				os.Exit(0)
 			}
 		} else if state == "failed" {
+			pipestance.Unlock()
 			if !showedFailed {
-				if warnings, ok := pipestance.GetWarnings(); ok {
-					core.Log(warnings)
-				}
-				if fqname, _, log, kind, errpaths := pipestance.GetFatalError(); kind == "assert" {
-					core.Log("\n%s\n", log)
-				} else {
-					core.Log("\nPipestance failed at:\n  %s\n\nError logs written to:\n", fqname)
-					for _, errpath := range errpaths {
-						core.Log("  %s\n", errpath)
-					}
-					core.Log("\n%s\n", log)
+				if _, _, log, kind, errPaths := pipestance.GetFatalError(); kind == "assert" {
+					// Print pre-flight check failures.
+					core.Println("\n[%s] %s", core.Colorize("error", core.ANSI_MAGENTA), log)
+					os.Exit(2)
+				} else if len(errPaths) > 0 {
+					// Build relative path to _errors file
+					errPath, _ := filepath.Rel(filepath.Dir(pipestance.GetPath()), errPaths[0])
 
-					if !noDump {
-						generateDebugTarball(pipestance)
-						core.Log("\n")
-					}
+					// Print path to _errors metadata file in failed stage.
+					core.Println("\n[%s] Pipestance failed. Please see log at:\n%s\n",
+						core.Colorize("error", core.ANSI_MAGENTA),
+						core.Colorize(errPath, core.ANSI_CYAN))
 				}
 			}
 			if noExit {
@@ -119,16 +82,15 @@ func runLoop(pipestance *core.Pipestance, stepSecs int, disableVDR bool,
 				// as long as we stay failed.
 				if !showedFailed {
 					showedFailed = true
-					core.LogInfo("runtime",
-						"Pipestance failed, staying alive because --noexit given.")
+					core.Println("Pipestance failed, staying alive because --noexit given.")
 				}
 			} else {
-				if !noUI {
+				if enableUI {
 					// Give time for web ui client to get last update.
-					core.LogInfo("runtime", "Waiting %d seconds for UI to do final refresh.", WAIT_SECS)
+					core.Println("Waiting %d seconds for UI to do final refresh.", WAIT_SECS)
 					time.Sleep(time.Second * time.Duration(WAIT_SECS))
+					core.Println("Pipestance failed, exiting. Use --noexit option to keep UI running after failure.")
 				}
-				core.LogInfo("runtime", "Pipestance failed, exiting. Use --noexit option to keep UI running after failure.")
 				os.Exit(1)
 			}
 		} else {
@@ -144,9 +106,9 @@ func runLoop(pipestance *core.Pipestance, stepSecs int, disableVDR bool,
 		time.Sleep(time.Second * time.Duration(stepSecs))
 	}
 }
+
 func main() {
 	core.SetupSignalHandlers()
-	core.LogEnableCache()
 
 	//=========================================================================
 	// Commandline argument and environment variables.
@@ -159,48 +121,61 @@ Usage:
     mrp -h | --help | --version
 
 Options:
-    --port=<num>       Serve UI at http://localhost:<num>
-                         Defaults to 3600 if not otherwise specified.
-    --jobmode=<name>   Run jobs on custom or local job manager.
-                         Valid job managers are local, sge or .template file
-                         Defaults to local.
-    --nodump           Turns off debug dump tarball generation.
-    --noexit           Keep UI running after pipestance completes or fails.
-    --noui             Disable UI.
-    --novdr            Disable Volatile Data Removal.
-    --profile          Enable stage performance profiling.
-    --localvars        Print local variables in stage code stack trace.
-    --maxcores=<num>   Set max cores the pipeline may request at one time.
-                         (Only applies in local jobmode)
-    --maxmem=<num>     Set max GB the pipeline may request at one time.
-                         (Only applies in local jobmode)
-    --debug            Enable debug logging for local job manager.
-    --stest            Substitute real stages with stress-testing stage.
-    -h --help          Show this message.
-    --version          Show version.`
+    --uiport=<num>       Serve UI at http://localhost:<num>
+    --jobmode=<name>     Run jobs on custom or local job manager.
+                           Valid job managers are local, sge or .template file
+                           Defaults to local.
+    --vdrmode=<name>     Enables Volatile Data Removal.
+                           Valid options are rolling, post and disable.
+                           Defaults to post.
+    --nodump             Turns off debug dump tarball generation.
+    --noexit             Keep UI running after pipestance completes or fails.
+    --profile            Enable stage performance profiling.
+    --stackvars          Print local variables in stage code stack trace.
+    --localcores=<num>   Set max cores the pipeline may request at one time.
+                           (Only applies in local jobmode)
+    --localmem=<num>     Set max GB the pipeline may request at one time.
+                           (Only applies in local jobmode)
+    --mempercore=<num>   Set max GB each job may use at one time.
+                           Defaults to 4 GB.
+                           (Only applies in non-local jobmodes)
+    --inspect            Inspect pipestance without resetting failed stages.
+    --debug              Enable debug logging for local job manager.
+    --stest              Substitute real stages with stress-testing stage.
+    -h --help            Show this message.
+    --version            Show version.`
 	martianVersion := core.GetVersion()
 	opts, _ := docopt.Parse(doc, nil, true, martianVersion, false)
-	core.LogInfo("*", "Martian Run Pipeline")
-	core.LogInfo("version", martianVersion)
+	core.Println("Martian Runtime - %s", martianVersion)
 	core.LogInfo("cmdline", strings.Join(os.Args, " "))
 
 	martianFlags := ""
 	if martianFlags = os.Getenv("MROFLAGS"); len(martianFlags) > 0 {
 		martianOptions := strings.Split(martianFlags, " ")
 		core.ParseMroFlags(opts, doc, martianOptions, []string{"call.mro", "pipestance"})
+		core.LogInfo("environ", "MROFLAGS=%s", martianFlags)
 	}
 
-	// Requested cores.
+	// Requested cores and memory.
 	reqCores := -1
-	if value := opts["--maxcores"]; value != nil {
+	if value := opts["--localcores"]; value != nil {
 		if value, err := strconv.Atoi(value.(string)); err == nil {
 			reqCores = value
+			core.LogInfo("options", "--localcores=%s", reqCores)
 		}
 	}
 	reqMem := -1
-	if value := opts["--maxmem"]; value != nil {
+	if value := opts["--localmem"]; value != nil {
 		if value, err := strconv.Atoi(value.(string)); err == nil {
 			reqMem = value
+			core.LogInfo("options", "--localmem=%s", reqMem)
+		}
+	}
+	reqMemPerCore := -1
+	if value := opts["--mempercore"]; value != nil {
+		if value, err := strconv.Atoi(value.(string)); err == nil {
+			reqMemPerCore = value
+			core.LogInfo("options", "--mempercore=%s", reqMemPerCore)
 		}
 	}
 
@@ -210,54 +185,55 @@ Options:
 	if value := os.Getenv("MROPATH"); len(value) > 0 {
 		mroPath = value
 	}
-	core.LogInfo("environ", "MROPATH = %s", mroPath)
-
-	// Compute version and branch.
-	mroBranch, _ := core.GetGitBranch(mroPath)
-	mroVersion, err := core.GetGitTag(mroPath)
-	if err == nil {
-		core.LogInfo("version", "MROPATH = %s", mroVersion)
-	}
+	mroVersion := core.GetGitTag(mroPath)
+	core.LogInfo("environ", "MROPATH=%s", mroPath)
+	core.LogInfo("version", "MRO Version=%s", mroVersion)
 
 	// Compute job manager.
 	jobMode := "local"
 	if value := opts["--jobmode"]; value != nil {
 		jobMode = value.(string)
 	}
-	core.LogInfo("environ", "job mode = %s", jobMode)
+	core.LogInfo("options", "--jobmode=%s", jobMode)
 	core.VerifyJobManager(jobMode)
 
+	// Compute vdrMode.
+	vdrMode := "post"
+	if value := opts["--vdrmode"]; value != nil {
+		vdrMode = value.(string)
+	}
+	core.LogInfo("options", "--vdrmode=%s", vdrMode)
+	core.VerifyVDRMode(vdrMode)
+
 	// Compute UI port.
-	uiport := "3600"
-	noUI := false
-	if value := opts["--port"]; value != nil {
+	uiport := ""
+	enableUI := false
+	if value := opts["--uiport"]; value != nil {
 		uiport = value.(string)
+		enableUI = true
 	}
-	if opts["--noui"].(bool) {
-		uiport = ""
-		noUI = true
+	if enableUI {
+		core.LogInfo("options", "--uiport=%s", uiport)
 	}
-	core.LogInfo("environ", "port = %s", uiport)
 
 	// Compute profiling flag.
 	profile := opts["--profile"].(bool)
-	core.LogInfo("environ", "profile = %v", profile)
+	core.LogInfo("options", "--profile=%v", profile)
 
-	// Compute localVars flag.
-	localVars := opts["--localvars"].(bool)
-	core.LogInfo("environ", "localvars = %v", localVars)
+	// Compute stackVars flag.
+	stackVars := opts["--stackvars"].(bool)
+	core.LogInfo("options", "--stackvars=%v", stackVars)
 
-	// Compute no debug dump flag.
-	noDump := opts["--nodump"].(bool)
-	core.LogInfo("environ", "nodump = %v", noDump)
-
-	// Setup invocation-specific values.
-	disableVDR := opts["--novdr"].(bool)
 	noExit := opts["--noexit"].(bool)
+	core.LogInfo("options", "--noexit=%v", noExit)
+
 	psid := opts["<pipestance_name>"].(string)
 	invocationPath := opts["<call.mro>"].(string)
 	pipestancePath := path.Join(cwd, psid)
-	stepSecs := 4
+	stepSecs := 3
+	checkSrc := true
+	readOnly := false
+	inspect := opts["--inspect"].(bool)
 	debug := opts["--debug"].(bool)
 	stest := opts["--stest"].(bool)
 
@@ -267,15 +243,15 @@ Options:
 	//=========================================================================
 	// Configure Martian runtime.
 	//=========================================================================
-	rt := core.NewRuntimeWithCores(jobMode, mroPath, martianVersion, mroVersion,
-		reqCores, reqMem, profile, localVars, debug, stest)
+	rt := core.NewRuntimeWithCores(jobMode, vdrMode, mroPath, martianVersion, mroVersion,
+		reqCores, reqMem, reqMemPerCore, -1, profile, stackVars, debug, stest)
 
 	// Print this here because the log makes more sense when this appears before
 	// the runloop messages start to appear.
-	if noUI {
-		core.LogInfo("webserv", "UI disabled by --noui option.")
+	if enableUI {
+		core.Println("Serving UI at http://localhost:%s", uiport)
 	} else {
-		core.LogInfo("webserv", "Serving UI at http://localhost:%s", uiport)
+		core.LogInfo("webserv", "UI disabled.")
 	}
 
 	//=========================================================================
@@ -288,15 +264,18 @@ Options:
 	if err != nil {
 		if _, ok := err.(*core.PipestanceExistsError); ok {
 			// If it already exists, try to reattach to it.
-			if pipestance, err = rt.ReattachToPipestance(psid, pipestancePath); err == nil {
-				err = pipestance.RestartAssertedNodes()
+			if pipestance, err = rt.ReattachToPipestance(psid, pipestancePath, invocationSrc, checkSrc, readOnly); err == nil {
+				if !inspect {
+					err = pipestance.Reset()
+				}
 			}
 		}
 		core.DieIf(err)
 	}
-	logfile := path.Join(pipestancePath, "_log")
-	core.LogTee(logfile)
-	core.LogDisableCache()
+	core.Println("\nRunning pre-flight checks (15 seconds)...")
+
+	// Start writing (including cached entries) to log file.
+	core.LogTee(path.Join(pipestancePath, "_log"))
 
 	//=========================================================================
 	// Collect pipestance static info.
@@ -328,11 +307,9 @@ Options:
 		"invokepath": invocationPath,
 		"invokesrc":  invocationSrc,
 		"MROPATH":    mroPath,
-		"MRONODUMP":  fmt.Sprintf("%v", noDump),
 		"MROPROFILE": fmt.Sprintf("%v", profile),
 		"MROPORT":    uiport,
 		"mroversion": mroVersion,
-		"mrobranch":  mroBranch,
 	}
 
 	//=========================================================================
@@ -364,14 +341,14 @@ Options:
 	//=========================================================================
 	// Start web server.
 	//=========================================================================
-	if !noUI && len(uiport) > 0 {
+	if enableUI && len(uiport) > 0 {
 		go runWebServer(uiport, rt, pipestance, info)
 	}
 
 	//=========================================================================
 	// Start run loop.
 	//=========================================================================
-	go runLoop(pipestance, stepSecs, disableVDR, noExit, noDump, noUI)
+	go runLoop(pipestance, stepSecs, vdrMode, noExit, enableUI)
 
 	// Let daemons take over.
 	done := make(chan bool)

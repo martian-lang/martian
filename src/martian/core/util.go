@@ -9,21 +9,19 @@ import (
 	"fmt"
 	"github.com/10XDev/osext"
 	"os"
-	"os/signal"
 	"path"
 	"regexp"
 	"strings"
-	"syscall"
 	"time"
 
 	"github.com/docopt/docopt.go"
 )
 
-func mkdir(p string) {
-	err := os.Mkdir(p, 0755)
-	if err != nil {
-		panic(err.Error())
+func max(x int, y int) int {
+	if x > y {
+		return x
 	}
+	return y
 }
 
 func RelPath(p string) string {
@@ -31,8 +29,12 @@ func RelPath(p string) string {
 	return path.Join(folder, p)
 }
 
-func idemMkdir(p string) {
+func mkdir(p string) {
 	os.Mkdir(p, 0755)
+}
+
+func mkdirAll(p string) {
+	os.MkdirAll(p, 0755)
 }
 
 func searchPaths(fname string, searchPaths []string) (string, bool) {
@@ -63,17 +65,6 @@ func cartesianProduct(valueSets []interface{}) []interface{} {
 	return perms
 }
 
-func SetupSignalHandlers() {
-	// Handle CTRL-C and kill.
-	sigchan := make(chan os.Signal, 1)
-	signal.Notify(sigchan, os.Interrupt)
-	signal.Notify(sigchan, syscall.SIGTERM)
-	go func() {
-		<-sigchan
-		os.Exit(1)
-	}()
-}
-
 func ValidateID(id string) error {
 	if ok, _ := regexp.MatchString("^(\\d|\\w|-)+$", id); !ok {
 		return &MartianError{fmt.Sprintf("Invalid name: %s (only numbers, letters, dash, and underscore allowed)", id)}
@@ -99,17 +90,17 @@ func EnvRequire(reqs [][]string, log bool) map[string]string {
 	for _, req := range reqs {
 		val := os.Getenv(req[0])
 		if len(val) == 0 {
-			fmt.Println("Please set the following environment variables:\n")
+			fmt.Println("Please set the following environment variables:")
 			for _, req := range reqs {
 				if len(os.Getenv(req[0])) == 0 {
-					fmt.Println("export", req[0], "=", req[1])
+					fmt.Println("export", req[0]+"="+req[1])
 				}
 			}
 			os.Exit(1)
 		}
 		e[req[0]] = val
 		if log {
-			LogInfo("environ", "%s = %s", req[0], val)
+			LogInfo("environ", "%s=%s", req[0], val)
 		}
 	}
 	return e

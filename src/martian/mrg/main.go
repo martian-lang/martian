@@ -17,6 +17,7 @@ import (
 )
 
 func main() {
+	core.SetupSignalHandlers()
 	// Command-line arguments.
 	doc := `Martian Invocation Generator.
 
@@ -38,10 +39,10 @@ Options:
 	if value := os.Getenv("MROPATH"); len(value) > 0 {
 		mroPath = value
 	}
-	mroVersion, _ := core.GetGitTag(mroPath)
+	mroVersion := core.GetGitTag(mroPath)
 
 	// Setup runtime with MRO path.
-	rt := core.NewRuntime("local", mroPath, martianVersion, mroVersion, false, false, false)
+	rt := core.NewRuntime("local", "disable", mroPath, martianVersion, mroVersion, false, false, false)
 
 	// Read and parse JSON from stdin.
 	bio := bufio.NewReader(os.Stdin)

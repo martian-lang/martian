@@ -33,6 +33,27 @@ func (self *RuntimeError) Error() string {
 	return fmt.Sprintf("RuntimeError: %s.", self.Msg)
 }
 
+// PipestanceInvocationError
+type PipestanceInvocationError struct {
+	Psid           string
+	InvocationPath string
+}
+
+func (self *PipestanceInvocationError) Error() string {
+	return fmt.Sprintf("RuntimeError: pipestance '%s' already exists with different invocation file %s",
+		self.Psid, self.InvocationPath)
+}
+
+// PipestanceLockedError
+type PipestanceLockedError struct {
+	Psid           string
+	PipestancePath string
+}
+
+func (self *PipestanceLockedError) Error() string {
+	return fmt.Sprintf("RuntimeError: pipestance '%s' already exists and is locked by another Martian instance. If you are sure no other Martian instance is running, delete the _lock file in %s and start Martian again.", self.Psid, self.PipestancePath)
+}
+
 // PipestanceNotFailedError
 type PipestanceNotFailedError struct {
 	Psid string
@@ -40,6 +61,15 @@ type PipestanceNotFailedError struct {
 
 func (self *PipestanceNotFailedError) Error() string {
 	return fmt.Sprintf("RuntimeError: pipestance '%s' is not failed.", self.Psid)
+}
+
+// PipestanceNotRunningError
+type PipestanceNotRunningError struct {
+	Psid string
+}
+
+func (self *PipestanceNotRunningError) Error() string {
+	return fmt.Sprintf("RuntimeError: pipestance '%s' is not running.", self.Psid)
 }
 
 // PipestanceNotExistsError
@@ -67,6 +97,15 @@ type PipestanceCopyingError struct {
 
 func (self *PipestanceCopyingError) Error() string {
 	return fmt.Sprintf("RuntimeError: pipestance '%s' is currently being copied.", self.Psid)
+}
+
+// PipestanceWipeError
+type PipestanceWipeError struct {
+	Psid string
+}
+
+func (self *PipestanceWipeError) Error() string {
+	return fmt.Sprintf("RuntimeError: pipestance '%s' cannot be wiped.", self.Psid)
 }
 
 // PreprocessError

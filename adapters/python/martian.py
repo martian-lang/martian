@@ -87,19 +87,19 @@ class Metadata:
     def write_time(self, name):
         self.write_raw(name, self.make_timestamp_now())
 
-    def _append(self, level, message, filename):
+    def _append(self, message, filename):
         with open(self.make_path(filename), "a") as f:
-            f.write("%s [%s] %s\n" % (self.make_timestamp_now(), level, message))
+            f.write(message + "\n")
         self.update_journal(filename)
 
     def log(self, level, message):
-        self._append(level, message, "log")
+        self._append("%s [%s] %s" % (self.make_timestamp_now(), level, message), "log")
 
-    def warn(self, message):
-        self._append("warn", message, "warn")
+    def alarm(self, message):
+        self._append(message, "alarm")
 
     def _assert(self, message):
-        self.write_raw("assert", message + "\n")
+        self.write_raw("assert", message)
 
     def update_journal(self, name, force=False):
         if self.run_type != "main":
@@ -132,14 +132,18 @@ def start_heartbeat():
     t.start()
 
 def initialize(argv):
-    global metadata, module, profile_flag, localvars_flag, starttime
+    global metadata, module, profile_flag, stackvars_flag, starttime
 
     # Take options from command line.
-    [ shell_cmd, stagecode_path, metadata_path, files_path, run_file, profile_flag, localvars_flag ] = argv
+    [ shell_cmd, stagecode_path, metadata_path, files_path, run_file, profile_flag, stackvars_flag ] = argv
 
     # Create metadata object with metadata directory.
     run_type = os.path.basename(shell_cmd)[:-3]
     metadata = Metadata(metadata_path, files_path, run_file, run_type)
+
+    # Log the start time (do not call this before metadata is initialized)
+    log_time("__start__")
+    starttime = time.time()
 
     # Write jobinfo
     write_jobinfo(files_path)
@@ -153,14 +157,17 @@ def initialize(argv):
 
     # Increase the maximum open file descriptors to the hard limit
     _, hard = resource.getrlimit(resource.RLIMIT_NOFILE)
-    resource.setrlimit(resource.RLIMIT_NOFILE, (hard, hard))
+    try:
+        resource.setrlimit(resource.RLIMIT_NOFILE, (hard, hard))
+    except Exception as e:
+        # Since we are still initializing, do not allow an unhandled exception.
+        # If the limit is not high enough, a pre-flight will catch it.
+        metadata.log("adapter", "Adapter could not increase file handle ulimit to %s: %s" % (str(hard), str(e)))
+        pass
 
-    log_time("__start__")
-    starttime = time.time()
-
-    # Cache the profiling and localvars flags.
+    # Cache the profiling and stackvars flags.
     profile_flag = (profile_flag == "profile")
-    localvars_flag = (localvars_flag == "localvars")
+    stackvars_flag = (stackvars_flag == "stackvars")
 
     # allow shells and stage code to import martian easily
     sys.path.append(os.path.dirname(__file__))
@@ -216,8 +223,8 @@ def stacktrace():
 
 def fail():
     metadata.write_raw("errors", traceback.format_exc())
-    if localvars_flag:
-        metadata.write_raw("localvars", stacktrace())
+    if stackvars_flag:
+        metadata.write_raw("stackvars", stacktrace())
     done()
 
 def complete():
@@ -299,5 +306,5 @@ def exit(message):
     metadata._assert(message)
     sys.exit(0)
 
-def warn(message):
-    metadata.warn(message)
+def alarm(message):
+    metadata.alarm(message)
