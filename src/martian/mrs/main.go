@@ -16,7 +16,6 @@ import (
 	"time"
 
 	"github.com/docopt/docopt.go"
-	"github.com/dustin/go-humanize"
 )
 
 func main() {
@@ -36,9 +35,6 @@ Options:
     --jobmode=<name>     Run jobs on custom or local job manager.
                            Valid job managers are local, sge or .template file
                            Defaults to local.
-    --vdrmode=<name>     Enables Volatile Data Removal.
-                           Valid options are rolling, post and disable.
-                           Defaults to post.
     --profile            Enable stage performance profiling.
     --stackvars          Print local variables in stage code stack trace.
     --localcores=<num>   Set max cores the pipeline may request at one time.
@@ -104,14 +100,6 @@ Options:
 	core.LogInfo("options", "--jobmode=%s", jobMode)
 	core.VerifyJobManager(jobMode)
 
-	// Compute vdrMode.
-	vdrMode := "post"
-	if value := opts["--vdrmode"]; value != nil {
-		vdrMode = value.(string)
-	}
-	core.LogInfo("options", "--vdrmode=%s", vdrMode)
-	core.VerifyVDRMode(vdrMode)
-
 	// Compute profiling flag.
 	profile := opts["--profile"].(bool)
 	core.LogInfo("options", "--profile=%v", profile)
@@ -125,6 +113,7 @@ Options:
 	ssid := opts["<stagestance_name>"].(string)
 	stagestancePath := path.Join(cwd, ssid)
 	stepSecs := 1
+	vdrMode := "disable"
 	debug := opts["--debug"].(bool)
 
 	// Validate psid.
@@ -158,14 +147,6 @@ Options:
 			// Check for completion states.
 			state := stagestance.GetState()
 			if state == "complete" {
-				if vdrMode == "disable" {
-					core.LogInfo("runtime", "VDR disabled. No files killed.")
-				} else {
-					core.LogInfo("runtime", "Starting VDR kill...")
-					killReport := stagestance.VDRKill()
-					core.LogInfo("runtime", "VDR killed %d files, %s.",
-						killReport.Count, humanize.Bytes(killReport.Size))
-				}
 				stagestance.PostProcess()
 				core.LogInfo("runtime", "Stage completed, exiting.")
 				os.Exit(0)
