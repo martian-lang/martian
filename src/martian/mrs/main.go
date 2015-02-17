@@ -33,7 +33,7 @@ Usage:
 
 Options:
     --jobmode=<name>     Run jobs on custom or local job manager.
-                           Valid job managers are local, sge or .template file
+                           Valid job managers are local, sge, lsf or .template file
                            Defaults to local.
     --profile            Enable stage performance profiling.
     --stackvars          Print local variables in stage code stack trace.

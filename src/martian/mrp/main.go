@@ -123,7 +123,7 @@ Usage:
 Options:
     --uiport=<num>       Serve UI at http://localhost:<num>
     --jobmode=<name>     Run jobs on custom or local job manager.
-                           Valid job managers are local, sge or .template file
+                           Valid job managers are local, sge, lsf or .template file
                            Defaults to local.
     --vdrmode=<name>     Enables Volatile Data Removal.
                            Valid options are rolling, post and disable.
