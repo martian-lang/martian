@@ -984,6 +984,7 @@ type Node struct {
 	stagecodeCmd   string
 	journalPath    string
 	tmpPath        string
+	invocation     interface{}
 }
 
 func (self *Node) getNode() *Node { return self }
@@ -999,6 +1000,7 @@ func NewNode(parent Nodable, kind string, callStm *CallStm, callables *Callables
 	self.path = path.Join(parent.getNode().path, self.name)
 	self.journalPath = parent.getNode().journalPath
 	self.tmpPath = parent.getNode().tmpPath
+	self.invocation = parent.getNode().invocation
 	self.metadata = NewMetadata(self.fqname, self.path)
 	self.volatile = callStm.modifiers.volatile
 	self.local = callStm.modifiers.local
@@ -1595,10 +1597,10 @@ func (self *Node) runJob(shellName string, fqname string, metadata *Metadata,
 	switch self.stagecodeLang {
 	case "Python":
 		shellCmd = path.Join(self.rt.adaptersPath, "python", shellName+".py")
-		argv = append(stagecodeParts, metadata.path, metadata.filesPath, runFile, profile, stackVars)
+		argv = append(stagecodeParts, metadata.path, metadata.filesPath, runFile)
 	case "Executable":
 		shellCmd = stagecodeParts[0]
-		argv = append(stagecodeParts[1:], shellName, metadata.path, metadata.filesPath, runFile, profile, stackVars)
+		argv = append(stagecodeParts[1:], shellName, metadata.path, metadata.filesPath, runFile)
 	default:
 		panic(fmt.Sprintf("Unknown stage code language: %s", self.stagecodeLang))
 	}
@@ -1619,7 +1621,13 @@ func (self *Node) runJob(shellName string, fqname string, metadata *Metadata,
 	}
 
 	EnterCriticalSection()
-	metadata.write("jobinfo", map[string]interface{}{"name": fqname, "type": jobMode})
+	metadata.write("jobinfo", map[string]interface{}{
+		"name":           fqname,
+		"type":           jobMode,
+		"profile_flag":   profile,
+		"stackvars_flag": stackVars,
+		"invocation":     self.invocation,
+	})
 	jobManager.execJob(shellCmd, argv, envs, metadata, threads, memGB, fqname, shellName)
 	ExitCriticalSection()
 }
@@ -1678,15 +1686,12 @@ func (self *Stagestance) GetFatalError() (string, string, string, string, []stri
 // Pipestance
 //=============================================================================
 type Pipestance struct {
-	node      *Node
-	invokeSrc string
+	node *Node
 }
 
-func NewPipestance(parent Nodable, invokeSrc string, callStm *CallStm,
-	callables *Callables) *Pipestance {
+func NewPipestance(parent Nodable, callStm *CallStm, callables *Callables) *Pipestance {
 	self := &Pipestance{}
 	self.node = NewNode(parent, "pipeline", callStm, callables)
-	self.invokeSrc = invokeSrc
 
 	// Build subcall tree.
 	pipeline, ok := callables.table[self.node.name].(*Pipeline)
@@ -1700,7 +1705,7 @@ func NewPipestance(parent Nodable, invokeSrc string, callStm *CallStm,
 		case *Stage:
 			self.node.subnodes[subcallStm.id] = NewStagestance(self.node, subcallStm, callables)
 		case *Pipeline:
-			self.node.subnodes[subcallStm.id] = NewPipestance(self.node, "", subcallStm, callables)
+			self.node.subnodes[subcallStm.id] = NewPipestance(self.node, subcallStm, callables)
 		}
 		if self.node.subnodes[subcallStm.id].getNode().preflight {
 			preflightNode = self.node.subnodes[subcallStm.id]
@@ -1734,12 +1739,11 @@ func NewPipestance(parent Nodable, invokeSrc string, callStm *CallStm,
 	return self
 }
 
-func (self *Pipestance) getNode() *Node       { return self.node }
-func (self *Pipestance) GetPname() string     { return self.node.name }
-func (self *Pipestance) GetPsid() string      { return self.node.parent.getNode().name }
-func (self *Pipestance) GetFQName() string    { return self.node.fqname }
-func (self *Pipestance) GetInvokeSrc() string { return self.invokeSrc }
-func (self *Pipestance) RefreshState()        { self.node.refreshState() }
+func (self *Pipestance) getNode() *Node    { return self.node }
+func (self *Pipestance) GetPname() string  { return self.node.name }
+func (self *Pipestance) GetPsid() string   { return self.node.parent.getNode().name }
+func (self *Pipestance) GetFQName() string { return self.node.fqname }
+func (self *Pipestance) RefreshState()     { self.node.refreshState() }
 
 func (self *Pipestance) LoadMetadata() {
 	// We used to make this concurrent but ended up with too many
@@ -1922,11 +1926,12 @@ type TopNode struct {
 
 func (self *TopNode) getNode() *Node { return self.node }
 
-func NewTopNode(rt *Runtime, psid string, p string) *TopNode {
+func NewTopNode(rt *Runtime, psid string, p string, j interface{}) *TopNode {
 	self := &TopNode{}
 	self.node = &Node{}
 	self.node.frontierNodes = map[string]Nodable{}
 	self.node.path = p
+	self.node.invocation = j
 	self.node.rt = rt
 	self.node.journalPath = path.Join(self.node.path, "journal")
 	self.node.tmpPath = path.Join(self.node.path, "tmp")
@@ -2043,8 +2048,10 @@ func (self *Runtime) instantiatePipeline(src string, srcPath string, psid string
 		return "", nil, &RuntimeError{fmt.Sprintf("'%s' is not a declared pipeline", ast.call.id)}
 	}
 
+	invocationJson, _ := self.jsonifySource(ast)
+
 	// Instantiate the pipeline.
-	pipestance := NewPipestance(NewTopNode(self, psid, pipestancePath), src, ast.call, ast.callables)
+	pipestance := NewPipestance(NewTopNode(self, psid, pipestancePath, invocationJson), ast.call, ast.callables)
 	if pipestance == nil {
 		return "", nil, &RuntimeError{fmt.Sprintf("'%s' is not a declared pipeline", ast.call.id)}
 	}
@@ -2154,8 +2161,10 @@ func (self *Runtime) InvokeStage(src string, srcPath string, ssid string,
 		return nil, &RuntimeError{fmt.Sprintf("'%s' is not a declared stage", ast.call.id)}
 	}
 
+	invocationJson, _ := self.jsonifySource(ast)
+
 	// Instantiate stagestance.
-	stagestance := NewStagestance(NewTopNode(self, "", stagestancePath), ast.call, ast.callables)
+	stagestance := NewStagestance(NewTopNode(self, "", stagestancePath, invocationJson), ast.call, ast.callables)
 	if stagestance == nil {
 		return nil, &RuntimeError{fmt.Sprintf("'%s' is not a declared stage", ast.call.id)}
 	}
@@ -2218,4 +2227,19 @@ func (self *Runtime) BuildCallSource(incpaths []string, name string,
 	}
 	return fmt.Sprintf("%s\n\ncall %s(\n%s\n)", strings.Join(includes, "\n"),
 		name, strings.Join(lines, "\n")), nil
+}
+
+func (self *Runtime) jsonifySource(ast *Ast) (interface{}, error) {
+	if ast.call == nil {
+		return nil, &RuntimeError{"cannot jsonify a pipeline without a call statement"}
+	}
+
+	args := map[string]interface{}{}
+	for _, binding := range ast.call.bindings.list {
+		args[binding.id] = expToInterface(binding.exp)
+	}
+	return map[string]interface{}{
+		"name": ast.call.id,
+		"args": args,
+	}, nil
 }
