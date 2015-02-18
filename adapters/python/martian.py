@@ -159,7 +159,10 @@ def initialize(argv):
     metadata.update_journal("stderr")
 
     # Set reserved args values
-    args = Record({"__invocation__": jobinfo["invocation"]})
+    args = Record({
+            "__invocation__": jobinfo["invocation"],
+            "__version__": jobinfo["version"],
+            })
 
     # Start heartbeat thread
     start_heartbeat()

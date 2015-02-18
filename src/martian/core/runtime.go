@@ -1593,6 +1593,10 @@ func (self *Node) runJob(shellName string, fqname string, metadata *Metadata,
 	argv := []string{}
 	stagecodeParts := strings.Split(self.stagecodeCmd, " ")
 	runFile := path.Join(self.journalPath, fqname)
+	version := map[string]interface{}{
+		"martian":   self.rt.martianVersion,
+		"pipelines": self.rt.mroVersion,
+	}
 
 	switch self.stagecodeLang {
 	case "Python":
@@ -1627,6 +1631,7 @@ func (self *Node) runJob(shellName string, fqname string, metadata *Metadata,
 		"profile_flag":   profile,
 		"stackvars_flag": stackVars,
 		"invocation":     self.invocation,
+		"version":        version,
 	})
 	jobManager.execJob(shellCmd, argv, envs, metadata, threads, memGB, fqname, shellName)
 	ExitCriticalSection()
