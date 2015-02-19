@@ -2053,7 +2053,7 @@ func (self *Runtime) instantiatePipeline(src string, srcPath string, psid string
 		return "", nil, &RuntimeError{fmt.Sprintf("'%s' is not a declared pipeline", ast.call.id)}
 	}
 
-	invocationJson, _ := self.jsonifySource(ast)
+	invocationJson, _ := self.BuildCallJSON(src, srcPath)
 
 	// Instantiate the pipeline.
 	pipestance := NewPipestance(NewTopNode(self, psid, pipestancePath, invocationJson), ast.call, ast.callables)
@@ -2166,7 +2166,7 @@ func (self *Runtime) InvokeStage(src string, srcPath string, ssid string,
 		return nil, &RuntimeError{fmt.Sprintf("'%s' is not a declared stage", ast.call.id)}
 	}
 
-	invocationJson, _ := self.jsonifySource(ast)
+	invocationJson, _ := self.BuildCallJSON(src, srcPath)
 
 	// Instantiate stagestance.
 	stagestance := NewStagestance(NewTopNode(self, "", stagestancePath, invocationJson), ast.call, ast.callables)
@@ -2234,7 +2234,12 @@ func (self *Runtime) BuildCallSource(incpaths []string, name string,
 		name, strings.Join(lines, "\n")), nil
 }
 
-func (self *Runtime) jsonifySource(ast *Ast) (interface{}, error) {
+func (self *Runtime) BuildCallJSON(src string, srcPath string) (interface{}, error) {
+	_, ast, err := parseSource(src, srcPath, []string{self.mroPath}, false)
+	if err != nil {
+		return nil, err
+	}
+
 	if ast.call == nil {
 		return nil, &RuntimeError{"cannot jsonify a pipeline without a call statement"}
 	}
@@ -2244,7 +2249,7 @@ func (self *Runtime) jsonifySource(ast *Ast) (interface{}, error) {
 		args[binding.id] = expToInterface(binding.exp)
 	}
 	return map[string]interface{}{
-		"name": ast.call.id,
+		"call": ast.call.id,
 		"args": args,
 	}, nil
 }
