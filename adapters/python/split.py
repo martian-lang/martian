@@ -10,10 +10,10 @@ import martian
 
 try:
     # Initialize Martian with command line args.
-    martian.initialize(sys.argv)
+    args = martian.initialize(sys.argv)
 
     # Load args and retvals from metadata.
-    args = martian.Record(martian.metadata.read("args"))
+    args.set(martian.metadata.read("args"))
 
     # Execute split code.
     martian.run("stage_defs = martian.module.split(args)")

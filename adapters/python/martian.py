@@ -27,6 +27,12 @@ class Record(object):
         for field_name in self.slots:
             setattr(self, field_name, dict[field_name])
 
+    def set(self, dict):
+        for field_name in dict:
+            if not hasattr(self, field_name):
+                self.slots.append(field_name)
+            setattr(self, field_name, dict[field_name])
+
     def items(self):
         return dict((field_name, getattr(self, field_name)) for field_name in self.slots)
 
@@ -135,7 +141,7 @@ def initialize(argv):
     global metadata, module, profile_flag, stackvars_flag, starttime
 
     # Take options from command line.
-    [ shell_cmd, stagecode_path, metadata_path, files_path, run_file, profile_flag, stackvars_flag ] = argv
+    shell_cmd, stagecode_path, metadata_path, files_path, run_file = argv
 
     # Create metadata object with metadata directory.
     run_type = os.path.basename(shell_cmd)[:-3]
@@ -145,12 +151,18 @@ def initialize(argv):
     log_time("__start__")
     starttime = time.time()
 
-    # Write jobinfo
-    write_jobinfo(files_path)
+    # Write jobinfo.
+    jobinfo = write_jobinfo(files_path)
 
     # Update journal for stdout / stderr
     metadata.update_journal("stdout")
     metadata.update_journal("stderr")
+
+    # Set reserved args values
+    args = Record({
+            "__invocation__": jobinfo["invocation"],
+            "__version__": jobinfo["version"],
+            })
 
     # Start heartbeat thread
     start_heartbeat()
@@ -166,8 +178,8 @@ def initialize(argv):
         pass
 
     # Cache the profiling and stackvars flags.
-    profile_flag = (profile_flag == "profile")
-    stackvars_flag = (stackvars_flag == "stackvars")
+    profile_flag = (jobinfo["profile_flag"] == "profile")
+    stackvars_flag = (jobinfo["stackvars_flag"] == "stackvars")
 
     # allow shells and stage code to import martian easily
     sys.path.append(os.path.dirname(__file__))
@@ -175,6 +187,8 @@ def initialize(argv):
     # Load the stage code as a module.
     sys.path.append(os.path.dirname(stagecode_path))
     module = __import__(os.path.basename(stagecode_path))
+
+    return args
 
 def done():
     log_time("__end__")
@@ -286,6 +300,7 @@ def write_jobinfo(cwd):
             "exec_user": os.environ.get("LOGNAME")
         }
     metadata.write("jobinfo", jobinfo)
+    return jobinfo
 
 def log_info(message):
     metadata.log("info", message)
