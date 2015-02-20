@@ -35,7 +35,9 @@ Options:
     --jobmode=<name>     Run jobs on custom or local job manager.
                            Valid job managers are local, sge, lsf or .template file
                            Defaults to local.
-    --profile            Enable stage performance profiling.
+    --profile=<name>     Enables stage performance profiling.
+                           Valid options are cpu, mem and disable.
+                           Defaults to disable.
     --stackvars          Print local variables in stage code stack trace.
     --localcores=<num>   Set max cores the pipeline may request at one time.
                            (Only applies in local jobmode)
@@ -100,9 +102,13 @@ Options:
 	core.LogInfo("options", "--jobmode=%s", jobMode)
 	core.VerifyJobManager(jobMode)
 
-	// Compute profiling flag.
-	profile := opts["--profile"].(bool)
-	core.LogInfo("options", "--profile=%v", profile)
+	// Compute profiling mode.
+	profileMode := "disable"
+	if value := opts["--profile"]; value != nil {
+		profileMode = value.(string)
+	}
+	core.LogInfo("options", "--profile=%s", profileMode)
+	core.VerifyProfileMode(profileMode)
 
 	// Compute stackvars flag.
 	stackVars := opts["--stackvars"].(bool)
@@ -122,8 +128,8 @@ Options:
 	//=========================================================================
 	// Configure Martian runtime.
 	//=========================================================================
-	rt := core.NewRuntimeWithCores(jobMode, vdrMode, mroPath, martianVersion, mroVersion,
-		reqCores, reqMem, reqMemPerCore, -1, profile, stackVars, debug, false)
+	rt := core.NewRuntimeWithCores(jobMode, vdrMode, profileMode, mroPath, martianVersion, mroVersion,
+		reqCores, reqMem, reqMemPerCore, -1, stackVars, debug, false)
 
 	// Invoke stagestance.
 	data, err := ioutil.ReadFile(invocationPath)

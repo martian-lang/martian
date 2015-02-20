@@ -380,6 +380,17 @@ func VerifyVDRMode(vdrMode string) {
 	os.Exit(1)
 }
 
+func VerifyProfileMode(profileMode string) {
+	validModes := []string{"cpu", "mem", "disable"}
+	for _, validMode := range validModes {
+		if validMode == profileMode {
+			return
+		}
+	}
+	LogInfo("runtime", "Invalid profile mode: %s. Valid profile modes: %s", profileMode, strings.Join(validModes, ", "))
+	os.Exit(1)
+}
+
 //=============================================================================
 // Chunk
 //=============================================================================
@@ -1572,12 +1583,6 @@ func (self *Node) runChunk(fqname string, metadata *Metadata, threads int, memGB
 func (self *Node) runJob(shellName string, fqname string, metadata *Metadata,
 	threads int, memGB int) {
 
-	// Configure profiling.
-	profile := "disable"
-	if self.rt.enableProfiling {
-		profile = "profile"
-	}
-
 	// Configure local variable dumping.
 	stackVars := "disable"
 	if self.rt.enableStackVars {
@@ -1628,7 +1633,7 @@ func (self *Node) runJob(shellName string, fqname string, metadata *Metadata,
 	metadata.write("jobinfo", map[string]interface{}{
 		"name":           fqname,
 		"type":           jobMode,
-		"profile_flag":   profile,
+		"profile_mode":   self.rt.profileMode,
 		"stackvars_flag": stackVars,
 		"invocation":     self.invocation,
 		"version":        version,
@@ -1957,23 +1962,22 @@ type Runtime struct {
 	PipelineNames   []string
 	vdrMode         string
 	jobMode         string
+	profileMode     string
 	JobManager      JobManager
 	LocalJobManager JobManager
-	enableProfiling bool
 	enableStackVars bool
 	stest           bool
 }
 
-func NewRuntime(jobMode string, vdrMode string, mroPath string, martianVersion string,
-	mroVersion string, enableProfiling bool, enableStackVars bool,
-	debug bool) *Runtime {
-	return NewRuntimeWithCores(jobMode, vdrMode, mroPath, martianVersion, mroVersion,
-		-1, -1, -1, -1, enableProfiling, enableStackVars, debug, false)
+func NewRuntime(jobMode string, vdrMode string, profileMode string, mroPath string, martianVersion string,
+	mroVersion string, enableStackVars bool, debug bool) *Runtime {
+	return NewRuntimeWithCores(jobMode, vdrMode, profileMode, mroPath, martianVersion, mroVersion,
+		-1, -1, -1, -1, enableStackVars, debug, false)
 }
 
-func NewRuntimeWithCores(jobMode string, vdrMode string, mroPath string, martianVersion string,
-	mroVersion string, reqCores int, reqMem int, reqMemPerCore int, reqMemPerJob int,
-	enableProfiling bool, enableStackVars bool, debug bool, stest bool) *Runtime {
+func NewRuntimeWithCores(jobMode string, vdrMode string, profileMode string, mroPath string,
+	martianVersion string, mroVersion string, reqCores int, reqMem int, reqMemPerCore int,
+	reqMemPerJob int, enableStackVars bool, debug bool, stest bool) *Runtime {
 
 	self := &Runtime{}
 	self.mroPath = mroPath
@@ -1982,7 +1986,7 @@ func NewRuntimeWithCores(jobMode string, vdrMode string, mroPath string, martian
 	self.mroVersion = mroVersion
 	self.jobMode = jobMode
 	self.vdrMode = vdrMode
-	self.enableProfiling = enableProfiling
+	self.profileMode = profileMode
 	self.enableStackVars = enableStackVars
 	self.callableTable = map[string]Callable{}
 	self.PipelineNames = []string{}
@@ -1995,6 +1999,7 @@ func NewRuntimeWithCores(jobMode string, vdrMode string, mroPath string, martian
 		self.JobManager = NewRemoteJobManager(self.jobMode, reqMemPerCore, reqMemPerJob)
 	}
 	VerifyVDRMode(self.vdrMode)
+	VerifyProfileMode(self.profileMode)
 
 	// Parse all MROs in MROPATH and cache pipelines by name.
 	fpaths, _ := filepath.Glob(self.mroPath + "/[^_]*.mro")
