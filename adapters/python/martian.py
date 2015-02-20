@@ -21,30 +21,10 @@ import traceback
 class StageException(Exception):
     pass
 
-class MemoryStackFrame:
-    def __init__(self, key):
-        self.filename, self.lineno, self.name, self.caller_filename, self.caller_lineno, \
-            self.caller_name, self.ctype = key
-        self.active_calls = []
-        self.n_calls = 0
-        self.maxrss_kb = 0
-        self.total_mem_kb = 0
-
-    def call_func(self):
-        call_mem_kb = get_mem_kb()
-        self.active_calls.append(call_mem_kb)
-
-    def return_func(self):
-        return_mem_kb = get_mem_kb()
-        call_mem_kb = return_mem_kb - self.active_calls.pop()
-
-        self.n_calls += 1
-        self.maxrss_kb = max(self.maxrss_kb, call_mem_kb)
-        self.total_mem_kb += call_mem_kb
-
 class MemoryProfile:
     def __init__(self):
         self.frames = {}
+        self.stack = []
 
     def run(self, cmd):
         import __main__
@@ -59,45 +39,52 @@ class MemoryProfile:
             sys.setprofile(None)
 
     def dispatcher(self, frame, event, arg):
-        fcode = frame.f_code
-        caller_fcode = frame.f_back.f_code
-        if event == "c_call" or event == "c_return":
-            filename = arg.__module__
-            name = arg.__name__
-            ctype = True
-        else:
-            filename = fcode.co_filename
-            name = fcode.co_name
-            ctype = False
-        key = (filename, fcode.co_firstlineno, name, caller_fcode.co_filename,
-               caller_fcode.co_firstlineno, caller_fcode.co_name, ctype)
-        mframe = self.frames.get(key, None)
-        if mframe is None:
-            mframe = MemoryStackFrame(key)
-            self.frames[key] = mframe
         if event == "call" or event == "c_call":
-            mframe.call_func()
+            fcode = frame.f_code
+            caller_fcode = frame.f_back.f_code
+            if event == "c_call":
+                filename = arg.__module__
+                name = arg.__name__
+                ctype = True
+            else:
+                filename = fcode.co_filename
+                name = fcode.co_name
+                ctype = False
+            key = (filename, fcode.co_firstlineno, name, caller_fcode.co_filename,
+                   caller_fcode.co_firstlineno, caller_fcode.co_name, ctype)
+            self.stack.append((key, get_mem_kb()))
         elif event == "return" or event == "c_return":
-            mframe.return_func()
+            key, init_mem_kb = self.stack.pop()
+            call_mem_kb = get_mem_kb() - init_mem_kb
+            mframe = self.frames.get(key, None)
+            if mframe is None:
+                self.frames[key] = 1, call_mem_kb, call_mem_kb
+            else:
+                n_calls, maxrss_kb, total_mem_kb = mframe
+                self.frames[key] = n_calls + 1, max(maxrss_kb, call_mem_kb), total_mem_kb + call_mem_kb
 
     def format_stats(self):
-        sorted_frames = sorted(self.frames.values(), key=lambda frame: frame.maxrss_kb, reverse=True)
+        sorted_frames = sorted(self.frames.items(), key=lambda frame: frame[1][1], reverse=True)
         output = "ncalls    maxrss(kb)    totalmem(kb)    percall(kb)    filename:lineno(function) <--- caller_filename:lineno(caller_function)\n"
-        for frame in sorted_frames:
-            n_calls_str = padded_print("ncalls", frame.n_calls)
-            maxrss_kb_str = padded_print("maxrss(kb)", frame.maxrss_kb)
-            total_mem_kb_str = padded_print("totalmem(kb)", frame.total_mem_kb)
-            per_call_kb_str = padded_print("percall(kb)", frame.total_mem_kb / frame.n_calls if frame.n_calls > 0 else 0)
-            if frame.ctype:
-                if frame.filename is None:
-                    func_name_str = frame.name
+        for key, val in sorted_frames:
+            filename, lineno, name, caller_filename, caller_lineno, caller_name, ctype = key
+            n_calls, maxrss_kb, total_mem_kb = val
+
+            n_calls_str = padded_print("ncalls", n_calls)
+            maxrss_kb_str = padded_print("maxrss(kb)", maxrss_kb)
+            total_mem_kb_str = padded_print("totalmem(kb)", total_mem_kb)
+            per_call_kb_str = padded_print("percall(kb)", total_mem_kb / n_calls if n_calls > 0 else 0)
+
+            func_field_name = "filename:lineno(function) <--- caller_filename:lineno(caller_function)"
+            func_caller_str = "%s:%d(%s)" % (caller_filename, caller_lineno, caller_name)
+            if ctype:
+                if filename is None:
+                    func_name_str = name
                 else:
-                    func_name_str = "%s.%s" % (frame.filename, frame.name)
-                func_str = padded_print("filename:lineno(function) <--- caller_filename:lineno(caller_function)", "{%s} <--- %s:%d(%s)" % (
-                        func_name_str, frame.caller_filename, frame.caller_lineno, frame.caller_name))
+                    func_name_str = "%s.%s" % (filename, name)
+                func_str = padded_print(func_field_name, "{%s} <--- %s" % (func_name_str, func_caller_str))
             else:
-                func_str = padded_print("filename:lineno(function) <--- caller_filename:lineno(caller_function)", "%s:%d(%s) <--- %s:%d(%s)" % (
-                        frame.filename, frame.lineno, frame.name, frame.caller_filename, frame.caller_lineno, frame.caller_name))
+                func_str = padded_print(func_field_name, "%s:%d(%s) <--- %s" % (filename, lineno, name, func_caller_str))
             output += "%s    %s    %s    %s    %s\n" % (n_calls_str, maxrss_kb_str, total_mem_kb_str, per_call_kb_str, func_str)
         return output
 
