@@ -101,12 +101,6 @@ class Record(object):
         for field_name in self.slots:
             setattr(self, field_name, dict[field_name])
 
-    def set(self, dict):
-        for field_name in dict:
-            if not hasattr(self, field_name):
-                self.slots.append(field_name)
-            setattr(self, field_name, dict[field_name])
-
     def items(self):
         return dict((field_name, getattr(self, field_name)) for field_name in self.slots)
 
