@@ -21,6 +21,75 @@ import traceback
 class StageException(Exception):
     pass
 
+class MemoryStackFrame:
+    def __init__(self, key):
+        self.filename, self.lineno, self.name, self.caller_filename, self.caller_lineno, self.caller_name = key
+        self.active_calls = []
+        self.completed_calls = []
+
+    def call_func(self):
+        call_mem_kb = get_mem_kb()
+        self.active_calls.append(call_mem_kb)
+
+    def return_func(self):
+        return_mem_kb = get_mem_kb()
+        call_mem_kb = self.active_calls.pop()
+        self.completed_calls.append(return_mem_kb - call_mem_kb)
+
+class MemoryProfile:
+    def __init__(self):
+        self.frames = {}
+
+    def run(self, cmd):
+        import __main__
+        dict = __main__.__dict__
+        self.runctx(cmd, dict, dict)
+
+    def runctx(self, cmd, globals, locals):
+        sys.setprofile(self.dispatcher)
+        try:
+            exec cmd in globals, locals
+        finally:
+            sys.setprofile(None)
+
+    def dispatcher(self, frame, event, arg):
+        fcode = frame.f_code
+        caller_fcode = frame.f_back.f_code
+        key = (fcode.co_filename, fcode.co_firstlineno, fcode.co_name, caller_fcode.co_filename,
+               caller_fcode.co_firstlineno, caller_fcode.co_name)
+        mframe = self.frames.get(key, None)
+        if mframe is None:
+            mframe = MemoryStackFrame(key)
+            self.frames[key] = mframe
+        if event == "call":
+            mframe.call_func()
+        elif event == "return":
+            mframe.return_func()
+
+    def format_stats(self):
+        sorted_frames = sorted(self.frames.values(), key=lambda mframe: max(mframe.completed_calls + [0]), reverse=True)
+        output = "ncalls    maxrss(kb)    totalmem(kb)    percall(kb)    filename:lineno(function) <--- caller_filename:lineno(caller_function)\n"
+        for frame in sorted_frames:
+            n_calls = len(frame.completed_calls)
+            maxrss_kb = max(frame.completed_calls + [0])
+            total_mem_kb = sum(frame.completed_calls)
+
+            n_calls_str = padded_print("ncalls", n_calls)
+            maxrss_kb_str = padded_print("maxrss(kb)", maxrss_kb)
+            total_mem_kb_str = padded_print("totalmem(kb)", total_mem_kb)
+            per_call_kb_str = padded_print("percall(kb)", total_mem_kb / n_calls if n_calls > 0 else 0)
+            func_str = padded_print("caller_filename:lineno(caller_function) <--- caller_filename:lineno(caller_function)", "%s:%d(%s) <--- %s:%d(%s)" % (
+                    frame.filename, frame.lineno, frame.name, frame.caller_filename, frame.caller_lineno, frame.caller_name))
+            output += "%s    %s    %s    %s    %s\n" % (n_calls_str, maxrss_kb_str, total_mem_kb_str, per_call_kb_str, func_str)
+        return output
+
+    def print_stats(self):
+        print self.format_stats()
+
+    def dump_stats(self, filename):
+        with open(filename, 'w') as f:
+            f.write(self.format_stats())
+
 class Record(object):
     def __init__(self, dict):
         self.slots = dict.keys()
@@ -123,6 +192,15 @@ class TestMetadata(Metadata):
         print "%s [%s] %s\n" % (self.make_timestamp_now(), level, message)
 
 
+def get_mem_kb():
+    return resource.getrusage(resource.RUSAGE_SELF).ru_maxrss + resource.getrusage(resource.RUSAGE_CHILDREN).ru_maxrss
+
+def padded_print(field_name, value):
+    offset = len(field_name) - len(str(value))
+    if offset > 0:
+        return (" " * offset) + str(value)
+    return str(value)
+
 def test_initialize(path):
     global metadata
     metadata = TestMetadata(path, path, "", "main")
@@ -138,7 +216,7 @@ def start_heartbeat():
     t.start()
 
 def initialize(argv):
-    global metadata, module, profile_flag, stackvars_flag, starttime
+    global metadata, module, profile_mode, stackvars_flag, starttime
 
     # Take options from command line.
     shell_cmd, stagecode_path, metadata_path, files_path, run_file = argv
@@ -178,7 +256,7 @@ def initialize(argv):
         pass
 
     # Cache the profiling and stackvars flags.
-    profile_flag = (jobinfo["profile_flag"] == "profile")
+    profile_mode = jobinfo["profile_mode"]
     stackvars_flag = (jobinfo["stackvars_flag"] == "stackvars")
 
     # allow shells and stage code to import martian easily
@@ -246,7 +324,13 @@ def complete():
     done()
 
 def run(cmd):
-    if profile_flag:
+    if profile_mode == "mem":
+        mprofile = MemoryProfile()
+        mprofile.run(cmd)
+        mprofile_path = metadata.make_path("mprofile")
+        mprofile.dump_stats(mprofile_path)
+        metadata.update_journal("mprofile")
+    elif profile_mode == "cpu":
         profile = cProfile.Profile()
         profile.enable()
         profile.run(cmd)

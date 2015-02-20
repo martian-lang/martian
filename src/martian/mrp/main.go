@@ -6,7 +6,6 @@
 package main
 
 import (
-	"fmt"
 	"github.com/docopt/docopt.go"
 	"github.com/dustin/go-humanize"
 	"io/ioutil"
@@ -128,9 +127,11 @@ Options:
     --vdrmode=<name>     Enables Volatile Data Removal.
                            Valid options are rolling, post and disable.
                            Defaults to post.
+    --profile=<name>     Enables stage performance profiling.
+                           Valid options are cpu, mem and disable.
+                           Defaults to disable.
     --nodump             Turns off debug dump tarball generation.
     --noexit             Keep UI running after pipestance completes or fails.
-    --profile            Enable stage performance profiling.
     --stackvars          Print local variables in stage code stack trace.
     --localcores=<num>   Set max cores the pipeline may request at one time.
                            (Only applies in local jobmode)
@@ -205,6 +206,14 @@ Options:
 	core.LogInfo("options", "--vdrmode=%s", vdrMode)
 	core.VerifyVDRMode(vdrMode)
 
+	// Compute profiling mode.
+	profileMode := "disable"
+	if value := opts["--profile"]; value != nil {
+		profileMode = value.(string)
+	}
+	core.LogInfo("options", "--profile=%s", profileMode)
+	core.VerifyProfileMode(profileMode)
+
 	// Compute UI port.
 	uiport := ""
 	enableUI := false
@@ -215,10 +224,6 @@ Options:
 	if enableUI {
 		core.LogInfo("options", "--uiport=%s", uiport)
 	}
-
-	// Compute profiling flag.
-	profile := opts["--profile"].(bool)
-	core.LogInfo("options", "--profile=%v", profile)
 
 	// Compute stackVars flag.
 	stackVars := opts["--stackvars"].(bool)
@@ -243,8 +248,8 @@ Options:
 	//=========================================================================
 	// Configure Martian runtime.
 	//=========================================================================
-	rt := core.NewRuntimeWithCores(jobMode, vdrMode, mroPath, martianVersion, mroVersion,
-		reqCores, reqMem, reqMemPerCore, -1, profile, stackVars, debug, stest)
+	rt := core.NewRuntimeWithCores(jobMode, vdrMode, profileMode, mroPath, martianVersion,
+		mroVersion, reqCores, reqMem, reqMemPerCore, -1, stackVars, debug, stest)
 
 	// Print this here because the log makes more sense when this appears before
 	// the runloop messages start to appear.
@@ -307,7 +312,7 @@ Options:
 		"invokepath": invocationPath,
 		"invokesrc":  invocationSrc,
 		"MROPATH":    mroPath,
-		"MROPROFILE": fmt.Sprintf("%v", profile),
+		"MROPROFILE": profileMode,
 		"MROPORT":    uiport,
 		"mroversion": mroVersion,
 	}
