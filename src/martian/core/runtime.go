@@ -1873,6 +1873,10 @@ func (self *Pipestance) GetPath() string {
 	return self.node.parent.getNode().path
 }
 
+func (self *Pipestance) GetInvocation() interface{} {
+	return self.node.parent.getNode().invocation
+}
+
 func (self *Pipestance) PostProcess() {
 	self.node.postProcess()
 	metadata := NewMetadata(self.node.parent.getNode().fqname, self.GetPath())
