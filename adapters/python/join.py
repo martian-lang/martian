@@ -10,9 +10,9 @@ import martian
 
 try:
     # Initialize Martian with command line args.
-    args = martian.initialize(sys.argv)
+    martian.initialize(sys.argv)
 
-    args.set(martian.metadata.read("args"))
+    args = martian.Record(martian.metadata.read("args"))
     outs = martian.Record(martian.metadata.read("outs"))
     chunk_defs = [martian.Record(chunk_def) for chunk_def in martian.metadata.read("chunk_defs")]
     chunk_outs = [martian.Record(chunk_out) for chunk_out in martian.metadata.read("chunk_outs")]

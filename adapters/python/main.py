@@ -10,10 +10,10 @@ import martian
 
 try:
     # Initialize Martian with command line args.
-    args = martian.initialize(sys.argv)
+    martian.initialize(sys.argv)
 
     # Load args and retvals from metadata.
-    args.set(martian.metadata.read("args"))
+    args = martian.Record(martian.metadata.read("args"))
     outs = martian.Record(martian.metadata.read("outs"))
 
     # Execute the main stage code.

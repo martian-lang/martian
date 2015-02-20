@@ -221,7 +221,7 @@ def start_heartbeat():
     t.start()
 
 def initialize(argv):
-    global metadata, module, profile_mode, stackvars_flag, starttime
+    global metadata, module, profile_mode, stackvars_flag, starttime, invocation, version
 
     # Take options from command line.
     shell_cmd, stagecode_path, metadata_path, files_path, run_file = argv
@@ -241,12 +241,6 @@ def initialize(argv):
     metadata.update_journal("stdout")
     metadata.update_journal("stderr")
 
-    # Set reserved args values
-    args = Record({
-            "__invocation__": jobinfo["invocation"],
-            "__version__": jobinfo["version"],
-            })
-
     # Start heartbeat thread
     start_heartbeat()
 
@@ -264,14 +258,16 @@ def initialize(argv):
     profile_mode = jobinfo["profile_mode"]
     stackvars_flag = (jobinfo["stackvars_flag"] == "stackvars")
 
+    # Cache invocation and version JSON.
+    invocation = jobinfo["invocation"]
+    version = jobinfo["version"]
+
     # allow shells and stage code to import martian easily
     sys.path.append(os.path.dirname(__file__))
 
     # Load the stage code as a module.
     sys.path.append(os.path.dirname(stagecode_path))
     module = __import__(os.path.basename(stagecode_path))
-
-    return args
 
 def done():
     log_time("__end__")
@@ -390,6 +386,18 @@ def write_jobinfo(cwd):
         }
     metadata.write("jobinfo", jobinfo)
     return jobinfo
+
+def get_invocation_args():
+    return invocation["args"]
+
+def get_invocation_call():
+    return invocation["call"]
+
+def get_martian_version():
+    return version["martian"]
+
+def get_pipelines_version():
+    return version["pipelines"]
 
 def log_info(message):
     metadata.log("info", message)
