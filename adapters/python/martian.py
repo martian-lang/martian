@@ -25,7 +25,9 @@ class MemoryStackFrame:
     def __init__(self, key):
         self.filename, self.lineno, self.name, self.caller_filename, self.caller_lineno, self.caller_name = key
         self.active_calls = []
-        self.completed_calls = []
+        self.n_calls = 0
+        self.maxrss_kb = 0
+        self.total_mem_kb = 0
 
     def call_func(self):
         call_mem_kb = get_mem_kb()
@@ -33,8 +35,11 @@ class MemoryStackFrame:
 
     def return_func(self):
         return_mem_kb = get_mem_kb()
-        call_mem_kb = self.active_calls.pop()
-        self.completed_calls.append(return_mem_kb - call_mem_kb)
+        call_mem_kb = return_mem_kb - self.active_calls.pop()
+
+        self.n_calls += 1
+        self.maxrss_kb = max(self.maxrss_kb, call_mem_kb)
+        self.total_mem_kb += call_mem_kb
 
 class MemoryProfile:
     def __init__(self):
@@ -55,29 +60,29 @@ class MemoryProfile:
     def dispatcher(self, frame, event, arg):
         fcode = frame.f_code
         caller_fcode = frame.f_back.f_code
-        key = (fcode.co_filename, fcode.co_firstlineno, fcode.co_name, caller_fcode.co_filename,
+        if event == "c_call" or event == "c_return":
+            name = arg.__name__
+        else:
+            name = fcode.co_name
+        key = (fcode.co_filename, fcode.co_firstlineno, name, caller_fcode.co_filename,
                caller_fcode.co_firstlineno, caller_fcode.co_name)
         mframe = self.frames.get(key, None)
         if mframe is None:
             mframe = MemoryStackFrame(key)
             self.frames[key] = mframe
-        if event == "call":
+        if event == "call" or event == "c_call":
             mframe.call_func()
-        elif event == "return":
+        elif event == "return" or event == "c_return":
             mframe.return_func()
 
     def format_stats(self):
-        sorted_frames = sorted(self.frames.values(), key=lambda mframe: max(mframe.completed_calls + [0]), reverse=True)
+        sorted_frames = sorted(self.frames.values(), key=lambda frame: frame.maxrss_kb, reverse=True)
         output = "ncalls    maxrss(kb)    totalmem(kb)    percall(kb)    filename:lineno(function) <--- caller_filename:lineno(caller_function)\n"
         for frame in sorted_frames:
-            n_calls = len(frame.completed_calls)
-            maxrss_kb = max(frame.completed_calls + [0])
-            total_mem_kb = sum(frame.completed_calls)
-
-            n_calls_str = padded_print("ncalls", n_calls)
-            maxrss_kb_str = padded_print("maxrss(kb)", maxrss_kb)
-            total_mem_kb_str = padded_print("totalmem(kb)", total_mem_kb)
-            per_call_kb_str = padded_print("percall(kb)", total_mem_kb / n_calls if n_calls > 0 else 0)
+            n_calls_str = padded_print("ncalls", frame.n_calls)
+            maxrss_kb_str = padded_print("maxrss(kb)", frame.maxrss_kb)
+            total_mem_kb_str = padded_print("totalmem(kb)", frame.total_mem_kb)
+            per_call_kb_str = padded_print("percall(kb)", frame.total_mem_kb / frame.n_calls if frame.n_calls > 0 else 0)
             func_str = padded_print("filename:lineno(function) <--- caller_filename:lineno(caller_function)", "%s:%d(%s) <--- %s:%d(%s)" % (
                     frame.filename, frame.lineno, frame.name, frame.caller_filename, frame.caller_lineno, frame.caller_name))
             output += "%s    %s    %s    %s    %s\n" % (n_calls_str, maxrss_kb_str, total_mem_kb_str, per_call_kb_str, func_str)
