@@ -23,7 +23,8 @@ class StageException(Exception):
 
 class MemoryStackFrame:
     def __init__(self, key):
-        self.filename, self.lineno, self.name, self.caller_filename, self.caller_lineno, self.caller_name = key
+        self.filename, self.lineno, self.name, self.caller_filename, self.caller_lineno, \
+            self.caller_name, self.ctype = key
         self.active_calls = []
         self.n_calls = 0
         self.maxrss_kb = 0
@@ -61,11 +62,15 @@ class MemoryProfile:
         fcode = frame.f_code
         caller_fcode = frame.f_back.f_code
         if event == "c_call" or event == "c_return":
+            filename = arg.__module__
             name = arg.__name__
+            ctype = True
         else:
+            filename = fcode.co_filename
             name = fcode.co_name
-        key = (fcode.co_filename, fcode.co_firstlineno, name, caller_fcode.co_filename,
-               caller_fcode.co_firstlineno, caller_fcode.co_name)
+            ctype = False
+        key = (filename, fcode.co_firstlineno, name, caller_fcode.co_filename,
+               caller_fcode.co_firstlineno, caller_fcode.co_name, ctype)
         mframe = self.frames.get(key, None)
         if mframe is None:
             mframe = MemoryStackFrame(key)
@@ -83,8 +88,16 @@ class MemoryProfile:
             maxrss_kb_str = padded_print("maxrss(kb)", frame.maxrss_kb)
             total_mem_kb_str = padded_print("totalmem(kb)", frame.total_mem_kb)
             per_call_kb_str = padded_print("percall(kb)", frame.total_mem_kb / frame.n_calls if frame.n_calls > 0 else 0)
-            func_str = padded_print("filename:lineno(function) <--- caller_filename:lineno(caller_function)", "%s:%d(%s) <--- %s:%d(%s)" % (
-                    frame.filename, frame.lineno, frame.name, frame.caller_filename, frame.caller_lineno, frame.caller_name))
+            if frame.ctype:
+                if frame.filename is None:
+                    func_name_str = frame.name
+                else:
+                    func_name_str = "%s.%s" % (frame.filename, frame.name)
+                func_str = padded_print("filename:lineno(function) <--- caller_filename:lineno(caller_function)", "{%s} <--- %s:%d(%s)" % (
+                        func_name_str, frame.caller_filename, frame.caller_lineno, frame.caller_name))
+            else:
+                func_str = padded_print("filename:lineno(function) <--- caller_filename:lineno(caller_function)", "%s:%d(%s) <--- %s:%d(%s)" % (
+                        frame.filename, frame.lineno, frame.name, frame.caller_filename, frame.caller_lineno, frame.caller_name))
             output += "%s    %s    %s    %s    %s\n" % (n_calls_str, maxrss_kb_str, total_mem_kb_str, per_call_kb_str, func_str)
         return output
 
