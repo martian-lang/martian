@@ -78,7 +78,7 @@ class MemoryProfile:
             maxrss_kb_str = padded_print("maxrss(kb)", maxrss_kb)
             total_mem_kb_str = padded_print("totalmem(kb)", total_mem_kb)
             per_call_kb_str = padded_print("percall(kb)", total_mem_kb / n_calls if n_calls > 0 else 0)
-            func_str = padded_print("caller_filename:lineno(caller_function) <--- caller_filename:lineno(caller_function)", "%s:%d(%s) <--- %s:%d(%s)" % (
+            func_str = padded_print("filename:lineno(function) <--- caller_filename:lineno(caller_function)", "%s:%d(%s) <--- %s:%d(%s)" % (
                     frame.filename, frame.lineno, frame.name, frame.caller_filename, frame.caller_lineno, frame.caller_name))
             output += "%s    %s    %s    %s    %s\n" % (n_calls_str, maxrss_kb_str, total_mem_kb_str, per_call_kb_str, func_str)
         return output
