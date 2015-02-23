@@ -2243,7 +2243,7 @@ func (self *Runtime) BuildCallSource(incpaths []string, name string,
 		name, strings.Join(lines, "\n")), nil
 }
 
-func (self *Runtime) BuildCallJSON(src string, srcPath string) (interface{}, error) {
+func (self *Runtime) BuildCallJSON(src string, srcPath string) (map[string]interface{}, error) {
 	_, ast, err := parseSource(src, srcPath, []string{self.mroPath}, false)
 	if err != nil {
 		return nil, err

@@ -6,8 +6,11 @@
 package core
 
 import (
+	"bytes"
+	"encoding/json"
 	"fmt"
 	"github.com/10XDev/osext"
+	"html/template"
 	"os"
 	"path"
 	"regexp"
@@ -37,6 +40,14 @@ func mkdirAll(p string) {
 	os.MkdirAll(p, 0755)
 }
 
+func MakeJSON(data interface{}) string {
+	bytes, err := json.Marshal(data)
+	if err != nil {
+		return err.Error()
+	}
+	return string(bytes)
+}
+
 func searchPaths(fname string, searchPaths []string) (string, bool) {
 	for _, searchPath := range searchPaths {
 		fpath := path.Join(searchPath, fname)
@@ -63,6 +74,19 @@ func cartesianProduct(valueSets []interface{}) []interface{} {
 		perms = newPerms
 	}
 	return perms
+}
+
+func Render(dir string, tname string, data interface{}) string {
+	tmpl, err := template.New(tname).Delims("[[", "]]").ParseFiles(RelPath(path.Join("..", dir, tname)))
+	if err != nil {
+		return err.Error()
+	}
+	var doc bytes.Buffer
+	err = tmpl.Execute(&doc, data)
+	if err != nil {
+		return err.Error()
+	}
+	return doc.String()
 }
 
 func ValidateID(id string) error {
