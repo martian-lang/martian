@@ -5,8 +5,6 @@
 package core
 
 import (
-	"os"
-	"path/filepath"
 	"time"
 )
 
@@ -135,15 +133,7 @@ func reduceJobInfo(jobInfo *JobInfo, outputPaths []string, numThreads int) *Perf
 		}
 	}
 
-	for _, outputPath := range outputPaths {
-		filepath.Walk(outputPath, func(_ string, info os.FileInfo, err error) error {
-			if err == nil {
-				perfInfo.OutputBytes += uint64(info.Size())
-				perfInfo.OutputFiles++
-			}
-			return nil
-		})
-	}
+	perfInfo.OutputFiles, perfInfo.OutputBytes = GetDirectorySize(outputPaths)
 	perfInfo.TotalFiles = perfInfo.OutputFiles
 	perfInfo.TotalBytes = perfInfo.OutputBytes
 

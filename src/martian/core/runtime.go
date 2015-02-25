@@ -1906,6 +1906,11 @@ func (self *Pipestance) VDRKill() *VDRKillReport {
 	return killReport
 }
 
+func (self *Pipestance) Tag(tags []string) {
+	metadata := NewMetadata(self.node.parent.getNode().fqname, self.GetPath())
+	metadata.write("tags", tags)
+}
+
 func (self *Pipestance) Lock() error {
 	metadata := NewMetadata(self.node.parent.getNode().fqname, self.GetPath())
 	metadata.loadCache()

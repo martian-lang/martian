@@ -130,6 +130,7 @@ Options:
     --profile=<name>     Enables stage performance profiling.
                            Valid options are cpu, mem and disable.
                            Defaults to disable.
+    --tags=<name>        Tags pipestance with list of comma-separated <key>=<value> pairs
     --nodump             Turns off debug dump tarball generation.
     --noexit             Keep UI running after pipestance completes or fails.
     --stackvars          Print local variables in stage code stack trace.
@@ -225,6 +226,12 @@ Options:
 		core.LogInfo("options", "--uiport=%s", uiport)
 	}
 
+	// Parse tags.
+	tags := core.ParseTagsOpt(opts["--tags"].(string))
+	for _, tag := range tags {
+		core.LogInfo("options", "--tag='%s'", tag)
+	}
+
 	// Compute stackVars flag.
 	stackVars := opts["--stackvars"].(bool)
 	core.LogInfo("options", "--stackvars=%v", stackVars)
@@ -277,6 +284,7 @@ Options:
 		}
 		core.DieIf(err)
 	}
+	pipestance.Tag(tags)
 	core.Println("\nRunning pre-flight checks (15 seconds)...")
 
 	// Start writing (including cached entries) to log file.

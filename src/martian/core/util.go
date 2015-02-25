@@ -13,6 +13,7 @@ import (
 	"html/template"
 	"os"
 	"path"
+	"path/filepath"
 	"regexp"
 	"strings"
 	"time"
@@ -46,6 +47,33 @@ func MakeJSON(data interface{}) string {
 		return err.Error()
 	}
 	return string(bytes)
+}
+
+func MakeTag(key string, value string) string {
+	return fmt.Sprintf("%s=%s", key, value)
+}
+
+func ParseTag(tag string) (string, string) {
+	tagList := strings.Split(tag, "=")
+	if len(tagList) < 2 {
+		return "", tag
+	}
+	return tagList[0], tagList[1]
+}
+
+func GetDirectorySize(paths []string) (uint, uint64) {
+	var numFiles uint = 0
+	var numBytes uint64 = 0
+	for _, path := range paths {
+		filepath.Walk(path, func(_ string, info os.FileInfo, err error) error {
+			if err == nil {
+				numBytes += uint64(info.Size())
+				numFiles++
+			}
+			return nil
+		})
+	}
+	return numFiles, numBytes
 }
 
 func searchPaths(fname string, searchPaths []string) (string, bool) {
@@ -128,6 +156,26 @@ func EnvRequire(reqs [][]string, log bool) map[string]string {
 		}
 	}
 	return e
+}
+
+func ParseTagsOpt(opt string) []string {
+	tags := strings.Split(opt, ",")
+	for _, tag := range tags {
+		tagList := strings.Split(tag, "=")
+		if len(tagList) != 2 {
+			LogInfo("options", "TagError: Tag '%s' does not <key>=<value> format", tag)
+			os.Exit(1)
+		}
+		if len(tagList[0]) == 0 {
+			LogInfo("options", "TagError: Tag '%s' has empty key", tag)
+			os.Exit(1)
+		}
+		if len(tagList[1]) == 0 {
+			LogInfo("options", "TagError: Tag '%s' has empty value", tag)
+			os.Exit(1)
+		}
+	}
+	return tags
 }
 
 func ParseMroFlags(opts map[string]interface{}, doc string, martianOptions []string, martianArguments []string) {
