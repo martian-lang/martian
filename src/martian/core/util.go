@@ -50,11 +50,11 @@ func MakeJSON(data interface{}) string {
 }
 
 func MakeTag(key string, value string) string {
-	return fmt.Sprintf("%s=%s", key, value)
+	return fmt.Sprintf("%s:%s", key, value)
 }
 
 func ParseTag(tag string) (string, string) {
-	tagList := strings.Split(tag, "=")
+	tagList := strings.Split(tag, ":")
 	if len(tagList) < 2 {
 		return "", tag
 	}
@@ -161,9 +161,9 @@ func EnvRequire(reqs [][]string, log bool) map[string]string {
 func ParseTagsOpt(opt string) []string {
 	tags := strings.Split(opt, ",")
 	for _, tag := range tags {
-		tagList := strings.Split(tag, "=")
+		tagList := strings.Split(tag, ":")
 		if len(tagList) != 2 {
-			LogInfo("options", "TagError: Tag '%s' does not <key>=<value> format", tag)
+			LogInfo("options", "TagError: Tag '%s' does not <key>:<value> format", tag)
 			os.Exit(1)
 		}
 		if len(tagList[0]) == 0 {

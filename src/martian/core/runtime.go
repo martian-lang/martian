@@ -1906,11 +1906,6 @@ func (self *Pipestance) VDRKill() *VDRKillReport {
 	return killReport
 }
 
-func (self *Pipestance) Tag(tags []string) {
-	metadata := NewMetadata(self.node.parent.getNode().fqname, self.GetPath())
-	metadata.write("tags", tags)
-}
-
 func (self *Pipestance) Lock() error {
 	metadata := NewMetadata(self.node.parent.getNode().fqname, self.GetPath())
 	metadata.loadCache()
@@ -2089,7 +2084,7 @@ func (self *Runtime) instantiatePipeline(src string, srcPath string, psid string
 
 // Invokes a new pipestance.
 func (self *Runtime) InvokePipeline(src string, srcPath string, psid string,
-	pipestancePath string) (*Pipestance, error) {
+	pipestancePath string, tags []string) (*Pipestance, error) {
 
 	// Error if pipestance directory is non-empty, otherwise create.
 	if _, err := os.Stat(pipestancePath); err == nil {
@@ -2118,6 +2113,7 @@ func (self *Runtime) InvokePipeline(src string, srcPath string, psid string,
 		"martian":   GetVersion(),
 		"pipelines": GetGitTag(self.mroPath),
 	})
+	metadata.write("tags", tags)
 	metadata.writeRaw("timestamp", "start: "+Timestamp())
 
 	return pipestance, nil
