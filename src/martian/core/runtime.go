@@ -526,16 +526,17 @@ func NewFork(nodable Nodable, index int, argPermute map[string]interface{}) *For
 			chunk := NewChunk(self.node, self, i, chunkDef)
 			self.chunks = append(self.chunks, chunk)
 		}
-	}
-	// This makes Martian backwards compatible with chunk_defs. Otherwise, Kepler generates an incorrect
-	// performance report. Remove this after sufficient time has passed.
-	var chunkDefs []map[string]interface{}
-	if err := json.Unmarshal([]byte(self.split_metadata.readRaw("chunk_defs")), &chunkDefs); err == nil {
-		joinDef := map[string]interface{}{}
-		self.stageDefs = &StageDefs{chunkDefs, joinDef}
-		for i, chunkDef := range self.stageDefs.ChunkDefs {
-			chunk := NewChunk(self.node, self, i, chunkDef)
-			self.chunks = append(self.chunks, chunk)
+	} else {
+		// This makes Martian backwards compatible with chunk_defs. Otherwise, Kepler generates an incorrect
+		// performance report. Remove this after sufficient time has passed.
+		var chunkDefs []map[string]interface{}
+		if err := json.Unmarshal([]byte(self.split_metadata.readRaw("chunk_defs")), &chunkDefs); err == nil {
+			joinDef := map[string]interface{}{}
+			self.stageDefs = &StageDefs{chunkDefs, joinDef}
+			for i, chunkDef := range self.stageDefs.ChunkDefs {
+				chunk := NewChunk(self.node, self, i, chunkDef)
+				self.chunks = append(self.chunks, chunk)
+			}
 		}
 	}
 	return self
