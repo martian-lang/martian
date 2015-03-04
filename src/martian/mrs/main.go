@@ -100,7 +100,6 @@ Options:
 		jobMode = value.(string)
 	}
 	core.LogInfo("options", "--jobmode=%s", jobMode)
-	core.VerifyJobManager(jobMode)
 
 	// Compute profiling mode.
 	profileMode := "disable"
@@ -129,7 +128,7 @@ Options:
 	// Configure Martian runtime.
 	//=========================================================================
 	rt := core.NewRuntimeWithCores(jobMode, vdrMode, profileMode, mroPath, martianVersion, mroVersion,
-		reqCores, reqMem, reqMemPerCore, -1, stackVars, debug, false)
+		reqCores, reqMem, reqMemPerCore, stackVars, debug, false)
 
 	// Invoke stagestance.
 	data, err := ioutil.ReadFile(invocationPath)

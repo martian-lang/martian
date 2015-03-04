@@ -196,7 +196,6 @@ Options:
 		jobMode = value.(string)
 	}
 	core.LogInfo("options", "--jobmode=%s", jobMode)
-	core.VerifyJobManager(jobMode)
 
 	// Compute vdrMode.
 	vdrMode := "post"
@@ -249,7 +248,7 @@ Options:
 	// Configure Martian runtime.
 	//=========================================================================
 	rt := core.NewRuntimeWithCores(jobMode, vdrMode, profileMode, mroPath, martianVersion,
-		mroVersion, reqCores, reqMem, reqMemPerCore, -1, stackVars, debug, stest)
+		mroVersion, reqCores, reqMem, reqMemPerCore, stackVars, debug, stest)
 
 	// Print this here because the log makes more sense when this appears before
 	// the runloop messages start to appear.

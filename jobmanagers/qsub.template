@@ -2,6 +2,7 @@
 #$ -N __MRO_JOB_NAME__
 #$ -V
 #$ -pe threads __MRO_THREADS__
+#$ -l h_rss=__MRO_MEM_GB__G
 #$ -cwd
 #$ -o __MRO_STDOUT__
 #$ -e __MRO_STDERR__

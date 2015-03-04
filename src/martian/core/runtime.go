@@ -1988,12 +1988,12 @@ type Runtime struct {
 func NewRuntime(jobMode string, vdrMode string, profileMode string, mroPath string, martianVersion string,
 	mroVersion string, enableStackVars bool, debug bool) *Runtime {
 	return NewRuntimeWithCores(jobMode, vdrMode, profileMode, mroPath, martianVersion, mroVersion,
-		-1, -1, -1, -1, enableStackVars, debug, false)
+		-1, -1, -1, enableStackVars, debug, false)
 }
 
 func NewRuntimeWithCores(jobMode string, vdrMode string, profileMode string, mroPath string,
 	martianVersion string, mroVersion string, reqCores int, reqMem int, reqMemPerCore int,
-	reqMemPerJob int, enableStackVars bool, debug bool, stest bool) *Runtime {
+	enableStackVars bool, debug bool, stest bool) *Runtime {
 
 	self := &Runtime{}
 	self.mroPath = mroPath
@@ -2012,7 +2012,7 @@ func NewRuntimeWithCores(jobMode string, vdrMode string, profileMode string, mro
 	if self.jobMode == "local" {
 		self.JobManager = self.LocalJobManager
 	} else {
-		self.JobManager = NewRemoteJobManager(self.jobMode, reqMemPerCore, reqMemPerJob)
+		self.JobManager = NewRemoteJobManager(self.jobMode, reqMemPerCore)
 	}
 	VerifyVDRMode(self.vdrMode)
 	VerifyProfileMode(self.profileMode)
