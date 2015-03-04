@@ -1,7 +1,7 @@
 {
   "settings":{
     "threads_per_job": 1,
-    "memGB_per_job": 4
+    "memGB_per_job": 6
   },
   "jobcmd":{  
     "sge":"qsub",
