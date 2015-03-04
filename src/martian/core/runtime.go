@@ -959,7 +959,7 @@ func (self *Fork) serializePerf() (*ForkPerfInfo, *VDRKillReport) {
 
 	forkStats := &PerfInfo{}
 	if len(stats) > 0 {
-		forkStats = computeStats(stats, killReport)
+		forkStats = ComputeStats(stats, killReport)
 	}
 	return &ForkPerfInfo{
 		Stages:     self.getStages(),
