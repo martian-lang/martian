@@ -17,10 +17,7 @@ a { cursor:pointer; }
 .admin .navbar-brand a {
     color: white !important;
 }
-.navbar-inverse.admin .navbar-brand {
-    color: white;
-}
-.navbar-inverse.admin .navbar-brand:hover {
+.navbar-upper.admin {
     color: white;
 }
 .admin .navbar-brand a.admin-exit {

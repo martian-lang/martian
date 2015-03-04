@@ -16,7 +16,6 @@ import (
 	"time"
 
 	"github.com/docopt/docopt.go"
-	"github.com/dustin/go-humanize"
 )
 
 func main() {
@@ -34,12 +33,11 @@ Usage:
 
 Options:
     --jobmode=<name>     Run jobs on custom or local job manager.
-                           Valid job managers are local, sge or .template file
+                           Valid job managers are local, sge, lsf or .template file
                            Defaults to local.
-    --vdrmode=<name>     Enables Volatile Data Removal.
-                           Valid options are rolling, post and disable.
-                           Defaults to post.
-    --profile            Enable stage performance profiling.
+    --profile=<name>     Enables stage performance profiling.
+                           Valid options are cpu, mem and disable.
+                           Defaults to disable.
     --stackvars          Print local variables in stage code stack trace.
     --localcores=<num>   Set max cores the pipeline may request at one time.
                            (Only applies in local jobmode)
@@ -53,14 +51,14 @@ Options:
     --version            Show version.`
 	martianVersion := core.GetVersion()
 	opts, _ := docopt.Parse(doc, nil, true, martianVersion, false)
-	core.LogInfo("*", "Martian Run Stage")
-	core.LogInfo("version", martianVersion)
+	core.Println("Martian Single-Stage Runtime - %s", martianVersion)
 	core.LogInfo("cmdline", strings.Join(os.Args, " "))
 
 	martianFlags := ""
 	if martianFlags = os.Getenv("MROFLAGS"); len(martianFlags) > 0 {
 		martianOptions := strings.Split(martianFlags, " ")
 		core.ParseMroFlags(opts, doc, martianOptions, []string{"call.mro", "stagestance"})
+		core.LogInfo("environ", "MROFLAGS=%s", martianFlags)
 	}
 
 	// Requested cores and memory.
@@ -68,18 +66,21 @@ Options:
 	if value := opts["--localcores"]; value != nil {
 		if value, err := strconv.Atoi(value.(string)); err == nil {
 			reqCores = value
+			core.LogInfo("options", "--localcores=%s", reqCores)
 		}
 	}
 	reqMem := -1
 	if value := opts["--localmem"]; value != nil {
 		if value, err := strconv.Atoi(value.(string)); err == nil {
 			reqMem = value
+			core.LogInfo("options", "--localmem=%s", reqMem)
 		}
 	}
 	reqMemPerCore := -1
 	if value := opts["--mempercore"]; value != nil {
 		if value, err := strconv.Atoi(value.(string)); err == nil {
 			reqMemPerCore = value
+			core.LogInfo("options", "--mempercore=%s", reqMemPerCore)
 		}
 	}
 
@@ -89,39 +90,35 @@ Options:
 	if value := os.Getenv("MROPATH"); len(value) > 0 {
 		mroPath = value
 	}
-
-	// Compute version.
-	mroVersion, err := core.GetGitTag(mroPath)
-	if err == nil {
-		core.LogInfo("version", "MRO_STAGES = %s", mroVersion)
-	}
+	mroVersion := core.GetGitTag(mroPath)
+	core.LogInfo("environ", "MROPATH=%s", mroPath)
+	core.LogInfo("version", "MRO Version=%s", mroVersion)
 
 	// Compute job manager.
 	jobMode := "local"
 	if value := opts["--jobmode"]; value != nil {
 		jobMode = value.(string)
 	}
-	core.LogInfo("environ", "job mode = %s", jobMode)
+	core.LogInfo("options", "--jobmode=%s", jobMode)
 
-	// Compute vdrMode.
-	vdrMode := "post"
-	if value := opts["--vdrmode"]; value != nil {
-		vdrMode = value.(string)
+	// Compute profiling mode.
+	profileMode := "disable"
+	if value := opts["--profile"]; value != nil {
+		profileMode = value.(string)
 	}
-	core.LogInfo("environ", "vdrmode = %s", vdrMode)
-	core.VerifyVDRMode(vdrMode)
-
-	// Compute profiling flag.
-	profile := opts["--profile"].(bool)
+	core.LogInfo("options", "--profile=%s", profileMode)
+	core.VerifyProfileMode(profileMode)
 
 	// Compute stackvars flag.
 	stackVars := opts["--stackvars"].(bool)
+	core.LogInfo("options", "--stackvars=%v", stackVars)
 
 	// Setup invocation-specific values.
 	invocationPath := opts["<call.mro>"].(string)
 	ssid := opts["<stagestance_name>"].(string)
 	stagestancePath := path.Join(cwd, ssid)
 	stepSecs := 1
+	vdrMode := "disable"
 	debug := opts["--debug"].(bool)
 
 	// Validate psid.
@@ -130,14 +127,17 @@ Options:
 	//=========================================================================
 	// Configure Martian runtime.
 	//=========================================================================
-	rt := core.NewRuntimeWithCores(jobMode, vdrMode, mroPath, martianVersion, mroVersion,
-		reqCores, reqMem, reqMemPerCore, profile, stackVars, debug, false)
+	rt := core.NewRuntimeWithCores(jobMode, vdrMode, profileMode, mroPath, martianVersion, mroVersion,
+		reqCores, reqMem, reqMemPerCore, stackVars, debug, false)
 
 	// Invoke stagestance.
 	data, err := ioutil.ReadFile(invocationPath)
 	core.DieIf(err)
 	stagestance, err := rt.InvokeStage(string(data), invocationPath, ssid, stagestancePath)
 	core.DieIf(err)
+
+	// Start writing (including cached entries) to log file.
+	core.LogTee(path.Join(stagestancePath, "_log"))
 
 	//=========================================================================
 	// Start run loop.
@@ -153,14 +153,6 @@ Options:
 			state := stagestance.GetState()
 			if state == "complete" {
 				stagestance.PostProcess()
-				if vdrMode == "disable" {
-					core.LogInfo("runtime", "VDR disabled. No files killed.")
-				} else {
-					core.LogInfo("runtime", "Starting VDR kill...")
-					killReport := stagestance.VDRKill()
-					core.LogInfo("runtime", "VDR killed %d files, %s.",
-						killReport.Count, humanize.Bytes(killReport.Size))
-				}
 				core.LogInfo("runtime", "Stage completed, exiting.")
 				os.Exit(0)
 			}

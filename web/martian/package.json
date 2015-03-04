@@ -1,7 +1,8 @@
 {
   "name": "martian-web",
   "version": "0.0.1",
-  "description": "",
+  "description": "Martian UI",
+  "private": true,
   "main": "",
   "dependencies": {},
   "scripts": {},

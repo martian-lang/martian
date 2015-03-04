@@ -11,7 +11,6 @@ import (
 	"io/ioutil"
 	"math"
 	"os"
-	"os/exec"
 	"path"
 	"path/filepath"
 	"regexp"
@@ -381,6 +380,17 @@ func VerifyVDRMode(vdrMode string) {
 	os.Exit(1)
 }
 
+func VerifyProfileMode(profileMode string) {
+	validModes := []string{"cpu", "mem", "disable"}
+	for _, validMode := range validModes {
+		if validMode == profileMode {
+			return
+		}
+	}
+	LogInfo("runtime", "Invalid profile mode: %s. Valid profile modes: %s", profileMode, strings.Join(validModes, ", "))
+	os.Exit(1)
+}
+
 //=============================================================================
 // Chunk
 //=============================================================================
@@ -516,6 +526,18 @@ func NewFork(nodable Nodable, index int, argPermute map[string]interface{}) *For
 			chunk := NewChunk(self.node, self, i, chunkDef)
 			self.chunks = append(self.chunks, chunk)
 		}
+	} else {
+		// This makes Martian backwards compatible with chunk_defs. Otherwise, Kepler generates an incorrect
+		// performance report. Remove this after sufficient time has passed.
+		var chunkDefs []map[string]interface{}
+		if err := json.Unmarshal([]byte(self.split_metadata.readRaw("chunk_defs")), &chunkDefs); err == nil {
+			joinDef := map[string]interface{}{}
+			self.stageDefs = &StageDefs{chunkDefs, joinDef}
+			for i, chunkDef := range self.stageDefs.ChunkDefs {
+				chunk := NewChunk(self.node, self, i, chunkDef)
+				self.chunks = append(self.chunks, chunk)
+			}
+		}
 	}
 	return self
 }
@@ -643,8 +665,13 @@ func (self *Fork) step() {
 	if self.node.kind == "stage" {
 		state := self.getState()
 		if !strings.HasSuffix(state, "_running") && !strings.HasSuffix(state, "_queued") {
-			statePad := strings.Repeat(" ", 15-len(state))
-			LogInfo("runtime", "(%s)%s %s", state, statePad, self.node.fqname)
+			statePad := strings.Repeat(" ", int(math.Max(0, float64(15-len(state)))))
+			msg := fmt.Sprintf("(%s)%s %s", state, statePad, self.node.fqname)
+			if self.node.preflight {
+				LogInfo("runtime", msg)
+			} else {
+				PrintInfo("runtime", msg)
+			}
 		}
 
 		if state == "ready" {
@@ -980,6 +1007,7 @@ type Node struct {
 	stagecodeCmd   string
 	journalPath    string
 	tmpPath        string
+	invocation     interface{}
 }
 
 func (self *Node) getNode() *Node { return self }
@@ -995,6 +1023,7 @@ func NewNode(parent Nodable, kind string, callStm *CallStm, callables *Callables
 	self.path = path.Join(parent.getNode().path, self.name)
 	self.journalPath = parent.getNode().journalPath
 	self.tmpPath = parent.getNode().tmpPath
+	self.invocation = parent.getNode().invocation
 	self.metadata = NewMetadata(self.fqname, self.path)
 	self.volatile = callStm.modifiers.volatile
 	self.local = callStm.modifiers.local
@@ -1247,11 +1276,11 @@ func (self *Node) getState() string {
 }
 
 func (self *Node) reset() error {
-	LogInfo("runtime", "(reset)           %s", self.fqname)
+	PrintInfo("runtime", "(reset)           %s", self.fqname)
 
 	// Blow away the entire stage node.
 	if err := os.RemoveAll(self.path); err != nil {
-		LogInfo("runtime", "mrp cannot reset the stage because its folder contents could not be deleted. Error was:\n\n%s\n\nPlease resolve the error in order to continue running the pipeline.", err.Error())
+		PrintInfo("runtime", "mrp cannot reset the stage because its folder contents could not be deleted. Error was:\n\n%s\n\nPlease resolve the error in order to continue running the pipeline.", err.Error())
 		return err
 	}
 	// Remove all related files from journal directory.
@@ -1281,6 +1310,15 @@ func (self *Node) resetJobMonitors() {
 		if state == "running" || state == "queued" {
 			self.rt.JobManager.MonitorJob(metadata)
 		}
+	}
+}
+
+func (self *Node) kill() {
+	for _, metadata := range self.collectMetadatas() {
+		if state, _ := metadata.getState(""); state == "failed" {
+			continue
+		}
+		metadata.writeRaw("errors", "Job was killed by Martian.")
 	}
 }
 
@@ -1557,12 +1595,6 @@ func (self *Node) runChunk(fqname string, metadata *Metadata, threads int, memGB
 func (self *Node) runJob(shellName string, fqname string, metadata *Metadata,
 	threads int, memGB int) {
 
-	// Configure profiling.
-	profile := "disable"
-	if self.rt.enableProfiling {
-		profile = "profile"
-	}
-
 	// Configure local variable dumping.
 	stackVars := "disable"
 	if self.rt.enableStackVars {
@@ -1578,14 +1610,18 @@ func (self *Node) runJob(shellName string, fqname string, metadata *Metadata,
 	argv := []string{}
 	stagecodeParts := strings.Split(self.stagecodeCmd, " ")
 	runFile := path.Join(self.journalPath, fqname)
+	version := map[string]interface{}{
+		"martian":   self.rt.martianVersion,
+		"pipelines": self.rt.mroVersion,
+	}
 
 	switch self.stagecodeLang {
 	case "Python":
 		shellCmd = path.Join(self.rt.adaptersPath, "python", shellName+".py")
-		argv = append(stagecodeParts, metadata.path, metadata.filesPath, runFile, profile, stackVars)
+		argv = append(stagecodeParts, metadata.path, metadata.filesPath, runFile)
 	case "Executable":
 		shellCmd = stagecodeParts[0]
-		argv = append(stagecodeParts[1:], shellName, metadata.path, metadata.filesPath, runFile, profile, stackVars)
+		argv = append(stagecodeParts[1:], shellName, metadata.path, metadata.filesPath, runFile)
 	default:
 		panic(fmt.Sprintf("Unknown stage code language: %s", self.stagecodeLang))
 	}
@@ -1597,10 +1633,23 @@ func (self *Node) runJob(shellName string, fqname string, metadata *Metadata,
 		jobMode = "local"
 		jobManager = self.rt.LocalJobManager
 	}
-	LogInfo("runtime", "(run:%s) %s.%s", jobMode, fqname, shellName)
+	padding := strings.Repeat(" ", int(math.Max(0, float64(10-len(jobMode)))))
+	msg := fmt.Sprintf("(run:%s) %s %s.%s", jobMode, padding, fqname, shellName)
+	if self.preflight {
+		LogInfo("runtime", msg)
+	} else {
+		PrintInfo("runtime", msg)
+	}
 
 	EnterCriticalSection()
-	metadata.write("jobinfo", map[string]interface{}{"name": fqname, "type": jobMode})
+	metadata.write("jobinfo", map[string]interface{}{
+		"name":           fqname,
+		"type":           jobMode,
+		"profile_mode":   self.rt.profileMode,
+		"stackvars_flag": stackVars,
+		"invocation":     self.invocation,
+		"version":        version,
+	})
 	jobManager.execJob(shellCmd, argv, envs, metadata, threads, memGB, fqname, shellName)
 	ExitCriticalSection()
 }
@@ -1659,15 +1708,12 @@ func (self *Stagestance) GetFatalError() (string, string, string, string, []stri
 // Pipestance
 //=============================================================================
 type Pipestance struct {
-	node      *Node
-	invokeSrc string
+	node *Node
 }
 
-func NewPipestance(parent Nodable, invokeSrc string, callStm *CallStm,
-	callables *Callables) *Pipestance {
+func NewPipestance(parent Nodable, callStm *CallStm, callables *Callables) *Pipestance {
 	self := &Pipestance{}
 	self.node = NewNode(parent, "pipeline", callStm, callables)
-	self.invokeSrc = invokeSrc
 
 	// Build subcall tree.
 	pipeline, ok := callables.table[self.node.name].(*Pipeline)
@@ -1681,7 +1727,7 @@ func NewPipestance(parent Nodable, invokeSrc string, callStm *CallStm,
 		case *Stage:
 			self.node.subnodes[subcallStm.id] = NewStagestance(self.node, subcallStm, callables)
 		case *Pipeline:
-			self.node.subnodes[subcallStm.id] = NewPipestance(self.node, "", subcallStm, callables)
+			self.node.subnodes[subcallStm.id] = NewPipestance(self.node, subcallStm, callables)
 		}
 		if self.node.subnodes[subcallStm.id].getNode().preflight {
 			preflightNode = self.node.subnodes[subcallStm.id]
@@ -1715,12 +1761,11 @@ func NewPipestance(parent Nodable, invokeSrc string, callStm *CallStm,
 	return self
 }
 
-func (self *Pipestance) getNode() *Node       { return self.node }
-func (self *Pipestance) GetPname() string     { return self.node.name }
-func (self *Pipestance) GetPsid() string      { return self.node.parent.getNode().name }
-func (self *Pipestance) GetFQName() string    { return self.node.fqname }
-func (self *Pipestance) GetInvokeSrc() string { return self.invokeSrc }
-func (self *Pipestance) RefreshState()        { self.node.refreshState() }
+func (self *Pipestance) getNode() *Node    { return self.node }
+func (self *Pipestance) GetPname() string  { return self.node.name }
+func (self *Pipestance) GetPsid() string   { return self.node.parent.getNode().name }
+func (self *Pipestance) GetFQName() string { return self.node.fqname }
+func (self *Pipestance) RefreshState()     { self.node.refreshState() }
 
 func (self *Pipestance) LoadMetadata() {
 	// We used to make this concurrent but ended up with too many
@@ -1761,6 +1806,13 @@ func (self *Pipestance) GetState() string {
 	return "waiting"
 }
 
+func (self *Pipestance) Kill() {
+	nodes := self.node.getFrontierNodes()
+	for _, node := range nodes {
+		node.kill()
+	}
+}
+
 func (self *Pipestance) RestartRunningNodes(jobMode string) error {
 	self.LoadMetadata()
 	nodes := self.node.getFrontierNodes()
@@ -1768,7 +1820,7 @@ func (self *Pipestance) RestartRunningNodes(jobMode string) error {
 	remoteNodes := []*Node{}
 	for _, node := range nodes {
 		if node.state == "running" {
-			LogInfo("runtime", "Found orphaned stage: %s", node.fqname)
+			PrintInfo("runtime", "Found orphaned stage: %s", node.fqname)
 			if jobMode == "local" || node.local {
 				localNodes = append(localNodes, node)
 			} else {
@@ -1833,12 +1885,26 @@ func (self *Pipestance) GetPath() string {
 	return self.node.parent.getNode().path
 }
 
+func (self *Pipestance) GetInvocation() interface{} {
+	return self.node.parent.getNode().invocation
+}
+
 func (self *Pipestance) PostProcess() {
 	self.node.postProcess()
 	metadata := NewMetadata(self.node.parent.getNode().fqname, self.GetPath())
 	metadata.writeRaw("timestamp", metadata.readRaw("timestamp")+"\nend: "+Timestamp())
-	metadata.write("finalstate", self.Serialize("finalstate"))
-	metadata.write("perf", self.Serialize("perf"))
+	self.Immortalize()
+}
+
+func (self *Pipestance) Immortalize() {
+	metadata := NewMetadata(self.node.parent.getNode().fqname, self.GetPath())
+	metadata.loadCache()
+	if !metadata.exists("finalstate") {
+		metadata.write("finalstate", self.Serialize("finalstate"))
+	}
+	if !metadata.exists("perf") {
+		metadata.write("perf", self.Serialize("perf"))
+	}
 }
 
 func (self *Pipestance) VDRKill() *VDRKillReport {
@@ -1858,18 +1924,23 @@ func (self *Pipestance) Lock() error {
 	if metadata.exists("lock") {
 		return &PipestanceLockedError{self.node.parent.getNode().name, self.GetPath()}
 	}
-	registerSignalHandler(self)
+	RegisterSignalHandler(self)
 	metadata.writeTime("lock")
 	return nil
 }
 
-func (self *Pipestance) Unlock() {
+func (self *Pipestance) unlock() {
 	metadata := NewMetadata(self.node.parent.getNode().fqname, self.GetPath())
 	metadata.remove("lock")
 }
 
+func (self *Pipestance) Unlock() {
+	self.unlock()
+	UnregisterSignalHandler(self)
+}
+
 func (self *Pipestance) handleSignal() {
-	self.Unlock()
+	self.unlock()
 }
 
 //=============================================================================
@@ -1881,11 +1952,12 @@ type TopNode struct {
 
 func (self *TopNode) getNode() *Node { return self.node }
 
-func NewTopNode(rt *Runtime, psid string, p string) *TopNode {
+func NewTopNode(rt *Runtime, psid string, p string, j interface{}) *TopNode {
 	self := &TopNode{}
 	self.node = &Node{}
 	self.node.frontierNodes = map[string]Nodable{}
 	self.node.path = p
+	self.node.invocation = j
 	self.node.rt = rt
 	self.node.journalPath = path.Join(self.node.path, "journal")
 	self.node.tmpPath = path.Join(self.node.path, "tmp")
@@ -1906,22 +1978,21 @@ type Runtime struct {
 	PipelineNames   []string
 	vdrMode         string
 	jobMode         string
+	profileMode     string
 	JobManager      JobManager
 	LocalJobManager JobManager
-	enableProfiling bool
 	enableStackVars bool
 	stest           bool
 }
 
-func NewRuntime(jobMode string, vdrMode string, mroPath string, martianVersion string,
-	mroVersion string, enableProfiling bool, enableStackVars bool,
-	debug bool) *Runtime {
-	return NewRuntimeWithCores(jobMode, vdrMode, mroPath, martianVersion, mroVersion,
-		-1, -1, -1, enableProfiling, enableStackVars, debug, false)
+func NewRuntime(jobMode string, vdrMode string, profileMode string, mroPath string, martianVersion string,
+	mroVersion string, enableStackVars bool, debug bool) *Runtime {
+	return NewRuntimeWithCores(jobMode, vdrMode, profileMode, mroPath, martianVersion, mroVersion,
+		-1, -1, -1, enableStackVars, debug, false)
 }
 
-func NewRuntimeWithCores(jobMode string, vdrMode string, mroPath string, martianVersion string,
-	mroVersion string, reqCores int, reqMem int, reqMemPerCore int, enableProfiling bool,
+func NewRuntimeWithCores(jobMode string, vdrMode string, profileMode string, mroPath string,
+	martianVersion string, mroVersion string, reqCores int, reqMem int, reqMemPerCore int,
 	enableStackVars bool, debug bool, stest bool) *Runtime {
 
 	self := &Runtime{}
@@ -1931,7 +2002,7 @@ func NewRuntimeWithCores(jobMode string, vdrMode string, mroPath string, martian
 	self.mroVersion = mroVersion
 	self.jobMode = jobMode
 	self.vdrMode = vdrMode
-	self.enableProfiling = enableProfiling
+	self.profileMode = profileMode
 	self.enableStackVars = enableStackVars
 	self.callableTable = map[string]Callable{}
 	self.PipelineNames = []string{}
@@ -1944,6 +2015,7 @@ func NewRuntimeWithCores(jobMode string, vdrMode string, mroPath string, martian
 		self.JobManager = NewRemoteJobManager(self.jobMode, reqMemPerCore)
 	}
 	VerifyVDRMode(self.vdrMode)
+	VerifyProfileMode(self.profileMode)
 
 	// Parse all MROs in MROPATH and cache pipelines by name.
 	fpaths, _ := filepath.Glob(self.mroPath + "/[^_]*.mro")
@@ -1986,7 +2058,7 @@ func (self *Runtime) CompileAll(checkSrcPath bool) (int, error) {
 // pipestance path. This is the core (private) method called by the
 // public InvokeWithSource and Reattach methods.
 func (self *Runtime) instantiatePipeline(src string, srcPath string, psid string,
-	pipestancePath string) (string, *Pipestance, error) {
+	pipestancePath string, readOnly bool) (string, *Pipestance, error) {
 	// Parse the invocation source.
 	postsrc, ast, err := parseSource(src, srcPath, []string{self.mroPath}, true)
 	if err != nil {
@@ -2002,15 +2074,19 @@ func (self *Runtime) instantiatePipeline(src string, srcPath string, psid string
 		return "", nil, &RuntimeError{fmt.Sprintf("'%s' is not a declared pipeline", ast.call.id)}
 	}
 
+	invocationJson, _ := self.BuildCallJSON(src, srcPath)
+
 	// Instantiate the pipeline.
-	pipestance := NewPipestance(NewTopNode(self, psid, pipestancePath), src, ast.call, ast.callables)
+	pipestance := NewPipestance(NewTopNode(self, psid, pipestancePath, invocationJson), ast.call, ast.callables)
 	if pipestance == nil {
 		return "", nil, &RuntimeError{fmt.Sprintf("'%s' is not a declared pipeline", ast.call.id)}
 	}
 
-	// Lock the pipestance.
-	if err := pipestance.Lock(); err != nil {
-		return "", nil, err
+	// Lock the pipestance if not in read-only mode.
+	if !readOnly {
+		if err := pipestance.Lock(); err != nil {
+			return "", nil, err
+		}
 	}
 
 	pipestance.getNode().mkdirs()
@@ -2022,16 +2098,19 @@ func (self *Runtime) instantiatePipeline(src string, srcPath string, psid string
 func (self *Runtime) InvokePipeline(src string, srcPath string, psid string,
 	pipestancePath string) (*Pipestance, error) {
 
-	// Error if pipestance exists, otherwise create.
+	// Error if pipestance directory is non-empty, otherwise create.
 	if _, err := os.Stat(pipestancePath); err == nil {
-		return nil, &PipestanceExistsError{psid}
+		if fileInfos, err := ioutil.ReadDir(pipestancePath); err != nil || len(fileInfos) > 0 {
+			return nil, &PipestanceExistsError{psid}
+		}
 	} else if err := os.MkdirAll(pipestancePath, 0755); err != nil {
 		return nil, err
 	}
 
 	// Expand env vars in invocation source and instantiate.
 	src = os.ExpandEnv(src)
-	postsrc, pipestance, err := self.instantiatePipeline(src, srcPath, psid, pipestancePath)
+	readOnly := false
+	postsrc, pipestance, err := self.instantiatePipeline(src, srcPath, psid, pipestancePath, readOnly)
 	if err != nil {
 		// If instantiation failed, delete the pipestance folder.
 		os.RemoveAll(pipestancePath)
@@ -2042,14 +2121,9 @@ func (self *Runtime) InvokePipeline(src string, srcPath string, psid string,
 	metadata := NewMetadata("ID."+psid, pipestancePath)
 	metadata.writeRaw("invocation", src)
 	metadata.writeRaw("mrosource", postsrc)
-	cmd := exec.Command("uname", "-a")
-	if output, err := cmd.CombinedOutput(); err == nil {
-		metadata.writeRaw("uname", string(output))
-	}
-	mroVersion, _ := GetGitTag(self.mroPath)
 	metadata.write("versions", map[string]string{
 		"martian":   GetVersion(),
-		"pipelines": mroVersion,
+		"pipelines": GetGitTag(self.mroPath),
 	})
 	metadata.writeRaw("timestamp", "start: "+Timestamp())
 
@@ -2057,7 +2131,8 @@ func (self *Runtime) InvokePipeline(src string, srcPath string, psid string,
 }
 
 // Reattaches to an existing pipestance.
-func (self *Runtime) ReattachToPipestance(psid string, pipestancePath string, src string, checkSrc bool) (*Pipestance, error) {
+func (self *Runtime) ReattachToPipestance(psid string, pipestancePath string, src string, checkSrc bool,
+	readOnly bool) (*Pipestance, error) {
 	fname := "_invocation"
 	invocationPath := path.Join(pipestancePath, fname)
 
@@ -2073,13 +2148,13 @@ func (self *Runtime) ReattachToPipestance(psid string, pipestancePath string, sr
 	}
 
 	// Instantiate the pipestance.
-	_, pipestance, err := self.instantiatePipeline(string(data), fname, psid, pipestancePath)
+	_, pipestance, err := self.instantiatePipeline(string(data), fname, psid, pipestancePath, readOnly)
 
 	// If we're reattaching in local mode, restart any stages that were
 	// left in a running state from last mrp run. The actual job would
 	// have been killed by the CTRL-C.
 	if err == nil {
-		LogInfo("runtime", "Reattaching in %s mode.", self.jobMode)
+		PrintInfo("runtime", "Reattaching in %s mode.", self.jobMode)
 		err = pipestance.RestartRunningNodes(self.jobMode)
 	}
 
@@ -2112,8 +2187,10 @@ func (self *Runtime) InvokeStage(src string, srcPath string, ssid string,
 		return nil, &RuntimeError{fmt.Sprintf("'%s' is not a declared stage", ast.call.id)}
 	}
 
+	invocationJson, _ := self.BuildCallJSON(src, srcPath)
+
 	// Instantiate stagestance.
-	stagestance := NewStagestance(NewTopNode(self, "", stagestancePath), ast.call, ast.callables)
+	stagestance := NewStagestance(NewTopNode(self, "", stagestancePath, invocationJson), ast.call, ast.callables)
 	if stagestance == nil {
 		return nil, &RuntimeError{fmt.Sprintf("'%s' is not a declared stage", ast.call.id)}
 	}
@@ -2176,4 +2253,24 @@ func (self *Runtime) BuildCallSource(incpaths []string, name string,
 	}
 	return fmt.Sprintf("%s\n\ncall %s(\n%s\n)", strings.Join(includes, "\n"),
 		name, strings.Join(lines, "\n")), nil
+}
+
+func (self *Runtime) BuildCallJSON(src string, srcPath string) (interface{}, error) {
+	_, ast, err := parseSource(src, srcPath, []string{self.mroPath}, false)
+	if err != nil {
+		return nil, err
+	}
+
+	if ast.call == nil {
+		return nil, &RuntimeError{"cannot jsonify a pipeline without a call statement"}
+	}
+
+	args := map[string]interface{}{}
+	for _, binding := range ast.call.bindings.list {
+		args[binding.id] = expToInterface(binding.exp)
+	}
+	return map[string]interface{}{
+		"call": ast.call.id,
+		"args": args,
+	}, nil
 }

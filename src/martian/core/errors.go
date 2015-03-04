@@ -63,6 +63,15 @@ func (self *PipestanceNotFailedError) Error() string {
 	return fmt.Sprintf("RuntimeError: pipestance '%s' is not failed.", self.Psid)
 }
 
+// PipestanceNotRunningError
+type PipestanceNotRunningError struct {
+	Psid string
+}
+
+func (self *PipestanceNotRunningError) Error() string {
+	return fmt.Sprintf("RuntimeError: pipestance '%s' is not running.", self.Psid)
+}
+
 // PipestanceNotExistsError
 type PipestanceNotExistsError struct {
 	Psid string
@@ -88,6 +97,15 @@ type PipestanceCopyingError struct {
 
 func (self *PipestanceCopyingError) Error() string {
 	return fmt.Sprintf("RuntimeError: pipestance '%s' is currently being copied.", self.Psid)
+}
+
+// PipestanceWipeError
+type PipestanceWipeError struct {
+	Psid string
+}
+
+func (self *PipestanceWipeError) Error() string {
+	return fmt.Sprintf("RuntimeError: pipestance '%s' cannot be wiped.", self.Psid)
 }
 
 // PreprocessError

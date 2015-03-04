@@ -21,6 +21,80 @@ import traceback
 class StageException(Exception):
     pass
 
+class MemoryProfile:
+    def __init__(self):
+        self.frames = {}
+        self.stack = []
+
+    def run(self, cmd):
+        import __main__
+        dict = __main__.__dict__
+        self.runctx(cmd, dict, dict)
+
+    def runctx(self, cmd, globals, locals):
+        sys.setprofile(self.dispatcher)
+        try:
+            exec cmd in globals, locals
+        finally:
+            sys.setprofile(None)
+
+    def dispatcher(self, frame, event, arg):
+        if event == "call" or event == "c_call":
+            fcode = frame.f_code
+            caller_fcode = frame.f_back.f_code
+            if event == "c_call":
+                filename = arg.__module__
+                name = arg.__name__
+                ctype = True
+            else:
+                filename = fcode.co_filename
+                name = fcode.co_name
+                ctype = False
+            key = (filename, fcode.co_firstlineno, name, caller_fcode.co_filename,
+                   caller_fcode.co_firstlineno, caller_fcode.co_name, ctype)
+            self.stack.append((key, get_mem_kb()))
+        elif event == "return" or event == "c_return":
+            key, init_mem_kb = self.stack.pop()
+            call_mem_kb = get_mem_kb() - init_mem_kb
+            mframe = self.frames.get(key, None)
+            if mframe is None:
+                self.frames[key] = 1, call_mem_kb, call_mem_kb
+            else:
+                n_calls, maxrss_kb, total_mem_kb = mframe
+                self.frames[key] = n_calls + 1, max(maxrss_kb, call_mem_kb), total_mem_kb + call_mem_kb
+
+    def format_stats(self):
+        sorted_frames = sorted(self.frames.items(), key=lambda frame: frame[1][1], reverse=True)
+        output = "ncalls    maxrss(kb)    totalmem(kb)    percall(kb)    filename:lineno(function) <--- caller_filename:lineno(caller_function)\n"
+        for key, val in sorted_frames:
+            filename, lineno, name, caller_filename, caller_lineno, caller_name, ctype = key
+            n_calls, maxrss_kb, total_mem_kb = val
+
+            n_calls_str = padded_print("ncalls", n_calls)
+            maxrss_kb_str = padded_print("maxrss(kb)", maxrss_kb)
+            total_mem_kb_str = padded_print("totalmem(kb)", total_mem_kb)
+            per_call_kb_str = padded_print("percall(kb)", total_mem_kb / n_calls if n_calls > 0 else 0)
+
+            func_field_name = "filename:lineno(function) <--- caller_filename:lineno(caller_function)"
+            func_caller_str = "%s:%d(%s)" % (caller_filename, caller_lineno, caller_name)
+            if ctype:
+                if filename is None:
+                    func_name_str = name
+                else:
+                    func_name_str = "%s.%s" % (filename, name)
+                func_str = padded_print(func_field_name, "{%s} <--- %s" % (func_name_str, func_caller_str))
+            else:
+                func_str = padded_print(func_field_name, "%s:%d(%s) <--- %s" % (filename, lineno, name, func_caller_str))
+            output += "%s    %s    %s    %s    %s\n" % (n_calls_str, maxrss_kb_str, total_mem_kb_str, per_call_kb_str, func_str)
+        return output
+
+    def print_stats(self):
+        print self.format_stats()
+
+    def dump_stats(self, filename):
+        with open(filename, 'w') as f:
+            f.write(self.format_stats())
+
 class Record(object):
     def __init__(self, dict):
         self.slots = dict.keys()
@@ -99,7 +173,7 @@ class Metadata:
         self._append(message, "alarm")
 
     def _assert(self, message):
-        self.write_raw("assert", message + "\n")
+        self.write_raw("assert", message)
 
     def update_journal(self, name, force=False):
         if self.run_type != "main":
@@ -117,6 +191,15 @@ class TestMetadata(Metadata):
         print "%s [%s] %s\n" % (self.make_timestamp_now(), level, message)
 
 
+def get_mem_kb():
+    return resource.getrusage(resource.RUSAGE_SELF).ru_maxrss + resource.getrusage(resource.RUSAGE_CHILDREN).ru_maxrss
+
+def padded_print(field_name, value):
+    offset = len(field_name) - len(str(value))
+    if offset > 0:
+        return (" " * offset) + str(value)
+    return str(value)
+
 def test_initialize(path):
     global metadata
     metadata = TestMetadata(path, path, "", "main")
@@ -132,17 +215,21 @@ def start_heartbeat():
     t.start()
 
 def initialize(argv):
-    global metadata, module, profile_flag, stackvars_flag, starttime
+    global metadata, module, profile_mode, stackvars_flag, starttime, invocation, version
 
     # Take options from command line.
-    [ shell_cmd, stagecode_path, metadata_path, files_path, run_file, profile_flag, stackvars_flag ] = argv
+    shell_cmd, stagecode_path, metadata_path, files_path, run_file = argv
 
     # Create metadata object with metadata directory.
     run_type = os.path.basename(shell_cmd)[:-3]
     metadata = Metadata(metadata_path, files_path, run_file, run_type)
 
-    # Write jobinfo
-    write_jobinfo(files_path)
+    # Log the start time (do not call this before metadata is initialized)
+    log_time("__start__")
+    starttime = time.time()
+
+    # Write jobinfo.
+    jobinfo = write_jobinfo(files_path)
 
     # Update journal for stdout / stderr
     metadata.update_journal("stdout")
@@ -153,14 +240,21 @@ def initialize(argv):
 
     # Increase the maximum open file descriptors to the hard limit
     _, hard = resource.getrlimit(resource.RLIMIT_NOFILE)
-    resource.setrlimit(resource.RLIMIT_NOFILE, (hard, hard))
-
-    log_time("__start__")
-    starttime = time.time()
+    try:
+        resource.setrlimit(resource.RLIMIT_NOFILE, (hard, hard))
+    except Exception as e:
+        # Since we are still initializing, do not allow an unhandled exception.
+        # If the limit is not high enough, a pre-flight will catch it.
+        metadata.log("adapter", "Adapter could not increase file handle ulimit to %s: %s" % (str(hard), str(e)))
+        pass
 
     # Cache the profiling and stackvars flags.
-    profile_flag = (profile_flag == "profile")
-    stackvars_flag = (stackvars_flag == "stackvars")
+    profile_mode = jobinfo["profile_mode"]
+    stackvars_flag = (jobinfo["stackvars_flag"] == "stackvars")
+
+    # Cache invocation and version JSON.
+    invocation = jobinfo["invocation"]
+    version = jobinfo["version"]
 
     # allow shells and stage code to import martian easily
     sys.path.append(os.path.dirname(__file__))
@@ -225,7 +319,13 @@ def complete():
     done()
 
 def run(cmd):
-    if profile_flag:
+    if profile_mode == "mem":
+        mprofile = MemoryProfile()
+        mprofile.run(cmd)
+        mprofile_path = metadata.make_path("mprofile")
+        mprofile.dump_stats(mprofile_path)
+        metadata.update_journal("mprofile")
+    elif profile_mode == "cpu":
         profile = cProfile.Profile()
         profile.enable()
         profile.run(cmd)
@@ -279,6 +379,19 @@ def write_jobinfo(cwd):
             "exec_user": os.environ.get("LOGNAME")
         }
     metadata.write("jobinfo", jobinfo)
+    return jobinfo
+
+def get_invocation_args():
+    return invocation["args"]
+
+def get_invocation_call():
+    return invocation["call"]
+
+def get_martian_version():
+    return version["martian"]
+
+def get_pipelines_version():
+    return version["pipelines"]
 
 def log_info(message):
     metadata.log("info", message)
