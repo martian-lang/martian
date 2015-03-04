@@ -476,16 +476,16 @@ func (self *Chunk) serializeState() interface{} {
 	}
 }
 
-func (self *Chunk) serializePerf() (interface{}, *PerfInfo) {
+func (self *Chunk) serializePerf() *ChunkPerfInfo {
 	numThreads := 1
 	if v, ok := self.chunkDef["__threads"].(float64); ok {
 		numThreads = int(v)
 	}
 	stats := self.metadata.serializePerf(numThreads)
-	return map[string]interface{}{
-		"index":       self.index,
-		"chunk_stats": stats,
-	}, stats
+	return &ChunkPerfInfo{
+		Index:      self.index,
+		ChunkStats: stats,
+	}
 }
 
 //=============================================================================
@@ -912,30 +912,30 @@ func (self *Fork) serializeState() interface{} {
 	}
 }
 
-func (self *Fork) getStages() []map[string]interface{} {
-	stages := []map[string]interface{}{}
+func (self *Fork) getStages() []*StagePerfInfo {
+	stages := []*StagePerfInfo{}
 	for _, subfork := range self.subforks {
 		stages = append(stages, subfork.getStages()...)
 	}
 	if self.node.kind == "stage" {
-		stages = append(stages, map[string]interface{}{
-			"name":   self.node.name,
-			"fqname": self.node.fqname,
-			"forki":  self.index,
+		stages = append(stages, &StagePerfInfo{
+			Name:   self.node.name,
+			Fqname: self.node.fqname,
+			Forki:  self.index,
 		})
 	}
 	return stages
 }
 
-func (self *Fork) serializePerf() (interface{}, *PerfInfo, *VDRKillReport) {
-	chunks := []interface{}{}
+func (self *Fork) serializePerf() (*ForkPerfInfo, *VDRKillReport) {
+	chunks := []*ChunkPerfInfo{}
 	stats := []*PerfInfo{}
 
 	for _, chunk := range self.chunks {
-		chunkSer, chunkStats := chunk.serializePerf()
+		chunkSer := chunk.serializePerf()
 		chunks = append(chunks, chunkSer)
-		if chunkStats != nil {
-			stats = append(stats, chunkStats)
+		if chunkSer.ChunkStats != nil {
+			stats = append(stats, chunkSer.ChunkStats)
 		}
 	}
 	numThreads := 1
@@ -951,8 +951,8 @@ func (self *Fork) serializePerf() (interface{}, *PerfInfo, *VDRKillReport) {
 	killReport, _ := self.getVdrKillReport()
 	killReports := []*VDRKillReport{killReport}
 	for _, subfork := range self.subforks {
-		_, subforkStats, subforkKillReport := subfork.serializePerf()
-		stats = append(stats, subforkStats)
+		subforkSer, subforkKillReport := subfork.serializePerf()
+		stats = append(stats, subforkSer.ForkStats)
 		killReports = append(killReports, subforkKillReport)
 	}
 	killReport = mergeVDRKillReports(killReports)
@@ -961,14 +961,14 @@ func (self *Fork) serializePerf() (interface{}, *PerfInfo, *VDRKillReport) {
 	if len(stats) > 0 {
 		forkStats = computeStats(stats, killReport)
 	}
-	return map[string]interface{}{
-		"stages":      self.getStages(),
-		"index":       self.index,
-		"chunks":      chunks,
-		"split_stats": splitStats,
-		"join_stats":  joinStats,
-		"fork_stats":  forkStats,
-	}, forkStats, killReport
+	return &ForkPerfInfo{
+		Stages:     self.getStages(),
+		Index:      self.index,
+		Chunks:     chunks,
+		SplitStats: splitStats,
+		JoinStats:  joinStats,
+		ForkStats:  forkStats,
+	}, killReport
 }
 
 //=============================================================================
@@ -1531,7 +1531,7 @@ func (self *Node) serializeState() interface{} {
 func (self *Node) serializePerf() interface{} {
 	forks := []interface{}{}
 	for _, fork := range self.forks {
-		forkSer, _, _ := fork.serializePerf()
+		forkSer, _ := fork.serializePerf()
 		forks = append(forks, forkSer)
 	}
 	return map[string]interface{}{
@@ -2096,7 +2096,7 @@ func (self *Runtime) instantiatePipeline(src string, srcPath string, psid string
 
 // Invokes a new pipestance.
 func (self *Runtime) InvokePipeline(src string, srcPath string, psid string,
-	pipestancePath string) (*Pipestance, error) {
+	pipestancePath string, tags []string) (*Pipestance, error) {
 
 	// Error if pipestance directory is non-empty, otherwise create.
 	if _, err := os.Stat(pipestancePath); err == nil {
@@ -2125,6 +2125,7 @@ func (self *Runtime) InvokePipeline(src string, srcPath string, psid string,
 		"martian":   GetVersion(),
 		"pipelines": GetGitTag(self.mroPath),
 	})
+	metadata.write("tags", tags)
 	metadata.writeRaw("timestamp", "start: "+Timestamp())
 
 	return pipestance, nil
@@ -2255,7 +2256,7 @@ func (self *Runtime) BuildCallSource(incpaths []string, name string,
 		name, strings.Join(lines, "\n")), nil
 }
 
-func (self *Runtime) BuildCallJSON(src string, srcPath string) (interface{}, error) {
+func (self *Runtime) BuildCallJSON(src string, srcPath string) (map[string]interface{}, error) {
 	_, ast, err := parseSource(src, srcPath, []string{self.mroPath}, false)
 	if err != nil {
 		return nil, err

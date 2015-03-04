@@ -5,8 +5,6 @@
 package core
 
 import (
-	"os"
-	"path/filepath"
 	"time"
 )
 
@@ -78,6 +76,33 @@ type PerfInfo struct {
 	VdrBytes        uint64    `json:"vdr_bytes"`
 }
 
+type ChunkPerfInfo struct {
+	Index      int       `json:"index"`
+	ChunkStats *PerfInfo `json:"chunk_stats"`
+}
+
+type StagePerfInfo struct {
+	Name   string `json:"name"`
+	Fqname string `json:"fqname"`
+	Forki  int    `json:"forki"`
+}
+
+type ForkPerfInfo struct {
+	Stages     []*StagePerfInfo `json:"stages"`
+	Index      int              `json:"index"`
+	Chunks     []*ChunkPerfInfo `json:"chunks"`
+	SplitStats *PerfInfo        `json:"split_stats"`
+	JoinStats  *PerfInfo        `json:"join_stats"`
+	ForkStats  *PerfInfo        `json:"fork_stats"`
+}
+
+type NodePerfInfo struct {
+	Name   string          `json:"name"`
+	Fqname string          `json:"fqname"`
+	Type   string          `json:"type"`
+	Forks  []*ForkPerfInfo `json:"forks"`
+}
+
 func reduceJobInfo(jobInfo *JobInfo, outputPaths []string, numThreads int) *PerfInfo {
 	perfInfo := &PerfInfo{}
 	timeLayout := "2006-01-02 15:04:05"
@@ -108,15 +133,7 @@ func reduceJobInfo(jobInfo *JobInfo, outputPaths []string, numThreads int) *Perf
 		}
 	}
 
-	for _, outputPath := range outputPaths {
-		filepath.Walk(outputPath, func(_ string, info os.FileInfo, err error) error {
-			if err == nil {
-				perfInfo.OutputBytes += uint64(info.Size())
-				perfInfo.OutputFiles++
-			}
-			return nil
-		})
-	}
+	perfInfo.OutputFiles, perfInfo.OutputBytes = GetDirectorySize(outputPaths)
 	perfInfo.TotalFiles = perfInfo.OutputFiles
 	perfInfo.TotalBytes = perfInfo.OutputBytes
 
