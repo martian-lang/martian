@@ -1,0 +1,9 @@
+#!/bin/bash
+#$ -N __MRO_JOB_NAME__
+#$ -V
+#$ -pe threads __MRO_THREADS__
+#$ -cwd
+#$ -o __MRO_STDOUT__
+#$ -e __MRO_STDERR__
+
+__MRO_CMD__

@@ -1,0 +1,8 @@
+#!/bin/bash
+#BSUB -J __MRO_JOB_NAME__
+#BSUB -n __MRO_THREADS__
+#BSUB -o __MRO_STDOUT__
+#BSUB -e __MRO_STDERR__
+#BSUB -R span[hosts=1]
+
+__MRO_CMD__
