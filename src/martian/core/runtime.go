@@ -31,6 +31,11 @@ type Metadata struct {
 	mutex     *sync.Mutex
 }
 
+type MetadataInfo struct {
+	Path  string   `json:"path"`
+	Names []string `json:"names"`
+}
+
 func NewMetadata(fqname string, p string) *Metadata {
 	self := &Metadata{}
 	self.fqname = fqname
@@ -127,7 +132,7 @@ func (self *Metadata) writeTime(name string) {
 }
 func (self *Metadata) remove(name string) { os.Remove(self.makePath(name)) }
 
-func (self *Metadata) serializeState() interface{} {
+func (self *Metadata) serializeState() *MetadataInfo {
 	names := []string{}
 	self.mutex.Lock()
 	for content, _ := range self.contents {
@@ -135,9 +140,9 @@ func (self *Metadata) serializeState() interface{} {
 	}
 	self.mutex.Unlock()
 	sort.Strings(names)
-	return map[string]interface{}{
-		"path":  self.path,
-		"names": names,
+	return &MetadataInfo{
+		Path:  self.path,
+		Names: names,
 	}
 }
 
@@ -169,6 +174,19 @@ type Binding struct {
 	boundNode  Nodable
 	output     string
 	value      interface{}
+}
+
+type BindingInfo struct {
+	Id          string      `json:"id"`
+	Type        string      `json:"type"`
+	ValExp      string      `json:"valexp"`
+	Mode        string      `json:"mode"`
+	Output      string      `json:"output"`
+	Sweep       bool        `json:"bool"`
+	Node        interface{} `json:"node"`
+	MatchedFork interface{} `json:"matchedFork"`
+	Value       interface{} `json:"value"`
+	Waiting     bool        `json:"waiting"`
 }
 
 func newBinding(node *Node, bindStm *BindStm, returnBinding bool) *Binding {
@@ -287,7 +305,7 @@ func (self *Binding) resolve(argPermute map[string]interface{}) interface{} {
 	return nil
 }
 
-func (self *Binding) serializeState(argPermute map[string]interface{}) interface{} {
+func (self *Binding) serializeState(argPermute map[string]interface{}) *BindingInfo {
 	var node interface{} = nil
 	var matchedFork interface{} = nil
 	if self.boundNode != nil {
@@ -297,17 +315,17 @@ func (self *Binding) serializeState(argPermute map[string]interface{}) interface
 			matchedFork = f.index
 		}
 	}
-	return map[string]interface{}{
-		"id":          self.id,
-		"type":        self.tname,
-		"valexp":      self.valexp,
-		"mode":        self.mode,
-		"output":      self.output,
-		"sweep":       self.sweep,
-		"node":        node,
-		"matchedFork": matchedFork,
-		"value":       self.resolve(argPermute),
-		"waiting":     self.waiting,
+	return &BindingInfo{
+		Id:          self.id,
+		Type:        self.tname,
+		ValExp:      self.valexp,
+		Mode:        self.mode,
+		Output:      self.output,
+		Sweep:       self.sweep,
+		Node:        node,
+		MatchedFork: matchedFork,
+		Value:       self.resolve(argPermute),
+		Waiting:     self.waiting,
 	}
 }
 
@@ -405,6 +423,13 @@ type Chunk struct {
 	hasBeenRun bool
 }
 
+type ChunkInfo struct {
+	Index    int                    `json:"index"`
+	ChunkDef map[string]interface{} `json:"chunkDef"`
+	State    string                 `json:"state"`
+	Metadata *MetadataInfo          `json:"metadata"`
+}
+
 func NewChunk(nodable Nodable, fork *Fork, index int, chunkDef map[string]interface{}) *Chunk {
 	self := &Chunk{}
 	self.node = nodable.getNode()
@@ -467,12 +492,12 @@ func (self *Chunk) step() {
 	self.node.runChunk(self.fqname, self.metadata, threads, memGB)
 }
 
-func (self *Chunk) serializeState() interface{} {
-	return map[string]interface{}{
-		"index":    self.index,
-		"chunkDef": self.chunkDef,
-		"state":    self.getState(),
-		"metadata": self.metadata.serializeState(),
+func (self *Chunk) serializeState() *ChunkInfo {
+	return &ChunkInfo{
+		Index:    self.index,
+		ChunkDef: self.chunkDef,
+		State:    self.getState(),
+		Metadata: self.metadata.serializeState(),
 	}
 }
 
@@ -505,6 +530,22 @@ type Fork struct {
 	join_has_run   bool
 	argPermute     map[string]interface{}
 	stageDefs      *StageDefs
+}
+
+type ForkInfo struct {
+	Index         int                    `json:"index"`
+	ArgPermute    map[string]interface{} `json:"argPermute"`
+	State         string                 `json:"state"`
+	Metadata      *MetadataInfo          `json:"metadata"`
+	SplitMetadata *MetadataInfo          `json:"split_metadata"`
+	JoinMetadata  *MetadataInfo          `json:"join_metadata"`
+	Chunks        []*ChunkInfo           `json:"chunks"`
+	Bindings      *ForkBindingsInfo      `json:"bindings"`
+}
+
+type ForkBindingsInfo struct {
+	Argument []*BindingInfo `json:"Argument"`
+	Return   []*BindingInfo `json:"Return"`
 }
 
 func NewFork(nodable Nodable, index int, argPermute map[string]interface{}) *Fork {
@@ -883,32 +924,32 @@ func (self *Fork) getAlarms() string {
 	return alarms
 }
 
-func (self *Fork) serializeState() interface{} {
-	argbindings := []interface{}{}
+func (self *Fork) serializeState() *ForkInfo {
+	argbindings := []*BindingInfo{}
 	for _, argbinding := range self.node.argbindingList {
 		argbindings = append(argbindings, argbinding.serializeState(self.argPermute))
 	}
-	retbindings := []interface{}{}
+	retbindings := []*BindingInfo{}
 	for _, retbinding := range self.node.retbindingList {
 		retbindings = append(retbindings, retbinding.serializeState(self.argPermute))
 	}
-	bindings := map[string]interface{}{
-		"Argument": argbindings,
-		"Return":   retbindings,
+	bindings := &ForkBindingsInfo{
+		Argument: argbindings,
+		Return:   retbindings,
 	}
-	chunks := []interface{}{}
+	chunks := []*ChunkInfo{}
 	for _, chunk := range self.chunks {
 		chunks = append(chunks, chunk.serializeState())
 	}
-	return map[string]interface{}{
-		"index":          self.index,
-		"argPermute":     self.argPermute,
-		"state":          self.getState(),
-		"metadata":       self.metadata.serializeState(),
-		"split_metadata": self.split_metadata.serializeState(),
-		"join_metadata":  self.join_metadata.serializeState(),
-		"chunks":         chunks,
-		"bindings":       bindings,
+	return &ForkInfo{
+		Index:         self.index,
+		ArgPermute:    self.argPermute,
+		State:         self.getState(),
+		Metadata:      self.metadata.serializeState(),
+		SplitMetadata: self.split_metadata.serializeState(),
+		JoinMetadata:  self.join_metadata.serializeState(),
+		Chunks:        chunks,
+		Bindings:      bindings,
 	}
 }
 
@@ -1008,6 +1049,21 @@ type Node struct {
 	journalPath    string
 	tmpPath        string
 	invocation     interface{}
+}
+
+type NodeInfo struct {
+	Name          string         `json:"name"`
+	Fqname        string         `json:"fqname"`
+	Type          string         `json:"type"`
+	Path          string         `json:"path"`
+	State         string         `json:"state"`
+	Metadata      *MetadataInfo  `json:"metadata"`
+	SweepBindings []*BindingInfo `json:"sweepbindings"`
+	Forks         []*ForkInfo    `json:"forks"`
+	Edges         []interface{}  `json:"edges"`
+	StagecodeLang string         `json:"stagecodeLang"`
+	StagecodeCmd  string         `json:"stagecodeCmd"`
+	Error         interface{}    `json:"error"`
 }
 
 func (self *Node) getNode() *Node { return self }
@@ -1482,12 +1538,12 @@ func (self *Node) vdrKill() *VDRKillReport {
 //
 // Serialization
 //
-func (self *Node) serializeState() interface{} {
-	sweepbindings := []interface{}{}
+func (self *Node) serializeState() *NodeInfo {
+	sweepbindings := []*BindingInfo{}
 	for _, sweepbinding := range self.sweepbindings {
 		sweepbindings = append(sweepbindings, sweepbinding.serializeState(nil))
 	}
-	forks := []interface{}{}
+	forks := []*ForkInfo{}
 	for _, fork := range self.forks {
 		forks = append(forks, fork.serializeState())
 	}
@@ -1512,33 +1568,33 @@ func (self *Node) serializeState() interface{} {
 			"log":     log,
 		}
 	}
-	return map[string]interface{}{
-		"name":          self.name,
-		"fqname":        self.fqname,
-		"type":          self.kind,
-		"path":          self.path,
-		"state":         self.state,
-		"metadata":      self.metadata.serializeState(),
-		"sweepbindings": sweepbindings,
-		"forks":         forks,
-		"edges":         edges,
-		"stagecodeLang": self.stagecodeLang,
-		"stagecodeCmd":  self.stagecodeCmd,
-		"error":         err,
+	return &NodeInfo{
+		Name:          self.name,
+		Fqname:        self.fqname,
+		Type:          self.kind,
+		Path:          self.path,
+		State:         self.state,
+		Metadata:      self.metadata.serializeState(),
+		SweepBindings: sweepbindings,
+		Forks:         forks,
+		Edges:         edges,
+		StagecodeLang: self.stagecodeLang,
+		StagecodeCmd:  self.stagecodeCmd,
+		Error:         err,
 	}
 }
 
-func (self *Node) serializePerf() interface{} {
-	forks := []interface{}{}
+func (self *Node) serializePerf() *NodePerfInfo {
+	forks := []*ForkPerfInfo{}
 	for _, fork := range self.forks {
 		forkSer, _ := fork.serializePerf()
 		forks = append(forks, forkSer)
 	}
-	return map[string]interface{}{
-		"name":   self.name,
-		"fqname": self.fqname,
-		"type":   self.kind,
-		"forks":  forks,
+	return &NodePerfInfo{
+		Name:   self.name,
+		Fqname: self.fqname,
+		Type:   self.kind,
+		Forks:  forks,
 	}
 }
 
