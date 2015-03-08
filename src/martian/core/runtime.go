@@ -716,7 +716,11 @@ func (self *Fork) step() {
 		}
 
 		if state == "ready" {
-			self.split_metadata.write("args", resolveBindings(self.node.argbindings, self.argPermute))
+			argBindings := resolveBindings(self.node.argbindings, self.argPermute)
+			incpaths := self.node.invocation["incpaths"].([]string)
+			invocation, _ := self.node.rt.BuildCallSource(incpaths, self.node.name, argBindings)
+			self.metadata.writeRaw("invocation", invocation)
+			self.split_metadata.write("args", argBindings)
 			if self.node.split {
 				if !self.split_has_run {
 					self.split_has_run = true
@@ -1048,7 +1052,7 @@ type Node struct {
 	stagecodeCmd   string
 	journalPath    string
 	tmpPath        string
-	invocation     interface{}
+	invocation     map[string]interface{}
 }
 
 type NodeInfo struct {
@@ -2008,7 +2012,7 @@ type TopNode struct {
 
 func (self *TopNode) getNode() *Node { return self.node }
 
-func NewTopNode(rt *Runtime, psid string, p string, j interface{}) *TopNode {
+func NewTopNode(rt *Runtime, psid string, p string, j map[string]interface{}) *TopNode {
 	self := &TopNode{}
 	self.node = &Node{}
 	self.node.frontierNodes = map[string]Nodable{}
@@ -2077,7 +2081,7 @@ func NewRuntimeWithCores(jobMode string, vdrMode string, profileMode string, mro
 	fpaths, _ := filepath.Glob(self.mroPath + "/[^_]*.mro")
 	for _, fpath := range fpaths {
 		if data, err := ioutil.ReadFile(fpath); err == nil {
-			if _, ast, err := parseSource(string(data), fpath, []string{self.mroPath}, true); err == nil {
+			if _, _, ast, err := parseSource(string(data), fpath, []string{self.mroPath}, true); err == nil {
 				for _, callable := range ast.callables.table {
 					self.callableTable[callable.getId()] = callable
 					if _, ok := callable.(*Pipeline); ok {
@@ -2091,9 +2095,9 @@ func NewRuntimeWithCores(jobMode string, vdrMode string, profileMode string, mro
 }
 
 // Compile an MRO file in cwd or self.mroPath.
-func (self *Runtime) Compile(fpath string, checkSrcPath bool) (string, *Ast, error) {
+func (self *Runtime) Compile(fpath string, checkSrcPath bool) (string, []string, *Ast, error) {
 	if data, err := ioutil.ReadFile(fpath); err != nil {
-		return "", nil, err
+		return "", nil, nil, err
 	} else {
 		return parseSource(string(data), fpath, []string{self.mroPath}, checkSrcPath)
 	}
@@ -2103,7 +2107,7 @@ func (self *Runtime) Compile(fpath string, checkSrcPath bool) (string, *Ast, err
 func (self *Runtime) CompileAll(checkSrcPath bool) (int, error) {
 	fpaths, _ := filepath.Glob(self.mroPath + "/[^_]*.mro")
 	for _, fpath := range fpaths {
-		if _, _, err := self.Compile(fpath, checkSrcPath); err != nil {
+		if _, _, _, err := self.Compile(fpath, checkSrcPath); err != nil {
 			return 0, err
 		}
 	}
@@ -2116,7 +2120,7 @@ func (self *Runtime) CompileAll(checkSrcPath bool) (int, error) {
 func (self *Runtime) instantiatePipeline(src string, srcPath string, psid string,
 	pipestancePath string, readOnly bool) (string, *Pipestance, error) {
 	// Parse the invocation source.
-	postsrc, ast, err := parseSource(src, srcPath, []string{self.mroPath}, true)
+	postsrc, _, ast, err := parseSource(src, srcPath, []string{self.mroPath}, true)
 	if err != nil {
 		return "", nil, err
 	}
@@ -2230,7 +2234,7 @@ func (self *Runtime) InvokeStage(src string, srcPath string, ssid string,
 
 	// Parse the invocation source.
 	src = os.ExpandEnv(src)
-	_, ast, err := parseSource(src, srcPath, []string{self.mroPath}, true)
+	_, _, ast, err := parseSource(src, srcPath, []string{self.mroPath}, true)
 	if err != nil {
 		return nil, err
 	}
@@ -2313,7 +2317,7 @@ func (self *Runtime) BuildCallSource(incpaths []string, name string,
 }
 
 func (self *Runtime) BuildCallJSON(src string, srcPath string) (map[string]interface{}, error) {
-	_, ast, err := parseSource(src, srcPath, []string{self.mroPath}, false)
+	_, incpaths, ast, err := parseSource(src, srcPath, []string{self.mroPath}, false)
 	if err != nil {
 		return nil, err
 	}
@@ -2327,7 +2331,8 @@ func (self *Runtime) BuildCallJSON(src string, srcPath string) (map[string]inter
 		args[binding.id] = expToInterface(binding.exp)
 	}
 	return map[string]interface{}{
-		"call": ast.call.id,
-		"args": args,
+		"call":     ast.call.id,
+		"args":     args,
+		"incpaths": incpaths,
 	}, nil
 }

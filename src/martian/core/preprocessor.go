@@ -39,7 +39,7 @@ func printSourceMap(src string, locmap []FileLoc) {
 /*
  * Inject contents of included files, recursively.
  */
-func preprocess(src string, fname string, incPaths []string) (string, []FileLoc, *PreprocessError) {
+func preprocess(src string, fname string, incPaths []string) (string, []string, []FileLoc, *PreprocessError) {
 	// Locmap tracks original filenames and line numbers and captures
 	// the source insertion mechanics.
 	locmap := make([]FileLoc, lineCount(src))
@@ -52,6 +52,7 @@ func preprocess(src string, fname string, incPaths []string) (string, []FileLoc,
 	re := regexp.MustCompile("@include\\s+\"([^\\\"]+)\"")
 	offsets := re.FindAllStringIndex(src, -1)
 	fileNotFoundError := &PreprocessError{[]string{}}
+	ifnames := []string{}
 	processedSrc := re.ReplaceAllStringFunc(src, func(match string) string {
 		// Get name of file to be included.
 		ifname := re.FindStringSubmatch(match)[1]
@@ -59,6 +60,9 @@ func preprocess(src string, fname string, incPaths []string) (string, []FileLoc,
 			fileNotFoundError.files = append(fileNotFoundError.files, "Cannot include self.")
 			return ""
 		}
+
+		// Add name of file to include files list.
+		ifnames = append(ifnames, ifname)
 
 		// Search incPaths for the file.
 		// If not found, add this file to error list.
@@ -77,7 +81,7 @@ func preprocess(src string, fname string, incPaths []string) (string, []FileLoc,
 		offsets = offsets[1:] // shift()
 
 		// Recursively preprocess the included source.
-		processedIncludeSrc, processedIncludeLocmap, err := preprocess(includeSrc, ifname, incPaths)
+		processedIncludeSrc, _, processedIncludeLocmap, err := preprocess(includeSrc, ifname, incPaths)
 		if err != nil {
 			fileNotFoundError.files = append(fileNotFoundError.files, err.files...)
 		}
@@ -93,7 +97,7 @@ func preprocess(src string, fname string, incPaths []string) (string, []FileLoc,
 		return processedIncludeSrc
 	})
 	if len(fileNotFoundError.files) > 0 {
-		return processedSrc, locmap, fileNotFoundError
+		return processedSrc, ifnames, locmap, fileNotFoundError
 	}
-	return processedSrc, locmap, nil
+	return processedSrc, ifnames, locmap, nil
 }

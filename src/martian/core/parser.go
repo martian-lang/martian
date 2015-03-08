@@ -355,7 +355,7 @@ func (global *Ast) check(stagecodePaths []string, checkSrcPath bool) error {
 //
 // Parser interface, called by runtime.
 //
-func parseSource(src string, srcPath string, incPaths []string, checkSrc bool) (string, *Ast, error) {
+func parseSource(src string, srcPath string, incPaths []string, checkSrc bool) (string, []string, *Ast, error) {
 	// Add the source file's own folder to the include path for
 	// resolving both @includes and stage src paths.
 	incPaths = append([]string{filepath.Dir(srcPath)}, incPaths...)
@@ -364,9 +364,9 @@ func parseSource(src string, srcPath string, incPaths []string, checkSrc bool) (
 	stagecodePaths := append(incPaths, strings.Split(os.Getenv("PATH"), ":")...)
 
 	// Preprocess: generate new source and a locmap.
-	postsrc, locmap, err := preprocess(src, filepath.Base(srcPath), incPaths)
+	postsrc, ifnames, locmap, err := preprocess(src, filepath.Base(srcPath), incPaths)
 	if err != nil {
-		return "", nil, err
+		return "", nil, nil, err
 	}
 	//printSourceMap(postsrc, locmap)
 
@@ -379,13 +379,13 @@ func parseSource(src string, srcPath string, incPaths []string, checkSrc bool) (
 		if perr.loc >= len(locmap) {
 			perr.loc = len(locmap) - 1
 		}
-		return "", nil, &ParseError{perr.token, locmap[perr.loc].fname, locmap[perr.loc].loc}
+		return "", nil, nil, &ParseError{perr.token, locmap[perr.loc].fname, locmap[perr.loc].loc}
 	}
 	ast.locmap = locmap
 
 	// Run semantic checks.
 	if err := ast.check(stagecodePaths, checkSrc); err != nil {
-		return "", nil, err
+		return "", nil, nil, err
 	}
-	return postsrc, ast, nil
+	return postsrc, ifnames, ast, nil
 }
