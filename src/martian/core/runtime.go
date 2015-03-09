@@ -60,6 +60,11 @@ func (self *Metadata) mkdirs() {
 	mkdir(self.filesPath)
 }
 
+func (self *Metadata) removeAll() {
+	os.RemoveAll(self.path)
+	os.RemoveAll(self.filesPath)
+}
+
 func (self *Metadata) getState(name string) (string, bool) {
 	if self.exists("errors") {
 		return "failed", true
@@ -595,6 +600,19 @@ func (self *Fork) collectMetadatas() []*Metadata {
 		metadatas = append(metadatas, chunk.metadata)
 	}
 	return metadatas
+}
+
+func (self *Fork) removeMetadata() {
+	metadatas := []*Metadata{self.split_metadata, self.join_metadata}
+	for _, chunk := range self.chunks {
+		metadatas = append(metadatas, chunk.metadata)
+	}
+	for _, metadata := range metadatas {
+		filePaths, _ := metadata.enumerateFiles()
+		if len(filePaths) == 0 {
+			metadata.removeAll()
+		}
+	}
 }
 
 func (self *Fork) mkdirs() {
@@ -1300,6 +1318,12 @@ func (self *Node) loadMetadata() {
 	self.addFrontierNode(self)
 }
 
+func (self *Node) removeMetadata() {
+	for _, fork := range self.forks {
+		fork.removeMetadata()
+	}
+}
+
 func (self *Node) getFork(index int) *Fork {
 	if index < len(self.forks) {
 		return self.forks[index]
@@ -1941,6 +1965,42 @@ func (self *Pipestance) Serialize(name string) interface{} {
 	return ser
 }
 
+func (self *Pipestance) TarMetadata(tarPath string) error {
+	if !self.node.rt.enableTar {
+		return nil
+	}
+
+	nodes := self.node.allNodes()
+	metadatas := []*Metadata{}
+	filePaths := []string{}
+	for _, node := range nodes {
+		metadatas = append(metadatas, node.collectMetadatas()...)
+	}
+	for _, metadata := range metadatas {
+		filePaths = append(filePaths, metadata.glob()...)
+	}
+
+	EnterCriticalSection()
+	defer ExitCriticalSection()
+
+	// Create tar with all metadata.
+	if err := CreateTar(tarPath, filePaths); err != nil {
+		return err
+	}
+
+	// Remove all metadata files.
+	for _, filePath := range filePaths {
+		os.Remove(filePath)
+	}
+
+	// Remove all split, join, chunk metadatas without data files.
+	for _, node := range nodes {
+		node.removeMetadata()
+	}
+
+	return nil
+}
+
 func (self *Pipestance) GetPath() string {
 	return self.node.parent.getNode().path
 }
@@ -1964,6 +2024,9 @@ func (self *Pipestance) Immortalize() {
 	}
 	if !metadata.exists("perf") {
 		metadata.write("perf", self.Serialize("perf"))
+	}
+	if !metadata.exists("metadata") {
+		self.TarMetadata(metadata.makePath("metadata"))
 	}
 }
 
@@ -2042,18 +2105,19 @@ type Runtime struct {
 	JobManager      JobManager
 	LocalJobManager JobManager
 	enableStackVars bool
+	enableTar       bool
 	stest           bool
 }
 
-func NewRuntime(jobMode string, vdrMode string, profileMode string, mroPath string, martianVersion string,
-	mroVersion string, enableStackVars bool, debug bool) *Runtime {
+func NewRuntime(jobMode string, vdrMode string, profileMode string, mroPath string,
+	martianVersion string, mroVersion string) *Runtime {
 	return NewRuntimeWithCores(jobMode, vdrMode, profileMode, mroPath, martianVersion, mroVersion,
-		-1, -1, -1, enableStackVars, debug, false)
+		-1, -1, -1, false, false, false, false)
 }
 
 func NewRuntimeWithCores(jobMode string, vdrMode string, profileMode string, mroPath string,
 	martianVersion string, mroVersion string, reqCores int, reqMem int, reqMemPerCore int,
-	enableStackVars bool, debug bool, stest bool) *Runtime {
+	enableStackVars bool, enableTar bool, debug bool, stest bool) *Runtime {
 
 	self := &Runtime{}
 	self.mroPath = mroPath
@@ -2064,6 +2128,7 @@ func NewRuntimeWithCores(jobMode string, vdrMode string, profileMode string, mro
 	self.vdrMode = vdrMode
 	self.profileMode = profileMode
 	self.enableStackVars = enableStackVars
+	self.enableTar = enableTar
 	self.callableTable = map[string]Callable{}
 	self.PipelineNames = []string{}
 	self.stest = stest
@@ -2194,8 +2259,8 @@ func (self *Runtime) InvokePipeline(src string, srcPath string, psid string,
 // Reattaches to an existing pipestance.
 func (self *Runtime) ReattachToPipestance(psid string, pipestancePath string, src string, checkSrc bool,
 	readOnly bool) (*Pipestance, error) {
-	fname := "_invocation"
-	invocationPath := path.Join(pipestancePath, fname)
+	invocationPath := path.Join(pipestancePath, "_invocation")
+	metadataPath := path.Join(pipestancePath, "_metadata")
 
 	// Read in the existing _invocation file.
 	data, err := ioutil.ReadFile(invocationPath)
@@ -2209,7 +2274,15 @@ func (self *Runtime) ReattachToPipestance(psid string, pipestancePath string, sr
 	}
 
 	// Instantiate the pipestance.
-	_, pipestance, err := self.instantiatePipeline(string(data), fname, psid, pipestancePath, readOnly)
+	_, pipestance, err := self.instantiatePipeline(string(data), invocationPath, psid, pipestancePath, readOnly)
+
+	// If _metadata exists, untar it so the pipestance can reads its metadata.
+	if _, err := os.Stat(metadataPath); err == nil {
+		if err := UnpackTar(metadataPath); err != nil {
+			return nil, err
+		}
+		os.Remove(metadataPath)
+	}
 
 	// If we're reattaching in local mode, restart any stages that were
 	// left in a running state from last mrp run. The actual job would
@@ -2268,6 +2341,20 @@ func (self *Runtime) GetSerialization(pipestancePath string, name string) (inter
 		return metadata.read(name), true
 	}
 	return nil, false
+}
+
+func (self *Runtime) GetMetadata(pipestancePath string, metadataPath string) (string, error) {
+	metadata := NewMetadata("", pipestancePath)
+	metadata.loadCache()
+	if metadata.exists("metadata") {
+		relPath, _ := filepath.Rel(pipestancePath, metadataPath)
+		return ReadTar(metadata.makePath("metadata"), relPath)
+	}
+	data, err := ioutil.ReadFile(metadataPath)
+	if err != nil {
+		return "", err
+	}
+	return string(data), nil
 }
 
 /****************************************************************************

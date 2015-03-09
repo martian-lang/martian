@@ -45,7 +45,7 @@ Options:
 	mroVersion := core.GetGitTag(mroPath)
 
 	// Setup runtime with MRO path.
-	rt := core.NewRuntime("local", "disable", "disable", mroPath, martianVersion, mroVersion, false, false)
+	rt := core.NewRuntime("local", "disable", "disable", mroPath, martianVersion, mroVersion)
 
 	count := 0
 	if opts["--all"].(bool) {
