@@ -2213,10 +2213,20 @@ func (self *Runtime) InvokePipeline(src string, srcPath string, psid string,
 	return pipestance, nil
 }
 
-// Reattaches to an existing pipestance.
 func (self *Runtime) ReattachToPipestance(psid string, pipestancePath string, src string, checkSrc bool,
 	readOnly bool) (*Pipestance, error) {
-	fname := "_invocation"
+	return self.reattachToPipestance(psid, pipestancePath, src, checkSrc, readOnly, "invocation")
+}
+
+func (self *Runtime) ReattachToPipestanceWithMroSrc(psid string, pipestancePath string, src string, checkSrc bool,
+	readOnly bool) (*Pipestance, error) {
+	return self.reattachToPipestance(psid, pipestancePath, src, checkSrc, readOnly, "mrosource")
+}
+
+// Reattaches to an existing pipestance.
+func (self *Runtime) reattachToPipestance(psid string, pipestancePath string, src string, checkSrc bool,
+	readOnly bool, srcType string) (*Pipestance, error) {
+	fname := "_" + srcType
 	invocationPath := path.Join(pipestancePath, fname)
 
 	// Read in the existing _invocation file.
