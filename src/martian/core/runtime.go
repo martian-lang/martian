@@ -392,6 +392,15 @@ func dynamicCast(val interface{}, typename string, arrayDim int) bool {
 	return ret
 }
 
+func ParseFQName(fqname string) (string, string) {
+	parts := strings.Split(fqname, ".")
+	return parts[2], parts[1]
+}
+
+func MakeFQName(pipeline string, psid string) string {
+	return fmt.Sprintf("ID.%s.%s", psid, pipeline)
+}
+
 func VerifyVDRMode(vdrMode string) {
 	validModes := []string{"rolling", "post", "disable"}
 	for _, validMode := range validModes {
@@ -535,6 +544,7 @@ type Fork struct {
 	join_has_run   bool
 	argPermute     map[string]interface{}
 	stageDefs      *StageDefs
+	perfCache      *ForkPerfCache
 }
 
 type ForkInfo struct {
@@ -551,6 +561,11 @@ type ForkInfo struct {
 type ForkBindingsInfo struct {
 	Argument []*BindingInfo `json:"Argument"`
 	Return   []*BindingInfo `json:"Return"`
+}
+
+type ForkPerfCache struct {
+	perfInfo      *ForkPerfInfo
+	vdrKillReport *VDRKillReport
 }
 
 func NewFork(nodable Nodable, index int, argPermute map[string]interface{}) *Fork {
@@ -811,6 +826,11 @@ func (self *Fork) step() {
 	}
 }
 
+func (self *Fork) cachePerf() {
+	perfInfo, vdrKillReport := self.serializePerf()
+	self.perfCache = &ForkPerfCache{perfInfo, vdrKillReport}
+}
+
 func (self *Fork) getVdrKillReport() (*VDRKillReport, bool) {
 	killReport := &VDRKillReport{}
 	ok := false
@@ -991,9 +1011,13 @@ func (self *Fork) getStages() []*StagePerfInfo {
 }
 
 func (self *Fork) serializePerf() (*ForkPerfInfo, *VDRKillReport) {
+	if self.perfCache != nil {
+		// Use cached performance information if it exists.
+		return self.perfCache.perfInfo, self.perfCache.vdrKillReport
+	}
+
 	chunks := []*ChunkPerfInfo{}
 	stats := []*PerfInfo{}
-
 	for _, chunk := range self.chunks {
 		chunkSer := chunk.serializePerf()
 		chunks = append(chunks, chunkSer)
@@ -1019,10 +1043,11 @@ func (self *Fork) serializePerf() (*ForkPerfInfo, *VDRKillReport) {
 		killReports = append(killReports, subforkKillReport)
 	}
 	killReport = mergeVDRKillReports(killReports)
+	fpaths, _ := self.metadata.enumerateFiles()
 
 	forkStats := &PerfInfo{}
 	if len(stats) > 0 {
-		forkStats = ComputeStats(stats, killReport)
+		forkStats = ComputeStats(stats, fpaths, killReport)
 	}
 	return &ForkPerfInfo{
 		Stages:     self.getStages(),
@@ -1416,6 +1441,15 @@ func (self *Node) postProcess() {
 	}
 }
 
+func (self *Node) cachePerf() {
+	if _, ok := self.vdrKill(); ok {
+		// Cache all fork performance info if node can be VDR-ed.
+		for _, fork := range self.forks {
+			fork.cachePerf()
+		}
+	}
+}
+
 func (self *Node) getFatalError() (string, string, string, string, []string) {
 	for _, metadata := range self.collectMetadatas() {
 		if state, _ := metadata.getState(""); state != "failed" {
@@ -1475,8 +1509,10 @@ func (self *Node) step() {
 		if self.rt.vdrMode == "rolling" {
 			for _, node := range self.prenodes {
 				node.getNode().vdrKill()
+				node.getNode().cachePerf()
 			}
 			self.vdrKill()
+			self.cachePerf()
 		}
 		for _, node := range self.postnodes {
 			self.addFrontierNode(node)
@@ -1547,20 +1583,20 @@ func mergeVDRKillReports(killReports []*VDRKillReport) *VDRKillReport {
 	return allKillReport
 }
 
-func (self *Node) vdrKill() *VDRKillReport {
+func (self *Node) vdrKill() (*VDRKillReport, bool) {
 	killReports := []*VDRKillReport{}
-	every := true
+	ok := true
 	for _, node := range self.postnodes {
 		if node.getNode().state != "complete" {
-			every = false
+			ok = false
 		}
 	}
-	if every {
+	if ok {
 		for _, fork := range self.forks {
 			killReports = append(killReports, fork.vdrKill())
 		}
 	}
-	return mergeVDRKillReports(killReports)
+	return mergeVDRKillReports(killReports), ok
 }
 
 //
@@ -1781,9 +1817,6 @@ func (self *Stagestance) Step()            { self.getNode().step() }
 func (self *Stagestance) RefreshState()    { self.getNode().refreshState() }
 func (self *Stagestance) LoadMetadata()    { self.getNode().loadMetadata() }
 func (self *Stagestance) PostProcess()     { self.getNode().postProcess() }
-func (self *Stagestance) VDRKill() *VDRKillReport {
-	return self.getNode().vdrKill()
-}
 func (self *Stagestance) GetFatalError() (string, string, string, string, []string) {
 	return self.getNode().getFatalError()
 }
@@ -2019,11 +2052,11 @@ func (self *Pipestance) PostProcess() {
 func (self *Pipestance) Immortalize() {
 	metadata := NewMetadata(self.node.parent.getNode().fqname, self.GetPath())
 	metadata.loadCache()
-	if !metadata.exists("finalstate") {
-		metadata.write("finalstate", self.Serialize("finalstate"))
-	}
 	if !metadata.exists("perf") {
 		metadata.write("perf", self.Serialize("perf"))
+	}
+	if !metadata.exists("finalstate") {
+		metadata.write("finalstate", self.Serialize("finalstate"))
 	}
 	if !metadata.exists("metadata") {
 		self.TarMetadata(metadata.makePath("metadata"))
@@ -2033,7 +2066,8 @@ func (self *Pipestance) Immortalize() {
 func (self *Pipestance) VDRKill() *VDRKillReport {
 	killReports := []*VDRKillReport{}
 	for _, node := range self.node.allNodes() {
-		killReports = append(killReports, node.vdrKill())
+		killReport, _ := node.vdrKill()
+		killReports = append(killReports, killReport)
 	}
 	killReport := mergeVDRKillReports(killReports)
 	metadata := NewMetadata(self.node.parent.getNode().fqname, self.GetPath())
@@ -2256,10 +2290,21 @@ func (self *Runtime) InvokePipeline(src string, srcPath string, psid string,
 	return pipestance, nil
 }
 
-// Reattaches to an existing pipestance.
 func (self *Runtime) ReattachToPipestance(psid string, pipestancePath string, src string, checkSrc bool,
 	readOnly bool) (*Pipestance, error) {
-	invocationPath := path.Join(pipestancePath, "_invocation")
+	return self.reattachToPipestance(psid, pipestancePath, src, checkSrc, readOnly, "invocation")
+}
+
+func (self *Runtime) ReattachToPipestanceWithMroSrc(psid string, pipestancePath string, src string, checkSrc bool,
+	readOnly bool) (*Pipestance, error) {
+	return self.reattachToPipestance(psid, pipestancePath, src, checkSrc, readOnly, "mrosource")
+}
+
+// Reattaches to an existing pipestance.
+func (self *Runtime) reattachToPipestance(psid string, pipestancePath string, src string, checkSrc bool,
+	readOnly bool, srcType string) (*Pipestance, error) {
+	fname := "_" + srcType
+	invocationPath := path.Join(pipestancePath, fname)
 	metadataPath := path.Join(pipestancePath, "_metadata")
 
 	// Read in the existing _invocation file.
