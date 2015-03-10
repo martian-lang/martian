@@ -539,6 +539,7 @@ type Fork struct {
 	join_has_run   bool
 	argPermute     map[string]interface{}
 	stageDefs      *StageDefs
+	perfCache      *ForkPerfCache
 }
 
 type ForkInfo struct {
@@ -555,6 +556,11 @@ type ForkInfo struct {
 type ForkBindingsInfo struct {
 	Argument []*BindingInfo `json:"Argument"`
 	Return   []*BindingInfo `json:"Return"`
+}
+
+type ForkPerfCache struct {
+	perfInfo      *ForkPerfInfo
+	vdrKillReport *VDRKillReport
 }
 
 func NewFork(nodable Nodable, index int, argPermute map[string]interface{}) *Fork {
@@ -802,6 +808,11 @@ func (self *Fork) step() {
 	}
 }
 
+func (self *Fork) cachePerf() {
+	perfInfo, vdrKillReport := self.serializePerf()
+	self.perfCache = &ForkPerfCache{perfInfo, vdrKillReport}
+}
+
 func (self *Fork) getVdrKillReport() (*VDRKillReport, bool) {
 	killReport := &VDRKillReport{}
 	ok := false
@@ -982,9 +993,13 @@ func (self *Fork) getStages() []*StagePerfInfo {
 }
 
 func (self *Fork) serializePerf() (*ForkPerfInfo, *VDRKillReport) {
+	if self.perfCache != nil {
+		// Use cached performance information if it exists.
+		return self.perfCache.perfInfo, self.perfCache.vdrKillReport
+	}
+
 	chunks := []*ChunkPerfInfo{}
 	stats := []*PerfInfo{}
-
 	for _, chunk := range self.chunks {
 		chunkSer := chunk.serializePerf()
 		chunks = append(chunks, chunkSer)
@@ -1063,7 +1078,6 @@ type Node struct {
 	journalPath    string
 	tmpPath        string
 	invocation     map[string]interface{}
-	perfInfo       *NodePerfInfo
 }
 
 type NodeInfo struct {
@@ -1403,9 +1417,12 @@ func (self *Node) postProcess() {
 	}
 }
 
-func (self *Node) cachePerfInfo() {
+func (self *Node) cachePerf() {
 	if _, ok := self.vdrKill(); ok {
-		self.perfInfo = self.serializePerf()
+		// Cache all fork performance info if node can be VDR-ed.
+		for _, fork := range self.forks {
+			fork.cachePerf()
+		}
 	}
 }
 
@@ -1468,10 +1485,10 @@ func (self *Node) step() {
 		if self.rt.vdrMode == "rolling" {
 			for _, node := range self.prenodes {
 				node.getNode().vdrKill()
-				node.getNode().cachePerfInfo()
+				node.getNode().cachePerf()
 			}
 			self.vdrKill()
-			self.cachePerfInfo()
+			self.cachePerf()
 		}
 		for _, node := range self.postnodes {
 			self.addFrontierNode(node)
@@ -1608,11 +1625,6 @@ func (self *Node) serializeState() *NodeInfo {
 }
 
 func (self *Node) serializePerf() *NodePerfInfo {
-	if self.perfInfo != nil {
-		// Use cached performance info
-		return self.perfInfo
-	}
-
 	forks := []*ForkPerfInfo{}
 	for _, fork := range self.forks {
 		forkSer, _ := fork.serializePerf()
