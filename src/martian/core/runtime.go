@@ -401,6 +401,15 @@ func dynamicCast(val interface{}, typename string, arrayDim int) bool {
 	return ret
 }
 
+func ParseFQName(fqname string) (string, string) {
+	parts := strings.Split(fqname, ".")
+	return parts[2], parts[1]
+}
+
+func MakeFQName(pipeline string, psid string) string {
+	return fmt.Sprintf("ID.%s.%s", psid, pipeline)
+}
+
 func VerifyVDRMode(vdrMode string) {
 	validModes := []string{"rolling", "post", "disable"}
 	for _, validMode := range validModes {
@@ -1983,11 +1992,11 @@ func (self *Pipestance) PostProcess() {
 func (self *Pipestance) Immortalize() {
 	metadata := NewMetadata(self.node.parent.getNode().fqname, self.GetPath())
 	metadata.loadCache()
-	if !metadata.exists("finalstate") {
-		metadata.write("finalstate", self.Serialize("finalstate"))
-	}
 	if !metadata.exists("perf") {
 		metadata.write("perf", self.Serialize("perf"))
+	}
+	if !metadata.exists("finalstate") {
+		metadata.write("finalstate", self.Serialize("finalstate"))
 	}
 }
 
