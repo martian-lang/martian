@@ -26,7 +26,7 @@ import (
 type Metadata struct {
 	fqname    string
 	path      string
-	contents  map[string]string
+	contents  map[string]bool
 	filesPath string
 	mutex     *sync.Mutex
 }
@@ -40,7 +40,7 @@ func NewMetadata(fqname string, p string) *Metadata {
 	self := &Metadata{}
 	self.fqname = fqname
 	self.path = p
-	self.contents = map[string]string{}
+	self.contents = map[string]bool{}
 	self.filesPath = path.Join(p, "files")
 	self.mutex = &sync.Mutex{}
 	return self
@@ -79,16 +79,9 @@ func (self *Metadata) getState(name string) (string, bool) {
 	return "", false
 }
 
-func (self *Metadata) cacheContents(name string) {
-	self.mutex.Lock()
-	bytes, _ := ioutil.ReadFile(self.makePath(name))
-	self.contents[name] = string(bytes)
-	self.mutex.Unlock()
-}
-
 func (self *Metadata) cache(name string) {
 	self.mutex.Lock()
-	self.contents[name] = ""
+	self.contents[name] = true
 	self.mutex.Unlock()
 }
 
@@ -101,9 +94,9 @@ func (self *Metadata) uncache(name string) {
 func (self *Metadata) loadCache() {
 	paths := self.glob()
 	self.mutex.Lock()
-	self.contents = map[string]string{}
+	self.contents = map[string]bool{}
 	for _, p := range paths {
-		self.contents[path.Base(p)[1:]] = ""
+		self.contents[path.Base(p)[1:]] = true
 	}
 	self.mutex.Unlock()
 }
@@ -118,13 +111,6 @@ func (self *Metadata) exists(name string) bool {
 	return ok
 }
 func (self *Metadata) readRaw(name string) string {
-	self.mutex.Lock()
-	data, ok := self.contents[name]
-	self.mutex.Unlock()
-
-	if ok && data != "" {
-		return data
-	}
 	bytes, _ := ioutil.ReadFile(self.makePath(name))
 	return string(bytes)
 }
@@ -1077,6 +1063,7 @@ type Node struct {
 	journalPath    string
 	tmpPath        string
 	invocation     map[string]interface{}
+	perfInfo       *NodePerfInfo
 }
 
 type NodeInfo struct {
@@ -1416,11 +1403,9 @@ func (self *Node) postProcess() {
 	}
 }
 
-func (self *Node) cacheMetadataContents(name string) {
-	for _, metadata := range self.collectMetadatas() {
-		if metadata.exists(name) {
-			metadata.cacheContents(name)
-		}
+func (self *Node) cachePerfInfo() {
+	if _, ok := self.vdrKill(); ok {
+		self.perfInfo = self.serializePerf()
 	}
 }
 
@@ -1483,10 +1468,11 @@ func (self *Node) step() {
 		if self.rt.vdrMode == "rolling" {
 			for _, node := range self.prenodes {
 				node.getNode().vdrKill()
+				node.getNode().cachePerfInfo()
 			}
 			self.vdrKill()
+			self.cachePerfInfo()
 		}
-		self.cacheMetadataContents("jobinfo")
 		for _, node := range self.postnodes {
 			self.addFrontierNode(node)
 		}
@@ -1556,20 +1542,20 @@ func mergeVDRKillReports(killReports []*VDRKillReport) *VDRKillReport {
 	return allKillReport
 }
 
-func (self *Node) vdrKill() *VDRKillReport {
+func (self *Node) vdrKill() (*VDRKillReport, bool) {
 	killReports := []*VDRKillReport{}
-	every := true
+	ok := true
 	for _, node := range self.postnodes {
 		if node.getNode().state != "complete" {
-			every = false
+			ok = false
 		}
 	}
-	if every {
+	if ok {
 		for _, fork := range self.forks {
 			killReports = append(killReports, fork.vdrKill())
 		}
 	}
-	return mergeVDRKillReports(killReports)
+	return mergeVDRKillReports(killReports), ok
 }
 
 //
@@ -1622,6 +1608,11 @@ func (self *Node) serializeState() *NodeInfo {
 }
 
 func (self *Node) serializePerf() *NodePerfInfo {
+	if self.perfInfo != nil {
+		// Use cached performance info
+		return self.perfInfo
+	}
+
 	forks := []*ForkPerfInfo{}
 	for _, fork := range self.forks {
 		forkSer, _ := fork.serializePerf()
@@ -1790,9 +1781,6 @@ func (self *Stagestance) Step()            { self.getNode().step() }
 func (self *Stagestance) RefreshState()    { self.getNode().refreshState() }
 func (self *Stagestance) LoadMetadata()    { self.getNode().loadMetadata() }
 func (self *Stagestance) PostProcess()     { self.getNode().postProcess() }
-func (self *Stagestance) VDRKill() *VDRKillReport {
-	return self.getNode().vdrKill()
-}
 func (self *Stagestance) GetFatalError() (string, string, string, string, []string) {
 	return self.getNode().getFatalError()
 }
@@ -2003,7 +1991,8 @@ func (self *Pipestance) Immortalize() {
 func (self *Pipestance) VDRKill() *VDRKillReport {
 	killReports := []*VDRKillReport{}
 	for _, node := range self.node.allNodes() {
-		killReports = append(killReports, node.vdrKill())
+		killReport, _ := node.vdrKill()
+		killReports = append(killReports, killReport)
 	}
 	killReport := mergeVDRKillReports(killReports)
 	metadata := NewMetadata(self.node.parent.getNode().fqname, self.GetPath())
