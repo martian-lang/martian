@@ -1015,10 +1015,11 @@ func (self *Fork) serializePerf() (*ForkPerfInfo, *VDRKillReport) {
 		killReports = append(killReports, subforkKillReport)
 	}
 	killReport = mergeVDRKillReports(killReports)
+	fpaths, _ := self.metadata.enumerateFiles()
 
 	forkStats := &PerfInfo{}
 	if len(stats) > 0 {
-		forkStats = ComputeStats(stats, killReport)
+		forkStats = ComputeStats(stats, fpaths, killReport)
 	}
 	return &ForkPerfInfo{
 		Stages:     self.getStages(),

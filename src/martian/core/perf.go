@@ -140,7 +140,7 @@ func reduceJobInfo(jobInfo *JobInfo, outputPaths []string, numThreads int) *Perf
 	return perfInfo
 }
 
-func ComputeStats(perfInfos []*PerfInfo, vdrKillReport *VDRKillReport) *PerfInfo {
+func ComputeStats(perfInfos []*PerfInfo, outputPaths []string, vdrKillReport *VDRKillReport) *PerfInfo {
 	aggPerfInfo := &PerfInfo{}
 	for _, perfInfo := range perfInfos {
 		if aggPerfInfo.Start.IsZero() || (!perfInfo.Start.IsZero() && aggPerfInfo.Start.After(perfInfo.Start)) {
@@ -179,6 +179,9 @@ func ComputeStats(perfInfos []*PerfInfo, vdrKillReport *VDRKillReport) *PerfInfo
 		aggPerfInfo.VdrBytes = vdrKillReport.Size
 	}
 	aggPerfInfo.WallTime = aggPerfInfo.End.Sub(aggPerfInfo.Start).Seconds()
+	outputFiles, outputBytes := GetDirectorySize(outputPaths)
+	aggPerfInfo.OutputFiles += outputFiles
+	aggPerfInfo.OutputBytes += outputBytes
 	aggPerfInfo.TotalFiles = aggPerfInfo.OutputFiles + aggPerfInfo.VdrFiles
 	aggPerfInfo.TotalBytes = aggPerfInfo.OutputBytes + aggPerfInfo.VdrBytes
 	return aggPerfInfo
