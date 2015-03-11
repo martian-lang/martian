@@ -235,7 +235,7 @@ func (self *Stage) format() string {
 	fsrc += self.src.format(modeWidth, typeWidth, idWidth)
 	fsrc += self.node.comments
 	fsrc += ")"
-	if len(self.splitParams.list) > 0 {
+	if self.split {
 		fsrc += " split using ("
 		fsrc += self.splitParams.format(modeWidth, typeWidth, idWidth)
 		fsrc += NEWLINE + ")"

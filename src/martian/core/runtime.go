@@ -1793,7 +1793,7 @@ func NewStagestance(parent Nodable, callStm *CallStm, callables *Callables) *Sta
 		}
 	}
 	self.node.stagecodeLang = langMap[stage.src.lang]
-	self.node.split = len(stage.splitParams.list) > 0
+	self.node.split = stage.split
 	self.node.buildForks(self.node.argbindings)
 	return self
 }

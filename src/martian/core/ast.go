@@ -45,6 +45,7 @@ type (
 		outParams   *Params
 		src         *SrcParam
 		splitParams *Params
+		split       bool
 	}
 
 	Pipeline struct {
