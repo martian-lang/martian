@@ -396,6 +396,17 @@ func MakeFQName(pipeline string, psid string) string {
 	return fmt.Sprintf("ID.%s.%s", psid, pipeline)
 }
 
+func ParseTimestamp(data string) string {
+	// Backwards compatible with current and plain timestamp formats
+	timestamp := strings.Split(data, "\n")[0]
+	prefix := "start:"
+	if strings.HasPrefix(timestamp, prefix) {
+		timestamp = timestamp[len(prefix):]
+		return strings.TrimSpace(timestamp)
+	}
+	return timestamp
+}
+
 func VerifyVDRMode(vdrMode string) {
 	validModes := []string{"rolling", "post", "disable"}
 	for _, validMode := range validModes {
@@ -1980,6 +1991,12 @@ func (self *Pipestance) GetPath() string {
 
 func (self *Pipestance) GetInvocation() interface{} {
 	return self.node.parent.getNode().invocation
+}
+
+func (self *Pipestance) GetTimestamp() string {
+	metadata := NewMetadata(self.node.parent.getNode().fqname, self.GetPath())
+	data := metadata.readRaw("timestamp")
+	return ParseTimestamp(data)
 }
 
 func (self *Pipestance) PostProcess() {
