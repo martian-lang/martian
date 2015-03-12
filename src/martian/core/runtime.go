@@ -2178,7 +2178,7 @@ func (self *Runtime) CompileAll(checkSrcPath bool) (int, error) {
 func (self *Runtime) instantiatePipeline(src string, srcPath string, psid string,
 	pipestancePath string, readOnly bool) (string, *Pipestance, error) {
 	// Parse the invocation source.
-	postsrc, _, ast, err := parseSource(src, srcPath, []string{self.mroPath}, true)
+	postsrc, _, ast, err := parseSource(src, srcPath, []string{self.mroPath}, !readOnly)
 	if err != nil {
 		return "", nil, err
 	}
