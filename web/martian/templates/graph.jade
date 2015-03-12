@@ -123,6 +123,9 @@ html(ng-app="app" ng-controller="MartianGraphCtrl")
                     td {{info.jobmode}} 
                         span(ng-if="info.jobmode=='local'") ({{info.maxcores}} cores, {{info.maxmemgb}} GB)
                 tr
+                    td Start Time
+                    td {{info.start}}
+                tr
                     td Env
                     td MROPORT={{info.MROPORT}}, MROPROFILE={{info.MROPROFILE}}
                 tr

@@ -96,9 +96,9 @@ dec
     : FILETYPE id_list SEMICOLON
         {{ $$ = &Filetype{NewAstNode(&mmlval), $2} }}
     | STAGE ID LPAREN in_param_list out_param_list src_stm RPAREN 
-        {{ $$ = &Stage{NewAstNode(&mmlval), $2, $4, $5, $6, &Params{[]Param{}, map[string]Param{}} } }}
+        {{ $$ = &Stage{NewAstNode(&mmlval), $2, $4, $5, $6, &Params{[]Param{}, map[string]Param{}}, false} }}
     | STAGE ID LPAREN in_param_list out_param_list src_stm RPAREN split_param_list
-        {{ $$ = &Stage{NewAstNode(&mmlval), $2, $4, $5, $6, $8} }}
+        {{ $$ = &Stage{NewAstNode(&mmlval), $2, $4, $5, $6, $8, true} }}
     | PIPELINE ID LPAREN in_param_list out_param_list RPAREN LBRACE call_stm_list return_stm RBRACE
         {{ $$ = &Pipeline{NewAstNode(&mmlval), $2, $4, $5, $8, &Callables{[]Callable{}, map[string]Callable{}}, $9} }}
     ;

@@ -401,6 +401,17 @@ func MakeFQName(pipeline string, psid string) string {
 	return fmt.Sprintf("ID.%s.%s", psid, pipeline)
 }
 
+func ParseTimestamp(data string) string {
+	// Backwards compatible with current and plain timestamp formats
+	timestamp := strings.Split(data, "\n")[0]
+	prefix := "start:"
+	if strings.HasPrefix(timestamp, prefix) {
+		timestamp = timestamp[len(prefix):]
+		return strings.TrimSpace(timestamp)
+	}
+	return timestamp
+}
+
 func VerifyVDRMode(vdrMode string) {
 	validModes := []string{"rolling", "post", "disable"}
 	for _, validMode := range validModes {
@@ -730,6 +741,15 @@ func (self *Fork) getChunk(index int) *Chunk {
 	return nil
 }
 
+func (self *Fork) writeInvocation() {
+	if !self.metadata.exists("invocation") {
+		argBindings := resolveBindings(self.node.argbindings, self.argPermute)
+		incpaths := self.node.invocation["incpaths"].([]string)
+		invocation, _ := self.node.rt.BuildCallSource(incpaths, self.node.name, argBindings)
+		self.metadata.writeRaw("invocation", invocation)
+	}
+}
+
 type StageDefs struct {
 	ChunkDefs []map[string]interface{} `json:"chunks"`
 	JoinDef   map[string]interface{}   `json:"join"`
@@ -749,11 +769,8 @@ func (self *Fork) step() {
 		}
 
 		if state == "ready" {
-			argBindings := resolveBindings(self.node.argbindings, self.argPermute)
-			incpaths := self.node.invocation["incpaths"].([]string)
-			invocation, _ := self.node.rt.BuildCallSource(incpaths, self.node.name, argBindings)
-			self.metadata.writeRaw("invocation", invocation)
-			self.split_metadata.write("args", argBindings)
+			self.writeInvocation()
+			self.split_metadata.write("args", resolveBindings(self.node.argbindings, self.argPermute))
 			if self.node.split {
 				if !self.split_has_run {
 					self.split_has_run = true
@@ -817,6 +834,7 @@ func (self *Fork) step() {
 		}
 
 	} else if self.node.kind == "pipeline" {
+		self.writeInvocation()
 		self.metadata.write("outs", resolveBindings(self.node.retbindings, self.argPermute))
 		if ok, msg := self.verifyOutput(); ok {
 			self.metadata.writeTime("complete")
@@ -1806,7 +1824,7 @@ func NewStagestance(parent Nodable, callStm *CallStm, callables *Callables) *Sta
 		}
 	}
 	self.node.stagecodeLang = langMap[stage.src.lang]
-	self.node.split = len(stage.splitParams.list) > 0
+	self.node.split = stage.split
 	self.node.buildForks(self.node.argbindings)
 	return self
 }
@@ -2042,6 +2060,12 @@ func (self *Pipestance) GetInvocation() interface{} {
 	return self.node.parent.getNode().invocation
 }
 
+func (self *Pipestance) GetTimestamp() string {
+	metadata := NewMetadata(self.node.parent.getNode().fqname, self.GetPath())
+	data := metadata.readRaw("timestamp")
+	return ParseTimestamp(data)
+}
+
 func (self *Pipestance) PostProcess() {
 	self.node.postProcess()
 	metadata := NewMetadata(self.node.parent.getNode().fqname, self.GetPath())
@@ -2219,7 +2243,7 @@ func (self *Runtime) CompileAll(checkSrcPath bool) (int, error) {
 func (self *Runtime) instantiatePipeline(src string, srcPath string, psid string,
 	pipestancePath string, readOnly bool) (string, *Pipestance, error) {
 	// Parse the invocation source.
-	postsrc, _, ast, err := parseSource(src, srcPath, []string{self.mroPath}, true)
+	postsrc, _, ast, err := parseSource(src, srcPath, []string{self.mroPath}, !readOnly)
 	if err != nil {
 		return "", nil, err
 	}
@@ -2332,7 +2356,7 @@ func (self *Runtime) reattachToPipestance(psid string, pipestancePath string, sr
 	// If we're reattaching in local mode, restart any stages that were
 	// left in a running state from last mrp run. The actual job would
 	// have been killed by the CTRL-C.
-	if err == nil {
+	if !readOnly && err == nil {
 		PrintInfo("runtime", "Reattaching in %s mode.", self.jobMode)
 		err = pipestance.RestartRunningNodes(self.jobMode)
 	}

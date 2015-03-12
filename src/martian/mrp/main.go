@@ -313,7 +313,7 @@ Options:
 		"binpath":    core.RelPath(os.Args[0]),
 		"cmdline":    strings.Join(os.Args, " "),
 		"pid":        strconv.Itoa(os.Getpid()),
-		"start":      time.Now().Format(time.RFC822),
+		"start":      pipestance.GetTimestamp(),
 		"version":    martianVersion,
 		"pname":      pipestance.GetPname(),
 		"psid":       psid,
