@@ -283,10 +283,19 @@ func CreateTar(tarPath string, filePaths []string) error {
 
 	tw := tar.NewWriter(f)
 	for _, filePath := range filePaths {
+		info, err := os.Stat(filePath)
+		if err != nil {
+			return err
+		}
+		if info.IsDir() {
+			continue
+		}
+
 		bytes, err := ioutil.ReadFile(filePath)
 		if err != nil {
 			return err
 		}
+
 		relPath, _ := filepath.Rel(path.Dir(tarPath), filePath)
 		hdr := &tar.Header{
 			Name: relPath,
