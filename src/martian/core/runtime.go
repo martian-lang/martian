@@ -723,6 +723,15 @@ func (self *Fork) getChunk(index int) *Chunk {
 	return nil
 }
 
+func (self *Fork) writeInvocation() {
+	if !self.metadata.exists("invocation") {
+		argBindings := resolveBindings(self.node.argbindings, self.argPermute)
+		incpaths := self.node.invocation["incpaths"].([]string)
+		invocation, _ := self.node.rt.BuildCallSource(incpaths, self.node.name, argBindings)
+		self.metadata.writeRaw("invocation", invocation)
+	}
+}
+
 type StageDefs struct {
 	ChunkDefs []map[string]interface{} `json:"chunks"`
 	JoinDef   map[string]interface{}   `json:"join"`
@@ -742,11 +751,8 @@ func (self *Fork) step() {
 		}
 
 		if state == "ready" {
-			argBindings := resolveBindings(self.node.argbindings, self.argPermute)
-			incpaths := self.node.invocation["incpaths"].([]string)
-			invocation, _ := self.node.rt.BuildCallSource(incpaths, self.node.name, argBindings)
-			self.metadata.writeRaw("invocation", invocation)
-			self.split_metadata.write("args", argBindings)
+			self.writeInvocation()
+			self.split_metadata.write("args", resolveBindings(self.node.argbindings, self.argPermute))
 			if self.node.split {
 				if !self.split_has_run {
 					self.split_has_run = true
@@ -810,6 +816,7 @@ func (self *Fork) step() {
 		}
 
 	} else if self.node.kind == "pipeline" {
+		self.writeInvocation()
 		self.metadata.write("outs", resolveBindings(self.node.retbindings, self.argPermute))
 		if ok, msg := self.verifyOutput(); ok {
 			self.metadata.writeTime("complete")
