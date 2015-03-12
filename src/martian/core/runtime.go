@@ -2282,7 +2282,7 @@ func (self *Runtime) reattachToPipestance(psid string, pipestancePath string, sr
 	// If we're reattaching in local mode, restart any stages that were
 	// left in a running state from last mrp run. The actual job would
 	// have been killed by the CTRL-C.
-	if err == nil {
+	if !readOnly && err == nil {
 		PrintInfo("runtime", "Reattaching in %s mode.", self.jobMode)
 		err = pipestance.RestartRunningNodes(self.jobMode)
 	}
