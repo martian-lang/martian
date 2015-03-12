@@ -2178,7 +2178,7 @@ func (self *Runtime) CompileAll(checkSrcPath bool) (int, error) {
 func (self *Runtime) instantiatePipeline(src string, srcPath string, psid string,
 	pipestancePath string, readOnly bool) (string, *Pipestance, error) {
 	// Parse the invocation source.
-	postsrc, _, ast, err := parseSource(src, srcPath, []string{self.mroPath}, true)
+	postsrc, _, ast, err := parseSource(src, srcPath, []string{self.mroPath}, !readOnly)
 	if err != nil {
 		return "", nil, err
 	}
@@ -2282,7 +2282,7 @@ func (self *Runtime) reattachToPipestance(psid string, pipestancePath string, sr
 	// If we're reattaching in local mode, restart any stages that were
 	// left in a running state from last mrp run. The actual job would
 	// have been killed by the CTRL-C.
-	if err == nil {
+	if !readOnly && err == nil {
 		PrintInfo("runtime", "Reattaching in %s mode.", self.jobMode)
 		err = pipestance.RestartRunningNodes(self.jobMode)
 	}
