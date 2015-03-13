@@ -6,11 +6,14 @@
 package core
 
 import (
+	"archive/tar"
 	"bytes"
 	"encoding/json"
 	"fmt"
 	"github.com/10XDev/osext"
 	"html/template"
+	"io"
+	"io/ioutil"
 	"os"
 	"path"
 	"path/filepath"
@@ -216,4 +219,99 @@ func ParseMroFlags(opts map[string]interface{}, doc string, martianOptions []str
 			opts[id] = defval
 		}
 	}
+}
+
+func ReadTar(tarPath string, filePath string) (string, error) {
+	f, err := os.Open(tarPath)
+	if err != nil {
+		return "", err
+	}
+	defer f.Close()
+
+	tr := tar.NewReader(f)
+	for {
+		hdr, err := tr.Next()
+		if err == io.EOF {
+			return "", &TarError{tarPath, filePath}
+		}
+		if err != nil {
+			return "", err
+		}
+		if hdr.Name == filePath {
+			buf := new(bytes.Buffer)
+			if _, err := io.Copy(buf, tr); err != nil {
+				return "", err
+			}
+			return buf.String(), nil
+		}
+	}
+}
+
+func UnpackTar(tarPath string) error {
+	f, err := os.Open(tarPath)
+	if err != nil {
+		return err
+	}
+	defer f.Close()
+
+	tr := tar.NewReader(f)
+	for {
+		hdr, err := tr.Next()
+		if err == io.EOF {
+			return nil
+		}
+		if err != nil {
+			return err
+		}
+		filePath := path.Join(path.Dir(tarPath), hdr.Name)
+		buf := new(bytes.Buffer)
+		if _, err := io.Copy(buf, tr); err != nil {
+			return err
+		}
+		mkdirAll(path.Dir(filePath))
+		if err := ioutil.WriteFile(filePath, buf.Bytes(), 0644); err != nil {
+			return err
+		}
+	}
+}
+
+func CreateTar(tarPath string, filePaths []string) error {
+	f, err := os.Create(tarPath)
+	if err != nil {
+		return err
+	}
+
+	tw := tar.NewWriter(f)
+	for _, filePath := range filePaths {
+		info, err := os.Stat(filePath)
+		if err != nil {
+			return err
+		}
+		if info.IsDir() {
+			continue
+		}
+
+		bytes, err := ioutil.ReadFile(filePath)
+		if err != nil {
+			return err
+		}
+
+		relPath, _ := filepath.Rel(path.Dir(tarPath), filePath)
+		hdr := &tar.Header{
+			Name: relPath,
+			Size: int64(len(bytes)),
+		}
+		if err := tw.WriteHeader(hdr); err != nil {
+			return err
+		}
+		if _, err := tw.Write(bytes); err != nil {
+			return err
+		}
+	}
+	if err := tw.Close(); err != nil {
+		return nil
+	}
+
+	f.Close()
+	return nil
 }

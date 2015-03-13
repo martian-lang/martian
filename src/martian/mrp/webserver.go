@@ -10,7 +10,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"html/template"
-	"io/ioutil"
 	"martian/core"
 	"net/http"
 	"os"
@@ -115,11 +114,11 @@ func runWebServer(uiport string, rt *core.Runtime, pipestance *core.Pipestance,
 			if strings.Index(body.Path, "..") > -1 {
 				return "'..' not allowed in path."
 			}
-			data, err := ioutil.ReadFile(path.Join(body.Path, "_"+body.Name))
+			data, err := rt.GetMetadata(pipestance.GetPath(), path.Join(body.Path, "_"+body.Name))
 			if err != nil {
 				return err.Error()
 			}
-			return string(data)
+			return data
 		})
 
 	// Restart failed stage.
