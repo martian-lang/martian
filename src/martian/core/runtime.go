@@ -1440,6 +1440,12 @@ func (self *Node) resetJobMonitors() {
 	}
 }
 
+func (self *Node) removeJobMonitors() {
+	for _, metadata := range self.collectMetadatas() {
+		self.rt.JobManager.UnmonitorJob(metadata)
+	}
+}
+
 func (self *Node) kill() {
 	for _, metadata := range self.collectMetadatas() {
 		if state, _ := metadata.getState(""); state == "failed" {
@@ -1972,6 +1978,13 @@ func (self *Pipestance) RestartRunningNodes(jobMode string) error {
 		node.resetJobMonitors()
 	}
 	return nil
+}
+
+func (self *Pipestance) RemoveJobMonitors() {
+	nodes := self.node.getFrontierNodes()
+	for _, node := range nodes {
+		node.removeJobMonitors()
+	}
 }
 
 func (self *Pipestance) GetFatalError() (string, string, string, string, []string) {

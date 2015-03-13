@@ -60,6 +60,7 @@ func runLoop(pipestance *core.Pipestance, stepSecs int, vdrMode string,
 				os.Exit(0)
 			}
 		} else if state == "failed" {
+			pipestance.RemoveJobMonitors()
 			pipestance.Unlock()
 			if !showedFailed {
 				if _, _, log, kind, errPaths := pipestance.GetFatalError(); kind == "assert" {
