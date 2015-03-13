@@ -70,6 +70,7 @@ type JobManager interface {
 	GetMaxCores() int
 	GetMaxMemGB() int
 	MonitorJob(*Metadata)
+	UnmonitorJob(*Metadata)
 }
 
 type LocalJobManager struct {
@@ -252,6 +253,9 @@ func (self *LocalJobManager) GetMaxMemGB() int {
 func (self *LocalJobManager) MonitorJob(metadata *Metadata) {
 }
 
+func (self *LocalJobManager) UnmonitorJob(metadata *Metadata) {
+}
+
 func (self *LocalJobManager) execJob(shellCmd string, argv []string, envs []string,
 	metadata *Metadata, threads int, memGB int, fqname string, shellName string) {
 	self.Enqueue(shellCmd, argv, envs, metadata, threads, memGB, fqname, 0, 0)
@@ -299,6 +303,17 @@ func (self *RemoteJobManager) GetMaxMemGB() int {
 func (self *RemoteJobManager) MonitorJob(metadata *Metadata) {
 	self.monitorListMutex.Lock()
 	self.monitorList = append(self.monitorList, &JobMonitor{metadata, time.Now(), false})
+	self.monitorListMutex.Unlock()
+}
+
+func (self *RemoteJobManager) UnmonitorJob(metadata *Metadata) {
+	self.monitorListMutex.Lock()
+	for i, monitor := range self.monitorList {
+		if monitor.metadata == metadata {
+			self.monitorList = append(self.monitorList[:i], self.monitorList[i+1:]...)
+			break
+		}
+	}
 	self.monitorListMutex.Unlock()
 }
 

@@ -1409,6 +1409,12 @@ func (self *Node) resetJobMonitors() {
 	}
 }
 
+func (self *Node) removeJobMonitors() {
+	for _, metadata := range self.collectMetadatas() {
+		self.rt.JobManager.UnmonitorJob(metadata)
+	}
+}
+
 func (self *Node) kill() {
 	for _, metadata := range self.collectMetadatas() {
 		if state, _ := metadata.getState(""); state == "failed" {
@@ -1943,6 +1949,13 @@ func (self *Pipestance) RestartRunningNodes(jobMode string) error {
 	return nil
 }
 
+func (self *Pipestance) RemoveJobMonitors() {
+	nodes := self.node.getFrontierNodes()
+	for _, node := range nodes {
+		node.removeJobMonitors()
+	}
+}
+
 func (self *Pipestance) GetFatalError() (string, string, string, string, []string) {
 	nodes := self.node.getFrontierNodes()
 	for _, node := range nodes {
@@ -2171,7 +2184,7 @@ func (self *Runtime) CompileAll(checkSrcPath bool) (int, error) {
 func (self *Runtime) instantiatePipeline(src string, srcPath string, psid string,
 	pipestancePath string, readOnly bool) (string, *Pipestance, error) {
 	// Parse the invocation source.
-	postsrc, _, ast, err := parseSource(src, srcPath, []string{self.mroPath}, true)
+	postsrc, _, ast, err := parseSource(src, srcPath, []string{self.mroPath}, !readOnly)
 	if err != nil {
 		return "", nil, err
 	}
@@ -2275,7 +2288,7 @@ func (self *Runtime) reattachToPipestance(psid string, pipestancePath string, sr
 	// If we're reattaching in local mode, restart any stages that were
 	// left in a running state from last mrp run. The actual job would
 	// have been killed by the CTRL-C.
-	if err == nil {
+	if !readOnly && err == nil {
 		PrintInfo("runtime", "Reattaching in %s mode.", self.jobMode)
 		err = pipestance.RestartRunningNodes(self.jobMode)
 	}
