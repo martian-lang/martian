@@ -2082,8 +2082,8 @@ func (self *Pipestance) Immortalize() {
 	if !metadata.exists("finalstate") {
 		metadata.write("finalstate", self.Serialize("finalstate"))
 	}
-	if !metadata.exists("metadata") {
-		tarPath := metadata.makePath("metadata")
+	if !metadata.exists("metadata.tar") {
+		tarPath := metadata.makePath("metadata.tar")
 		if err := self.TarMetadata(tarPath); err != nil {
 			LogError(err, "runtime", "Failed to create metadata tarball %s: %s",
 				tarPath, err.Error())
@@ -2420,12 +2420,12 @@ func (self *Runtime) GetSerialization(pipestancePath string, name string) (inter
 func (self *Runtime) GetMetadata(pipestancePath string, metadataPath string) (string, error) {
 	metadata := NewMetadata("", pipestancePath)
 	metadata.loadCache()
-	if metadata.exists("metadata") {
+	if metadata.exists("metadata.tar") {
 		relPath, _ := filepath.Rel(pipestancePath, metadataPath)
 
 		// Relative paths outside the pipestance directory will be ignored.
 		if !strings.Contains(relPath, "..") {
-			return ReadTar(metadata.makePath("metadata"), relPath)
+			return ReadTar(metadata.makePath("metadata.tar"), relPath)
 		}
 	}
 	data, err := ioutil.ReadFile(metadataPath)
