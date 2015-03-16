@@ -280,6 +280,10 @@ func (global *Ast) check(stagecodePaths []string, checkSrcPath bool) error {
 						return global.err(call, "PreflightBindingError: Preflight stage '%s' cannot have input parameter bound to output parameter of another stage or pipeline", call.id)
 					}
 				}
+				if len(callable.getOutParams().list) > 0 {
+					return global.err(call, "PreflightOutputError: Preflight stage '%s' cannot have any output parameters", call.id)
+				}
+
 				preflightCalls = append(preflightCalls, call)
 			}
 

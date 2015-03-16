@@ -142,6 +142,7 @@ Options:
     --mempercore=<num>   Set max GB each job may use at one time.
                            Defaults to 4 GB.
                            (Only applies in non-local jobmodes)
+    --skip-preflight     Skips preflight stages.
     --inspect            Inspect pipestance without resetting failed stages.
     --debug              Enable debug logging for local job manager.
     --stest              Substitute real stages with stress-testing stage.
@@ -245,6 +246,9 @@ Options:
 	noExit := opts["--noexit"].(bool)
 	core.LogInfo("options", "--noexit=%v", noExit)
 
+	skipPreflight := opts["--skip-preflight"].(bool)
+	core.LogInfo("options", "--skip-preflight=%v", skipPreflight)
+
 	psid := opts["<pipestance_name>"].(string)
 	invocationPath := opts["<call.mro>"].(string)
 	pipestancePath := path.Join(cwd, psid)
@@ -262,7 +266,8 @@ Options:
 	// Configure Martian runtime.
 	//=========================================================================
 	rt := core.NewRuntimeWithCores(jobMode, vdrMode, profileMode, mroPath, martianVersion,
-		mroVersion, reqCores, reqMem, reqMemPerCore, stackVars, tar, debug, stest)
+		mroVersion, reqCores, reqMem, reqMemPerCore, stackVars, tar, skipPreflight,
+		debug, stest)
 
 	// Print this here because the log makes more sense when this appears before
 	// the runloop messages start to appear.
