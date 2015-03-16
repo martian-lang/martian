@@ -120,6 +120,7 @@ Options:
 	stepSecs := 1
 	vdrMode := "disable"
 	tar := false
+	skipPreflight := false
 	debug := opts["--debug"].(bool)
 
 	// Validate psid.
@@ -129,7 +130,7 @@ Options:
 	// Configure Martian runtime.
 	//=========================================================================
 	rt := core.NewRuntimeWithCores(jobMode, vdrMode, profileMode, mroPath, martianVersion, mroVersion,
-		reqCores, reqMem, reqMemPerCore, stackVars, tar, debug, false)
+		reqCores, reqMem, reqMemPerCore, stackVars, tar, skipPreflight, debug, false)
 
 	// Invoke stagestance.
 	data, err := ioutil.ReadFile(invocationPath)

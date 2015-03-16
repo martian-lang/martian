@@ -741,6 +741,10 @@ func (self *Fork) getChunk(index int) *Chunk {
 	return nil
 }
 
+func (self *Fork) skip() {
+	self.metadata.writeTime("complete")
+}
+
 func (self *Fork) writeInvocation() {
 	if !self.metadata.exists("invocation") {
 		argBindings := resolveBindings(self.node.argbindings, self.argPermute)
@@ -1516,7 +1520,11 @@ func (self *Node) getFatalError() (string, string, string, string, []string) {
 func (self *Node) step() {
 	if self.state == "running" {
 		for _, fork := range self.forks {
-			fork.step()
+			if self.preflight && self.rt.skipPreflight {
+				fork.skip()
+			} else {
+				fork.step()
+			}
 		}
 	}
 	previousState := self.state
@@ -2182,18 +2190,19 @@ type Runtime struct {
 	LocalJobManager JobManager
 	enableStackVars bool
 	enableTar       bool
+	skipPreflight   bool
 	stest           bool
 }
 
 func NewRuntime(jobMode string, vdrMode string, profileMode string, mroPath string,
 	martianVersion string, mroVersion string) *Runtime {
 	return NewRuntimeWithCores(jobMode, vdrMode, profileMode, mroPath, martianVersion, mroVersion,
-		-1, -1, -1, false, false, false, false)
+		-1, -1, -1, false, false, false, false, false)
 }
 
 func NewRuntimeWithCores(jobMode string, vdrMode string, profileMode string, mroPath string,
 	martianVersion string, mroVersion string, reqCores int, reqMem int, reqMemPerCore int,
-	enableStackVars bool, enableTar bool, debug bool, stest bool) *Runtime {
+	enableStackVars bool, enableTar bool, skipPreflight bool, debug bool, stest bool) *Runtime {
 
 	self := &Runtime{}
 	self.mroPath = mroPath
@@ -2205,6 +2214,7 @@ func NewRuntimeWithCores(jobMode string, vdrMode string, profileMode string, mro
 	self.profileMode = profileMode
 	self.enableStackVars = enableStackVars
 	self.enableTar = enableTar
+	self.skipPreflight = skipPreflight
 	self.callableTable = map[string]Callable{}
 	self.PipelineNames = []string{}
 	self.stest = stest
