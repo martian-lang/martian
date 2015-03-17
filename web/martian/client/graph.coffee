@@ -144,6 +144,7 @@ app.controller('MartianGraphCtrl', ($scope, $compile, $http, $interval) ->
     $scope.forki = 0
     $scope.chunki = 0
     $scope.mdviews = { forks:{}, split:{}, join:{}, chunks:{} }
+    $scope.mdfilters = ['profile_full', 'heartbeat']
     $scope.showRestart = true
     $scope.showLog = false
     $scope.perf = false
@@ -232,6 +233,12 @@ app.controller('MartianGraphCtrl', ($scope, $compile, $http, $interval) ->
         $http.post("/api/get-metadata/#{container}/#{pname}/#{psid}", { path:path, name:name }, { transformResponse: (d) -> d }).success((metadata) ->
             $scope.mdviews[view][index] = metadata
         )
+
+    $scope.filterMetadata = (name) ->
+        found = _.find($scope.mdfilters, (md) ->
+            md == name
+        )
+        return !found
 
     $scope.refresh = () ->
         $http.get("/api/get-state/#{container}/#{pname}/#{psid}").success((state) ->

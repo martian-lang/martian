@@ -216,6 +216,7 @@
       join: {},
       chunks: {}
     };
+    $scope.mdfilters = ['profile_full', 'heartbeat'];
     $scope.showRestart = true;
     $scope.showLog = false;
     $scope.perf = false;
@@ -351,6 +352,13 @@
       }).success(function(metadata) {
         return $scope.mdviews[view][index] = metadata;
       });
+    };
+    $scope.filterMetadata = function(name) {
+      var found;
+      found = _.find($scope.mdfilters, function(md) {
+        return md === name;
+      });
+      return !found;
     };
     return $scope.refresh = function() {
       return $http.get("/api/get-state/" + container + "/" + pname + "/" + psid).success(function(state) {
