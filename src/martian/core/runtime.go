@@ -527,10 +527,7 @@ func (self *Chunk) serializeState() *ChunkInfo {
 }
 
 func (self *Chunk) serializePerf() *ChunkPerfInfo {
-	numThreads := 1
-	if v, ok := self.chunkDef["__threads"].(float64); ok {
-		numThreads = int(v)
-	}
+	numThreads, _ := self.node.getJobReqs(self.chunkDef)
 	stats := self.metadata.serializePerf(numThreads)
 	return &ChunkPerfInfo{
 		Index:      self.index,
@@ -561,6 +558,7 @@ type Fork struct {
 type ForkInfo struct {
 	Index         int                    `json:"index"`
 	ArgPermute    map[string]interface{} `json:"argPermute"`
+	JoinDef       map[string]interface{} `json:"joinDef"`
 	State         string                 `json:"state"`
 	Metadata      *MetadataInfo          `json:"metadata"`
 	SplitMetadata *MetadataInfo          `json:"split_metadata"`
@@ -593,6 +591,11 @@ func NewFork(nodable Nodable, index int, argPermute map[string]interface{}) *For
 	self.join_has_run = false
 	self.subforks = []*Fork{}
 	self.chunks = []*Chunk{}
+
+	// By default, initialize stage defs with one empty chunk.
+	self.stageDefs = &StageDefs{ChunkDefs: []map[string]interface{}{}, JoinDef: map[string]interface{}{}}
+	self.stageDefs.ChunkDefs = append(self.stageDefs.ChunkDefs, map[string]interface{}{})
+
 	if err := json.Unmarshal([]byte(self.split_metadata.readRaw("stage_defs")), &self.stageDefs); err == nil {
 		for i, chunkDef := range self.stageDefs.ChunkDefs {
 			chunk := NewChunk(self.node, self, i, chunkDef)
@@ -782,10 +785,7 @@ func (self *Fork) step() {
 					self.node.runSplit(self.fqname, self.split_metadata)
 				}
 			} else {
-				// Initialize stage defs with one chunk
-				stageDefs := &StageDefs{ChunkDefs: []map[string]interface{}{}}
-				stageDefs.ChunkDefs = append(stageDefs.ChunkDefs, map[string]interface{}{})
-				self.split_metadata.write("stage_defs", stageDefs)
+				self.split_metadata.write("stage_defs", self.stageDefs)
 				self.split_metadata.writeTime("complete")
 			}
 		} else if state == "split_complete" {
@@ -1008,6 +1008,7 @@ func (self *Fork) serializeState() *ForkInfo {
 	return &ForkInfo{
 		Index:         self.index,
 		ArgPermute:    self.argPermute,
+		JoinDef:       self.stageDefs.JoinDef,
 		State:         self.getState(),
 		Metadata:      self.metadata.serializeState(),
 		SplitMetadata: self.split_metadata.serializeState(),
@@ -1049,10 +1050,12 @@ func (self *Fork) serializePerf() (*ForkPerfInfo, *VDRKillReport) {
 	}
 	numThreads := 1
 	splitStats := self.split_metadata.serializePerf(numThreads)
-	joinStats := self.join_metadata.serializePerf(numThreads)
 	if splitStats != nil {
 		stats = append(stats, splitStats)
 	}
+
+	numThreads, _ = self.node.getJobReqs(self.stageDefs.JoinDef)
+	joinStats := self.join_metadata.serializePerf(numThreads)
 	if joinStats != nil {
 		stats = append(stats, joinStats)
 	}
@@ -1699,36 +1702,23 @@ func (self *Node) serializePerf() *NodePerfInfo {
 //=============================================================================
 func (self *Node) getJobReqs(jobDef map[string]interface{}) (int, int) {
 	threads := -1
+	memGB := -1
 	if v, ok := jobDef["__threads"].(float64); ok {
 		threads = int(v)
-
-		// In local mode, cap to the job manager's max cores.
-		// It is not sufficient for the job manager to do the capping downstream.
-		// We rewrite the chunkDef here to inform the chunk it should use less
-		// concurrency.
-		if self.rt.jobMode == "local" {
-			maxCores := self.rt.JobManager.GetMaxCores()
-			if threads > maxCores {
-				threads = maxCores
-			}
-			jobDef["__threads"] = threads
-		}
 	}
-
-	// Default to -1 to impose no limit (no flag will be passed to SGE).
-	// The local mode job manager will convert -1 to 1 downstream.
-	memGB := -1
 	if v, ok := jobDef["__mem_gb"].(float64); ok {
 		memGB = int(v)
-
-		if self.rt.jobMode == "local" {
-			maxMemGB := self.rt.JobManager.GetMaxMemGB()
-			if memGB > maxMemGB {
-				memGB = maxMemGB
-			}
-			jobDef["__mem_gb"] = memGB
-		}
 	}
+
+	if self.local {
+		threads, memGB = self.rt.LocalJobManager.GetSystemReqs(threads, memGB)
+	} else {
+		threads, memGB = self.rt.JobManager.GetSystemReqs(threads, memGB)
+	}
+
+	jobDef["__threads"] = threads
+	jobDef["__mem_gb"] = memGB
+
 	return threads, memGB
 }
 

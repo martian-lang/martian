@@ -67,6 +67,7 @@ func (self *Semaphore) len() int {
 //
 type JobManager interface {
 	execJob(string, []string, []string, *Metadata, int, int, string, string)
+	GetSystemReqs(int, int) (int, int)
 	GetMaxCores() int
 	GetMaxMemGB() int
 	MonitorJob(*Metadata)
@@ -129,6 +130,34 @@ func NewLocalJobManager(userMaxCores int, userMaxMemGB int, debug bool) *LocalJo
 	return self
 }
 
+func (self *LocalJobManager) GetSystemReqs(threads int, memGB int) (int, int) {
+	// Sanity check and cap to self.maxCores.
+	if threads < 1 {
+		threads = self.jobSettings.ThreadsPerJob
+	}
+	if threads > self.maxCores {
+		if self.debug {
+			LogInfo("jobmngr", "Need %d core%s but settling for %d.", threads,
+				Pluralize(threads), self.maxCores)
+		}
+		threads = self.maxCores
+	}
+
+	// Sanity check and cap to self.maxMemGB.
+	if memGB < 1 {
+		memGB = self.jobSettings.MemGBPerJob
+	}
+	if memGB > self.maxMemGB {
+		if self.debug {
+			LogInfo("jobmngr", "Need %d GB but settling for %d.", memGB,
+				self.maxMemGB)
+		}
+		memGB = self.maxMemGB
+	}
+
+	return threads, memGB
+}
+
 func (self *LocalJobManager) Enqueue(shellCmd string, argv []string, envs []string, metadata *Metadata,
 	threads int, memGB int, fqname string, retries int, waitTime int) {
 
@@ -141,29 +170,7 @@ func (self *LocalJobManager) Enqueue(shellCmd string, argv []string, envs []stri
 		stderrPath := metadata.makePath("stderr")
 		errorsPath := metadata.makePath("errors")
 
-		// Sanity check and cap to self.maxCores.
-		if threads < 1 {
-			threads = self.jobSettings.ThreadsPerJob
-		}
-		if threads > self.maxCores {
-			if self.debug {
-				LogInfo("jobmngr", "Need %d core%s but settling for %d.", threads,
-					Pluralize(threads), self.maxCores)
-			}
-			threads = self.maxCores
-		}
-
-		// Sanity check and cap to self.maxMemGB.
-		if memGB < 1 {
-			memGB = self.jobSettings.MemGBPerJob
-		}
-		if memGB > self.maxMemGB {
-			if self.debug {
-				LogInfo("jobmngr", "Need %d GB but settling for %d.", memGB,
-					self.maxMemGB)
-			}
-			memGB = self.maxMemGB
-		}
+		threads, memGB = self.GetSystemReqs(threads, memGB)
 
 		// Acquire cores.
 		if self.debug {
@@ -317,9 +324,7 @@ func (self *RemoteJobManager) UnmonitorJob(metadata *Metadata) {
 	self.monitorListMutex.Unlock()
 }
 
-func (self *RemoteJobManager) execJob(shellCmd string, argv []string, envs []string,
-	metadata *Metadata, threads int, memGB int, fqname string, shellName string) {
-
+func (self *RemoteJobManager) GetSystemReqs(threads int, memGB int) (int, int) {
 	// Sanity check the thread count.
 	if threads < 1 {
 		threads = self.jobSettings.ThreadsPerJob
@@ -332,6 +337,14 @@ func (self *RemoteJobManager) execJob(shellCmd string, argv []string, envs []str
 
 	// Compute threads needed based on memory requirements.
 	threads = max(threads, (memGB+self.memGBPerCore-1)/self.memGBPerCore)
+
+	return threads, memGB
+}
+
+func (self *RemoteJobManager) execJob(shellCmd string, argv []string, envs []string,
+	metadata *Metadata, threads int, memGB int, fqname string, shellName string) {
+
+	threads, memGB = self.GetSystemReqs(threads, memGB)
 
 	argv = append([]string{shellCmd}, argv...)
 	argv = append(envs, argv...)
