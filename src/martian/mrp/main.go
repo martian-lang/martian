@@ -254,6 +254,7 @@ Options:
 	stepSecs := 3
 	checkSrc := true
 	readOnly := false
+	enableMonitor := false
 	inspect := opts["--inspect"].(bool)
 	debug := opts["--debug"].(bool)
 	stest := opts["--stest"].(bool)
@@ -266,7 +267,7 @@ Options:
 	//=========================================================================
 	rt := core.NewRuntimeWithCores(jobMode, vdrMode, profileMode, mroPath, martianVersion,
 		mroVersion, reqCores, reqMem, reqMemPerCore, stackVars, tar, skipPreflight,
-		debug, stest)
+		enableMonitor, debug, stest)
 
 	// Print this here because the log makes more sense when this appears before
 	// the runloop messages start to appear.

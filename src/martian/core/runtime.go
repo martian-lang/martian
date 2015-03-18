@@ -1749,6 +1749,12 @@ func (self *Node) runJob(shellName string, fqname string, metadata *Metadata,
 		stackVars = "stackvars"
 	}
 
+	// Configure memory monitoring.
+	monitor := "disable"
+	if self.rt.enableMonitor {
+		monitor = "monitor"
+	}
+
 	// Set environment variables
 	os.Setenv("TMPDIR", self.tmpPath)
 	envs := []string{fmt.Sprintf("TMPDIR=%s", self.tmpPath)}
@@ -1781,6 +1787,7 @@ func (self *Node) runJob(shellName string, fqname string, metadata *Metadata,
 		jobMode = "local"
 		jobManager = self.rt.LocalJobManager
 	}
+	threads, memGB = jobManager.GetSystemReqs(threads, memGB)
 	padding := strings.Repeat(" ", int(math.Max(0, float64(10-len(jobMode)))))
 	msg := fmt.Sprintf("(run:%s) %s %s.%s", jobMode, padding, fqname, shellName)
 	if self.preflight {
@@ -1793,8 +1800,11 @@ func (self *Node) runJob(shellName string, fqname string, metadata *Metadata,
 	metadata.write("jobinfo", map[string]interface{}{
 		"name":           fqname,
 		"type":           jobMode,
+		"threads":        threads,
+		"memGB":          memGB,
 		"profile_mode":   self.rt.profileMode,
 		"stackvars_flag": stackVars,
+		"monitor_flag":   monitor,
 		"invocation":     self.invocation,
 		"version":        version,
 	})
@@ -2187,18 +2197,20 @@ type Runtime struct {
 	enableStackVars bool
 	enableTar       bool
 	skipPreflight   bool
+	enableMonitor   bool
 	stest           bool
 }
 
 func NewRuntime(jobMode string, vdrMode string, profileMode string, mroPath string,
 	martianVersion string, mroVersion string) *Runtime {
 	return NewRuntimeWithCores(jobMode, vdrMode, profileMode, mroPath, martianVersion, mroVersion,
-		-1, -1, -1, false, false, false, false, false)
+		-1, -1, -1, false, false, false, false, false, false)
 }
 
 func NewRuntimeWithCores(jobMode string, vdrMode string, profileMode string, mroPath string,
 	martianVersion string, mroVersion string, reqCores int, reqMem int, reqMemPerCore int,
-	enableStackVars bool, enableTar bool, skipPreflight bool, debug bool, stest bool) *Runtime {
+	enableStackVars bool, enableTar bool, skipPreflight bool, enableMonitor bool,
+	debug bool, stest bool) *Runtime {
 
 	self := &Runtime{}
 	self.mroPath = mroPath
@@ -2211,6 +2223,7 @@ func NewRuntimeWithCores(jobMode string, vdrMode string, profileMode string, mro
 	self.enableStackVars = enableStackVars
 	self.enableTar = enableTar
 	self.skipPreflight = skipPreflight
+	self.enableMonitor = enableMonitor
 	self.callableTable = map[string]Callable{}
 	self.PipelineNames = []string{}
 	self.stest = stest

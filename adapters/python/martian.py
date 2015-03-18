@@ -13,6 +13,7 @@ import socket
 import subprocess
 import multiprocessing
 import resource
+import threading
 import pstats
 import StringIO
 import cProfile
@@ -194,6 +195,9 @@ class TestMetadata(Metadata):
 def get_mem_kb():
     return resource.getrusage(resource.RUSAGE_SELF).ru_maxrss + resource.getrusage(resource.RUSAGE_CHILDREN).ru_maxrss
 
+def convert_gb_to_kb(mem_gb):
+    return mem_gb * 1024 * 1024
+
 def padded_print(field_name, value):
     offset = len(field_name) - len(str(value))
     if offset > 0:
@@ -209,8 +213,20 @@ def heartbeat(metadata):
         metadata.update_journal("heartbeat", force=True)
         time.sleep(120)
 
+def monitor(metadata, maxrss):
+    while True:
+        if maxrss < get_mem_kb():
+            metadata.write_raw("errors", "Job killed by Martian")
+            done()
+        time.sleep(120)
+
 def start_heartbeat():
     t = multiprocessing.Process(target=heartbeat, args=(metadata,))
+    t.daemon = True
+    t.start()
+
+def start_monitor(maxrss):
+    t = threading.Thread(target=monitor, args=(metadata, maxrss))
     t.daemon = True
     t.start()
 
@@ -237,6 +253,12 @@ def initialize(argv):
 
     # Start heartbeat thread
     start_heartbeat()
+
+    # Start monitor thread
+    monitor_flag = (jobinfo["monitor_flag"] == "monitor")
+    maxrss = convert_gb_to_kb(jobinfo["memGB"])
+    if monitor_flag:
+        start_monitor(maxrss)
 
     # Increase the maximum open file descriptors to the hard limit
     _, hard = resource.getrlimit(resource.RLIMIT_NOFILE)
@@ -284,6 +306,7 @@ def done():
         "children": rusage_to_dict(resource.getrusage(resource.RUSAGE_CHILDREN))
     }
     metadata.write("jobinfo", jobinfo)
+    sys.exit(0)
 
 def stacktrace():
     etype, evalue, tb = sys.exc_info()
@@ -410,7 +433,7 @@ def throw(message):
 
 def exit(message):
     metadata._assert(message)
-    sys.exit(0)
+    done()
 
 def alarm(message):
     metadata.alarm(message)
