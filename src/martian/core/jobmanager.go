@@ -20,7 +20,6 @@ import (
 	"github.com/cloudfoundry/gosigar"
 )
 
-const defaultMemGBPerCore = 4
 const heartbeatTimeout = 60 // 60 minutes
 const maxRetries = 5
 const retryExitCode = 513
@@ -289,11 +288,7 @@ func NewRemoteJobManager(jobMode string, memGBPerCore int) *RemoteJobManager {
 	self.jobMode = jobMode
 	self.monitorList = []*JobMonitor{}
 	self.monitorListMutex = &sync.Mutex{}
-	if memGBPerCore > 0 {
-		self.memGBPerCore = memGBPerCore
-	} else {
-		self.memGBPerCore = defaultMemGBPerCore
-	}
+	self.memGBPerCore = memGBPerCore
 	_, _, self.jobSettings, self.jobCmd, self.jobTemplate = verifyJobManager(jobMode)
 	self.processMonitorList()
 	return self
@@ -336,7 +331,9 @@ func (self *RemoteJobManager) GetSystemReqs(threads int, memGB int) (int, int) {
 	}
 
 	// Compute threads needed based on memory requirements.
-	threads = max(threads, (memGB+self.memGBPerCore-1)/self.memGBPerCore)
+	if self.memGBPerCore > 0 {
+		threads = max(threads, (memGB+self.memGBPerCore-1)/self.memGBPerCore)
+	}
 
 	return threads, memGB
 }

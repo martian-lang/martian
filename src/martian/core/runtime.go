@@ -501,7 +501,7 @@ func (self *Chunk) step() {
 		self.hasBeenRun = true
 	}
 
-	threads, memGB := self.node.getJobReqs(self.chunkDef)
+	threads, memGB := self.node.setJobReqs(self.chunkDef)
 
 	// Resolve input argument bindings and merge in the chunk defs.
 	resolvedBindings := resolveBindings(self.node.argbindings, self.fork.argPermute)
@@ -805,7 +805,7 @@ func (self *Fork) step() {
 				}
 			}
 		} else if state == "chunks_complete" {
-			threads, memGB := self.node.getJobReqs(self.stageDefs.JoinDef)
+			threads, memGB := self.node.setJobReqs(self.stageDefs.JoinDef)
 			resolvedBindings := resolveBindings(self.node.argbindings, self.argPermute)
 			for id, value := range self.stageDefs.JoinDef {
 				resolvedBindings[id] = value
@@ -1716,8 +1716,14 @@ func (self *Node) getJobReqs(jobDef map[string]interface{}) (int, int) {
 		threads, memGB = self.rt.JobManager.GetSystemReqs(threads, memGB)
 	}
 
-	jobDef["__threads"] = threads
-	jobDef["__mem_gb"] = memGB
+	return threads, memGB
+}
+
+func (self *Node) setJobReqs(jobDef map[string]interface{}) (int, int) {
+	threads, memGB := self.getJobReqs(jobDef)
+
+	jobDef["__threads"] = float64(threads)
+	jobDef["__mem_gb"] = float64(memGB)
 
 	return threads, memGB
 }

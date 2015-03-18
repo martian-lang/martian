@@ -140,7 +140,6 @@ Options:
     --localmem=<num>     Set max GB the pipeline may request at one time.
                            (Only applies in local jobmode)
     --mempercore=<num>   Set max GB each job may use at one time.
-                           Defaults to 4 GB.
                            (Only applies in non-local jobmodes)
     --skip-preflight     Skips preflight stages.
     --inspect            Inspect pipestance without resetting failed stages.
