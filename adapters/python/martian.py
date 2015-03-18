@@ -213,10 +213,11 @@ def heartbeat(metadata):
         metadata.update_journal("heartbeat", force=True)
         time.sleep(120)
 
-def monitor(metadata, maxrss):
+def monitor(metadata, limit_kb):
     while True:
-        if maxrss < get_mem_kb():
-            metadata.write_raw("errors", "Job killed by Martian")
+        maxrss_kb = get_mem_kb()
+        if limit_kb < maxrss_kb:
+            metadata.write_raw("errors", "Job exceeded memory limit of %d KB. Used %d KB" % (limit_kb, maxrss_kb))
             done()
         time.sleep(120)
 
@@ -225,8 +226,8 @@ def start_heartbeat():
     t.daemon = True
     t.start()
 
-def start_monitor(maxrss):
-    t = threading.Thread(target=monitor, args=(metadata, maxrss))
+def start_monitor(limit_kb):
+    t = threading.Thread(target=monitor, args=(metadata, limit_kb))
     t.daemon = True
     t.start()
 
@@ -256,9 +257,9 @@ def initialize(argv):
 
     # Start monitor thread
     monitor_flag = (jobinfo["monitor_flag"] == "monitor")
-    maxrss = convert_gb_to_kb(jobinfo["memGB"])
+    limit_kb = convert_gb_to_kb(jobinfo["memGB"])
     if monitor_flag:
-        start_monitor(maxrss)
+        start_monitor(limit_kb)
 
     # Increase the maximum open file descriptors to the hard limit
     _, hard = resource.getrlimit(resource.RLIMIT_NOFILE)

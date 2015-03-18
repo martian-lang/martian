@@ -778,11 +778,11 @@ func (self *Fork) step() {
 		if state == "ready" {
 			self.writeInvocation()
 			self.split_metadata.write("args", resolveBindings(self.node.argbindings, self.argPermute))
+			threads, memGB := self.node.setJobReqs(nil)
 			if self.node.split {
 				if !self.split_has_run {
 					self.split_has_run = true
-					// Default memory to -1 for no limit.
-					self.node.runSplit(self.fqname, self.split_metadata)
+					self.node.runSplit(self.fqname, self.split_metadata, threads, memGB)
 				}
 			} else {
 				self.split_metadata.write("stage_defs", self.stageDefs)
@@ -1048,7 +1048,8 @@ func (self *Fork) serializePerf() (*ForkPerfInfo, *VDRKillReport) {
 			stats = append(stats, chunkSer.ChunkStats)
 		}
 	}
-	numThreads := 1
+
+	numThreads, _ := self.node.getJobReqs(nil)
 	splitStats := self.split_metadata.serializePerf(numThreads)
 	if splitStats != nil {
 		stats = append(stats, splitStats)
@@ -1703,11 +1704,13 @@ func (self *Node) serializePerf() *NodePerfInfo {
 func (self *Node) getJobReqs(jobDef map[string]interface{}) (int, int) {
 	threads := -1
 	memGB := -1
-	if v, ok := jobDef["__threads"].(float64); ok {
-		threads = int(v)
-	}
-	if v, ok := jobDef["__mem_gb"].(float64); ok {
-		memGB = int(v)
+	if jobDef != nil {
+		if v, ok := jobDef["__threads"].(float64); ok {
+			threads = int(v)
+		}
+		if v, ok := jobDef["__mem_gb"].(float64); ok {
+			memGB = int(v)
+		}
 	}
 
 	if self.local {
@@ -1722,14 +1725,16 @@ func (self *Node) getJobReqs(jobDef map[string]interface{}) (int, int) {
 func (self *Node) setJobReqs(jobDef map[string]interface{}) (int, int) {
 	threads, memGB := self.getJobReqs(jobDef)
 
-	jobDef["__threads"] = float64(threads)
-	jobDef["__mem_gb"] = float64(memGB)
+	if jobDef != nil {
+		jobDef["__threads"] = float64(threads)
+		jobDef["__mem_gb"] = float64(memGB)
+	}
 
 	return threads, memGB
 }
 
-func (self *Node) runSplit(fqname string, metadata *Metadata) {
-	self.runJob("split", fqname, metadata, -1, -1)
+func (self *Node) runSplit(fqname string, metadata *Metadata, threads int, memGB int) {
+	self.runJob("split", fqname, metadata, threads, memGB)
 }
 
 func (self *Node) runJoin(fqname string, metadata *Metadata, threads int, memGB int) {
@@ -1787,7 +1792,6 @@ func (self *Node) runJob(shellName string, fqname string, metadata *Metadata,
 		jobMode = "local"
 		jobManager = self.rt.LocalJobManager
 	}
-	threads, memGB = jobManager.GetSystemReqs(threads, memGB)
 	padding := strings.Repeat(" ", int(math.Max(0, float64(10-len(jobMode)))))
 	msg := fmt.Sprintf("(run:%s) %s %s.%s", jobMode, padding, fqname, shellName)
 	if self.preflight {
