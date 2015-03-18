@@ -226,7 +226,7 @@ html(ng-app="app" ng-controller="MartianGraphCtrl")
                     td(colspan="5")
                         span(ng-repeat="name in node.forks[forki].metadata.names | filter:filterMetadata")
                             a(ng-click="selectMetadata('forks', forki, name, node.forks[forki].metadata.path)") {{name}}
-                            | &nbsp;
+                            | &nbsp;&nbsp;
                         pre#metadata(ng-show="mdviews.forks[forki].length")
                             button.close(type="button" ng-click="mdviews.forks[forki]=''") &times;
                             | {{mdviews.forks[forki]}}
@@ -236,7 +236,7 @@ html(ng-app="app" ng-controller="MartianGraphCtrl")
                     td(colspan="5")
                         span(ng-repeat="name in node.forks[forki].split_metadata.names | filter:filterMetadata")
                             a(ng-click="selectMetadata('split', forki, name, node.forks[forki].split_metadata.path)") {{name}}
-                            | &nbsp;
+                            | &nbsp;&nbsp;
                         pre#metadata(ng-show="mdviews.split[forki].length")
                             button.close(type="button" ng-click="mdviews.split[forki]=''") &times;
                             | {{mdviews.split[forki]}}
@@ -246,7 +246,7 @@ html(ng-app="app" ng-controller="MartianGraphCtrl")
                     td(colspan="5")
                         span(ng-repeat="name in node.forks[forki].join_metadata.names | filter:filterMetadata")
                             a(ng-click="selectMetadata('join', forki, name, node.forks[forki].join_metadata.path)") {{name}}
-                            | &nbsp;
+                            | &nbsp;&nbsp;
                         pre#metadata(ng-show="mdviews.join[forki].length")
                             button.close(type="button" ng-click="mdviews.join[forki]=''") &times;
                             | {{mdviews.join[forki]}}
@@ -301,7 +301,7 @@ html(ng-app="app" ng-controller="MartianGraphCtrl")
                     td(colspan="5")
                         span(ng-repeat="name in node.forks[forki].chunks[chunki].metadata.names | filter:filterMetadata")
                             a(ng-click="selectMetadata('chunks', chunki, name, node.forks[forki].chunks[chunki].metadata.path)") {{name}}
-                            | &nbsp;
+                            | &nbsp;&nbsp;
                         pre#metadata(ng-show="mdviews.chunks[chunki].length")
                             button.close(type="button" ng-click="mdviews.chunks[chunki]=''") &times;
                             | {{mdviews.chunks[chunki]}}
