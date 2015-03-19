@@ -42,7 +42,7 @@ Options:
 		mroPath = value
 	}
 	checkSrcPath := opts["--checksrcpath"].(bool)
-	mroVersion := core.GetGitTag(mroPath)
+	mroVersion := core.GetMroVersion(mroPath)
 
 	// Setup runtime with MRO path.
 	rt := core.NewRuntime("local", "disable", "disable", mroPath, martianVersion, mroVersion)

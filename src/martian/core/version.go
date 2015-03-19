@@ -6,8 +6,10 @@
 package core
 
 import (
+	"io/ioutil"
 	"os"
 	"os/exec"
+	"path"
 	"strings"
 )
 
@@ -15,6 +17,14 @@ var __VERSION__ string = "<version not embedded>"
 
 func GetVersion() string {
 	return __VERSION__
+}
+
+func GetMroVersion(dir string) string {
+	versionPath := path.Join(dir, "..", ".version")
+	if data, err := ioutil.ReadFile(versionPath); err == nil {
+		return string(data)
+	}
+	return GetGitTag(dir)
 }
 
 func runGit(dir string, args ...string) (string, error) {

@@ -2347,7 +2347,7 @@ func (self *Runtime) InvokePipeline(src string, srcPath string, psid string,
 	metadata.writeRaw("mrosource", postsrc)
 	metadata.write("versions", map[string]string{
 		"martian":   GetVersion(),
-		"pipelines": GetGitTag(self.mroPath),
+		"pipelines": GetMroVersion(self.mroPath),
 	})
 	metadata.write("tags", tags)
 	metadata.writeRaw("timestamp", "start: "+Timestamp())

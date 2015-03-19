@@ -188,7 +188,7 @@ Options:
 	if value := os.Getenv("MROPATH"); len(value) > 0 {
 		mroPath = value
 	}
-	mroVersion := core.GetGitTag(mroPath)
+	mroVersion := core.GetMroVersion(mroPath)
 	core.LogInfo("environ", "MROPATH=%s", mroPath)
 	core.LogInfo("version", "MRO Version=%s", mroVersion)
 
