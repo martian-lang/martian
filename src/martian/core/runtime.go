@@ -2370,7 +2370,7 @@ func (self *Runtime) reattachToPipestance(psid string, pipestancePath string, sr
 	readOnly bool, srcType string) (*Pipestance, error) {
 	fname := "_" + srcType
 	invocationPath := path.Join(pipestancePath, fname)
-	metadataPath := path.Join(pipestancePath, "_metadata")
+	metadataPath := path.Join(pipestancePath, "_metadata.tar")
 
 	// Read in the existing _invocation file.
 	data, err := ioutil.ReadFile(invocationPath)
@@ -2461,7 +2461,9 @@ func (self *Runtime) GetMetadata(pipestancePath string, metadataPath string) (st
 
 		// Relative paths outside the pipestance directory will be ignored.
 		if !strings.Contains(relPath, "..") {
-			return ReadTar(metadata.makePath("metadata.tar"), relPath)
+			if data, err := ReadTar(metadata.makePath("metadata.tar"), relPath); err == nil {
+				return data, nil
+			}
 		}
 	}
 	data, err := ioutil.ReadFile(metadataPath)
