@@ -159,7 +159,7 @@
     addColumns(chart, columns);
     if (pnode.type === "pipeline") {
       stages = _.sortBy(pnode.forks[$scope.forki].stages, function(stage) {
-        return stage.name;
+        return [stage.name, stage.fqname];
       });
       for (j = 0, len = stages.length; j < len; j++) {
         stage = stages[j];

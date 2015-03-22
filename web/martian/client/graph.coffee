@@ -107,7 +107,7 @@ renderChart = ($scope, columns, units) ->
     addColumns(chart, columns)
     if pnode.type == "pipeline"
         stages = _.sortBy(pnode.forks[$scope.forki].stages, (stage) ->
-            stage.name
+            [stage.name, stage.fqname]
         )
         for stage in stages
             name = $scope.pnodes[stage.fqname].name

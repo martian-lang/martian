@@ -1482,6 +1482,10 @@ func (self *Node) cachePerf() {
 	}
 }
 
+func (self *Node) GetFQName() string {
+	return self.fqname
+}
+
 func (self *Node) getFatalError() (string, string, string, string, []string) {
 	for _, metadata := range self.collectMetadatas() {
 		if state, _ := metadata.getState(""); state != "failed" {
@@ -1494,6 +1498,8 @@ func (self *Node) getFatalError() (string, string, string, string, []string) {
 				errlines := strings.Split(errlog, "\n")
 				if len(errlines) >= 2 {
 					summary = errlines[len(errlines)-2]
+				} else if len(errlines) == 1 {
+					summary = errlines[0]
 				}
 			}
 			errpaths := []string{
@@ -2003,6 +2009,18 @@ func (self *Pipestance) RemoveJobMonitors() {
 	for _, node := range nodes {
 		node.removeJobMonitors()
 	}
+}
+
+func (self *Pipestance) GetFailedNodes() []*Node {
+	failedNodes := []*Node{}
+
+	nodes := self.node.getFrontierNodes()
+	for _, node := range nodes {
+		if node.state == "failed" {
+			failedNodes = append(failedNodes, node)
+		}
+	}
+	return failedNodes
 }
 
 func (self *Pipestance) GetFatalError() (string, string, string, string, []string) {
