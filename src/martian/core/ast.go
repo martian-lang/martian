@@ -12,8 +12,8 @@ import (
 
 type (
 	AstNode struct {
-		loc      int
-		comments string
+		Loc      int
+		Comments string
 	}
 
 	Locatable interface {
@@ -21,8 +21,8 @@ type (
 	}
 
 	Filetype struct {
-		node AstNode
-		id   string
+		Node AstNode
+		Id   string
 	}
 
 	Dec interface {
@@ -39,33 +39,33 @@ type (
 	}
 
 	Stage struct {
-		node        AstNode
-		id          string
-		inParams    *Params
-		outParams   *Params
-		src         *SrcParam
-		splitParams *Params
-		split       bool
+		Node        AstNode
+		Id          string
+		InParams    *Params
+		OutParams   *Params
+		Src         *SrcParam
+		SplitParams *Params
+		Split       bool
 	}
 
 	Pipeline struct {
-		node      AstNode
-		id        string
-		inParams  *Params
-		outParams *Params
-		calls     []*CallStm
-		callables *Callables
-		ret       *ReturnStm
+		Node      AstNode
+		Id        string
+		InParams  *Params
+		OutParams *Params
+		Calls     []*CallStm
+		Callables *Callables
+		Ret       *ReturnStm
 	}
 
 	Params struct {
-		list  []Param
-		table map[string]Param
+		List  []Param
+		Table map[string]Param
 	}
 
 	Callables struct {
-		list  []Callable
-		table map[string]Callable
+		List  []Callable
+		Table map[string]Callable
 	}
 
 	Param interface {
@@ -81,59 +81,59 @@ type (
 	}
 
 	InParam struct {
-		node     AstNode
-		tname    string
-		arrayDim int
-		id       string
-		help     string
-		isfile   bool
+		Node     AstNode
+		Tname    string
+		ArrayDim int
+		Id       string
+		Help     string
+		Isfile   bool
 	}
 
 	OutParam struct {
-		node     AstNode
-		tname    string
-		arrayDim int
-		id       string
-		help     string
-		isfile   bool
+		Node     AstNode
+		Tname    string
+		ArrayDim int
+		Id       string
+		Help     string
+		Isfile   bool
 	}
 
 	SrcParam struct {
-		node AstNode
-		lang string
-		path string
-		args []string
+		Node AstNode
+		Lang string
+		Path string
+		Args []string
 	}
 
 	BindStm struct {
-		node  AstNode
-		id    string
-		exp   Exp
-		sweep bool
-		tname string
+		Node  AstNode
+		Id    string
+		Exp   Exp
+		Sweep bool
+		Tname string
 	}
 
 	BindStms struct {
-		list  []*BindStm
-		table map[string]*BindStm
+		List  []*BindStm
+		Table map[string]*BindStm
 	}
 
 	Modifiers struct {
-		local     bool
-		preflight bool
-		volatile  bool
+		Local     bool
+		Preflight bool
+		Volatile  bool
 	}
 
 	CallStm struct {
-		node      AstNode
-		modifiers *Modifiers
-		id        string
-		bindings  *BindStms
+		Node      AstNode
+		Modifiers *Modifiers
+		Id        string
+		Bindings  *BindStms
 	}
 
 	ReturnStm struct {
-		node     AstNode
-		bindings *BindStms
+		Node     AstNode
+		Bindings *BindStms
 	}
 
 	Exp interface {
@@ -145,51 +145,51 @@ type (
 	}
 
 	ValExp struct {
-		node  AstNode
-		kind  string
-		value interface{}
+		Node  AstNode
+		Kind  string
+		Value interface{}
 	}
 
 	RefExp struct {
-		node     AstNode
-		kind     string
-		id       string
-		outputId string
+		Node     AstNode
+		Kind     string
+		Id       string
+		OutputId string
 	}
 
 	Ast struct {
-		locmap        []FileLoc
-		typeTable     map[string]bool
-		filetypes     []*Filetype
-		filetypeTable map[string]bool
-		stages        []*Stage
-		pipelines     []*Pipeline
-		callables     *Callables
-		call          *CallStm
+		Locmap        []FileLoc
+		TypeTable     map[string]bool
+		Filetypes     []*Filetype
+		FiletypeTable map[string]bool
+		Stages        []*Stage
+		Pipelines     []*Pipeline
+		Callables     *Callables
+		Call          *CallStm
 	}
 )
 
 func NewAst(decs []Dec, call *CallStm) *Ast {
 	self := &Ast{}
-	self.locmap = []FileLoc{}
-	self.typeTable = map[string]bool{}
-	self.filetypes = []*Filetype{}
-	self.filetypeTable = map[string]bool{}
-	self.stages = []*Stage{}
-	self.pipelines = []*Pipeline{}
-	self.callables = &Callables{[]Callable{}, map[string]Callable{}}
-	self.call = call
+	self.Locmap = []FileLoc{}
+	self.TypeTable = map[string]bool{}
+	self.Filetypes = []*Filetype{}
+	self.FiletypeTable = map[string]bool{}
+	self.Stages = []*Stage{}
+	self.Pipelines = []*Pipeline{}
+	self.Callables = &Callables{[]Callable{}, map[string]Callable{}}
+	self.Call = call
 
 	for _, dec := range decs {
 		switch dec := dec.(type) {
 		case *Filetype:
-			self.filetypes = append(self.filetypes, dec)
+			self.Filetypes = append(self.Filetypes, dec)
 		case *Stage:
-			self.stages = append(self.stages, dec)
-			self.callables.list = append(self.callables.list, dec)
+			self.Stages = append(self.Stages, dec)
+			self.Callables.List = append(self.Callables.List, dec)
 		case *Pipeline:
-			self.pipelines = append(self.pipelines, dec)
-			self.callables.list = append(self.callables.list, dec)
+			self.Pipelines = append(self.Pipelines, dec)
+			self.Callables.List = append(self.Callables.List, dec)
 		}
 	}
 	return self
@@ -222,50 +222,50 @@ func (*Pipeline) getDec() {}
 func (*ValExp) getExp()   {}
 func (*RefExp) getExp()   {}
 
-func (s *Filetype) getNode() *AstNode { return &s.node }
-func (s *Filetype) getLoc() int       { return s.node.loc }
+func (s *Filetype) getNode() *AstNode { return &s.Node }
+func (s *Filetype) getLoc() int       { return s.Node.Loc }
 
-func (s *Stage) getId() string         { return s.id }
-func (s *Stage) getNode() *AstNode     { return &s.node }
-func (s *Stage) getLoc() int           { return s.node.loc }
-func (s *Stage) getInParams() *Params  { return s.inParams }
-func (s *Stage) getOutParams() *Params { return s.outParams }
+func (s *Stage) getId() string         { return s.Id }
+func (s *Stage) getNode() *AstNode     { return &s.Node }
+func (s *Stage) getLoc() int           { return s.Node.Loc }
+func (s *Stage) getInParams() *Params  { return s.InParams }
+func (s *Stage) getOutParams() *Params { return s.OutParams }
 
-func (s *Pipeline) getId() string         { return s.id }
-func (s *Pipeline) getNode() *AstNode     { return &s.node }
-func (s *Pipeline) getLoc() int           { return s.node.loc }
-func (s *Pipeline) getInParams() *Params  { return s.inParams }
-func (s *Pipeline) getOutParams() *Params { return s.outParams }
+func (s *Pipeline) getId() string         { return s.Id }
+func (s *Pipeline) getNode() *AstNode     { return &s.Node }
+func (s *Pipeline) getLoc() int           { return s.Node.Loc }
+func (s *Pipeline) getInParams() *Params  { return s.InParams }
+func (s *Pipeline) getOutParams() *Params { return s.OutParams }
 
-func (s *CallStm) getLoc() int { return s.node.loc }
+func (s *CallStm) getLoc() int { return s.Node.Loc }
 
-func (s *InParam) getNode() *AstNode { return &s.node }
+func (s *InParam) getNode() *AstNode { return &s.Node }
 func (s *InParam) getMode() string   { return "in" }
-func (s *InParam) getTname() string  { return s.tname }
-func (s *InParam) getArrayDim() int  { return s.arrayDim }
-func (s *InParam) getId() string     { return s.id }
-func (s *InParam) getHelp() string   { return s.help }
-func (s *InParam) getLoc() int       { return s.node.loc }
-func (s *InParam) getIsFile() bool   { return s.isfile }
-func (s *InParam) setIsFile(b bool)  { s.isfile = b }
+func (s *InParam) getTname() string  { return s.Tname }
+func (s *InParam) getArrayDim() int  { return s.ArrayDim }
+func (s *InParam) getId() string     { return s.Id }
+func (s *InParam) getHelp() string   { return s.Help }
+func (s *InParam) getLoc() int       { return s.Node.Loc }
+func (s *InParam) getIsFile() bool   { return s.Isfile }
+func (s *InParam) setIsFile(b bool)  { s.Isfile = b }
 
-func (s *OutParam) getNode() *AstNode { return &s.node }
+func (s *OutParam) getNode() *AstNode { return &s.Node }
 func (s *OutParam) getMode() string   { return "out" }
-func (s *OutParam) getTname() string  { return s.tname }
-func (s *OutParam) getArrayDim() int  { return s.arrayDim }
-func (s *OutParam) getId() string     { return s.id }
-func (s *OutParam) getHelp() string   { return s.help }
-func (s *OutParam) getLoc() int       { return s.node.loc }
-func (s *OutParam) getIsFile() bool   { return s.isfile }
-func (s *OutParam) setIsFile(b bool)  { s.isfile = b }
+func (s *OutParam) getTname() string  { return s.Tname }
+func (s *OutParam) getArrayDim() int  { return s.ArrayDim }
+func (s *OutParam) getId() string     { return s.Id }
+func (s *OutParam) getHelp() string   { return s.Help }
+func (s *OutParam) getLoc() int       { return s.Node.Loc }
+func (s *OutParam) getIsFile() bool   { return s.Isfile }
+func (s *OutParam) setIsFile(b bool)  { s.Isfile = b }
 
-func (s *ReturnStm) getLoc() int { return s.node.loc }
-func (s *BindStm) getLoc() int   { return s.node.loc }
+func (s *ReturnStm) getLoc() int { return s.Node.Loc }
+func (s *BindStm) getLoc() int   { return s.Node.Loc }
 
-func (s *ValExp) getNode() *AstNode { return &s.node }
-func (s *ValExp) getKind() string   { return s.kind }
-func (s *ValExp) getLoc() int       { return s.node.loc }
+func (s *ValExp) getNode() *AstNode { return &s.Node }
+func (s *ValExp) getKind() string   { return s.Kind }
+func (s *ValExp) getLoc() int       { return s.Node.Loc }
 
-func (s *RefExp) getNode() *AstNode { return &s.node }
-func (s *RefExp) getKind() string   { return s.kind }
-func (s *RefExp) getLoc() int       { return s.node.loc }
+func (s *RefExp) getNode() *AstNode { return &s.Node }
+func (s *RefExp) getKind() string   { return s.Kind }
+func (s *RefExp) getLoc() int       { return s.Node.Loc }

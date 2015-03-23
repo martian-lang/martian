@@ -49,24 +49,26 @@ Options:
 	if err := dec.Decode(&input); err == nil {
 		incpaths := []string{}
 		if ilist, ok := input["incpaths"].([]interface{}); ok {
-			for _, i := range ilist {
-				if incpath, ok := i.(string); ok {
-					incpaths = append(incpaths, incpath)
-				}
-			}
+			incpaths = core.ArrayToString(ilist)
 		}
 		name, ok := input["call"].(string)
 		if !ok {
 			fmt.Println("No pipeline or stage specified.")
 			os.Exit(1)
 		}
+
 		args, ok := input["args"].(map[string]interface{})
 		if !ok {
 			fmt.Println("No args given.")
 			os.Exit(1)
 		}
 
-		src, bldErr := rt.BuildCallSource(incpaths, name, args)
+		sweepargs := []string{}
+		if sweeplist, ok := input["sweepargs"].([]interface{}); ok {
+			sweepargs = core.ArrayToString(sweeplist)
+		}
+
+		src, bldErr := rt.BuildCallSource(incpaths, name, args, sweepargs)
 
 		if bldErr == nil {
 			fmt.Print(src)

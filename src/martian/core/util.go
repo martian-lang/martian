@@ -89,6 +89,16 @@ func searchPaths(fname string, searchPaths []string) (string, bool) {
 	return "", false
 }
 
+func ArrayToString(data []interface{}) []string {
+	list := []string{}
+	for _, i := range data {
+		if value, ok := i.(string); ok {
+			list = append(list, value)
+		}
+	}
+	return list
+}
+
 func cartesianProduct(valueSets []interface{}) []interface{} {
 	perms := []interface{}{[]interface{}{}}
 	for _, valueSet := range valueSets {

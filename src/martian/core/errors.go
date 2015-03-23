@@ -139,12 +139,12 @@ func (self *AstError) Error() string {
 	// node at the end of the file, the loc can be one larger than the size
 	// of the locmap. So cap it so we don't have an array out of bounds.
 	loc := self.locable.getLoc()
-	if loc >= len(self.global.locmap) {
-		loc = len(self.global.locmap) - 1
+	if loc >= len(self.global.Locmap) {
+		loc = len(self.global.Locmap) - 1
 	}
 	return fmt.Sprintf("MRO %s at %s:%d.", self.msg,
-		self.global.locmap[loc].fname,
-		self.global.locmap[loc].loc)
+		self.global.Locmap[loc].fname,
+		self.global.Locmap[loc].loc)
 }
 
 // ParseError
