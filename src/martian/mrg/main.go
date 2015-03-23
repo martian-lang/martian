@@ -60,13 +60,15 @@ Options:
 			fmt.Println("No pipeline or stage specified.")
 			os.Exit(1)
 		}
-		args, ok := input["args"].(map[string]interface{})
-		if !ok {
-			fmt.Println("No args given.")
+
+		args, argsOk := input["args"].(map[string]interface{})
+		sweepargs, sweepOk := input["sweepargs"].(map[string]interface{})
+		if !argsOk && !sweepOk {
+			fmt.Println("No args or sweepargs given.")
 			os.Exit(1)
 		}
 
-		src, bldErr := rt.BuildCallSource(incpaths, name, args)
+		src, bldErr := rt.BuildCallSource(incpaths, name, args, sweepargs)
 
 		if bldErr == nil {
 			fmt.Print(src)

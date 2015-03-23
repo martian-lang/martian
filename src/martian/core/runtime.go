@@ -751,8 +751,9 @@ func (self *Fork) skip() {
 func (self *Fork) writeInvocation() {
 	if !self.metadata.exists("invocation") {
 		argBindings := resolveBindings(self.node.argbindings, self.argPermute)
+		sweepBindings := map[string]interface{}{}
 		incpaths := self.node.invocation["incpaths"].([]string)
-		invocation, _ := self.node.rt.BuildCallSource(incpaths, self.node.name, argBindings)
+		invocation, _ := self.node.rt.BuildCallSource(incpaths, self.node.name, argBindings, sweepBindings)
 		self.metadata.writeRaw("invocation", invocation)
 	}
 }
@@ -2514,8 +2515,8 @@ func (self *Runtime) buildVal(param Param, val interface{}) string {
 	}
 }
 
-func (self *Runtime) BuildCallSource(incpaths []string, name string,
-	args map[string]interface{}) (string, error) {
+func (self *Runtime) BuildCallSource(incpaths []string, name string, args map[string]interface{},
+	sweepargs map[string]interface{}) (string, error) {
 	// Make sure pipeline has been imported
 	if _, ok := self.callableTable[name]; !ok {
 		return "", &RuntimeError{fmt.Sprintf("'%s' is not a declared pipeline or stage", name)}
@@ -2530,8 +2531,18 @@ func (self *Runtime) BuildCallSource(incpaths []string, name string,
 	// whether the args bag has a value for it not.
 	lines := []string{}
 	for _, param := range self.callableTable[name].getInParams().list {
-		valstr := self.buildVal(param, args[param.getId()])
-		lines = append(lines, fmt.Sprintf("    %s = %s,", param.getId(), valstr))
+		id := param.getId()
+
+		var valstr string
+		if value, ok := args[id]; ok {
+			valstr = self.buildVal(param, value)
+		} else if value, ok := sweepargs[id]; ok {
+			valstr = fmt.Sprintf("sweep(%s)", self.buildVal(param, value))
+		} else {
+			return "", &RuntimeError{fmt.Sprintf("'%s' is not specified in args or sweepargs", id)}
+		}
+
+		lines = append(lines, fmt.Sprintf("    %s = %s,", id, valstr))
 	}
 	return fmt.Sprintf("%s\n\ncall %s(\n%s\n)", strings.Join(includes, "\n"),
 		name, strings.Join(lines, "\n")), nil
