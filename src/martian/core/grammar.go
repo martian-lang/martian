@@ -596,7 +596,7 @@ mmdefault:
 		//line src/martian/core/grammar.y:123
 		{
 			{
-				mmS[mmpt-1].params.list = append(mmS[mmpt-1].params.list, mmS[mmpt-0].inparam)
+				mmS[mmpt-1].params.List = append(mmS[mmpt-1].params.List, mmS[mmpt-0].inparam)
 				mmVAL.params = mmS[mmpt-1].params
 			}
 		}
@@ -618,7 +618,7 @@ mmdefault:
 		//line src/martian/core/grammar.y:138
 		{
 			{
-				mmS[mmpt-1].params.list = append(mmS[mmpt-1].params.list, mmS[mmpt-0].outparam)
+				mmS[mmpt-1].params.List = append(mmS[mmpt-1].params.List, mmS[mmpt-0].outparam)
 				mmVAL.params = mmS[mmpt-1].params
 			}
 		}
@@ -722,21 +722,21 @@ mmdefault:
 		//line src/martian/core/grammar.y:207
 		{
 			{
-				mmVAL.modifiers.local = true
+				mmVAL.modifiers.Local = true
 			}
 		}
 	case 40:
 		//line src/martian/core/grammar.y:209
 		{
 			{
-				mmVAL.modifiers.preflight = true
+				mmVAL.modifiers.Preflight = true
 			}
 		}
 	case 41:
 		//line src/martian/core/grammar.y:211
 		{
 			{
-				mmVAL.modifiers.volatile = true
+				mmVAL.modifiers.Volatile = true
 			}
 		}
 	case 42:
@@ -750,7 +750,7 @@ mmdefault:
 		//line src/martian/core/grammar.y:218
 		{
 			{
-				mmS[mmpt-1].bindings.list = append(mmS[mmpt-1].bindings.list, mmS[mmpt-0].binding)
+				mmS[mmpt-1].bindings.List = append(mmS[mmpt-1].bindings.List, mmS[mmpt-0].binding)
 				mmVAL.bindings = mmS[mmpt-1].bindings
 			}
 		}
@@ -765,7 +765,7 @@ mmdefault:
 		//line src/martian/core/grammar.y:228
 		{
 			{
-				mmVAL.binding = &BindStm{NewAstNode(&mmlval), mmS[mmpt-6].val, &ValExp{node: NewAstNode(&mmlval), kind: "array", value: mmS[mmpt-2].exps}, true, ""}
+				mmVAL.binding = &BindStm{NewAstNode(&mmlval), mmS[mmpt-6].val, &ValExp{Node: NewAstNode(&mmlval), Kind: "array", Value: mmS[mmpt-2].exps}, true, ""}
 			}
 		}
 	case 46:
@@ -801,28 +801,28 @@ mmdefault:
 		//line src/martian/core/grammar.y:250
 		{
 			{
-				mmVAL.exp = &ValExp{node: NewAstNode(&mmlval), kind: "array", value: mmS[mmpt-1].exps}
+				mmVAL.exp = &ValExp{Node: NewAstNode(&mmlval), Kind: "array", Value: mmS[mmpt-1].exps}
 			}
 		}
 	case 51:
 		//line src/martian/core/grammar.y:252
 		{
 			{
-				mmVAL.exp = &ValExp{node: NewAstNode(&mmlval), kind: "array", value: []Exp{}}
+				mmVAL.exp = &ValExp{Node: NewAstNode(&mmlval), Kind: "array", Value: []Exp{}}
 			}
 		}
 	case 52:
 		//line src/martian/core/grammar.y:254
 		{
 			{
-				mmVAL.exp = &ValExp{node: NewAstNode(&mmlval), kind: "map", value: map[string]interface{}{}}
+				mmVAL.exp = &ValExp{Node: NewAstNode(&mmlval), Kind: "map", Value: map[string]interface{}{}}
 			}
 		}
 	case 53:
 		//line src/martian/core/grammar.y:256
 		{
 			{
-				mmVAL.exp = &ValExp{node: NewAstNode(&mmlval), kind: "map", value: mmS[mmpt-1].kvpairs}
+				mmVAL.exp = &ValExp{Node: NewAstNode(&mmlval), Kind: "map", Value: mmS[mmpt-1].kvpairs}
 			}
 		}
 	case 54:
@@ -830,7 +830,7 @@ mmdefault:
 		{
 			{ // Lexer guarantees parseable float strings.
 				f, _ := strconv.ParseFloat(mmS[mmpt-0].val, 64)
-				mmVAL.exp = &ValExp{node: NewAstNode(&mmlval), kind: "float", value: f}
+				mmVAL.exp = &ValExp{Node: NewAstNode(&mmlval), Kind: "float", Value: f}
 			}
 		}
 	case 55:
@@ -838,35 +838,35 @@ mmdefault:
 		{
 			{ // Lexer guarantees parseable int strings.
 				i, _ := strconv.ParseInt(mmS[mmpt-0].val, 0, 64)
-				mmVAL.exp = &ValExp{node: NewAstNode(&mmlval), kind: "int", value: i}
+				mmVAL.exp = &ValExp{Node: NewAstNode(&mmlval), Kind: "int", Value: i}
 			}
 		}
 	case 56:
 		//line src/martian/core/grammar.y:268
 		{
 			{
-				mmVAL.exp = &ValExp{node: NewAstNode(&mmlval), kind: "string", value: unquote(mmS[mmpt-0].val)}
+				mmVAL.exp = &ValExp{Node: NewAstNode(&mmlval), Kind: "string", Value: unquote(mmS[mmpt-0].val)}
 			}
 		}
 	case 57:
 		//line src/martian/core/grammar.y:270
 		{
 			{
-				mmVAL.exp = &ValExp{node: NewAstNode(&mmlval), kind: "bool", value: true}
+				mmVAL.exp = &ValExp{Node: NewAstNode(&mmlval), Kind: "bool", Value: true}
 			}
 		}
 	case 58:
 		//line src/martian/core/grammar.y:272
 		{
 			{
-				mmVAL.exp = &ValExp{node: NewAstNode(&mmlval), kind: "bool", value: false}
+				mmVAL.exp = &ValExp{Node: NewAstNode(&mmlval), Kind: "bool", Value: false}
 			}
 		}
 	case 59:
 		//line src/martian/core/grammar.y:274
 		{
 			{
-				mmVAL.exp = &ValExp{node: NewAstNode(&mmlval), kind: "null", value: nil}
+				mmVAL.exp = &ValExp{Node: NewAstNode(&mmlval), Kind: "null", Value: nil}
 			}
 		}
 	case 60:

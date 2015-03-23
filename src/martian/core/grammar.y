@@ -121,7 +121,7 @@ in_param_list
         {{ $$ = &Params{[]Param{}, map[string]Param{}} }}
     | in_param_list in_param
         {{ 
-            $1.list = append($1.list, $2)
+            $1.List = append($1.List, $2)
             $$ = $1
         }}
     ;
@@ -136,7 +136,7 @@ out_param_list
         {{ $$ = &Params{[]Param{}, map[string]Param{}} }}
     | out_param_list out_param
         {{ 
-            $1.list = append($1.list, $2)
+            $1.List = append($1.List, $2)
             $$ = $1
         }}
     ;
@@ -204,11 +204,11 @@ modifiers
     :
       {{ $$ = &Modifiers{false, false, false} }}
     | modifiers LOCAL
-      {{ $$.local = true }}
+      {{ $$.Local = true }}
     | modifiers PREFLIGHT
-      {{ $$.preflight = true }}
+      {{ $$.Preflight = true }}
     | modifiers VOLATILE
-      {{ $$.volatile = true }}
+      {{ $$.Volatile = true }}
     ;
 
 bind_stm_list
@@ -216,7 +216,7 @@ bind_stm_list
         {{ $$ = &BindStms{[]*BindStm{}, map[string]*BindStm{}} }}
     | bind_stm_list bind_stm
         {{ 
-            $1.list = append($1.list, $2)
+            $1.List = append($1.List, $2)
             $$ = $1
         }}
     ;
@@ -225,7 +225,7 @@ bind_stm
     : ID EQUALS exp COMMA
         {{ $$ = &BindStm{NewAstNode(&mmlval), $1, $3, false, ""} }}
     | ID EQUALS SWEEP LPAREN exp_list RPAREN COMMA
-        {{ $$ = &BindStm{NewAstNode(&mmlval), $1, &ValExp{node:NewAstNode(&mmlval), kind: "array", value: $5}, true, ""} }}
+        {{ $$ = &BindStm{NewAstNode(&mmlval), $1, &ValExp{Node:NewAstNode(&mmlval), Kind: "array", Value: $5}, true, ""} }}
     ;
 
 exp_list
@@ -247,31 +247,31 @@ kvpair_list
 
 exp
     : LBRACKET exp_list RBRACKET        
-        {{ $$ = &ValExp{node:NewAstNode(&mmlval), kind: "array", value: $2} }}
+        {{ $$ = &ValExp{Node:NewAstNode(&mmlval), Kind: "array", Value: $2} }}
     | LBRACKET RBRACKET
-        {{ $$ = &ValExp{node:NewAstNode(&mmlval), kind: "array", value: []Exp{}} }}
+        {{ $$ = &ValExp{Node:NewAstNode(&mmlval), Kind: "array", Value: []Exp{}} }}
     | LBRACE RBRACE
-        {{ $$ = &ValExp{node:NewAstNode(&mmlval), kind: "map", value: map[string]interface{}{}} }}
+        {{ $$ = &ValExp{Node:NewAstNode(&mmlval), Kind: "map", Value: map[string]interface{}{}} }}
     | LBRACE kvpair_list RBRACE
-        {{ $$ = &ValExp{node:NewAstNode(&mmlval), kind: "map", value: $2} }}
+        {{ $$ = &ValExp{Node:NewAstNode(&mmlval), Kind: "map", Value: $2} }}
     | NUM_FLOAT
         {{  // Lexer guarantees parseable float strings.
             f, _ := strconv.ParseFloat($1, 64)
-            $$ = &ValExp{node:NewAstNode(&mmlval), kind: "float", value: f } 
+            $$ = &ValExp{Node:NewAstNode(&mmlval), Kind: "float", Value: f } 
         }}
     | NUM_INT
         {{  // Lexer guarantees parseable int strings.
             i, _ := strconv.ParseInt($1, 0, 64)
-            $$ = &ValExp{node:NewAstNode(&mmlval), kind: "int", value: i } 
+            $$ = &ValExp{Node:NewAstNode(&mmlval), Kind: "int", Value: i } 
         }}
     | LITSTRING
-        {{ $$ = &ValExp{node:NewAstNode(&mmlval), kind: "string", value: unquote($1)} }}
+        {{ $$ = &ValExp{Node:NewAstNode(&mmlval), Kind: "string", Value: unquote($1)} }}
     | TRUE
-        {{ $$ = &ValExp{node:NewAstNode(&mmlval), kind: "bool", value: true} }}
+        {{ $$ = &ValExp{Node:NewAstNode(&mmlval), Kind: "bool", Value: true} }}
     | FALSE
-        {{ $$ = &ValExp{node:NewAstNode(&mmlval), kind: "bool", value: false} }}
+        {{ $$ = &ValExp{Node:NewAstNode(&mmlval), Kind: "bool", Value: false} }}
     | NULL
-        {{ $$ = &ValExp{node:NewAstNode(&mmlval), kind: "null", value: nil} }}
+        {{ $$ = &ValExp{Node:NewAstNode(&mmlval), Kind: "null", Value: nil} }}
     | ref_exp
         {{ $$ = $1 }}
     ;

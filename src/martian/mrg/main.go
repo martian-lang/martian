@@ -49,11 +49,7 @@ Options:
 	if err := dec.Decode(&input); err == nil {
 		incpaths := []string{}
 		if ilist, ok := input["incpaths"].([]interface{}); ok {
-			for _, i := range ilist {
-				if incpath, ok := i.(string); ok {
-					incpaths = append(incpaths, incpath)
-				}
-			}
+			incpaths = core.ArrayToString(ilist)
 		}
 		name, ok := input["call"].(string)
 		if !ok {
@@ -61,11 +57,15 @@ Options:
 			os.Exit(1)
 		}
 
-		args, argsOk := input["args"].(map[string]interface{})
-		sweepargs, sweepOk := input["sweepargs"].(map[string]interface{})
-		if !argsOk && !sweepOk {
-			fmt.Println("No args or sweepargs given.")
+		args, ok := input["args"].(map[string]interface{})
+		if !ok {
+			fmt.Println("No args given.")
 			os.Exit(1)
+		}
+
+		sweepargs := []string{}
+		if sweeplist, ok := input["sweepargs"].([]interface{}); ok {
+			sweepargs = core.ArrayToString(sweeplist)
 		}
 
 		src, bldErr := rt.BuildCallSource(incpaths, name, args, sweepargs)

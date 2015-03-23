@@ -197,18 +197,18 @@ type BindingInfo struct {
 func newBinding(node *Node, bindStm *BindStm, returnBinding bool) *Binding {
 	self := &Binding{}
 	self.node = node
-	self.id = bindStm.id
-	self.tname = bindStm.tname
-	self.sweep = bindStm.sweep
+	self.id = bindStm.Id
+	self.tname = bindStm.Tname
+	self.sweep = bindStm.Sweep
 	self.waiting = false
-	switch valueExp := bindStm.exp.(type) {
+	switch valueExp := bindStm.Exp.(type) {
 	case *RefExp:
-		if valueExp.kind == "self" {
+		if valueExp.Kind == "self" {
 			var parentBinding *Binding
 			if returnBinding {
-				parentBinding = self.node.argbindings[valueExp.id]
+				parentBinding = self.node.argbindings[valueExp.Id]
 			} else {
-				parentBinding = self.node.parent.getNode().argbindings[valueExp.id]
+				parentBinding = self.node.parent.getNode().argbindings[valueExp.Id]
 			}
 			if parentBinding != nil {
 				self.node = parentBinding.node
@@ -221,29 +221,29 @@ func newBinding(node *Node, bindStm *BindStm, returnBinding bool) *Binding {
 				self.output = parentBinding.output
 				self.value = parentBinding.value
 			}
-			self.id = bindStm.id
-			self.valexp = "self." + valueExp.id
-		} else if valueExp.kind == "call" {
+			self.id = bindStm.Id
+			self.valexp = "self." + valueExp.Id
+		} else if valueExp.Kind == "call" {
 			if returnBinding {
-				self.parentNode = self.node.subnodes[valueExp.id]
+				self.parentNode = self.node.subnodes[valueExp.Id]
 				self.boundNode, self.output, self.mode, self.value = self.node.findBoundNode(
-					valueExp.id, valueExp.outputId, "reference", nil)
+					valueExp.Id, valueExp.OutputId, "reference", nil)
 			} else {
-				self.parentNode = self.node.parent.getNode().subnodes[valueExp.id]
+				self.parentNode = self.node.parent.getNode().subnodes[valueExp.Id]
 				self.boundNode, self.output, self.mode, self.value = self.node.parent.getNode().findBoundNode(
-					valueExp.id, valueExp.outputId, "reference", nil)
+					valueExp.Id, valueExp.OutputId, "reference", nil)
 			}
-			if valueExp.outputId == "default" {
-				self.valexp = valueExp.id
+			if valueExp.OutputId == "default" {
+				self.valexp = valueExp.Id
 			} else {
-				self.valexp = valueExp.id + "." + valueExp.outputId
+				self.valexp = valueExp.Id + "." + valueExp.OutputId
 			}
 		}
 	case *ValExp:
 		self.mode = "value"
 		self.parentNode = node
 		self.boundNode = node
-		self.value = expToInterface(bindStm.exp)
+		self.value = expToInterface(bindStm.Exp)
 	}
 	return self
 }
@@ -262,20 +262,20 @@ func expToInterface(exp Exp) interface{} {
 	if !ok {
 		return nil
 	}
-	if valExp.kind == "array" {
+	if valExp.Kind == "array" {
 		varray := []interface{}{}
-		for _, exp := range valExp.value.([]Exp) {
+		for _, exp := range valExp.Value.([]Exp) {
 			varray = append(varray, expToInterface(exp))
 		}
 		return varray
-	} else if valExp.kind == "map" {
+	} else if valExp.Kind == "map" {
 		vmap := map[string]interface{}{}
-		for k, exp := range valExp.value.(map[string]Exp) {
+		for k, exp := range valExp.Value.(map[string]Exp) {
 			vmap[k] = expToInterface(exp)
 		}
 		return vmap
 	} else {
-		return valExp.value
+		return valExp.Value
 	}
 }
 
@@ -345,7 +345,7 @@ func resolveBindings(bindings map[string]*Binding, argPermute map[string]interfa
 
 func makeOutArgs(outParams *Params, filesPath string) map[string]interface{} {
 	args := map[string]interface{}{}
-	for id, param := range outParams.table {
+	for id, param := range outParams.Table {
 		if param.getIsFile() {
 			args[id] = path.Join(filesPath, param.getId()+"."+param.getTname())
 		} else if param.getTname() == "path" {
@@ -658,9 +658,9 @@ func (self *Fork) verifyOutput() (bool, string) {
 	outparams := self.node.outparams
 	msg := ""
 	ret := true
-	if len(outparams.list) > 0 {
+	if len(outparams.List) > 0 {
 		outputs := self.metadata.read("outs").(map[string]interface{})
-		for _, param := range outparams.table {
+		for _, param := range outparams.Table {
 			val, ok := outputs[param.getId()]
 			if !ok {
 				msg += fmt.Sprintf("Fork did not return parameter '%s'\n", param.getId())
@@ -751,7 +751,7 @@ func (self *Fork) skip() {
 func (self *Fork) writeInvocation() {
 	if !self.metadata.exists("invocation") {
 		argBindings := resolveBindings(self.node.argbindings, self.argPermute)
-		sweepBindings := map[string]interface{}{}
+		sweepBindings := []string{}
 		incpaths := self.node.invocation["incpaths"].([]string)
 		invocation, _ := self.node.rt.BuildCallSource(incpaths, self.node.name, argBindings, sweepBindings)
 		self.metadata.writeRaw("invocation", invocation)
@@ -918,7 +918,7 @@ func (self *Fork) vdrKill() *VDRKillReport {
 }
 
 func (self *Fork) postProcess(outsPath string) {
-	params := self.node.outparams.table
+	params := self.node.outparams.Table
 
 	if len(params) == 0 {
 		return
@@ -1148,18 +1148,18 @@ func NewNode(parent Nodable, kind string, callStm *CallStm, callables *Callables
 
 	self.rt = parent.getNode().rt
 	self.kind = kind
-	self.name = callStm.id
+	self.name = callStm.Id
 	self.fqname = parent.getNode().fqname + "." + self.name
 	self.path = path.Join(parent.getNode().path, self.name)
 	self.journalPath = parent.getNode().journalPath
 	self.tmpPath = parent.getNode().tmpPath
 	self.invocation = parent.getNode().invocation
 	self.metadata = NewMetadata(self.fqname, self.path)
-	self.volatile = callStm.modifiers.volatile
-	self.local = callStm.modifiers.local
-	self.preflight = callStm.modifiers.preflight
+	self.volatile = callStm.Modifiers.Volatile
+	self.local = callStm.Modifiers.Local
+	self.preflight = callStm.Modifiers.Preflight
 
-	self.outparams = callables.table[self.name].getOutParams()
+	self.outparams = callables.Table[self.name].getOutParams()
 	self.argbindings = map[string]*Binding{}
 	self.argbindingList = []*Binding{}
 	self.retbindings = map[string]*Binding{}
@@ -1170,7 +1170,7 @@ func NewNode(parent Nodable, kind string, callStm *CallStm, callables *Callables
 	self.postnodes = map[string]Nodable{}
 	self.frontierNodes = parent.getNode().frontierNodes
 
-	for id, bindStm := range callStm.bindings.table {
+	for id, bindStm := range callStm.Bindings.Table {
 		binding := NewBinding(self, bindStm)
 		self.argbindings[id] = binding
 		self.argbindingList = append(self.argbindingList, binding)
@@ -1838,24 +1838,24 @@ func NewStagestance(parent Nodable, callStm *CallStm, callables *Callables) *Sta
 
 	self := &Stagestance{}
 	self.node = NewNode(parent, "stage", callStm, callables)
-	stage, ok := callables.table[self.node.name].(*Stage)
+	stage, ok := callables.Table[self.node.name].(*Stage)
 	if !ok {
 		return nil
 	}
 
 	stagecodePaths := append([]string{self.node.rt.mroPath}, strings.Split(os.Getenv("PATH"), ":")...)
-	stagecodePath, _ := searchPaths(stage.src.path, stagecodePaths)
-	self.node.stagecodeCmd = strings.Join(append([]string{stagecodePath}, stage.src.args...), " ")
+	stagecodePath, _ := searchPaths(stage.Src.Path, stagecodePaths)
+	self.node.stagecodeCmd = strings.Join(append([]string{stagecodePath}, stage.Src.Args...), " ")
 	if self.node.rt.stest {
-		switch stage.src.lang {
+		switch stage.Src.Lang {
 		case "py":
 			self.node.stagecodeCmd = RelPath(path.Join("..", "adapters", "python", "tester"))
 		default:
-			panic(fmt.Sprintf("Unsupported stress test language: %s", stage.src.lang))
+			panic(fmt.Sprintf("Unsupported stress test language: %s", stage.Src.Lang))
 		}
 	}
-	self.node.stagecodeLang = langMap[stage.src.lang]
-	self.node.split = stage.split
+	self.node.stagecodeLang = langMap[stage.Src.Lang]
+	self.node.split = stage.Split
 	self.node.buildForks(self.node.argbindings)
 	return self
 }
@@ -1882,27 +1882,27 @@ func NewPipestance(parent Nodable, callStm *CallStm, callables *Callables) *Pipe
 	self.node = NewNode(parent, "pipeline", callStm, callables)
 
 	// Build subcall tree.
-	pipeline, ok := callables.table[self.node.name].(*Pipeline)
+	pipeline, ok := callables.Table[self.node.name].(*Pipeline)
 	if !ok {
 		return nil
 	}
 	var preflightNode Nodable = nil
-	for _, subcallStm := range pipeline.calls {
-		callable := callables.table[subcallStm.id]
+	for _, subcallStm := range pipeline.Calls {
+		callable := callables.Table[subcallStm.Id]
 		switch callable.(type) {
 		case *Stage:
-			self.node.subnodes[subcallStm.id] = NewStagestance(self.node, subcallStm, callables)
+			self.node.subnodes[subcallStm.Id] = NewStagestance(self.node, subcallStm, callables)
 		case *Pipeline:
-			self.node.subnodes[subcallStm.id] = NewPipestance(self.node, subcallStm, callables)
+			self.node.subnodes[subcallStm.Id] = NewPipestance(self.node, subcallStm, callables)
 		}
-		if self.node.subnodes[subcallStm.id].getNode().preflight {
-			preflightNode = self.node.subnodes[subcallStm.id]
+		if self.node.subnodes[subcallStm.Id].getNode().preflight {
+			preflightNode = self.node.subnodes[subcallStm.Id]
 		}
 	}
 
 	// Also depends on stages bound to return values.
 	self.node.retbindings = map[string]*Binding{}
-	for id, bindStm := range pipeline.ret.bindings.table {
+	for id, bindStm := range pipeline.Ret.Bindings.Table {
 		binding := NewReturnBinding(self.node, bindStm)
 		self.node.retbindings[id] = binding
 		self.node.retbindingList = append(self.node.retbindingList, binding)
@@ -2265,7 +2265,7 @@ func NewRuntimeWithCores(jobMode string, vdrMode string, profileMode string, mro
 	for _, fpath := range fpaths {
 		if data, err := ioutil.ReadFile(fpath); err == nil {
 			if _, _, ast, err := parseSource(string(data), fpath, []string{self.mroPath}, true); err == nil {
-				for _, callable := range ast.callables.table {
+				for _, callable := range ast.Callables.Table {
 					self.callableTable[callable.getId()] = callable
 					if _, ok := callable.(*Pipeline); ok {
 						self.PipelineNames = append(self.PipelineNames, callable.getId())
@@ -2309,20 +2309,20 @@ func (self *Runtime) instantiatePipeline(src string, srcPath string, psid string
 	}
 
 	// Check there's a call.
-	if ast.call == nil {
+	if ast.Call == nil {
 		return "", nil, &RuntimeError{"cannot start a pipeline without a call statement"}
 	}
 	// Make sure it's a pipeline we're calling.
-	if pipeline := ast.callables.table[ast.call.id]; pipeline == nil {
-		return "", nil, &RuntimeError{fmt.Sprintf("'%s' is not a declared pipeline", ast.call.id)}
+	if pipeline := ast.Callables.Table[ast.Call.Id]; pipeline == nil {
+		return "", nil, &RuntimeError{fmt.Sprintf("'%s' is not a declared pipeline", ast.Call.Id)}
 	}
 
 	invocationJson, _ := self.BuildCallJSON(src, srcPath)
 
 	// Instantiate the pipeline.
-	pipestance := NewPipestance(NewTopNode(self, psid, pipestancePath, invocationJson), ast.call, ast.callables)
+	pipestance := NewPipestance(NewTopNode(self, psid, pipestancePath, invocationJson), ast.Call, ast.Callables)
 	if pipestance == nil {
-		return "", nil, &RuntimeError{fmt.Sprintf("'%s' is not a declared pipeline", ast.call.id)}
+		return "", nil, &RuntimeError{fmt.Sprintf("'%s' is not a declared pipeline", ast.Call.Id)}
 	}
 
 	// Lock the pipestance if not in read-only mode.
@@ -2442,20 +2442,20 @@ func (self *Runtime) InvokeStage(src string, srcPath string, ssid string,
 	}
 
 	// Check there's a call.
-	if ast.call == nil {
+	if ast.Call == nil {
 		return nil, &RuntimeError{"cannot start a stage without a call statement"}
 	}
 	// Make sure it's a stage we're calling.
-	if _, ok := ast.callables.table[ast.call.id].(*Stage); !ok {
-		return nil, &RuntimeError{fmt.Sprintf("'%s' is not a declared stage", ast.call.id)}
+	if _, ok := ast.Callables.Table[ast.Call.Id].(*Stage); !ok {
+		return nil, &RuntimeError{fmt.Sprintf("'%s' is not a declared stage", ast.Call.Id)}
 	}
 
 	invocationJson, _ := self.BuildCallJSON(src, srcPath)
 
 	// Instantiate stagestance.
-	stagestance := NewStagestance(NewTopNode(self, "", stagestancePath, invocationJson), ast.call, ast.callables)
+	stagestance := NewStagestance(NewTopNode(self, "", stagestancePath, invocationJson), ast.Call, ast.Callables)
 	if stagestance == nil {
-		return nil, &RuntimeError{fmt.Sprintf("'%s' is not a declared stage", ast.call.id)}
+		return nil, &RuntimeError{fmt.Sprintf("'%s' is not a declared stage", ast.Call.Id)}
 	}
 
 	stagestance.getNode().mkdirs()
@@ -2516,7 +2516,7 @@ func (self *Runtime) buildVal(param Param, val interface{}) string {
 }
 
 func (self *Runtime) BuildCallSource(incpaths []string, name string, args map[string]interface{},
-	sweepargs map[string]interface{}) (string, error) {
+	sweepargs []string) (string, error) {
 	// Make sure pipeline has been imported
 	if _, ok := self.callableTable[name]; !ok {
 		return "", &RuntimeError{fmt.Sprintf("'%s' is not a declared pipeline or stage", name)}
@@ -2530,19 +2530,17 @@ func (self *Runtime) BuildCallSource(incpaths []string, name string, args map[st
 	// Loop over the pipeline's in params and print a binding
 	// whether the args bag has a value for it not.
 	lines := []string{}
-	for _, param := range self.callableTable[name].getInParams().list {
-		id := param.getId()
+	for _, param := range self.callableTable[name].getInParams().List {
+		valstr := self.buildVal(param, args[param.getId()])
 
-		var valstr string
-		if value, ok := args[id]; ok {
-			valstr = self.buildVal(param, value)
-		} else if value, ok := sweepargs[id]; ok {
-			valstr = fmt.Sprintf("sweep(%s)", self.buildVal(param, value))
-		} else {
-			return "", &RuntimeError{fmt.Sprintf("'%s' is not specified in args or sweepargs", id)}
+		for _, id := range sweepargs {
+			if id == param.getId() {
+				valstr = fmt.Sprintf("sweep(%s)", valstr)
+				break
+			}
 		}
 
-		lines = append(lines, fmt.Sprintf("    %s = %s,", id, valstr))
+		lines = append(lines, fmt.Sprintf("    %s = %s,", param.getId(), valstr))
 	}
 	return fmt.Sprintf("%s\n\ncall %s(\n%s\n)", strings.Join(includes, "\n"),
 		name, strings.Join(lines, "\n")), nil
@@ -2554,17 +2552,22 @@ func (self *Runtime) BuildCallJSON(src string, srcPath string) (map[string]inter
 		return nil, err
 	}
 
-	if ast.call == nil {
+	if ast.Call == nil {
 		return nil, &RuntimeError{"cannot jsonify a pipeline without a call statement"}
 	}
 
 	args := map[string]interface{}{}
-	for _, binding := range ast.call.bindings.list {
-		args[binding.id] = expToInterface(binding.exp)
+	sweepargs := []string{}
+	for _, binding := range ast.Call.Bindings.List {
+		args[binding.Id] = expToInterface(binding.Exp)
+		if binding.Sweep {
+			sweepargs = append(sweepargs, binding.Id)
+		}
 	}
 	return map[string]interface{}{
-		"call":     ast.call.id,
-		"args":     args,
-		"incpaths": incpaths,
+		"call":      ast.Call.Id,
+		"args":      args,
+		"sweepargs": sweepargs,
+		"incpaths":  incpaths,
 	}, nil
 }
