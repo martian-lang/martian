@@ -2535,7 +2535,7 @@ func (self *Runtime) BuildCallSource(incpaths []string, name string, args map[st
 
 		for _, id := range sweepargs {
 			if id == param.getId() {
-				valstr = fmt.Sprintf("sweep(%s)", valstr)
+				valstr = fmt.Sprintf("sweep(%s)", strings.Trim(valstr, "[]"))
 				break
 			}
 		}
