@@ -1251,8 +1251,9 @@ func (self *Node) buildForks(bindings map[string]*Binding) {
 
 	for _, fork := range self.forks {
 		for _, subnode := range self.subnodes {
-			matchedFork := subnode.getNode().matchFork(fork.argPermute)
-			fork.subforks = append(fork.subforks, matchedFork)
+			if matchedFork := subnode.getNode().matchFork(fork.argPermute); matchedFork != nil {
+				fork.subforks = append(fork.subforks, matchedFork)
+			}
 		}
 	}
 }
