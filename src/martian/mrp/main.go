@@ -64,7 +64,7 @@ func runLoop(pipestance *core.Pipestance, stepSecs int, vdrMode string,
 			pipestance.Unlock()
 			if !showedFailed {
 				if _, _, log, kind, errPaths := pipestance.GetFatalError(); kind == "assert" {
-					// Print pre-flight check failures.
+					// Print preflight check failures.
 					core.Println("\n[%s] %s", core.Colorize("error", core.ANSI_MAGENTA), log)
 					os.Exit(2)
 				} else if len(errPaths) > 0 {
@@ -295,7 +295,7 @@ Options:
 		}
 		core.DieIf(err)
 	}
-	core.Println("\nRunning pre-flight checks (15 seconds)...")
+	core.Println("\nRunning preflight checks...")
 
 	// Start writing (including cached entries) to log file.
 	core.LogTee(path.Join(pipestancePath, "_log"))
