@@ -267,7 +267,7 @@ def initialize(argv):
         resource.setrlimit(resource.RLIMIT_NOFILE, (hard, hard))
     except Exception as e:
         # Since we are still initializing, do not allow an unhandled exception.
-        # If the limit is not high enough, a pre-flight will catch it.
+        # If the limit is not high enough, a preflight will catch it.
         metadata.log("adapter", "Adapter could not increase file handle ulimit to %s: %s" % (str(hard), str(e)))
         pass
 

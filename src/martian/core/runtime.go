@@ -1880,7 +1880,7 @@ func NewPipestance(parent Nodable, callStm *CallStm, callables *Callables) *Pipe
 	if !ok {
 		return nil
 	}
-	var preflightNode Nodable = nil
+	preflightNodes := []Nodable{}
 	for _, subcallStm := range pipeline.calls {
 		callable := callables.table[subcallStm.id]
 		switch callable.(type) {
@@ -1890,7 +1890,7 @@ func NewPipestance(parent Nodable, callStm *CallStm, callables *Callables) *Pipe
 			self.node.subnodes[subcallStm.id] = NewPipestance(self.node, subcallStm, callables)
 		}
 		if self.node.subnodes[subcallStm.id].getNode().preflight {
-			preflightNode = self.node.subnodes[subcallStm.id]
+			preflightNodes = append(preflightNodes, self.node.subnodes[subcallStm.id])
 		}
 	}
 
@@ -1908,10 +1908,10 @@ func NewPipestance(parent Nodable, callStm *CallStm, callables *Callables) *Pipe
 			prenode.getNode().postnodes[self.node.fqname] = self.node
 		}
 	}
-	// Add preflight dependency if preflight stage exists.
-	if preflightNode != nil {
+	// Add preflight dependencies if preflight stages exist.
+	for _, preflightNode := range preflightNodes {
 		for _, subnode := range self.node.subnodes {
-			if subnode != preflightNode {
+			if !subnode.getNode().preflight {
 				subnode.getNode().setPrenode(preflightNode)
 			}
 		}

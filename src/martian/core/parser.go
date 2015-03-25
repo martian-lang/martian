@@ -299,11 +299,6 @@ func (global *Ast) check(stagecodePaths []string, checkSrcPath bool) error {
 				}
 			}
 		}
-
-		if len(preflightCalls) > 1 {
-			return global.err(pipeline, "MultiplePreflightError: Pipeline '%s' cannot have multiple preflight stages", pipeline.id)
-		}
-
 	}
 
 	// Doing these in a separate loop gives the user better incremental
