@@ -1,6 +1,6 @@
-//- 
+//-
     Copyright (c) 2014 10X Genomics, Inc. All rights reserved.
-    
+
     Main UI for martian runner.
 
 doctype html
@@ -23,17 +23,17 @@ html(ng-app="app" ng-controller="MartianGraphCtrl")
 
     body
         header.navbar.navbar-inverse.navbar-fixed-top(ng-class="{admin: adminstyle}")
-            .navbar-header 
+            .navbar-header
                 .navbar-brand
                     a(href="{{urlprefix}}" style="color:#555") 10
                         span.logo-color X
                         | &nbsp;[[.InstanceName]]
-                    | &nbsp;/ {{info.username}} / {{info.psid}} / {{info.pname}} 
+                    | &nbsp;/ {{info.username}} / {{info.psid}} / {{info.pname}}
                     span(ng-if="adminstyle")
                         | &nbsp;(
                         a.admin-exit(href="/") exit admin mode
                         | )
-                    .navbar-views
+                    .navbar-views(ng-if="!release")
                         | Views:
                         label.btn.btn-default(ng-model="perf" btn-radio="false") Default
                         label.btn.btn-default(ng-model="perf" btn-radio="true") Performance
@@ -110,7 +110,7 @@ html(ng-app="app" ng-controller="MartianGraphCtrl")
             table.table
                 tr
                     td State
-                    td 
+                    td
                         span.minibox(ng-class="info.state") {{info.state}}
                 tr
                     td Cmdline
@@ -120,7 +120,7 @@ html(ng-app="app" ng-controller="MartianGraphCtrl")
                     td {{info.username}}@{{info.hostname}}, PID={{info.pid}}
                 tr
                     td Job Mode
-                    td {{info.jobmode}} 
+                    td {{info.jobmode}}
                         span(ng-if="info.jobmode=='local'") ({{info.maxcores}} cores, {{info.maxmemgb}} GB)
                 tr
                     td Start Time
@@ -147,16 +147,16 @@ html(ng-app="app" ng-controller="MartianGraphCtrl")
                     td {{info.invokepath}}
             #invokesrc
                 pre {{info.invokesrc}}
-            
+
         .details#stage(ng-show="!perf && node")
             h4#stagename
                 a(href="#" ng-click="node=null;id=null") &larr;
                 | &nbsp;
                 a(href="#") {{node.name}}&nbsp;
                 | {{node.type}}
-            
+
             div.alert.alert-danger.fixed(ng-show="node.error" ng-cloak)
-                div 
+                div
                     b Failed in {{node.error.fqname.substr(node.fqname.length+1)}}
                     br
                     |{{node.error.summary}}
@@ -167,12 +167,12 @@ html(ng-app="app" ng-controller="MartianGraphCtrl")
                     pre#metadata(ng-show="showLog")
                         button.close(type="button" ng-click="showLog=false") &times;
                         | {{node.error.log}}
-        
+
             h5 Details
             table.table#info
                 tr
                     td(style="width: 85px") State
-                    td 
+                    td
                         span.minibox(ng-class="node.state") {{node.state}}
                         button.btn.btn-default.btn-xs(ng-if="info.state == 'failed' && node.state == 'failed' && showRestart && admin" ng-click="restart()" style="margin-left: 10px") Restart
                 tr
@@ -180,14 +180,14 @@ html(ng-app="app" ng-controller="MartianGraphCtrl")
                     td {{node.fqname}}
                 tr
                     td Path
-                    td 
+                    td
                         button.btn.btn-default.btn-xs(type="button" clip-copy="copyToClipboard()")
                             span.glyphicon.glyphicon-paperclip
                         span.copyable {{node.path}}
                         span.copyable-display {{node.path | shorten}}
                 tr(ng-if="node.type=='stage'")
                     td {{node.stagecodeLang}}
-                    td 
+                    td
                         button.btn.btn-default.btn-xs(type="button" clip-copy="copyToClipboard()")
                             span.glyphicon.glyphicon-paperclip
                         span.copyable {{node.stagecodeCmd}}
@@ -196,9 +196,9 @@ html(ng-app="app" ng-controller="MartianGraphCtrl")
                     td(style="vertical-align: top") Sweeps
                     td
                         table
-                            tr(ng-repeat="binding in node.sweepbindings") 
+                            tr(ng-repeat="binding in node.sweepbindings")
                                 td {{binding.id}}&nbsp;&nbsp;
-                                td 
+                                td
                                     span.glyphicon.glyphicon-transfer &nbsp;
                                 td {{binding.value | shorten}}
 
@@ -211,7 +211,7 @@ html(ng-app="app" ng-controller="MartianGraphCtrl")
                             button.btn.btn-default(type="button" ng-model="$parent.forki" ng-repeat="fork in node.forks" btn-radio="fork.index") {{fork.index}}
                 tr
                     td(style="width: 85px") State
-                    td 
+                    td
                         span.minibox(ng-class="node.forks[forki].state") {{node.forks[forki].state}}
                 tr
                     td Permute
@@ -232,7 +232,7 @@ html(ng-app="app" ng-controller="MartianGraphCtrl")
                             | {{mdviews.forks[forki]}}
 
                 tr
-                    td Split 
+                    td Split
                     td(colspan="5")
                         span(ng-repeat="name in node.forks[forki].split_metadata.names | filter:filterMetadata")
                             a(ng-click="selectMetadata('split', forki, name, node.forks[forki].split_metadata.path)") {{name}}
@@ -242,7 +242,7 @@ html(ng-app="app" ng-controller="MartianGraphCtrl")
                             | {{mdviews.split[forki]}}
 
                 tr
-                    td Join 
+                    td Join
                     td(colspan="5")
                         span(ng-repeat="name in node.forks[forki].join_metadata.names | filter:filterMetadata")
                             a(ng-click="selectMetadata('join', forki, name, node.forks[forki].join_metadata.path)") {{name}}
@@ -264,7 +264,7 @@ html(ng-app="app" ng-controller="MartianGraphCtrl")
                         span(ng-class="[bnd.mode=='reference'?'minibox':'',nodes[bnd.node].state]") {{bnd.node}}
                             span(ng-if="bnd.mode=='reference'") \#{{bnd.matchedFork}}
                     td
-                        span(ng-if="bnd.waiting") 
+                        span(ng-if="bnd.waiting")
                             i.pending waiting
                         span(ng-if="!bnd.waiting && bnd.value==null") null
                         button.btn.btn-default.btn-xs(ng-if="bnd.value!=null" type="button" clip-copy="copyToClipboard()" style="vertical-align: top")
@@ -272,9 +272,9 @@ html(ng-app="app" ng-controller="MartianGraphCtrl")
                         span.copyable(ng-if="bnd.value!=null") {{bnd.value}}
                         span.copyable-display(ng-if="bnd.value!=null") {{bnd.value | shorten}}
                 tr(ng-repeat-end)
-                
+
             h5 Chunking
-            table.table 
+            table.table
                 tr
                     td(style="width: 85px") Chunks
                     td
@@ -282,7 +282,7 @@ html(ng-app="app" ng-controller="MartianGraphCtrl")
                             button.btn.btn-default(ng-class="chunk.state" type="button" ng-model="$parent.chunki" ng-repeat="chunk in node.forks[forki].chunks" btn-radio="chunk.index") {{chunk.index}}
                 tr
                     td(style="width: 85px") State
-                    td 
+                    td
                         span.minibox(ng-class="node.forks[forki].chunks[chunki].state") {{node.forks[forki].chunks[chunki].state}}
                 tr
                     td Chunk Def
@@ -291,7 +291,7 @@ html(ng-app="app" ng-controller="MartianGraphCtrl")
                             tr(ng-repeat="(key, value) in node.forks[forki].chunks[chunki].chunkDef")
                                 td {{key}}
                                 td &nbsp;=&nbsp;
-                                td 
+                                td
                                     button.btn.btn-default.btn-xs(type="button" clip-copy="copyToClipboard()")
                                         span.glyphicon.glyphicon-paperclip
                                     span.copyable {{value}}
@@ -312,4 +312,5 @@ html(ng-app="app" ng-controller="MartianGraphCtrl")
         | psid = '[[.Psid]]';
         | admin = [[.Admin]];
         | adminstyle = [[.AdminStyle]];
+        | release = [[.Release]];
     script(src="/graph.js")

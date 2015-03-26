@@ -40,7 +40,7 @@ renderGraph = ($scope, $compile) ->
         d3.select(this).attr('rx', 20).attr('ry', 20))
     d3.selectAll("g.node.pipeline rect").each((id) ->
         d3.select(this).attr('rx', 0).attr('ry', 0))
-    $compile(angular.element(document.querySelector('#top')).contents())($scope) 
+    $compile(angular.element(document.querySelector('#top')).contents())($scope)
 
 addRow = (chart, columns, name, units, stats) ->
     row = [name]
@@ -60,7 +60,7 @@ humanize = (num, units) ->
         s = _humanizeBytes(num*1024)
     else if units == 'seconds'
         s = _humanizeTime(num)
-    else 
+    else
         s = _humanizeUnits(num, units)
     return s.trim()
 
@@ -131,6 +131,7 @@ app.controller('MartianGraphCtrl', ($scope, $compile, $http, $interval) ->
     $scope.psid = psid
     $scope.admin = admin
     $scope.adminstyle = adminstyle
+    $scope.release = release
     $scope.urlprefix = if adminstyle then '/admin' else '/'
 
     $http.get("/api/get-state/#{container}/#{pname}/#{psid}").success((state) ->
