@@ -10,13 +10,20 @@ import (
 	"os"
 	"os/exec"
 	"path"
+	"strconv"
 	"strings"
 )
 
 var __VERSION__ string = "<version not embedded>"
+var __RELEASE__ string = "false"
 
 func GetVersion() string {
 	return __VERSION__
+}
+
+func IsRelease() bool {
+	out, _ := strconv.ParseBool(__RELEASE__)
+	return out
 }
 
 func GetMroVersion(dir string) string {

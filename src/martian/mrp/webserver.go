@@ -31,6 +31,7 @@ type GraphPage struct {
 	Psid         string
 	Admin        bool
 	AdminStyle   bool
+	Release      bool
 }
 
 type MetadataForm struct {
@@ -75,6 +76,7 @@ func runWebServer(uiport string, rt *core.Runtime, pipestance *core.Pipestance,
 			Psid:         pipestance.GetPsid(),
 			Admin:        true,
 			AdminStyle:   false,
+			Release:      core.IsRelease(),
 		})
 		return doc.String()
 	})
@@ -100,13 +102,16 @@ func runWebServer(uiport string, rt *core.Runtime, pipestance *core.Pipestance,
 			return string(bytes)
 		})
 
-	app.Get("/api/get-perf/:container/:pname/:psid",
-		func(p martini.Params) string {
-			state := map[string]interface{}{}
-			state["nodes"] = getSerialization(rt, pipestance, "perf")
-			bytes, _ := json.Marshal(state)
-			return string(bytes)
-		})
+	// Get pipestance performance data: disable API endpoint for release
+	if !core.IsRelease() {
+		app.Get("/api/get-perf/:container/:pname/:psid",
+			func(p martini.Params) string {
+				state := map[string]interface{}{}
+				state["nodes"] = getSerialization(rt, pipestance, "perf")
+				bytes, _ := json.Marshal(state)
+				return string(bytes)
+			})
+	}
 
 	// Get metadata file contents.
 	app.Post("/api/get-metadata/:container/:pname/:psid", binding.Bind(MetadataForm{}),

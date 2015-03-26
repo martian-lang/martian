@@ -200,6 +200,7 @@
     $scope.psid = psid;
     $scope.admin = admin;
     $scope.adminstyle = adminstyle;
+    $scope.release = release;
     $scope.urlprefix = adminstyle ? '/admin' : '/';
     $http.get("/api/get-state/" + container + "/" + pname + "/" + psid).success(function(state) {
       $scope.topnode = state.nodes[0];
