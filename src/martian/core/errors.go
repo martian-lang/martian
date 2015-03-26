@@ -44,6 +44,15 @@ func (self *PipestanceInvocationError) Error() string {
 		self.Psid, self.InvocationPath)
 }
 
+// PipestancePathError
+type PipestancePathError struct {
+	Path string
+}
+
+func (self *PipestancePathError) Error() string {
+	return fmt.Sprintf("RuntimeError: %s is not a pipestance directory", self.Path)
+}
+
 // PipestanceLockedError
 type PipestanceLockedError struct {
 	Psid           string

@@ -2395,7 +2395,7 @@ func (self *Runtime) reattachToPipestance(psid string, pipestancePath string, sr
 	// Read in the existing _invocation file.
 	data, err := ioutil.ReadFile(invocationPath)
 	if err != nil {
-		return nil, err
+		return nil, &PipestancePathError{pipestancePath}
 	}
 
 	// Check if _invocation has changed.
