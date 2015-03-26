@@ -33,7 +33,7 @@ html(ng-app="app" ng-controller="MartianGraphCtrl")
                         | &nbsp;(
                         a.admin-exit(href="/") exit admin mode
                         | )
-                    .navbar-views(ng-if="!release")
+                    .navbar-views(ng-show="!release")
                         | Views:
                         label.btn.btn-default(ng-model="perf" btn-radio="false") Default
                         label.btn.btn-default(ng-model="perf" btn-radio="true") Performance
