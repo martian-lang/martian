@@ -412,6 +412,14 @@ func ParseTimestamp(data string) string {
 	return timestamp
 }
 
+func ParseVersions(data string) (string, string, error) {
+	var versions map[string]string
+	if err := json.Unmarshal([]byte(data), versions); err != nil {
+		return "", "", err
+	}
+	return versions["martian"], versions["pipelines"], nil
+}
+
 func VerifyVDRMode(vdrMode string) {
 	validModes := []string{"rolling", "post", "disable"}
 	for _, validMode := range validModes {
@@ -2115,6 +2123,12 @@ func (self *Pipestance) GetTimestamp() string {
 	metadata := NewMetadata(self.node.parent.getNode().fqname, self.GetPath())
 	data := metadata.readRaw("timestamp")
 	return ParseTimestamp(data)
+}
+
+func (self *Pipestance) GetVersions() (string, string, error) {
+	metadata := NewMetadata(self.node.parent.getNode().fqname, self.GetPath())
+	data := metadata.readRaw("versions")
+	return ParseVersions(data)
 }
 
 func (self *Pipestance) PostProcess() {

@@ -116,7 +116,7 @@ func main() {
 	// Parse commandline.
 	doc := `Martian Pipeline Runner.
 
-Usage: 
+Usage:
     mrp <call.mro> <pipestance_name> [options]
     mrp -h | --help | --version
 
@@ -288,6 +288,7 @@ Options:
 		if _, ok := err.(*core.PipestanceExistsError); ok {
 			// If it already exists, try to reattach to it.
 			if pipestance, err = rt.ReattachToPipestance(psid, pipestancePath, invocationSrc, checkSrc, readOnly); err == nil {
+				martianVersion, mroVersion, _ = pipestance.GetVersions()
 				if !inspect {
 					err = pipestance.Reset()
 				}
