@@ -59,8 +59,12 @@ func (self *RefExp) format() string {
 //
 func (self *BindStm) format(idWidth int) string {
 	idPad := strings.Repeat(" ", idWidth-len(self.Id))
+	fmtExp := self.Exp.format()
+	if self.Sweep {
+		fmtExp = fmt.Sprintf("sweep(%s)", strings.Trim(fmtExp, "[]"))
+	}
 	return fmt.Sprintf("%s%s%s%s%s = %s,", self.Exp.getNode().Comments,
-		INDENT, INDENT, self.Id, idPad, self.Exp.format())
+		INDENT, INDENT, self.Id, idPad, fmtExp)
 }
 
 func (self *BindStms) format() string {
