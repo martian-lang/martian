@@ -164,6 +164,7 @@ func (self *LocalJobManager) Enqueue(shellCmd string, argv []string, envs []stri
 	go func() {
 		// Exec the shell directly.
 		cmd := exec.Command(shellCmd, argv...)
+		cmd.Dir = metadata.filesPath
 
 		stdoutPath := metadata.makePath("stdout")
 		stderrPath := metadata.makePath("stderr")
