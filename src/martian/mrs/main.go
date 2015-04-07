@@ -27,7 +27,7 @@ func main() {
 	// Parse commandline.
 	doc := `Martian Stage Runner.
 
-Usage: 
+Usage:
     mrs <call.mro> <stagestance_name> [options]
     mrs -h | --help | --version
 
@@ -36,7 +36,7 @@ Options:
                            Valid job managers are local, sge, lsf or .template file
                            Defaults to local.
     --profile=<name>     Enables stage performance profiling.
-                           Valid options are cpu, mem and disable.
+                           Valid options are cpu, mem, line and disable.
                            Defaults to disable.
     --stackvars          Print local variables in stage code stack trace.
     --localcores=<num>   Set max cores the pipeline may request at one time.

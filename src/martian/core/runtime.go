@@ -432,7 +432,7 @@ func VerifyVDRMode(vdrMode string) {
 }
 
 func VerifyProfileMode(profileMode string) {
-	validModes := []string{"cpu", "mem", "disable"}
+	validModes := []string{"cpu", "mem", "line", "disable"}
 	for _, validMode := range validModes {
 		if validMode == profileMode {
 			return

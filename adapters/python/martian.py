@@ -18,6 +18,7 @@ import pstats
 import StringIO
 import cProfile
 import traceback
+import line_profiler
 
 class StageException(Exception):
     pass
@@ -232,7 +233,7 @@ def start_monitor(limit_kb):
     t.start()
 
 def initialize(argv):
-    global metadata, module, profile_mode, stackvars_flag, starttime, invocation, version
+    global metadata, module, profile_mode, stackvars_flag, starttime, invocation, version, funcs
 
     # Take options from command line.
     shell_cmd, stagecode_path, metadata_path, files_path, run_file = argv
@@ -279,8 +280,11 @@ def initialize(argv):
     invocation = jobinfo["invocation"]
     version = jobinfo["version"]
 
-    # allow shells and stage code to import martian easily
+    # Allow shells and stage code to import martian easily
     sys.path.append(os.path.dirname(__file__))
+
+    # Initialize functions to be line-profiled.
+    funcs = []
 
     # Load the stage code as a module.
     sys.path.append(os.path.dirname(stagecode_path))
@@ -342,25 +346,36 @@ def complete():
     metadata.write_time("complete")
     done()
 
+def profile(f):
+    global funcs
+    funcs.append(f)
+    return f
+
+def run_profiler(cmd, profiler, name):
+    profiler.run(cmd)
+    output_path = metadata.make_path(name)
+    profiler.dump_stats(output_path)
+    metadata.update_journal(name)
+
 def run(cmd):
     if profile_mode == "mem":
-        mprofile = MemoryProfile()
-        mprofile.run(cmd)
-        mprofile_path = metadata.make_path("mprofile")
-        mprofile.dump_stats(mprofile_path)
-        metadata.update_journal("mprofile")
-    elif profile_mode == "cpu":
-        profile = cProfile.Profile()
-        profile.enable()
-        profile.run(cmd)
-        profile.disable()
+        profiler = MemoryProfile()
+        run_profiler(cmd, profiler, "mprofile")
+    elif profile_mode == "line":
+        profiler = line_profiler.LineProfiler()
+        for f in funcs:
+            profiler.add_function(f)
+        run_profiler(cmd, profiler, "lprofile_full")
         str = StringIO.StringIO()
-        ps = pstats.Stats(profile, stream=str).sort_stats("cumulative")
+        profiler.print_stats(stream=str)
+        metadata.write_raw("lprofile", str.getvalue())
+    elif profile_mode == "cpu":
+        profiler = cProfile.Profile()
+        run_profiler(cmd, profiler, "profile_full")
+        str = StringIO.StringIO()
+        ps = pstats.Stats(profiler, stream=str).sort_stats("cumulative")
         ps.print_stats()
         metadata.write_raw("profile", str.getvalue())
-        full_profile_path = metadata.make_path("profile_full")
-        profile.dump_stats(full_profile_path)
-        metadata.update_journal("profile_full")
     else:
         import __main__
         exec(cmd, __main__.__dict__, __main__.__dict__)

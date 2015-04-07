@@ -129,7 +129,7 @@ Options:
                            Valid options are rolling, post and disable.
                            Defaults to post.
     --profile=<name>     Enables stage performance profiling.
-                           Valid options are cpu, mem and disable.
+                           Valid options are cpu, mem, line and disable.
                            Defaults to disable.
     --tags=<name>        Tags pipestance with list of comma-separated <key>:<value> pairs
     --tar                Tar metadata files after pipestance completes.
