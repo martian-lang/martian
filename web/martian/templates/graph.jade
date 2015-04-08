@@ -184,14 +184,14 @@ html(ng-app="app" ng-controller="MartianGraphCtrl")
                         button.btn.btn-default.btn-xs(type="button" clip-copy="copyToClipboard()")
                             span.glyphicon.glyphicon-paperclip
                         span.copyable {{node.path}}
-                        span.copyable-display {{node.path | shorten}}
+                        span.copyable-display.hover(ng-click="expand.path=true") {{node.path | shorten:expand.path}}
                 tr(ng-if="node.type=='stage'")
                     td {{node.stagecodeLang}}
                     td
                         button.btn.btn-default.btn-xs(type="button" clip-copy="copyToClipboard()")
                             span.glyphicon.glyphicon-paperclip
                         span.copyable {{node.stagecodeCmd}}
-                        span.copyable-display {{node.stagecodeCmd | shorten}}
+                        span.copyable-display.hover(ng-click="expand.stagecodeCmd=true") {{node.stagecodeCmd | shorten:expand.stagecodeCmd}}
                 tr
                     td(style="vertical-align: top") Sweeps
                     td
@@ -200,7 +200,7 @@ html(ng-app="app" ng-controller="MartianGraphCtrl")
                                 td {{binding.id}}&nbsp;&nbsp;
                                 td
                                     span.glyphicon.glyphicon-transfer &nbsp;
-                                td {{binding.value | shorten}}
+                                td.hover(ng-click="expandString('node', 'sweepbindings', binding.id)") {{binding.value | shorten:expand.node.sweepbindings[binding.id]}}
 
             h5 Sweeping
             table.table
@@ -220,7 +220,7 @@ html(ng-app="app" ng-controller="MartianGraphCtrl")
                             tr(ng-repeat="(key, value) in node.forks[forki].argPermute")
                                 td {{key}}
                                 td &nbsp;=&nbsp;
-                                td {{value | shorten}}
+                                td.hover(ng-click="expandString('node', 'argPermute', key)") {{value | shorten:expand.node.argPermute[key]}}
                 tr
                     td Metadata
                     td(colspan="5")
@@ -270,7 +270,7 @@ html(ng-app="app" ng-controller="MartianGraphCtrl")
                         button.btn.btn-default.btn-xs(ng-if="bnd.value!=null" type="button" clip-copy="copyToClipboard()" style="vertical-align: top")
                             span.glyphicon.glyphicon-paperclip
                         span.copyable(ng-if="bnd.value!=null") {{bnd.value}}
-                        span.copyable-display(ng-if="bnd.value!=null") {{bnd.value | shorten}}
+                        span.copyable-display.hover(ng-if="bnd.value!=null" ng-click="expandString('forks', forki, bnd.id)") {{bnd.value | shorten:expand.forks[forki][bnd.id]}}
                 tr(ng-repeat-end)
 
             h5 Chunking
@@ -295,7 +295,7 @@ html(ng-app="app" ng-controller="MartianGraphCtrl")
                                     button.btn.btn-default.btn-xs(type="button" clip-copy="copyToClipboard()")
                                         span.glyphicon.glyphicon-paperclip
                                     span.copyable {{value}}
-                                    span.copyable-display {{value | shorten}}
+                                    span.copyable-display.hover(ng-click="expandString('chunks', chunki, key)") {{value | shorten:expand.chunks[chunki][key]}}
                 tr
                     td Metadata
                     td(colspan="5")

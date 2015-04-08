@@ -40,7 +40,6 @@ func runLoop(pipestance *core.Pipestance, stepSecs int, vdrMode string,
 			if vdrMode == "disable" {
 				core.LogInfo("runtime", "VDR disabled. No files killed.")
 			} else {
-				core.LogInfo("runtime", "Starting VDR kill...")
 				killReport := pipestance.VDRKill()
 				core.LogInfo("runtime", "VDR killed %d files, %s.",
 					killReport.Count, humanize.Bytes(killReport.Size))
@@ -121,7 +120,7 @@ Usage:
     mrp -h | --help | --version
 
 Options:
-    --uiport=<num>       Serve UI at http://localhost:<num>
+    --uiport=<num>       Serve UI at http://<hostname>:<num>
     --jobmode=<name>     Run jobs on custom or local job manager.
                            Valid job managers are local, sge, lsf or .template file
                            Defaults to local.
@@ -142,6 +141,7 @@ Options:
     --mempercore=<num>   Set max GB each job may use at one time.
                            (Only applies in non-local jobmodes)
     --skip-preflight     Skips preflight stages.
+    --monitor            Kill jobs when using more than requested memory resources.
     --inspect            Inspect pipestance without resetting failed stages.
     --debug              Enable debug logging for local job manager.
     --stest              Substitute real stages with stress-testing stage.
@@ -254,13 +254,24 @@ Options:
 	stepSecs := 3
 	checkSrc := true
 	readOnly := false
-	enableMonitor := false
+	enableMonitor := opts["--monitor"].(bool)
 	inspect := opts["--inspect"].(bool)
 	debug := opts["--debug"].(bool)
 	stest := opts["--stest"].(bool)
 
 	// Validate psid.
 	core.DieIf(core.ValidateID(psid))
+
+	// Get hostname and username.
+	hostname, err := os.Hostname()
+	if err != nil {
+		hostname = "localhost"
+	}
+	user, err := user.Current()
+	username := "unknown"
+	if err == nil {
+		username = user.Username
+	}
 
 	//=========================================================================
 	// Configure Martian runtime.
@@ -272,7 +283,7 @@ Options:
 	// Print this here because the log makes more sense when this appears before
 	// the runloop messages start to appear.
 	if enableUI {
-		core.Println("Serving UI at http://localhost:%s", uiport)
+		core.Println("Serving UI at http://%s:%s", hostname, uiport)
 	} else {
 		core.LogInfo("webserv", "UI disabled.")
 	}
@@ -304,15 +315,6 @@ Options:
 	//=========================================================================
 	// Collect pipestance static info.
 	//=========================================================================
-	hostname, err := os.Hostname()
-	if err != nil {
-		hostname = "unknown"
-	}
-	user, err := user.Current()
-	username := "unknown"
-	if err == nil {
-		username = user.Username
-	}
 	info := map[string]string{
 		"hostname":   hostname,
 		"username":   username,

@@ -4,9 +4,9 @@
   app = angular.module('app', ['ui.bootstrap', 'ngClipboard', 'googlechart']);
 
   app.filter('shorten', function() {
-    return function(s) {
+    return function(s, expand) {
       s = s + "";
-      if (s.length < 71) {
+      if (s.length < 71 || expand) {
         return s;
       } else {
         return s.substr(0, 30) + " ... " + s.substr(s.length - 50);
@@ -217,7 +217,12 @@
       join: {},
       chunks: {}
     };
-    $scope.mdfilters = ['profile_full', 'heartbeat'];
+    $scope.expand = {
+      node: {},
+      forks: {},
+      chunks: {}
+    };
+    $scope.mdfilters = ['profile_cpu_bin', 'profile_line_bin', 'profile_mem_bin', 'heartbeat'];
     $scope.showRestart = true;
     $scope.showLog = false;
     $scope.perf = false;
@@ -326,6 +331,11 @@
         join: {},
         chunks: {}
       };
+      $scope.expand = {
+        node: {},
+        forks: {},
+        chunks: {}
+      };
       if ($scope.perf) {
         $scope.pnode = $scope.pnodes[id];
         return $scope.getChart();
@@ -341,6 +351,12 @@
         $scope.showRestart = true;
         return alert('mrp is no longer running.\n\nPlease run mrp again with the --noexit option to continue running the pipeline.');
       });
+    };
+    $scope.expandString = function(view, index, name) {
+      if ($scope.expand[view][index] == null) {
+        $scope.expand[view][index] = {};
+      }
+      return $scope.expand[view][index][name] = true;
     };
     $scope.selectMetadata = function(view, index, name, path) {
       return $http.post("/api/get-metadata/" + container + "/" + pname + "/" + psid, {
@@ -371,7 +387,8 @@
         return $scope.showRestart = true;
       }).error(function() {
         console.log('Server responded with an error for /api/get-state, so stopping auto-refresh.');
-        return $interval.cancel($scope.stopRefresh);
+        $interval.cancel($scope.stopRefresh);
+        return alert('mrp is no longer running.\n\nPlease run mrp again to continue running the pipeline.');
       });
     };
   });

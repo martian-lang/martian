@@ -176,15 +176,15 @@ func ParseTagsOpt(opt string) []string {
 	for _, tag := range tags {
 		tagList := strings.Split(tag, ":")
 		if len(tagList) != 2 {
-			LogInfo("options", "TagError: Tag '%s' does not <key>:<value> format", tag)
+			PrintInfo("options", "TagError: Tag '%s' does not <key>:<value> format", tag)
 			os.Exit(1)
 		}
 		if len(tagList[0]) == 0 {
-			LogInfo("options", "TagError: Tag '%s' has empty key", tag)
+			PrintInfo("options", "TagError: Tag '%s' has empty key", tag)
 			os.Exit(1)
 		}
 		if len(tagList[1]) == 0 {
-			LogInfo("options", "TagError: Tag '%s' has empty value", tag)
+			PrintInfo("options", "TagError: Tag '%s' has empty value", tag)
 			os.Exit(1)
 		}
 	}

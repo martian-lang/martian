@@ -347,7 +347,6 @@ def complete():
     done()
 
 def profile(f):
-    global funcs
     funcs.append(f)
     return f
 
@@ -360,22 +359,22 @@ def run_profiler(cmd, profiler, name):
 def run(cmd):
     if profile_mode == "mem":
         profiler = MemoryProfile()
-        run_profiler(cmd, profiler, "mprofile")
+        run_profiler(cmd, profiler, "profile_mem_txt")
     elif profile_mode == "line":
         profiler = line_profiler.LineProfiler()
         for f in funcs:
             profiler.add_function(f)
-        run_profiler(cmd, profiler, "lprofile_full")
+        run_profiler(cmd, profiler, "profile_line_bin")
         str = StringIO.StringIO()
         profiler.print_stats(stream=str)
-        metadata.write_raw("lprofile", str.getvalue())
+        metadata.write_raw("profile_line_txt", str.getvalue())
     elif profile_mode == "cpu":
         profiler = cProfile.Profile()
-        run_profiler(cmd, profiler, "profile_full")
+        run_profiler(cmd, profiler, "profile_cpu_bin")
         str = StringIO.StringIO()
         ps = pstats.Stats(profiler, stream=str).sort_stats("cumulative")
         ps.print_stats()
-        metadata.write_raw("profile", str.getvalue())
+        metadata.write_raw("profile_cpu_txt", str.getvalue())
     else:
         import __main__
         exec(cmd, __main__.__dict__, __main__.__dict__)

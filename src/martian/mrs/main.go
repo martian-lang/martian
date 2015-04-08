@@ -45,6 +45,7 @@ Options:
                            (Only applies in local jobmode)
     --mempercore=<num>   Set max GB each job may use at one time.
                            (Only applies in non-local jobmodes)
+    --monitor            Kill jobs when using more than requested memory resources.
     --debug              Enable debug logging for local job manager.
     -h --help            Show this message.
     --version            Show version.`
@@ -120,7 +121,7 @@ Options:
 	vdrMode := "disable"
 	tar := false
 	skipPreflight := false
-	enableMonitor := false
+	enableMonitor := opts["--monitor"].(bool)
 	debug := opts["--debug"].(bool)
 
 	// Validate psid.
@@ -155,16 +156,16 @@ Options:
 			state := stagestance.GetState()
 			if state == "complete" {
 				stagestance.PostProcess()
-				core.LogInfo("runtime", "Stage completed, exiting.")
+				core.Println("Stage completed, exiting.")
 				os.Exit(0)
 			}
 			if state == "failed" {
 				if _, errpath, log, kind, err := stagestance.GetFatalError(); kind == "assert" {
-					core.Log("\n%s\n", log)
+					core.Println("\n%s\n", log)
 				} else {
-					core.Log("\nStage failed, errors written to:\n%s\n\n%s\n",
+					core.Println("\nStage failed, errors written to:\n%s\n\n%s\n",
 						errpath, err)
-					core.LogInfo("runtime", "Stage failed, exiting.")
+					core.Println("Stage failed, exiting.")
 				}
 				os.Exit(1)
 			}

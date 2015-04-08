@@ -1,0 +1,29 @@
+#!/bin/bash
+#
+# Copyright (c) 2015 10X Genomics, Inc. All rights reserved.
+#
+# =============================================================================
+# Setup Instructions
+# =============================================================================
+#
+# 1. Substitute <pe_name> below with name of your cluster's parallel
+#    environment. If your cluster does not have a parallel environment,
+#    delete this line. However, all Martian jobs will run with only 1 thread.
+#
+# 2. Add any other necessary qsub arguments. We recommend you do not remove any
+#    arguments below (other than -pe) or Martian may not run properly.
+#
+# 3. Change filename of qsub.template.example to qsub.template.
+#
+# =============================================================================
+# Template
+# =============================================================================
+#
+#$ -N __MRO_JOB_NAME__
+#$ -V
+#$ -pe <pe_name> __MRO_THREADS__
+#$ -cwd
+#$ -o __MRO_STDOUT__
+#$ -e __MRO_STDERR__
+
+__MRO_CMD__

@@ -46,9 +46,9 @@ a { cursor:pointer; }
     font-size: 20px;
 }
 .navbar-inverse .navbar-left {
-    padding: 15px; 
+    padding: 15px;
     color: #888;
-    vertical-align: bottom; 
+    vertical-align: bottom;
     font-size: 14px;
 }
 .navbar-inverse .navbar-right {
@@ -58,7 +58,7 @@ a { cursor:pointer; }
     height: 50px;
     padding: 15px;
     color: #888;
-    vertical-align: bottom; 
+    vertical-align: bottom;
     font-size: 14px;
     font-family: Menlo, Arial;
 }
@@ -96,10 +96,10 @@ pre {
     font-family: Menlo, Arial;
     font-size: 12px;
 }
-.alert-danger {    
+.alert-danger {
     border: none;
     background: #666;
-    color: white; 
+    color: white;
 }
 .alert-danger a {
     color: #ddf;
@@ -121,7 +121,7 @@ h4#stagename {
     width: 100%;
 }
 #graph {
-    margin-left: 25px; 
+    margin-left: 25px;
     margin-top: 75px
 }
 .copyable {
@@ -129,6 +129,10 @@ h4#stagename {
 }
 .copyable-display {
     margin-left: 10px;
+}
+.hover {
+    cursor: pointer;
+    cursor: hand;
 }
 .node rect {
     stroke: #333;

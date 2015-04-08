@@ -427,7 +427,7 @@ func VerifyVDRMode(vdrMode string) {
 			return
 		}
 	}
-	LogInfo("runtime", "Invalid VDR mode: %s. Valid VDR modes: %s", vdrMode, strings.Join(validModes, ", "))
+	PrintInfo("runtime", "Invalid VDR mode: %s. Valid VDR modes: %s", vdrMode, strings.Join(validModes, ", "))
 	os.Exit(1)
 }
 
@@ -438,7 +438,7 @@ func VerifyProfileMode(profileMode string) {
 			return
 		}
 	}
-	LogInfo("runtime", "Invalid profile mode: %s. Valid profile modes: %s", profileMode, strings.Join(validModes, ", "))
+	PrintInfo("runtime", "Invalid profile mode: %s. Valid profile modes: %s", profileMode, strings.Join(validModes, ", "))
 	os.Exit(1)
 }
 
@@ -925,7 +925,9 @@ func (self *Fork) vdrKill() *VDRKillReport {
 	return killReport
 }
 
-func (self *Fork) postProcess(outsPath string) {
+func (self *Fork) postProcess() {
+	pipestancePath := self.node.parent.getNode().path
+	outsPath := path.Join(pipestancePath, "outs")
 	params := self.node.outparams.Table
 
 	if len(params) == 0 {
@@ -953,7 +955,8 @@ func (self *Fork) postProcess(outsPath string) {
 				if filePath, ok := value.(string); ok {
 					if _, err := os.Stat(filePath); err == nil {
 						mkdirAll(outsPath)
-						newValue := path.Join(outsPath, id)
+						relOutsPath, _ := filepath.Rel(pipestancePath, outsPath)
+						newValue := path.Join(relOutsPath, id)
 						if param.getTname() != "path" {
 							newValue += "." + param.getTname()
 						}
@@ -1477,9 +1480,8 @@ func (self *Node) postProcess() {
 	os.RemoveAll(self.journalPath)
 	os.RemoveAll(self.tmpPath)
 
-	pipestanceOutsPath := path.Join(self.parent.getNode().path, "outs")
 	for _, fork := range self.forks {
-		fork.postProcess(pipestanceOutsPath)
+		fork.postProcess()
 	}
 }
 

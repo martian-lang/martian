@@ -5,9 +5,9 @@
 #
 
 app = angular.module('app', ['ui.bootstrap','ngClipboard', 'googlechart'])
-app.filter('shorten',  () -> (s) ->
+app.filter('shorten',  () -> (s, expand) ->
     s = s + ""
-    if s.length < 71 then return s
+    if s.length < 71 || expand then return s
     else return s.substr(0, 30) + " ... " + s.substr(s.length - 50)
 )
 
@@ -145,7 +145,8 @@ app.controller('MartianGraphCtrl', ($scope, $compile, $http, $interval) ->
     $scope.forki = 0
     $scope.chunki = 0
     $scope.mdviews = { forks:{}, split:{}, join:{}, chunks:{} }
-    $scope.mdfilters = ['profile_full', 'heartbeat']
+    $scope.expand = { node:{}, forks:{}, chunks:{} }
+    $scope.mdfilters = ['profile_cpu_bin', 'profile_line_bin', 'profile_mem_bin', 'heartbeat']
     $scope.showRestart = true
     $scope.showLog = false
     $scope.perf = false
@@ -215,6 +216,7 @@ app.controller('MartianGraphCtrl', ($scope, $compile, $http, $interval) ->
         $scope.forki = 0
         $scope.chunki = 0
         $scope.mdviews = { forks:{}, split:{}, join:{}, chunks:{} }
+        $scope.expand = { node:{}, forks:{}, chunks:{} }
         if $scope.perf
             $scope.pnode = $scope.pnodes[id]
             $scope.getChart()
@@ -229,6 +231,11 @@ app.controller('MartianGraphCtrl', ($scope, $compile, $http, $interval) ->
             $scope.showRestart = true
             alert('mrp is no longer running.\n\nPlease run mrp again with the --noexit option to continue running the pipeline.')
         )
+
+    $scope.expandString = (view, index, name) ->
+        if !$scope.expand[view][index]?
+            $scope.expand[view][index] = {}
+        $scope.expand[view][index][name] = true
 
     $scope.selectMetadata = (view, index, name, path) ->
         $http.post("/api/get-metadata/#{container}/#{pname}/#{psid}", { path:path, name:name }, { transformResponse: (d) -> d }).success((metadata) ->
@@ -250,5 +257,6 @@ app.controller('MartianGraphCtrl', ($scope, $compile, $http, $interval) ->
         ).error(() ->
             console.log('Server responded with an error for /api/get-state, so stopping auto-refresh.')
             $interval.cancel($scope.stopRefresh)
+            alert('mrp is no longer running.\n\nPlease run mrp again to continue running the pipeline.')
         )
 )
