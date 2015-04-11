@@ -936,9 +936,9 @@ func (self *Fork) postProcess() {
 
 	if len(self.node.forks) > 1 {
 		outsPath = path.Join(outsPath, fmt.Sprintf("fork%d", self.index))
-		Log("\nOutput (fork%d):\n", self.index)
+		Print("\nOutput (fork%d):\n", self.index)
 	} else {
-		Log("\nOutput:\n")
+		Print("\nOutput:\n")
 	}
 
 	outs := map[string]interface{}{}
@@ -954,14 +954,15 @@ func (self *Fork) postProcess() {
 			if param.getIsFile() || param.getTname() == "path" {
 				if filePath, ok := value.(string); ok {
 					if _, err := os.Stat(filePath); err == nil {
-						mkdirAll(outsPath)
-						relOutsPath, _ := filepath.Rel(pipestancePath, outsPath)
-						newValue := path.Join(relOutsPath, id)
-						if param.getTname() != "path" {
-							newValue += "." + param.getTname()
+						if filePath, err := filepath.Rel(outsPath, filePath); err == nil {
+							mkdirAll(outsPath)
+							newValue := path.Join(outsPath, id)
+							if param.getTname() != "path" {
+								newValue += "." + param.getTname()
+							}
+							os.Symlink(filePath, newValue)
+							value = newValue
 						}
-						os.Symlink(filePath, newValue)
-						value = newValue
 					}
 				}
 			}
@@ -972,17 +973,17 @@ func (self *Fork) postProcess() {
 		if len(key) == 0 {
 			key = param.getId()
 		}
-		Log("- %s: %v\n", key, value)
+		Print("- %s: %v\n", key, value)
 	}
-	Log("\n")
+	Print("\n")
 
 	if alarms := self.getAlarms(); len(alarms) > 0 {
 		if len(self.node.forks) > 1 {
-			Log("\nAlarms (fork%d):\n", self.index)
+			Print("\nAlarms (fork%d):\n", self.index)
 		} else {
-			Log("\nAlarms:\n")
+			Print("\nAlarms:\n")
 		}
-		Log(alarms + "\n")
+		Print(alarms + "\n")
 	}
 }
 
