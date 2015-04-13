@@ -6,8 +6,8 @@
 # Setup Instructions
 # =============================================================================
 #
-# 1. Substitute <pe_name> below with name of your cluster's parallel
-#    environment. If your cluster does not have a parallel environment,
+# 1. Substitute <pe_name> below with name of your cluster's shared-memory
+#    parallel environment. If your cluster does not have a parallel environment,
 #    delete this line. However, all Martian jobs will run with only 1 thread.
 #
 # 2. Add any other necessary qsub arguments. We recommend you do not remove any
