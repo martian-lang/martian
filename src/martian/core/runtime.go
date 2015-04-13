@@ -414,7 +414,7 @@ func ParseTimestamp(data string) string {
 
 func ParseVersions(data string) (string, string, error) {
 	var versions map[string]string
-	if err := json.Unmarshal([]byte(data), versions); err != nil {
+	if err := json.Unmarshal([]byte(data), &versions); err != nil {
 		return "", "", err
 	}
 	return versions["martian"], versions["pipelines"], nil
