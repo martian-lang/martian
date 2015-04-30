@@ -359,6 +359,7 @@ func (self *RemoteJobManager) execJob(shellCmd string, argv []string, envs []str
 		"STDERR":   metadata.makePath("stderr"),
 		"CMD":      strings.Join(argv, " "),
 		"MEM_GB":   fmt.Sprintf("%d", memGB),
+		"MEM_MB":   fmt.Sprintf("%d", memGB*1024),
 	}
 
 	// Replace template annotations with actual values
