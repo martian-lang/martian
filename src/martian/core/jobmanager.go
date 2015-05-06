@@ -86,7 +86,7 @@ type LocalJobManager struct {
 func NewLocalJobManager(userMaxCores int, userMaxMemGB int, debug bool) *LocalJobManager {
 	self := &LocalJobManager{}
 	self.debug = debug
-	_, _, self.jobSettings, _, _, _ = verifyJobManager("local")
+	_, _, self.jobSettings, _, _, _ = verifyJobManager("local", -1)
 
 	// Set Max number of cores usable at one time.
 	if userMaxCores > 0 {
@@ -291,7 +291,7 @@ func NewRemoteJobManager(jobMode string, memGBPerCore int) *RemoteJobManager {
 	self.monitorList = []*JobMonitor{}
 	self.monitorListMutex = &sync.Mutex{}
 	self.memGBPerCore = memGBPerCore
-	_, _, self.jobSettings, self.jobCmd, self.jobTemplate, self.threadingEnabled = verifyJobManager(jobMode)
+	_, _, self.jobSettings, self.jobCmd, self.jobTemplate, self.threadingEnabled = verifyJobManager(jobMode, memGBPerCore)
 	self.processMonitorList()
 	return self
 }
@@ -450,7 +450,7 @@ type JobManagerJson struct {
 	JobEnvs     map[string][]*JobManagerEnv `json:"env"`
 }
 
-func verifyJobManager(jobMode string) (string, *JobManagerJson, *JobManagerSettings, string, string, bool) {
+func verifyJobManager(jobMode string, memGBPerCore int) (string, *JobManagerJson, *JobManagerSettings, string, string, bool) {
 	jobPath := RelPath(path.Join("..", "jobmanagers"))
 
 	// Check for existence of job manager JSON file
@@ -521,6 +521,11 @@ func verifyJobManager(jobMode string) (string, *JobManagerJson, *JobManagerSetti
 	jobThreadingEnabled := false
 	if strings.Contains(jobTemplate, "__MRO_THREADS__") {
 		jobThreadingEnabled = true
+	}
+
+	// Check if memory reservations or mempercore are enabled
+	if !strings.Contains(jobTemplate, "__MRO_MEM_GB__") && !strings.Contains(jobTemplate, "__MRO_MEM_MB__") && memGBPerCore <= 0 {
+		Println("\nWARNING: Memory reservations are not enabled in your job template! We highly recommend you enable memory reservations on your cluster or use the mempercore option.\n")
 	}
 
 	// Verify job command exists
