@@ -21,13 +21,12 @@ func main() {
 	doc := `Martian Compiler.
 
 Usage:
-    mrc <file.mro>... [--checksrcpath]
-    mrc --all [--checksrcpath]
+    mrc <file.mro>...
+    mrc --all
     mrc -h | --help | --version
 
 Options:
     --all           Compile all files in $MROPATH.
-    --checksrcpath  Check that stage source paths exist.
     -h --help       Show this message.
     --version       Show version.`
 	martianVersion := core.GetVersion()
@@ -41,7 +40,7 @@ Options:
 	if value := os.Getenv("MROPATH"); len(value) > 0 {
 		mroPath = value
 	}
-	checkSrcPath := opts["--checksrcpath"].(bool)
+	checkSrcPath := true
 	mroVersion := core.GetMroVersion(mroPath)
 
 	// Setup runtime with MRO path.
