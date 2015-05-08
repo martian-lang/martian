@@ -168,7 +168,6 @@ func (self *LocalJobManager) Enqueue(shellCmd string, argv []string, envs []stri
 
 		stdoutPath := metadata.makePath("stdout")
 		stderrPath := metadata.makePath("stderr")
-		errorsPath := metadata.makePath("errors")
 
 		threads, memGB = self.GetSystemReqs(threads, memGB)
 
@@ -227,7 +226,7 @@ func (self *LocalJobManager) Enqueue(shellCmd string, argv []string, envs []stri
 				retries = maxRetries + 1
 			}
 			if retries > maxRetries {
-				ioutil.WriteFile(errorsPath, []byte(err.Error()), 0644)
+				metadata.writeRaw("errors", err.Error())
 			} else {
 				LogInfo("jobmngr", "Job failed: %s. Retrying job %s in %d seconds", err.Error(), fqname, waitTime)
 				self.Enqueue(shellCmd, argv, envs, metadata, threads, memGB, fqname, retries, waitTime)
