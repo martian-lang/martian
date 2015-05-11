@@ -2153,7 +2153,7 @@ func (self *Pipestance) Immortalize() {
 	if !metadata.exists("metadata.tar") {
 		tarPath := metadata.makePath("metadata.tar")
 		if err := self.TarMetadata(tarPath); err != nil {
-			LogError(err, "runtime", "Failed to create metadata tarball %s: %s",
+			LogError(err, "runtime", "Failed to create metadata tar file %s: %s",
 				tarPath, err.Error())
 			os.Remove(tarPath)
 		}
