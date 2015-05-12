@@ -761,7 +761,7 @@ func (self *Fork) writeInvocation() {
 		argBindings := resolveBindings(self.node.argbindings, self.argPermute)
 		sweepBindings := []string{}
 		incpaths := self.node.invocation["incpaths"].([]string)
-		invocation, _ := self.node.rt.BuildCallSource(incpaths, self.node.name, argBindings, sweepBindings)
+		invocation, _ := BuildCallSource(incpaths, self.node.name, argBindings, sweepBindings)
 		self.metadata.writeRaw("invocation", invocation)
 	}
 }
@@ -2323,7 +2323,7 @@ func (self *Runtime) instantiatePipeline(src string, srcPath string, psid string
 		return "", nil, &RuntimeError{fmt.Sprintf("'%s' is not a declared pipeline", ast.Call.Id)}
 	}
 
-	invocationJson, _ := self.BuildCallJSON(src, srcPath, mroPath)
+	invocationJson, _ := BuildCallJSON(src, srcPath, mroPath)
 
 	// Instantiate the pipeline.
 	pipestance := NewPipestance(NewTopNode(self, psid, pipestancePath, mroPath, mroVersion, envs, invocationJson),
@@ -2463,7 +2463,7 @@ func (self *Runtime) InvokeStage(src string, srcPath string, ssid string,
 		return nil, &RuntimeError{fmt.Sprintf("'%s' is not a declared stage", ast.Call.Id)}
 	}
 
-	invocationJson, _ := self.BuildCallJSON(src, srcPath, mroPath)
+	invocationJson, _ := BuildCallJSON(src, srcPath, mroPath)
 
 	// Instantiate stagestance.
 	stagestance := NewStagestance(NewTopNode(self, "", stagestancePath, mroPath, mroVersion, envs, invocationJson),
@@ -2509,7 +2509,7 @@ func (self *Runtime) GetMetadata(pipestancePath string, metadataPath string) (st
 /****************************************************************************
  * Used Only for MARSOC
  */
-func (self *Runtime) buildVal(val interface{}) string {
+func buildVal(val interface{}) string {
 	indent := "    "
 	if data, err := json.MarshalIndent(val, "", indent); err == nil {
 		// Indent multi-line values (but not first line).
@@ -2522,18 +2522,18 @@ func (self *Runtime) buildVal(val interface{}) string {
 	return fmt.Sprintf("<ParseError: %v>", val)
 }
 
-func (self *Runtime) BuildCallSource(incpaths []string, name string, args map[string]interface{},
+func BuildCallSource(incpaths []string, name string, args map[string]interface{},
 	sweepargs []string) (string, error) {
 	// Build @include statements.
 	includes := []string{}
 	for _, incpath := range incpaths {
 		includes = append(includes, fmt.Sprintf("@include \"%s\"", incpath))
 	}
-	// Loop over the pipeline's in params and print a binding
-	// whether the args bag has a value for it not.
+
+	// Build arguments.
 	lines := []string{}
 	for argId, argVal := range args {
-		valstr := self.buildVal(argVal)
+		valstr := buildVal(argVal)
 
 		for _, sweepId := range sweepargs {
 			if sweepId == argId {
@@ -2548,7 +2548,7 @@ func (self *Runtime) BuildCallSource(incpaths []string, name string, args map[st
 		name, strings.Join(lines, "\n")), nil
 }
 
-func (self *Runtime) BuildCallJSON(src string, srcPath string, mroPath string) (map[string]interface{}, error) {
+func BuildCallJSON(src string, srcPath string, mroPath string) (map[string]interface{}, error) {
 	_, incpaths, ast, err := parseSource(src, srcPath, []string{mroPath}, false)
 	if err != nil {
 		return nil, err

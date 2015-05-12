@@ -30,9 +30,6 @@ Options:
 
 	core.ENABLE_LOGGING = false
 
-	// Setup runtime with MRO path.
-	rt := core.NewRuntime("local", "disable", "disable", martianVersion)
-
 	// Read and parse JSON from stdin.
 	dec := json.NewDecoder(os.Stdin)
 	var input map[string]interface{}
@@ -58,7 +55,7 @@ Options:
 			sweepargs = core.ArrayToString(sweeplist)
 		}
 
-		src, bldErr := rt.BuildCallSource(incpaths, name, args, sweepargs)
+		src, bldErr := core.BuildCallSource(incpaths, name, args, sweepargs)
 
 		if bldErr == nil {
 			fmt.Print(src)

@@ -229,9 +229,6 @@ app.controller('MartianGraphCtrl', ($scope, $compile, $http, $interval) ->
             , 3000)
         ).error(() ->
             $scope.showRestart = true
-            console.log('Server responded with an error for /api/restart, so stopping auto-refresh.')
-            $interval.cancel($scope.stopRefresh)
-            alert('mrp is no longer running.\n\nPlease run mrp again with the --noexit option to continue running the pipeline.')
         )
 
     $scope.expandString = (view, index, name) ->
@@ -259,6 +256,7 @@ app.controller('MartianGraphCtrl', ($scope, $compile, $http, $interval) ->
         ).error(() ->
             console.log('Server responded with an error for /api/get-state, so stopping auto-refresh.')
             $interval.cancel($scope.stopRefresh)
+            $scope.stopRefresh = null
             alert('mrp is no longer running.\n\nPlease run mrp again to continue running the pipeline.')
         )
 )
