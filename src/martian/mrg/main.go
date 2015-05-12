@@ -11,8 +11,6 @@ import (
 	"github.com/docopt/docopt.go"
 	"martian/core"
 	"os"
-	"path"
-	"path/filepath"
 )
 
 func main() {
@@ -21,7 +19,7 @@ func main() {
 	doc := `Martian Invocation Generator.
 
 Usage:
-    mrg 
+    mrg
     mrg -h | --help | --version
 
 Options:
@@ -32,16 +30,8 @@ Options:
 
 	core.ENABLE_LOGGING = false
 
-	// Martian environment variables.
-	cwd, _ := filepath.Abs(path.Dir(os.Args[0]))
-	mroPath := cwd
-	if value := os.Getenv("MROPATH"); len(value) > 0 {
-		mroPath = value
-	}
-	mroVersion := core.GetMroVersion(mroPath)
-
 	// Setup runtime with MRO path.
-	rt := core.NewRuntime("local", "disable", "disable", mroPath, martianVersion, mroVersion)
+	rt := core.NewRuntime("local", "disable", "disable", martianVersion)
 
 	// Read and parse JSON from stdin.
 	dec := json.NewDecoder(os.Stdin)

@@ -65,7 +65,7 @@ func (self *Semaphore) len() int {
 // Job managers
 //
 type JobManager interface {
-	execJob(string, []string, []string, *Metadata, int, int, string, string)
+	execJob(string, []string, map[string]string, *Metadata, int, int, string, string)
 	GetSystemReqs(int, int) (int, int)
 	GetMaxCores() int
 	GetMaxMemGB() int
@@ -157,7 +157,7 @@ func (self *LocalJobManager) GetSystemReqs(threads int, memGB int) (int, int) {
 	return threads, memGB
 }
 
-func (self *LocalJobManager) Enqueue(shellCmd string, argv []string, envs []string, metadata *Metadata,
+func (self *LocalJobManager) Enqueue(shellCmd string, argv []string, envs map[string]string, metadata *Metadata,
 	threads int, memGB int, fqname string, retries int, waitTime int) {
 
 	time.Sleep(time.Second * time.Duration(waitTime))
@@ -165,6 +165,7 @@ func (self *LocalJobManager) Enqueue(shellCmd string, argv []string, envs []stri
 		// Exec the shell directly.
 		cmd := exec.Command(shellCmd, argv...)
 		cmd.Dir = metadata.filesPath
+		cmd.Env = MergeEnv(envs)
 
 		stdoutPath := metadata.makePath("stdout")
 		stderrPath := metadata.makePath("stderr")
@@ -262,7 +263,7 @@ func (self *LocalJobManager) MonitorJob(metadata *Metadata) {
 func (self *LocalJobManager) UnmonitorJob(metadata *Metadata) {
 }
 
-func (self *LocalJobManager) execJob(shellCmd string, argv []string, envs []string,
+func (self *LocalJobManager) execJob(shellCmd string, argv []string, envs map[string]string,
 	metadata *Metadata, threads int, memGB int, fqname string, shellName string) {
 	self.Enqueue(shellCmd, argv, envs, metadata, threads, memGB, fqname, 0, 0)
 }
@@ -344,13 +345,13 @@ func (self *RemoteJobManager) GetSystemReqs(threads int, memGB int) (int, int) {
 	return threads, memGB
 }
 
-func (self *RemoteJobManager) execJob(shellCmd string, argv []string, envs []string,
+func (self *RemoteJobManager) execJob(shellCmd string, argv []string, envs map[string]string,
 	metadata *Metadata, threads int, memGB int, fqname string, shellName string) {
 
 	threads, memGB = self.GetSystemReqs(threads, memGB)
 
 	argv = append([]string{shellCmd}, argv...)
-	argv = append(envs, argv...)
+	argv = append(FormatEnv(envs), argv...)
 	params := map[string]string{
 		"JOB_NAME": fqname + "." + shellName,
 		"THREADS":  fmt.Sprintf("%d", threads),

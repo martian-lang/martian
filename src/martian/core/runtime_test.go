@@ -9,13 +9,12 @@ package core
 import (
 	_ "encoding/json"
 	_ "fmt"
-	"os"
 	_ "testing"
 )
 
 func MockRuntime() *Runtime {
 	ENABLE_LOGGING = false // Disable core.LogInfo calls in Runtime
-	return NewRuntime("local", "disable", "disable", os.Getenv("MROPATH"), "", "")
+	return NewRuntime("local", "disable", "disable", "")
 }
 
 /*
