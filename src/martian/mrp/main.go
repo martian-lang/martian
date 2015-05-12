@@ -332,9 +332,9 @@ Options:
 		"maxmemgb":   strconv.Itoa(rt.JobManager.GetMaxMemGB()),
 		"invokepath": invocationPath,
 		"invokesrc":  invocationSrc,
-		"MROPATH":    mroPath,
-		"MROPROFILE": profileMode,
-		"MROPORT":    uiport,
+		"mropath":    mroPath,
+		"mroprofile": profileMode,
+		"mroport":    uiport,
 		"mroversion": mroVersion,
 	}
 
