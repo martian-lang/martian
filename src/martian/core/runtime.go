@@ -761,7 +761,7 @@ func (self *Fork) writeInvocation() {
 		argBindings := resolveBindings(self.node.argbindings, self.argPermute)
 		sweepBindings := []string{}
 		incpaths := self.node.invocation["incpaths"].([]string)
-		invocation, _ := BuildCallSource(incpaths, self.node.name, argBindings, sweepBindings)
+		invocation, _ := self.node.rt.BuildCallSource(incpaths, self.node.name, argBindings, sweepBindings, self.node.mroPath)
 		self.metadata.writeRaw("invocation", invocation)
 	}
 }
@@ -2240,6 +2240,7 @@ type Runtime struct {
 	vdrMode         string
 	jobMode         string
 	profileMode     string
+	MroCache        *MroCache
 	JobManager      JobManager
 	LocalJobManager JobManager
 	enableStackVars bool
@@ -2270,6 +2271,7 @@ func NewRuntimeWithCores(jobMode string, vdrMode string, profileMode string, mar
 	self.enableMonitor = enableMonitor
 	self.stest = stest
 
+	self.MroCache = NewMroCache()
 	self.LocalJobManager = NewLocalJobManager(reqCores, reqMem, debug)
 	if self.jobMode == "local" {
 		self.JobManager = self.LocalJobManager
@@ -2323,7 +2325,7 @@ func (self *Runtime) instantiatePipeline(src string, srcPath string, psid string
 		return "", nil, &RuntimeError{fmt.Sprintf("'%s' is not a declared pipeline", ast.Call.Id)}
 	}
 
-	invocationJson, _ := BuildCallJSON(src, srcPath, mroPath)
+	invocationJson, _ := self.BuildCallJSON(src, srcPath, mroPath)
 
 	// Instantiate the pipeline.
 	pipestance := NewPipestance(NewTopNode(self, psid, pipestancePath, mroPath, mroVersion, envs, invocationJson),
@@ -2463,7 +2465,7 @@ func (self *Runtime) InvokeStage(src string, srcPath string, ssid string,
 		return nil, &RuntimeError{fmt.Sprintf("'%s' is not a declared stage", ast.Call.Id)}
 	}
 
-	invocationJson, _ := BuildCallJSON(src, srcPath, mroPath)
+	invocationJson, _ := self.BuildCallJSON(src, srcPath, mroPath)
 
 	// Instantiate stagestance.
 	stagestance := NewStagestance(NewTopNode(self, "", stagestancePath, mroPath, mroVersion, envs, invocationJson),
@@ -2506,49 +2508,110 @@ func (self *Runtime) GetMetadata(pipestancePath string, metadataPath string) (st
 	return string(data), nil
 }
 
-/****************************************************************************
- * Used Only for MARSOC
- */
-func buildVal(val interface{}) string {
-	indent := "    "
-	if data, err := json.MarshalIndent(val, "", indent); err == nil {
-		// Indent multi-line values (but not first line).
-		sublines := strings.Split(string(data), "\n")
-		for i, _ := range sublines[1:] {
-			sublines[i+1] = indent + sublines[i+1]
-		}
-		return strings.Join(sublines, "\n")
-	}
-	return fmt.Sprintf("<ParseError: %v>", val)
+type MroCache struct {
+	callableTable map[string]map[string]Callable
+	pipelines     map[string]bool
 }
 
-func BuildCallSource(incpaths []string, name string, args map[string]interface{},
-	sweepargs []string) (string, error) {
+func NewMroCache() *MroCache {
+	self := &MroCache{}
+	self.callableTable = map[string]map[string]Callable{}
+	self.pipelines = map[string]bool{}
+
+	return self
+}
+
+func (self *MroCache) CacheMros(mroPath string) {
+	self.callableTable[mroPath] = map[string]Callable{}
+	fpaths, _ := filepath.Glob(mroPath + "/[^_]*.mro")
+	for _, fpath := range fpaths {
+		if data, err := ioutil.ReadFile(fpath); err == nil {
+			if _, _, ast, err := parseSource(string(data), fpath, []string{mroPath}, true); err == nil {
+				for _, callable := range ast.Callables.Table {
+					self.callableTable[mroPath][callable.getId()] = callable
+					if _, ok := callable.(*Pipeline); ok {
+						self.pipelines[callable.getId()] = true
+					}
+				}
+			}
+		}
+	}
+}
+
+func (self *MroCache) GetPipelines() []string {
+	pipelines := []string{}
+	for pipeline, _ := range self.pipelines {
+		pipelines = append(pipelines, pipeline)
+	}
+	return pipelines
+}
+
+func (self *MroCache) GetCallable(mroPath string, name string) (Callable, error) {
+	// Make sure MROs from mroPath have been loaded.
+	if _, ok := self.callableTable[mroPath]; !ok {
+		return nil, &RuntimeError{fmt.Sprintf("MROs from mro path '%s' have not been loaded", mroPath)}
+	}
+
+	// Make sure pipeline has been loaded
+	callable, ok := self.callableTable[mroPath][name]
+	if !ok {
+		return nil, &RuntimeError{fmt.Sprintf("'%s' is not a declared pipeline or stage", name)}
+	}
+	return callable, nil
+}
+
+func buildVal(param Param, val interface{}) string {
+	// MRO value expression syntax is identical to JSON. Just need to make
+	// sure floats get printed with decimal points.
+	switch {
+	case param.getTname() == "float" && val != nil:
+		return fmt.Sprintf("%f", val)
+	default:
+		indent := "    "
+		if data, err := json.MarshalIndent(val, "", indent); err == nil {
+			// Indent multi-line values (but not first line).
+			sublines := strings.Split(string(data), "\n")
+			for i, _ := range sublines[1:] {
+				sublines[i+1] = indent + sublines[i+1]
+			}
+			return strings.Join(sublines, "\n")
+		}
+		return fmt.Sprintf("<ParseError: %v>", val)
+	}
+}
+
+func (self *Runtime) BuildCallSource(incpaths []string, name string, args map[string]interface{},
+	sweepargs []string, mroPath string) (string, error) {
+	callable, err := self.MroCache.GetCallable(mroPath, name)
+	if err != nil {
+		return "", err
+	}
+
 	// Build @include statements.
 	includes := []string{}
 	for _, incpath := range incpaths {
 		includes = append(includes, fmt.Sprintf("@include \"%s\"", incpath))
 	}
-
-	// Build arguments.
+	// Loop over the pipeline's in params and print a binding
+	// whether the args bag has a value for it not.
 	lines := []string{}
-	for argId, argVal := range args {
-		valstr := buildVal(argVal)
+	for _, param := range callable.getInParams().List {
+		valstr := buildVal(param, args[param.getId()])
 
-		for _, sweepId := range sweepargs {
-			if sweepId == argId {
+		for _, id := range sweepargs {
+			if id == param.getId() {
 				valstr = fmt.Sprintf("sweep(%s)", strings.Trim(valstr, "[]"))
 				break
 			}
 		}
 
-		lines = append(lines, fmt.Sprintf("    %s = %s,", argId, valstr))
+		lines = append(lines, fmt.Sprintf("    %s = %s,", param.getId(), valstr))
 	}
 	return fmt.Sprintf("%s\n\ncall %s(\n%s\n)", strings.Join(includes, "\n"),
 		name, strings.Join(lines, "\n")), nil
 }
 
-func BuildCallJSON(src string, srcPath string, mroPath string) (map[string]interface{}, error) {
+func (self *Runtime) BuildCallJSON(src string, srcPath string, mroPath string) (map[string]interface{}, error) {
 	_, incpaths, ast, err := parseSource(src, srcPath, []string{mroPath}, false)
 	if err != nil {
 		return nil, err

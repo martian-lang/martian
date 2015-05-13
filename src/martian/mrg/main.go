@@ -11,6 +11,8 @@ import (
 	"github.com/docopt/docopt.go"
 	"martian/core"
 	"os"
+	"path"
+	"path/filepath"
 )
 
 func main() {
@@ -29,6 +31,17 @@ Options:
 	docopt.Parse(doc, nil, true, martianVersion, false)
 
 	core.ENABLE_LOGGING = false
+
+	// Martian environment variables.
+	cwd, _ := filepath.Abs(path.Dir(os.Args[0]))
+	mroPath := cwd
+	if value := os.Getenv("MROPATH"); len(value) > 0 {
+		mroPath = value
+	}
+
+	// Setup runtime with MRO path.
+	rt := core.NewRuntime("local", "disable", "disable", martianVersion)
+	rt.MroCache.CacheMros(mroPath)
 
 	// Read and parse JSON from stdin.
 	dec := json.NewDecoder(os.Stdin)
@@ -55,7 +68,7 @@ Options:
 			sweepargs = core.ArrayToString(sweeplist)
 		}
 
-		src, bldErr := core.BuildCallSource(incpaths, name, args, sweepargs)
+		src, bldErr := rt.BuildCallSource(incpaths, name, args, sweepargs, mroPath)
 
 		if bldErr == nil {
 			fmt.Print(src)
