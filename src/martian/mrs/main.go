@@ -123,6 +123,7 @@ Options:
 	skipPreflight := false
 	enableMonitor := opts["--monitor"].(bool)
 	debug := opts["--debug"].(bool)
+	envs := map[string]string{}
 
 	// Validate psid.
 	core.DieIf(core.ValidateID(ssid))
@@ -130,13 +131,15 @@ Options:
 	//=========================================================================
 	// Configure Martian runtime.
 	//=========================================================================
-	rt := core.NewRuntimeWithCores(jobMode, vdrMode, profileMode, mroPath, martianVersion, mroVersion,
-		reqCores, reqMem, reqMemPerCore, stackVars, tar, skipPreflight, enableMonitor, debug, false)
+	rt := core.NewRuntimeWithCores(jobMode, vdrMode, profileMode, martianVersion,
+		reqCores, reqMem, reqMemPerCore, stackVars, tar, skipPreflight,
+		enableMonitor, debug, false)
 
 	// Invoke stagestance.
 	data, err := ioutil.ReadFile(invocationPath)
 	core.DieIf(err)
-	stagestance, err := rt.InvokeStage(string(data), invocationPath, ssid, stagestancePath)
+	stagestance, err := rt.InvokeStage(string(data), invocationPath, ssid,
+		stagestancePath, mroPath, mroVersion, envs)
 	core.DieIf(err)
 
 	// Start writing (including cached entries) to log file.

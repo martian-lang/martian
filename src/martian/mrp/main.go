@@ -258,6 +258,7 @@ Options:
 	inspect := opts["--inspect"].(bool)
 	debug := opts["--debug"].(bool)
 	stest := opts["--stest"].(bool)
+	envs := map[string]string{}
 
 	// Validate psid.
 	core.DieIf(core.ValidateID(psid))
@@ -276,8 +277,8 @@ Options:
 	//=========================================================================
 	// Configure Martian runtime.
 	//=========================================================================
-	rt := core.NewRuntimeWithCores(jobMode, vdrMode, profileMode, mroPath, martianVersion,
-		mroVersion, reqCores, reqMem, reqMemPerCore, stackVars, tar, skipPreflight,
+	rt := core.NewRuntimeWithCores(jobMode, vdrMode, profileMode, martianVersion,
+		reqCores, reqMem, reqMemPerCore, stackVars, tar, skipPreflight,
 		enableMonitor, debug, stest)
 
 	// Print this here because the log makes more sense when this appears before
@@ -294,11 +295,13 @@ Options:
 	data, err := ioutil.ReadFile(invocationPath)
 	core.DieIf(err)
 	invocationSrc := string(data)
-	pipestance, err := rt.InvokePipeline(invocationSrc, invocationPath, psid, pipestancePath, tags)
+	pipestance, err := rt.InvokePipeline(invocationSrc, invocationPath, psid, pipestancePath,
+		mroPath, mroVersion, envs, tags)
 	if err != nil {
 		if _, ok := err.(*core.PipestanceExistsError); ok {
 			// If it already exists, try to reattach to it.
-			if pipestance, err = rt.ReattachToPipestance(psid, pipestancePath, invocationSrc, checkSrc, readOnly); err == nil {
+			if pipestance, err = rt.ReattachToPipestance(psid, pipestancePath, invocationSrc,
+				mroPath, mroVersion, envs, checkSrc, readOnly); err == nil {
 				martianVersion, mroVersion, _ = pipestance.GetVersions()
 				if !inspect {
 					err = pipestance.Reset()
@@ -332,9 +335,9 @@ Options:
 		"maxmemgb":   strconv.Itoa(rt.JobManager.GetMaxMemGB()),
 		"invokepath": invocationPath,
 		"invokesrc":  invocationSrc,
-		"MROPATH":    mroPath,
-		"MROPROFILE": profileMode,
-		"MROPORT":    uiport,
+		"mropath":    mroPath,
+		"mroprofile": profileMode,
+		"mroport":    uiport,
 		"mroversion": mroVersion,
 	}
 

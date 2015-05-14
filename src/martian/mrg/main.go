@@ -21,7 +21,7 @@ func main() {
 	doc := `Martian Invocation Generator.
 
 Usage:
-    mrg 
+    mrg
     mrg -h | --help | --version
 
 Options:
@@ -38,10 +38,10 @@ Options:
 	if value := os.Getenv("MROPATH"); len(value) > 0 {
 		mroPath = value
 	}
-	mroVersion := core.GetMroVersion(mroPath)
 
 	// Setup runtime with MRO path.
-	rt := core.NewRuntime("local", "disable", "disable", mroPath, martianVersion, mroVersion)
+	rt := core.NewRuntime("local", "disable", "disable", martianVersion)
+	rt.MroCache.CacheMros(mroPath)
 
 	// Read and parse JSON from stdin.
 	dec := json.NewDecoder(os.Stdin)
@@ -68,7 +68,7 @@ Options:
 			sweepargs = core.ArrayToString(sweeplist)
 		}
 
-		src, bldErr := rt.BuildCallSource(incpaths, name, args, sweepargs)
+		src, bldErr := rt.BuildCallSource(incpaths, name, args, sweepargs, mroPath)
 
 		if bldErr == nil {
 			fmt.Print(src)

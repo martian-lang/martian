@@ -761,7 +761,7 @@ func (self *Fork) writeInvocation() {
 		argBindings := resolveBindings(self.node.argbindings, self.argPermute)
 		sweepBindings := []string{}
 		incpaths := self.node.invocation["incpaths"].([]string)
-		invocation, _ := self.node.rt.BuildCallSource(incpaths, self.node.name, argBindings, sweepBindings)
+		invocation, _ := self.node.rt.BuildCallSource(incpaths, self.node.name, argBindings, sweepBindings, self.node.mroPath)
 		self.metadata.writeRaw("invocation", invocation)
 	}
 }
@@ -1134,6 +1134,9 @@ type Node struct {
 	stagecodeCmd   string
 	journalPath    string
 	tmpPath        string
+	mroPath        string
+	mroVersion     string
+	envs           map[string]string
 	invocation     map[string]interface{}
 }
 
@@ -1165,6 +1168,9 @@ func NewNode(parent Nodable, kind string, callStm *CallStm, callables *Callables
 	self.path = path.Join(parent.getNode().path, self.name)
 	self.journalPath = parent.getNode().journalPath
 	self.tmpPath = parent.getNode().tmpPath
+	self.mroPath = parent.getNode().mroPath
+	self.mroVersion = parent.getNode().mroVersion
+	self.envs = parent.getNode().envs
 	self.invocation = parent.getNode().invocation
 	self.metadata = NewMetadata(self.fqname, self.path)
 	self.volatile = callStm.Modifiers.Volatile
@@ -1779,10 +1785,6 @@ func (self *Node) runJob(shellName string, fqname string, metadata *Metadata,
 		monitor = "monitor"
 	}
 
-	// Set environment variables
-	os.Setenv("TMPDIR", self.tmpPath)
-	envs := []string{fmt.Sprintf("TMPDIR=%s", self.tmpPath)}
-
 	// Construct path to the shell.
 	shellCmd := ""
 	argv := []string{}
@@ -1790,8 +1792,9 @@ func (self *Node) runJob(shellName string, fqname string, metadata *Metadata,
 	runFile := path.Join(self.journalPath, fqname)
 	version := map[string]interface{}{
 		"martian":   self.rt.martianVersion,
-		"pipelines": self.rt.mroVersion,
+		"pipelines": self.mroVersion,
 	}
+	envs := self.envs
 
 	switch self.stagecodeLang {
 	case "Python":
@@ -1855,7 +1858,7 @@ func NewStagestance(parent Nodable, callStm *CallStm, callables *Callables) *Sta
 		return nil
 	}
 
-	stagecodePaths := append([]string{self.node.rt.mroPath}, strings.Split(os.Getenv("PATH"), ":")...)
+	stagecodePaths := append([]string{self.node.mroPath}, strings.Split(os.Getenv("PATH"), ":")...)
 	stagecodePath, _ := searchPaths(stage.Src.Path, stagecodePaths)
 	self.node.stagecodeCmd = strings.Join(append([]string{stagecodePath}, stage.Src.Args...), " ")
 	if self.node.rt.stest {
@@ -2206,17 +2209,25 @@ type TopNode struct {
 
 func (self *TopNode) getNode() *Node { return self.node }
 
-func NewTopNode(rt *Runtime, psid string, p string, j map[string]interface{}) *TopNode {
+func NewTopNode(rt *Runtime, psid string, p string, mroPath string, mroVersion string,
+	envs map[string]string, j map[string]interface{}) *TopNode {
 	self := &TopNode{}
 	self.node = &Node{}
 	self.node.frontierNodes = map[string]Nodable{}
 	self.node.path = p
+	self.node.mroPath = mroPath
+	self.node.mroVersion = mroVersion
+	self.node.envs = envs
 	self.node.invocation = j
 	self.node.rt = rt
 	self.node.journalPath = path.Join(self.node.path, "journal")
 	self.node.tmpPath = path.Join(self.node.path, "tmp")
 	self.node.fqname = "ID." + psid
 	self.node.name = psid
+
+	// Set required Martian environment variables
+	self.node.envs["TMPDIR"] = self.node.tmpPath
+
 	return self
 }
 
@@ -2224,15 +2235,12 @@ func NewTopNode(rt *Runtime, psid string, p string, j map[string]interface{}) *T
 // Runtime
 //=============================================================================
 type Runtime struct {
-	mroPath         string
 	adaptersPath    string
 	martianVersion  string
-	mroVersion      string
-	callableTable   map[string]Callable
-	PipelineNames   []string
 	vdrMode         string
 	jobMode         string
 	profileMode     string
+	MroCache        *MroCache
 	JobManager      JobManager
 	LocalJobManager JobManager
 	enableStackVars bool
@@ -2242,22 +2250,18 @@ type Runtime struct {
 	stest           bool
 }
 
-func NewRuntime(jobMode string, vdrMode string, profileMode string, mroPath string,
-	martianVersion string, mroVersion string) *Runtime {
-	return NewRuntimeWithCores(jobMode, vdrMode, profileMode, mroPath, martianVersion, mroVersion,
+func NewRuntime(jobMode string, vdrMode string, profileMode string, martianVersion string) *Runtime {
+	return NewRuntimeWithCores(jobMode, vdrMode, profileMode, martianVersion,
 		-1, -1, -1, false, false, false, false, false, false)
 }
 
-func NewRuntimeWithCores(jobMode string, vdrMode string, profileMode string, mroPath string,
-	martianVersion string, mroVersion string, reqCores int, reqMem int, reqMemPerCore int,
-	enableStackVars bool, enableTar bool, skipPreflight bool, enableMonitor bool,
-	debug bool, stest bool) *Runtime {
+func NewRuntimeWithCores(jobMode string, vdrMode string, profileMode string, martianVersion string,
+	reqCores int, reqMem int, reqMemPerCore int, enableStackVars bool, enableTar bool,
+	skipPreflight bool, enableMonitor bool, debug bool, stest bool) *Runtime {
 
 	self := &Runtime{}
-	self.mroPath = mroPath
 	self.adaptersPath = RelPath(path.Join("..", "adapters"))
 	self.martianVersion = martianVersion
-	self.mroVersion = mroVersion
 	self.jobMode = jobMode
 	self.vdrMode = vdrMode
 	self.profileMode = profileMode
@@ -2265,10 +2269,9 @@ func NewRuntimeWithCores(jobMode string, vdrMode string, profileMode string, mro
 	self.enableTar = enableTar
 	self.skipPreflight = skipPreflight
 	self.enableMonitor = enableMonitor
-	self.callableTable = map[string]Callable{}
-	self.PipelineNames = []string{}
 	self.stest = stest
 
+	self.MroCache = NewMroCache()
 	self.LocalJobManager = NewLocalJobManager(reqCores, reqMem, debug)
 	if self.jobMode == "local" {
 		self.JobManager = self.LocalJobManager
@@ -2278,37 +2281,23 @@ func NewRuntimeWithCores(jobMode string, vdrMode string, profileMode string, mro
 	VerifyVDRMode(self.vdrMode)
 	VerifyProfileMode(self.profileMode)
 
-	// Parse all MROs in MROPATH and cache pipelines by name.
-	fpaths, _ := filepath.Glob(self.mroPath + "/[^_]*.mro")
-	for _, fpath := range fpaths {
-		if data, err := ioutil.ReadFile(fpath); err == nil {
-			if _, _, ast, err := parseSource(string(data), fpath, []string{self.mroPath}, true); err == nil {
-				for _, callable := range ast.Callables.Table {
-					self.callableTable[callable.getId()] = callable
-					if _, ok := callable.(*Pipeline); ok {
-						self.PipelineNames = append(self.PipelineNames, callable.getId())
-					}
-				}
-			}
-		}
-	}
 	return self
 }
 
-// Compile an MRO file in cwd or self.mroPath.
-func (self *Runtime) Compile(fpath string, checkSrcPath bool) (string, []string, *Ast, error) {
+// Compile an MRO file in cwd or mroPath.
+func (self *Runtime) Compile(fpath string, mroPath string, checkSrcPath bool) (string, []string, *Ast, error) {
 	if data, err := ioutil.ReadFile(fpath); err != nil {
 		return "", nil, nil, err
 	} else {
-		return parseSource(string(data), fpath, []string{self.mroPath}, checkSrcPath)
+		return parseSource(string(data), fpath, []string{mroPath}, checkSrcPath)
 	}
 }
 
-// Compile all the MRO files in self.mroPath.
-func (self *Runtime) CompileAll(checkSrcPath bool) (int, error) {
-	fpaths, _ := filepath.Glob(self.mroPath + "/[^_]*.mro")
+// Compile all the MRO files in mroPath.
+func (self *Runtime) CompileAll(mroPath string, checkSrcPath bool) (int, error) {
+	fpaths, _ := filepath.Glob(mroPath + "/[^_]*.mro")
 	for _, fpath := range fpaths {
-		if _, _, _, err := self.Compile(fpath, checkSrcPath); err != nil {
+		if _, _, _, err := self.Compile(fpath, mroPath, checkSrcPath); err != nil {
 			return 0, err
 		}
 	}
@@ -2319,9 +2308,10 @@ func (self *Runtime) CompileAll(checkSrcPath bool) (int, error) {
 // pipestance path. This is the core (private) method called by the
 // public InvokeWithSource and Reattach methods.
 func (self *Runtime) instantiatePipeline(src string, srcPath string, psid string,
-	pipestancePath string, readOnly bool) (string, *Pipestance, error) {
+	pipestancePath string, mroPath string, mroVersion string,
+	envs map[string]string, readOnly bool) (string, *Pipestance, error) {
 	// Parse the invocation source.
-	postsrc, _, ast, err := parseSource(src, srcPath, []string{self.mroPath}, !readOnly)
+	postsrc, _, ast, err := parseSource(src, srcPath, []string{mroPath}, !readOnly)
 	if err != nil {
 		return "", nil, err
 	}
@@ -2335,10 +2325,11 @@ func (self *Runtime) instantiatePipeline(src string, srcPath string, psid string
 		return "", nil, &RuntimeError{fmt.Sprintf("'%s' is not a declared pipeline", ast.Call.Id)}
 	}
 
-	invocationJson, _ := self.BuildCallJSON(src, srcPath)
+	invocationJson, _ := self.BuildCallJSON(src, srcPath, mroPath)
 
 	// Instantiate the pipeline.
-	pipestance := NewPipestance(NewTopNode(self, psid, pipestancePath, invocationJson), ast.Call, ast.Callables)
+	pipestance := NewPipestance(NewTopNode(self, psid, pipestancePath, mroPath, mroVersion, envs, invocationJson),
+		ast.Call, ast.Callables)
 	if pipestance == nil {
 		return "", nil, &RuntimeError{fmt.Sprintf("'%s' is not a declared pipeline", ast.Call.Id)}
 	}
@@ -2357,7 +2348,8 @@ func (self *Runtime) instantiatePipeline(src string, srcPath string, psid string
 
 // Invokes a new pipestance.
 func (self *Runtime) InvokePipeline(src string, srcPath string, psid string,
-	pipestancePath string, tags []string) (*Pipestance, error) {
+	pipestancePath string, mroPath string, mroVersion string,
+	envs map[string]string, tags []string) (*Pipestance, error) {
 
 	// Error if pipestance directory is non-empty, otherwise create.
 	if _, err := os.Stat(pipestancePath); err == nil {
@@ -2371,7 +2363,8 @@ func (self *Runtime) InvokePipeline(src string, srcPath string, psid string,
 	// Expand env vars in invocation source and instantiate.
 	src = os.ExpandEnv(src)
 	readOnly := false
-	postsrc, pipestance, err := self.instantiatePipeline(src, srcPath, psid, pipestancePath, readOnly)
+	postsrc, pipestance, err := self.instantiatePipeline(src, srcPath, psid, pipestancePath, mroPath,
+		mroVersion, envs, readOnly)
 	if err != nil {
 		// If instantiation failed, delete the pipestance folder.
 		os.RemoveAll(pipestancePath)
@@ -2383,8 +2376,8 @@ func (self *Runtime) InvokePipeline(src string, srcPath string, psid string,
 	metadata.writeRaw("invocation", src)
 	metadata.writeRaw("mrosource", postsrc)
 	metadata.write("versions", map[string]string{
-		"martian":   GetVersion(),
-		"pipelines": GetMroVersion(self.mroPath),
+		"martian":   self.martianVersion,
+		"pipelines": mroVersion,
 	})
 	metadata.write("tags", tags)
 	metadata.writeRaw("timestamp", "start: "+Timestamp())
@@ -2392,19 +2385,22 @@ func (self *Runtime) InvokePipeline(src string, srcPath string, psid string,
 	return pipestance, nil
 }
 
-func (self *Runtime) ReattachToPipestance(psid string, pipestancePath string, src string, checkSrc bool,
-	readOnly bool) (*Pipestance, error) {
-	return self.reattachToPipestance(psid, pipestancePath, src, checkSrc, readOnly, "invocation")
+func (self *Runtime) ReattachToPipestance(psid string, pipestancePath string, src string, mroPath string,
+	mroVersion string, envs map[string]string, checkSrc bool, readOnly bool) (*Pipestance, error) {
+	return self.reattachToPipestance(psid, pipestancePath, src, mroPath, mroVersion, envs, checkSrc,
+		readOnly, "invocation")
 }
 
-func (self *Runtime) ReattachToPipestanceWithMroSrc(psid string, pipestancePath string, src string, checkSrc bool,
-	readOnly bool) (*Pipestance, error) {
-	return self.reattachToPipestance(psid, pipestancePath, src, checkSrc, readOnly, "mrosource")
+func (self *Runtime) ReattachToPipestanceWithMroSrc(psid string, pipestancePath string, src string, mroPath string,
+	mroVersion string, envs map[string]string, checkSrc bool, readOnly bool) (*Pipestance, error) {
+	return self.reattachToPipestance(psid, pipestancePath, src, mroPath, mroVersion, envs, checkSrc,
+		readOnly, "mrosource")
 }
 
 // Reattaches to an existing pipestance.
-func (self *Runtime) reattachToPipestance(psid string, pipestancePath string, src string, checkSrc bool,
-	readOnly bool, srcType string) (*Pipestance, error) {
+func (self *Runtime) reattachToPipestance(psid string, pipestancePath string, src string, mroPath string,
+	mroVersion string, envs map[string]string, checkSrc bool, readOnly bool,
+	srcType string) (*Pipestance, error) {
 	fname := "_" + srcType
 	invocationPath := path.Join(pipestancePath, fname)
 	metadataPath := path.Join(pipestancePath, "_metadata.tar")
@@ -2421,7 +2417,7 @@ func (self *Runtime) reattachToPipestance(psid string, pipestancePath string, sr
 	}
 
 	// Instantiate the pipestance.
-	_, pipestance, err := self.instantiatePipeline(string(data), invocationPath, psid, pipestancePath, readOnly)
+	_, pipestance, err := self.instantiatePipeline(string(data), invocationPath, psid, pipestancePath, mroPath, mroVersion, envs, readOnly)
 
 	// If _metadata exists, untar it so the pipestance can reads its metadata.
 	if _, err := os.Stat(metadataPath); err == nil {
@@ -2444,7 +2440,8 @@ func (self *Runtime) reattachToPipestance(psid string, pipestancePath string, sr
 
 // Instantiate a stagestance.
 func (self *Runtime) InvokeStage(src string, srcPath string, ssid string,
-	stagestancePath string) (*Stagestance, error) {
+	stagestancePath string, mroPath string, mroVersion string,
+	envs map[string]string) (*Stagestance, error) {
 	// Check if stagestance path already exists.
 	if _, err := os.Stat(stagestancePath); err == nil {
 		return nil, &RuntimeError{fmt.Sprintf("stagestance '%s' already exists", ssid)}
@@ -2454,7 +2451,7 @@ func (self *Runtime) InvokeStage(src string, srcPath string, ssid string,
 
 	// Parse the invocation source.
 	src = os.ExpandEnv(src)
-	_, _, ast, err := parseSource(src, srcPath, []string{self.mroPath}, true)
+	_, _, ast, err := parseSource(src, srcPath, []string{mroPath}, true)
 	if err != nil {
 		return nil, err
 	}
@@ -2468,10 +2465,11 @@ func (self *Runtime) InvokeStage(src string, srcPath string, ssid string,
 		return nil, &RuntimeError{fmt.Sprintf("'%s' is not a declared stage", ast.Call.Id)}
 	}
 
-	invocationJson, _ := self.BuildCallJSON(src, srcPath)
+	invocationJson, _ := self.BuildCallJSON(src, srcPath, mroPath)
 
 	// Instantiate stagestance.
-	stagestance := NewStagestance(NewTopNode(self, "", stagestancePath, invocationJson), ast.Call, ast.Callables)
+	stagestance := NewStagestance(NewTopNode(self, "", stagestancePath, mroPath, mroVersion, envs, invocationJson),
+		ast.Call, ast.Callables)
 	if stagestance == nil {
 		return nil, &RuntimeError{fmt.Sprintf("'%s' is not a declared stage", ast.Call.Id)}
 	}
@@ -2510,10 +2508,59 @@ func (self *Runtime) GetMetadata(pipestancePath string, metadataPath string) (st
 	return string(data), nil
 }
 
-/****************************************************************************
- * Used Only for MARSOC
- */
-func (self *Runtime) buildVal(param Param, val interface{}) string {
+type MroCache struct {
+	callableTable map[string]map[string]Callable
+	pipelines     map[string]bool
+}
+
+func NewMroCache() *MroCache {
+	self := &MroCache{}
+	self.callableTable = map[string]map[string]Callable{}
+	self.pipelines = map[string]bool{}
+
+	return self
+}
+
+func (self *MroCache) CacheMros(mroPath string) {
+	self.callableTable[mroPath] = map[string]Callable{}
+	fpaths, _ := filepath.Glob(mroPath + "/[^_]*.mro")
+	for _, fpath := range fpaths {
+		if data, err := ioutil.ReadFile(fpath); err == nil {
+			if _, _, ast, err := parseSource(string(data), fpath, []string{mroPath}, true); err == nil {
+				for _, callable := range ast.Callables.Table {
+					self.callableTable[mroPath][callable.getId()] = callable
+					if _, ok := callable.(*Pipeline); ok {
+						self.pipelines[callable.getId()] = true
+					}
+				}
+			}
+		}
+	}
+}
+
+func (self *MroCache) GetPipelines() []string {
+	pipelines := []string{}
+	for pipeline, _ := range self.pipelines {
+		pipelines = append(pipelines, pipeline)
+	}
+	return pipelines
+}
+
+func (self *MroCache) GetCallable(mroPath string, name string) (Callable, error) {
+	// Make sure MROs from mroPath have been loaded.
+	if _, ok := self.callableTable[mroPath]; !ok {
+		return nil, &RuntimeError{fmt.Sprintf("MROs from mro path '%s' have not been loaded", mroPath)}
+	}
+
+	// Make sure pipeline has been loaded
+	callable, ok := self.callableTable[mroPath][name]
+	if !ok {
+		return nil, &RuntimeError{fmt.Sprintf("'%s' is not a declared pipeline or stage", name)}
+	}
+	return callable, nil
+}
+
+func buildVal(param Param, val interface{}) string {
 	// MRO value expression syntax is identical to JSON. Just need to make
 	// sure floats get printed with decimal points.
 	switch {
@@ -2534,10 +2581,10 @@ func (self *Runtime) buildVal(param Param, val interface{}) string {
 }
 
 func (self *Runtime) BuildCallSource(incpaths []string, name string, args map[string]interface{},
-	sweepargs []string) (string, error) {
-	// Make sure pipeline has been imported
-	if _, ok := self.callableTable[name]; !ok {
-		return "", &RuntimeError{fmt.Sprintf("'%s' is not a declared pipeline or stage", name)}
+	sweepargs []string, mroPath string) (string, error) {
+	callable, err := self.MroCache.GetCallable(mroPath, name)
+	if err != nil {
+		return "", err
 	}
 
 	// Build @include statements.
@@ -2548,8 +2595,8 @@ func (self *Runtime) BuildCallSource(incpaths []string, name string, args map[st
 	// Loop over the pipeline's in params and print a binding
 	// whether the args bag has a value for it not.
 	lines := []string{}
-	for _, param := range self.callableTable[name].getInParams().List {
-		valstr := self.buildVal(param, args[param.getId()])
+	for _, param := range callable.getInParams().List {
+		valstr := buildVal(param, args[param.getId()])
 
 		for _, id := range sweepargs {
 			if id == param.getId() {
@@ -2564,8 +2611,8 @@ func (self *Runtime) BuildCallSource(incpaths []string, name string, args map[st
 		name, strings.Join(lines, "\n")), nil
 }
 
-func (self *Runtime) BuildCallJSON(src string, srcPath string) (map[string]interface{}, error) {
-	_, incpaths, ast, err := parseSource(src, srcPath, []string{self.mroPath}, false)
+func (self *Runtime) BuildCallJSON(src string, srcPath string, mroPath string) (map[string]interface{}, error) {
+	_, incpaths, ast, err := parseSource(src, srcPath, []string{mroPath}, false)
 	if err != nil {
 		return nil, err
 	}

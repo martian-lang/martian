@@ -150,6 +150,28 @@ func Pluralize(n int) string {
 	return "s"
 }
 
+func FormatEnv(envs map[string]string) []string {
+	l := []string{}
+	for key, value := range envs {
+		l = append(l, fmt.Sprintf("%s=%s", key, value))
+	}
+	return l
+}
+
+func MergeEnv(envs map[string]string) []string {
+	l := []string{}
+
+	for _, env := range os.Environ() {
+		key := strings.Split(env, "=")[0]
+		if value, ok := envs[key]; ok {
+			l = append(l, fmt.Sprintf("%s=%s", key, value))
+		} else {
+			l = append(l, env)
+		}
+	}
+	return l
+}
+
 func EnvRequire(reqs [][]string, log bool) map[string]string {
 	e := map[string]string{}
 	for _, req := range reqs {
