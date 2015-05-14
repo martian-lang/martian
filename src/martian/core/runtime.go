@@ -2217,7 +2217,6 @@ func NewTopNode(rt *Runtime, psid string, p string, mroPath string, mroVersion s
 	self.node.path = p
 	self.node.mroPath = mroPath
 	self.node.mroVersion = mroVersion
-	self.node.envs = envs
 	self.node.invocation = j
 	self.node.rt = rt
 	self.node.journalPath = path.Join(self.node.path, "journal")
