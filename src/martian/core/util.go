@@ -159,17 +159,21 @@ func FormatEnv(envs map[string]string) []string {
 }
 
 func MergeEnv(envs map[string]string) []string {
-	l := []string{}
+	e := map[string]string{}
 
+	// Get base environment and convert to dictionary
 	for _, env := range os.Environ() {
-		key := strings.Split(env, "=")[0]
-		if value, ok := envs[key]; ok {
-			l = append(l, fmt.Sprintf("%s=%s", key, value))
-		} else {
-			l = append(l, env)
-		}
+		envList := strings.SplitN(env, "=", 2)
+		key, value := envList[0], envList[1]
+		e[key] = value
 	}
-	return l
+
+	// Set relevant environment variables
+	for key, value := range envs {
+		e[key] = value
+	}
+
+	return FormatEnv(e)
 }
 
 func EnvRequire(reqs [][]string, log bool) map[string]string {
