@@ -2225,7 +2225,13 @@ func NewTopNode(rt *Runtime, psid string, p string, mroPath string, mroVersion s
 	self.node.fqname = "ID." + psid
 	self.node.name = psid
 
-	// Set required Martian environment variables
+	// Since we must set other required Martian environment variables,
+	// we must make a copy of envs so as not to overwrite envs for
+	// other pipestances / stagestances.
+	self.node.envs = map[string]string{}
+	for key, value := range envs {
+		self.node.envs[key] = value
+	}
 	self.node.envs["TMPDIR"] = self.node.tmpPath
 
 	return self
