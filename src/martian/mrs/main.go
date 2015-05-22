@@ -134,6 +134,7 @@ Options:
 	rt := core.NewRuntimeWithCores(jobMode, vdrMode, profileMode, martianVersion,
 		reqCores, reqMem, reqMemPerCore, stackVars, tar, skipPreflight,
 		enableMonitor, debug, false)
+	rt.MroCache.CacheMros(mroPath)
 
 	// Invoke stagestance.
 	data, err := ioutil.ReadFile(invocationPath)

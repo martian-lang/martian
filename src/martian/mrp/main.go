@@ -280,6 +280,7 @@ Options:
 	rt := core.NewRuntimeWithCores(jobMode, vdrMode, profileMode, martianVersion,
 		reqCores, reqMem, reqMemPerCore, stackVars, tar, skipPreflight,
 		enableMonitor, debug, stest)
+	rt.MroCache.CacheMros(mroPath)
 
 	// Print this here because the log makes more sense when this appears before
 	// the runloop messages start to appear.
