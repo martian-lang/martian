@@ -1,5 +1,5 @@
 (function() {
-  var _humanizeBytes, _humanizeTime, _humanizeUnits, _humanizeWithSuffixes, addColumns, addRow, app, humanize, renderChart, renderGraph;
+  var addColumns, addRow, app, humanize, renderChart, renderGraph, _humanizeBytes, _humanizeTime, _humanizeUnits, _humanizeWithSuffixes;
 
   app = angular.module('app', ['ui.bootstrap', 'ngClipboard', 'googlechart']);
 
@@ -15,20 +15,20 @@
   });
 
   renderGraph = function($scope, $compile) {
-    var edge, g, j, k, len, len1, len2, m, maxX, node, ref, ref1, ref2, scale;
+    var edge, g, maxX, node, scale, _i, _j, _k, _len, _len1, _len2, _ref, _ref1, _ref2;
     g = new dagreD3.Digraph();
-    ref = _.values($scope.nodes);
-    for (j = 0, len = ref.length; j < len; j++) {
-      node = ref[j];
+    _ref = _.values($scope.nodes);
+    for (_i = 0, _len = _ref.length; _i < _len; _i++) {
+      node = _ref[_i];
       node.label = node.name;
       g.addNode(node.fqname, node);
     }
-    ref1 = _.values($scope.nodes);
-    for (k = 0, len1 = ref1.length; k < len1; k++) {
-      node = ref1[k];
-      ref2 = node.edges;
-      for (m = 0, len2 = ref2.length; m < len2; m++) {
-        edge = ref2[m];
+    _ref1 = _.values($scope.nodes);
+    for (_j = 0, _len1 = _ref1.length; _j < _len1; _j++) {
+      node = _ref1[_j];
+      _ref2 = node.edges;
+      for (_k = 0, _len2 = _ref2.length; _k < _len2; _k++) {
+        edge = _ref2[_k];
         g.addEdge(null, edge.from, edge.to, {});
       }
     }
@@ -62,10 +62,10 @@
   };
 
   addRow = function(chart, columns, name, units, stats) {
-    var column, j, len, row;
+    var column, row, _i, _len;
     row = [name];
-    for (j = 0, len = columns.length; j < len; j++) {
-      column = columns[j];
+    for (_i = 0, _len = columns.length; _i < _len; _i++) {
+      column = columns[_i];
       row.push({
         v: stats[column],
         f: humanize(stats[column], units)
@@ -75,14 +75,14 @@
   };
 
   addColumns = function(chart, columns) {
-    var column, j, len, results;
+    var column, _i, _len, _results;
     chart.data = [['Stages']];
-    results = [];
-    for (j = 0, len = columns.length; j < len; j++) {
-      column = columns[j];
-      results.push(chart.data[0].push(column.replace(/_/g, ' ')));
+    _results = [];
+    for (_i = 0, _len = columns.length; _i < _len; _i++) {
+      column = columns[_i];
+      _results.push(chart.data[0].push(column.replace(/_/g, ' ')));
     }
-    return results;
+    return _results;
   };
 
   humanize = function(num, units) {
@@ -110,28 +110,28 @@
   };
 
   _humanizeTime = function(num) {
-    var ref, suffix;
-    ref = _humanizeWithSuffixes(num, ['seconds', 'minutes', 'hours'], 60), num = ref[0], suffix = ref[1];
+    var suffix, _ref;
+    _ref = _humanizeWithSuffixes(num, ['seconds', 'minutes', 'hours'], 60), num = _ref[0], suffix = _ref[1];
     num = num.toFixed(2);
     return num.toString() + ' ' + suffix;
   };
 
   _humanizeBytes = function(num) {
-    var ref, suffix;
-    ref = _humanizeWithSuffixes(num, ['B', 'KB', 'MB', 'GB', 'TB'], 1024), num = ref[0], suffix = ref[1];
+    var suffix, _ref;
+    _ref = _humanizeWithSuffixes(num, ['B', 'KB', 'MB', 'GB', 'TB'], 1024), num = _ref[0], suffix = _ref[1];
     num = Math.round(num);
     return num.toString() + ' ' + suffix;
   };
 
   _humanizeUnits = function(num, units) {
-    var c, i, j, l, ref, s;
+    var c, i, l, s, _i, _ref;
     if (num >= 1000) {
       num = Math.round(num);
       s = '';
       l = num.toString().length;
-      ref = num.toString();
-      for (i = j = ref.length - 1; j >= 0; i = j += -1) {
-        c = ref[i];
+      _ref = num.toString();
+      for (i = _i = _ref.length - 1; _i >= 0; i = _i += -1) {
+        c = _ref[i];
         s = c + s;
         if ((l - i) % 3 === 0 && i > 0) {
           s = ',' + s;
@@ -147,7 +147,7 @@
   };
 
   renderChart = function($scope, columns, units) {
-    var chart, chunk, fork, height, j, k, len, len1, name, node, pnode, ref, stage, stages;
+    var chart, chunk, fork, height, name, node, pnode, stage, stages, _i, _j, _len, _len1, _ref;
     if ($scope.node) {
       node = $scope.node;
     } else {
@@ -161,8 +161,8 @@
       stages = _.sortBy(pnode.forks[$scope.forki].stages, function(stage) {
         return [stage.name, stage.fqname];
       });
-      for (j = 0, len = stages.length; j < len; j++) {
-        stage = stages[j];
+      for (_i = 0, _len = stages.length; _i < _len; _i++) {
+        stage = stages[_i];
         name = $scope.pnodes[stage.fqname].name;
         fork = $scope.pnodes[stage.fqname].forks[stage.forki];
         addRow(chart, columns, name, units, fork.fork_stats);
@@ -170,9 +170,9 @@
     }
     if (pnode.type === "stage") {
       fork = pnode.forks[$scope.forki];
-      ref = fork.chunks;
-      for (k = 0, len1 = ref.length; k < len1; k++) {
-        chunk = ref[k];
+      _ref = fork.chunks;
+      for (_j = 0, _len1 = _ref.length; _j < _len1; _j++) {
+        chunk = _ref[_j];
         addRow(chart, columns, 'chunk ' + chunk.index, units, chunk.chunk_stats);
       }
       if (fork.split_stats) {
@@ -195,7 +195,7 @@
   };
 
   app.controller('MartianGraphCtrl', function($scope, $compile, $http, $interval) {
-    var ref, selected, tab;
+    var selected, tab, _ref;
     $scope.pname = pname;
     $scope.psid = psid;
     $scope.admin = admin;
@@ -277,9 +277,9 @@
         });
       }
     });
-    ref = $scope.tabs;
-    for (tab in ref) {
-      selected = ref[tab];
+    _ref = $scope.tabs;
+    for (tab in _ref) {
+      selected = _ref[tab];
       $scope.$watch('tabs.' + tab, function() {
         return $scope.getChart();
       });
@@ -295,10 +295,10 @@
       return humanize(fork.fork_stats[name], units);
     };
     $scope.getActiveTab = function() {
-      var ref1;
-      ref1 = $scope.tabs;
-      for (tab in ref1) {
-        selected = ref1[tab];
+      var _ref1;
+      _ref1 = $scope.tabs;
+      for (tab in _ref1) {
+        selected = _ref1[tab];
         if (selected) {
           return tab;
         }
