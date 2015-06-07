@@ -13,7 +13,6 @@ import (
 	"github.com/10XDev/osext"
 	"html/template"
 	"io"
-	"io/ioutil"
 	"os"
 	"path"
 	"path/filepath"
@@ -300,14 +299,18 @@ func UnpackTar(tarPath string) error {
 			return err
 		}
 		filePath := path.Join(path.Dir(tarPath), hdr.Name)
-		buf := new(bytes.Buffer)
-		if _, err := io.Copy(buf, tr); err != nil {
-			return err
-		}
 		mkdirAll(path.Dir(filePath))
-		if err := ioutil.WriteFile(filePath, buf.Bytes(), 0644); err != nil {
+
+		out, err := os.Create(filePath)
+		if err != nil {
 			return err
 		}
+
+		if _, err := io.Copy(out, tr); err != nil {
+			return err
+		}
+
+		out.Close()
 	}
 }
 
@@ -316,6 +319,7 @@ func CreateTar(tarPath string, filePaths []string) error {
 	if err != nil {
 		return err
 	}
+	defer f.Close()
 
 	tw := tar.NewWriter(f)
 	for _, filePath := range filePaths {
@@ -327,27 +331,29 @@ func CreateTar(tarPath string, filePaths []string) error {
 			continue
 		}
 
-		bytes, err := ioutil.ReadFile(filePath)
-		if err != nil {
-			return err
-		}
-
 		relPath, _ := filepath.Rel(path.Dir(tarPath), filePath)
 		hdr := &tar.Header{
 			Name: relPath,
-			Size: int64(len(bytes)),
+			Size: info.Size(),
 		}
 		if err := tw.WriteHeader(hdr); err != nil {
 			return err
 		}
-		if _, err := tw.Write(bytes); err != nil {
+
+		in, err := os.Open(filePath)
+		if err != nil {
 			return err
 		}
+
+		if _, err := io.Copy(tw, in); err != nil {
+			return err
+		}
+
+		in.Close()
 	}
 	if err := tw.Close(); err != nil {
-		return nil
+		return err
 	}
 
-	f.Close()
 	return nil
 }
