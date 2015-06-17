@@ -119,7 +119,7 @@ Options:
 	stagestancePath := path.Join(cwd, ssid)
 	stepSecs := 1
 	vdrMode := "disable"
-	tar := false
+	zip := false
 	skipPreflight := false
 	enableMonitor := opts["--monitor"].(bool)
 	debug := opts["--debug"].(bool)
@@ -132,7 +132,7 @@ Options:
 	// Configure Martian runtime.
 	//=========================================================================
 	rt := core.NewRuntimeWithCores(jobMode, vdrMode, profileMode, martianVersion,
-		reqCores, reqMem, reqMemPerCore, stackVars, tar, skipPreflight,
+		reqCores, reqMem, reqMemPerCore, stackVars, zip, skipPreflight,
 		enableMonitor, debug, false)
 	rt.MroCache.CacheMros(mroPath)
 

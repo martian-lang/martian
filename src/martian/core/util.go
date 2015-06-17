@@ -6,7 +6,7 @@
 package core
 
 import (
-	"archive/tar"
+	"archive/zip"
 	"bytes"
 	"encoding/json"
 	"fmt"
@@ -256,72 +256,72 @@ func ParseMroFlags(opts map[string]interface{}, doc string, martianOptions []str
 	}
 }
 
-func ReadTar(tarPath string, filePath string) (string, error) {
-	f, err := os.Open(tarPath)
+func ReadZip(zipPath string, filePath string) (string, error) {
+	zr, err := zip.OpenReader(zipPath)
 	if err != nil {
 		return "", err
 	}
-	defer f.Close()
+	defer zr.Close()
 
-	tr := tar.NewReader(f)
-	for {
-		hdr, err := tr.Next()
-		if err == io.EOF {
-			return "", &TarError{tarPath, filePath}
-		}
-		if err != nil {
-			return "", err
-		}
-		if hdr.Name == filePath {
+	for _, f := range zr.File {
+		if f.Name == filePath {
+			in, err := f.Open()
+			if err != nil {
+				return "", err
+			}
+			defer in.Close()
+
 			buf := new(bytes.Buffer)
-			if _, err := io.Copy(buf, tr); err != nil {
+			if _, err := io.Copy(buf, in); err != nil {
 				return "", err
 			}
 			return buf.String(), nil
 		}
 	}
+
+	return "", &ZipError{zipPath, filePath}
 }
 
-func UnpackTar(tarPath string) error {
-	f, err := os.Open(tarPath)
+func Unzip(zipPath string) error {
+	zr, err := zip.OpenReader(zipPath)
 	if err != nil {
 		return err
 	}
-	defer f.Close()
+	defer zr.Close()
 
-	tr := tar.NewReader(f)
-	for {
-		hdr, err := tr.Next()
-		if err == io.EOF {
-			return nil
-		}
+	for _, f := range zr.File {
+		filePath := path.Join(path.Dir(zipPath), f.Name)
+		mkdirAll(path.Dir(filePath))
+
+		in, err := f.Open()
 		if err != nil {
 			return err
 		}
-		filePath := path.Join(path.Dir(tarPath), hdr.Name)
-		mkdirAll(path.Dir(filePath))
 
 		out, err := os.Create(filePath)
 		if err != nil {
 			return err
 		}
 
-		if _, err := io.Copy(out, tr); err != nil {
+		if _, err := io.Copy(out, in); err != nil {
 			return err
 		}
 
+		in.Close()
 		out.Close()
 	}
+
+	return nil
 }
 
-func CreateTar(tarPath string, filePaths []string) error {
-	f, err := os.Create(tarPath)
+func CreateZip(zipPath string, filePaths []string) error {
+	f, err := os.Create(zipPath)
 	if err != nil {
 		return err
 	}
 	defer f.Close()
 
-	tw := tar.NewWriter(f)
+	zw := zip.NewWriter(f)
 	for _, filePath := range filePaths {
 		info, err := os.Stat(filePath)
 		if err != nil {
@@ -331,12 +331,9 @@ func CreateTar(tarPath string, filePaths []string) error {
 			continue
 		}
 
-		relPath, _ := filepath.Rel(path.Dir(tarPath), filePath)
-		hdr := &tar.Header{
-			Name: relPath,
-			Size: info.Size(),
-		}
-		if err := tw.WriteHeader(hdr); err != nil {
+		relPath, _ := filepath.Rel(path.Dir(zipPath), filePath)
+		out, err := zw.Create(relPath)
+		if err != nil {
 			return err
 		}
 
@@ -345,13 +342,13 @@ func CreateTar(tarPath string, filePaths []string) error {
 			return err
 		}
 
-		if _, err := io.Copy(tw, in); err != nil {
+		if _, err := io.Copy(out, in); err != nil {
 			return err
 		}
 
 		in.Close()
 	}
-	if err := tw.Close(); err != nil {
+	if err := zw.Close(); err != nil {
 		return err
 	}
 

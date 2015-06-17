@@ -2081,8 +2081,8 @@ func (self *Pipestance) Serialize(name string) interface{} {
 	return ser
 }
 
-func (self *Pipestance) TarMetadata(tarPath string) error {
-	if !self.node.rt.enableTar {
+func (self *Pipestance) ZipMetadata(zipPath string) error {
+	if !self.node.rt.enableZip {
 		return nil
 	}
 
@@ -2099,8 +2099,8 @@ func (self *Pipestance) TarMetadata(tarPath string) error {
 	EnterCriticalSection()
 	defer ExitCriticalSection()
 
-	// Create tar with all metadata.
-	if err := CreateTar(tarPath, filePaths); err != nil {
+	// Create zip with all metadata.
+	if err := CreateZip(zipPath, filePaths); err != nil {
 		return err
 	}
 
@@ -2153,12 +2153,12 @@ func (self *Pipestance) Immortalize() {
 	if !metadata.exists("finalstate") {
 		metadata.write("finalstate", self.Serialize("finalstate"))
 	}
-	if !metadata.exists("metadata.tar") {
-		tarPath := metadata.makePath("metadata.tar")
-		if err := self.TarMetadata(tarPath); err != nil {
-			LogError(err, "runtime", "Failed to create metadata tar file %s: %s",
-				tarPath, err.Error())
-			os.Remove(tarPath)
+	if !metadata.exists("metadata.zip") {
+		zipPath := metadata.makePath("metadata.zip")
+		if err := self.ZipMetadata(zipPath); err != nil {
+			LogError(err, "runtime", "Failed to create metadata zip file %s: %s",
+				zipPath, err.Error())
+			os.Remove(zipPath)
 		}
 	}
 }
@@ -2249,7 +2249,7 @@ type Runtime struct {
 	JobManager      JobManager
 	LocalJobManager JobManager
 	enableStackVars bool
-	enableTar       bool
+	enableZip       bool
 	skipPreflight   bool
 	enableMonitor   bool
 	stest           bool
@@ -2261,7 +2261,7 @@ func NewRuntime(jobMode string, vdrMode string, profileMode string, martianVersi
 }
 
 func NewRuntimeWithCores(jobMode string, vdrMode string, profileMode string, martianVersion string,
-	reqCores int, reqMem int, reqMemPerCore int, enableStackVars bool, enableTar bool,
+	reqCores int, reqMem int, reqMemPerCore int, enableStackVars bool, enableZip bool,
 	skipPreflight bool, enableMonitor bool, debug bool, stest bool) *Runtime {
 
 	self := &Runtime{}
@@ -2271,7 +2271,7 @@ func NewRuntimeWithCores(jobMode string, vdrMode string, profileMode string, mar
 	self.vdrMode = vdrMode
 	self.profileMode = profileMode
 	self.enableStackVars = enableStackVars
-	self.enableTar = enableTar
+	self.enableZip = enableZip
 	self.skipPreflight = skipPreflight
 	self.enableMonitor = enableMonitor
 	self.stest = stest
@@ -2408,7 +2408,7 @@ func (self *Runtime) reattachToPipestance(psid string, pipestancePath string, sr
 	srcType string) (*Pipestance, error) {
 	fname := "_" + srcType
 	invocationPath := path.Join(pipestancePath, fname)
-	metadataPath := path.Join(pipestancePath, "_metadata.tar")
+	metadataPath := path.Join(pipestancePath, "_metadata.zip")
 
 	// Read in the existing _invocation file.
 	data, err := ioutil.ReadFile(invocationPath)
@@ -2424,9 +2424,9 @@ func (self *Runtime) reattachToPipestance(psid string, pipestancePath string, sr
 	// Instantiate the pipestance.
 	_, pipestance, err := self.instantiatePipeline(string(data), invocationPath, psid, pipestancePath, mroPath, mroVersion, envs, readOnly)
 
-	// If _metadata exists, untar it so the pipestance can reads its metadata.
+	// If _metadata exists, unzip it so the pipestance can reads its metadata.
 	if _, err := os.Stat(metadataPath); err == nil {
-		if err := UnpackTar(metadataPath); err != nil {
+		if err := Unzip(metadataPath); err != nil {
 			return nil, err
 		}
 		os.Remove(metadataPath)
@@ -2496,12 +2496,12 @@ func (self *Runtime) GetSerialization(pipestancePath string, name string) (inter
 func (self *Runtime) GetMetadata(pipestancePath string, metadataPath string) (string, error) {
 	metadata := NewMetadata("", pipestancePath)
 	metadata.loadCache()
-	if metadata.exists("metadata.tar") {
+	if metadata.exists("metadata.zip") {
 		relPath, _ := filepath.Rel(pipestancePath, metadataPath)
 
 		// Relative paths outside the pipestance directory will be ignored.
 		if !strings.Contains(relPath, "..") {
-			if data, err := ReadTar(metadata.makePath("metadata.tar"), relPath); err == nil {
+			if data, err := ReadZip(metadata.makePath("metadata.zip"), relPath); err == nil {
 				return data, nil
 			}
 		}

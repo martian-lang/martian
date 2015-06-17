@@ -117,14 +117,14 @@ func (self *PipestanceWipeError) Error() string {
 	return fmt.Sprintf("RuntimeError: pipestance '%s' cannot be wiped.", self.Psid)
 }
 
-// TarError
-type TarError struct {
-	TarPath  string
+// ZipError
+type ZipError struct {
+	ZipPath  string
 	FilePath string
 }
 
-func (self *TarError) Error() string {
-	return fmt.Sprintf("TarError: %s does not exist in %s", self.FilePath, self.TarPath)
+func (self *ZipError) Error() string {
+	return fmt.Sprintf("ZipError: %s does not exist in %s", self.FilePath, self.ZipPath)
 }
 
 // PreprocessError
