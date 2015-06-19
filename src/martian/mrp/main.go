@@ -131,7 +131,7 @@ Options:
                            Valid options are cpu, mem, line and disable.
                            Defaults to disable.
     --tags=<name>        Tags pipestance with list of comma-separated <key>:<value> pairs
-    --tar                Tar metadata files after pipestance completes.
+    --zip                Zip metadata files after pipestance completes.
     --noexit             Keep UI running after pipestance completes or fails.
     --stackvars          Print local variables in stage code stack trace.
     --localcores=<num>   Set max cores the pipeline may request at one time.
@@ -239,8 +239,8 @@ Options:
 	stackVars := opts["--stackvars"].(bool)
 	core.LogInfo("options", "--stackvars=%v", stackVars)
 
-	tar := opts["--tar"].(bool)
-	core.LogInfo("options", "--tar=%v", tar)
+	zip := opts["--zip"].(bool)
+	core.LogInfo("options", "--zip=%v", zip)
 
 	noExit := opts["--noexit"].(bool)
 	core.LogInfo("options", "--noexit=%v", noExit)
@@ -278,7 +278,7 @@ Options:
 	// Configure Martian runtime.
 	//=========================================================================
 	rt := core.NewRuntimeWithCores(jobMode, vdrMode, profileMode, martianVersion,
-		reqCores, reqMem, reqMemPerCore, stackVars, tar, skipPreflight,
+		reqCores, reqMem, reqMemPerCore, stackVars, zip, skipPreflight,
 		enableMonitor, debug, stest)
 	rt.MroCache.CacheMros(mroPath)
 
