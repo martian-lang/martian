@@ -13,10 +13,12 @@ import (
 	"github.com/10XDev/osext"
 	"html/template"
 	"io"
+	"io/ioutil"
 	"os"
 	"path"
 	"path/filepath"
 	"regexp"
+	"strconv"
 	"strings"
 	"time"
 
@@ -78,7 +80,7 @@ func GetDirectorySize(paths []string) (uint, uint64) {
 	return numFiles, numBytes
 }
 
-func searchPaths(fname string, searchPaths []string) (string, bool) {
+func SearchPaths(fname string, searchPaths []string) (string, bool) {
 	for _, searchPath := range searchPaths {
 		fpath := path.Join(searchPath, fname)
 		if _, err := os.Stat(fpath); !os.IsNotExist(err) {
@@ -147,6 +149,21 @@ func Pluralize(n int) string {
 		return ""
 	}
 	return "s"
+}
+
+func GetFilenameWithSuffix(dir string, fname string) string {
+	suffix := 0
+	infos, _ := ioutil.ReadDir(dir)
+	re := regexp.MustCompile(fmt.Sprintf("^%s-(\\d+)$", fname))
+	for _, info := range infos {
+		if m := re.FindStringSubmatch(info.Name()); m != nil {
+			infoSuffix, _ := strconv.Atoi(m[1])
+			if suffix <= infoSuffix {
+				suffix = infoSuffix + 1
+			}
+		}
+	}
+	return fmt.Sprintf("%s-%d", fname, suffix)
 }
 
 func FormatEnv(envs map[string]string) []string {

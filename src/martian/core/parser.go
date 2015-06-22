@@ -222,7 +222,7 @@ func (global *Ast) check(stagecodePaths []string, checkSrcPath bool) error {
 		}
 		if checkSrcPath {
 			// Check existence of src path.
-			if _, found := searchPaths(stage.Src.Path, stagecodePaths); !found {
+			if _, found := SearchPaths(stage.Src.Path, stagecodePaths); !found {
 				stagecodePathsList := strings.Join(stagecodePaths, ", ")
 				return global.err(stage, "SourcePathError: searched (%s) but stage source path not found '%s'", stagecodePathsList, stage.Src.Path)
 			}

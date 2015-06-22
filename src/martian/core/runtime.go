@@ -1847,7 +1847,7 @@ func NewStagestance(parent Nodable, callStm *CallStm, callables *Callables) *Sta
 	}
 
 	stagecodePaths := append([]string{self.node.mroPath}, strings.Split(os.Getenv("PATH"), ":")...)
-	stagecodePath, _ := searchPaths(stage.Src.Path, stagecodePaths)
+	stagecodePath, _ := SearchPaths(stage.Src.Path, stagecodePaths)
 	self.node.stagecodeCmd = strings.Join(append([]string{stagecodePath}, stage.Src.Args...), " ")
 	if self.node.rt.stest {
 		switch stage.Src.Lang {
