@@ -66,7 +66,7 @@ func preprocess(src string, fname string, incPaths []string) (string, []string, 
 
 		// Search incPaths for the file.
 		// If not found, add this file to error list.
-		ifpath, found := searchPaths(ifname, incPaths)
+		ifpath, found := SearchPaths(ifname, incPaths)
 		if !found {
 			fileNotFoundError.files = append(fileNotFoundError.files, ifname)
 			return ""

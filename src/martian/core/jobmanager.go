@@ -530,7 +530,7 @@ func verifyJobManager(jobMode string, memGBPerCore int) (string, *JobManagerJson
 
 	// Verify job command exists
 	incPaths := strings.Split(os.Getenv("PATH"), ":")
-	if _, found := searchPaths(jobCmd, incPaths); !found {
+	if _, found := SearchPaths(jobCmd, incPaths); !found {
 		Println("Job command '%s' not found in (%s)",
 			jobCmd, strings.Join(incPaths, ", "))
 		os.Exit(1)
