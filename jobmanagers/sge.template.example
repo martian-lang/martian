@@ -10,10 +10,10 @@
 #    parallel environment. If your cluster does not have a parallel environment,
 #    delete this line. However, all Martian jobs will run with only 1 thread.
 #
-# 2. Add any other necessary qsub arguments. We recommend you do not remove any
+# 2. Add any other necessary sge arguments. We recommend you do not remove any
 #    arguments below (other than -pe) or Martian may not run properly.
 #
-# 3. Change filename of qsub.template.example to qsub.template.
+# 3. Change filename of sge.template.example to sge.template.
 #
 # =============================================================================
 # Template

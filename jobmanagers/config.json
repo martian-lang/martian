@@ -1,44 +1,46 @@
 {
-  "settings":{
+  "settings": {
     "threads_per_job": 1,
     "memGB_per_job": 6
   },
-  "jobcmd":{  
-    "sge":"qsub",
-    "lsf":"bsub"
-  },
-  "env":{  
-    "qsub":[  
-      {  
-        "name":"SGE_ROOT",
-        "description":"path/to/sge/root"
+  "jobmodes": {
+      "sge": {
+	  "cmd": "qsub",
+	  "envs": [
+              {
+		  "name":"SGE_ROOT",
+		  "description":"path/to/sge/root"
+	      },
+              {
+		  "name":"SGE_CLUSTER_NAME",
+		  "description":"SGE cluster name"
+	      },
+              {
+		  "name":"SGE_CELL",
+		  "description":"usually 'default'"
+	      }
+          ]
       },
-      {  
-        "name":"SGE_CLUSTER_NAME",
-        "description":"SGE cluster name"
-      },
-      {  
-        "name":"SGE_CELL",
-        "description":"usually 'default'"
+      "lsf": {
+	  "cmd": "bsub",
+	  "envs": [
+	      {
+		  "name":"LSF_SERVERDIR",
+		  "description":"path/to/lsf/server"
+	      },
+	      {
+		  "name":"LSF_LIBDIR",
+		  "description":"path/to/lsf/lib"
+	      },
+	      {
+		  "name":"LSF_BINDIR",
+		  "description":"path/to/lsf/commands"
+	      },
+	      {
+		  "name":"LSF_ENVDIR",
+		  "description":"path/to/lsf/env"
+	      }
+	  ]
       }
-    ],
-    "bsub":[
-      {
-        "name":"LSF_SERVERDIR",
-        "description":"path/to/lsf/server"
-      },
-      {
-        "name":"LSF_LIBDIR",
-        "description":"path/to/lsf/lib"
-      },
-      {
-        "name":"LSF_BINDIR",
-        "description":"path/to/lsf/commands"
-      },
-      {
-	"name":"LSF_ENVDIR",
-	"description":"path/to/lsf/env"
-      }
-    ]
   }
 }

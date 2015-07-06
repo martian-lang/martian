@@ -86,7 +86,7 @@ type LocalJobManager struct {
 func NewLocalJobManager(userMaxCores int, userMaxMemGB int, debug bool) *LocalJobManager {
 	self := &LocalJobManager{}
 	self.debug = debug
-	_, _, self.jobSettings, _, _, _ = verifyJobManager("local", -1)
+	self.jobSettings, _, _, _ = verifyJobManager("local", -1)
 
 	// Set Max number of cores usable at one time.
 	if userMaxCores > 0 {
@@ -291,7 +291,7 @@ func NewRemoteJobManager(jobMode string, memGBPerCore int) *RemoteJobManager {
 	self.monitorList = []*JobMonitor{}
 	self.monitorListMutex = &sync.Mutex{}
 	self.memGBPerCore = memGBPerCore
-	_, _, self.jobSettings, self.jobCmd, self.jobTemplate, self.threadingEnabled = verifyJobManager(jobMode, memGBPerCore)
+	self.jobSettings, self.jobCmd, self.jobTemplate, self.threadingEnabled = verifyJobManager(jobMode, memGBPerCore)
 	self.processMonitorList()
 	return self
 }
@@ -434,9 +434,14 @@ func (self *RemoteJobManager) processMonitorList() {
 // Helper functions for job manager file parsing
 //
 
-type JobManagerEnv struct {
+type JobModeEnv struct {
 	Name        string `json:"name"`
 	Description string `json:"description"`
+}
+
+type JobModeJson struct {
+	Cmd     string        `json:"cmd"`
+	JobEnvs []*JobModeEnv `json:"envs"`
 }
 
 type JobManagerSettings struct {
@@ -445,12 +450,11 @@ type JobManagerSettings struct {
 }
 
 type JobManagerJson struct {
-	JobSettings *JobManagerSettings         `json:"settings"`
-	JobCmds     map[string]string           `json:"jobcmd"`
-	JobEnvs     map[string][]*JobManagerEnv `json:"env"`
+	JobSettings *JobManagerSettings     `json:"settings"`
+	JobModes    map[string]*JobModeJson `json:"jobmodes"`
 }
 
-func verifyJobManager(jobMode string, memGBPerCore int) (string, *JobManagerJson, *JobManagerSettings, string, string, bool) {
+func verifyJobManager(jobMode string, memGBPerCore int) (*JobManagerSettings, string, string, bool) {
 	jobPath := RelPath(path.Join("..", "jobmanagers"))
 
 	// Check for existence of job manager JSON file
@@ -486,26 +490,31 @@ func verifyJobManager(jobMode string, memGBPerCore int) (string, *JobManagerJson
 
 	if jobMode == "local" {
 		// Local job mode only needs to verify settings parameters
-		return jobJsonFile, jobJson, jobSettings, "", "", false
+		return jobSettings, "", "", false
 	}
 
-	// Check if job mode is supported by default
-	jobTemplateFile := jobMode
-	jobErrorMsg := ""
-	jobCmd, ok := jobJson.JobCmds[jobMode]
+	var jobTemplateFile string
+	var jobErrorMsg string
+
+	jobModeJson, ok := jobJson.JobModes[jobMode]
 	if ok {
-		jobTemplateFile = path.Join(jobPath, fmt.Sprintf("%s.template", jobCmd))
+		jobTemplateFile = path.Join(jobPath, jobMode+".template")
 		exampleJobTemplateFile := jobTemplateFile + ".example"
 		jobErrorMsg = fmt.Sprintf("Job manager template file %s does not exist.\n\nTo set up a job manager template, please follow instructions in %s.",
 			jobTemplateFile, exampleJobTemplateFile)
 	} else {
-		if !strings.HasSuffix(jobTemplateFile, ".template") {
-			PrintInfo("jobmngr", "Job manager template file %s must be named <name_of_job_submit_cmd>.template.", jobTemplateFile)
+		jobTemplateFile = jobMode
+		jobMode = strings.Replace(path.Base(jobTemplateFile), ".template", "", 1)
+
+		jobModeJson, ok = jobJson.JobModes[jobMode]
+		if !strings.HasSuffix(jobTemplateFile, ".template") || !ok {
+			PrintInfo("jobmngr", "Job manager template file %s must be named <name_of_job_manager>.template.", jobTemplateFile)
 			os.Exit(1)
 		}
-		jobCmd = strings.Replace(path.Base(jobTemplateFile), ".template", "", 1)
 		jobErrorMsg = fmt.Sprintf("Job manager template file %s does not exist.", jobTemplateFile)
 	}
+
+	jobCmd := jobModeJson.Cmd
 	LogInfo("jobmngr", "Job submit command = %s", jobCmd)
 
 	// Check for existence of job manager template file
@@ -537,14 +546,11 @@ func verifyJobManager(jobMode string, memGBPerCore int) (string, *JobManagerJson
 	}
 
 	// Verify environment variables
-	entries, ok := jobJson.JobEnvs[jobCmd]
-	if ok {
-		envs := [][]string{}
-		for _, entry := range entries {
-			envs = append(envs, []string{entry.Name, entry.Description})
-		}
-		EnvRequire(envs, true)
+	envs := [][]string{}
+	for _, entry := range jobModeJson.JobEnvs {
+		envs = append(envs, []string{entry.Name, entry.Description})
 	}
+	EnvRequire(envs, true)
 
-	return jobJsonFile, jobJson, jobSettings, jobCmd, jobTemplate, jobThreadingEnabled
+	return jobSettings, jobCmd, jobTemplate, jobThreadingEnabled
 }
