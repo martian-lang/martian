@@ -90,9 +90,9 @@ func NewLocalJobManager(userMaxCores int, userMaxMemGB int, debug bool) *LocalJo
 
 	// Set Max number of cores usable at one time.
 	if userMaxCores > 0 {
-		// If user specified --Maxcores, use that value for Max usable cores.
+		// If user specified --localcores, use that value for Max usable cores.
 		self.maxCores = userMaxCores
-		LogInfo("jobmngr", "Using %d core%s, per --maxcores option.",
+		LogInfo("jobmngr", "Using %d core%s, per --localcores option.",
 			self.maxCores, Pluralize(self.maxCores))
 	} else {
 		// Otherwise, set Max usable cores to total number of cores reported
@@ -104,9 +104,9 @@ func NewLocalJobManager(userMaxCores int, userMaxMemGB int, debug bool) *LocalJo
 
 	// Set Max GB of memory usable at one time.
 	if userMaxMemGB > 0 {
-		// If user specified --Maxmem, use that value for Max usable GB.
+		// If user specified --localmem, use that value for Max usable GB.
 		self.maxMemGB = userMaxMemGB
-		LogInfo("jobmngr", "Using %d GB, per --maxmem option.", self.maxMemGB)
+		LogInfo("jobmngr", "Using %d GB, per --localmem option.", self.maxMemGB)
 	} else {
 		// Otherwise, set Max usable GB to MAXMEM_FRACTION * GB of total
 		// memory reported by the system.
