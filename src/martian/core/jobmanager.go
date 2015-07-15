@@ -384,8 +384,8 @@ func (self *RemoteJobManager) execJob(shellCmd string, argv []string, envs map[s
 	cmd := exec.Command(self.jobCmd)
 	cmd.Dir = metadata.filesPath
 	cmd.Stdin = strings.NewReader(jobscript)
-	if _, err := cmd.CombinedOutput(); err != nil {
-		metadata.writeRaw("errors", "jobcmd error:\n"+err.Error())
+	if output, err := cmd.CombinedOutput(); err != nil {
+		metadata.writeRaw("errors", "jobcmd error:\n"+string(output))
 	} else {
 		self.MonitorJob(metadata)
 	}
