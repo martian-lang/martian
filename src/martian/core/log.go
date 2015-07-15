@@ -62,7 +62,7 @@ func LogTee(filename string) {
 	if logInit() {
 		if LOGGER.fileWriter == nil {
 			logInit()
-			f, _ := os.OpenFile(filename, os.O_WRONLY|os.O_CREATE, 0644)
+			f, _ := os.OpenFile(filename, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, 0644)
 			LOGGER.fileWriter = io.Writer(f)
 			log(LOGGER.cache)
 		}
