@@ -8,8 +8,8 @@
 #
 # 1. Add any other necessary Slurm arguments such as partition (-p) or account
 #    (-A). If your system requires a walltime (-t), 24 hours (24:00:00) is
-#    sufficient for each task.  We recommend you do not remove any arguments
-#    below or Martian may not run properly.
+#    sufficient.  We recommend you do not remove any arguments below or Martian
+#    may not run properly.
 #
 # 2. Change filename of slurm.template.example to slurm.template.
 #

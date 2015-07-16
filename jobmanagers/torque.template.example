@@ -8,8 +8,8 @@
 #
 # 1. Add any other necessary Torque arguments such as queue (-q) or account
 #    (-A). If your system requires a walltime (-l walltime), 24 hours (24:00:00)
-#    is sufficient for each task.  We recommend you do not remove any arguments
-#    below or Martian may not run properly.
+#    is sufficient.  We recommend you do not remove any arguments below or
+#    Martian may not run properly.
 #
 # 2. Change filename of torque.template.example to torque.template.
 #
