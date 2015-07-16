@@ -5,42 +5,42 @@
   },
   "jobmodes": {
       "sge": {
-	  "cmd": "qsub",
-	  "envs": [
+          "cmd": "qsub",
+          "envs": [
               {
-		  "name":"SGE_ROOT",
-		  "description":"path/to/sge/root"
-	      },
+                  "name":"SGE_ROOT",
+                  "description":"path/to/sge/root"
+              },
               {
-		  "name":"SGE_CLUSTER_NAME",
-		  "description":"SGE cluster name"
-	      },
+                  "name":"SGE_CLUSTER_NAME",
+                  "description":"SGE cluster name"
+              },
               {
-		  "name":"SGE_CELL",
-		  "description":"usually 'default'"
-	      }
+                  "name":"SGE_CELL",
+                  "description":"usually 'default'"
+              }
           ]
       },
       "lsf": {
-	  "cmd": "bsub",
-	  "envs": [
-	      {
-		  "name":"LSF_SERVERDIR",
-		  "description":"path/to/lsf/server"
-	      },
-	      {
-		  "name":"LSF_LIBDIR",
-		  "description":"path/to/lsf/lib"
-	      },
-	      {
-		  "name":"LSF_BINDIR",
-		  "description":"path/to/lsf/commands"
-	      },
-	      {
-		  "name":"LSF_ENVDIR",
-		  "description":"path/to/lsf/env"
-	      }
-	  ]
+          "cmd": "bsub",
+          "envs": [
+              {
+                  "name":"LSF_SERVERDIR",
+                  "description":"path/to/lsf/server"
+              },
+              {
+                  "name":"LSF_LIBDIR",
+                  "description":"path/to/lsf/lib"
+              },
+              {
+                  "name":"LSF_BINDIR",
+                  "description":"path/to/lsf/commands"
+              },
+              {
+                  "name":"LSF_ENVDIR",
+                  "description":"path/to/lsf/env"
+              }
+          ]
       }
   }
 }
