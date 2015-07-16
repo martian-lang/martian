@@ -41,6 +41,18 @@
                   "description":"path/to/lsf/env"
               }
           ]
+      },
+      "slurm": {
+          "cmd": "sbatch",
+          "envs": [ ]
+      },
+      "pbspro": {
+          "cmd": "qsub",
+          "envs": [ ]
+      },
+      "torque": {
+          "cmd": "qsub",
+          "envs": [ ]
       }
   }
 }
