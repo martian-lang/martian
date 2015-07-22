@@ -59,7 +59,6 @@ func runLoop(pipestance *core.Pipestance, stepSecs int, vdrMode string,
 				os.Exit(0)
 			}
 		} else if state == "failed" {
-			pipestance.RemoveJobMonitors()
 			pipestance.Unlock()
 			if !showedFailed {
 				if _, _, log, kind, errPaths := pipestance.GetFatalError(); kind == "assert" {
@@ -96,10 +95,13 @@ func runLoop(pipestance *core.Pipestance, stepSecs int, vdrMode string,
 			// If we went from failed to something else, allow the failure message to
 			// be shown once if we fail again.
 			showedFailed = false
-		}
 
-		// Step all nodes.
-		pipestance.StepNodes()
+			// Check job heartbeats.
+			pipestance.CheckHeartbeats()
+
+			// Step all nodes.
+			pipestance.StepNodes()
+		}
 
 		// Wait for a bit.
 		time.Sleep(time.Second * time.Duration(stepSecs))

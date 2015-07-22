@@ -20,7 +20,6 @@ import (
 	"github.com/cloudfoundry/gosigar"
 )
 
-const heartbeatTimeout = 60 // 60 minutes
 const maxRetries = 5
 const retryExitCode = 513
 
@@ -69,8 +68,6 @@ type JobManager interface {
 	GetSystemReqs(int, int) (int, int)
 	GetMaxCores() int
 	GetMaxMemGB() int
-	MonitorJob(*Metadata)
-	UnmonitorJob(*Metadata)
 }
 
 type LocalJobManager struct {
@@ -257,21 +254,9 @@ func (self *LocalJobManager) GetMaxMemGB() int {
 	return self.maxMemGB
 }
 
-func (self *LocalJobManager) MonitorJob(metadata *Metadata) {
-}
-
-func (self *LocalJobManager) UnmonitorJob(metadata *Metadata) {
-}
-
 func (self *LocalJobManager) execJob(shellCmd string, argv []string, envs map[string]string,
 	metadata *Metadata, threads int, memGB int, fqname string, shellName string) {
 	self.Enqueue(shellCmd, argv, envs, metadata, threads, memGB, fqname, 0, 0)
-}
-
-type JobMonitor struct {
-	metadata      *Metadata
-	lastHeartbeat time.Time
-	running       bool
 }
 
 type RemoteJobManager struct {
@@ -281,18 +266,13 @@ type RemoteJobManager struct {
 	jobSettings      *JobManagerSettings
 	threadingEnabled bool
 	memGBPerCore     int
-	monitorList      []*JobMonitor
-	monitorListMutex *sync.Mutex
 }
 
 func NewRemoteJobManager(jobMode string, memGBPerCore int) *RemoteJobManager {
 	self := &RemoteJobManager{}
 	self.jobMode = jobMode
-	self.monitorList = []*JobMonitor{}
-	self.monitorListMutex = &sync.Mutex{}
 	self.memGBPerCore = memGBPerCore
 	self.jobSettings, self.jobCmd, self.jobTemplate, self.threadingEnabled = verifyJobManager(jobMode, memGBPerCore)
-	self.processMonitorList()
 	return self
 }
 
@@ -302,23 +282,6 @@ func (self *RemoteJobManager) GetMaxCores() int {
 
 func (self *RemoteJobManager) GetMaxMemGB() int {
 	return 0
-}
-
-func (self *RemoteJobManager) MonitorJob(metadata *Metadata) {
-	self.monitorListMutex.Lock()
-	self.monitorList = append(self.monitorList, &JobMonitor{metadata, time.Now(), false})
-	self.monitorListMutex.Unlock()
-}
-
-func (self *RemoteJobManager) UnmonitorJob(metadata *Metadata) {
-	self.monitorListMutex.Lock()
-	for i, monitor := range self.monitorList {
-		if monitor.metadata == metadata {
-			self.monitorList = append(self.monitorList[:i], self.monitorList[i+1:]...)
-			break
-		}
-	}
-	self.monitorListMutex.Unlock()
 }
 
 func (self *RemoteJobManager) GetSystemReqs(threads int, memGB int) (int, int) {
@@ -386,48 +349,7 @@ func (self *RemoteJobManager) execJob(shellCmd string, argv []string, envs map[s
 	cmd.Stdin = strings.NewReader(jobscript)
 	if output, err := cmd.CombinedOutput(); err != nil {
 		metadata.writeRaw("errors", "jobcmd error:\n"+string(output))
-	} else {
-		self.MonitorJob(metadata)
 	}
-}
-
-func (self *RemoteJobManager) copyAndClearMonitorList() []*JobMonitor {
-	self.monitorListMutex.Lock()
-	monitorList := make([]*JobMonitor, len(self.monitorList))
-	copy(monitorList, self.monitorList)
-	self.monitorList = []*JobMonitor{}
-	self.monitorListMutex.Unlock()
-	return monitorList
-}
-
-func (self *RemoteJobManager) processMonitorList() {
-	go func() {
-		for {
-			monitorList := self.copyAndClearMonitorList()
-			newMonitorList := []*JobMonitor{}
-			for _, monitor := range monitorList {
-				state, _ := monitor.metadata.getState("")
-				if state == "complete" || state == "failed" {
-					continue
-				}
-				if state == "running" {
-					if !monitor.running || monitor.metadata.exists("heartbeat") {
-						monitor.metadata.uncache("heartbeat")
-						monitor.lastHeartbeat = time.Now()
-						monitor.running = true
-					}
-					if time.Since(monitor.lastHeartbeat) > time.Minute*heartbeatTimeout {
-						monitor.metadata.writeRaw("errors", fmt.Sprintf("Heartbeat not detected for %d minutes. Assuming job has failed", heartbeatTimeout))
-					}
-				}
-				newMonitorList = append(newMonitorList, monitor)
-			}
-			self.monitorListMutex.Lock()
-			self.monitorList = append(self.monitorList, newMonitorList...)
-			self.monitorListMutex.Unlock()
-			time.Sleep(time.Minute * time.Duration(5))
-		}
-	}()
 }
 
 //
