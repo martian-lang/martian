@@ -18,17 +18,21 @@ import (
 	"strconv"
 	"strings"
 	"sync"
+	"time"
 )
+
+const heartbeatTimeout = 60 // 60 minutes
 
 //=============================================================================
 // Metadata
 //=============================================================================
 type Metadata struct {
-	fqname    string
-	path      string
-	contents  map[string]bool
-	filesPath string
-	mutex     *sync.Mutex
+	fqname        string
+	path          string
+	contents      map[string]bool
+	filesPath     string
+	lastHeartbeat time.Time
+	mutex         *sync.Mutex
 }
 
 type MetadataInfo struct {
@@ -136,6 +140,24 @@ func (self *Metadata) writeTime(name string) {
 	self.writeRaw(name, Timestamp())
 }
 func (self *Metadata) remove(name string) { os.Remove(self.makePath(name)) }
+
+func (self *Metadata) resetHeartbeat() {
+	self.lastHeartbeat = time.Time{}
+}
+
+func (self *Metadata) checkHeartbeat() {
+	if state, _ := self.getState(""); state == "running" {
+		if self.lastHeartbeat.IsZero() || self.exists("heartbeat") {
+			self.uncache("heartbeat")
+			self.lastHeartbeat = time.Now()
+		}
+		if time.Since(self.lastHeartbeat) > time.Minute*heartbeatTimeout {
+			self.writeRaw("errors", fmt.Sprintf(
+				"Heartbeat not detected for %d minutes. Assuming job has failed",
+				heartbeatTimeout))
+		}
+	}
+}
 
 func (self *Metadata) serializeState() *MetadataInfo {
 	names := []string{}
@@ -1371,7 +1393,11 @@ func (self *Node) collectMetadatas() []*Metadata {
 func (self *Node) loadMetadata() {
 	metadatas := self.collectMetadatas()
 	for _, metadata := range metadatas {
+		// Load metadata file cache
 		metadata.loadCache()
+
+		// Reset metadata heartbeat timer
+		metadata.resetHeartbeat()
 	}
 	self.state = self.getState()
 	self.addFrontierNode(self)
@@ -1447,18 +1473,9 @@ func (self *Node) reset() error {
 	return nil
 }
 
-func (self *Node) resetJobMonitors() {
+func (self *Node) checkHeartbeats() {
 	for _, metadata := range self.collectMetadatas() {
-		state, _ := metadata.getState("")
-		if state == "running" || state == "queued" {
-			self.rt.JobManager.MonitorJob(metadata)
-		}
-	}
-}
-
-func (self *Node) removeJobMonitors() {
-	for _, metadata := range self.collectMetadatas() {
-		self.rt.JobManager.UnmonitorJob(metadata)
+		metadata.checkHeartbeat()
 	}
 }
 
@@ -1866,6 +1883,7 @@ func NewStagestance(parent Nodable, callStm *CallStm, callables *Callables) *Sta
 func (self *Stagestance) getNode() *Node   { return self.node }
 func (self *Stagestance) GetState() string { return self.getNode().getState() }
 func (self *Stagestance) Step()            { self.getNode().step() }
+func (self *Stagestance) CheckHeartbeats() { self.getNode().checkHeartbeats() }
 func (self *Stagestance) RefreshState()    { self.getNode().refreshState() }
 func (self *Stagestance) LoadMetadata()    { self.getNode().loadMetadata() }
 func (self *Stagestance) PostProcess()     { self.getNode().postProcess() }
@@ -2002,16 +2020,13 @@ func (self *Pipestance) RestartRunningNodes(jobMode string) error {
 			return err
 		}
 	}
-	for _, node := range remoteNodes {
-		node.resetJobMonitors()
-	}
 	return nil
 }
 
-func (self *Pipestance) RemoveJobMonitors() {
+func (self *Pipestance) CheckHeartbeats() {
 	nodes := self.node.getFrontierNodes()
 	for _, node := range nodes {
-		node.removeJobMonitors()
+		node.checkHeartbeats()
 	}
 }
 

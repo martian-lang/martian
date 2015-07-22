@@ -174,6 +174,9 @@ Options:
 				os.Exit(1)
 			}
 
+			// Check job heartbeats.
+			stagestance.CheckHeartbeats()
+
 			// Step the node.
 			stagestance.Step()
 
