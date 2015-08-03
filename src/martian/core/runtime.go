@@ -2446,12 +2446,14 @@ func (self *Runtime) reattachToPipestance(psid string, pipestancePath string, sr
 
 	// If _jobmode exists, make sure we reattach to pipestance in the same job mode.
 	if err := pipestance.VerifyJobMode(); err != nil {
+		pipestance.Unlock()
 		return nil, err
 	}
 
 	// If _metadata exists, unzip it so the pipestance can reads its metadata.
 	if _, err := os.Stat(metadataPath); err == nil {
 		if err := Unzip(metadataPath); err != nil {
+			pipestance.Unlock()
 			return nil, err
 		}
 		os.Remove(metadataPath)
@@ -2462,7 +2464,10 @@ func (self *Runtime) reattachToPipestance(psid string, pipestancePath string, sr
 	// have been killed by the CTRL-C.
 	if !readOnly {
 		PrintInfo("runtime", "Reattaching in %s mode.", self.jobMode)
-		err = pipestance.RestartRunningNodes(self.jobMode)
+		if err = pipestance.RestartRunningNodes(self.jobMode); err != nil {
+			pipestance.Unlock()
+			return nil, err
+		}
 	}
 
 	return pipestance, nil

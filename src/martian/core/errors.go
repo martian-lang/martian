@@ -60,7 +60,7 @@ type PipestanceJobModeError struct {
 }
 
 func (self *PipestanceJobModeError) Error() string {
-	return fmt.Sprintf("RuntimeError: pipestance '%s' was previously ran in job mode '%s'. Please start Martian again in job mode '%s'.", self.Psid, self.JobMode, self.JobMode)
+	return fmt.Sprintf("RuntimeError: pipestance '%s' was originally started in job mode '%s'. Please try running again in job mode '%s'.", self.Psid, self.JobMode, self.JobMode)
 }
 
 // PipestanceLockedError
