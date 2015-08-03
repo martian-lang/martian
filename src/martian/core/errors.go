@@ -53,6 +53,16 @@ func (self *PipestancePathError) Error() string {
 	return fmt.Sprintf("RuntimeError: %s is not a pipestance directory", self.Path)
 }
 
+// PipestanceJobModeError
+type PipestanceJobModeError struct {
+	Psid    string
+	JobMode string
+}
+
+func (self *PipestanceJobModeError) Error() string {
+	return fmt.Sprintf("RuntimeError: pipestance '%s' was previously ran in job mode '%s'. Please start Martian again in job mode '%s'.", self.Psid, self.JobMode, self.JobMode)
+}
+
 // PipestanceLockedError
 type PipestanceLockedError struct {
 	Psid           string

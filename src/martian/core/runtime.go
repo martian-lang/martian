@@ -2128,6 +2128,18 @@ func (self *Pipestance) GetInvocation() interface{} {
 	return self.node.parent.getNode().invocation
 }
 
+func (self *Pipestance) VerifyJobMode() error {
+	metadata := NewMetadata(self.node.parent.getNode().fqname, self.GetPath())
+	metadata.loadCache()
+	if metadata.exists("jobmode") {
+		jobMode := metadata.readRaw("jobmode")
+		if jobMode != self.node.rt.jobMode {
+			return &PipestanceJobModeError{self.GetPsid(), jobMode}
+		}
+	}
+	return nil
+}
+
 func (self *Pipestance) GetTimestamp() string {
 	metadata := NewMetadata(self.node.parent.getNode().fqname, self.GetPath())
 	data := metadata.readRaw("timestamp")
@@ -2383,6 +2395,7 @@ func (self *Runtime) InvokePipeline(src string, srcPath string, psid string,
 	metadata := NewMetadata("ID."+psid, pipestancePath)
 	metadata.writeRaw("invocation", src)
 	metadata.writeRaw("mrosource", postsrc)
+	metadata.writeRaw("jobmode", self.jobMode)
 	metadata.write("versions", map[string]string{
 		"martian":   self.martianVersion,
 		"pipelines": mroVersion,
@@ -2425,7 +2438,16 @@ func (self *Runtime) reattachToPipestance(psid string, pipestancePath string, sr
 	}
 
 	// Instantiate the pipestance.
-	_, pipestance, err := self.instantiatePipeline(string(data), invocationPath, psid, pipestancePath, mroPath, mroVersion, envs, readOnly)
+	_, pipestance, err := self.instantiatePipeline(string(data), invocationPath, psid, pipestancePath, mroPath,
+		mroVersion, envs, readOnly)
+	if err != nil {
+		return nil, err
+	}
+
+	// If _jobmode exists, make sure we reattach to pipestance in the same job mode.
+	if err := pipestance.VerifyJobMode(); err != nil {
+		return nil, err
+	}
 
 	// If _metadata exists, unzip it so the pipestance can reads its metadata.
 	if _, err := os.Stat(metadataPath); err == nil {
@@ -2438,12 +2460,12 @@ func (self *Runtime) reattachToPipestance(psid string, pipestancePath string, sr
 	// If we're reattaching in local mode, restart any stages that were
 	// left in a running state from last mrp run. The actual job would
 	// have been killed by the CTRL-C.
-	if !readOnly && err == nil {
+	if !readOnly {
 		PrintInfo("runtime", "Reattaching in %s mode.", self.jobMode)
 		err = pipestance.RestartRunningNodes(self.jobMode)
 	}
 
-	return pipestance, err
+	return pipestance, nil
 }
 
 // Instantiate a stagestance.

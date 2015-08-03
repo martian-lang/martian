@@ -66,21 +66,21 @@ Options:
 	if value := opts["--localcores"]; value != nil {
 		if value, err := strconv.Atoi(value.(string)); err == nil {
 			reqCores = value
-			core.LogInfo("options", "--localcores=%s", reqCores)
+			core.LogInfo("options", "--localcores=%d", reqCores)
 		}
 	}
 	reqMem := -1
 	if value := opts["--localmem"]; value != nil {
 		if value, err := strconv.Atoi(value.(string)); err == nil {
 			reqMem = value
-			core.LogInfo("options", "--localmem=%s", reqMem)
+			core.LogInfo("options", "--localmem=%d", reqMem)
 		}
 	}
 	reqMemPerCore := -1
 	if value := opts["--mempercore"]; value != nil {
 		if value, err := strconv.Atoi(value.(string)); err == nil {
 			reqMemPerCore = value
-			core.LogInfo("options", "--mempercore=%s", reqMemPerCore)
+			core.LogInfo("options", "--mempercore=%d", reqMemPerCore)
 		}
 	}
 
