@@ -34,18 +34,70 @@ html(ng-app="app" ng-controller="MartianGraphCtrl")
                         a.admin-exit(href="/") exit admin mode
                         | )
                     .navbar-views(ng-show="!release")
-                        | Views:
-                        label.btn.btn-default(ng-model="perf" btn-radio="false") Default
-                        label.btn.btn-default(ng-model="perf" btn-radio="true") Performance
+                        .btn-group
+                            button.btn.btn-default(ng-model="perf" btn-radio="false" style="margin-top: -7px") Details
+                            | &nbsp;
+                            .btn.btn-default(ng-model="perf" btn-radio="true" style="margin-top: -7px") Performance
         #graph(style="margin-left: 10px; margin-top: 60px;")
             svg(width="750px" height="1000px" ng-click="alert('l')")
                 g#top(transform="translate(5,5) scale(1.0)")
+        .details#info(ng-show="!perf && !node")
+            h4#stagename
+                a(href="#") Pipestance Details
+            h5 Runtime
+            table.table
+                tr
+                    td State
+                    td
+                        span.minibox(ng-class="info.state") {{info.state}}
+                tr
+                    td Cmdline
+                    td {{info.cmdline}}
+                tr
+                    td User
+                    td {{info.username}}@{{info.hostname}}, PID={{info.pid}}
+                tr
+                    td Job Mode
+                    td {{info.jobmode}}
+                        span(ng-if="info.jobmode=='local'") &nbsp;({{info.maxcores}} cores, {{info.maxmemgb}} GB)
+                tr
+                    td Start Time
+                    td {{info.start}}
+                tr
+                    td Env
+                    td MROPORT={{info.mroport}}, MROPROFILE={{info.mroprofile}}
+                tr
+                    td Versions
+                    td martian={{info.version}}, pipelines={{info.mroversion}}
+                tr
+                    td Logging
+                    td 
+                        a(href="/api/get-metadata-top/{{info.container}}/{{info.pname}}/{{info.psid}}/filelist") filelist
+                        | &nbsp;&nbsp;
+                        a(href="/api/get-metadata-top/{{info.container}}/{{info.pname}}/{{info.psid}}/log") log
+                        | &nbsp;&nbsp;
+                        a(href="/api/get-metadata-top/{{info.container}}/{{info.pname}}/{{info.psid}}/sitecheck") sitecheck
+            h5 Paths
+            table.table(style="margin-bottom: 0px")
+                tr
+                    td Bin
+                    td {{info.binpath}}
+                tr(ng-if="info.cwd")
+                    td Cwd
+                    td {{info.cwd}}
+                tr
+                    td MROPATH
+                    td {{info.mropath}}
+                tr
+                    td MRO File
+                    td {{info.invokepath}}
+            #invokesrc
+                pre {{info.invokesrc}}
         .details#perf(ng-if="perf && pnode")
             h4#stagename
                 a(href="#" ng-click="selectNode(topnode.fqname)" ng-show="pnode.fqname!=topnode.fqname") &larr;
-                | &nbsp;
-                a(href="#") {{pnode.name}} &nbsp;
-                | {{pnode.type}}
+                span(ng-show="pnode.fqname!=topnode.fqname") &nbsp;
+                a(href="#") Pipestance Performance
             table.table
                 tr
                     td(style="width: 85px") Forks
@@ -54,10 +106,10 @@ html(ng-app="app" ng-controller="MartianGraphCtrl")
                             button.btn.btn-default(type="button" ng-model="$parent.$parent.forki" ng-repeat="fork in pnode.forks" btn-radio="fork.index") {{fork.index}}
             tabset.tbs-hor
                 tab(heading="Summary" active="tabs.summary")
-                    table.table#info(style="float:left; position: relative")
+                    table.table#info(style="float:left; position: relative; top: 5px")
                         tr
-                            td Walltime
-                            td {{ humanize('walltime', 'seconds') }}
+                            td(style="border: 0px") Walltime
+                            td(style="border: 0px") {{ humanize('walltime', 'seconds') }}
                         tr
                             td Core hours
                             td {{ humanize('core_hours', 'core hours') }}
@@ -103,57 +155,12 @@ html(ng-app="app" ng-controller="MartianGraphCtrl")
                     tab(heading="Graph" ng-click="setChartType('BarChart')")
                     tab(heading="Table" ng-click="setChartType('Table')")
                 div(google-chart chart="charts[forki]" ng-if="charts[forki]")
-        .details#info(ng-show="!perf && !node")
-            h4#stagename
-                a(href="#") Pipestance Info
-            h5 Runtime
-            table.table
-                tr
-                    td State
-                    td
-                        span.minibox(ng-class="info.state") {{info.state}}
-                tr
-                    td Cmdline
-                    td {{info.cmdline}}
-                tr
-                    td User
-                    td {{info.username}}@{{info.hostname}}, PID={{info.pid}}
-                tr
-                    td Job Mode
-                    td {{info.jobmode}}
-                        span(ng-if="info.jobmode=='local'") ({{info.maxcores}} cores, {{info.maxmemgb}} GB)
-                tr
-                    td Start Time
-                    td {{info.start}}
-                tr
-                    td Env
-                    td MROPORT={{info.mroport}}, MROPROFILE={{info.mroprofile}}
-                tr
-                    td Versions
-                    td martian={{info.version}}, pipelines={{info.mroversion}}
-            h5 Paths
-            table.table(style="margin-bottom: 0px")
-                tr
-                    td Bin
-                    td {{info.binpath}}
-                tr(ng-if="info.cwd")
-                    td Cwd
-                    td {{info.cwd}}
-                tr
-                    td MROPATH
-                    td {{info.mropath}}
-                tr
-                    td MRO File
-                    td {{info.invokepath}}
-            #invokesrc
-                pre {{info.invokesrc}}
-
         .details#stage(ng-show="!perf && node")
             h4#stagename
                 a(href="#" ng-click="node=null;id=null") &larr;
                 | &nbsp;
-                a(href="#") {{node.name}}&nbsp;
-                | {{node.type}}
+                a(href="#") {{node.name}}
+                | &nbsp;{{node.type}}
 
             div.alert.alert-danger.fixed(ng-show="node.error" ng-cloak)
                 div
