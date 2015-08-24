@@ -311,7 +311,7 @@ Options:
 		}
 		core.DieIf(err)
 	}
-	core.Println("\nRunning preflight checks...")
+	core.Println("\nRunning preflight checks (please wait)...")
 
 	// Start writing (including cached entries) to log file.
 	core.LogTee(path.Join(pipestancePath, "_log"))
