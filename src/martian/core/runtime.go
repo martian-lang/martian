@@ -990,9 +990,9 @@ func (self *Fork) postProcess() {
 
 	if alarms := self.getAlarms(); len(alarms) > 0 {
 		if len(self.node.forks) > 1 {
-			Print("\nAlarms (fork%d):\n", self.index)
+			Print("Alerts (fork%d):\n", self.index)
 		} else {
-			Print("\nAlarms:\n")
+			Print("Alerts:\n")
 		}
 		Print(alarms + "\n")
 	}
