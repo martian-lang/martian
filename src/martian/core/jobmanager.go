@@ -107,7 +107,7 @@ func NewLocalJobManager(userMaxCores int, userMaxMemGB int, debug bool) *LocalJo
 	} else {
 		// Otherwise, set Max usable GB to MAXMEM_FRACTION * GB of total
 		// memory reported by the system.
-		MAXMEM_FRACTION := 0.75
+		MAXMEM_FRACTION := 0.90
 		sysMem := sigar.Mem{}
 		sysMem.Get()
 		sysMemGB := int(float64(sysMem.Total) * MAXMEM_FRACTION / 1073741824)
