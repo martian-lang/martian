@@ -1981,7 +1981,7 @@ func (self *Pipestance) GetState() string {
 		}
 	}
 	every := true
-	for _, node := range nodes {
+	for _, node := range self.node.allNodes() {
 		if node.state != "complete" {
 			every = false
 			break
