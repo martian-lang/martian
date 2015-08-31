@@ -42,7 +42,7 @@ func unquote(qs string) string {
 %type <val>       id_list type help type src_lang
 %type <modifiers> modifiers
 %type <arr>       arr_list
-%type <dec>       dec 
+%type <dec>       dec
 %type <decs>      dec_list
 %type <inparam>   in_param
 %type <outparam>  out_param
@@ -51,15 +51,15 @@ func unquote(qs string) string {
 %type <exp>       exp ref_exp
 %type <exps>      exp_list
 %type <kvpairs>   kvpair_list
-%type <call>      call_stm 
-%type <calls>     call_stm_list 
+%type <call>      call_stm
+%type <calls>     call_stm_list
 %type <binding>   bind_stm
 %type <bindings>  bind_stm_list
 %type <retstm>    return_stm
 
-%token SKIP INVALID 
+%token SKIP INVALID
 %token SEMICOLON COLON COMMA EQUALS
-%token LBRACKET RBRACKET LPAREN RPAREN LBRACE RBRACE 
+%token LBRACKET RBRACKET LPAREN RPAREN LBRACE RBRACE
 %token FILETYPE STAGE PIPELINE CALL LOCAL PREFLIGHT VOLATILE SWEEP SPLIT USING SELF RETURN
 %token IN OUT SRC
 %token <val> ID LITSTRING NUM_FLOAT NUM_INT DOT
@@ -69,12 +69,12 @@ func unquote(qs string) string {
 %%
 file
     : dec_list
-        {{ 
+        {{
             global := NewAst($1, nil)
             mmlex.(*mmLexInfo).global = global
         }}
     | dec_list call_stm
-        {{ 
+        {{
             global := NewAst($1, $2)
             mmlex.(*mmLexInfo).global = global
         }}
@@ -95,7 +95,7 @@ dec_list
 dec
     : FILETYPE id_list SEMICOLON
         {{ $$ = &Filetype{NewAstNode(&mmlval), $2} }}
-    | STAGE ID LPAREN in_param_list out_param_list src_stm RPAREN 
+    | STAGE ID LPAREN in_param_list out_param_list src_stm RPAREN
         {{ $$ = &Stage{NewAstNode(&mmlval), $2, $4, $5, $6, &Params{[]Param{}, map[string]Param{}}, false} }}
     | STAGE ID LPAREN in_param_list out_param_list src_stm RPAREN split_param_list
         {{ $$ = &Stage{NewAstNode(&mmlval), $2, $4, $5, $6, $8, true} }}
@@ -120,7 +120,7 @@ in_param_list
     :
         {{ $$ = &Params{[]Param{}, map[string]Param{}} }}
     | in_param_list in_param
-        {{ 
+        {{
             $1.List = append($1.List, $2)
             $$ = $1
         }}
@@ -135,17 +135,17 @@ out_param_list
     :
         {{ $$ = &Params{[]Param{}, map[string]Param{}} }}
     | out_param_list out_param
-        {{ 
+        {{
             $1.List = append($1.List, $2)
             $$ = $1
         }}
     ;
 
 out_param
-    : OUT type arr_list help 
+    : OUT type arr_list help
         {{ $$ = &OutParam{NewAstNode(&mmlval), $2, $3, "default", unquote($4), false } }}
-    | OUT type arr_list ID help 
-        {{ $$ = &OutParam{NewAstNode(&mmlval), $2, $3, $4, unquote($5), false } }}    
+    | OUT type arr_list ID help
+        {{ $$ = &OutParam{NewAstNode(&mmlval), $2, $3, $4, unquote($5), false } }}
     ;
 
 src_stm
@@ -213,9 +213,9 @@ modifiers
 
 bind_stm_list
     :
-        {{ $$ = &BindStms{[]*BindStm{}, map[string]*BindStm{}} }}
+        {{ $$ = &BindStms{NewAstNode(&mmlval), []*BindStm{}, map[string]*BindStm{}} }}
     | bind_stm_list bind_stm
-        {{ 
+        {{
             $1.List = append($1.List, $2)
             $$ = $1
         }}
@@ -233,11 +233,11 @@ exp_list
         {{ $$ = append($1, $3) }}
     | exp
         {{ $$ = []Exp{$1} }}
-    ; 
+    ;
 
 kvpair_list
     : kvpair_list COMMA LITSTRING COLON exp
-        {{ 
+        {{
             $1[unquote($3)] = $5
             $$ = $1
         }}
@@ -246,7 +246,7 @@ kvpair_list
     ;
 
 exp
-    : LBRACKET exp_list RBRACKET        
+    : LBRACKET exp_list RBRACKET
         {{ $$ = &ValExp{Node:NewAstNode(&mmlval), Kind: "array", Value: $2} }}
     | LBRACKET RBRACKET
         {{ $$ = &ValExp{Node:NewAstNode(&mmlval), Kind: "array", Value: []Exp{}} }}
@@ -257,12 +257,12 @@ exp
     | NUM_FLOAT
         {{  // Lexer guarantees parseable float strings.
             f, _ := strconv.ParseFloat($1, 64)
-            $$ = &ValExp{Node:NewAstNode(&mmlval), Kind: "float", Value: f } 
+            $$ = &ValExp{Node:NewAstNode(&mmlval), Kind: "float", Value: f }
         }}
     | NUM_INT
         {{  // Lexer guarantees parseable int strings.
             i, _ := strconv.ParseInt($1, 0, 64)
-            $$ = &ValExp{Node:NewAstNode(&mmlval), Kind: "int", Value: i } 
+            $$ = &ValExp{Node:NewAstNode(&mmlval), Kind: "int", Value: i }
         }}
     | LITSTRING
         {{ $$ = &ValExp{Node:NewAstNode(&mmlval), Kind: "string", Value: unquote($1)} }}

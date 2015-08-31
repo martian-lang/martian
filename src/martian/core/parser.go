@@ -180,7 +180,7 @@ func (bindings *BindStms) check(global *Ast, callable Callable, params *Params) 
 			lastType = valueType
 		}
 		if !anymatch {
-			return global.err(param, "TypeMismatchError: expected type '%s' for '%s' but got '%s' instead", param.getTname(), param.getId(), lastType)
+			return global.err(binding, "TypeMismatchError: expected type '%s' for '%s' but got '%s' instead", param.getTname(), param.getId(), lastType)
 		}
 		binding.Tname = param.getTname()
 	}
@@ -188,7 +188,7 @@ func (bindings *BindStms) check(global *Ast, callable Callable, params *Params) 
 	// Check that all input params of the called segment are bound.
 	for _, param := range params.List {
 		if _, ok := bindings.Table[param.getId()]; !ok {
-			return global.err(param, "ArgumentNotSuppliedError: no argument supplied for parameter '%s'", param.getId())
+			return global.err(bindings, "ArgumentNotSuppliedError: no argument supplied for parameter '%s'", param.getId())
 		}
 	}
 	return nil

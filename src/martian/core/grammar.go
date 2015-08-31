@@ -743,7 +743,7 @@ mmdefault:
 		//line src/martian/core/grammar.y:216
 		{
 			{
-				mmVAL.bindings = &BindStms{[]*BindStm{}, map[string]*BindStm{}}
+				mmVAL.bindings = &BindStms{NewAstNode(&mmlval), []*BindStm{}, map[string]*BindStm{}}
 			}
 		}
 	case 43:

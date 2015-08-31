@@ -114,6 +114,7 @@ type (
 	}
 
 	BindStms struct {
+		Node  AstNode
 		List  []*BindStm
 		Table map[string]*BindStm
 	}
@@ -261,6 +262,7 @@ func (s *OutParam) setIsFile(b bool)  { s.Isfile = b }
 
 func (s *ReturnStm) getLoc() int { return s.Node.Loc }
 func (s *BindStm) getLoc() int   { return s.Node.Loc }
+func (s *BindStms) getLoc() int  { return s.Node.Loc }
 
 func (s *ValExp) getNode() *AstNode { return &s.Node }
 func (s *ValExp) getKind() string   { return s.Kind }
