@@ -442,6 +442,22 @@ func ParseVersions(data string) (string, string, error) {
 	return versions["martian"], versions["pipelines"], nil
 }
 
+func ParseJobMode(data string) (string, string, string) {
+	jobmode := "local"
+	if m := regexp.MustCompile(".*--jobmode=([^\\s]+).*").FindStringSubmatch(data); len(m) > 0 {
+		jobmode = m[1]
+	}
+	localcores := "max"
+	if m := regexp.MustCompile(".*--localcores=([^\\s]+).*").FindStringSubmatch(data); len(m) > 0 {
+		localcores = m[1]
+	}
+	localmem := "max"
+	if m := regexp.MustCompile(".*--localmem=([^\\s]+).*").FindStringSubmatch(data); len(m) > 0 {
+		localmem = m[1]
+	}
+	return jobmode, localcores, localmem
+}
+
 func VerifyVDRMode(vdrMode string) {
 	validModes := []string{"rolling", "post", "disable"}
 	for _, validMode := range validModes {
