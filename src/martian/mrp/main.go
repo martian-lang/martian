@@ -47,7 +47,7 @@ func runLoop(pipestance *core.Pipestance, stepSecs int, vdrMode string,
 			pipestance.Unlock()
 			pipestance.PostProcess()
 			if noExit {
-				core.Println("Pipestance is complete, staying alive because --noexit given.")
+				core.Println("Pipestance completed successfully, staying alive because --noexit given.")
 				break
 			} else {
 				if enableUI {
@@ -55,7 +55,7 @@ func runLoop(pipestance *core.Pipestance, stepSecs int, vdrMode string,
 					core.Println("Waiting %d seconds for UI to do final refresh.", WAIT_SECS)
 					time.Sleep(time.Second * time.Duration(WAIT_SECS))
 				}
-				core.Println("Pipestance is complete, exiting.")
+				core.Println("Pipestance completed successfully!")
 				os.Exit(0)
 			}
 		} else if state == "failed" {
@@ -63,16 +63,14 @@ func runLoop(pipestance *core.Pipestance, stepSecs int, vdrMode string,
 			if !showedFailed {
 				if _, _, log, kind, errPaths := pipestance.GetFatalError(); kind == "assert" {
 					// Print preflight check failures.
-					core.Println("\n[%s] %s", core.Colorize("error", core.ANSI_MAGENTA), log)
+					core.Println("\n[%s] %s", "error", log)
 					os.Exit(2)
 				} else if len(errPaths) > 0 {
 					// Build relative path to _errors file
 					errPath, _ := filepath.Rel(filepath.Dir(pipestance.GetPath()), errPaths[0])
 
 					// Print path to _errors metadata file in failed stage.
-					core.Println("\n[%s] Pipestance failed. Please see log at:\n%s\n",
-						core.Colorize("error", core.ANSI_MAGENTA),
-						core.Colorize(errPath, core.ANSI_CYAN))
+					core.Println("\n[%s] Pipestance failed. Please see log at:\n%s\n", "error", errPath)
 				}
 			}
 			if noExit {
@@ -87,7 +85,7 @@ func runLoop(pipestance *core.Pipestance, stepSecs int, vdrMode string,
 					// Give time for web ui client to get last update.
 					core.Println("Waiting %d seconds for UI to do final refresh.", WAIT_SECS)
 					time.Sleep(time.Second * time.Duration(WAIT_SECS))
-					core.Println("Pipestance failed, exiting. Use --noexit option to keep UI running after failure.")
+					core.Println("Pipestance failed. Use --noexit option to keep UI running after failure.")
 				}
 				os.Exit(1)
 			}
@@ -313,7 +311,7 @@ Options:
 		}
 		core.DieIf(err)
 	}
-	core.Println("\nRunning preflight checks...")
+	core.Println("\nRunning preflight checks (please wait)...")
 
 	// Start writing (including cached entries) to log file.
 	core.LogTee(path.Join(pipestancePath, "_log"))

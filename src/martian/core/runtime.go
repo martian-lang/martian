@@ -938,17 +938,17 @@ func (self *Fork) vdrKill() *VDRKillReport {
 func (self *Fork) postProcess() {
 	pipestancePath := self.node.parent.getNode().path
 	outsPath := path.Join(pipestancePath, "outs")
-	params := self.node.outparams.Table
+	paramList := self.node.outparams.List
 
-	if len(params) == 0 {
+	if len(paramList) == 0 {
 		return
 	}
 
 	if len(self.node.forks) > 1 {
 		outsPath = path.Join(outsPath, fmt.Sprintf("fork%d", self.index))
-		Print("\nOutput (fork%d):\n", self.index)
+		Print("\nOutputs (fork%d):\n", self.index)
 	} else {
-		Print("\nOutput:\n")
+		Print("\nOutputs:\n")
 	}
 
 	outs := map[string]interface{}{}
@@ -958,7 +958,8 @@ func (self *Fork) postProcess() {
 		}
 	}
 
-	for id, param := range params {
+	for _, param := range paramList {
+		id := param.getId()
 		value, ok := outs[id]
 		if ok && value != nil {
 			if param.getIsFile() || param.getTname() == "path" {
@@ -989,9 +990,9 @@ func (self *Fork) postProcess() {
 
 	if alarms := self.getAlarms(); len(alarms) > 0 {
 		if len(self.node.forks) > 1 {
-			Print("\nAlarms (fork%d):\n", self.index)
+			Print("Alerts (fork%d):\n", self.index)
 		} else {
-			Print("\nAlarms:\n")
+			Print("Alerts:\n")
 		}
 		Print(alarms + "\n")
 	}
