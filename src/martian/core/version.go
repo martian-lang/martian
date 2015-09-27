@@ -7,7 +7,6 @@ package core
 
 import (
 	"io/ioutil"
-	"os"
 	"os/exec"
 	"path"
 	"strconv"
@@ -35,10 +34,9 @@ func GetMroVersion(dir string) string {
 }
 
 func runGit(dir string, args ...string) (string, error) {
-	oldCwd, _ := os.Getwd()
-	os.Chdir(dir)
-	out, err := exec.Command("git", args...).Output()
-	os.Chdir(oldCwd)
+	cmd := exec.Command("git", args...)
+	cmd.Dir = dir
+	out, err := cmd.Output()
 	return strings.TrimSpace(string(out)), err
 }
 
