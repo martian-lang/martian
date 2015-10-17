@@ -20,6 +20,34 @@ import cProfile
 import traceback
 import line_profiler
 
+def json_sanitize(data):
+    if (type(data) == float):
+        # Handle exceptional floats.
+        if math.isnan(data):
+            return "NaN";
+        if (data ==  float("+Inf")):
+            return "inf"
+        if (data == float("-Inf")):
+            return "-inf"
+        return data
+    elif type(data) == dict:
+        # Recurse on dictionaries.
+        new_data = {}
+        for k in data.keys():
+            new_data[k] = json_sanitize(data[k])
+        return new_data
+    elif hasattr(data, '__iter__'):
+        # Recurse on lists.
+        new_data = []
+        for d in data:
+            new_data.append(json_sanitize(d))
+        return new_data
+    else:
+        return data
+
+def json_dumps_safe(data):
+    return json.dumps(json_sanitize(data))
+
 class StageException(Exception):
     pass
 
@@ -158,7 +186,7 @@ class Metadata:
         self.update_journal(name)
 
     def write(self, name, object=None):
-        self.write_raw(name, json.dumps(object or "", indent=4))
+        self.write_raw(name, json_dumps_safe(object or "", indent=4))
 
     def write_time(self, name):
         self.write_raw(name, self.make_timestamp_now())
@@ -441,7 +469,7 @@ def log_time(message):
     metadata.log("time", message)
 
 def log_json(label, object):
-    metadata.log("json", json.dumps({"label":label, "object":object}))
+    metadata.log("json", json_dumps_safe({"label":label, "object":object}))
 
 def throw(message):
     raise StageException(message)
