@@ -24,11 +24,11 @@ def json_sanitize(data):
     if (type(data) == float):
         # Handle exceptional floats.
         if math.isnan(data):
-            return "NaN";
+            return None
         if (data ==  float("+Inf")):
-            return "inf"
+            return None
         if (data == float("-Inf")):
-            return "-inf"
+            return None
         return data
     elif type(data) == dict:
         # Recurse on dictionaries.
