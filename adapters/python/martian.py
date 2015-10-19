@@ -45,8 +45,8 @@ def json_sanitize(data):
     else:
         return data
 
-def json_dumps_safe(data):
-    return json.dumps(json_sanitize(data))
+def json_dumps_safe(data, indent=None):
+    return json.dumps(json_sanitize(data), indent=indent)
 
 class StageException(Exception):
     pass
