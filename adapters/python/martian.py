@@ -19,6 +19,7 @@ import StringIO
 import cProfile
 import traceback
 import line_profiler
+import math
 
 def json_sanitize(data):
     if (type(data) == float):
