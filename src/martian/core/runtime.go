@@ -2393,7 +2393,7 @@ func (self *Runtime) InvokePipeline(src string, srcPath string, psid string,
 		if fileInfos, err := ioutil.ReadDir(pipestancePath); err != nil || len(fileInfos) > 0 {
 			return nil, &PipestanceExistsError{psid}
 		}
-	} else if err := os.MkdirAll(pipestancePath, 0755); err != nil {
+	} else if err := os.MkdirAll(pipestancePath, 0777); err != nil {
 		return nil, err
 	}
 
@@ -2497,7 +2497,7 @@ func (self *Runtime) InvokeStage(src string, srcPath string, ssid string,
 	// Check if stagestance path already exists.
 	if _, err := os.Stat(stagestancePath); err == nil {
 		return nil, &RuntimeError{fmt.Sprintf("stagestance '%s' already exists", ssid)}
-	} else if err := os.MkdirAll(stagestancePath, 0755); err != nil {
+	} else if err := os.MkdirAll(stagestancePath, 0777); err != nil {
 		return nil, err
 	}
 
