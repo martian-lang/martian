@@ -38,11 +38,11 @@ func RelPath(p string) string {
 }
 
 func mkdir(p string) {
-	os.Mkdir(p, 0755)
+	os.Mkdir(p, 0777)
 }
 
 func mkdirAll(p string) {
-	os.MkdirAll(p, 0755)
+	os.MkdirAll(p, 0777)
 }
 
 func MakeJSON(data interface{}) string {
