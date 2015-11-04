@@ -2462,10 +2462,12 @@ func (self *Runtime) reattachToPipestance(psid string, pipestancePath string, sr
 	}
 
 	// If _jobmode exists, make sure we reattach to pipestance in the same job mode.
-	if err := pipestance.VerifyJobMode(); err != nil {
-		pipestance.Unlock()
-		return nil, err
-	}
+    if !readOnly {
+	    if err := pipestance.VerifyJobMode(); err != nil {
+		    pipestance.Unlock()
+		    return nil, err
+	    }
+    }
 
 	// If _metadata exists, unzip it so the pipestance can reads its metadata.
 	if _, err := os.Stat(metadataPath); err == nil {
