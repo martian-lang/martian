@@ -311,7 +311,15 @@ def done():
         "children": rusage_to_dict(resource.getrusage(resource.RUSAGE_CHILDREN))
     }
     metadata.write("jobinfo", jobinfo)
-    sys.exit(0)
+
+    # sys.exit does not actually exit the process but only exits the thread.
+    # If this thread is not the main thread, use os._exit. This won't call
+    # cleanup handlers, flush stdio buffers, etc. But calling done() from
+    # another thread means the process exited with an error so this is okay.
+    if isinstance(threading.current_thread(), threading._MainThread):
+        sys.exit(0)
+    else:
+        os._exit(0)
 
 def stacktrace():
     etype, evalue, tb = sys.exc_info()
