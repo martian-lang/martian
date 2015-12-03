@@ -153,7 +153,9 @@ func (self *Metadata) checkHeartbeat() {
 		}
 		if time.Since(self.lastHeartbeat) > time.Minute*heartbeatTimeout {
 			self.writeRaw("errors", fmt.Sprintf(
-				"Heartbeat not detected for %d minutes. Assuming job has failed",
+				"No heartbeat not detected for %d minutes. Assuming job has failed. This may be " +
+				"due to a user manually terminating the job, or the operating system or cluster " +
+				"terminating it due to resource or time limits.",
 				heartbeatTimeout))
 		}
 	}
