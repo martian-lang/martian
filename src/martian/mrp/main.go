@@ -140,7 +140,7 @@ Options:
                            (Only applies in local jobmode)
     --mempercore=<num>   Set max GB each job may use at one time.
                            (Only applies in non-local jobmodes)
-    --skippreflight      Skips preflight stages.
+    --nopreflight        Skips preflight stages.
     --monitor            Kill jobs when using more than requested memory resources.
     --inspect            Inspect pipestance without resetting failed stages.
     --debug              Enable debug logging for local job manager.
@@ -245,8 +245,8 @@ Options:
 	noExit := opts["--noexit"].(bool)
 	core.LogInfo("options", "--noexit=%v", noExit)
 
-	skipPreflight := opts["--skippreflight"].(bool)
-	core.LogInfo("options", "--skippreflight=%v", skipPreflight)
+	skipPreflight := opts["--nopreflight"].(bool)
+	core.LogInfo("options", "--nopreflight=%v", skipPreflight)
 
 	psid := opts["<pipestance_name>"].(string)
 	invocationPath := opts["<call.mro>"].(string)
