@@ -1015,7 +1015,7 @@ func (self *Fork) postProcess() {
 			distinctErrors[i] = key
 			i++
 		}
-		Print("\nCould not create symlinks: %s", strings.Join(distinctErrors, ", "))
+		Print("\nCould not create symlinks to output files: %s", strings.Join(distinctErrors, ", "))
 	}
 	Print("\n")
 
