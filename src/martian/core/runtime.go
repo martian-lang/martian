@@ -976,6 +976,7 @@ func (self *Fork) postProcess() {
 		}
 	}
 
+	errorTypes := make(map[string]bool)
 	for _, param := range paramList {
 		id := param.getId()
 		value, ok := outs[id]
@@ -989,8 +990,13 @@ func (self *Fork) postProcess() {
 							if param.getTname() != "path" {
 								newValue += "." + param.getTname()
 							}
-							os.Symlink(filePath, newValue)
-							value = newValue
+							if err := os.Symlink(filePath, newValue); err != nil {
+								errMsg := err.Error()[strings.Index(err.Error(), newValue) + len(newValue) + 1:]
+								errorTypes[errMsg] = true
+								value = "null"
+							} else {
+								value = newValue
+							}
 						}
 					}
 				}
@@ -1003,6 +1009,15 @@ func (self *Fork) postProcess() {
 			key = param.getId()
 		}
 		Print("- %s: %v\n", key, value)
+	}
+	if len(errorTypes) > 0 {
+		i := 0
+		distinctErrors := make([]string, len(errorTypes))
+		for key := range errorTypes {
+			distinctErrors[i] = key
+			i++
+		}
+		Print("\nCould not create symlinks to output files: %s", strings.Join(distinctErrors, ", "))
 	}
 	Print("\n")
 
