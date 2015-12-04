@@ -987,8 +987,12 @@ func (self *Fork) postProcess() {
 							if param.getTname() != "path" {
 								newValue += "." + param.getTname()
 							}
-							os.Symlink(filePath, newValue)
-							value = newValue
+							if err := os.Symlink(filePath, newValue); err != nil {
+								Print("\nCould not create symlink: %s (%s)", newValue, err.Error())
+								value = "null"
+							} else {
+								value = newValue
+							}
 						}
 					}
 				}
