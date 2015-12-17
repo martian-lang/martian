@@ -13,6 +13,7 @@ import (
 	"os"
 	"path"
 	"path/filepath"
+	"reflect"
 	"regexp"
 	"sort"
 	"strconv"
@@ -153,9 +154,9 @@ func (self *Metadata) checkHeartbeat() {
 		}
 		if time.Since(self.lastHeartbeat) > time.Minute*heartbeatTimeout {
 			self.writeRaw("errors", fmt.Sprintf(
-				"%s: No heartbeat detected for %d minutes. Assuming job has failed. This may be " +
-				"due to a user manually terminating the job, or the operating system or cluster " +
-				"terminating it due to resource or time limits.",
+				"%s: No heartbeat detected for %d minutes. Assuming job has failed. This may be "+
+					"due to a user manually terminating the job, or the operating system or cluster "+
+					"terminating it due to resource or time limits.",
 				Timestamp(), heartbeatTimeout))
 		}
 	}
@@ -991,7 +992,7 @@ func (self *Fork) postProcess() {
 								newValue += "." + param.getTname()
 							}
 							if err := os.Symlink(filePath, newValue); err != nil {
-								errMsg := err.Error()[strings.Index(err.Error(), newValue) + len(newValue) + 1:]
+								errMsg := err.Error()[strings.Index(err.Error(), newValue)+len(newValue)+1:]
 								errorTypes[errMsg] = true
 								value = "null"
 							} else {
@@ -1328,7 +1329,7 @@ func (self *Node) matchFork(targetArgPermute map[string]interface{}) *Fork {
 	for _, fork := range self.forks {
 		every := true
 		for paramId, argValue := range fork.argPermute {
-			if targetArgPermute[paramId] != argValue {
+			if !reflect.DeepEqual(targetArgPermute[paramId], argValue) {
 				every = false
 				break
 			}
@@ -2479,12 +2480,12 @@ func (self *Runtime) reattachToPipestance(psid string, pipestancePath string, sr
 	}
 
 	// If _jobmode exists, make sure we reattach to pipestance in the same job mode.
-    if !readOnly {
-	    if err := pipestance.VerifyJobMode(); err != nil {
-		    pipestance.Unlock()
-		    return nil, err
-	    }
-    }
+	if !readOnly {
+		if err := pipestance.VerifyJobMode(); err != nil {
+			pipestance.Unlock()
+			return nil, err
+		}
+	}
 
 	// If _metadata exists, unzip it so the pipestance can reads its metadata.
 	if _, err := os.Stat(metadataPath); err == nil {
