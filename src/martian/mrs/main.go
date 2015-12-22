@@ -143,7 +143,7 @@ Options:
 	// Configure Martian runtime.
 	//=========================================================================
 	rt := core.NewRuntimeWithCores(jobMode, vdrMode, profileMode, martianVersion,
-		reqCores, reqMem, reqMemPerCore, stackVars, zip, skipPreflight,
+		reqCores, reqMem, reqMemPerCore, maxParallelJobs, stackVars, zip, skipPreflight,
 		enableMonitor, debug, false)
 	rt.MroCache.CacheMros(mroPath)
 
