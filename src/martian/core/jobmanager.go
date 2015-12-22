@@ -327,6 +327,7 @@ func (self *RemoteJobManager) execJob(shellCmd string, argv []string, envs map[s
 	// no limit, send the job
 	if self.maxParallelJobs <= 0 {
 		self.sendJob(shellCmd, argv, envs, metadata, threads, memGB, fqname, shellName)
+		return
 	}
 
 	// grab job when ready, block until job state changes to a finalized state
