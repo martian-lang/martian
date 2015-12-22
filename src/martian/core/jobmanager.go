@@ -266,13 +266,26 @@ type RemoteJobManager struct {
 	jobSettings      *JobManagerSettings
 	threadingEnabled bool
 	memGBPerCore     int
+	maxParallelJobs  int
+	jobSem           *Semaphore
+	debug            bool
 }
 
-func NewRemoteJobManager(jobMode string, memGBPerCore int) *RemoteJobManager {
+func NewRemoteJobManager(jobMode string, memGBPerCore int, maxParallelJobs int,
+	debug bool) *RemoteJobManager {
 	self := &RemoteJobManager{}
 	self.jobMode = jobMode
 	self.memGBPerCore = memGBPerCore
+	self.maxParallelJobs = maxParallelJobs
+	self.debug = debug
 	self.jobSettings, self.jobCmd, self.jobTemplate, self.threadingEnabled = verifyJobManager(jobMode, memGBPerCore)
+
+	if self.maxParallelJobs > 0 {
+		self.jobSem = NewSemaphore(self.maxParallelJobs)
+	} else {
+		// dummy value to keep struct OK
+		self.jobSem = NewSemaphore(0)
+	}
 	return self
 }
 
@@ -309,6 +322,39 @@ func (self *RemoteJobManager) GetSystemReqs(threads int, memGB int) (int, int) {
 }
 
 func (self *RemoteJobManager) execJob(shellCmd string, argv []string, envs map[string]string,
+	metadata *Metadata, threads int, memGB int, fqname string, shellName string) {
+
+	// no limit, send the job
+	if self.maxParallelJobs <= 0 {
+		self.sendJob(shellCmd, argv, envs, metadata, threads, memGB, fqname, shellName)
+	}
+
+	// grab job when ready, block until job state changes to a finalized state
+	go func() {
+		if self.debug {
+			LogInfo("jobmngr", "Waiting for job: %s", fqname)
+		}
+		// if we want to try to put a more precise cap on cluster execution load,
+		// might be preferable to request num threads here instead of a slot per job
+		self.jobSem.P(1)
+		if self.debug {
+			LogInfo("jobmngr", "Job sent: %s", fqname)
+		}
+		self.sendJob(shellCmd, argv, envs, metadata, threads, memGB, fqname, shellName)
+		for {
+			if state, _ := metadata.getState(""); state == "complete" || state == "failed" {
+				self.jobSem.V(1)
+				if self.debug {
+					LogInfo("jobmngr", "Job finished: %s (%s)", fqname, state)
+				}
+				break
+			}
+			time.Sleep(time.Second * 1)
+		}
+	}()
+}
+
+func (self *RemoteJobManager) sendJob(shellCmd string, argv []string, envs map[string]string,
 	metadata *Metadata, threads int, memGB int, fqname string, shellName string) {
 
 	threads, memGB = self.GetSystemReqs(threads, memGB)
