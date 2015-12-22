@@ -153,9 +153,9 @@ func (self *Metadata) checkHeartbeat() {
 		}
 		if time.Since(self.lastHeartbeat) > time.Minute*heartbeatTimeout {
 			self.writeRaw("errors", fmt.Sprintf(
-				"%s: No heartbeat detected for %d minutes. Assuming job has failed. This may be " +
-				"due to a user manually terminating the job, or the operating system or cluster " +
-				"terminating it due to resource or time limits.",
+				"%s: No heartbeat detected for %d minutes. Assuming job has failed. This may be "+
+					"due to a user manually terminating the job, or the operating system or cluster "+
+					"terminating it due to resource or time limits.",
 				Timestamp(), heartbeatTimeout))
 		}
 	}
@@ -991,7 +991,7 @@ func (self *Fork) postProcess() {
 								newValue += "." + param.getTname()
 							}
 							if err := os.Symlink(filePath, newValue); err != nil {
-								errMsg := err.Error()[strings.Index(err.Error(), newValue) + len(newValue) + 1:]
+								errMsg := err.Error()[strings.Index(err.Error(), newValue)+len(newValue)+1:]
 								errorTypes[errMsg] = true
 								value = "null"
 							} else {
@@ -2306,12 +2306,13 @@ type Runtime struct {
 
 func NewRuntime(jobMode string, vdrMode string, profileMode string, martianVersion string) *Runtime {
 	return NewRuntimeWithCores(jobMode, vdrMode, profileMode, martianVersion,
-		-1, -1, -1, -1, false, false, false, false, false, false)
+		-1, -1, -1, -1, -1, false, false, false, false, false, false)
 }
 
 func NewRuntimeWithCores(jobMode string, vdrMode string, profileMode string, martianVersion string,
-	reqCores int, reqMem int, reqMemPerCore int, maxParallelJobs int, enableStackVars bool,
-	enableZip bool, skipPreflight bool, enableMonitor bool, debug bool, stest bool) *Runtime {
+	reqCores int, reqMem int, reqMemPerCore int, maxParallelJobs int, jobFreqMillis int,
+	enableStackVars bool, enableZip bool, skipPreflight bool, enableMonitor bool,
+	debug bool, stest bool) *Runtime {
 
 	self := &Runtime{}
 	self.adaptersPath = RelPath(path.Join("..", "adapters"))
@@ -2330,7 +2331,8 @@ func NewRuntimeWithCores(jobMode string, vdrMode string, profileMode string, mar
 	if self.jobMode == "local" {
 		self.JobManager = self.LocalJobManager
 	} else {
-		self.JobManager = NewRemoteJobManager(self.jobMode, reqMemPerCore, maxParallelJobs, debug)
+		self.JobManager = NewRemoteJobManager(self.jobMode, reqMemPerCore, maxParallelJobs,
+			jobFreqMillis, debug)
 	}
 	VerifyVDRMode(self.vdrMode)
 	VerifyProfileMode(self.profileMode)
@@ -2479,12 +2481,12 @@ func (self *Runtime) reattachToPipestance(psid string, pipestancePath string, sr
 	}
 
 	// If _jobmode exists, make sure we reattach to pipestance in the same job mode.
-    if !readOnly {
-	    if err := pipestance.VerifyJobMode(); err != nil {
-		    pipestance.Unlock()
-		    return nil, err
-	    }
-    }
+	if !readOnly {
+		if err := pipestance.VerifyJobMode(); err != nil {
+			pipestance.Unlock()
+			return nil, err
+		}
+	}
 
 	// If _metadata exists, unzip it so the pipestance can reads its metadata.
 	if _, err := os.Stat(metadataPath); err == nil {
