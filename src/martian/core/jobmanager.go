@@ -267,16 +267,19 @@ type RemoteJobManager struct {
 	threadingEnabled bool
 	memGBPerCore     int
 	maxJobs          int
+	jobFreqMillis    int
 	jobSem           *Semaphore
+	limiter          *time.Ticker
 	debug            bool
 }
 
-func NewRemoteJobManager(jobMode string, memGBPerCore int, maxJobs int,
+func NewRemoteJobManager(jobMode string, memGBPerCore int, maxJobs int, jobFreqMillis int,
 	debug bool) *RemoteJobManager {
 	self := &RemoteJobManager{}
 	self.jobMode = jobMode
 	self.memGBPerCore = memGBPerCore
 	self.maxJobs = maxJobs
+	self.jobFreqMillis = jobFreqMillis
 	self.debug = debug
 	self.jobSettings, self.jobCmd, self.jobTemplate, self.threadingEnabled = verifyJobManager(jobMode, memGBPerCore)
 
@@ -285,6 +288,12 @@ func NewRemoteJobManager(jobMode string, memGBPerCore int, maxJobs int,
 	} else {
 		// dummy value to keep struct OK
 		self.jobSem = NewSemaphore(0)
+	}
+	if self.jobFreqMillis > 0 {
+		self.limiter = time.NewTicker(time.Millisecond * time.Duration(self.jobFreqMillis))
+	} else {
+		// dummy limiter to keep struct OK
+		self.limiter = time.NewTicker(time.Millisecond * 1)
 	}
 	return self
 }
@@ -358,6 +367,12 @@ func (self *RemoteJobManager) execJob(shellCmd string, argv []string, envs map[s
 func (self *RemoteJobManager) sendJob(shellCmd string, argv []string, envs map[string]string,
 	metadata *Metadata, threads int, memGB int, fqname string, shellName string) {
 
+	if self.jobFreqMillis > 0 {
+		<-(self.limiter.C)
+		if self.debug {
+			LogInfo("jobmngr", "Job rate-limit released: %s", fqname)
+		}
+	}
 	threads, memGB = self.GetSystemReqs(threads, memGB)
 
 	argv = append([]string{shellCmd}, argv...)
