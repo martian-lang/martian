@@ -2306,12 +2306,12 @@ type Runtime struct {
 
 func NewRuntime(jobMode string, vdrMode string, profileMode string, martianVersion string) *Runtime {
 	return NewRuntimeWithCores(jobMode, vdrMode, profileMode, martianVersion,
-		-1, -1, -1, false, false, false, false, false, false)
+		-1, -1, -1, -1, false, false, false, false, false, false)
 }
 
 func NewRuntimeWithCores(jobMode string, vdrMode string, profileMode string, martianVersion string,
-	reqCores int, reqMem int, reqMemPerCore int, enableStackVars bool, enableZip bool,
-	skipPreflight bool, enableMonitor bool, debug bool, stest bool) *Runtime {
+	reqCores int, reqMem int, reqMemPerCore int, maxParallelJobs int, enableStackVars bool,
+	enableZip bool, skipPreflight bool, enableMonitor bool, debug bool, stest bool) *Runtime {
 
 	self := &Runtime{}
 	self.adaptersPath = RelPath(path.Join("..", "adapters"))
@@ -2330,7 +2330,7 @@ func NewRuntimeWithCores(jobMode string, vdrMode string, profileMode string, mar
 	if self.jobMode == "local" {
 		self.JobManager = self.LocalJobManager
 	} else {
-		self.JobManager = NewRemoteJobManager(self.jobMode, reqMemPerCore)
+		self.JobManager = NewRemoteJobManager(self.jobMode, reqMemPerCore, maxParallelJobs, debug)
 	}
 	VerifyVDRMode(self.vdrMode)
 	VerifyProfileMode(self.profileMode)

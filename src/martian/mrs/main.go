@@ -32,23 +32,25 @@ Usage:
     mrs -h | --help | --version
 
 Options:
-    --jobmode=<name>     Run jobs on custom or local job manager.
-                           Valid job managers are local, sge, lsf or .template file
-                           Defaults to local.
-    --profile=<name>     Enables stage performance profiling.
-                           Valid options are cpu, mem, line and disable.
-                           Defaults to disable.
-    --stackvars          Print local variables in stage code stack trace.
-    --localcores=<num>   Set max cores the pipeline may request at one time.
-                           (Only applies in local jobmode)
-    --localmem=<num>     Set max GB the pipeline may request at one time.
-                           (Only applies in local jobmode)
-    --mempercore=<num>   Set max GB each job may use at one time.
-                           (Only applies in non-local jobmodes)
-    --monitor            Kill jobs when using more than requested memory resources.
-    --debug              Enable debug logging for local job manager.
-    -h --help            Show this message.
-    --version            Show version.`
+    --jobmode=<name>         Run jobs on custom or local job manager.
+                               Valid job managers are local, sge, lsf or .template file
+                               Defaults to local.
+    --profile=<name>         Enables stage performance profiling.
+                               Valid options are cpu, mem, line and disable.
+                               Defaults to disable.
+    --stackvars              Print local variables in stage code stack trace.
+    --localcores=<num>       Set max cores the pipeline may request at one time.
+                               (Only applies in local jobmode)
+    --localmem=<num>         Set max GB the pipeline may request at one time.
+                               (Only applies in local jobmode)
+    --mempercore=<num>       Set max GB each job may use at one time.
+                               (Only applies in non-local jobmodes)
+    --maxparalleljobs=<num>  Set maximum number of concurrent jobs at one time.
+                               (Only applies in non-local jobmodes)
+    --monitor                Kill jobs when using more than requested memory resources.
+    --debug                  Enable debug logging for local job manager.
+    -h --help                Show this message.
+    --version                Show version.`
 	martianVersion := core.GetVersion()
 	opts, _ := docopt.Parse(doc, nil, true, martianVersion, false)
 	core.Println("Martian Single-Stage Runtime - %s", martianVersion)
@@ -81,6 +83,15 @@ Options:
 		if value, err := strconv.Atoi(value.(string)); err == nil {
 			reqMemPerCore = value
 			core.LogInfo("options", "--mempercore=%d", reqMemPerCore)
+		}
+	}
+
+	// Max parallel jobs.
+	maxParallelJobs := -1
+	if value := opts["--maxparalleljobs"]; value != nil {
+		if value, err := strconv.Atoi(value.(string)); err == nil {
+			maxParallelJobs = value
+			core.LogInfo("options", "--maxparalleljobs=%d", maxParallelJobs)
 		}
 	}
 
