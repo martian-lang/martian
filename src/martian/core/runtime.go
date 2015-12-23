@@ -966,7 +966,8 @@ func (self *Fork) vdrKill() *VDRKillReport {
 	for _, p := range killReport.Paths {
 		os.RemoveAll(p)
 	}
-	// TODO: add date to vdrkill, as this is when deletion occurred
+	// update timestamp to mark actual kill time
+	killReport.Timestamp = Timestamp()
 	self.metadata.write("vdrkill", killReport)
 	return killReport
 }
@@ -1693,10 +1694,25 @@ func (self *Node) refreshState() {
 // VDR
 //
 type VDRKillReport struct {
-	Count  uint     `json:"count"`
-	Size   uint64   `json:"size"`
-	Paths  []string `json:"paths"`
-	Errors []string `json:"errors"`
+	Count     uint     `json:"count"`
+	Size      uint64   `json:"size"`
+	Timestamp string   `json:"timestamp"`
+	Paths     []string `json:"paths"`
+	Errors    []string `json:"errors"`
+}
+
+type ByTimestamp []*VDRKillReport
+
+func (self ByTimestamp) Len() int {
+	return len(self)
+}
+
+func (self ByTimestamp) Swap(i, j int) {
+	self[i], self[j] = self[j], self[i]
+}
+
+func (self ByTimestamp) Less(i, j int) bool {
+	return self[i].Timestamp < self[j].Timestamp
 }
 
 func mergeVDRKillReports(killReports []*VDRKillReport) *VDRKillReport {
@@ -1706,6 +1722,10 @@ func mergeVDRKillReports(killReports []*VDRKillReport) *VDRKillReport {
 		allKillReport.Count += killReport.Count
 		allKillReport.Errors = append(allKillReport.Errors, killReport.Errors...)
 		allKillReport.Paths = append(allKillReport.Paths, killReport.Paths...)
+	}
+	sort.Sort(ByTimestamp(killReports))
+	if len(killReports) > 0 {
+		allKillReport.Timestamp = killReports[len(killReports)-1].Timestamp
 	}
 	return allKillReport
 }
