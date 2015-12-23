@@ -76,6 +76,13 @@ type PerfInfo struct {
 	VdrBytes        uint64    `json:"vdr_bytes"`
 }
 
+func (self *PerfInfo) markOutputAsVDR() {
+	self.VdrBytes = self.OutputBytes
+	self.VdrFiles = self.OutputFiles
+	self.OutputBytes = 0
+	self.OutputFiles = 0
+}
+
 type ChunkPerfInfo struct {
 	Index      int       `json:"index"`
 	ChunkStats *PerfInfo `json:"chunk_stats"`
@@ -140,7 +147,7 @@ func reduceJobInfo(jobInfo *JobInfo, outputPaths []string, numThreads int) *Perf
 	return perfInfo
 }
 
-func ComputeStats(perfInfos []*PerfInfo, outputPaths []string, vdrKillReport *VDRKillReport) *PerfInfo {
+func ComputeStats(perfInfos []*PerfInfo, outputPaths []string, vdrKillReport *VDRKillReport, pathsVDR bool) *PerfInfo {
 	aggPerfInfo := &PerfInfo{}
 	for _, perfInfo := range perfInfos {
 		if aggPerfInfo.Start.IsZero() || (!perfInfo.Start.IsZero() && aggPerfInfo.Start.After(perfInfo.Start)) {
@@ -180,8 +187,14 @@ func ComputeStats(perfInfos []*PerfInfo, outputPaths []string, vdrKillReport *VD
 	}
 	aggPerfInfo.WallTime = aggPerfInfo.End.Sub(aggPerfInfo.Start).Seconds()
 	outputFiles, outputBytes := GetDirectorySize(outputPaths)
-	aggPerfInfo.OutputFiles += outputFiles
-	aggPerfInfo.OutputBytes += outputBytes
+
+	if pathsVDR {
+		aggPerfInfo.VdrFiles += outputFiles
+		aggPerfInfo.VdrBytes += outputBytes
+	} else {
+		aggPerfInfo.OutputFiles += outputFiles
+		aggPerfInfo.OutputBytes += outputBytes
+	}
 	aggPerfInfo.TotalFiles = aggPerfInfo.OutputFiles + aggPerfInfo.VdrFiles
 	aggPerfInfo.TotalBytes = aggPerfInfo.OutputBytes + aggPerfInfo.VdrBytes
 	return aggPerfInfo
