@@ -147,7 +147,7 @@ func reduceJobInfo(jobInfo *JobInfo, outputPaths []string, numThreads int) *Perf
 	return perfInfo
 }
 
-func ComputeStats(perfInfos []*PerfInfo, outputPaths []string, vdrKillReport *VDRKillReport, outputPathsVDR bool) *PerfInfo {
+func ComputeStats(perfInfos []*PerfInfo, outputPaths []string) *PerfInfo {
 	aggPerfInfo := &PerfInfo{}
 	for _, perfInfo := range perfInfos {
 		if aggPerfInfo.Start.IsZero() || (!perfInfo.Start.IsZero() && aggPerfInfo.Start.After(perfInfo.Start)) {
@@ -169,32 +169,18 @@ func ComputeStats(perfInfos []*PerfInfo, outputPaths []string, vdrKillReport *VD
 		aggPerfInfo.OutputBytes += perfInfo.OutputBytes
 		aggPerfInfo.UserTime += perfInfo.UserTime
 		aggPerfInfo.SystemTime += perfInfo.SystemTime
-
-		if vdrKillReport == nil {
-			// If VDR kill report is nil, use perf reports' VDR stats
-			aggPerfInfo.VdrFiles += perfInfo.VdrFiles
-			aggPerfInfo.VdrBytes += perfInfo.VdrBytes
-		}
+		aggPerfInfo.VdrFiles += perfInfo.VdrFiles
+		aggPerfInfo.VdrBytes += perfInfo.VdrBytes
 	}
 	if aggPerfInfo.Duration > 0 {
 		aggPerfInfo.InBlocksRate = float64(aggPerfInfo.InBlocks) / aggPerfInfo.Duration
 		aggPerfInfo.OutBlocksRate = float64(aggPerfInfo.OutBlocks) / aggPerfInfo.Duration
 		aggPerfInfo.TotalBlocksRate = float64(aggPerfInfo.TotalBlocks) / aggPerfInfo.Duration
 	}
-	if vdrKillReport != nil {
-		aggPerfInfo.VdrFiles = vdrKillReport.Count
-		aggPerfInfo.VdrBytes = vdrKillReport.Size
-	}
 	aggPerfInfo.WallTime = aggPerfInfo.End.Sub(aggPerfInfo.Start).Seconds()
 	outputFiles, outputBytes := GetDirectorySize(outputPaths)
-
-	if outputPathsVDR {
-		aggPerfInfo.VdrFiles += outputFiles
-		aggPerfInfo.VdrBytes += outputBytes
-	} else {
-		aggPerfInfo.OutputFiles += outputFiles
-		aggPerfInfo.OutputBytes += outputBytes
-	}
+	aggPerfInfo.OutputFiles += outputFiles
+	aggPerfInfo.OutputBytes += outputBytes
 	aggPerfInfo.TotalFiles = aggPerfInfo.OutputFiles + aggPerfInfo.VdrFiles
 	aggPerfInfo.TotalBytes = aggPerfInfo.OutputBytes + aggPerfInfo.VdrBytes
 	return aggPerfInfo

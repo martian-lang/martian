@@ -890,6 +890,40 @@ func (self *Fork) cachePerf() {
 	self.perfCache = &ForkPerfCache{perfInfo, vdrKillReport}
 }
 
+func (self *Fork) updatePerfPostVDR() {
+	perfInfo, vdrKillReport := self.serializePerf()
+	// update cache to change output bytes to vdr bytes
+	// use VDR rules to keep chunk-level granularity
+	if self.deleteOnVdrKill() {
+		if self.node.volatile {
+			perfInfo.SplitStats.markOutputAsVDR()
+			perfInfo.JoinStats.markOutputAsVDR()
+		}
+		for _, chunk := range perfInfo.Chunks {
+			chunk.ChunkStats.markOutputAsVDR()
+		}
+
+		// don't think the overflow is possible but just to be sure
+		if vdrKillReport.Count < perfInfo.ForkStats.OutputFiles {
+			perfInfo.ForkStats.OutputFiles -= vdrKillReport.Count
+			perfInfo.ForkStats.VdrFiles += vdrKillReport.Count
+		} else {
+			perfInfo.ForkStats.VdrFiles += perfInfo.ForkStats.OutputFiles
+			perfInfo.ForkStats.OutputFiles = 0
+		}
+
+		if vdrKillReport.Size < perfInfo.ForkStats.OutputBytes {
+			perfInfo.ForkStats.OutputBytes -= vdrKillReport.Size
+			perfInfo.ForkStats.VdrBytes += vdrKillReport.Size
+		} else {
+			perfInfo.ForkStats.VdrBytes += perfInfo.ForkStats.OutputBytes
+			perfInfo.ForkStats.OutputBytes = 0
+		}
+	}
+
+	self.perfCache = &ForkPerfCache{perfInfo, vdrKillReport}
+}
+
 func (self *Fork) deleteOnVdrKill() bool {
 	return self.node.rt.vdrMode != "disable"
 }
@@ -969,6 +1003,7 @@ func (self *Fork) vdrKill() *VDRKillReport {
 	// update timestamp to mark actual kill time
 	killReport.Timestamp = Timestamp()
 	self.metadata.write("vdrkill", killReport)
+	self.updatePerfPostVDR()
 	return killReport
 }
 
@@ -1121,9 +1156,6 @@ func (self *Fork) serializePerf() (*ForkPerfInfo, *VDRKillReport) {
 		chunkSer := chunk.serializePerf()
 		chunks = append(chunks, chunkSer)
 		if chunkSer.ChunkStats != nil {
-			if self.deleteOnVdrKill() {
-				chunkSer.ChunkStats.markOutputAsVDR()
-			}
 			stats = append(stats, chunkSer.ChunkStats)
 		}
 	}
@@ -1131,18 +1163,12 @@ func (self *Fork) serializePerf() (*ForkPerfInfo, *VDRKillReport) {
 	numThreads, _ := self.node.getJobReqs(nil)
 	splitStats := self.split_metadata.serializePerf(numThreads)
 	if splitStats != nil {
-		if self.node.volatile && self.deleteOnVdrKill() {
-			splitStats.markOutputAsVDR()
-		}
 		stats = append(stats, splitStats)
 	}
 
 	numThreads, _ = self.node.getJobReqs(self.stageDefs.JoinDef)
 	joinStats := self.join_metadata.serializePerf(numThreads)
 	if joinStats != nil {
-		if self.node.volatile && self.deleteOnVdrKill() {
-			joinStats.markOutputAsVDR()
-		}
 		stats = append(stats, joinStats)
 	}
 
@@ -1154,11 +1180,11 @@ func (self *Fork) serializePerf() (*ForkPerfInfo, *VDRKillReport) {
 		killReports = append(killReports, subforkKillReport)
 	}
 	killReport = mergeVDRKillReports(killReports)
-	fpaths, _ := self.metadata.enumerateFiles()
 
 	forkStats := &PerfInfo{}
+	fpaths, _ := self.metadata.enumerateFiles()
 	if len(stats) > 0 {
-		forkStats = ComputeStats(stats, fpaths, killReport, self.deleteOnVdrKill())
+		forkStats = ComputeStats(stats, fpaths)
 	}
 	return &ForkPerfInfo{
 		Stages:     self.getStages(),
