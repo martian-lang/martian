@@ -153,9 +153,9 @@ func (self *Metadata) checkHeartbeat() {
 		}
 		if time.Since(self.lastHeartbeat) > time.Minute*heartbeatTimeout {
 			self.writeRaw("errors", fmt.Sprintf(
-				"%s: No heartbeat detected for %d minutes. Assuming job has failed. This may be " +
-				"due to a user manually terminating the job, or the operating system or cluster " +
-				"terminating it due to resource or time limits.",
+				"%s: No heartbeat detected for %d minutes. Assuming job has failed. This may be "+
+					"due to a user manually terminating the job, or the operating system or cluster "+
+					"terminating it due to resource or time limits.",
 				Timestamp(), heartbeatTimeout))
 		}
 	}
@@ -890,6 +890,61 @@ func (self *Fork) cachePerf() {
 	self.perfCache = &ForkPerfCache{perfInfo, vdrKillReport}
 }
 
+func (self *Fork) updatePerfPostVDR() {
+	perfInfo, vdrKillReport := self.serializePerf()
+	// update cache to change output bytes to vdr bytes
+	// use VDR rules to keep chunk-level granularity
+	if self.deleteOnVdrKill() {
+		if self.node.volatile {
+			perfInfo.SplitStats.markOutputAsVDR()
+			perfInfo.JoinStats.markOutputAsVDR()
+		}
+		for _, chunk := range perfInfo.Chunks {
+			chunk.ChunkStats.markOutputAsVDR()
+		}
+
+		// if vdrmode=rolling, VDR info for subforks have been
+		// computed bottom-up and is already accounted for in the
+		// PerfInfo that is passed to this method; so just
+		// look at the local fork's VDR report for information
+		if self.node.rt.vdrMode == "rolling" {
+			forkNodeVDRReport, ok := self.getVdrKillReport()
+			if ok {
+				perfInfo.ForkStats.OutputFiles -= forkNodeVDRReport.Count
+				perfInfo.ForkStats.OutputBytes -= forkNodeVDRReport.Size
+				perfInfo.ForkStats.VdrFiles += forkNodeVDRReport.Count
+				perfInfo.ForkStats.VdrBytes += forkNodeVDRReport.Size
+			}
+		} else {
+			// ensure we aren't double-counting file removal
+			if vdrKillReport.Count < perfInfo.ForkStats.OutputFiles {
+				perfInfo.ForkStats.OutputFiles -= vdrKillReport.Count
+				perfInfo.ForkStats.VdrFiles += vdrKillReport.Count
+			} else {
+				perfInfo.ForkStats.VdrFiles += perfInfo.ForkStats.OutputFiles
+				perfInfo.ForkStats.OutputFiles = 0
+			}
+
+			if vdrKillReport.Size < perfInfo.ForkStats.OutputBytes {
+				perfInfo.ForkStats.OutputBytes -= vdrKillReport.Size
+				perfInfo.ForkStats.VdrBytes += vdrKillReport.Size
+			} else {
+				perfInfo.ForkStats.VdrBytes += perfInfo.ForkStats.OutputBytes
+				perfInfo.ForkStats.OutputBytes = 0
+			}
+		}
+	}
+
+	self.perfCache = &ForkPerfCache{perfInfo, vdrKillReport}
+}
+
+func (self *Fork) deleteOnVdrKill() bool {
+	return self.node.rt.vdrMode != "disable"
+}
+
+/**
+ * Return VDR kill report, as well as w
+ */
 func (self *Fork) getVdrKillReport() (*VDRKillReport, bool) {
 	killReport := &VDRKillReport{}
 	ok := false
@@ -898,19 +953,14 @@ func (self *Fork) getVdrKillReport() (*VDRKillReport, bool) {
 		if err := json.Unmarshal([]byte(data), &killReport); err == nil {
 			ok = true
 		}
+	} else {
+		killReport = self.makeVdrKillReport()
 	}
 	return killReport, ok
 }
 
-func (self *Fork) vdrKill() *VDRKillReport {
+func (self *Fork) makeVdrKillReport() *VDRKillReport {
 	killReport := &VDRKillReport{}
-	if self.node.rt.vdrMode == "disable" {
-		return killReport
-	}
-	if killReport, ok := self.getVdrKillReport(); ok {
-		return killReport
-	}
-
 	killPaths := []string{}
 	// For volatile nodes, kill fork-level files.
 	if self.node.volatile {
@@ -947,9 +997,27 @@ func (self *Fork) vdrKill() *VDRKillReport {
 			return nil
 		})
 		killReport.Paths = append(killReport.Paths, p)
+	}
+	return killReport
+}
+
+func (self *Fork) vdrKill() *VDRKillReport {
+	killReport := &VDRKillReport{}
+	if !self.deleteOnVdrKill() {
+		return killReport
+	}
+	killReport, ok := self.getVdrKillReport()
+	if ok {
+		return killReport
+	}
+
+	for _, p := range killReport.Paths {
 		os.RemoveAll(p)
 	}
+	// update timestamp to mark actual kill time
+	killReport.Timestamp = Timestamp()
 	self.metadata.write("vdrkill", killReport)
+	self.updatePerfPostVDR()
 	return killReport
 }
 
@@ -991,7 +1059,7 @@ func (self *Fork) postProcess() {
 								newValue += "." + param.getTname()
 							}
 							if err := os.Symlink(filePath, newValue); err != nil {
-								errMsg := err.Error()[strings.Index(err.Error(), newValue) + len(newValue) + 1:]
+								errMsg := err.Error()[strings.Index(err.Error(), newValue)+len(newValue)+1:]
 								errorTypes[errMsg] = true
 								value = "null"
 							} else {
@@ -1126,11 +1194,11 @@ func (self *Fork) serializePerf() (*ForkPerfInfo, *VDRKillReport) {
 		killReports = append(killReports, subforkKillReport)
 	}
 	killReport = mergeVDRKillReports(killReports)
-	fpaths, _ := self.metadata.enumerateFiles()
 
 	forkStats := &PerfInfo{}
+	fpaths, _ := self.metadata.enumerateFiles()
 	if len(stats) > 0 {
-		forkStats = ComputeStats(stats, fpaths, killReport)
+		forkStats = ComputeStats(stats, fpaths)
 	}
 	return &ForkPerfInfo{
 		Stages:     self.getStages(),
@@ -1532,7 +1600,7 @@ func (self *Node) postProcess() {
 }
 
 func (self *Node) cachePerf() {
-	if _, ok := self.vdrKill(); ok {
+	if self.vdrKillable() {
 		// Cache all fork performance info if node can be VDR-ed.
 		for _, fork := range self.forks {
 			fork.cachePerf()
@@ -1608,11 +1676,11 @@ func (self *Node) step() {
 	case "complete":
 		if self.rt.vdrMode == "rolling" {
 			for _, node := range self.prenodes {
-				node.getNode().vdrKill()
 				node.getNode().cachePerf()
+				node.getNode().vdrKill()
 			}
-			self.vdrKill()
 			self.cachePerf()
+			self.vdrKill()
 		}
 		for _, node := range self.postnodes {
 			self.addFrontierNode(node)
@@ -1666,10 +1734,25 @@ func (self *Node) refreshState() {
 // VDR
 //
 type VDRKillReport struct {
-	Count  uint     `json:"count"`
-	Size   uint64   `json:"size"`
-	Paths  []string `json:"paths"`
-	Errors []string `json:"errors"`
+	Count     uint     `json:"count"`
+	Size      uint64   `json:"size"`
+	Timestamp string   `json:"timestamp"`
+	Paths     []string `json:"paths"`
+	Errors    []string `json:"errors"`
+}
+
+type ByTimestamp []*VDRKillReport
+
+func (self ByTimestamp) Len() int {
+	return len(self)
+}
+
+func (self ByTimestamp) Swap(i, j int) {
+	self[i], self[j] = self[j], self[i]
+}
+
+func (self ByTimestamp) Less(i, j int) bool {
+	return self[i].Timestamp < self[j].Timestamp
 }
 
 func mergeVDRKillReports(killReports []*VDRKillReport) *VDRKillReport {
@@ -1680,17 +1763,25 @@ func mergeVDRKillReports(killReports []*VDRKillReport) *VDRKillReport {
 		allKillReport.Errors = append(allKillReport.Errors, killReport.Errors...)
 		allKillReport.Paths = append(allKillReport.Paths, killReport.Paths...)
 	}
+	sort.Sort(ByTimestamp(killReports))
+	if len(killReports) > 0 {
+		allKillReport.Timestamp = killReports[len(killReports)-1].Timestamp
+	}
 	return allKillReport
+}
+
+func (self *Node) vdrKillable() bool {
+	for _, node := range self.postnodes {
+		if node.getNode().state != "complete" {
+			return false
+		}
+	}
+	return true
 }
 
 func (self *Node) vdrKill() (*VDRKillReport, bool) {
 	killReports := []*VDRKillReport{}
-	ok := true
-	for _, node := range self.postnodes {
-		if node.getNode().state != "complete" {
-			ok = false
-		}
-	}
+	ok := self.vdrKillable()
 	if ok {
 		for _, fork := range self.forks {
 			killReports = append(killReports, fork.vdrKill())
@@ -2215,6 +2306,7 @@ func (self *Pipestance) Immortalize() {
 func (self *Pipestance) VDRKill() *VDRKillReport {
 	killReports := []*VDRKillReport{}
 	for _, node := range self.node.allNodes() {
+		node.cachePerf()
 		killReport, _ := node.vdrKill()
 		killReports = append(killReports, killReport)
 	}
@@ -2479,12 +2571,12 @@ func (self *Runtime) reattachToPipestance(psid string, pipestancePath string, sr
 	}
 
 	// If _jobmode exists, make sure we reattach to pipestance in the same job mode.
-    if !readOnly {
-	    if err := pipestance.VerifyJobMode(); err != nil {
-		    pipestance.Unlock()
-		    return nil, err
-	    }
-    }
+	if !readOnly {
+		if err := pipestance.VerifyJobMode(); err != nil {
+			pipestance.Unlock()
+			return nil, err
+		}
+	}
 
 	// If _metadata exists, unzip it so the pipestance can reads its metadata.
 	if _, err := os.Stat(metadataPath); err == nil {
