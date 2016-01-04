@@ -903,21 +903,35 @@ func (self *Fork) updatePerfPostVDR() {
 			chunk.ChunkStats.markOutputAsVDR()
 		}
 
-		// don't think the overflow is possible but just to be sure
-		if vdrKillReport.Count < perfInfo.ForkStats.OutputFiles {
-			perfInfo.ForkStats.OutputFiles -= vdrKillReport.Count
-			perfInfo.ForkStats.VdrFiles += vdrKillReport.Count
+		// if vdrmode=rolling, VDR info for subforks have been
+		// computed bottom-up and is already accounted for in the
+		// PerfInfo that is passed to this method; so just
+		// look at the local fork's VDR report for information
+		if self.node.rt.vdrMode == "rolling" {
+			forkNodeVDRReport, ok := self.getVdrKillReport()
+			if ok {
+				perfInfo.ForkStats.OutputFiles -= forkNodeVDRReport.Count
+				perfInfo.ForkStats.OutputBytes -= forkNodeVDRReport.Size
+				perfInfo.ForkStats.VdrFiles += forkNodeVDRReport.Count
+				perfInfo.ForkStats.VdrBytes += forkNodeVDRReport.Size
+			}
 		} else {
-			perfInfo.ForkStats.VdrFiles += perfInfo.ForkStats.OutputFiles
-			perfInfo.ForkStats.OutputFiles = 0
-		}
+			// ensure we aren't double-counting file removal
+			if vdrKillReport.Count < perfInfo.ForkStats.OutputFiles {
+				perfInfo.ForkStats.OutputFiles -= vdrKillReport.Count
+				perfInfo.ForkStats.VdrFiles += vdrKillReport.Count
+			} else {
+				perfInfo.ForkStats.VdrFiles += perfInfo.ForkStats.OutputFiles
+				perfInfo.ForkStats.OutputFiles = 0
+			}
 
-		if vdrKillReport.Size < perfInfo.ForkStats.OutputBytes {
-			perfInfo.ForkStats.OutputBytes -= vdrKillReport.Size
-			perfInfo.ForkStats.VdrBytes += vdrKillReport.Size
-		} else {
-			perfInfo.ForkStats.VdrBytes += perfInfo.ForkStats.OutputBytes
-			perfInfo.ForkStats.OutputBytes = 0
+			if vdrKillReport.Size < perfInfo.ForkStats.OutputBytes {
+				perfInfo.ForkStats.OutputBytes -= vdrKillReport.Size
+				perfInfo.ForkStats.VdrBytes += vdrKillReport.Size
+			} else {
+				perfInfo.ForkStats.VdrBytes += perfInfo.ForkStats.OutputBytes
+				perfInfo.ForkStats.OutputBytes = 0
+			}
 		}
 	}
 
