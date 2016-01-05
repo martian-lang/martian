@@ -140,7 +140,7 @@ Options:
                                (Only applies in local jobmode)
     --mempercore=<num>       Set max GB each job may use at one time.
                                (Only applies in non-local jobmodes)
-    --maxparalleljobs=<num>  Set maximum number of concurrent jobs at one time.
+    --maxjobs=<num>          Set maximum number of concurrent jobs at one time.
                                (Only applies in non-local jobmodes)
     --nopreflight            Skips preflight stages.
     --monitor                Kill jobs when using more than requested memory resources.
@@ -185,11 +185,11 @@ Options:
 	}
 
 	// Max parallel jobs.
-	maxParallelJobs := -1
-	if value := opts["--maxparalleljobs"]; value != nil {
+	maxJobs := -1
+	if value := opts["--maxjobs"]; value != nil {
 		if value, err := strconv.Atoi(value.(string)); err == nil {
-			maxParallelJobs = value
-			core.LogInfo("options", "--maxparalleljobs=%d", maxParallelJobs)
+			maxJobs = value
+			core.LogInfo("options", "--maxjobs=%d", maxJobs)
 		}
 	}
 
@@ -289,7 +289,7 @@ Options:
 	// Configure Martian runtime.
 	//=========================================================================
 	rt := core.NewRuntimeWithCores(jobMode, vdrMode, profileMode, martianVersion,
-		reqCores, reqMem, reqMemPerCore, maxParallelJobs, stackVars, zip,
+		reqCores, reqMem, reqMemPerCore, maxJobs, stackVars, zip,
 		skipPreflight, enableMonitor, debug, stest)
 	rt.MroCache.CacheMros(mroPath)
 

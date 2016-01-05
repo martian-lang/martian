@@ -266,22 +266,22 @@ type RemoteJobManager struct {
 	jobSettings      *JobManagerSettings
 	threadingEnabled bool
 	memGBPerCore     int
-	maxParallelJobs  int
+	maxJobs          int
 	jobSem           *Semaphore
 	debug            bool
 }
 
-func NewRemoteJobManager(jobMode string, memGBPerCore int, maxParallelJobs int,
+func NewRemoteJobManager(jobMode string, memGBPerCore int, maxJobs int,
 	debug bool) *RemoteJobManager {
 	self := &RemoteJobManager{}
 	self.jobMode = jobMode
 	self.memGBPerCore = memGBPerCore
-	self.maxParallelJobs = maxParallelJobs
+	self.maxJobs = maxJobs
 	self.debug = debug
 	self.jobSettings, self.jobCmd, self.jobTemplate, self.threadingEnabled = verifyJobManager(jobMode, memGBPerCore)
 
-	if self.maxParallelJobs > 0 {
-		self.jobSem = NewSemaphore(self.maxParallelJobs)
+	if self.maxJobs > 0 {
+		self.jobSem = NewSemaphore(self.maxJobs)
 	} else {
 		// dummy value to keep struct OK
 		self.jobSem = NewSemaphore(0)
@@ -325,7 +325,7 @@ func (self *RemoteJobManager) execJob(shellCmd string, argv []string, envs map[s
 	metadata *Metadata, threads int, memGB int, fqname string, shellName string) {
 
 	// no limit, send the job
-	if self.maxParallelJobs <= 0 {
+	if self.maxJobs <= 0 {
 		self.sendJob(shellCmd, argv, envs, metadata, threads, memGB, fqname, shellName)
 		return
 	}

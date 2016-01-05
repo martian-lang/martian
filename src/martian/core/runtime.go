@@ -2402,7 +2402,7 @@ func NewRuntime(jobMode string, vdrMode string, profileMode string, martianVersi
 }
 
 func NewRuntimeWithCores(jobMode string, vdrMode string, profileMode string, martianVersion string,
-	reqCores int, reqMem int, reqMemPerCore int, maxParallelJobs int, enableStackVars bool,
+	reqCores int, reqMem int, reqMemPerCore int, maxJobs int, enableStackVars bool,
 	enableZip bool, skipPreflight bool, enableMonitor bool, debug bool, stest bool) *Runtime {
 
 	self := &Runtime{}
@@ -2422,7 +2422,7 @@ func NewRuntimeWithCores(jobMode string, vdrMode string, profileMode string, mar
 	if self.jobMode == "local" {
 		self.JobManager = self.LocalJobManager
 	} else {
-		self.JobManager = NewRemoteJobManager(self.jobMode, reqMemPerCore, maxParallelJobs, debug)
+		self.JobManager = NewRemoteJobManager(self.jobMode, reqMemPerCore, maxJobs, debug)
 	}
 	VerifyVDRMode(self.vdrMode)
 	VerifyProfileMode(self.profileMode)
