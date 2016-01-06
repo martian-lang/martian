@@ -142,6 +142,8 @@ Options:
                                (Only applies in non-local jobmodes)
     --maxjobs=<num>          Set maximum number of concurrent jobs at one time.
                                (Only applies in non-local jobmodes)
+    --jobinterval=<num>      Set the rate at which jobs are sent to the cluster, in milliseconds.
+                               (Only applies in non-local jobmodes)
     --nopreflight            Skips preflight stages.
     --monitor                Kill jobs when using more than requested memory resources.
     --inspect                Inspect pipestance without resetting failed stages.
@@ -190,9 +192,18 @@ Options:
 		if value, err := strconv.Atoi(value.(string)); err == nil {
 			maxJobs = value
 			core.LogInfo("options", "--maxjobs=%d", maxJobs)
-                }
+		}
 	}
-	
+	// frequency (in milliseconds) that jobs will be sent to the queue
+	// (this is a minimum bound, as it may take longer to emit jobs)
+	jobFreqMillis := -1
+	if value := opts["--jobinterval"]; value != nil {
+		if value, err := strconv.Atoi(value.(string)); err == nil {
+			jobFreqMillis = value
+			core.LogInfo("options", "--jobinterval=%d", jobFreqMillis)
+		}
+	}
+
 	// Compute MRO path.
 	cwd, _ := filepath.Abs(path.Dir(os.Args[0]))
 	mroPath := cwd
@@ -289,7 +300,7 @@ Options:
 	// Configure Martian runtime.
 	//=========================================================================
 	rt := core.NewRuntimeWithCores(jobMode, vdrMode, profileMode, martianVersion,
-		reqCores, reqMem, reqMemPerCore, maxJobs, stackVars, zip,
+		reqCores, reqMem, reqMemPerCore, maxJobs, jobFreqMillis, stackVars, zip,
 		skipPreflight, enableMonitor, debug, stest)
 	rt.MroCache.CacheMros(mroPath)
 

@@ -47,6 +47,8 @@ Options:
                                (Only applies in non-local jobmodes)
     --maxjobs=<num>          Set maximum number of concurrent jobs at one time.
                                (Only applies in non-local jobmodes)
+    --jobinterval=<num>      Set the rate at which jobs are sent to the cluster, in milliseconds.
+                               (Only applies in non-local jobmodes)
     --monitor                Kill jobs when using more than requested memory resources.
     --debug                  Enable debug logging for local job manager.
     -h --help                Show this message.
@@ -92,6 +94,15 @@ Options:
 		if value, err := strconv.Atoi(value.(string)); err == nil {
 			maxJobs = value
 			core.LogInfo("options", "--maxjobs=%d", maxJobs)
+		}
+	}
+	// frequency (in milliseconds) that jobs will be sent to the queue
+	// (this is a minimum bound, as it may take longer to emit jobs)
+	jobFreqMillis := -1
+	if value := opts["--jobinterval"]; value != nil {
+		if value, err := strconv.Atoi(value.(string)); err == nil {
+			jobFreqMillis = value
+			core.LogInfo("options", "--jobinterval=%d", jobFreqMillis)
 		}
 	}
 
@@ -143,8 +154,8 @@ Options:
 	// Configure Martian runtime.
 	//=========================================================================
 	rt := core.NewRuntimeWithCores(jobMode, vdrMode, profileMode, martianVersion,
-		reqCores, reqMem, reqMemPerCore, maxJobs, stackVars, zip, skipPreflight,
-		enableMonitor, debug, false)
+		reqCores, reqMem, reqMemPerCore, maxJobs, jobFreqMillis, stackVars, zip,
+		skipPreflight, enableMonitor, debug, false)
 	rt.MroCache.CacheMros(mroPath)
 
 	// Invoke stagestance.
