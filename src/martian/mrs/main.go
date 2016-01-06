@@ -32,27 +32,27 @@ Usage:
     mrs -h | --help | --version
 
 Options:
-    --jobmode=<name>         Run jobs on custom or local job manager.
-                               Valid job managers are local, sge, lsf or .template file
-                               Defaults to local.
-    --profile=<name>         Enables stage performance profiling.
-                               Valid options are cpu, mem, line and disable.
-                               Defaults to disable.
-    --stackvars              Print local variables in stage code stack trace.
-    --localcores=<num>       Set max cores the pipeline may request at one time.
-                               (Only applies in local jobmode)
-    --localmem=<num>         Set max GB the pipeline may request at one time.
-                               (Only applies in local jobmode)
-    --mempercore=<num>       Set max GB each job may use at one time.
-                               (Only applies in non-local jobmodes)
-    --maxjobs=<num>          Set maximum number of concurrent jobs at one time.
-                               (Only applies in non-local jobmodes)
-    --jobinterval=<num>      Set the rate at which jobs are sent to the cluster, in milliseconds.
-                               (Only applies in non-local jobmodes)
-    --monitor                Kill jobs when using more than requested memory resources.
-    --debug                  Enable debug logging for local job manager.
-    -h --help                Show this message.
-    --version                Show version.`
+    --jobmode=MODE      Job manager to use. Valid options:
+                            local (default), sge, lsf, or a .template file
+    --localcores=NUM    Set max cores the pipeline may request at one time.
+                            Only applies when --jobmode=local.
+    --localmem=NUM      Set max GB the pipeline may request at one time.
+                            Only applies when --jobmode=local.
+    --mempercore=NUM    Specify min GB per core on your cluster.
+                            Only applies in cluster jobmodes.
+    --maxjobs=NUM       Set max jobs submitted to cluster at one time.
+                            Only applies in cluster jobmodes.
+    --jobinterval=NUM   Set delay between submitting jobs to cluster, in ms.
+                            Only applies in cluster jobmodes.
+
+    --profile=MODE      Enables stage performance profiling. Valid options:
+                            disable (default), cpu, mem, or line
+    --stackvars         Print local variables in stage code stack trace.
+    --monitor           Kill jobs that exceed requested memory resources.
+    --debug             Enable debug logging for local job manager.
+    
+    -h --help           Show this message.
+    --version           Show version.`
 	martianVersion := core.GetVersion()
 	opts, _ := docopt.Parse(doc, nil, true, martianVersion, false)
 	core.Println("Martian Single-Stage Runtime - %s", martianVersion)
