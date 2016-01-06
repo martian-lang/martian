@@ -190,7 +190,9 @@ Options:
 		if value, err := strconv.Atoi(value.(string)); err == nil {
 			maxJobs = value
 			core.LogInfo("options", "--maxjobs=%d", maxJobs)
-
+                }
+	}
+	
 	// Compute MRO path.
 	cwd, _ := filepath.Abs(path.Dir(os.Args[0]))
 	mroPath := cwd
