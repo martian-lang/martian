@@ -83,6 +83,20 @@ func (self *PerfInfo) markOutputAsVDR() {
 	self.OutputFiles = 0
 }
 
+type PerfInfoByStart []*PerfInfo
+
+func (self PerfInfoByStart) Len() int {
+	return len(self)
+}
+
+func (self PerfInfoByStart) Swap(i, j int) {
+	self[i], self[j] = self[j], self[i]
+}
+
+func (self PerfInfoByStart) Less(i, j int) bool {
+	return self[i].Start.Before(self[j].Start)
+}
+
 type ChunkPerfInfo struct {
 	Index      int       `json:"index"`
 	ChunkStats *PerfInfo `json:"chunk_stats"`

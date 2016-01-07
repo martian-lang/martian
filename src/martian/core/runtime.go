@@ -1741,17 +1741,17 @@ type VDRKillReport struct {
 	Errors    []string `json:"errors"`
 }
 
-type ByTimestamp []*VDRKillReport
+type VDRByTimestamp []*VDRKillReport
 
-func (self ByTimestamp) Len() int {
+func (self VDRByTimestamp) Len() int {
 	return len(self)
 }
 
-func (self ByTimestamp) Swap(i, j int) {
+func (self VDRByTimestamp) Swap(i, j int) {
 	self[i], self[j] = self[j], self[i]
 }
 
-func (self ByTimestamp) Less(i, j int) bool {
+func (self VDRByTimestamp) Less(i, j int) bool {
 	return self[i].Timestamp < self[j].Timestamp
 }
 
@@ -1763,7 +1763,7 @@ func mergeVDRKillReports(killReports []*VDRKillReport) *VDRKillReport {
 		allKillReport.Errors = append(allKillReport.Errors, killReport.Errors...)
 		allKillReport.Paths = append(allKillReport.Paths, killReport.Paths...)
 	}
-	sort.Sort(ByTimestamp(killReports))
+	sort.Sort(VDRByTimestamp(killReports))
 	if len(killReports) > 0 {
 		allKillReport.Timestamp = killReports[len(killReports)-1].Timestamp
 	}
@@ -2206,7 +2206,180 @@ func (self *Pipestance) Serialize(name string) interface{} {
 			panic(fmt.Sprintf("Unsupported serialization type: %s", name))
 		}
 	}
+	if name == "perf" {
+		// test output, probably doesn't happen on reattach
+		// (though maybe it should..)
+		self.HighDiskWatermark()
+	}
 	return ser
+}
+
+type StorageEvent struct {
+	Timestamp time.Time
+	Delta     int64
+	Name      string
+}
+
+func NewStorageEvent(timestamp time.Time, delta int64, fqname string) *StorageEvent {
+	self := &StorageEvent{}
+	self.Timestamp = timestamp
+	self.Delta = delta
+	self.Name = fqname
+	return self
+}
+
+type StorageEventByTimestamp []*StorageEvent
+
+func (self StorageEventByTimestamp) Len() int {
+	return len(self)
+}
+
+func (self StorageEventByTimestamp) Swap(i, j int) {
+	self[i], self[j] = self[j], self[i]
+}
+
+func (self StorageEventByTimestamp) Less(i, j int) bool {
+	return self[i].Timestamp.Before(self[j].Timestamp)
+}
+
+// this is due to the fact that the VDR bytes/total bytes
+// reported at the fork level is the sum of chunk + split
+// + join plus any additional files.  The additional
+// files that are unique to the fork cannot be resolved
+// unless you sub out chunk/split/join and then child
+// stages.
+type ForkStorageEvent struct {
+	Name       string
+	ChildNames []string
+	TotalBytes uint64
+	ChunkBytes uint64
+	FileBytes  uint64
+	Timestamp  time.Time
+}
+
+func NewForkStorageEvent(timestamp time.Time, totalBytes uint64, chunkBytes uint64, fqname string) *ForkStorageEvent {
+	self := &ForkStorageEvent{ChildNames: []string{}}
+	self.Name = fqname
+	self.TotalBytes = totalBytes // this is going to be the total, including subforks
+	self.ChunkBytes = chunkBytes
+	self.FileBytes = self.TotalBytes - self.ChunkBytes // initial condition, may include subfork counts
+	self.Timestamp = timestamp
+	return self
+}
+
+func forkDependentName(fqname string, forkIndex int) string {
+	return fmt.Sprintf("%s.fork%d", fqname, forkIndex)
+}
+
+// finally, iterate down the fork tree to establish how much each node
+// actually contributed
+func calculateForkFileBytes(fse *ForkStorageEvent, forksVisited map[string]*ForkStorageEvent,
+	forksSized map[*ForkStorageEvent]bool) uint64 {
+	if _, ok := forksSized[fse]; ok {
+		return fse.TotalBytes
+	}
+	if len(fse.ChildNames) == 0 {
+		return fse.TotalBytes
+	}
+	childSize := uint64(0)
+	for _, fqname := range fse.ChildNames {
+		childSize += calculateForkFileBytes(forksVisited[fqname], forksVisited, forksSized)
+	}
+	fse.FileBytes -= childSize
+	forksSized[fse] = true
+	return fse.TotalBytes
+}
+
+func (self *ForkStorageEvent) addDependentFork(fqname string) {
+	self.ChildNames = append(self.ChildNames, fqname)
+}
+
+func (self *Pipestance) HighDiskWatermark() uint64 {
+	storageEvents := []*StorageEvent{}
+	forksVisited := make(map[string]*ForkStorageEvent)
+	forksSized := make(map[*ForkStorageEvent]bool)
+
+	for _, node := range self.node.allNodes() {
+		nodePerf := node.serializePerf()
+		for forkIdx, fork := range nodePerf.Forks {
+			var forkBytes uint64 = 0
+			if fork.SplitStats != nil {
+				storageEvents = append(storageEvents,
+					NewStorageEvent(
+						fork.SplitStats.Start,
+						int64(fork.SplitStats.TotalBytes),
+						fmt.Sprintf("%s %d split", node.fqname, fork.Index)))
+				forkBytes += fork.SplitStats.TotalBytes
+			}
+			if fork.JoinStats != nil {
+				storageEvents = append(storageEvents,
+					NewStorageEvent(
+						fork.JoinStats.Start,
+						int64(fork.JoinStats.TotalBytes),
+						fmt.Sprintf("%s %d join", node.fqname, fork.Index)))
+				forkBytes += fork.JoinStats.TotalBytes
+			}
+			for _, chunk := range fork.Chunks {
+				storageEvents = append(storageEvents,
+					NewStorageEvent(
+						chunk.ChunkStats.Start,
+						int64(chunk.ChunkStats.TotalBytes),
+						fmt.Sprintf("%s %d chunk %d", node.fqname, fork.Index, chunk.Index)))
+				forkBytes += chunk.ChunkStats.TotalBytes
+			}
+
+			// handle gap (fork stats total bytes minus chunk+join+split, not explicitly enumerated)
+			if fork.ForkStats != nil {
+				forkEvent := NewForkStorageEvent(fork.ForkStats.Start, fork.ForkStats.TotalBytes,
+					forkBytes, forkDependentName(node.fqname, forkIdx))
+				forksVisited[forkDependentName(node.fqname, forkIdx)] = forkEvent
+			}
+		}
+		// resolve fork dependencies
+		for _, fork := range node.forks {
+			if forkEvent, ok := forksVisited[fork.fqname]; ok {
+				for _, subfork := range fork.subforks {
+					forkEvent.addDependentFork(subfork.fqname)
+				}
+			}
+		}
+
+		for _, fork := range node.forks {
+			forkVDR, _ := fork.getVdrKillReport()
+			if forkVDR == nil {
+				LogInfo("perf", "Nil vdrkill: %s (VDR may be disabled)", fork.fqname)
+				continue
+			}
+			LogInfo("perf", "%s vdrTimestamp: %s", fork.fqname, forkVDR.Timestamp)
+			vdrTimestamp, _ := time.Parse(TIMEFMT, forkVDR.Timestamp)
+			storageEvents = append(
+				storageEvents,
+				NewStorageEvent(vdrTimestamp, -1*int64(forkVDR.Size), fmt.Sprintf("%s vdrkill", fork.fqname)))
+		}
+	}
+
+	for _, fse := range forksVisited {
+		calculateForkFileBytes(fse, forksVisited, forksSized)
+	}
+
+	for fse := range forksSized {
+		storageEvents = append(
+			storageEvents,
+			NewStorageEvent(fse.Timestamp, int64(fse.FileBytes), fmt.Sprintf("%s file", fse.Name)))
+	}
+
+	sort.Sort(StorageEventByTimestamp(storageEvents))
+	highMark := int64(0)
+	currentMark := int64(0)
+	for _, se := range storageEvents {
+		currentMark += se.Delta
+		LogInfo("perf", "%s: %d (%s)", se.Timestamp.String(), currentMark, se.Name)
+		if currentMark > highMark {
+			highMark = currentMark
+		}
+	}
+
+	return 0
 }
 
 func (self *Pipestance) ZipMetadata(zipPath string) error {
