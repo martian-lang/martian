@@ -2207,9 +2207,9 @@ func (self *Pipestance) Serialize(name string) interface{} {
 		}
 	}
 	if name == "perf" {
-		// test output, probably doesn't happen on reattach
-		// (though maybe it should..)
-		self.HighDiskWatermark()
+		if len(ser) > 0 {
+			self.ComputeDiskUsage(ser[0].(*NodePerfInfo))
+		}
 	}
 	return ser
 }
@@ -2294,7 +2294,7 @@ func (self *ForkStorageEvent) addDependentFork(fqname string) {
 	self.ChildNames = append(self.ChildNames, fqname)
 }
 
-func (self *Pipestance) HighDiskWatermark() uint64 {
+func (self *Pipestance) ComputeDiskUsage(nodePerf *NodePerfInfo) *NodePerfInfo {
 	storageEvents := []*StorageEvent{}
 	forksVisited := make(map[string]*ForkStorageEvent)
 	forksSized := make(map[*ForkStorageEvent]bool)
@@ -2371,15 +2371,21 @@ func (self *Pipestance) HighDiskWatermark() uint64 {
 	sort.Sort(StorageEventByTimestamp(storageEvents))
 	highMark := int64(0)
 	currentMark := int64(0)
-	for _, se := range storageEvents {
+
+	byteStamps := make([]*NodeByteStamp, len(storageEvents))
+	for idx, se := range storageEvents {
 		currentMark += se.Delta
+		byteStamps[idx] = &NodeByteStamp{Timestamp: se.Timestamp, Bytes: currentMark}
+		// TODO: log is temporary, just to verify we're doing the right thing
 		LogInfo("perf", "%s: %d (%s)", se.Timestamp.String(), currentMark, se.Name)
 		if currentMark > highMark {
 			highMark = currentMark
 		}
 	}
 
-	return 0
+	nodePerf.MaxBytes = highMark
+	nodePerf.BytesHist = byteStamps
+	return nodePerf
 }
 
 func (self *Pipestance) ZipMetadata(zipPath string) error {

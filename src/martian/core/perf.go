@@ -117,11 +117,18 @@ type ForkPerfInfo struct {
 	ForkStats  *PerfInfo        `json:"fork_stats"`
 }
 
+type NodeByteStamp struct {
+	Timestamp time.Time `json:"ts"`
+	Bytes     int64     `json:"bytes"`
+}
+
 type NodePerfInfo struct {
-	Name   string          `json:"name"`
-	Fqname string          `json:"fqname"`
-	Type   string          `json:"type"`
-	Forks  []*ForkPerfInfo `json:"forks"`
+	Name      string           `json:"name"`
+	Fqname    string           `json:"fqname"`
+	Type      string           `json:"type"`
+	Forks     []*ForkPerfInfo  `json:"forks"`
+	MaxBytes  int64            `json:"maxbytes"`
+	BytesHist []*NodeByteStamp `json:"bytehist"`
 }
 
 func reduceJobInfo(jobInfo *JobInfo, outputPaths []string, numThreads int) *PerfInfo {
