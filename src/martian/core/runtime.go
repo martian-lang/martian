@@ -896,8 +896,12 @@ func (self *Fork) updatePerfPostVDR() {
 	// use VDR rules to keep chunk-level granularity
 	if self.deleteOnVdrKill() {
 		if self.node.volatile {
-			perfInfo.SplitStats.markOutputAsVDR()
-			perfInfo.JoinStats.markOutputAsVDR()
+			if perfInfo.SplitStats != nil {
+				perfInfo.SplitStats.markOutputAsVDR()
+			}
+			if perfInfo.JoinStats != nil {
+				perfInfo.JoinStats.markOutputAsVDR()
+			}
 		}
 		for _, chunk := range perfInfo.Chunks {
 			chunk.ChunkStats.markOutputAsVDR()
