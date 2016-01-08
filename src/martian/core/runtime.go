@@ -2429,8 +2429,6 @@ func (self *Pipestance) ComputeDiskUsage(nodePerf *NodePerfInfo) *NodePerfInfo {
 	for idx, se := range storageEvents {
 		currentMark += se.Delta
 		byteStamps[idx] = &NodeByteStamp{Timestamp: se.Timestamp, Bytes: currentMark}
-		// TODO: log is temporary, just to verify we're doing the right thing
-		LogInfo("perf", "%s: %d (%s)", se.Timestamp.String(), currentMark, se.Name)
 		if currentMark > highMark {
 			highMark = currentMark
 		}

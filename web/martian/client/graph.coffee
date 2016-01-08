@@ -191,6 +191,10 @@ app.controller('MartianGraphCtrl', ($scope, $compile, $http, $interval) ->
         fork = $scope.pnode.forks[$scope.forki]
         return humanize(fork.fork_stats[name], units)
 
+    $scope.humanizeFromNode = (name, units) ->
+        node = $scope.pnode
+        return humanize(node[name], units)
+
     $scope.getActiveTab = () ->
         for tab, selected of $scope.tabs
             if selected
