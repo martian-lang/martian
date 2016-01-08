@@ -594,6 +594,7 @@ type Fork struct {
 	metadata       *Metadata
 	split_metadata *Metadata
 	join_metadata  *Metadata
+	parentFork     *Fork
 	subforks       []*Fork
 	chunks         []*Chunk
 	split_has_run  bool
@@ -890,6 +891,26 @@ func (self *Fork) cachePerf() {
 	self.perfCache = &ForkPerfCache{perfInfo, vdrKillReport}
 }
 
+func (self *Fork) updatePerfPostRollingVDR(count uint, size uint64) {
+	// if a fork has been VDR'd already as part of a rolling
+	// VDR but one of its stages is still a prenode of a stage in
+	// a different fork, make sure the output/VDR stats
+	// of the fork are updated when the stage is reaped.
+
+	if self.node.rt.vdrMode == "rolling" && self.perfCache != nil {
+		perfInfo := self.perfCache.perfInfo
+		if perfInfo.ForkStats.OutputBytes > 0 {
+			perfInfo.ForkStats.OutputBytes -= size
+			perfInfo.ForkStats.VdrBytes += size
+			perfInfo.ForkStats.OutputFiles -= count
+			perfInfo.ForkStats.VdrFiles += count
+		}
+	}
+	if self.parentFork != nil {
+		self.parentFork.updatePerfPostRollingVDR(count, size)
+	}
+}
+
 func (self *Fork) updatePerfPostVDR() {
 	perfInfo, vdrKillReport := self.serializePerf()
 	// update cache to change output bytes to vdr bytes
@@ -918,6 +939,13 @@ func (self *Fork) updatePerfPostVDR() {
 				perfInfo.ForkStats.OutputBytes -= forkNodeVDRReport.Size
 				perfInfo.ForkStats.VdrFiles += forkNodeVDRReport.Count
 				perfInfo.ForkStats.VdrBytes += forkNodeVDRReport.Size
+
+				// if parent fork already marked as killed (but this
+				// fork was a preNode to a stage in another fork),
+				// update the update/VDR count in parent fork
+				if self.parentFork != nil {
+					self.parentFork.updatePerfPostRollingVDR(forkNodeVDRReport.Count, forkNodeVDRReport.Size)
+				}
 			}
 		} else {
 			// ensure we aren't double-counting file removal
@@ -1171,7 +1199,14 @@ func (self *Fork) serializePerf() (*ForkPerfInfo, *VDRKillReport) {
 	chunks := []*ChunkPerfInfo{}
 	stats := []*PerfInfo{}
 	for _, chunk := range self.chunks {
+		// use the data but not the bytes if there is no split
 		chunkSer := chunk.serializePerf()
+		if !self.node.split {
+			chunkSer.ChunkStats.OutputBytes = 0
+			chunkSer.ChunkStats.OutputFiles = 0
+			chunkSer.ChunkStats.TotalBytes = 0
+			chunkSer.ChunkStats.TotalFiles = 0
+		}
 		chunks = append(chunks, chunkSer)
 		if chunkSer.ChunkStats != nil {
 			stats = append(stats, chunkSer.ChunkStats)
@@ -1387,6 +1422,7 @@ func (self *Node) buildForks(bindings map[string]*Binding) {
 	for _, fork := range self.forks {
 		for _, subnode := range self.subnodes {
 			if matchedFork := subnode.getNode().matchFork(fork.argPermute); matchedFork != nil {
+				matchedFork.parentFork = fork
 				fork.subforks = append(fork.subforks, matchedFork)
 			}
 		}
@@ -2253,20 +2289,25 @@ func (self StorageEventByTimestamp) Less(i, j int) bool {
 // unless you sub out chunk/split/join and then child
 // stages.
 type ForkStorageEvent struct {
-	Name       string
-	ChildNames []string
-	TotalBytes uint64
-	ChunkBytes uint64
-	FileBytes  uint64
-	Timestamp  time.Time
+	Name          string
+	ChildNames    []string
+	TotalBytes    uint64
+	ChunkBytes    uint64
+	ForkBytes     uint64
+	TotalVDRBytes uint64
+	ForkVDRBytes  uint64
+	Timestamp     time.Time
+	VDRTimestamp  time.Time
 }
 
-func NewForkStorageEvent(timestamp time.Time, totalBytes uint64, chunkBytes uint64, fqname string) *ForkStorageEvent {
+func NewForkStorageEvent(timestamp time.Time, totalBytes uint64, chunkBytes uint64, vdrBytes uint64, fqname string) *ForkStorageEvent {
 	self := &ForkStorageEvent{ChildNames: []string{}}
 	self.Name = fqname
-	self.TotalBytes = totalBytes // this is going to be the total, including subforks
+	self.TotalBytes = totalBytes // sum total of bytes in fork and children
 	self.ChunkBytes = chunkBytes
-	self.FileBytes = self.TotalBytes - self.ChunkBytes // initial condition, may include subfork counts
+	self.ForkBytes = self.TotalBytes - self.ChunkBytes  // bytes contributed by just forkN/files
+	self.TotalVDRBytes = vdrBytes // sum total of VDR bytes in fork and children
+	self.ForkVDRBytes = self.TotalVDRBytes  // VDR bytes in forkN/files
 	self.Timestamp = timestamp
 	return self
 }
@@ -2277,21 +2318,26 @@ func forkDependentName(fqname string, forkIndex int) string {
 
 // finally, iterate down the fork tree to establish how much each node
 // actually contributed
-func calculateForkFileBytes(fse *ForkStorageEvent, forksVisited map[string]*ForkStorageEvent,
-	forksSized map[*ForkStorageEvent]bool) uint64 {
+func calculateForkBytes(fse *ForkStorageEvent, forksVisited map[string]*ForkStorageEvent,
+	forksSized map[*ForkStorageEvent]bool) (uint64, uint64) {
 	if _, ok := forksSized[fse]; ok {
-		return fse.TotalBytes
+		return fse.TotalBytes, fse.TotalVDRBytes
 	}
 	if len(fse.ChildNames) == 0 {
-		return fse.TotalBytes
+		forksSized[fse] = true
+		return fse.TotalBytes, fse.TotalVDRBytes
 	}
 	childSize := uint64(0)
+	childVDRSize := uint64(0)
 	for _, fqname := range fse.ChildNames {
-		childSize += calculateForkFileBytes(forksVisited[fqname], forksVisited, forksSized)
+		fileSize, vdrSize := calculateForkBytes(forksVisited[fqname], forksVisited, forksSized)
+		childSize += fileSize
+		childVDRSize += vdrSize
 	}
-	fse.FileBytes -= childSize
+	fse.ForkBytes -= childSize
+	fse.ForkVDRBytes -= childVDRSize
 	forksSized[fse] = true
-	return fse.TotalBytes
+	return fse.TotalBytes, fse.TotalVDRBytes
 }
 
 func (self *ForkStorageEvent) addDependentFork(fqname string) {
@@ -2335,7 +2381,7 @@ func (self *Pipestance) ComputeDiskUsage(nodePerf *NodePerfInfo) *NodePerfInfo {
 			// handle gap (fork stats total bytes minus chunk+join+split, not explicitly enumerated)
 			if fork.ForkStats != nil {
 				forkEvent := NewForkStorageEvent(fork.ForkStats.Start, fork.ForkStats.TotalBytes,
-					forkBytes, forkDependentName(node.fqname, forkIdx))
+					forkBytes, fork.ForkStats.VdrBytes, forkDependentName(node.fqname, forkIdx))
 				forksVisited[forkDependentName(node.fqname, forkIdx)] = forkEvent
 			}
 		}
@@ -2351,25 +2397,28 @@ func (self *Pipestance) ComputeDiskUsage(nodePerf *NodePerfInfo) *NodePerfInfo {
 		for _, fork := range node.forks {
 			forkVDR, _ := fork.getVdrKillReport()
 			if forkVDR == nil {
-				LogInfo("perf", "Nil vdrkill: %s (VDR may be disabled)", fork.fqname)
 				continue
 			}
-			LogInfo("perf", "%s vdrTimestamp: %s", fork.fqname, forkVDR.Timestamp)
 			vdrTimestamp, _ := time.Parse(TIMEFMT, forkVDR.Timestamp)
-			storageEvents = append(
-				storageEvents,
-				NewStorageEvent(vdrTimestamp, -1*int64(forkVDR.Size), fmt.Sprintf("%s vdrkill", fork.fqname)))
+			if forkEvent, ok := forksVisited[fork.fqname]; ok {
+				forkEvent.VDRTimestamp = vdrTimestamp
+			}
 		}
 	}
 
 	for _, fse := range forksVisited {
-		calculateForkFileBytes(fse, forksVisited, forksSized)
+		calculateForkBytes(fse, forksVisited, forksSized)
 	}
 
 	for fse := range forksSized {
 		storageEvents = append(
 			storageEvents,
-			NewStorageEvent(fse.Timestamp, int64(fse.FileBytes), fmt.Sprintf("%s file", fse.Name)))
+			NewStorageEvent(fse.Timestamp, int64(fse.ForkBytes), fmt.Sprintf("%s file", fse.Name)))
+		if !fse.VDRTimestamp.IsZero() {
+			storageEvents = append(
+				storageEvents,
+				NewStorageEvent(fse.VDRTimestamp, -1*int64(fse.ForkVDRBytes), fmt.Sprintf("%s vdrkill", fse.Name)))
+		}
 	}
 
 	sort.Sort(StorageEventByTimestamp(storageEvents))
