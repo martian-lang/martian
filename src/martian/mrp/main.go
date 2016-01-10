@@ -120,33 +120,38 @@ Usage:
     mrp -h | --help | --version
 
 Options:
-    --uiport=<num>       Serve UI at http://<hostname>:<num>
-    --jobmode=<name>     Run jobs on custom or local job manager.
-                           Valid job managers are local, sge, lsf or .template file
-                           Defaults to local.
-    --vdrmode=<name>     Enables Volatile Data Removal.
-                           Valid options are rolling, post and disable.
-                           Defaults to post.
-    --profile=<name>     Enables stage performance profiling.
-                           Valid options are cpu, mem, line and disable.
-                           Defaults to disable.
-    --tags=<name>        Tags pipestance with list of comma-separated <key>:<value> pairs
-    --zip                Zip metadata files after pipestance completes.
-    --noexit             Keep UI running after pipestance completes or fails.
-    --stackvars          Print local variables in stage code stack trace.
-    --localcores=<num>   Set max cores the pipeline may request at one time.
-                           (Only applies in local jobmode)
-    --localmem=<num>     Set max GB the pipeline may request at one time.
-                           (Only applies in local jobmode)
-    --mempercore=<num>   Set max GB each job may use at one time.
-                           (Only applies in non-local jobmodes)
-    --nopreflight        Skips preflight stages.
-    --monitor            Kill jobs when using more than requested memory resources.
-    --inspect            Inspect pipestance without resetting failed stages.
-    --debug              Enable debug logging for local job manager.
-    --stest              Substitute real stages with stress-testing stage.
-    -h --help            Show this message.
-    --version            Show version.`
+    --jobmode=MODE      Job manager to use. Valid options:
+                            local (default), sge, lsf, or a .template file
+    --localcores=NUM    Set max cores the pipeline may request at one time.
+                            Only applies when --jobmode=local.
+    --localmem=NUM      Set max GB the pipeline may request at one time.
+                            Only applies when --jobmode=local.
+    --mempercore=NUM    Specify min GB per core on your cluster.
+                            Only applies in cluster jobmodes.
+    --maxjobs=NUM       Set max jobs submitted to cluster at one time.
+                            Only applies in cluster jobmodes.
+    --jobinterval=NUM   Set delay between submitting jobs to cluster, in ms.
+                            Only applies in cluster jobmodes.
+
+    --vdrmode=MODE      Enables Volatile Data Removal. Valid options:
+                            post (default), rolling, or disable
+
+    --nopreflight       Skips preflight stages.
+    --uiport=NUM        Serve UI at http://<hostname>:NUM
+    --noexit            Keep UI running after pipestance completes or fails.
+    --zip               Zip metadata files after pipestance completes.
+    --tags=TAGS         Tag pipestance with comma-separated key:value pairs.
+
+    --profile=MODE      Enables stage performance profiling. Valid options:
+                            disable (default), cpu, mem, or line
+    --stackvars         Print local variables in stage code stack trace.
+    --monitor           Kill jobs that exceed requested memory resources.
+    --inspect           Inspect pipestance without resetting failed stages.
+    --debug             Enable debug logging for local job manager.
+    --stest             Substitute real stages with stress-testing stage.
+
+    -h --help           Show this message.
+    --version           Show version.`
 	martianVersion := core.GetVersion()
 	opts, _ := docopt.Parse(doc, nil, true, martianVersion, false)
 	core.Println("Martian Runtime - %s", martianVersion)
@@ -179,6 +184,24 @@ Options:
 		if value, err := strconv.Atoi(value.(string)); err == nil {
 			reqMemPerCore = value
 			core.LogInfo("options", "--mempercore=%d", reqMemPerCore)
+		}
+	}
+
+	// Max parallel jobs.
+	maxJobs := -1
+	if value := opts["--maxjobs"]; value != nil {
+		if value, err := strconv.Atoi(value.(string)); err == nil {
+			maxJobs = value
+			core.LogInfo("options", "--maxjobs=%d", maxJobs)
+		}
+	}
+	// frequency (in milliseconds) that jobs will be sent to the queue
+	// (this is a minimum bound, as it may take longer to emit jobs)
+	jobFreqMillis := -1
+	if value := opts["--jobinterval"]; value != nil {
+		if value, err := strconv.Atoi(value.(string)); err == nil {
+			jobFreqMillis = value
+			core.LogInfo("options", "--jobinterval=%d", jobFreqMillis)
 		}
 	}
 
@@ -278,8 +301,8 @@ Options:
 	// Configure Martian runtime.
 	//=========================================================================
 	rt := core.NewRuntimeWithCores(jobMode, vdrMode, profileMode, martianVersion,
-		reqCores, reqMem, reqMemPerCore, stackVars, zip, skipPreflight,
-		enableMonitor, debug, stest)
+		reqCores, reqMem, reqMemPerCore, maxJobs, jobFreqMillis, stackVars, zip,
+		skipPreflight, enableMonitor, debug, stest)
 	rt.MroCache.CacheMros(mroPath)
 
 	// Print this here because the log makes more sense when this appears before
