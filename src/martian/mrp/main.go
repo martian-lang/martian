@@ -6,7 +6,7 @@
 package main
 
 import (
-	"github.com/docopt/docopt.go"
+	"github.com/10XDev/docopt.go"
 	"github.com/dustin/go-humanize"
 	"io/ioutil"
 	"martian/core"

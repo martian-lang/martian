@@ -7,7 +7,7 @@ package main
 
 import (
 	"fmt"
-	"github.com/docopt/docopt.go"
+	"github.com/10XDev/docopt.go"
 	"io/ioutil"
 	"martian/core"
 	"os"
