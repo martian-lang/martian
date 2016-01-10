@@ -8,7 +8,7 @@ package main
 import (
 	"encoding/json"
 	"fmt"
-	"github.com/docopt/docopt.go"
+	"github.com/10XDev/docopt.go"
 	"martian/core"
 	"os"
 	"path"
