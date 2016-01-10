@@ -7,15 +7,10 @@
 		<string>mro</string>
 	</array>
 	<key>name</key>
-	<string>Martianlang</string>
+	<string>Martian</string>
 	<key>patterns</key>
 	<array>
-		<dict>
-			<key>match</key>
-			<string>([^\w]|^)(^|\s+)(filetype)([^\w]|$)</string>
-			<key>name</key>
-			<string>keyword.operator</string>
-		</dict>
+		<!-- match the usual keywords -->
 		<dict>
 			<key>match</key>
 			<string>([^\w]|^)(stage|pipeline)([^\w]|$)</string>
@@ -24,16 +19,17 @@
 		</dict>
 		<dict>
 			<key>match</key>
-			<string>([^\w]|^)(@include|return|volatile|file|sweep|call|=)([^\w]|$)</string>
+			<string>([^\w]|^)(@include|return|call|volatile|local|preflight|=)</string>
 			<key>name</key>
 			<string>keyword.operator</string>
 		</dict>
 		<dict>
 			<key>match</key>
-			<string>([^\w]|^)(in|out|src|py|int|string|float|path|bool|null)([^\w]|$)</string>
+			<string>([^\w]|^)(split using)([^\w]|$)</string>
 			<key>name</key>
-			<string>storage.modifier</string>
+			<string>support.function</string>
 		</dict>
+		<!-- capture stage / pipeline names -->
 		<dict>
 			<key>captures</key>
 			<dict>
@@ -48,18 +44,81 @@
 			<key>name</key>
 			<string>function.martianlang</string>
 		</dict>
+		<!-- capture filetype declarations -->
+		<dict>
+			<key>captures</key>
+			<dict>
+				<key>1</key>
+				<dict>
+					<key>name</key>
+					<string>keyword.operator</string>
+				</dict>
+				<key>2</key>
+				<dict>
+					<key>name</key>
+					<string>variable.parameter</string>
+				</dict>
+			</dict>
+			<key>match</key>
+			<string>(filetype)\s+(\S+);</string>
+			<key>name</key>
+			<string>function.martianlang</string>
+		</dict>
+		<!-- capture parameter declarations -->
+		<dict>
+			<key>captures</key>
+			<dict>
+				<key>1</key>
+				<dict>
+					<key>name</key>
+					<string>storage.modifier</string>
+				</dict>
+				<key>2</key>
+				<dict>
+					<key>name</key>
+					<string>variable.parameter</string>
+				</dict>
+			</dict>
+			<key>match</key>
+			<string>(in|out|src)\s+(\S+)</string>
+			<key>name</key>
+			<string>function.martianlang</string>
+		</dict>
+		<!-- match string literals -->
 		<dict>
 			<key>match</key>
 			<string>"[^"]+"</string>
 			<key>name</key>
 			<string>string.quoted.double</string>
 		</dict>
+		<!-- match comments -->
 		<dict>
 			<key>match</key>
 			<string>\#.*$</string>
 			<key>name</key>
 			<string>comment.line</string>
 		</dict>
+		<!-- match booleans -->
+		<dict>
+			<key>match</key>
+			<string>(true|false)</string>
+			<key>name</key>
+			<string>constant.language.boolean</string>
+		</dict>
+		<!-- match nulls -->
+		<dict>
+			<key>match</key>
+			<string>(null)</string>
+			<key>name</key>
+			<string>constant.language.null</string>
+		</dict>
+		<!-- hack: consume any remaining words that start with letters,
+			 so we don't highlight them if they contain numbers -->
+		<dict>
+			<key>match</key>
+			<string>[A-Za-z]\w+</string>
+		</dict>
+		<!-- finally, match numeric constants -->
 		<dict>
 			<key>match</key>
 			<string>-?\d+(\.\d+)?</string>

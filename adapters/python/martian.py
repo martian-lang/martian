@@ -19,6 +19,35 @@ import StringIO
 import cProfile
 import traceback
 import line_profiler
+import math
+
+def json_sanitize(data):
+    if (type(data) == float):
+        # Handle exceptional floats.
+        if math.isnan(data):
+            return None
+        if (data ==  float("+Inf")):
+            return None
+        if (data == float("-Inf")):
+            return None
+        return data
+    elif type(data) == dict:
+        # Recurse on dictionaries.
+        new_data = {}
+        for k in data.keys():
+            new_data[k] = json_sanitize(data[k])
+        return new_data
+    elif hasattr(data, '__iter__'):
+        # Recurse on lists.
+        new_data = []
+        for d in data:
+            new_data.append(json_sanitize(d))
+        return new_data
+    else:
+        return data
+
+def json_dumps_safe(data, indent=None):
+    return json.dumps(json_sanitize(data), indent=indent)
 
 class StageException(Exception):
     pass
@@ -158,7 +187,7 @@ class Metadata:
         self.update_journal(name)
 
     def write(self, name, object=None):
-        self.write_raw(name, json.dumps(object or "", indent=4))
+        self.write_raw(name, json_dumps_safe(object or "", indent=4))
 
     def write_time(self, name):
         self.write_raw(name, self.make_timestamp_now())
@@ -311,7 +340,15 @@ def done():
         "children": rusage_to_dict(resource.getrusage(resource.RUSAGE_CHILDREN))
     }
     metadata.write("jobinfo", jobinfo)
-    sys.exit(0)
+
+    # sys.exit does not actually exit the process but only exits the thread.
+    # If this thread is not the main thread, use os._exit. This won't call
+    # cleanup handlers, flush stdio buffers, etc. But calling done() from
+    # another thread means the process exited with an error so this is okay.
+    if isinstance(threading.current_thread(), threading._MainThread):
+        sys.exit(0)
+    else:
+        os._exit(0)
 
 def stacktrace():
     etype, evalue, tb = sys.exc_info()
@@ -441,7 +478,7 @@ def log_time(message):
     metadata.log("time", message)
 
 def log_json(label, object):
-    metadata.log("json", json.dumps({"label":label, "object":object}))
+    metadata.log("json", json_dumps_safe({"label":label, "object":object}))
 
 def throw(message):
     raise StageException(message)

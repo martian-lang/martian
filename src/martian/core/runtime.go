@@ -13,6 +13,7 @@ import (
 	"os"
 	"path"
 	"path/filepath"
+	"reflect"
 	"regexp"
 	"sort"
 	"strconv"
@@ -153,8 +154,10 @@ func (self *Metadata) checkHeartbeat() {
 		}
 		if time.Since(self.lastHeartbeat) > time.Minute*heartbeatTimeout {
 			self.writeRaw("errors", fmt.Sprintf(
-				"Heartbeat not detected for %d minutes. Assuming job has failed",
-				heartbeatTimeout))
+				"%s: No heartbeat detected for %d minutes. Assuming job has failed. This may be "+
+					"due to a user manually terminating the job, or the operating system or cluster "+
+					"terminating it due to resource or time limits.",
+				Timestamp(), heartbeatTimeout))
 		}
 	}
 }
@@ -974,6 +977,7 @@ func (self *Fork) postProcess() {
 		}
 	}
 
+	errorTypes := make(map[string]bool)
 	for _, param := range paramList {
 		id := param.getId()
 		value, ok := outs[id]
@@ -987,8 +991,13 @@ func (self *Fork) postProcess() {
 							if param.getTname() != "path" {
 								newValue += "." + param.getTname()
 							}
-							os.Symlink(filePath, newValue)
-							value = newValue
+							if err := os.Symlink(filePath, newValue); err != nil {
+								errMsg := err.Error()[strings.Index(err.Error(), newValue)+len(newValue)+1:]
+								errorTypes[errMsg] = true
+								value = "null"
+							} else {
+								value = newValue
+							}
 						}
 					}
 				}
@@ -1001,6 +1010,15 @@ func (self *Fork) postProcess() {
 			key = param.getId()
 		}
 		Print("- %s: %v\n", key, value)
+	}
+	if len(errorTypes) > 0 {
+		i := 0
+		distinctErrors := make([]string, len(errorTypes))
+		for key := range errorTypes {
+			distinctErrors[i] = key
+			i++
+		}
+		Print("\nCould not create symlinks to output files: %s", strings.Join(distinctErrors, ", "))
 	}
 	Print("\n")
 
@@ -1311,7 +1329,7 @@ func (self *Node) matchFork(targetArgPermute map[string]interface{}) *Fork {
 	for _, fork := range self.forks {
 		every := true
 		for paramId, argValue := range fork.argPermute {
-			if targetArgPermute[paramId] != argValue {
+			if !reflect.DeepEqual(targetArgPermute[paramId], argValue) {
 				every = false
 				break
 			}
@@ -2462,12 +2480,12 @@ func (self *Runtime) reattachToPipestance(psid string, pipestancePath string, sr
 	}
 
 	// If _jobmode exists, make sure we reattach to pipestance in the same job mode.
-    if !readOnly {
-	    if err := pipestance.VerifyJobMode(); err != nil {
-		    pipestance.Unlock()
-		    return nil, err
-	    }
-    }
+	if !readOnly {
+		if err := pipestance.VerifyJobMode(); err != nil {
+			pipestance.Unlock()
+			return nil, err
+		}
+	}
 
 	// If _metadata exists, unzip it so the pipestance can reads its metadata.
 	if _, err := os.Stat(metadataPath); err == nil {
