@@ -143,6 +143,9 @@ html(ng-app="app" ng-controller="MartianGraphCtrl")
                         tr
                             td VDR bytes
                             td {{ humanize('vdr_bytes', 'bytes') }}
+                        tr(ng-show="pnode.fqname==topnode.fqname")
+                            td Max Bytes
+                            td {{ humanizeFromNode('maxbytes', 'bytes') }}
                 tab(heading="Core Hours" active="tabs.cpu")
                 tab(heading="Time" active="tabs.time")
                 tab(heading="IO" active="tabs.io")
