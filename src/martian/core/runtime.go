@@ -925,7 +925,9 @@ func (self *Fork) updatePerfPostVDR() {
 			}
 		}
 		for _, chunk := range perfInfo.Chunks {
-			chunk.ChunkStats.markOutputAsVDR()
+			if chunk.ChunkStats != nil {
+				chunk.ChunkStats.markOutputAsVDR()
+			}
 		}
 
 		// if vdrmode=rolling, VDR info for subforks have been
@@ -1201,7 +1203,7 @@ func (self *Fork) serializePerf() (*ForkPerfInfo, *VDRKillReport) {
 	for _, chunk := range self.chunks {
 		// use the data but not the bytes if there is no split
 		chunkSer := chunk.serializePerf()
-		if !self.node.split {
+		if chunkSer.ChunkStats != nil && !self.node.split {
 			chunkSer.ChunkStats.OutputBytes = 0
 			chunkSer.ChunkStats.OutputFiles = 0
 			chunkSer.ChunkStats.TotalBytes = 0
@@ -2370,12 +2372,14 @@ func (self *Pipestance) ComputeDiskUsage(nodePerf *NodePerfInfo) *NodePerfInfo {
 				forkBytes += fork.JoinStats.TotalBytes
 			}
 			for _, chunk := range fork.Chunks {
-				storageEvents = append(storageEvents,
-					NewStorageEvent(
-						chunk.ChunkStats.Start,
-						int64(chunk.ChunkStats.TotalBytes),
-						fmt.Sprintf("%s %d chunk %d", node.fqname, fork.Index, chunk.Index)))
-				forkBytes += chunk.ChunkStats.TotalBytes
+				if chunk.ChunkStats != nil {
+					storageEvents = append(storageEvents,
+						NewStorageEvent(
+							chunk.ChunkStats.Start,
+							int64(chunk.ChunkStats.TotalBytes),
+							fmt.Sprintf("%s %d chunk %d", node.fqname, fork.Index, chunk.Index)))
+					forkBytes += chunk.ChunkStats.TotalBytes
+				}
 			}
 
 			// handle gap (fork stats total bytes minus chunk+join+split, not explicitly enumerated)
@@ -2429,8 +2433,6 @@ func (self *Pipestance) ComputeDiskUsage(nodePerf *NodePerfInfo) *NodePerfInfo {
 	for idx, se := range storageEvents {
 		currentMark += se.Delta
 		byteStamps[idx] = &NodeByteStamp{Timestamp: se.Timestamp, Bytes: currentMark}
-		// TODO: log is temporary, just to verify we're doing the right thing
-		LogInfo("perf", "%s: %d (%s)", se.Timestamp.String(), currentMark, se.Name)
 		if currentMark > highMark {
 			highMark = currentMark
 		}
