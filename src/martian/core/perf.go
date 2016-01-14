@@ -17,6 +17,7 @@ type JobInfo struct {
 	PythonInfo    *PythonInfo    `json:"python"`
 	RusageInfo    *RusageInfo    `json:"rusage"`
 	WallClockInfo *WallClockInfo `json:"wallclock"`
+	FilesInfo     *FilesInfo	 `json:"files"`
 }
 
 type PythonInfo struct {
@@ -27,6 +28,11 @@ type PythonInfo struct {
 type RusageInfo struct {
 	Self     *Rusage `json:"self"`
 	Children *Rusage `json:"children"`
+}
+
+type FilesInfo struct {
+	Count	uint	`json:"count"`
+	Bytes   uint64  `json:"bytes"`
 }
 
 type Rusage struct {
@@ -74,13 +80,6 @@ type PerfInfo struct {
 	OutputBytes     uint64    `json:"output_bytes"`
 	VdrFiles        uint      `json:"vdr_files"`
 	VdrBytes        uint64    `json:"vdr_bytes"`
-}
-
-func (self *PerfInfo) markOutputAsVDR() {
-	self.VdrBytes = self.OutputBytes
-	self.VdrFiles = self.OutputFiles
-	self.OutputBytes = 0
-	self.OutputFiles = 0
 }
 
 type PerfInfoByStart []*PerfInfo
@@ -168,7 +167,7 @@ func reduceJobInfo(jobInfo *JobInfo, outputPaths []string, numThreads int) *Perf
 	return perfInfo
 }
 
-func ComputeStats(perfInfos []*PerfInfo, outputPaths []string) *PerfInfo {
+func ComputeStats(perfInfos []*PerfInfo, outputPaths []string, vdrKillReport *VDRKillReport) *PerfInfo {
 	aggPerfInfo := &PerfInfo{}
 	for _, perfInfo := range perfInfos {
 		if aggPerfInfo.Start.IsZero() || (!perfInfo.Start.IsZero() && aggPerfInfo.Start.After(perfInfo.Start)) {
@@ -190,13 +189,21 @@ func ComputeStats(perfInfos []*PerfInfo, outputPaths []string) *PerfInfo {
 		aggPerfInfo.OutputBytes += perfInfo.OutputBytes
 		aggPerfInfo.UserTime += perfInfo.UserTime
 		aggPerfInfo.SystemTime += perfInfo.SystemTime
-		aggPerfInfo.VdrFiles += perfInfo.VdrFiles
-		aggPerfInfo.VdrBytes += perfInfo.VdrBytes
+
+		if vdrKillReport == nil {
+			// If VDR kill report is nil, use perf reports' VDR stats
+			aggPerfInfo.VdrFiles += perfInfo.VdrFiles
+			aggPerfInfo.VdrBytes += perfInfo.VdrBytes
+		}
 	}
 	if aggPerfInfo.Duration > 0 {
 		aggPerfInfo.InBlocksRate = float64(aggPerfInfo.InBlocks) / aggPerfInfo.Duration
 		aggPerfInfo.OutBlocksRate = float64(aggPerfInfo.OutBlocks) / aggPerfInfo.Duration
 		aggPerfInfo.TotalBlocksRate = float64(aggPerfInfo.TotalBlocks) / aggPerfInfo.Duration
+	}
+	if vdrKillReport != nil {
+		aggPerfInfo.VdrFiles = vdrKillReport.Count
+		aggPerfInfo.VdrBytes = vdrKillReport.Size
 	}
 	aggPerfInfo.WallTime = aggPerfInfo.End.Sub(aggPerfInfo.Start).Seconds()
 	outputFiles, outputBytes := GetDirectorySize(outputPaths)

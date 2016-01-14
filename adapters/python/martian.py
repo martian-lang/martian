@@ -251,6 +251,16 @@ def monitor(metadata, limit_kb):
             done()
         time.sleep(120)
 
+def files_count_bytes(metadata):
+    total_size = 0
+    total_count = 0
+    for dirpath, dirnames, filenames in os.walk(metadata.files_path):
+        for f in filenames:
+            fp = os.path.join(dirpath, f)
+            total_count += 1
+            total_size += os.path.getsize(fp)
+    return total_count, total_size
+
 def start_heartbeat():
     t = multiprocessing.Process(target=heartbeat, args=(metadata,))
     t.daemon = True
@@ -339,6 +349,13 @@ def done():
         "self": rusage_to_dict(resource.getrusage(resource.RUSAGE_SELF)),
         "children": rusage_to_dict(resource.getrusage(resource.RUSAGE_CHILDREN))
     }
+
+    file_count, file_bytes = files_count_bytes(metadata)
+    jobinfo["files"] = {
+        "count": file_count,
+        "bytes": file_bytes
+    }
+
     metadata.write("jobinfo", jobinfo)
 
     # sys.exit does not actually exit the process but only exits the thread.
