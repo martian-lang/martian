@@ -17,7 +17,7 @@ type JobInfo struct {
 	PythonInfo    *PythonInfo    `json:"python"`
 	RusageInfo    *RusageInfo    `json:"rusage"`
 	WallClockInfo *WallClockInfo `json:"wallclock"`
-	FilesInfo     *FilesInfo	 `json:"files"`
+	FilesInfo     *FilesInfo     `json:"files"`
 }
 
 type PythonInfo struct {
@@ -31,8 +31,8 @@ type RusageInfo struct {
 }
 
 type FilesInfo struct {
-	Count	uint	`json:"count"`
-	Bytes   uint64  `json:"bytes"`
+	Count uint   `json:"count"`
+	Bytes uint64 `json:"bytes"`
 }
 
 type Rusage struct {

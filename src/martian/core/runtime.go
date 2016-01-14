@@ -2208,8 +2208,8 @@ func NewForkStorageEvent(timestamp time.Time, totalBytes uint64, vdrBytes uint64
 	self.Name = fqname
 	self.TotalBytes = totalBytes // sum total of bytes in fork and children
 	self.ForkBytes = self.TotalBytes
-	self.TotalVDRBytes = vdrBytes // sum total of VDR bytes in fork and children
-	self.ForkVDRBytes = self.TotalVDRBytes  // VDR bytes in forkN/files
+	self.TotalVDRBytes = vdrBytes          // sum total of VDR bytes in fork and children
+	self.ForkVDRBytes = self.TotalVDRBytes // VDR bytes in forkN/files
 	self.Timestamp = timestamp
 	return self
 }
