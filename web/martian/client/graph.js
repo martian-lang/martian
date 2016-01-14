@@ -294,6 +294,11 @@
       fork = $scope.pnode.forks[$scope.forki];
       return humanize(fork.fork_stats[name], units);
     };
+    $scope.humanizeFromNode = function(name, units) {
+      var node;
+      node = $scope.pnode;
+      return humanize(node[name], units);
+    };
     $scope.getActiveTab = function() {
       var ref1;
       ref1 = $scope.tabs;
