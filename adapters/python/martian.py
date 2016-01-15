@@ -339,6 +339,7 @@ def done():
         "self": rusage_to_dict(resource.getrusage(resource.RUSAGE_SELF)),
         "children": rusage_to_dict(resource.getrusage(resource.RUSAGE_CHILDREN))
     }
+    metadata.write("jobinfo", jobinfo)
 
     # sys.exit does not actually exit the process but only exits the thread.
     # If this thread is not the main thread, use os._exit. This won't call
