@@ -594,6 +594,7 @@ type Fork struct {
 	metadata       *Metadata
 	split_metadata *Metadata
 	join_metadata  *Metadata
+	parentFork     *Fork
 	subforks       []*Fork
 	chunks         []*Chunk
 	split_has_run  bool
@@ -890,65 +891,6 @@ func (self *Fork) cachePerf() {
 	self.perfCache = &ForkPerfCache{perfInfo, vdrKillReport}
 }
 
-func (self *Fork) updatePerfPostVDR() {
-	perfInfo, vdrKillReport := self.serializePerf()
-	// update cache to change output bytes to vdr bytes
-	// use VDR rules to keep chunk-level granularity
-	if self.deleteOnVdrKill() {
-		if self.node.volatile {
-			if perfInfo.SplitStats != nil {
-				perfInfo.SplitStats.markOutputAsVDR()
-			}
-			if perfInfo.JoinStats != nil {
-				perfInfo.JoinStats.markOutputAsVDR()
-			}
-		}
-		for _, chunk := range perfInfo.Chunks {
-			chunk.ChunkStats.markOutputAsVDR()
-		}
-
-		// if vdrmode=rolling, VDR info for subforks have been
-		// computed bottom-up and is already accounted for in the
-		// PerfInfo that is passed to this method; so just
-		// look at the local fork's VDR report for information
-		if self.node.rt.vdrMode == "rolling" {
-			forkNodeVDRReport, ok := self.getVdrKillReport()
-			if ok {
-				perfInfo.ForkStats.OutputFiles -= forkNodeVDRReport.Count
-				perfInfo.ForkStats.OutputBytes -= forkNodeVDRReport.Size
-				perfInfo.ForkStats.VdrFiles += forkNodeVDRReport.Count
-				perfInfo.ForkStats.VdrBytes += forkNodeVDRReport.Size
-			}
-		} else {
-			// ensure we aren't double-counting file removal
-			if vdrKillReport.Count < perfInfo.ForkStats.OutputFiles {
-				perfInfo.ForkStats.OutputFiles -= vdrKillReport.Count
-				perfInfo.ForkStats.VdrFiles += vdrKillReport.Count
-			} else {
-				perfInfo.ForkStats.VdrFiles += perfInfo.ForkStats.OutputFiles
-				perfInfo.ForkStats.OutputFiles = 0
-			}
-
-			if vdrKillReport.Size < perfInfo.ForkStats.OutputBytes {
-				perfInfo.ForkStats.OutputBytes -= vdrKillReport.Size
-				perfInfo.ForkStats.VdrBytes += vdrKillReport.Size
-			} else {
-				perfInfo.ForkStats.VdrBytes += perfInfo.ForkStats.OutputBytes
-				perfInfo.ForkStats.OutputBytes = 0
-			}
-		}
-	}
-
-	self.perfCache = &ForkPerfCache{perfInfo, vdrKillReport}
-}
-
-func (self *Fork) deleteOnVdrKill() bool {
-	return self.node.rt.vdrMode != "disable"
-}
-
-/**
- * Return VDR kill report, as well as w
- */
 func (self *Fork) getVdrKillReport() (*VDRKillReport, bool) {
 	killReport := &VDRKillReport{}
 	ok := false
@@ -957,14 +899,19 @@ func (self *Fork) getVdrKillReport() (*VDRKillReport, bool) {
 		if err := json.Unmarshal([]byte(data), &killReport); err == nil {
 			ok = true
 		}
-	} else {
-		killReport = self.makeVdrKillReport()
 	}
 	return killReport, ok
 }
 
-func (self *Fork) makeVdrKillReport() *VDRKillReport {
+func (self *Fork) vdrKill() *VDRKillReport {
 	killReport := &VDRKillReport{}
+	if self.node.rt.vdrMode == "disable" {
+		return killReport
+	}
+	if killReport, ok := self.getVdrKillReport(); ok {
+		return killReport
+	}
+
 	killPaths := []string{}
 	// For volatile nodes, kill fork-level files.
 	if self.node.volatile {
@@ -1001,27 +948,11 @@ func (self *Fork) makeVdrKillReport() *VDRKillReport {
 			return nil
 		})
 		killReport.Paths = append(killReport.Paths, p)
-	}
-	return killReport
-}
-
-func (self *Fork) vdrKill() *VDRKillReport {
-	killReport := &VDRKillReport{}
-	if !self.deleteOnVdrKill() {
-		return killReport
-	}
-	killReport, ok := self.getVdrKillReport()
-	if ok {
-		return killReport
-	}
-
-	for _, p := range killReport.Paths {
 		os.RemoveAll(p)
 	}
 	// update timestamp to mark actual kill time
 	killReport.Timestamp = Timestamp()
 	self.metadata.write("vdrkill", killReport)
-	self.updatePerfPostVDR()
 	return killReport
 }
 
@@ -1174,6 +1105,12 @@ func (self *Fork) serializePerf() (*ForkPerfInfo, *VDRKillReport) {
 		chunkSer := chunk.serializePerf()
 		chunks = append(chunks, chunkSer)
 		if chunkSer.ChunkStats != nil {
+			// avoid double-counting of bytes/files if there is no
+			// actual split; it will be counted by ComputeStats() below.
+			if !self.node.split {
+				chunkSer.ChunkStats.OutputBytes = 0
+				chunkSer.ChunkStats.OutputFiles = 0
+			}
 			stats = append(stats, chunkSer.ChunkStats)
 		}
 	}
@@ -1198,11 +1135,11 @@ func (self *Fork) serializePerf() (*ForkPerfInfo, *VDRKillReport) {
 		killReports = append(killReports, subforkKillReport)
 	}
 	killReport = mergeVDRKillReports(killReports)
+	fpaths, _ := self.metadata.enumerateFiles()
 
 	forkStats := &PerfInfo{}
-	fpaths, _ := self.metadata.enumerateFiles()
 	if len(stats) > 0 {
-		forkStats = ComputeStats(stats, fpaths)
+		forkStats = ComputeStats(stats, fpaths, killReport)
 	}
 	return &ForkPerfInfo{
 		Stages:     self.getStages(),
@@ -1387,6 +1324,7 @@ func (self *Node) buildForks(bindings map[string]*Binding) {
 	for _, fork := range self.forks {
 		for _, subnode := range self.subnodes {
 			if matchedFork := subnode.getNode().matchFork(fork.argPermute); matchedFork != nil {
+				matchedFork.parentFork = fork
 				fork.subforks = append(fork.subforks, matchedFork)
 			}
 		}
@@ -1604,7 +1542,7 @@ func (self *Node) postProcess() {
 }
 
 func (self *Node) cachePerf() {
-	if self.vdrKillable() {
+	if _, ok := self.vdrKill(); ok {
 		// Cache all fork performance info if node can be VDR-ed.
 		for _, fork := range self.forks {
 			fork.cachePerf()
@@ -1680,11 +1618,11 @@ func (self *Node) step() {
 	case "complete":
 		if self.rt.vdrMode == "rolling" {
 			for _, node := range self.prenodes {
-				node.getNode().cachePerf()
 				node.getNode().vdrKill()
+				node.getNode().cachePerf()
 			}
-			self.cachePerf()
 			self.vdrKill()
+			self.cachePerf()
 		}
 		for _, node := range self.postnodes {
 			self.addFrontierNode(node)
@@ -1745,17 +1683,17 @@ type VDRKillReport struct {
 	Errors    []string `json:"errors"`
 }
 
-type ByTimestamp []*VDRKillReport
+type VDRByTimestamp []*VDRKillReport
 
-func (self ByTimestamp) Len() int {
+func (self VDRByTimestamp) Len() int {
 	return len(self)
 }
 
-func (self ByTimestamp) Swap(i, j int) {
+func (self VDRByTimestamp) Swap(i, j int) {
 	self[i], self[j] = self[j], self[i]
 }
 
-func (self ByTimestamp) Less(i, j int) bool {
+func (self VDRByTimestamp) Less(i, j int) bool {
 	return self[i].Timestamp < self[j].Timestamp
 }
 
@@ -1767,25 +1705,21 @@ func mergeVDRKillReports(killReports []*VDRKillReport) *VDRKillReport {
 		allKillReport.Errors = append(allKillReport.Errors, killReport.Errors...)
 		allKillReport.Paths = append(allKillReport.Paths, killReport.Paths...)
 	}
-	sort.Sort(ByTimestamp(killReports))
+	sort.Sort(VDRByTimestamp(killReports))
 	if len(killReports) > 0 {
 		allKillReport.Timestamp = killReports[len(killReports)-1].Timestamp
 	}
 	return allKillReport
 }
 
-func (self *Node) vdrKillable() bool {
-	for _, node := range self.postnodes {
-		if node.getNode().state != "complete" {
-			return false
-		}
-	}
-	return true
-}
-
 func (self *Node) vdrKill() (*VDRKillReport, bool) {
 	killReports := []*VDRKillReport{}
-	ok := self.vdrKillable()
+	ok := true
+	for _, node := range self.postnodes {
+		if node.getNode().state != "complete" {
+			ok = false
+		}
+	}
 	if ok {
 		for _, fork := range self.forks {
 			killReports = append(killReports, fork.vdrKill())
@@ -2210,7 +2144,170 @@ func (self *Pipestance) Serialize(name string) interface{} {
 			panic(fmt.Sprintf("Unsupported serialization type: %s", name))
 		}
 	}
+	if name == "perf" {
+		LogInfo("perf", "pipestance serialize")
+		if len(ser) > 0 {
+			self.ComputeDiskUsage(ser[0].(*NodePerfInfo))
+		}
+	}
 	return ser
+}
+
+type StorageEvent struct {
+	Timestamp time.Time
+	Delta     int64
+	Name      string
+}
+
+func NewStorageEvent(timestamp time.Time, delta int64, fqname string) *StorageEvent {
+	self := &StorageEvent{}
+	self.Timestamp = timestamp
+	self.Delta = delta
+	self.Name = fqname
+	return self
+}
+
+type StorageEventByTimestamp []*StorageEvent
+
+func (self StorageEventByTimestamp) Len() int {
+	return len(self)
+}
+
+func (self StorageEventByTimestamp) Swap(i, j int) {
+	self[i], self[j] = self[j], self[i]
+}
+
+func (self StorageEventByTimestamp) Less(i, j int) bool {
+	return self[i].Timestamp.Before(self[j].Timestamp)
+}
+
+// this is due to the fact that the VDR bytes/total bytes
+// reported at the fork level is the sum of chunk + split
+// + join plus any additional files.  The additional
+// files that are unique to the fork cannot be resolved
+// unless you sub out chunk/split/join and then child
+// stages.
+type ForkStorageEvent struct {
+	Name          string
+	ChildNames    []string
+	TotalBytes    uint64
+	ChunkBytes    uint64
+	ForkBytes     uint64
+	TotalVDRBytes uint64
+	ForkVDRBytes  uint64
+	Timestamp     time.Time
+	VDRTimestamp  time.Time
+}
+
+func NewForkStorageEvent(timestamp time.Time, totalBytes uint64, vdrBytes uint64, fqname string) *ForkStorageEvent {
+	self := &ForkStorageEvent{ChildNames: []string{}}
+	self.Name = fqname
+	self.TotalBytes = totalBytes // sum total of bytes in fork and children
+	self.ForkBytes = self.TotalBytes
+	self.TotalVDRBytes = vdrBytes          // sum total of VDR bytes in fork and children
+	self.ForkVDRBytes = self.TotalVDRBytes // VDR bytes in forkN/files
+	self.Timestamp = timestamp
+	return self
+}
+
+func forkDependentName(fqname string, forkIndex int) string {
+	return fmt.Sprintf("%s.fork%d", fqname, forkIndex)
+}
+
+// finally, iterate down the fork tree to establish how much each node
+// actually contributed
+func calculateForkBytes(fse *ForkStorageEvent, forksVisited map[string]*ForkStorageEvent,
+	forksSized map[*ForkStorageEvent]bool) (uint64, uint64) {
+	if _, ok := forksSized[fse]; ok {
+		return fse.TotalBytes, fse.TotalVDRBytes
+	}
+	if len(fse.ChildNames) == 0 {
+		forksSized[fse] = true
+		return fse.TotalBytes, fse.TotalVDRBytes
+	}
+	childSize := uint64(0)
+	childVDRSize := uint64(0)
+	for _, fqname := range fse.ChildNames {
+		fileSize, vdrSize := calculateForkBytes(forksVisited[fqname], forksVisited, forksSized)
+		childSize += fileSize
+		childVDRSize += vdrSize
+	}
+	fse.ForkBytes -= childSize
+	fse.ForkVDRBytes -= childVDRSize
+	forksSized[fse] = true
+	return fse.TotalBytes, fse.TotalVDRBytes
+}
+
+func (self *ForkStorageEvent) addDependentFork(fqname string) {
+	self.ChildNames = append(self.ChildNames, fqname)
+}
+
+func (self *Pipestance) ComputeDiskUsage(nodePerf *NodePerfInfo) *NodePerfInfo {
+	storageEvents := []*StorageEvent{}
+	forksVisited := make(map[string]*ForkStorageEvent)
+	forksSized := make(map[*ForkStorageEvent]bool)
+
+	for _, node := range self.node.allNodes() {
+		nodePerf := node.serializePerf()
+		for forkIdx, fork := range nodePerf.Forks {
+			if fork.ForkStats != nil {
+				forkEvent := NewForkStorageEvent(fork.ForkStats.Start, fork.ForkStats.TotalBytes,
+					fork.ForkStats.VdrBytes, forkDependentName(node.fqname, forkIdx))
+				forksVisited[forkDependentName(node.fqname, forkIdx)] = forkEvent
+			}
+		}
+		// resolve fork dependencies
+		for _, fork := range node.forks {
+			if forkEvent, ok := forksVisited[fork.fqname]; ok {
+				for _, subfork := range fork.subforks {
+					forkEvent.addDependentFork(subfork.fqname)
+				}
+			}
+		}
+
+		for _, fork := range node.forks {
+			forkVDR, _ := fork.getVdrKillReport()
+			if forkVDR == nil {
+				continue
+			}
+			vdrTimestamp, _ := time.Parse(TIMEFMT, forkVDR.Timestamp)
+			if forkEvent, ok := forksVisited[fork.fqname]; ok {
+				forkEvent.VDRTimestamp = vdrTimestamp
+			}
+		}
+	}
+
+	for _, fse := range forksVisited {
+		calculateForkBytes(fse, forksVisited, forksSized)
+	}
+
+	for fse := range forksSized {
+		storageEvents = append(
+			storageEvents,
+			NewStorageEvent(fse.Timestamp, int64(fse.ForkBytes), fmt.Sprintf("%s file", fse.Name)))
+		if !fse.VDRTimestamp.IsZero() {
+			storageEvents = append(
+				storageEvents,
+				NewStorageEvent(fse.VDRTimestamp, -1*int64(fse.ForkVDRBytes), fmt.Sprintf("%s vdrkill", fse.Name)))
+		}
+	}
+
+	sort.Sort(StorageEventByTimestamp(storageEvents))
+	highMark := int64(0)
+	currentMark := int64(0)
+
+	byteStamps := make([]*NodeByteStamp, len(storageEvents))
+	for idx, se := range storageEvents {
+		currentMark += se.Delta
+		byteStamps[idx] = &NodeByteStamp{Timestamp: se.Timestamp, Bytes: currentMark}
+		if currentMark > highMark {
+			highMark = currentMark
+		}
+	}
+
+	nodePerf.MaxBytes = highMark
+	nodePerf.BytesHist = byteStamps
+	return nodePerf
 }
 
 func (self *Pipestance) ZipMetadata(zipPath string) error {
@@ -2310,7 +2407,6 @@ func (self *Pipestance) Immortalize() {
 func (self *Pipestance) VDRKill() *VDRKillReport {
 	killReports := []*VDRKillReport{}
 	for _, node := range self.node.allNodes() {
-		node.cachePerf()
 		killReport, _ := node.vdrKill()
 		killReports = append(killReports, killReport)
 	}

@@ -76,11 +76,18 @@ type PerfInfo struct {
 	VdrBytes        uint64    `json:"vdr_bytes"`
 }
 
-func (self *PerfInfo) markOutputAsVDR() {
-	self.VdrBytes = self.OutputBytes
-	self.VdrFiles = self.OutputFiles
-	self.OutputBytes = 0
-	self.OutputFiles = 0
+type PerfInfoByStart []*PerfInfo
+
+func (self PerfInfoByStart) Len() int {
+	return len(self)
+}
+
+func (self PerfInfoByStart) Swap(i, j int) {
+	self[i], self[j] = self[j], self[i]
+}
+
+func (self PerfInfoByStart) Less(i, j int) bool {
+	return self[i].Start.Before(self[j].Start)
 }
 
 type ChunkPerfInfo struct {
@@ -103,11 +110,18 @@ type ForkPerfInfo struct {
 	ForkStats  *PerfInfo        `json:"fork_stats"`
 }
 
+type NodeByteStamp struct {
+	Timestamp time.Time `json:"ts"`
+	Bytes     int64     `json:"bytes"`
+}
+
 type NodePerfInfo struct {
-	Name   string          `json:"name"`
-	Fqname string          `json:"fqname"`
-	Type   string          `json:"type"`
-	Forks  []*ForkPerfInfo `json:"forks"`
+	Name      string           `json:"name"`
+	Fqname    string           `json:"fqname"`
+	Type      string           `json:"type"`
+	Forks     []*ForkPerfInfo  `json:"forks"`
+	MaxBytes  int64            `json:"maxbytes"`
+	BytesHist []*NodeByteStamp `json:"bytehist"`
 }
 
 func reduceJobInfo(jobInfo *JobInfo, outputPaths []string, numThreads int) *PerfInfo {
@@ -147,7 +161,7 @@ func reduceJobInfo(jobInfo *JobInfo, outputPaths []string, numThreads int) *Perf
 	return perfInfo
 }
 
-func ComputeStats(perfInfos []*PerfInfo, outputPaths []string) *PerfInfo {
+func ComputeStats(perfInfos []*PerfInfo, outputPaths []string, vdrKillReport *VDRKillReport) *PerfInfo {
 	aggPerfInfo := &PerfInfo{}
 	for _, perfInfo := range perfInfos {
 		if aggPerfInfo.Start.IsZero() || (!perfInfo.Start.IsZero() && aggPerfInfo.Start.After(perfInfo.Start)) {
@@ -169,13 +183,21 @@ func ComputeStats(perfInfos []*PerfInfo, outputPaths []string) *PerfInfo {
 		aggPerfInfo.OutputBytes += perfInfo.OutputBytes
 		aggPerfInfo.UserTime += perfInfo.UserTime
 		aggPerfInfo.SystemTime += perfInfo.SystemTime
-		aggPerfInfo.VdrFiles += perfInfo.VdrFiles
-		aggPerfInfo.VdrBytes += perfInfo.VdrBytes
+
+		if vdrKillReport == nil {
+			// If VDR kill report is nil, use perf reports' VDR stats
+			aggPerfInfo.VdrFiles += perfInfo.VdrFiles
+			aggPerfInfo.VdrBytes += perfInfo.VdrBytes
+		}
 	}
 	if aggPerfInfo.Duration > 0 {
 		aggPerfInfo.InBlocksRate = float64(aggPerfInfo.InBlocks) / aggPerfInfo.Duration
 		aggPerfInfo.OutBlocksRate = float64(aggPerfInfo.OutBlocks) / aggPerfInfo.Duration
 		aggPerfInfo.TotalBlocksRate = float64(aggPerfInfo.TotalBlocks) / aggPerfInfo.Duration
+	}
+	if vdrKillReport != nil {
+		aggPerfInfo.VdrFiles = vdrKillReport.Count
+		aggPerfInfo.VdrBytes = vdrKillReport.Size
 	}
 	aggPerfInfo.WallTime = aggPerfInfo.End.Sub(aggPerfInfo.Start).Seconds()
 	outputFiles, outputBytes := GetDirectorySize(outputPaths)
