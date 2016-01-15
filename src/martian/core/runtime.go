@@ -1114,10 +1114,6 @@ func (self *Fork) serializePerf() (*ForkPerfInfo, *VDRKillReport) {
 			stats = append(stats, chunkSer.ChunkStats)
 		}
 	}
-	// avoid double-counting of files if there aren't any splits
-	if !self.node.split {
-
-	}
 
 	numThreads, _ := self.node.getJobReqs(nil)
 	splitStats := self.split_metadata.serializePerf(numThreads)
