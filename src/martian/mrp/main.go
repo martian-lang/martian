@@ -207,12 +207,12 @@ Options:
 
 	// Compute MRO path.
 	cwd, _ := filepath.Abs(path.Dir(os.Args[0]))
-	mroPath := cwd
+	mroPaths := core.ParseMroPath(cwd)
 	if value := os.Getenv("MROPATH"); len(value) > 0 {
-		mroPath = value
+		mroPaths = core.ParseMroPath(value)
 	}
-	mroVersion := core.GetMroVersion(mroPath)
-	core.LogInfo("environ", "MROPATH=%s", mroPath)
+	mroVersion := core.GetMroVersion(mroPaths)
+	core.LogInfo("environ", "MROPATH=%s", core.FormatMroPath(mroPaths))
 	core.LogInfo("version", "MRO Version=%s", mroVersion)
 
 	// Compute job manager.
@@ -303,7 +303,7 @@ Options:
 	rt := core.NewRuntimeWithCores(jobMode, vdrMode, profileMode, martianVersion,
 		reqCores, reqMem, reqMemPerCore, maxJobs, jobFreqMillis, stackVars, zip,
 		skipPreflight, enableMonitor, debug, stest)
-	rt.MroCache.CacheMros(mroPath)
+	rt.MroCache.CacheMros(mroPaths)
 
 	// Print this here because the log makes more sense when this appears before
 	// the runloop messages start to appear.
@@ -320,12 +320,12 @@ Options:
 	core.DieIf(err)
 	invocationSrc := string(data)
 	pipestance, err := rt.InvokePipeline(invocationSrc, invocationPath, psid, pipestancePath,
-		mroPath, mroVersion, envs, tags)
+		mroPaths, mroVersion, envs, tags)
 	if err != nil {
 		if _, ok := err.(*core.PipestanceExistsError); ok {
 			// If it already exists, try to reattach to it.
 			if pipestance, err = rt.ReattachToPipestance(psid, pipestancePath, invocationSrc,
-				mroPath, mroVersion, envs, checkSrc, readOnly); err == nil {
+				mroPaths, mroVersion, envs, checkSrc, readOnly); err == nil {
 				martianVersion, mroVersion, _ = pipestance.GetVersions()
 				if !inspect {
 					err = pipestance.Reset()
@@ -359,7 +359,7 @@ Options:
 		"maxmemgb":   strconv.Itoa(rt.JobManager.GetMaxMemGB()),
 		"invokepath": invocationPath,
 		"invokesrc":  invocationSrc,
-		"mropath":    mroPath,
+		"mropath":    core.FormatMroPath(mroPaths),
 		"mroprofile": profileMode,
 		"mroport":    uiport,
 		"mroversion": mroVersion,

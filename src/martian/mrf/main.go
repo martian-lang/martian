@@ -21,12 +21,12 @@ func main() {
 	doc := `Martian Formatter.
 
 Usage:
-    mrf <file.mro>... [--rewrite] 
+    mrf <file.mro>... [--rewrite]
     mrf --all
     mrf -h | --help | --version
 
 Options:
-    --rewrite     Rewrite the specified file(s) in place in addition to 
+    --rewrite     Rewrite the specified file(s) in place in addition to
                   printing reformatted source to stdout.
     --all         Rewrite all files in MROPATH.
     -h --help     Show this message.
@@ -36,21 +36,25 @@ Options:
 
 	// Martian environment variables.
 	cwd, _ := filepath.Abs(path.Dir(os.Args[0]))
-	mroPath := cwd
+	mroPaths := core.ParseMroPath(cwd)
 	if value := os.Getenv("MROPATH"); len(value) > 0 {
-		mroPath = value
+		mroPaths = core.ParseMroPath(value)
 	}
 
 	if opts["--all"].(bool) {
 		// Format all MRO files in MRO path.
-		fnames, err := filepath.Glob(mroPath + "/*.mro")
-		core.DieIf(err)
-		for _, fname := range fnames {
-			fsrc, err := core.FormatFile(fname)
+		numFiles := 0
+		for _, mroPath := range mroPaths {
+			fnames, err := filepath.Glob(mroPath + "/*.mro")
 			core.DieIf(err)
-			ioutil.WriteFile(fname, []byte(fsrc), 0644)
+			for _, fname := range fnames {
+				fsrc, err := core.FormatFile(fname)
+				core.DieIf(err)
+				ioutil.WriteFile(fname, []byte(fsrc), 0644)
+			}
+			numFiles += len(fnames)
 		}
-		fmt.Printf("Successfully reformatted %d files.\n", len(fnames))
+		fmt.Printf("Successfully reformatted %d files.\n", numFiles)
 	} else {
 		// Format just the specified MRO files.
 		for _, fname := range opts["<file.mro>"].([]string) {

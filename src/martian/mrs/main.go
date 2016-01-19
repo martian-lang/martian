@@ -50,7 +50,7 @@ Options:
     --stackvars         Print local variables in stage code stack trace.
     --monitor           Kill jobs that exceed requested memory resources.
     --debug             Enable debug logging for local job manager.
-    
+
     -h --help           Show this message.
     --version           Show version.`
 	martianVersion := core.GetVersion()
@@ -108,12 +108,12 @@ Options:
 
 	// Compute MRO path.
 	cwd, _ := filepath.Abs(path.Dir(os.Args[0]))
-	mroPath := cwd
+	mroPaths := core.ParseMroPath(cwd)
 	if value := os.Getenv("MROPATH"); len(value) > 0 {
-		mroPath = value
+		mroPaths = core.ParseMroPath(value)
 	}
-	mroVersion := core.GetMroVersion(mroPath)
-	core.LogInfo("environ", "MROPATH=%s", mroPath)
+	mroVersion := core.GetMroVersion(mroPaths)
+	core.LogInfo("environ", "MROPATH=%s", core.FormatMroPath(mroPaths))
 	core.LogInfo("version", "MRO Version=%s", mroVersion)
 
 	// Compute job manager.
@@ -156,13 +156,13 @@ Options:
 	rt := core.NewRuntimeWithCores(jobMode, vdrMode, profileMode, martianVersion,
 		reqCores, reqMem, reqMemPerCore, maxJobs, jobFreqMillis, stackVars, zip,
 		skipPreflight, enableMonitor, debug, false)
-	rt.MroCache.CacheMros(mroPath)
+	rt.MroCache.CacheMros(mroPaths)
 
 	// Invoke stagestance.
 	data, err := ioutil.ReadFile(invocationPath)
 	core.DieIf(err)
 	stagestance, err := rt.InvokeStage(string(data), invocationPath, ssid,
-		stagestancePath, mroPath, mroVersion, envs)
+		stagestancePath, mroPaths, mroVersion, envs)
 	core.DieIf(err)
 
 	// Start writing (including cached entries) to log file.

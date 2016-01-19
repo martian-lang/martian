@@ -25,12 +25,27 @@ func IsRelease() bool {
 	return out
 }
 
-func GetMroVersion(dir string) string {
-	versionPath := path.Join(dir, "..", ".version")
-	if data, err := ioutil.ReadFile(versionPath); err == nil {
-		return string(data)
+func GetMroVersion(dirs []string) string {
+	for _, dir := range dirs {
+		if version, err := GetSakeVersion(dir); err == nil {
+			return version
+		}
 	}
-	return GetGitTag(dir)
+	for _, dir := range dirs {
+		if version, err := GetGitTag(dir); err == nil {
+			return version
+		}
+	}
+	return "noversion"
+}
+
+func GetSakeVersion(dir string) (string, error) {
+	versionPath := path.Join(dir, "..", ".version")
+	data, err := ioutil.ReadFile(versionPath)
+	if err != nil {
+		return "", err
+	}
+	return string(data), nil
 }
 
 func runGit(dir string, args ...string) (string, error) {
@@ -40,18 +55,10 @@ func runGit(dir string, args ...string) (string, error) {
 	return strings.TrimSpace(string(out)), err
 }
 
-func GetGitTag(dir string) string {
-	out, err := runGit(dir, "describe", "--tags", "--dirty", "--always")
-	if err == nil {
-		return out
-	}
-	return "noversion"
+func GetGitTag(dir string) (string, error) {
+	return runGit(dir, "describe", "--tags", "--dirty", "--always")
 }
 
-func GetGitBranch(dir string) string {
-	out, err := runGit(dir, "rev-parse", "--abbrev-ref", "HEAD")
-	if err == nil {
-		return out
-	}
-	return "nobranch"
+func GetGitBranch(dir string) (string, error) {
+	return runGit(dir, "rev-parse", "--abbrev-ref", "HEAD")
 }

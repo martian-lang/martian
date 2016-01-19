@@ -36,9 +36,9 @@ Options:
 
 	// Martian environment variables.
 	cwd, _ := filepath.Abs(path.Dir(os.Args[0]))
-	mroPath := cwd
+	mroPaths := core.ParseMroPath(cwd)
 	if value := os.Getenv("MROPATH"); len(value) > 0 {
-		mroPath = value
+		mroPaths = core.ParseMroPath(value)
 	}
 	checkSrcPath := true
 
@@ -48,7 +48,7 @@ Options:
 	count := 0
 	if opts["--all"].(bool) {
 		// Compile all MRO files in MRO path.
-		num, err := rt.CompileAll(mroPath, checkSrcPath)
+		num, err := rt.CompileAll(mroPaths, checkSrcPath)
 		if err != nil {
 			fmt.Println(err.Error())
 			os.Exit(1)
@@ -57,7 +57,7 @@ Options:
 	} else {
 		// Compile just the specified MRO files.
 		for _, fname := range opts["<file.mro>"].([]string) {
-			_, _, _, err := rt.Compile(path.Join(cwd, fname), mroPath, checkSrcPath)
+			_, _, _, err := rt.Compile(path.Join(cwd, fname), mroPaths, checkSrcPath)
 			if err != nil {
 				fmt.Println(err.Error())
 				os.Exit(1)
