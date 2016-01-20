@@ -53,6 +53,14 @@ func MakeJSON(data interface{}) string {
 	return string(bytes)
 }
 
+func ParseMroPath(mroPath string) []string {
+	return strings.Split(mroPath, ":")
+}
+
+func FormatMroPath(mroPaths []string) string {
+	return strings.Join(mroPaths, ":")
+}
+
 func MakeTag(key string, value string) string {
 	return fmt.Sprintf("%s:%s", key, value)
 }

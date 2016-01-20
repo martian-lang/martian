@@ -34,14 +34,14 @@ Options:
 
 	// Martian environment variables.
 	cwd, _ := filepath.Abs(path.Dir(os.Args[0]))
-	mroPath := cwd
+	mroPaths := core.ParseMroPath(cwd)
 	if value := os.Getenv("MROPATH"); len(value) > 0 {
-		mroPath = value
+		mroPaths = core.ParseMroPath(value)
 	}
 
 	// Setup runtime with MRO path.
 	rt := core.NewRuntime("local", "disable", "disable", martianVersion)
-	rt.MroCache.CacheMros(mroPath)
+	rt.MroCache.CacheMros(mroPaths)
 
 	// Read and parse JSON from stdin.
 	dec := json.NewDecoder(os.Stdin)
@@ -68,7 +68,7 @@ Options:
 			sweepargs = core.ArrayToString(sweeplist)
 		}
 
-		src, bldErr := rt.BuildCallSource(incpaths, name, args, sweepargs, mroPath)
+		src, bldErr := rt.BuildCallSource(incpaths, name, args, sweepargs, mroPaths)
 
 		if bldErr == nil {
 			fmt.Print(src)
