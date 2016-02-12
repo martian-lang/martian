@@ -2834,14 +2834,28 @@ func (self *MroCache) GetCallable(mroPaths []string, name string) (Callable, err
 }
 
 func buildVal(param Param, val interface{}) string {
-	indent := "    "
-	if data, err := json.MarshalIndent(val, "", indent); err == nil {
-		// Indent multi-line values (but not first line).
-		sublines := strings.Split(string(data), "\n")
-		for i, _ := range sublines[1:] {
-			sublines[i+1] = indent + sublines[i+1]
+	// MRO value expression syntax is identical to JSON. Just need to make
+	// sure floats get printed with decimal points.
+	switch {
+	case param.getTname() == "float" && param.getArrayDim() == 0 && val != nil:
+		switch val.(type) {
+		case json.Number:
+			if num, err := val.(json.Number).Float64(); err == nil {
+				return fmt.Sprintf("%f", num)
+			}
+		default:
+			return fmt.Sprintf("%f", val)
 		}
-		return strings.Join(sublines, "\n")
+	default:
+		indent := "    "
+		if data, err := json.MarshalIndent(val, "", indent); err == nil {
+			// Indent multi-line values (but not first line).
+			sublines := strings.Split(string(data), "\n")
+			for i, _ := range sublines[1:] {
+				sublines[i+1] = indent + sublines[i+1]
+			}
+			return strings.Join(sublines, "\n")
+		}
 	}
 	return fmt.Sprintf("<ParseError: %v>", val)
 }
