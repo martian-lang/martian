@@ -45,6 +45,7 @@ Options:
 
 	// Read and parse JSON from stdin.
 	dec := json.NewDecoder(os.Stdin)
+	dec.UseNumber()
 	var input map[string]interface{}
 	if err := dec.Decode(&input); err == nil {
 		incpaths := []string{}
