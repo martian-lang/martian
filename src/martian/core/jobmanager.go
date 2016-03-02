@@ -375,6 +375,19 @@ func (self *RemoteJobManager) sendJob(shellCmd string, argv []string, envs map[s
 	}
 	threads, memGB = self.GetSystemReqs(threads, memGB)
 
+	// figure out per-thread memory requirements for the template.  If
+	// mempercore is specified, use that as what we send.
+	memGBPerThread := memGB
+	if self.memGBPerCore > 0 {
+		memGBPerThread = self.memGBPerCore
+	} else {
+		// ceil to make sure that we're not starving a job
+		memGBPerThread = memGB / threads
+		if memGB % threads > 0 {
+			memGBPerThread += 1
+		}
+	}
+
 	argv = append([]string{shellCmd}, argv...)
 	argv = append(FormatEnv(envs), argv...)
 	params := map[string]string{
@@ -385,6 +398,8 @@ func (self *RemoteJobManager) sendJob(shellCmd string, argv []string, envs map[s
 		"CMD":      strings.Join(argv, " "),
 		"MEM_GB":   fmt.Sprintf("%d", memGB),
 		"MEM_MB":   fmt.Sprintf("%d", memGB*1024),
+		"MEM_GB_PER_THREAD": fmt.Sprintf("%d", memGBPerThread),
+		"MEM_MB_PER_THREAD": fmt.Sprintf("%d", memGBPerThread*1024),
 	}
 
 	// Replace template annotations with actual values

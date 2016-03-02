@@ -2215,38 +2215,9 @@ func forkDependentName(fqname string, forkIndex int) string {
 	return fmt.Sprintf("%s.fork%d", fqname, forkIndex)
 }
 
-// finally, iterate down the fork tree to establish how much each node
-// actually contributed
-func calculateForkBytes(fse *ForkStorageEvent, forksVisited map[string]*ForkStorageEvent,
-	forksSized map[*ForkStorageEvent]bool) (uint64, uint64) {
-	if _, ok := forksSized[fse]; ok {
-		return fse.TotalBytes, fse.TotalVDRBytes
-	}
-	if len(fse.ChildNames) == 0 {
-		forksSized[fse] = true
-		return fse.TotalBytes, fse.TotalVDRBytes
-	}
-	childSize := uint64(0)
-	childVDRSize := uint64(0)
-	for _, fqname := range fse.ChildNames {
-		fileSize, vdrSize := calculateForkBytes(forksVisited[fqname], forksVisited, forksSized)
-		childSize += fileSize
-		childVDRSize += vdrSize
-	}
-	fse.ForkBytes -= childSize
-	fse.ForkVDRBytes -= childVDRSize
-	forksSized[fse] = true
-	return fse.TotalBytes, fse.TotalVDRBytes
-}
-
-func (self *ForkStorageEvent) addDependentFork(fqname string) {
-	self.ChildNames = append(self.ChildNames, fqname)
-}
-
 func (self *Pipestance) ComputeDiskUsage(nodePerf *NodePerfInfo) *NodePerfInfo {
 	storageEvents := []*StorageEvent{}
 	forksVisited := make(map[string]*ForkStorageEvent)
-	forksSized := make(map[*ForkStorageEvent]bool)
 
 	for _, node := range self.node.allNodes() {
 		nodePerf := node.serializePerf()
@@ -2257,11 +2228,11 @@ func (self *Pipestance) ComputeDiskUsage(nodePerf *NodePerfInfo) *NodePerfInfo {
 				forksVisited[forkDependentName(node.fqname, forkIdx)] = forkEvent
 			}
 		}
-		// resolve fork dependencies
+		// remove pipeline counts; they double-count only (do not add own files logic)
 		for _, fork := range node.forks {
-			if forkEvent, ok := forksVisited[fork.fqname]; ok {
-				for _, subfork := range fork.subforks {
-					forkEvent.addDependentFork(subfork.fqname)
+			if fork.node.kind == "pipeline" {
+				if _, ok := forksVisited[fork.fqname]; ok {
+					delete(forksVisited, fork.fqname)
 				}
 			}
 		}
@@ -2279,17 +2250,13 @@ func (self *Pipestance) ComputeDiskUsage(nodePerf *NodePerfInfo) *NodePerfInfo {
 	}
 
 	for _, fse := range forksVisited {
-		calculateForkBytes(fse, forksVisited, forksSized)
-	}
-
-	for fse := range forksSized {
 		storageEvents = append(
 			storageEvents,
-			NewStorageEvent(fse.Timestamp, int64(fse.ForkBytes), fmt.Sprintf("%s file", fse.Name)))
+			NewStorageEvent(fse.Timestamp, int64(fse.ForkBytes), fmt.Sprintf("%s alloc", fse.Name)))
 		if !fse.VDRTimestamp.IsZero() {
 			storageEvents = append(
 				storageEvents,
-				NewStorageEvent(fse.VDRTimestamp, -1*int64(fse.ForkVDRBytes), fmt.Sprintf("%s vdrkill", fse.Name)))
+				NewStorageEvent(fse.VDRTimestamp, -1*int64(fse.ForkVDRBytes), fmt.Sprintf("%s delete", fse.Name)))
 		}
 	}
 
@@ -2300,7 +2267,7 @@ func (self *Pipestance) ComputeDiskUsage(nodePerf *NodePerfInfo) *NodePerfInfo {
 	byteStamps := make([]*NodeByteStamp, len(storageEvents))
 	for idx, se := range storageEvents {
 		currentMark += se.Delta
-		byteStamps[idx] = &NodeByteStamp{Timestamp: se.Timestamp, Bytes: currentMark}
+		byteStamps[idx] = &NodeByteStamp{Timestamp: se.Timestamp, Bytes: currentMark, Description: se.Name}
 		if currentMark > highMark {
 			highMark = currentMark
 		}

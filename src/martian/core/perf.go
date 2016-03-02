@@ -111,8 +111,9 @@ type ForkPerfInfo struct {
 }
 
 type NodeByteStamp struct {
-	Timestamp time.Time `json:"ts"`
-	Bytes     int64     `json:"bytes"`
+	Timestamp   time.Time `json:"ts"`
+	Bytes       int64     `json:"bytes"`
+	Description string    `json:"desc"`
 }
 
 type NodePerfInfo struct {

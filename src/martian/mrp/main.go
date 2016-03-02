@@ -319,10 +319,13 @@ Options:
 	data, err := ioutil.ReadFile(invocationPath)
 	core.DieIf(err)
 	invocationSrc := string(data)
+	executingPreflight := !skipPreflight
+
 	pipestance, err := rt.InvokePipeline(invocationSrc, invocationPath, psid, pipestancePath,
 		mroPaths, mroVersion, envs, tags)
 	if err != nil {
 		if _, ok := err.(*core.PipestanceExistsError); ok {
+			executingPreflight = false
 			// If it already exists, try to reattach to it.
 			if pipestance, err = rt.ReattachToPipestance(psid, pipestancePath, invocationSrc,
 				mroPaths, mroVersion, envs, checkSrc, readOnly); err == nil {
@@ -334,7 +337,9 @@ Options:
 		}
 		core.DieIf(err)
 	}
-	core.Println("\nRunning preflight checks (please wait)...")
+	if executingPreflight {
+		core.Println("\nRunning preflight checks (please wait)...")
+	}
 
 	// Start writing (including cached entries) to log file.
 	core.LogTee(path.Join(pipestancePath, "_log"))
