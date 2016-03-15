@@ -295,8 +295,12 @@ func expToInterface(exp Exp) interface{} {
 		return varray
 	} else if valExp.Kind == "map" {
 		vmap := map[string]interface{}{}
-		for k, exp := range valExp.Value.(map[string]Exp) {
-			vmap[k] = expToInterface(exp)
+		// Type assertion fails if map is empty
+		valExpMap, ok := valExp.Value.(map[string]Exp)
+		if ok {
+			for k, exp := range valExpMap {
+				vmap[k] = expToInterface(exp)
+			}
 		}
 		return vmap
 	} else {
