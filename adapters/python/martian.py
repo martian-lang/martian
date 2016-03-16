@@ -223,7 +223,7 @@ class TestMetadata(Metadata):
 
 
 def get_mem_kb():
-    return resource.getrusage(resource.RUSAGE_SELF).ru_maxrss + resource.getrusage(resource.RUSAGE_CHILDREN).ru_maxrss
+    return max(resource.getrusage(resource.RUSAGE_SELF).ru_maxrss,  resource.getrusage(resource.RUSAGE_CHILDREN).ru_maxrss)
 
 def convert_gb_to_kb(mem_gb):
     return mem_gb * 1024 * 1024
