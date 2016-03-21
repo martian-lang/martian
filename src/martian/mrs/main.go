@@ -112,7 +112,7 @@ Options:
 	if value := os.Getenv("MROPATH"); len(value) > 0 {
 		mroPaths = core.ParseMroPath(value)
 	}
-	mroVersion := core.GetMroVersion(mroPaths)
+	mroVersion, _ := core.GetMroVersion(mroPaths)
 	core.LogInfo("environ", "MROPATH=%s", core.FormatMroPath(mroPaths))
 	core.LogInfo("version", "MRO Version=%s", mroVersion)
 

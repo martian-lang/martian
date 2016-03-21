@@ -6,6 +6,8 @@
 package core
 
 import (
+	"errors"
+	"fmt"
 	"io/ioutil"
 	"os/exec"
 	"path"
@@ -25,18 +27,23 @@ func IsRelease() bool {
 	return out
 }
 
-func GetMroVersion(dirs []string) string {
+func GetMroVersion(dirs []string) (string, error) {
+	errs := []string{}
 	for _, dir := range dirs {
 		if version, err := GetSakeVersion(dir); err == nil {
-			return version
+			return version, nil
+		} else {
+			errs = append(errs, err.Error())
 		}
 	}
 	for _, dir := range dirs {
 		if version, err := GetGitTag(dir); err == nil {
-			return version
+			return version, nil
+		} else {
+			errs = append(errs, err.Error())
 		}
 	}
-	return "noversion"
+	return "noversion", errors.New(fmt.Sprintf("Failed to get MRO version with errors: %s", strings.Join(errs, ", ")))
 }
 
 func GetSakeVersion(dir string) (string, error) {
