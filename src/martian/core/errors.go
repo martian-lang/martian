@@ -109,6 +109,15 @@ func (self *PipestanceExistsError) Error() string {
 	return fmt.Sprintf("RuntimeError: pipestance '%s' already exists.", self.Psid)
 }
 
+// PipestanceSizeError
+type PipestanceSizeError struct {
+	Psid string
+}
+
+func (self *PipestanceSizeError) Error() string {
+	return fmt.Sprintf("RuntimeError: Cannot compute size requirement for %s.", self.Psid)
+}
+
 // PipestanceCopyingError
 type PipestanceCopyingError struct {
 	Psid string
