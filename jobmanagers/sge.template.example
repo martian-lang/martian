@@ -1,6 +1,6 @@
-#!/bin/bash
+#!/usr/bin/env bash
 #
-# Copyright (c) 2015 10X Genomics, Inc. All rights reserved.
+# Copyright (c) 2016 10x Genomics, Inc. All rights reserved.
 #
 # =============================================================================
 # Setup Instructions
@@ -27,5 +27,6 @@
 #$ -cwd
 #$ -o __MRO_STDOUT__
 #$ -e __MRO_STDERR__
+#$ -S "/usr/bin/env bash"
 
 __MRO_CMD__
