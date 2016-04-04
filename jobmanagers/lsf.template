@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 #BSUB -J __MRO_JOB_NAME__
 #BSUB -n __MRO_THREADS__
 #BSUB -o __MRO_STDOUT__
