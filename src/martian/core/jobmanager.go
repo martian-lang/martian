@@ -383,7 +383,7 @@ func (self *RemoteJobManager) sendJob(shellCmd string, argv []string, envs map[s
 	} else {
 		// ceil to make sure that we're not starving a job
 		memGBPerThread = memGB / threads
-		if memGB % threads > 0 {
+		if memGB%threads > 0 {
 			memGBPerThread += 1
 		}
 	}
@@ -391,13 +391,13 @@ func (self *RemoteJobManager) sendJob(shellCmd string, argv []string, envs map[s
 	argv = append([]string{shellCmd}, argv...)
 	argv = append(FormatEnv(envs), argv...)
 	params := map[string]string{
-		"JOB_NAME": fqname + "." + shellName,
-		"THREADS":  fmt.Sprintf("%d", threads),
-		"STDOUT":   metadata.makePath("stdout"),
-		"STDERR":   metadata.makePath("stderr"),
-		"CMD":      strings.Join(argv, " "),
-		"MEM_GB":   fmt.Sprintf("%d", memGB),
-		"MEM_MB":   fmt.Sprintf("%d", memGB*1024),
+		"JOB_NAME":          fqname + "." + shellName,
+		"THREADS":           fmt.Sprintf("%d", threads),
+		"STDOUT":            metadata.makePath("stdout"),
+		"STDERR":            metadata.makePath("stderr"),
+		"CMD":               strings.Join(argv, " "),
+		"MEM_GB":            fmt.Sprintf("%d", memGB),
+		"MEM_MB":            fmt.Sprintf("%d", memGB*1024),
 		"MEM_GB_PER_THREAD": fmt.Sprintf("%d", memGBPerThread),
 		"MEM_MB_PER_THREAD": fmt.Sprintf("%d", memGBPerThread*1024),
 	}
