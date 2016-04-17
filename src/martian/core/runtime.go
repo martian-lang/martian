@@ -1559,7 +1559,7 @@ func (self *Node) GetFQName() string {
 	return self.fqname
 }
 
-func (self *Node) getFatalError() (string, string, string, string, []string) {
+func (self *Node) getFatalError() (string, bool, string, string, string, []string) {
 	for _, metadata := range self.collectMetadatas() {
 		if state, _ := metadata.getState(""); state != "failed" {
 			continue
@@ -1583,7 +1583,7 @@ func (self *Node) getFatalError() (string, string, string, string, []string) {
 			if self.rt.enableStackVars {
 				errpaths = append(errpaths, metadata.makePath("stackvars"))
 			}
-			return metadata.fqname, summary, errlog, "errors", errpaths
+			return metadata.fqname, self.preflight, summary, errlog, "errors", errpaths
 		}
 		if metadata.exists("assert") {
 			assertlog := metadata.readRaw("assert")
@@ -1592,12 +1592,12 @@ func (self *Node) getFatalError() (string, string, string, string, []string) {
 			if len(assertlines) >= 1 {
 				summary = assertlines[len(assertlines)-1]
 			}
-			return metadata.fqname, summary, assertlog, "assert", []string{
+			return metadata.fqname, self.preflight, summary, assertlog, "assert", []string{
 				metadata.makePath("assert"),
 			}
 		}
 	}
-	return "", "", "", "", []string{}
+	return "", false, "", "", "", []string{}
 }
 
 func (self *Node) step() {
@@ -1754,7 +1754,7 @@ func (self *Node) serializeState() *NodeInfo {
 	}
 	var err interface{} = nil
 	if self.state == "failed" {
-		fqname, summary, log, _, errpaths := self.getFatalError()
+		fqname, _, summary, log, _, errpaths := self.getFatalError()
 		errpath := ""
 		if len(errpaths) > 0 {
 			errpath = errpaths[0]
@@ -1955,7 +1955,7 @@ func (self *Stagestance) CheckHeartbeats() { self.getNode().checkHeartbeats() }
 func (self *Stagestance) RefreshState()    { self.getNode().refreshState() }
 func (self *Stagestance) LoadMetadata()    { self.getNode().loadMetadata() }
 func (self *Stagestance) PostProcess()     { self.getNode().postProcess() }
-func (self *Stagestance) GetFatalError() (string, string, string, string, []string) {
+func (self *Stagestance) GetFatalError() (string, bool, string, string, string, []string) {
 	return self.getNode().getFatalError()
 }
 
@@ -2110,14 +2110,14 @@ func (self *Pipestance) GetFailedNodes() []*Node {
 	return failedNodes
 }
 
-func (self *Pipestance) GetFatalError() (string, string, string, string, []string) {
+func (self *Pipestance) GetFatalError() (string, bool, string, string, string, []string) {
 	nodes := self.node.getFrontierNodes()
 	for _, node := range nodes {
 		if node.state == "failed" {
 			return node.getFatalError()
 		}
 	}
-	return "", "", "", "", []string{}
+	return "", false, "", "", "", []string{}
 }
 
 func (self *Pipestance) StepNodes() {

@@ -186,7 +186,7 @@ Options:
 				os.Exit(0)
 			}
 			if state == "failed" {
-				if _, errpath, log, kind, err := stagestance.GetFatalError(); kind == "assert" {
+				if _, _, errpath, log, kind, err := stagestance.GetFatalError(); kind == "assert" {
 					core.Println("\n%s\n", log)
 				} else {
 					core.Println("\nStage failed, errors written to:\n%s\n\n%s\n",
