@@ -63,7 +63,7 @@ func runLoop(pipestance *core.Pipestance, stepSecs int, vdrMode string,
 			if !showedFailed {
 				if _, preflight, _, log, kind, errPaths := pipestance.GetFatalError(); kind == "assert" {
 					// Print preflight check failures.
-					core.Println("\n[%s] %s", "error", log)
+					core.Println("\n[%s] %s\n", "error", log)
 					if preflight {
 						os.Exit(2)
 					} else {
