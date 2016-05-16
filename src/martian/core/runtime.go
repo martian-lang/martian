@@ -1196,6 +1196,7 @@ type Node struct {
 	mroVersion     string
 	envs           map[string]string
 	invocation     map[string]interface{}
+	blacklistedFromMRT bool	// Don't used cached data when MRT'ing
 }
 
 type NodeInfo struct {
@@ -2394,6 +2395,7 @@ func (self *Pipestance) Lock() error {
 	if metadata.exists("lock") {
 		return &PipestanceLockedError{self.node.parent.getNode().name, self.GetPath()}
 	}
+	Println("TTT: %v %v", self, *self);
 	RegisterSignalHandler(self)
 	metadata.writeTime("lock")
 	return nil

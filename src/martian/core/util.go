@@ -33,8 +33,13 @@ func max(x int, y int) int {
 }
 
 func RelPath(p string) string {
-	folder, _ := osext.ExecutableFolder()
-	return path.Join(folder, p)
+	base := os.Getenv("MBASE");
+	if (base != "") {
+		return path.Join(base, p);
+	} else {
+		folder, _ := osext.ExecutableFolder()
+		return path.Join(folder, p)
+	}
 }
 
 func mkdir(p string) {

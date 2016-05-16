@@ -1,0 +1,23 @@
+
+stage GETDATA(
+        in string stuffG,
+        out string output1,
+        src py "missing1",
+)
+stage SORT(
+        in string stuffS,
+        out string output1,
+        src py "missing1",
+)
+stage COLLATE(
+        in string stuffO1,
+        in string stuffO2,
+        out string output1,
+        src py "missing1",
+)
+stage COUNT(
+        in string stuffC,
+        out string output1,
+        src py "missing1",
+)
+
