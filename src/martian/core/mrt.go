@@ -102,8 +102,15 @@ func (self * Pipestance) BlacklistMRTNode(nameToBlacklist string) error {
 
 func TaintNode(root * Node) {
 	if (root.blacklistedFromMRT == false) {
+		Println("Taint: %v", root.name);
 		root.blacklistedFromMRT = true;
+		/*
 		for _, subs := range root.subnodes {
+			TaintNode(subs.getNode());
+		}
+		*/
+
+		for _, subs := range root.postnodes {
 			TaintNode(subs.getNode());
 		}
 	}
