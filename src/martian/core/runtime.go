@@ -1164,39 +1164,39 @@ type Nodable interface {
 }
 
 type Node struct {
-	parent         Nodable
-	rt             *Runtime
-	kind           string
-	name           string
-	fqname         string
-	path           string
-	metadata       *Metadata
-	outparams      *Params
-	argbindings    map[string]*Binding
-	argbindingList []*Binding // for stable ordering
-	retbindings    map[string]*Binding
-	retbindingList []*Binding // for stable ordering
-	sweepbindings  []*Binding
-	subnodes       map[string]Nodable
-	prenodes       map[string]Nodable
-	directPrenodes []Nodable
-	postnodes      map[string]Nodable
-	frontierNodes  map[string]Nodable
-	forks          []*Fork
-	split          bool
-	state          string
-	volatile       bool
-	local          bool
-	preflight      bool
-	stagecodeLang  string
-	stagecodeCmd   string
-	journalPath    string
-	tmpPath        string
-	mroPaths       []string
-	mroVersion     string
-	envs           map[string]string
-	invocation     map[string]interface{}
-	blacklistedFromMRT bool	// Don't used cached data when MRT'ing
+	parent             Nodable
+	rt                 *Runtime
+	kind               string
+	name               string
+	fqname             string
+	path               string
+	metadata           *Metadata
+	outparams          *Params
+	argbindings        map[string]*Binding
+	argbindingList     []*Binding // for stable ordering
+	retbindings        map[string]*Binding
+	retbindingList     []*Binding // for stable ordering
+	sweepbindings      []*Binding
+	subnodes           map[string]Nodable
+	prenodes           map[string]Nodable
+	directPrenodes     []Nodable
+	postnodes          map[string]Nodable
+	frontierNodes      map[string]Nodable
+	forks              []*Fork
+	split              bool
+	state              string
+	volatile           bool
+	local              bool
+	preflight          bool
+	stagecodeLang      string
+	stagecodeCmd       string
+	journalPath        string
+	tmpPath            string
+	mroPaths           []string
+	mroVersion         string
+	envs               map[string]string
+	invocation         map[string]interface{}
+	blacklistedFromMRT bool // Don't used cached data when MRT'ing
 }
 
 type NodeInfo struct {
@@ -1491,7 +1491,7 @@ func (self *Node) getState() string {
 		}
 	}
 	// DSTAFF
-	return "running";
+	return "running"
 
 }
 
@@ -2396,7 +2396,7 @@ func (self *Pipestance) Lock() error {
 	if metadata.exists("lock") {
 		return &PipestanceLockedError{self.node.parent.getNode().name, self.GetPath()}
 	}
-	Println("TTT: %v %v", self, *self);
+	Println("TTT: %v %v", self, *self)
 	RegisterSignalHandler(self)
 	metadata.writeTime("lock")
 	return nil

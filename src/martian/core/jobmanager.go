@@ -460,8 +460,8 @@ func verifyJobManager(jobMode string, memGBPerCore int) (*JobManagerSettings, st
 	jobJsonFile := path.Join(jobPath, "config.json")
 	if _, err := os.Stat(jobJsonFile); os.IsNotExist(err) {
 		PrintInfo("jobmngr", "Job manager config file %s does not exist.", jobJsonFile)
-		panic("");
-	//	os.Exit(1)
+		panic("")
+		//	os.Exit(1)
 	}
 	LogInfo("jobmngr", "Job config = %s", jobJsonFile)
 	bytes, _ := ioutil.ReadFile(jobJsonFile)
