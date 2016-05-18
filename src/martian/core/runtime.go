@@ -2396,7 +2396,6 @@ func (self *Pipestance) Lock() error {
 	if metadata.exists("lock") {
 		return &PipestanceLockedError{self.node.parent.getNode().name, self.GetPath()}
 	}
-	Println("TTT: %v %v", self, *self)
 	RegisterSignalHandler(self)
 	metadata.writeTime("lock")
 	return nil

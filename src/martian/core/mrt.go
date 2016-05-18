@@ -1,3 +1,5 @@
+// Copyright (c) 2016 10X Genomics, Inc. All rights reserved.
+
 package core
 
 import (
@@ -7,11 +9,15 @@ import (
 	"os"
 )
 
-type PSInfo struct {
-	Srcpath        string
-	Psid           string
-	PipestancePath string
-	MroPaths       []string
+/*
+ * PipestanceSetup defines the parameters we need to start a pipestance.
+ * It encapsulates the argument to InvokePipstance and friends
+ */
+type PipestanceSetup struct {
+	Srcpath        string   // Path to the mro invocation file
+	Psid           string   // pipestance ID
+	PipestancePath string   // Path to put this pipestance
+	MroPaths       []string // Where to look for MROs
 	MroVersion     string
 	Envs           map[string]string
 }
@@ -24,33 +30,45 @@ type PSInfo struct {
 func MapTwoPipestances(newp *Pipestance, oldp *Pipestance) map[*Node]*Node {
 
 	m := make(map[*Node]*Node)
-	MapR(newp.node, oldp.node, m)
+	mapR(newp.node, oldp.node, m)
 	return m
 }
 
-func MapR(curnode *Node, oldRoot *Node, m map[*Node]*Node) {
+/*
+ * Helper function used by MapTwoPipestances that does the recursive enumeration
+ * and mapping.
+ */
+func mapR(curnode *Node, oldRoot *Node, m map[*Node]*Node) {
 
 	if curnode != nil {
 		var oldNode *Node
+		/*
+		 * Find the name of |curnode| in |oldRoot| and assign it.
+		 */
 		oldRoot.FindNodeByName(curnode.name, &oldNode)
 		m[curnode] = oldNode
 
+		/*
+		 * Iterate over any subnodes (i.e. pipelines or stages) in this
+		 * node.
+		 */
 		for _, subs := range curnode.subnodes {
-			MapR(subs.getNode(), oldRoot, m)
+			mapR(subs.getNode(), oldRoot, m)
 		}
 	}
-}
-
-func LinkDirectories(curnode *Node, oldRoot *Node, nodemap map[*Node]*Node) {
-	LinkDirectoriesR(curnode, oldRoot, nodemap)
-
 }
 
 /* This buids a set of symlinks from one pipestance to another. All of the nonblacklisted
  * stages (and sub-pipelines) that have a corresponding node will be linked.  We try to
  * link entire sub-pipelines when possible.
  */
-func LinkDirectoriesR(cur *Node, oldRoot *Node, nodemap map[*Node]*Node) {
+
+func LinkDirectories(curnode *Node, oldRoot *Node, nodemap map[*Node]*Node) {
+	linkDirectoriesR(curnode, oldRoot, nodemap)
+
+}
+
+func linkDirectoriesR(cur *Node, oldRoot *Node, nodemap map[*Node]*Node) {
 	oldNode := nodemap[cur]
 	if cur.kind == "stage" {
 		/* Just try to link this stage. If we can't we just do nothing and let it
@@ -76,18 +94,16 @@ func LinkDirectoriesR(cur *Node, oldRoot *Node, nodemap map[*Node]*Node) {
 			/* If we can't (or shouldn't), we recurse and try to link its children */
 			os.Mkdir(cur.path, 0777)
 			for _, chld := range cur.subnodes {
-				LinkDirectoriesR(chld.getNode(), oldRoot, nodemap)
+				linkDirectoriesR(chld.getNode(), oldRoot, nodemap)
 			}
 		}
 	}
 }
 
 /*
- * Mark all children of any nodes listed in |namesToBlacklist| as "blacklisted".
- * This will prevent their data from being autopopulated during the MRt autopopulate
- * stage.
- *
- * NOTE: We assume a 1:1 correspondence of names and nodes. This isn't quite correct.
+ * This markts a set of nodes as well as any nodes dependent on them as blacklisted.
+ * A node is dependet another node if it uses data that it provides (is in postnodes) or
+ * if it is a parent of that node.
  */
 func (self *Pipestance) BlacklistMRTNodes(namesToBlacklist []string) error {
 	for _, s := range namesToBlacklist {
@@ -117,23 +133,25 @@ func (self *Pipestance) BlacklistMRTNode(nameToBlacklist string) error {
  */
 func TaintNode(root *Node) {
 	if root.blacklistedFromMRT == false {
-		Println("Taint: %v", root.name)
+		Println("Invalidate: %v", root.name)
 		root.blacklistedFromMRT = true
 
 		/* If a stage or pipeline is tainted, its parent should also be tainted. */
 		if root.parent != nil {
-			Println("PARENT: of %v: %v", root.name, root.parent.getNode().name)
 			TaintNode(root.parent.getNode())
 		}
 
 		/* Any stage that depends on this node must be tainted, too */
 		for _, subs := range root.postnodes {
-			Println("POSTNODE:of %v: %v", root.name, subs.getNode().name)
 			TaintNode(subs.getNode())
 		}
 	}
 }
 
+/*
+ * Find a node given a name and store the node in *out.  If the name appears
+ * multiple times in the pipeline, crash.
+ */
 func (n *Node) FindNodeByName(name string, out **Node) {
 	if name == n.name {
 		if *out != nil {
@@ -148,25 +166,35 @@ func (n *Node) FindNodeByName(name string, out **Node) {
 }
 
 /*
- * This takes a PSInfo object, detailing the invocation environment for a old
- * and new pipestance. It creates the directory layout for the new pipestance.
- * TODO:
- *  Then it links all of the linkable stages from the old pipestance into the new pipestance.
+ * This is the main entry point for "mrt".
+ * newinfo corresponds to a new (non-existing) pipestance and oldinfo to an existing
+ * pipestance.  Invalidate lists stages in the new pipestance that have code differences.
+ *
+ * We create a new pipestance directory and link every stage/pipeline from oldinfo
+ * that we can. We explicitly don't link anything in |invalidate| or that derives from
+ * anything in invalidate.
+ *
+ * After this runs, the new directory can be mrp'ed to run the new pipestance.
  */
-
-func DoIt(newinfo *PSInfo, oldinfo *PSInfo, invalidate []string) {
+func DoIt(newinfo *PipestanceSetup, oldinfo *PipestanceSetup, invalidate []string) {
 	SetupSignalHandlers()
+
+	/*
+	 * Build runtime objects. We never actually use these but the interfaces
+	 * to create pipestance objects require it.
+	 */
 	rtnew := NewRuntime("local", "disable", "disable", "2")
 	rtold := NewRuntime("local", "disable", "disable", "2")
 
 	if rtnew == nil {
-		panic("1")
+		panic("Failed to allocate a runtime object.")
 	}
 
 	if rtold == nil {
-		panic("2")
+		panic("Failed to allocate a runtime object.")
 	}
 
+	/* Setup the new pipestance */
 	newcall, err := ioutil.ReadFile(newinfo.Srcpath)
 	DieIf(err)
 
@@ -181,6 +209,7 @@ func DoIt(newinfo *PSInfo, oldinfo *PSInfo, invalidate []string) {
 
 	DieIf(err)
 
+	/* Attach to the old pipestance */
 	oldcall, err := ioutil.ReadFile(oldinfo.Srcpath)
 	DieIf(err)
 
@@ -194,21 +223,35 @@ func DoIt(newinfo *PSInfo, oldinfo *PSInfo, invalidate []string) {
 		true)
 
 	if err != nil {
-		Println("OMGOMGOMG! AN ERROR: %v", err)
-		panic("2")
+		Println("COULD NOT ATTACH TO PIPESTANCE: %v", err)
+		panic(err)
 	}
 
-	Println("J1:  %v", psnew.getNode())
-	Println("J2:  %v", psold.getNode())
+	/* TODO: We should check a few things here:
+	 * 1. Was the old pipestance built with no-vdr.
+	 * 2. Is the old pipestance complete.
+	 */
 
+	/* Compute an association between nodes in the parallel pipestances */
 	mapmap := MapTwoPipestances(psnew, psold)
+	/* TODO:
+	 * We should check for failures here. Failure to check for include
+	 * 1. No nodes mapped between the two pipestances
+	 * 2. Ambiguous maps. (This will cause a panic right now)
+	 */
 
-	Println("MMM: %v", mapmap)
-
+	/* Blacklist nodes in the newpipestance that have changed, as well as dependents
+	 * of changed nodes.
+	 */
 	psnew.BlacklistMRTNodes(invalidate)
-	Println("JXXXXX: %v", psnew.getNode())
 
+	/* Link directoroes in the new pipestance to the old pipestance, when possible */
 	LinkDirectories(psnew.getNode(), psold.getNode(), mapmap)
+
+	/*
+	 * TODO:
+	 * We need to close the new pipestance and delete the lock file.
+	 */
 }
 
 func JM(x interface{}) string {
