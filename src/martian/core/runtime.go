@@ -1490,8 +1490,9 @@ func (self *Node) getState() string {
 			return "waiting"
 		}
 	}
-	// Otherwise we're running.
-	return "running"
+	// DSTAFF
+	return "running";
+
 }
 
 func (self *Node) reset() error {

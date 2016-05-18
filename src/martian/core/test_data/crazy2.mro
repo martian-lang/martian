@@ -1,0 +1,2500 @@
+#
+# Copyright (c) 2014 10X Genomics, Inc. All rights reserved.
+#
+#
+# Copyright (c) 2014 10X Genomics, Inc. All rights reserved.
+#
+#
+# Copyright (c) 2014 10X Genomics, Inc. All rights reserved.
+#
+filetype bed;
+filetype bedpe;
+filetype vcf;
+filetype bam;
+filetype json;
+filetype h5;
+filetype script;
+filetype txt;
+filetype png;
+filetype csv;
+filetype pickle;
+filetype loupe;
+filetype vcf.gz;
+filetype tsv;
+filetype fastq;
+
+stage REPORT_ERRORS_PD(
+    in  bam    input,
+    in  string reference_path,
+    in  int    minimum_mapq,
+    in  pickle common_vars,
+    out json,
+    src py "missing1",
+) split using (
+    in  string chrom,
+)
+
+stage REPORT_START_BIAS_PD(
+    in  bam    input,
+    in  string reference_path,
+    in  int    start_length,
+    out json,
+    src py "missing1",
+) split using (
+    in  string chrom,
+)
+
+stage REPORT_BARCODE_PD(
+    in  bam    input,
+    in  string reference_path,
+    in  int    start_length,
+    out json,
+    src py "missing1",
+) split using (
+    in  string chrom,
+)
+
+stage REPORT_PRIMERS_PD(
+    in  bam      input,
+    in  string primers,
+    in  int      seed_length,
+    in  int      max_mismatch,
+    in  int      num_sample,
+    in  int      min_length,
+    in  int      num_examples,
+    out json,
+    src py "missing1",
+)
+
+stage SAMPLE_UNMAPPED_READS_PD(
+    in  bam   input_bam,
+    in  int   max_reads,
+    out fastq output_fastq,
+    src py "missing1",
+)
+
+stage REPORT_CONTAMINATION_PD(
+    in  bam    input,
+    in  string aligner,
+    in  string aligner_method,
+    in  int    num_threads,
+    out json,
+    src py "missing1",
+) split using (
+    in  int    chunk_num,
+)
+
+stage SUMMARIZE_REPORTS_PD(
+    in  float  template_mass,
+    in  string reference_path,
+    in  bed    targets,
+    in  bool   targets_captured,
+    in  map    baits_file_map,
+    in  bed    confident_regions,
+    in  int    trim_length,
+    in  json   duplicate_summary,
+    in  json   basic_results,
+    in  h5     barcode_counts,
+    in  json   barcode_histogram,
+    in  json   error_results,
+    in  json   coverage_results,
+    in  h5     coverage_details,
+    in  h5     target_coverage,
+    in  json   primer_results,
+    in  json   start_results,
+    in  string vc_precalled_cs,
+    in  string variant_mode_cs,
+    in  json   variant_results_cs,
+    in  vcf.gz phased_variants_cs,
+    in  string vc_precalled_pd,
+    in  string variant_mode_pd,
+    in  json   variant_results_pd,
+    in  vcf.gz phased_variants_pd,
+    in  json   sv_results,
+    in  bedpe  sv_calls,
+    in  bedpe  sv_candidates,
+    in  bedpe  sv_gt_results,
+    in  json   sv_rl_results,
+    in  json   sv_phase_results,
+    in  json   single_partition_results,
+    in  json   coalescence_results,
+    in  json   length_mass_results,
+    in  json   attach_phasing_results,
+    in  json   barcode_results,
+    in  bam    possorted_bam,
+    in  csv    coverage_csv,
+    in  h5     fragments,
+    in  loupe  loupe,
+    in  json   contam_results,
+    in  json   lot_info,
+    in  json   downsample_info,
+    out json   analysis_params,
+    out json   summary,
+    out json   gc_summary,
+    out json   gc_summary_100bp,
+    out csv    gc_summary_per_bait,
+    out csv    gc_summary_100bp_per_bait,
+    out png    read1_logo,
+    out png    read2_logo,
+    out h5     coverage_slice,
+    out json   linked_files,
+    src py "missing1",
+) split using (
+)
+
+stage UPLOAD_SAMPLE_TO_LENA_PD(
+    in  string sample_id,
+    in  string lena_coop,
+    in  json   error_results,
+    in  json   coverage_results,
+    in  h5     coverage_slice,
+    in  json   primer_results,
+    in  json   start_results,
+    in  json   analysis_params,
+    in  json   insert_sizes,
+    in  json   target_dists,
+    in  json   mapq_counts,
+    in  json   barcode_histogram,
+    in  json   gc_summary,
+    in  json   gc_summary_100bp,
+    in  png    read1_logo,
+    in  png    read2_logo,
+    in  json   summary_results,
+    in  json   linked_files,
+    out script,
+    src py "missing1",
+)
+
+stage REPORT_BAITS(
+    in  string reference_path,
+    in  map    baits_file_map,
+    in  h5     coverage,
+    out csv    bait_csv,
+    src py "missing1",
+) split using (
+    in  string tag,
+    in  string bait_file,
+)
+
+stage REPORT_COVERAGE_SPIKES_PD(
+    in  h5    coverage,
+    in  csv   cov_hist,
+    in  bam   bam_infile,
+    out csv   cov_simple,
+    out csv   stats,
+    src py "missing1",
+) split using (
+    in  string locus,
+    in  float  mean,
+)
+
+pipeline _REPORTER_PD(
+    in  bam      possorted_bam,
+    in  bam      bcsorted_bam,
+    in  string   reference_path,
+    in  map      baits_file_map,
+    in  h5       coverage,
+    in  csv      coverage_csv,
+    in  string primers,
+    in  pickle   common_vars,
+    out json     error_results,
+    out json     primer_results,
+    out json     start_results,
+    out json     contam_results,
+    out json     barcode_results,
+    out fastq    unmapped_fastq,
+    out csv      bait_csv,
+    out csv      cov_spikes_simple,
+    out csv      cov_spikes_stats,
+)
+{
+    call REPORT_ERRORS_PD(
+        input          = self.possorted_bam,
+        reference_path = self.reference_path,
+        minimum_mapq   = 60,
+        common_vars    = self.common_vars,
+    )
+
+    call REPORT_START_BIAS_PD(
+        start_length   = 20,
+        input          = self.possorted_bam,
+        reference_path = self.reference_path,
+    )
+
+    call REPORT_BARCODE_PD(
+        start_length   = 30,
+        input          = self.possorted_bam,
+        reference_path = self.reference_path,
+    )
+
+    call REPORT_PRIMERS_PD(
+        input        = self.possorted_bam,
+        primers      = self.primers,
+        seed_length  = 10,
+        max_mismatch = 0,
+        num_sample   = 1000000,
+        min_length   = 15,
+        num_examples = 500,
+    )
+
+    call REPORT_BAITS(
+        reference_path = self.reference_path,
+        baits_file_map = self.baits_file_map,
+        coverage       = self.coverage,
+    )
+
+    call volatile REPORT_CONTAMINATION_PD(
+        aligner        = "bwa",
+        aligner_method = "MEM",
+        num_threads    = 8,
+        input          = self.bcsorted_bam,
+    )
+
+    call SAMPLE_UNMAPPED_READS_PD(
+        input_bam = self.bcsorted_bam,
+        max_reads = 50000,
+    )
+
+    call REPORT_COVERAGE_SPIKES_PD(
+        cov_hist  = self.coverage_csv,
+        coverage  = self.coverage,
+        bam_infile= self.possorted_bam,
+    )
+
+    return (
+        error_results     = REPORT_ERRORS_PD,
+        primer_results    = REPORT_PRIMERS_PD,
+        start_results     = REPORT_START_BIAS_PD,
+        contam_results    = REPORT_CONTAMINATION_PD,
+        barcode_results   = REPORT_BARCODE_PD,
+        unmapped_fastq    = SAMPLE_UNMAPPED_READS_PD.output_fastq,
+        bait_csv          = REPORT_BAITS.bait_csv,
+        cov_spikes_simple = REPORT_COVERAGE_SPIKES_PD.cov_simple,
+        cov_spikes_stats  = REPORT_COVERAGE_SPIKES_PD.stats,
+    )
+}
+
+#
+# Copyright (c) 2015 10X Genomics, Inc. All rights reserved.
+#
+filetype loupe;
+
+stage LOUPE_UPLOAD_PD(
+    in  loupe  loupe_file,
+    in  string sample_id,
+    in  string pipeline_name,
+    out loupe  destination,
+    src py "missing1",
+)
+
+#
+# Copyright (c) 2014 10X Genomics, Inc. All rights reserved.
+#
+#                                                                                                                                           
+# Copyright (c) 2015 10X Genomics, Inc. All rights reserved.
+#
+#                                                                                                                                           
+# Copyright (c) 2015 10X Genomics, Inc. All rights reserved.
+#
+#
+# Copyright (c) 2015 10X Genomics, Inc. All rights reserved.
+#
+filetype fastq.gz;
+filetype json;
+
+stage BUCKET_FASTQ_BY_BC(
+    in  map    chunk,
+    in  int      buckets,
+    in  string   barcode_whitelist,
+    in  float    max_expected_barcode_errors,
+    in  float    bc_confidence_threshold,
+    in  json     barcode_counts,
+    out json     file_map,
+    out int      gem_group,
+    out fastq.gz,
+    src py "missing1",
+) split using (
+    in  fastq.gz read_file,
+    in  fastq.gz barcode_file,
+    in  fastq.gz sample_index_file,
+    in  int      gem_group,
+)
+
+stage SORT_FASTQ_BY_BC(
+    in  json       bc_buckets,
+    out fastq.gz reads,
+    out int      gem_group,
+    out string   prefix,
+    out bool     valid_bc,
+    src py "missing1",
+) split using (
+    in  string     prefix,
+    in  string     gem_code,
+    in  map      bucket,
+)
+
+
+pipeline _SORT_FASTQ_BY_BARCODE(
+    in  map      chunk,
+    in  string     barcode_whitelist            "name of barcode whitelist file",
+    in  float      max_expected_barcode_errors,
+    in  float      bc_confidence_threshold,
+    in  json       barcode_counts,
+    out fastq.gz reads,
+    out int      gem_group,
+    out bool     valid_bc,
+    out string   prefix,
+)
+{
+    call volatile BUCKET_FASTQ_BY_BC(
+        barcode_counts              = self.barcode_counts,
+        bc_confidence_threshold     = self.bc_confidence_threshold,
+        chunk                       = self.chunk,
+        max_expected_barcode_errors = self.max_expected_barcode_errors,
+        barcode_whitelist           = self.barcode_whitelist,
+        buckets                     = 128,
+    )
+
+    call volatile SORT_FASTQ_BY_BC(
+        bc_buckets = BUCKET_FASTQ_BY_BC.file_map,
+    )
+
+    return (
+        reads     = SORT_FASTQ_BY_BC.reads,
+        gem_group = SORT_FASTQ_BY_BC.gem_group,
+        valid_bc  = SORT_FASTQ_BY_BC.valid_bc,
+        prefix    = SORT_FASTQ_BY_BC.prefix,
+    )
+}
+
+#
+# Copyright (c) 2015 10X Genomics, Inc. All rights reserved.
+#
+filetype fastq.gz;
+filetype bam;
+filetype json;
+
+stage BARCODE_AWARE_ALIGNER(
+    in  fastq.gz reads,
+    in  string     reference_path,
+    in  string     sample_id,
+    in  bool       exclude_non_bc_reads,
+    in  string   read_groups,
+    out bam        bc_sorted_bam,
+    out json       position_chunks,
+    src py "missing1",
+) split using (
+    in  fastq.gz   barcode_reads,
+)
+
+stage MERGE_BC_BUCKETS(
+    in  bam      bc_sorted_bam,
+    in  json     position_chunks,
+    out bam      bc_sorted_bam,
+    out bam      pos_sorted_bam,
+    src py "missing1",
+) split using (
+    in  string position_chunk,
+)
+
+#
+# Copyright (c) 2015 10X Genomics, Inc. All rights reserved.
+#
+filetype fastq;
+filetype bam;
+filetype bam.bai;
+filetype bed;
+filetype json;
+filetype fastq.gz;
+
+stage SETUP_CHUNKS(
+    in  string   sample_id,
+    in  map    sample_def         "list of dictionary specifying input data",
+    in  string   input_mode         "configuration of the input fastqs",
+    in  string   barcode_whitelist,
+    in  map      downsample,
+    out map    chunks             "map has barcode, barcode_reverse_complement, sample_index, read1, read2, gem_group, and read group fields",
+    out string read_groups        "list of strings representing read groups",
+    out json     downsample_info,
+    src py "missing1",
+)
+
+stage COUNT_BCS(
+    in  string barcode_whitelist,
+    in  map  chunks,
+    out json   bc_counts,
+    src py "missing1",
+) split using (
+    in  map    chunk,
+)
+
+stage TRIM_READS(
+    in  map  chunks,
+    in  string barcode_whitelist,
+    in  int    max_read_num,
+    in  int    read1_trim_length  "this is the trim length",
+    in  int    read2_trim_length,
+    out map  chunks,
+    out fastq  placeholder,
+    out json   bc_counts,
+    out json   lot_info,
+    src py "missing1",
+) split using (
+    in  map    chunk,
+)
+
+stage ALIGN(
+    in  map  chunks,
+    in  string aligner,
+    in  string aligner_method,
+    in  string reference_path,
+    in  string read_group_sample,
+    in  int    num_threads,
+    out bam,
+    src py "missing1",
+) split using (
+    in  map    chunk,
+)
+
+stage ATTACH_BCS(
+    in  string barcode_whitelist,
+    in  bam    align,
+    in  map  chunks,
+    in  bool   paired_end,
+    in  bool   exclude_non_bc_reads,
+    in  float  bc_confidence_threshold,
+    in  json   bc_counts,
+    out bam    output,
+    out int    perfect_read_count,
+    src py "missing1",
+) split using (
+    in  bam    align_chunk,
+    in  map    chunk,
+)
+
+stage SORT_BY_POS(
+    in  bam input,
+    out bam,
+    out int perfect_read_count,
+    src py "missing1",
+) split using (
+    in  bam chunk_input,
+)
+
+stage MARK_DUPLICATES(
+    in  bam     input,
+    in  int     perfect_read_count,
+    in  bed     targets_file,
+    out bam     output,
+    out bam.bai index,
+    out json    duplicate_summary,
+    src py "missing1",
+) split using (
+    in  float   estimated_coverage,
+    in  map     lane_map,
+    in  string  chunk_start,
+    in  string  chunk_end,
+)
+
+#
+# Copyright (c) 2015 10X Genomics, Inc. All rights reserved.
+#
+filetype bam;
+
+stage BUCKET_BY_BC(
+    in  int      nbases,
+    in  bam      input,
+    out string qnames,
+    out map      buckets,
+    out bam,
+    src py "missing1",
+) split using (
+    in  string   chunk_start,
+    in  string   chunk_end,
+)
+
+stage BUCKET_BY_QNAME(
+    in  string qnames,
+    in  bam      input,
+    out map      buckets,
+    out bam,
+    src py "missing1",
+) split using (
+    in  string   chunk_start,
+    in  string   chunk_end,
+)
+
+stage SORT_BY_BC(
+    in  map    bc_buckets,
+    in  map    non_bc_buckets,
+    in  bam    possorted_bam,
+    out int    total_reads,
+    out bam,
+    src py "missing1",
+) split using (
+    in  int    index,
+    in  string prefix,
+    in  bam  bucket,
+)
+
+
+pipeline _BCSORTER(
+    in  bam input,
+    out bam bcsorted_bam,
+)
+{
+    call volatile BUCKET_BY_BC(
+        nbases = 2,
+        input  = self.input,
+    )
+
+    call volatile BUCKET_BY_QNAME(
+        qnames = BUCKET_BY_BC.qnames,
+        input  = BUCKET_BY_BC,
+    )
+
+    call volatile SORT_BY_BC(
+        bc_buckets     = BUCKET_BY_BC.buckets,
+        non_bc_buckets = BUCKET_BY_QNAME.buckets,
+        possorted_bam  = self.input,
+    )
+
+    return (
+        bcsorted_bam = SORT_BY_BC,
+    )
+}
+
+
+pipeline _LINKED_READS_ALIGNER(
+    in  string  fastq_mode                   "configuration of the input fastqs",
+    in  map   sample_def,
+    in  string  barcode_whitelist            "name of barcode whitelist file",
+    in  float   max_expected_barcode_errors,
+    in  int     trim_length,
+    in  bed     targets,
+    in  string  reference_path,
+    in  string  sample_id,
+    in  map     downsample,
+    in  bool    exclude_non_bc_reads,
+    out bam     possorted_bam,
+    out bam     bcsorted_bam,
+    out bam.bai possorted_bam_index,
+    out json    duplicate_summary,
+    out json    lot_info,
+    out json    downsample_info,
+)
+{
+    call local volatile SETUP_CHUNKS(
+        sample_id         = self.sample_id,
+        downsample        = self.downsample,
+        input_mode        = self.fastq_mode,
+        sample_def        = self.sample_def,
+        barcode_whitelist = self.barcode_whitelist,
+    )
+
+    call volatile TRIM_READS(
+        barcode_whitelist = self.barcode_whitelist,
+        chunks            = SETUP_CHUNKS.chunks,
+        max_read_num      = 10000000,
+        read1_trim_length = self.trim_length,
+        read2_trim_length = 0,
+    )
+
+    call _SORT_FASTQ_BY_BARCODE(
+        barcode_counts              = TRIM_READS.bc_counts,
+        bc_confidence_threshold     = 0.975,
+        chunk                       = TRIM_READS.chunks,
+        barcode_whitelist           = self.barcode_whitelist,
+        max_expected_barcode_errors = self.max_expected_barcode_errors,
+    )
+
+    call volatile BARCODE_AWARE_ALIGNER(
+        sample_id              = self.sample_id,
+        read_groups            = SETUP_CHUNKS.read_groups,
+        reads                  = _SORT_FASTQ_BY_BARCODE.reads,
+        reference_path         = self.reference_path,
+        exclude_non_bc_reads   = self.exclude_non_bc_reads,
+    )
+
+    call volatile MERGE_BC_BUCKETS(
+        bc_sorted_bam   = BARCODE_AWARE_ALIGNER.bc_sorted_bam,
+        position_chunks = BARCODE_AWARE_ALIGNER.position_chunks,
+    )
+
+    call volatile MARK_DUPLICATES(
+        targets_file       = self.targets,
+        perfect_read_count = 1,
+        input              = MERGE_BC_BUCKETS.pos_sorted_bam,
+    )
+
+    return (
+        bcsorted_bam        = MERGE_BC_BUCKETS.bc_sorted_bam,
+        possorted_bam       = MARK_DUPLICATES.output,
+        possorted_bam_index = MARK_DUPLICATES.index,
+        duplicate_summary   = MARK_DUPLICATES.duplicate_summary,
+        lot_info            = TRIM_READS.lot_info,
+        downsample_info     = SETUP_CHUNKS.downsample_info,
+    )
+}
+
+#
+# Copyright (c) 2015 10X Genomics, Inc. All rights reserved.
+#
+filetype bed;
+filetype bedpe;
+filetype vcf;
+
+stage PHASER_SVCALLER_PREFLIGHT(
+    in string sample_id,
+    in map  sample_def,
+    in string sex,
+    in bed    targets,
+    in string restrict_locus,
+    in string vc_precalled,
+    in string vc_mode,
+    in string reference_path,
+    in vcf    vc_ground_truth,
+    in int    sv_min_qv,
+    in bedpe  sv_ground_truth,
+    in bool   check_executables,
+    src py "missing1",
+)
+
+stage PHASER_SVCALLER_PREFLIGHT_LOCAL(
+    in string sample_id,
+    in map  sample_def,
+    in string sex,
+    in bed    targets,
+    in string restrict_locus,
+    in string vc_precalled,
+    in string vc_mode,
+    in string reference_path,
+    in vcf    vc_ground_truth,
+    in int    sv_min_qv,
+    in bedpe  sv_ground_truth,
+    in bool   check_executables,
+    src py "missing1",
+)
+
+stage ALIGNER_PREFLIGHT(
+    in string sample_id,
+    in map  sample_def,
+    in bed    targets,
+    in string reference_path,
+    in bool   check_executables,
+    src py "missing1",
+)
+
+stage ALIGNER_PREFLIGHT_LOCAL(
+    in string sample_id,
+    in map  sample_def,
+    in bed    targets,
+    in string reference_path,
+    in bool   check_executables,
+    src py "missing1",
+)
+
+stage BASIC_PREFLIGHT(
+    in string sample_id,
+    in string read_group,
+    in string output_format,
+    in map  sample_def,
+    in bool   check_executables,
+    src py "missing1",
+)
+
+stage BASIC_PREFLIGHT_LOCAL(
+    in string sample_id,
+    in string read_group,
+    in string output_format,
+    in map  sample_def,
+    in bool   check_executables,
+    src py "missing1",
+)
+
+#
+# Copyright (c) 2014 10X Genomics, Inc. All rights reserved.
+#
+#
+# Copyright (c) 2015 10X Genomics, Inc. All rights reserved.
+#
+filetype bed;
+filetype bam;
+filetype json;
+filetype h5;
+filetype script;
+filetype txt;
+filetype png;
+filetype csv;
+filetype tsv;
+filetype pickle;
+
+stage REPORT_BASIC(
+    in  bam    input,
+    in  bam    input_pos,
+    in  bed    targets_file,
+    in  string barcode_whitelist,
+    in  json   lot_info,
+    out json   summary,
+    out h5     barcode_counts,
+    out json   insert_sizes,
+    out json   target_dists,
+    out json   mapq_counts,
+    out txt    misc_sm,
+    out txt    qual_sms,
+    out json   lot_info,
+    src py "missing1",
+) split using (
+    in  string chunk_start,
+    in  string chunk_end,
+    in  int    n_chunks,
+)
+
+stage REPORT_COVERAGE(
+    in  bam      input,
+    in  string   reference_path,
+    in  bed      targets_file,
+    in  bed      confident_regions,
+    in  h5       fragments,
+    in  string   restrict_locus,
+    in  int      high_coverage_threshold,
+    out bed      high_coverage_excluded_bed,
+    out json     summary,
+    out csv      coverage_csv,
+    out h5       coverage,
+    out h5       target_coverage,
+    out csv      target_csv,
+    src py "missing1",
+) split using (
+    in  string loci,
+    in  float    subsample_rate,
+)
+
+stage REPORT_SINGLE_PARTITION(
+    in  bam    input,
+    in  string barcode_whitelist,
+    in  bed    targets_file,
+    in  int    read_link_distance,
+    out json   single_partition,
+    out json   fragment_size,
+    out h5     fragments,
+    out h5     barcodes,
+    out json   barcode_histogram,
+    src py "missing1",
+) split using (
+    in  string chunk_start,
+    in  string chunk_end,
+)
+
+stage DETECT_MOLECULES(
+    in  bam    input,
+    in  string barcode_whitelist,
+    in  bed    targets_file,
+    in  int    read_link_distance,
+    out json   single_partition,
+    out json   fragment_size,
+    out h5     fragments,
+    out h5     barcodes,
+    out json   barcode_histogram,
+    src py "missing1",
+) split using (
+    in  string chunk_start,
+    in  string chunk_end,
+)
+
+stage FILTER_BARCODES(
+    in  bam    input,
+    in  h5     fragments,
+    in  h5     barcodes,
+    out tsv    barcode_blacklist,
+    out pickle barcode_graph,
+    out json   coalescence_results,
+    src py "missing1",
+) split using (
+)
+
+stage REPORT_LENGTH_MASS(
+    in  bed    targets_file,
+    in  string reference_path,
+    in  h5     barcodes,
+    in  h5     fragments,
+    in  string barcode_whitelist,
+    out json   summary,
+    out json   inferred_length_distribution,
+    out json   sv_length_distribution,
+    src py "missing1",
+) split using (
+)
+
+stage SUMMARIZE_REPORTS(
+    in  string sample_id,
+    in  string reference_path,
+    in  bed    targets,
+    in  int    trim_length,
+    in  json   duplicate_summary,
+    in  json   basic_results,
+    in  h5     barcode_counts,
+    in  json   coverage_results,
+    in  h5     coverage_details,
+    in  json   variant_results,
+    in  json   sv_results,
+    in  json   sv_phase_results,
+    in  int    sv_min_call_qv_wgs,
+    in  int    sv_min_call_qv_target,
+    in  json   single_partition_results,
+    in  json   length_mass_results,
+    in  bam    bam_file,
+    in  json   lot_info,
+    in  json   downsample_info,
+    out json   analysis_params,
+    out json   summary,
+    out csv    summary_cs,
+    out json   alarms,
+    out txt    alarms_summary,
+    src py "missing1",
+)
+
+
+pipeline _REPORTER(
+    in  bam    bcsorted_bam,
+    in  bam    possorted_bam,
+    in  string reference_path               "this is the reference_path",
+    in  bed    targets                      "this is the targets file",
+    in  bed    confident_regions            "confident genome regions",
+    in  string barcode_whitelist            "name of barcode set",
+    in  string restrict_locus,
+    in  int    vc_max_coverage,
+    in  json   lot_info,
+    out json   basic_summary,
+    out h5     barcode_counts,
+    out json   insert_sizes,
+    out json   target_dists,
+    out json   mapq_counts,
+    out json   coverage_results,
+    out json   fragment_histogram,
+    out bed    high_coverage_excluded_bed,
+    out json   inferred_fragment_histogram,
+    out json   barcode_histogram,
+    out h5     coverage_details,
+    out csv    coverage_csv,
+    out h5     target_coverage,
+    out json   single_partition_results,
+    out h5     fragments,
+    out h5     barcodes,
+    out json   sv_detect_molecule_results,
+    out json   sv_fragment_histogram,
+    out h5     sv_fragments,
+    out h5     sv_barcodes,
+    out tsv    barcode_blacklist,
+    out json   coalescence_results,
+    out json   length_mass_results,
+    out json   lot_info,
+)
+{
+    call REPORT_BASIC(
+        input             = self.bcsorted_bam,
+        input_pos         = self.possorted_bam,
+        targets_file      = self.targets,
+        barcode_whitelist = self.barcode_whitelist,
+        lot_info          = self.lot_info,
+    )
+
+    call REPORT_SINGLE_PARTITION(
+        input              = self.bcsorted_bam,
+        barcode_whitelist  = self.barcode_whitelist,
+        targets_file       = self.targets,
+        read_link_distance = 60000,
+    )
+
+    call DETECT_MOLECULES(
+        input              = self.bcsorted_bam,
+        barcode_whitelist  = self.barcode_whitelist,
+        targets_file       = self.targets,
+        read_link_distance = 30000,
+    )
+
+    call FILTER_BARCODES(
+        input     = self.bcsorted_bam,
+        barcodes  = REPORT_SINGLE_PARTITION.barcodes,
+        fragments = REPORT_SINGLE_PARTITION.fragments,
+    )
+
+    call REPORT_COVERAGE(
+        input                   = self.possorted_bam,
+        reference_path          = self.reference_path,
+        high_coverage_threshold = self.vc_max_coverage,
+        targets_file            = self.targets,
+        confident_regions       = self.confident_regions,
+        fragments               = REPORT_SINGLE_PARTITION.fragments,
+        restrict_locus          = self.restrict_locus,
+    )
+
+    call REPORT_LENGTH_MASS(
+        reference_path    = self.reference_path,
+        targets_file      = self.targets,
+        barcodes          = REPORT_SINGLE_PARTITION.barcodes,
+        fragments         = REPORT_SINGLE_PARTITION.fragments,
+        barcode_whitelist = self.barcode_whitelist,
+    )
+
+    return (
+        basic_summary               = REPORT_BASIC.summary,
+        barcode_counts              = REPORT_BASIC.barcode_counts,
+        insert_sizes                = REPORT_BASIC.insert_sizes,
+        target_dists                = REPORT_BASIC.target_dists,
+        mapq_counts                 = REPORT_BASIC.mapq_counts,
+        coverage_results            = REPORT_COVERAGE.summary,
+        coverage_details            = REPORT_COVERAGE.coverage,
+        coverage_csv                = REPORT_COVERAGE.coverage_csv,
+        target_coverage             = REPORT_COVERAGE.target_coverage,
+        high_coverage_excluded_bed  = REPORT_COVERAGE.high_coverage_excluded_bed,
+        single_partition_results    = REPORT_SINGLE_PARTITION.single_partition,
+        fragment_histogram          = REPORT_SINGLE_PARTITION.fragment_size,
+        inferred_fragment_histogram = REPORT_LENGTH_MASS.inferred_length_distribution,
+        barcode_histogram           = REPORT_SINGLE_PARTITION.barcode_histogram,
+        fragments                   = REPORT_SINGLE_PARTITION.fragments,
+        barcodes                    = REPORT_SINGLE_PARTITION.barcodes,
+        sv_detect_molecule_results  = DETECT_MOLECULES.single_partition,
+        sv_fragment_histogram       = REPORT_LENGTH_MASS.sv_length_distribution,
+        sv_fragments                = DETECT_MOLECULES.fragments,
+        sv_barcodes                 = DETECT_MOLECULES.barcodes,
+        barcode_blacklist           = FILTER_BARCODES.barcode_blacklist,
+        coalescence_results         = FILTER_BARCODES.coalescence_results,
+        length_mass_results         = REPORT_LENGTH_MASS.summary,
+        lot_info                    = REPORT_BASIC.lot_info,
+    )
+}
+
+#
+# Copyright (c) 2014 10X Genomics, Inc. All rights reserved.
+#
+#
+# Copyright (c) 2014 10X Genomics, Inc. All rights reserved.
+#
+#
+# Copyright (c) 2015 10X Genomics, Inc. All rights reserved.
+#
+filetype bam;
+filetype vcf;
+filetype vcf.gz;
+filetype vcf.gz.tbi;
+filetype filter_params;
+filetype json;
+filetype bed;
+filetype tsv;
+filetype tsv.gz;
+filetype h5;
+filetype csv;
+
+stage CALL_SNPINDELS(
+    in  string vc_precalled,
+    in  string variant_mode                "'freebayes' or 'gatk:/path/to/GenomeAnalysisTK.jar'",
+    in  string restrict_locus,
+    in  bed    targets_file,
+    in  bam    input                       "sorted and indexed bam file",
+    in  string reference_path              "name of the reference reference_path",
+    in  bed    high_coverage_excluded_bed,
+    out vcf    precalled,
+    out vcf                                "output vcf",
+    src py "missing1",
+) split using (
+    in  string locus,
+)
+
+stage POPULATE_INFO_FIELDS(
+    in  string vc_precalled,
+    in  string variant_mode,
+    in  vcf    input,
+    in  string reference_path,
+    in  bam    bam,
+    in  int    min_mapq_attach_bc,
+    in  int    default_indel_qual,
+    out vcf,
+    src py "missing1",
+) split using (
+    in  vcf    chunk_input,
+)
+
+stage FILTER_SNPINDELS(
+    in  string vc_precalled,
+    in  string variant_mode  "if not null, no filtering will happen",
+    in  vcf    input         "input vcf file",
+    out vcf                  "output vcf",
+    src py "missing1",
+) split using (
+    in  vcf    chunk_input,
+)
+
+stage CANONICALIZE_SNPINDELS(
+    in  vcf input            "input vcf file",
+    in  vcf precalled,
+    out vcf                  "output vcf",
+    src py "missing1",
+) split using (
+    in  vcf chunk_input,
+    in  vcf precalled_chunk,
+)
+
+stage SORT_SNPINDELS(
+    in  vcf    input    "input vcf file",
+    out vcf.gz          "output compressed vcf",
+    src py "missing1",
+)
+
+stage ANALYZE_SNPINDEL_CALLS(
+    in  string     vc_precalled,
+    in  string     variant_mode                  "'freebayes' or 'gatk:/path/to/GenomeAnalysisTK.jar'",
+    in  bam        bam_file,
+    in  vcf.gz     ground_truth                  "ground truth variants",
+    in  vcf.gz     input                         "called variants",
+    in  h5         coverage,
+    in  bed        targets_file                  "file specifying targets to focus analysis on",
+    in  tsv        genes_file                    "file with genes data",
+    in  string     reference_path,
+    in  string     restrict_locus,
+    in  map        regions_of_interest,
+    in  int        long_switch_penalty_multiple,
+    in  tsv.gz     fragment_phasing,
+    in  bam        validation_bam,
+    out vcf.gz     varcalls,
+    out vcf.gz.tbi varcalls_index,
+    out h5         variants,
+    out h5         phase_blocks,
+    out csv        gene_stats,
+    out csv        variant_stats,
+    out json       summary                       "results of analysis",
+    src py "missing1",
+) split using (
+    in  string     locus,
+)
+
+
+pipeline _SNPINDEL_CALLER(
+    in  string restrict_locus              "locus to restrict variant-calling to",
+    in  bam    input                       "duplicate-marked, sorted aligned bam file",
+    in  string reference_path              "name of the reference",
+    in  string vc_precalled,
+    in  string mode                        "'freebayes' or 'gatk'",
+    in  int    min_mapq_attach_bc,
+    in  bed    high_coverage_excluded_bed,
+    out vcf.gz variants                    "results file",
+)
+{
+    call CALL_SNPINDELS(
+        targets_file               = null,
+        high_coverage_excluded_bed = self.high_coverage_excluded_bed,
+        vc_precalled               = self.vc_precalled,
+        variant_mode               = self.mode,
+        restrict_locus             = self.restrict_locus,
+        input                      = self.input,
+        reference_path             = self.reference_path,
+    )
+
+    call CANONICALIZE_SNPINDELS(
+        input     = CALL_SNPINDELS,
+        precalled = CALL_SNPINDELS.precalled,
+    )
+
+    call POPULATE_INFO_FIELDS(
+        vc_precalled       = self.vc_precalled,
+        variant_mode       = self.mode,
+        reference_path     = self.reference_path,
+        input              = CANONICALIZE_SNPINDELS,
+        bam                = self.input,
+        min_mapq_attach_bc = self.min_mapq_attach_bc,
+        default_indel_qual = 43,
+    )
+
+    call FILTER_SNPINDELS(
+        vc_precalled = self.vc_precalled,
+        variant_mode = self.mode,
+        input        = POPULATE_INFO_FIELDS,
+    )
+
+    call SORT_SNPINDELS(
+        input = FILTER_SNPINDELS,
+    )
+
+    return (
+        variants = SORT_SNPINDELS,
+    )
+}
+
+#
+# Copyright (c) 2015 10X Genomics, Inc. All rights reserved.
+#
+filetype vcf;
+filetype vcf.gz;
+filetype bam;
+filetype bam.bai;
+filetype tabix;
+filetype pickle;
+filetype bed;
+filetype tsv;
+filetype tsv.gz;
+filetype h5;
+filetype json;
+
+stage CANONICALIZE_GROUND_TRUTH(
+    in  vcf    input        "input vcf file",
+    in  string genome       "name of the reference",
+    out vcf                 "output vcf",
+    src py "missing1",
+) split using (
+    in  vcf    chunk_input,
+)
+
+stage SORT_GROUND_TRUTH(
+    in  vcf    input    "input vcf file",
+    out vcf.gz          "output compressed vcf",
+    src py "missing1",
+)
+
+stage SORT_CALLED_SNPINDELS(
+    in  vcf    input    "input vcf file",
+    out vcf.gz          "output compressed vcf",
+    src py "missing1",
+)
+
+stage PHASE_SNPINDELS(
+    in  string sex,
+    in  string restrict_locus,
+    in  bam    bam_file,
+    in  h5     fragments,
+    in  vcf.gz input,
+    in  float  bc_mix_prob,
+    in  float  min_var_hap_conf,
+    in  string vc_precalled,
+    in  string vc_mode,
+    in  float  min_junction_hap_conf,
+    in  int    hap_block_size,
+    in  int    hap_block_buffer_size,
+    in  int    max_reassign_rounds,
+    in  int    chunk_stitching_overlap,
+    out vcf.gz,
+    out tsv.gz fragment_phasing,
+    src py "missing1",
+) split using (
+    in  string locus,
+)
+
+stage ATTACH_PHASING(
+    in  bam     input,
+    in  tsv.gz  fragment_phasing,
+    in  h5      fragments,
+    out bam     phased_possorted_bam,
+    out bam.bai phased_possorted_bam_index,
+    out json    summary,
+    out int     total_reads,
+    out int     phased_reads,
+    out int     molecule_tagged_reads,
+    src py "missing1",
+) split using (
+    in  string  chunk_start,
+    in  string  chunk_end,
+)
+
+stage BARCODE_AWARE_FILTER_SNPINDELS(
+    in  bam    bam_file,
+    in  string sex,
+    in  string restrict_locus,
+    in  string vc_precalled,
+    in  string vc_mode,
+    in  tsv.gz fragment_phasing,
+    in  vcf.gz variants,
+    out vcf.gz,
+    src py "missing1",
+) split using (
+    in  string locus,
+)
+
+
+pipeline _SNPINDEL_PHASER(
+    in  string     sex                         "sex of sample",
+    in  string     reference_path,
+    in  string     restrict_locus              "locus to restrict phasing to",
+    in  bam        input                       "duplicate-marked, sorted aligned bam file",
+    in  h5         fragments                   "fragments h5 file",
+    in  vcf        ground_truth                "phased variants for evaluation",
+    in  bam        validation_bam              "BAM file from orthogonal technology to validate variants against",
+    in  bed        targets                     "file specifying targets to focus analysis on",
+    in  map        vc_regions_of_interest,
+    in  float      bc_mix_prob,
+    in  float      min_var_hap_conf,
+    in  float      min_junction_hap_conf,
+    in  int        hap_block_size,
+    in  int        hap_block_buffer_size,
+    in  int        max_reassign_rounds,
+    in  string     vc_precalled,
+    in  string     mode                        "'freebayes' or 'gatk'",
+    in  h5         coverage,
+    in  bed        high_coverage_excluded_bed,
+    in  int        min_mapq_attach_bc,
+    in  int        chunk_stitching_overlap     "size of overlap between chunks, for stitching purposes",
+    out vcf.gz     phased_variants,
+    out vcf.gz.tbi phased_variants_index,
+    out tsv.gz     fragment_phasing,
+    out h5         phase_blocks,
+    out json       results                     "results file",
+)
+{
+    call volatile SORT_GROUND_TRUTH(
+        input = self.ground_truth,
+    )
+
+    call _SNPINDEL_CALLER(
+        vc_precalled               = self.vc_precalled,
+        high_coverage_excluded_bed = self.high_coverage_excluded_bed,
+        mode                       = self.mode,
+        restrict_locus             = self.restrict_locus,
+        input                      = self.input,
+        reference_path             = self.reference_path,
+        min_mapq_attach_bc         = self.min_mapq_attach_bc,
+    )
+
+    call PHASE_SNPINDELS(
+        sex                     = self.sex,
+        restrict_locus          = self.restrict_locus,
+        bam_file                = self.input,
+        fragments               = self.fragments,
+        input                   = _SNPINDEL_CALLER.variants,
+        bc_mix_prob             = self.bc_mix_prob,
+        min_var_hap_conf        = self.min_var_hap_conf,
+        vc_precalled            = self.vc_precalled,
+        vc_mode                 = self.mode,
+        min_junction_hap_conf   = self.min_junction_hap_conf,
+        hap_block_size          = self.hap_block_size,
+        hap_block_buffer_size   = self.hap_block_buffer_size,
+        max_reassign_rounds     = self.max_reassign_rounds,
+        chunk_stitching_overlap = self.chunk_stitching_overlap,
+    )
+
+    call ANALYZE_SNPINDEL_CALLS(
+        vc_precalled                 = self.vc_precalled,
+        variant_mode                 = self.mode,
+        bam_file                     = self.input,
+        ground_truth                 = SORT_GROUND_TRUTH,
+        input                        = PHASE_SNPINDELS,
+        coverage                     = self.coverage,
+        targets_file                 = self.targets,
+        reference_path               = self.reference_path,
+        regions_of_interest          = self.vc_regions_of_interest,
+        genes_file                   = null,
+        restrict_locus               = self.restrict_locus,
+        long_switch_penalty_multiple = 5,
+        fragment_phasing             = PHASE_SNPINDELS.fragment_phasing,
+        validation_bam               = self.validation_bam,
+    )
+
+    return (
+        phased_variants       = ANALYZE_SNPINDEL_CALLS.varcalls,
+        phased_variants_index = ANALYZE_SNPINDEL_CALLS.varcalls_index,
+        results               = ANALYZE_SNPINDEL_CALLS.summary,
+        phase_blocks          = ANALYZE_SNPINDEL_CALLS.phase_blocks,
+        fragment_phasing      = PHASE_SNPINDELS.fragment_phasing,
+    )
+}
+
+#
+# Copyright (c) 2014 10X Genomics, Inc. All rights reserved.
+#
+#
+# Copyright (c) 2015 10X Genomics, Inc. All rights reserved.
+#
+filetype vcf.gz;
+filetype bam;
+filetype tabix;
+filetype pickle;
+filetype bed;
+filetype bedpe;
+filetype json;
+filetype tsv;
+filetype h5;
+filetype csv;
+filetype tsv.gz;
+
+stage COUNT_READS_BCS(
+    in  bam      input,
+    in  string   sex,
+    in  string   reference_path,
+    in  tsv      blacklist,
+    in  h5       barcodes,
+    in  pickle   inv_bc_map,
+    in  bed      targets,
+    in  int      target_extend,
+    in  string   restrict_locus,
+    in  int      window_size,
+    in  int      step,
+    in  int      min_reads,
+    in  int      max_merge_dist,
+    in  int      min_mapq,
+    in  bool     read1_only,
+    in  bool     no_split,
+    in  bool     slide,
+    out pickle bc_pos_mats,
+    out pickle   inv_bc_map,
+    out pickle   bc_counts,
+    out pickle   win_counts,
+    out pickle   loci,
+    src py "missing1",
+) split using (
+    in  string   chrom,
+    in  int    starts,
+    in  int    stops,
+)
+
+stage DETECT_OVERLAPS(
+    in  bam      possorted_bam,
+    in  json     fragment_histogram,
+    in  pickle bc_pos_mats,
+    in  pickle   inv_bc_map,
+    in  pickle   bc_counts,
+    in  pickle   win_counts,
+    in  pickle   loci,
+    in  int      nx,
+    in  int      min_overlap,
+    in  int      min_call_dist,
+    in  int      max_call_dist,
+    in  float    max_bcs_to_call,
+    in  string   test,
+    out pickle   overlap_loci,
+    src py "missing1",
+) split using (
+    in  pickle bc_mat_list1,
+    in  pickle bc_mat_list2,
+    in  pickle   inv_bc_map,
+    in  pickle   win_counts,
+)
+
+stage CALL_STRUCTVARS(
+    in  bam    possorted_bam,
+    in  bool   recompute,
+    in  float  merge_score_factor,
+    in  pickle overlap_loci,
+    in  pickle low_depth_loci,
+    in  bedpe  rp_calls,
+    in  int    sv_min_qv,
+    in  h5     fragments,
+    in  json   fragment_histogram,
+    in  tsv.gz fragment_phasing,
+    in  tsv    barcode_blacklist,
+    in  json   coverage,
+    in  h5     coverage_details,
+    in  bed    targets,
+    in  float  p_ov_mol,
+    in  int    min_mapq,
+    in  int    min_bcs,
+    in  float  bc_similarity,
+    out bedpe  sv_variants,
+    src py "missing1",
+) split using (
+    in  int    start_idx,
+    in  int    stop_idx,
+)
+
+stage CALL_STRUCTVARS_FRAG(
+    in  bam    input,
+    in  pickle overlap_loci,
+    in  int    nx,
+    in  int    sv_min_qv,
+    in  int    min_call_dist,
+    in  h5     fragments,
+    in  json   fragment_histogram,
+    in  h5     barcodes,
+    in  tsv    barcode_blacklist,
+    in  json   coverage,
+    in  bed    targets,
+    out bedpe  sv_variants,
+    out pickle support_fragments,
+    src py "missing1",
+) split using (
+    in  int    start_idx,
+    in  int    stop_idx,
+)
+
+stage ANALYZE_SV_CALLS(
+    in  bedpe  variants,
+    in  bedpe  gt_variants,
+    in  pickle sv_support_fragments,
+    in  h5     fragments,
+    in  json   coverage,
+    in  int    min_call_qv_wgs,
+    in  int    min_call_qv_target,
+    in  int    min_read_support,
+    in  string reference_path,
+    in  bed    sv_blacklist_regions,
+    in  bedpe  seg_dups,
+    in  int    min_dist_from_black,
+    in  float  max_frac_black,
+    in  int    seg_dup_max_dist,
+    in  int  detect_dists,
+    in  bed    targets,
+    in  int  target_dists,
+    in  int    min_sv_len,
+    in  int    max_nmates,
+    in  float  max_break_res,
+    in  float  min_rel_depth,
+    out json   summary,
+    out tsv    summary_tsv,
+    out bedpe  sv_calls,
+    out bedpe  sv_candidates,
+    out bedpe  feasible_gt,
+    out tsv    call_tsv,
+    src py "missing1",
+) split using (
+    in  int    start_idx,
+    in  int    stop_idx,
+)
+
+stage ANALYZE_KNOWN_BREAKS_FRAG(
+    in  bam   input,
+    in  bed   targets,
+    in  int   nx,
+    in  int   extend_win,
+    in  bedpe gt_variants,
+    in  h5    fragments,
+    in  json  fragment_histogram,
+    in  h5    barcodes,
+    in  tsv   barcode_blacklist,
+    in  json  coverage,
+    out bedpe summary,
+    src py "missing1",
+) split using (
+    in  int   start_idx,
+    in  int   stop_idx,
+)
+
+stage MERGE_SV_CALLS(
+    in  bedpe  sv_variants1,
+    in  bedpe  sv_variants2,
+    in  tsv.gz frag_phasing,
+    in  int    break_ext,
+    in  int    max_dist,
+    in  float  min_frac_overlap,
+    out bedpe  sv_variants,
+    src py "missing1",
+)
+
+stage MERGE_SV_CALLS2(
+    in  bedpe  sv_variants1,
+    in  bedpe  sv_variants2,
+    in  tsv.gz frag_phasing,
+    in  int    break_ext,
+    in  int    max_dist,
+    in  float  min_frac_overlap,
+    out bedpe  sv_variants,
+    src py "missing1",
+)
+
+stage MERGE_SV_CALLS_FRAG(
+    in  bedpe  sv_variants,
+    in  pickle sv_support_fragments,
+    in  json   fragment_summary,
+    in  int    max_nmates,
+    in  int    min_call_dist,
+    out bedpe  sv_variants,
+    src py "missing1",
+)
+
+stage GET_READPAIR_EVIDENCE(
+    in  bam   input,
+    in  bedpe sv_variants,
+    in  int   break_extend,
+    in  int   min_mapq,
+    in  int   min_reads_to_call,
+    in  int   min_lr_to_call,
+    in  float rp_lr_multiplier,
+    in  json  insert_sizes,
+    in  json  basic_summary,
+    out bedpe sv_variants,
+    src py "missing1",
+) split using (
+    in  int   start_idx,
+    in  int   stop_idx,
+)
+
+stage GET_DEPTH_INFO(
+    in  bam   possorted_bam,
+    in  bedpe sv_calls,
+    in  h5    hap_coverage,
+    out bedpe dropped_calls,
+    out bedpe sv_calls,
+    src py "missing1",
+) split using (
+    in  int   start_idx,
+    in  int   stop_idx,
+)
+
+stage GET_DEPTH_INFO_FRAG(
+    in  bedpe sv_calls,
+    in  json  coverage_summary,
+    in  h5    coverage,
+    out bedpe sv_calls,
+    src py "missing1",
+) split using (
+    in  int   start_idx,
+    in  int   stop_idx,
+)
+
+stage GET_HAP_COVERAGE(
+    in  bam      possorted_bam,
+    in  bed      targets,
+    in  h5       phase_set_h5,
+    out h5       hap_coverage,
+    src py "missing1",
+) split using (
+    in  string loci,
+)
+
+stage GET_LOW_DEPTH_LOCI(
+    in  bam      possorted_bam,
+    in  string   reference_path,
+    in  bed      targets,
+    in  h5       hap_coverage,
+    in  int      bin_size,
+    in  int      min_len,
+    out pickle   loci,
+    out tsv      cov_summary,
+    src py "missing1",
+) split using (
+    in  string loci,
+)
+
+stage PREPARE_SVCALLING_RANGES(
+    in  bam    possorted_bam,
+    in  string reference_path,
+    in  h5     coverage,
+    in  csv    coverage_csv,
+    in  int    min_region_len,
+    in  int    region_pad,
+    out pickle ranges,
+    src py "missing1",
+) split using (
+    in  string chrom,
+    in  int    size,
+)
+
+stage GET_JOINT_READ_LR(
+    in  bam    possorted_bam,
+    in  json   basic_summary,
+    in  bedpe  sv_calls,
+    in  tsv.gz fragment_phasing,
+    in  json   insert_sizes,
+    in  int    min_mapq,
+    in  int    min_barcode_based_len,
+    in  int    break_ext,
+    in  float  min_het_hap_ratio,
+    in  float  max_phase_prob,
+    in  float  default_phase_prob_del,
+    in  float  default_phase_prob_dup,
+    in  float  default_phase_prob_inv,
+    in  float  min_allelic_frac,
+    in  int    min_bcs_to_call,
+    out bedpe  sv_calls,
+    src py "missing1",
+) split using (
+    in  int    chunk_start,
+    in  int    chunk_end,
+)
+
+stage GET_READPAIR_LOCI(
+    in  bam    possorted_bam,
+    in  json   basic_summary,
+    in  int    min_mapq,
+    in  json   insert_sizes,
+    in  float  merge_range_factor,
+    in  int    min_reads_to_call,
+    in  int    min_lr_to_call,
+    in  int    min_sv_len,
+    in  int    max_sv_len,
+    in  pickle ranges,
+    out bedpe  sv_calls,
+    out json   discordant_read_counts,
+    src py "missing1",
+) split using (
+    in  string chrom,
+    in  int  starts,
+    in  int  stops,
+)
+
+stage ANALYZE_SHORT_SV_CALLS(
+    in  bedpe variants,
+    in  bedpe gt_variants,
+    in  int   max_detect_dist,
+    in  bed   targets,
+    in  int   max_dist_from_targets,
+    in  int   min_sv_len,
+    in  bool  support_as_qual,
+    in  int   min_zs_score,
+    in  int   min_phase_score,
+    out json  summary,
+    out bedpe sv_calls,
+    src py "missing1",
+) split using (
+    in  int   start_idx,
+    in  int   stop_idx,
+)
+
+stage FILTER_PILEUPS(
+    in  bam   possorted_bam,
+    in  bedpe sv_calls,
+    in  h5    hap_coverage,
+    in  float min_rel_depth,
+    in  float max_clipped_frac,
+    out bedpe sv_calls,
+    out bedpe pileups,
+    src py "missing1",
+) split using (
+    in  int   start_idx,
+    in  int   stop_idx,
+)
+
+
+pipeline _STRUCTVAR_CALLER_FRAG(
+    in  bam    input                     "duplicate-marked, sorted aligned bam file",
+    in  string sex,
+    in  tsv    blacklist,
+    in  bed    targets,
+    in  int    target_extend,
+    in  string restrict_locus,
+    in  bedpe  gt_variants,
+    in  int    nx,
+    in  int    window_size               "window size for BC overlap",
+    in  int    step,
+    in  int    min_reads,
+    in  float  max_bcs_to_call,
+    in  int    max_merge_dist,
+    in  bool   read1_only,
+    in  bool   slide,
+    in  int    min_mapq                  "minimum mapq for read to be considered",
+    in  int    min_overlap,
+    in  int    sv_min_qv                 "maximum output p-value",
+    in  int    sv_min_call_qv_wgs,
+    in  int    sv_min_call_qv_target,
+    in  int    min_call_dist,
+    in  int    max_nmates,
+    in  int    min_read_support,
+    in  string reference_path,
+    in  bed    sv_blacklist_regions      "genome region blacklist for SV calling",
+    in  bedpe  seg_dups,
+    in  int    min_dist_from_black,
+    in  float  max_frac_black,
+    in  int    seg_dup_max_dist,
+    in  int  detect_dists,
+    in  int    extend_win,
+    in  int  target_dists,
+    in  int    min_sv_len                "if provided, will restrict ground truth to svs with at least this dist between breakpoints",
+    in  float  max_break_res,
+    in  float  min_rel_depth,
+    in  json   insert_sizes,
+    in  json   basic_summary,
+    in  json   single_partition_results,
+    in  h5     fragments,
+    in  json   fragment_histogram,
+    in  h5     barcodes,
+    in  json   coverage_summary,
+    in  h5     coverage,
+    in  int    min_reads_to_call,
+    in  int    min_lr_to_call,
+    out bedpe  unmerged_sv_variants,
+    out bedpe  sv_calls                  "called variants file",
+    out bedpe  sv_candidates,
+    out pickle sv_support_fragments,
+    out json   summary,
+    out bedpe  gt_results,
+    out pickle inv_bc_map,
+    out pickle bc_counts,
+    out pickle win_counts,
+)
+{
+    call volatile COUNT_READS_BCS(
+        input          = self.input,
+        sex            = self.sex,
+        reference_path = self.reference_path,
+        blacklist      = self.blacklist,
+        barcodes       = self.barcodes,
+        inv_bc_map     = null,
+        targets        = self.targets,
+        target_extend  = self.target_extend,
+        restrict_locus = self.restrict_locus,
+        window_size    = self.window_size,
+        step           = self.step,
+        min_reads      = self.min_reads,
+        max_merge_dist = self.max_merge_dist,
+        min_mapq       = self.min_mapq,
+        read1_only     = self.read1_only,
+        no_split       = false,
+        slide          = self.slide,
+    )
+
+    call volatile DETECT_OVERLAPS(
+        possorted_bam      = self.input,
+        fragment_histogram = self.fragment_histogram,
+        bc_pos_mats        = COUNT_READS_BCS.bc_pos_mats,
+        inv_bc_map         = COUNT_READS_BCS.inv_bc_map,
+        bc_counts          = COUNT_READS_BCS.bc_counts,
+        win_counts         = COUNT_READS_BCS.win_counts,
+        loci               = COUNT_READS_BCS.loci,
+        nx                 = self.nx,
+        min_overlap        = self.min_overlap,
+        min_call_dist      = self.min_call_dist,
+        max_call_dist      = 1000000000,
+        max_bcs_to_call    = self.max_bcs_to_call,
+        test               = "BINOM",
+    )
+
+    call CALL_STRUCTVARS_FRAG(
+        input              = self.input,
+        overlap_loci       = DETECT_OVERLAPS.overlap_loci,
+        nx                 = self.nx,
+        sv_min_qv          = self.sv_min_qv,
+        min_call_dist      = self.min_call_dist,
+        fragments          = self.fragments,
+        fragment_histogram = self.fragment_histogram,
+        barcodes           = self.barcodes,
+        barcode_blacklist  = self.blacklist,
+        coverage           = self.coverage_summary,
+        targets            = self.targets,
+    )
+
+    call volatile MERGE_SV_CALLS_FRAG(
+        sv_variants          = CALL_STRUCTVARS_FRAG.sv_variants,
+        sv_support_fragments = CALL_STRUCTVARS_FRAG.support_fragments,
+        fragment_summary     = self.single_partition_results,
+        max_nmates           = 100,
+        min_call_dist        = self.min_call_dist,
+    )
+
+    call volatile GET_READPAIR_EVIDENCE(
+        input             = self.input,
+        sv_variants       = MERGE_SV_CALLS_FRAG.sv_variants,
+        break_extend      = self.window_size,
+        min_mapq          = self.min_mapq,
+        min_reads_to_call = self.min_reads_to_call,
+        min_lr_to_call    = self.min_lr_to_call,
+        rp_lr_multiplier  = 0.0,
+        insert_sizes      = self.insert_sizes,
+        basic_summary     = self.basic_summary,
+    )
+
+    call volatile GET_DEPTH_INFO_FRAG(
+        sv_calls         = GET_READPAIR_EVIDENCE.sv_variants,
+        coverage         = self.coverage,
+        coverage_summary = self.coverage_summary,
+    )
+
+    call ANALYZE_SV_CALLS(
+        variants             = GET_DEPTH_INFO_FRAG.sv_calls,
+        gt_variants          = self.gt_variants,
+        sv_support_fragments = CALL_STRUCTVARS_FRAG.support_fragments,
+        fragments            = self.fragments,
+        coverage             = self.coverage_summary,
+        min_call_qv_wgs      = self.sv_min_call_qv_wgs,
+        min_call_qv_target   = self.sv_min_call_qv_target,
+        max_nmates           = self.max_nmates,
+        min_read_support     = self.min_read_support,
+        reference_path       = self.reference_path,
+        sv_blacklist_regions = self.sv_blacklist_regions,
+        seg_dups             = self.seg_dups,
+        min_dist_from_black  = self.min_dist_from_black,
+        max_frac_black       = self.max_frac_black,
+        seg_dup_max_dist     = self.seg_dup_max_dist,
+        detect_dists         = self.detect_dists,
+        targets              = self.targets,
+        target_dists         = self.target_dists,
+        min_sv_len           = self.min_sv_len,
+        max_break_res        = self.max_break_res,
+        min_rel_depth        = self.min_rel_depth,
+    )
+
+    call ANALYZE_KNOWN_BREAKS_FRAG(
+        input              = self.input,
+        targets            = self.targets,
+        nx                 = self.nx,
+        gt_variants        = self.gt_variants,
+        extend_win         = self.extend_win,
+        fragments          = self.fragments,
+        fragment_histogram = self.fragment_histogram,
+        barcodes           = self.barcodes,
+        barcode_blacklist  = self.blacklist,
+        coverage           = self.coverage_summary,
+    )
+
+    return (
+        unmerged_sv_variants = CALL_STRUCTVARS_FRAG.sv_variants,
+        sv_calls             = ANALYZE_SV_CALLS.sv_calls,
+        sv_candidates        = ANALYZE_SV_CALLS.sv_candidates,
+        sv_support_fragments = CALL_STRUCTVARS_FRAG.support_fragments,
+        summary              = ANALYZE_SV_CALLS.summary,
+        gt_results           = ANALYZE_KNOWN_BREAKS_FRAG.summary,
+        inv_bc_map           = COUNT_READS_BCS.inv_bc_map,
+        bc_counts            = COUNT_READS_BCS.bc_counts,
+        win_counts           = COUNT_READS_BCS.win_counts,
+    )
+}
+
+#
+# Copyright (c) 2015 10X Genomics, Inc. All rights reserved.
+#
+filetype h5;
+filetype bedpe;
+filetype tsv;
+filetype json;
+filetype tsv.gz;
+filetype pickle;
+
+stage PHASE_STRUCTVARS(
+    in  tsv.gz frag_phase_input,
+    in  bedpe  sv_input,
+    in  h5     fragments,
+    in  pickle sv_support_fragments,
+    in  int    min_phase_qv,
+    in  float  min_prob_bc_hap,
+    out tsv    sv_phasing,
+    out json   summary,
+    src py "missing1",
+) split using (
+    in  int    start_idx,
+    in  int    stop_idx,
+)
+
+#
+# Copyright (c) 2015 10X Genomics, Inc. All rights reserved.
+#
+filetype loupe;
+filetype vcf.gz;
+filetype json;
+filetype bedpe;
+filetype bam;
+filetype tsv;
+filetype tsv.gz;
+filetype bedpe;
+filetype bed;
+
+stage LOUPE_PREPROCESS(
+    in  string reference_path,
+    in  vcf.gz input_vcf,
+    in  bam    sorted_deduplicated_bam,
+    in  bedpe  structvar_data,
+    in  tsv    bkpt_details,
+    in  json   fragment_histogram,
+    in  json   summarize_output,
+    in  json   single_partition_data,
+    in  json   coverage_data,
+    in  json   phasing_quality_data,
+    in  json   alarms,
+    in  json   length_mass_data,
+    in  bed    targets,
+    in  tsv.gz fragments,
+    in  string sample_desc,
+    in  bool   noloupe,
+    out loupe  output_for_loupe,
+    src py "missing1",
+) split using (
+)
+
+
+pipeline PHASER_SVCALLER_EXOME(
+    in  string     fastq_mode                  "configuration of the input fastqs",
+    in  string     sample_id,
+    in  map      sample_def,
+    in  map        downsample,
+    in  string     sex,
+    in  string     reference_path,
+    in  bed        targets,
+    in  map        vc_regions_of_interest,
+    in  string     restrict_locus              "locus to restrict phasing to",
+    in  bool       exclude_non_bc_reads,
+    in  int        trim_length,
+    in  string     barcode_whitelist,
+    in  bed        confident_regions,
+    in  string     vc_precalled,
+    in  string     vc_mode                     "'freebayes' or 'gatk:/path/to/GenomeAnalysisTK.jar'",
+    in  vcf        vc_ground_truth,
+    in  bam        validation_bam,
+    in  int        sv_min_qv,
+    in  int        sv_min_call_qv_wgs,
+    in  int        sv_min_call_qv_target,
+    in  int        sv_min_read_support,
+    in  bedpe      sv_ground_truth,
+    in  int        vc_max_coverage,
+    in  string     sample_desc,
+    in  bool       noloupe,
+    out bam        phased_possorted_bam,
+    out bam.bai    phased_possorted_bam_index,
+    out bam        possorted_bam,
+    out bam.bai    possorted_bam_index,
+    out bed        high_coverage_excluded_bed,
+    out bam        bcsorted_bam,
+    out json       duplicate_summary,
+    out json       basic_summary,
+    out h5         barcode_counts,
+    out json       insert_sizes,
+    out json       target_dists,
+    out json       mapq_counts,
+    out json       coverage_results,
+    out json       attach_phasing_results,
+    out h5         coverage_details,
+    out h5         target_coverage,
+    out csv        coverage_csv,
+    out json       single_partition_results,
+    out json       coalescence_results,
+    out json       length_mass_results,
+    out h5         fragments,
+    out json       barcode_histogram,
+    out json       variant_results,
+    out vcf.gz     phased_variants,
+    out vcf.gz.tbi phased_variants_index,
+    out h5         sv_fragments,
+    out bedpe      unmerged_sv_variants,
+    out bedpe      sv_calls,
+    out bedpe      sv_candidates,
+    out pickle     sv_support_fragments,
+    out bedpe      sv_gt_results,
+    out json       sv_summary,
+    out tsv        sv_phasing,
+    out json       sv_phasing_summary,
+    out json       summary,
+    out csv        summary_cs,
+    out pickle     inv_bc_map,
+    out pickle     bc_counts,
+    out pickle     win_counts,
+    out loupe      loupe,
+    out tsv        barcode_blacklist,
+    out json       alarms,
+    out txt        alarms_summary,
+    out json       lot_info,
+    out json       downsample_info,
+)
+{
+    call local preflight PHASER_SVCALLER_PREFLIGHT_LOCAL(
+        sample_id         = self.sample_id,
+        sample_def        = self.sample_def,
+        sex               = self.sex,
+        targets           = self.targets,
+        restrict_locus    = self.restrict_locus,
+        vc_precalled      = self.vc_precalled,
+        vc_mode           = self.vc_mode,
+        reference_path    = self.reference_path,
+        vc_ground_truth   = self.vc_ground_truth,
+        sv_min_qv         = self.sv_min_qv,
+        sv_ground_truth   = self.sv_ground_truth,
+        check_executables = false,
+    )
+
+    call preflight PHASER_SVCALLER_PREFLIGHT(
+        sample_id         = self.sample_id,
+        sample_def        = self.sample_def,
+        sex               = self.sex,
+        targets           = self.targets,
+        restrict_locus    = self.restrict_locus,
+        vc_precalled      = self.vc_precalled,
+        vc_mode           = self.vc_mode,
+        reference_path    = self.reference_path,
+        vc_ground_truth   = self.vc_ground_truth,
+        sv_min_qv         = self.sv_min_qv,
+        sv_ground_truth   = self.sv_ground_truth,
+        check_executables = true,
+    )
+
+    call _LINKED_READS_ALIGNER(
+        sample_id                   = self.sample_id,
+        fastq_mode                  = self.fastq_mode,
+        sample_def                  = self.sample_def,
+        trim_length                 = self.trim_length,
+        reference_path              = self.reference_path,
+        barcode_whitelist           = self.barcode_whitelist,
+        targets                     = self.targets,
+        max_expected_barcode_errors = 1.0,
+        downsample                  = self.downsample,
+        exclude_non_bc_reads        = self.exclude_non_bc_reads,
+    )
+
+    call _REPORTER(
+        vc_max_coverage   = self.vc_max_coverage,
+        bcsorted_bam      = _LINKED_READS_ALIGNER.bcsorted_bam,
+        possorted_bam     = _LINKED_READS_ALIGNER.possorted_bam,
+        reference_path    = self.reference_path,
+        targets           = self.targets,
+        confident_regions = self.confident_regions,
+        barcode_whitelist = self.barcode_whitelist,
+        restrict_locus    = self.restrict_locus,
+        lot_info          = _LINKED_READS_ALIGNER.lot_info,
+    )
+
+    call _SNPINDEL_PHASER(
+        coverage                   = _REPORTER.coverage_details,
+        high_coverage_excluded_bed = _REPORTER.high_coverage_excluded_bed,
+        sex                        = self.sex,
+        reference_path             = self.reference_path,
+        restrict_locus             = self.restrict_locus,
+        targets                    = self.targets,
+        vc_regions_of_interest     = self.vc_regions_of_interest,
+        input                      = _LINKED_READS_ALIGNER.possorted_bam,
+        fragments                  = _REPORTER.fragments,
+        vc_precalled               = self.vc_precalled,
+        mode                       = self.vc_mode,
+        ground_truth               = self.vc_ground_truth,
+        validation_bam             = self.validation_bam,
+        bc_mix_prob                = 0.001,
+        min_var_hap_conf           = 0.995,
+        min_junction_hap_conf      = 0.995,
+        hap_block_size             = 35,
+        hap_block_buffer_size      = 5,
+        max_reassign_rounds        = 4,
+        min_mapq_attach_bc         = 30,
+        chunk_stitching_overlap    = 100000,
+    )
+
+    call ATTACH_PHASING(
+        input            = _LINKED_READS_ALIGNER.possorted_bam,
+        fragment_phasing = _SNPINDEL_PHASER.fragment_phasing,
+        fragments        = _REPORTER.fragments,
+    )
+
+    call _STRUCTVAR_CALLER_FRAG(
+        input                    = _LINKED_READS_ALIGNER.possorted_bam,
+        sex                      = self.sex,
+        blacklist                = _REPORTER.barcode_blacklist,
+        targets                  = self.targets,
+        target_extend            = 1000,
+        restrict_locus           = null,
+        gt_variants              = self.sv_ground_truth,
+        nx                       = 90,
+        window_size              = 10000,
+        step                     = 10000,
+        min_reads                = 500,
+        max_bcs_to_call          = 0.99,
+        max_merge_dist           = 10000,
+        read1_only               = true,
+        slide                    = true,
+        min_mapq                 = 60,
+        min_overlap              = 5,
+        sv_min_qv                = self.sv_min_qv,
+        sv_min_call_qv_wgs       = self.sv_min_call_qv_wgs,
+        sv_min_call_qv_target    = self.sv_min_call_qv_target,
+        min_call_dist            = 50000,
+        max_nmates               = 5,
+        seg_dup_max_dist         = 20000,
+        min_read_support         = self.sv_min_read_support,
+        reference_path           = self.reference_path,
+        min_dist_from_black      = 10000,
+        sv_blacklist_regions     = null,
+        seg_dups                 = null,
+        max_frac_black           = 0.1,
+        detect_dists             = 1,
+        extend_win               = 10000,
+        target_dists             = 50000,
+        min_sv_len               = 45000,
+        insert_sizes             = _REPORTER.insert_sizes,
+        basic_summary            = _REPORTER.basic_summary,
+        fragments                = _REPORTER.sv_fragments,
+        fragment_histogram       = _REPORTER.sv_fragment_histogram,
+        barcodes                 = _REPORTER.sv_barcodes,
+        coverage_summary         = _REPORTER.coverage_results,
+        coverage                 = _REPORTER.coverage_details,
+        single_partition_results = _REPORTER.sv_detect_molecule_results,
+        min_reads_to_call        = 4,
+        min_lr_to_call           = 20,
+        max_break_res            = 2.0,
+        min_rel_depth            = 0.8,
+    )
+
+    call PHASE_STRUCTVARS(
+        frag_phase_input     = _SNPINDEL_PHASER.fragment_phasing,
+        sv_input             = _STRUCTVAR_CALLER_FRAG.sv_calls,
+        fragments            = _REPORTER.sv_fragments,
+        sv_support_fragments = _STRUCTVAR_CALLER_FRAG.sv_support_fragments,
+        min_phase_qv         = 20,
+        min_prob_bc_hap      = 0.9,
+    )
+
+    call SUMMARIZE_REPORTS(
+        sample_id                = self.sample_id,
+        reference_path           = self.reference_path,
+        targets                  = self.targets,
+        trim_length              = self.trim_length,
+        duplicate_summary        = _LINKED_READS_ALIGNER.duplicate_summary,
+        basic_results            = _REPORTER.basic_summary,
+        barcode_counts           = _REPORTER.barcode_counts,
+        coverage_results         = _REPORTER.coverage_results,
+        coverage_details         = _REPORTER.coverage_details,
+        variant_results          = _SNPINDEL_PHASER.results,
+        sv_results               = _STRUCTVAR_CALLER_FRAG.summary,
+        sv_phase_results         = PHASE_STRUCTVARS.summary,
+        sv_min_call_qv_wgs       = self.sv_min_call_qv_wgs,
+        sv_min_call_qv_target    = self.sv_min_call_qv_target,
+        single_partition_results = _REPORTER.single_partition_results,
+        length_mass_results      = _REPORTER.length_mass_results,
+        bam_file                 = ATTACH_PHASING.phased_possorted_bam,
+        lot_info                 = _REPORTER.lot_info,
+        downsample_info          = _LINKED_READS_ALIGNER.downsample_info,
+    )
+
+    call LOUPE_PREPROCESS(
+        reference_path          = self.reference_path,
+        input_vcf               = _SNPINDEL_PHASER.phased_variants,
+        summarize_output        = SUMMARIZE_REPORTS.summary,
+        single_partition_data   = _REPORTER.single_partition_results,
+        coverage_data           = _REPORTER.coverage_results,
+        fragment_histogram      = _REPORTER.fragment_histogram,
+        phasing_quality_data    = _SNPINDEL_PHASER.results,
+        sorted_deduplicated_bam = ATTACH_PHASING.phased_possorted_bam,
+        structvar_data          = _STRUCTVAR_CALLER_FRAG.sv_candidates,
+        bkpt_details            = PHASE_STRUCTVARS.sv_phasing,
+        alarms                  = SUMMARIZE_REPORTS.alarms,
+        targets                 = self.targets,
+        fragments               = _SNPINDEL_PHASER.fragment_phasing,
+        length_mass_data        = _REPORTER.length_mass_results,
+        sample_desc             = self.sample_desc,
+        noloupe                 = self.noloupe,
+    )
+
+    return (
+        duplicate_summary          = _LINKED_READS_ALIGNER.duplicate_summary,
+        phased_possorted_bam       = ATTACH_PHASING.phased_possorted_bam,
+        phased_possorted_bam_index = ATTACH_PHASING.phased_possorted_bam_index,
+        possorted_bam              = _LINKED_READS_ALIGNER.possorted_bam,
+        possorted_bam_index        = _LINKED_READS_ALIGNER.possorted_bam_index,
+        bcsorted_bam               = _LINKED_READS_ALIGNER.bcsorted_bam,
+        variant_results            = _SNPINDEL_PHASER.results,
+        phased_variants            = _SNPINDEL_PHASER.phased_variants,
+        phased_variants_index      = _SNPINDEL_PHASER.phased_variants_index,
+        basic_summary              = _REPORTER.basic_summary,
+        barcode_counts             = _REPORTER.barcode_counts,
+        insert_sizes               = _REPORTER.insert_sizes,
+        target_dists               = _REPORTER.target_dists,
+        mapq_counts                = _REPORTER.mapq_counts,
+        coverage_results           = _REPORTER.coverage_results,
+        coverage_details           = _REPORTER.coverage_details,
+        high_coverage_excluded_bed = _REPORTER.high_coverage_excluded_bed,
+        target_coverage            = _REPORTER.target_coverage,
+        coverage_csv               = _REPORTER.coverage_csv,
+        single_partition_results   = _REPORTER.single_partition_results,
+        coalescence_results        = _REPORTER.coalescence_results,
+        length_mass_results        = _REPORTER.length_mass_results,
+        fragments                  = _REPORTER.fragments,
+        barcode_histogram          = _REPORTER.barcode_histogram,
+        unmerged_sv_variants       = _STRUCTVAR_CALLER_FRAG.unmerged_sv_variants,
+        sv_fragments               = _REPORTER.sv_fragments,
+        sv_calls                   = _STRUCTVAR_CALLER_FRAG.sv_calls,
+        sv_candidates              = _STRUCTVAR_CALLER_FRAG.sv_candidates,
+        sv_support_fragments       = _STRUCTVAR_CALLER_FRAG.sv_support_fragments,
+        sv_gt_results              = _STRUCTVAR_CALLER_FRAG.gt_results,
+        sv_summary                 = _STRUCTVAR_CALLER_FRAG.summary,
+        sv_phasing                 = PHASE_STRUCTVARS.sv_phasing,
+        sv_phasing_summary         = PHASE_STRUCTVARS.summary,
+        inv_bc_map                 = _STRUCTVAR_CALLER_FRAG.inv_bc_map,
+        bc_counts                  = _STRUCTVAR_CALLER_FRAG.bc_counts,
+        win_counts                 = _STRUCTVAR_CALLER_FRAG.win_counts,
+        summary                    = SUMMARIZE_REPORTS.summary,
+        summary_cs                 = SUMMARIZE_REPORTS.summary_cs,
+        loupe                      = LOUPE_PREPROCESS.output_for_loupe,
+        barcode_blacklist          = _REPORTER.barcode_blacklist,
+        alarms                     = SUMMARIZE_REPORTS.alarms,
+        alarms_summary             = SUMMARIZE_REPORTS.alarms_summary,
+        attach_phasing_results     = ATTACH_PHASING.summary,
+        lot_info                   = _REPORTER.lot_info,
+        downsample_info            = _LINKED_READS_ALIGNER.downsample_info,
+    )
+}
+
+#
+# Copyright (c) 2015 10X Genomics, Inc. All rights reserved.
+#
+filetype bam;
+filetype pickle;
+filetype bed;
+filetype bedpe;
+filetype json;
+filetype tsv;
+
+stage ANALYZE_KNOWN_BREAKS_PD(
+    in  bam    input,
+    in  bed    targets,
+    in  int    target_extend,
+    in  int    extend_win,
+    in  int    method,
+    in  int    nx,
+    in  int    min_reads,
+    in  int    min_mapq,
+    in  pickle win_counts,
+    in  pickle inv_bc_map,
+    in  int    npairs,
+    in  string restrict_locus,
+    in  int    min_dist,
+    in  int    max_dist,
+    in  bed    sv_blacklist_regions,
+    in  bedpe  seg_dups,
+    in  int    min_dist_from_black,
+    in  float  max_frac_black,
+    in  int    seg_dup_max_dist,
+    out json   summary,
+    src py "missing1",
+) split using (
+    in  string chrom,
+    in  int    start,
+    in  int    stop,
+    in  int    npairs_per_chunk,
+    in  int    chunk_num,
+)
+
+stage COMPARE_CALLS_PD(
+    in  map    groups,
+    in  int    min_sv_qv,
+    in  float  group_mem_fraction,
+    in  int    merge_win,
+    in  int    far_dist,
+    out tsv    merged_variants,
+    out tsv    overlaps,
+    out tsv    summary,
+    out json   ranks,
+    src py "missing1",
+) split using (
+    in  string group_name,
+)
+
+
+pipeline PHASER_SVCALLER_EXOME_PD(
+    in  string   fastq_mode              "configuration of the input fastqs",
+    in  string   sample_id               "Lena sample ID",
+    in  map    sample_def,
+    in  map      downsample,
+    in  string   sex,
+    in  string   reference_path          "this is the reference_path",
+    in  bed      targets                 "this is the targets file",
+    in  bool     targets_captured,
+    in  map      baits_file_map          "a map of bed files",
+    in  map      vc_regions_of_interest,
+    in  bool     exclude_non_bc_reads,
+    in  bed      confident_regions       "confident reference_path regions",
+    in  int      trim_length             "this is the trim length",
+    in  string   barcode_whitelist       "name of barcode set",
+    in  string primers,
+    in  string   vc_precalled,
+    in  string   vc_mode                 "input called variants",
+    in  vcf      vc_ground_truth,
+    in  bam      validation_bam,
+    in  string   restrict_locus          "locus to restrict phasing to",
+    in  int      sv_min_qv,
+    in  int      sv_min_call_qv_wgs,
+    in  int      sv_min_call_qv_target,
+    in  int      sv_min_read_support,
+    in  bedpe    sv_ground_truth,
+    in  string   sv_restrict_locus_pd,
+    in  float    template_mass,
+    in  pickle   common_vars,
+    in  string   lena_coop,
+    in  int      max_coverage,
+    in  string   sample_desc,
+    in  bool     noloupe,
+    out script   upload_script,
+)
+{
+    call PHASER_SVCALLER_EXOME(
+        vc_max_coverage        = self.max_coverage,
+        fastq_mode             = self.fastq_mode,
+        sample_def             = self.sample_def,
+        downsample             = self.downsample,
+        sex                    = self.sex,
+        restrict_locus         = self.restrict_locus,
+        exclude_non_bc_reads   = self.exclude_non_bc_reads,
+        sample_id              = self.sample_id,
+        reference_path         = self.reference_path,
+        trim_length            = self.trim_length,
+        barcode_whitelist      = self.barcode_whitelist,
+        confident_regions      = self.confident_regions,
+        targets                = self.targets,
+        vc_regions_of_interest = self.vc_regions_of_interest,
+        vc_precalled           = self.vc_precalled,
+        vc_mode                = self.vc_mode,
+        vc_ground_truth        = self.vc_ground_truth,
+        validation_bam         = self.validation_bam,
+        sv_min_qv              = self.sv_min_qv,
+        sv_min_call_qv_wgs     = self.sv_min_call_qv_wgs,
+        sv_min_call_qv_target  = self.sv_min_call_qv_target,
+        sv_min_read_support    = self.sv_min_read_support,
+        sv_ground_truth        = self.sv_ground_truth,
+        sample_desc            = self.sample_desc,
+        noloupe                = self.noloupe,
+    )
+
+    call ANALYZE_KNOWN_BREAKS_PD(
+        input                = PHASER_SVCALLER_EXOME.possorted_bam,
+        targets              = self.targets,
+        target_extend        = 1000,
+        extend_win           = 10000,
+        method               = 1,
+        nx                   = 90,
+        min_reads            = 500,
+        min_mapq             = 60,
+        win_counts           = PHASER_SVCALLER_EXOME.win_counts,
+        inv_bc_map           = PHASER_SVCALLER_EXOME.inv_bc_map,
+        npairs               = 10000,
+        restrict_locus       = self.sv_restrict_locus_pd,
+        min_dist             = 500,
+        max_dist             = 50000,
+        sv_blacklist_regions = null,
+        seg_dups             = null,
+        min_dist_from_black  = 10000,
+        max_frac_black       = 0.1,
+        seg_dup_max_dist     = 10000,
+    )
+
+    call _REPORTER_PD(
+        possorted_bam  = PHASER_SVCALLER_EXOME.possorted_bam,
+        bcsorted_bam   = PHASER_SVCALLER_EXOME.bcsorted_bam,
+        primers        = self.primers,
+        reference_path = self.reference_path,
+        common_vars    = self.common_vars,
+        baits_file_map = self.baits_file_map,
+        coverage       = PHASER_SVCALLER_EXOME.coverage_details,
+        coverage_csv   = PHASER_SVCALLER_EXOME.coverage_csv,
+    )
+
+    call LOUPE_UPLOAD_PD(
+        loupe_file    = PHASER_SVCALLER_EXOME.loupe,
+        sample_id     = self.sample_id,
+        pipeline_name = "PHASER_SVCALLER_EXOME_PD",
+    )
+
+    call SUMMARIZE_REPORTS_PD(
+        template_mass            = self.template_mass,
+        reference_path           = self.reference_path,
+        targets                  = self.targets,
+        targets_captured         = self.targets_captured,
+        baits_file_map           = self.baits_file_map,
+        confident_regions        = self.confident_regions,
+        trim_length              = self.trim_length,
+        duplicate_summary        = PHASER_SVCALLER_EXOME.duplicate_summary,
+        basic_results            = PHASER_SVCALLER_EXOME.basic_summary,
+        barcode_counts           = PHASER_SVCALLER_EXOME.barcode_counts,
+        barcode_histogram        = PHASER_SVCALLER_EXOME.barcode_histogram,
+        error_results            = _REPORTER_PD.error_results,
+        coverage_results         = PHASER_SVCALLER_EXOME.coverage_results,
+        coverage_details         = PHASER_SVCALLER_EXOME.coverage_details,
+        target_coverage          = PHASER_SVCALLER_EXOME.target_coverage,
+        primer_results           = _REPORTER_PD.primer_results,
+        start_results            = _REPORTER_PD.start_results,
+        contam_results           = _REPORTER_PD.contam_results,
+        single_partition_results = PHASER_SVCALLER_EXOME.single_partition_results,
+        coalescence_results      = PHASER_SVCALLER_EXOME.coalescence_results,
+        length_mass_results      = PHASER_SVCALLER_EXOME.length_mass_results,
+        vc_precalled_cs          = self.vc_precalled,
+        variant_mode_cs          = self.vc_mode,
+        variant_results_cs       = PHASER_SVCALLER_EXOME.variant_results,
+        phased_variants_cs       = PHASER_SVCALLER_EXOME.phased_variants,
+        vc_precalled_pd          = null,
+        variant_mode_pd          = null,
+        variant_results_pd       = null,
+        phased_variants_pd       = null,
+        possorted_bam            = PHASER_SVCALLER_EXOME.phased_possorted_bam,
+        coverage_csv             = PHASER_SVCALLER_EXOME.coverage_csv,
+        fragments                = PHASER_SVCALLER_EXOME.fragments,
+        sv_results               = PHASER_SVCALLER_EXOME.sv_summary,
+        barcode_results          = _REPORTER_PD.barcode_results,
+        sv_calls                 = PHASER_SVCALLER_EXOME.sv_calls,
+        sv_candidates            = PHASER_SVCALLER_EXOME.sv_candidates,
+        sv_gt_results            = PHASER_SVCALLER_EXOME.sv_gt_results,
+        sv_rl_results            = ANALYZE_KNOWN_BREAKS_PD.summary,
+        sv_phase_results         = PHASER_SVCALLER_EXOME.sv_phasing_summary,
+        loupe                    = LOUPE_UPLOAD_PD.destination,
+        attach_phasing_results   = PHASER_SVCALLER_EXOME.attach_phasing_results,
+        lot_info                 = PHASER_SVCALLER_EXOME.lot_info,
+        downsample_info          = PHASER_SVCALLER_EXOME.downsample_info,
+    )
+
+    call UPLOAD_SAMPLE_TO_LENA_PD(
+        sample_id         = self.sample_id,
+        lena_coop         = self.lena_coop,
+        error_results     = _REPORTER_PD.error_results,
+        coverage_results  = PHASER_SVCALLER_EXOME.coverage_results,
+        coverage_slice    = SUMMARIZE_REPORTS_PD.coverage_slice,
+        primer_results    = _REPORTER_PD.primer_results,
+        start_results     = _REPORTER_PD.start_results,
+        analysis_params   = SUMMARIZE_REPORTS_PD.analysis_params,
+        insert_sizes      = PHASER_SVCALLER_EXOME.insert_sizes,
+        target_dists      = PHASER_SVCALLER_EXOME.target_dists,
+        mapq_counts       = PHASER_SVCALLER_EXOME.mapq_counts,
+        barcode_histogram = PHASER_SVCALLER_EXOME.barcode_histogram,
+        gc_summary        = SUMMARIZE_REPORTS_PD.gc_summary,
+        gc_summary_100bp  = SUMMARIZE_REPORTS_PD.gc_summary_100bp,
+        read1_logo        = SUMMARIZE_REPORTS_PD.read1_logo,
+        read2_logo        = SUMMARIZE_REPORTS_PD.read2_logo,
+        summary_results   = SUMMARIZE_REPORTS_PD.summary,
+        linked_files      = SUMMARIZE_REPORTS_PD.linked_files,
+    )
+
+    return (
+        upload_script = UPLOAD_SAMPLE_TO_LENA_PD,
+    )
+}
+
+
+call PHASER_SVCALLER_EXOME_PD(
+    fastq_mode = "BCL_PROCESSOR",
+    sample_id = "20202",
+    sample_def = {
+            "bc_in_read": 1,
+            "bc_length": 16,
+            "gem_group": null,
+            "lanes": null,
+            "library_id": "20202",
+            "read_path": "/mnt/analysis/marsoc/pipestances/HWC3FBGXX/BCL_PROCESSOR_PD/HWC3FBGXX/1014.0.14-0/BCL_PROCESSOR_PD/BCL_PROCESSOR/DEMULTIPLEX/fork0/files/demultiplexed_fastq_path",
+            "sample_indices": [
+                "AAACCGAG",
+                "TTGAGATC",
+                "GCTGTCCA",
+                "CGCTATGT"
+            ]
+        },
+    downsample = {
+        "gigabases": 9
+    },
+    sex = "female",
+    reference_path = "/mnt/opt/refdata_new/hg19-2.0.0",
+    targets = "/mnt/opt/meowmix_git/targetsets/hg19/agilent_exome_v6_targs.bed",
+    targets_captured = true,
+    baits_file_map = {
+        "V6": "/mnt/opt/meowmix_git/targetsets/hg19/agilent_exome_v6_targs.bed"
+    },
+    vc_regions_of_interest = {
+        "CRGAlign100_2x_GRCh37_HC": "/mnt/opt/meowmix_git/genometracks/hg19/algo_validation/CRGAlign100_2x_GRCh37_HC.bed",
+        "GC70x25_HC": "/mnt/opt/meowmix_git/genometracks/hg19/algo_validation/GC70x25_HC.bed",
+        "GRCh37ChrsNoN_HC": "/mnt/opt/meowmix_git/genometracks/hg19/algo_validation/GRCh37ChrsNoN_HC.bed",
+        "GRCh37_HC": "/mnt/opt/meowmix_git/genometracks/hg19/algo_validation/GRCh37_HC.bed",
+        "HPolF25_HC": "/mnt/opt/meowmix_git/genometracks/hg19/algo_validation/HPolF25_HC.bed",
+        "HiSeqDepth001_HC": "/mnt/opt/meowmix_git/genometracks/hg19/algo_validation/HiSeqDepth001_HC.bed",
+        "HiSeqDepthTop5Pct_HC": "/mnt/opt/meowmix_git/genometracks/hg19/algo_validation/HiSeqDepthTop5Pct_HC.bed",
+        "PatchAltSeq_GRCh37_HC": "/mnt/opt/meowmix_git/genometracks/hg19/algo_validation/PatchAltSeq_GRCh37_HC.bed",
+        "PriorityOne_02-Feb-2016_CDExM_onlyChr_HC": "/mnt/opt/meowmix_git/genometracks/hg19/algo_validation/PriorityOne_02-Feb-2016_CDExM_onlyChr_HC.bed",
+        "RefSeqGRCh37_CDEx_HC": "/mnt/opt/meowmix_git/genometracks/hg19/algo_validation/RefSeqGRCh37_CDEx_HC.bed",
+        "RefSeqGRCh37_CDEx_MOnlyChrs_HC": "/mnt/opt/meowmix_git/genometracks/hg19/algo_validation/RefSeqGRCh37_CDEx_MOnlyChrs_HC.bed",
+        "SegDup_GRCh37_HC": "/mnt/opt/meowmix_git/genometracks/hg19/algo_validation/SegDup_GRCh37_HC.bed",
+        "SimpleRepeatsF25_GRCh37_HC": "/mnt/opt/meowmix_git/genometracks/hg19/algo_validation/SimpleRepeatsF25_GRCh37_HC.bed",
+        "conf_regions": "/mnt/opt/meowmix_git/genometracks/hg19/nist_conf_regions.bed",
+        "degen_regions": "/mnt/opt/meowmix_git/genometracks/hg19/lariat_degen_regions.bed"
+    },
+    exclude_non_bc_reads = false,
+    confident_regions = "/mnt/opt/meowmix_git/genometracks/hg19/human_conf_35.bed",
+    trim_length = 7,
+    barcode_whitelist = "4M-with-alts-february-2016",
+    primers = "P5:AATGATACGGCGACCACCGAGA",
+    vc_precalled = null,
+    vc_mode = "freebayes",
+    vc_ground_truth = null,
+    validation_bam = null,
+    restrict_locus = null,
+    sv_min_qv = 20,
+    sv_min_call_qv_wgs = 100,
+    sv_min_call_qv_target = 50,
+    sv_min_read_support = 0,
+    sv_ground_truth = "/mnt/opt/meowmix_git/variants/hg19/HCC1954/lit_curated_bd_washu_v2.bedpe",
+    sv_restrict_locus_pd = "chr2:0..243199373",
+    template_mass = 0.601000,
+    common_vars = "/mnt/opt/meowmix_git/variants/hg19/common/hg19-with-indels.pickle",
+    lena_coop = "/mnt/lena/production/",
+    max_coverage = 100000,
+    sample_desc = "EX-1.0-VV.41 NextSeq 9Gb",
+    noloupe = false,
+)

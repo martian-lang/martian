@@ -1,0 +1,73 @@
+@include "stages.mro"
+
+
+pipeline COUNTX(
+        in string stuff7,
+        in string stuff6,
+        out string res4,
+) {
+        call COUNTX1(
+                stuff9 = self.stuff7,
+                stuff10 = self.stuff6,
+        )
+        return (
+                res4 = COUNTX1.res5,
+        )
+}
+
+
+pipeline COUNTI(
+        in string data1,
+        in string data2,
+        out string output1,
+        out string output2,
+) {
+        call COUNTI1(
+                stuff1 = self.data1,
+        )
+        call COUNTI2(
+                stuff2 = COUNTI1.res3,
+                stuff3 = self.data2,
+        )
+        call COUNTP(
+                stuff4 = self.data1,
+                stuff5 = self.data2,
+        )
+        call COUNTX(
+                stuff6 = COUNTP.res2,
+                stuff7 = COUNTI1.res3,
+        )
+        return(
+                output1= COUNTX.res4,
+                output2= COUNTI2.out5,
+        )
+}
+
+
+
+pipeline AWESOME2(
+        in string data,
+        out string final,
+){
+        call GETDATA(
+                stuffG = self.data,
+        )
+        call SORT(
+                stuffS = GETDATA.output1,
+        )
+
+        call COUNTI(
+                data1 = SORT.output1,
+                data2 = self.data,
+        )
+        call COLLATE(
+                stuffO1 = COUNTI.output1,
+                stuffO2 = COUNTI.output2,
+        )
+        return (
+                final = COLLATE.output1,
+        )
+}
+
+        
+

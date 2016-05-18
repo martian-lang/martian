@@ -26,7 +26,7 @@ func TestMRT1(t * testing.T) {
 		envs}
 
 	a2:=a1;
-	a2.pipestancePath="squeeeek";
+	a2.PipestancePath="squeeeek";
 
 	DoIt(&a2, &a1);
 }

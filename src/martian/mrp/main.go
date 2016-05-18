@@ -28,11 +28,12 @@ func runLoop(pipestance *core.Pipestance, stepSecs int, vdrMode string,
 	noExit bool, enableUI bool) {
 	showedFailed := false
 	WAIT_SECS := 6
-
+	wait_forever := make(chan bool);
 	pipestance.LoadMetadata()
 
 	for {
 		pipestance.RefreshState()
+		_ = <- wait_forever
 
 		// Check for completion states.
 		state := pipestance.GetState()
@@ -210,7 +211,8 @@ Options:
 	}
 
 	// Compute MRO path.
-	cwd, _ := filepath.Abs(path.Dir(os.Args[0]))
+	//cwd, _ := filepath.Abs(path.Dir(os.Args[0]))
+	cwd, _ := os.Getwd();
 	mroPaths := core.ParseMroPath(cwd)
 	if value := os.Getenv("MROPATH"); len(value) > 0 {
 		mroPaths = core.ParseMroPath(value)

@@ -11,12 +11,12 @@ import (
 
 
 type PSInfo struct {
-	srcpath string;
-	psid string;
-	pipestancePath string;
-	mroPaths []string
-	mroVersion string
-	envs map[string]string
+	Srcpath string;
+	Psid string;
+	PipestancePath string;
+	MroPaths []string
+	MroVersion string
+	Envs map[string]string
 }
 
 /*
@@ -51,24 +51,40 @@ func LinkDirectories(curnode * Node, oldRoot * Node, nodemap map[*Node]*Node) {
 }
 
 
+/* This buids a set of symlinks from one pipestance to another. All of the nonblacklisted
+ * stages (and sub-pipelines) that have a corresponding node will be linked.  We try to 
+ * link entire sub-pipelines when possible.
+ */
 func LinkDirectoriesR(cur * Node, oldRoot * Node, nodemap map[*Node]*Node) {
 	oldNode := nodemap[cur];
 	if (cur.kind == "stage") {
+		/* Just try to link this stage. If we can't we just do nothing and let it
+		 * get recomputed.
+		 */
 		if (!cur.blacklistedFromMRT && oldNode != nil) {
-			Println("Link %v(%v) to %v(%v)", cur.name, cur.path, oldNode.name, oldNode.path);
+			Println("Link (stage) %v(%v) to %v(%v)", cur.name, cur.path, oldNode.name, oldNode.path);
 			err := os.Symlink(oldNode.path, cur.path);
 			if (err != nil) {
 				panic(err);
 			}
 		}
-	} else {
-		os.Mkdir(cur.path, 0777);
-	}
+	}  else if (cur.kind == "pipeline"){
+		/* Try to link an entire pipeline */
+		if (!cur.blacklistedFromMRT && oldNode != nil) {
+			Println("Link (pipeline) %v(%v) to %v(%v)", cur.name, cur.path, oldNode.name, oldNode.path);
+			err := os.Symlink(oldNode.path, cur.path);
+			if (err != nil) {
+				panic(err);
+			}
 
-	for _, chld := range cur.subnodes {
-		LinkDirectoriesR(chld.getNode(), oldRoot, nodemap);
+		} else {
+			/* If we can't (or shouldn't), we recurse and try to link its children */
+			os.Mkdir(cur.path, 0777);
+			for _, chld := range cur.subnodes {
+				LinkDirectoriesR(chld.getNode(), oldRoot, nodemap);
+			}
+		}
 	}
-
 }
 
 
@@ -89,6 +105,9 @@ func (self * Pipestance) BlacklistMRTNodes(namesToBlacklist []string) error {
 	return nil;
 }
 
+/*
+ * Blacklist the node named |nameToBlacklist| as well as all of its descendents
+ */
 func (self * Pipestance) BlacklistMRTNode(nameToBlacklist string) error {
 	var start *Node;
 	self.node.FindNodeByName(nameToBlacklist, &start);
@@ -100,17 +119,23 @@ func (self * Pipestance) BlacklistMRTNode(nameToBlacklist string) error {
 }
 
 
+/*
+ * Recursively blacklist nodes.
+ */
 func TaintNode(root * Node) {
 	if (root.blacklistedFromMRT == false) {
 		Println("Taint: %v", root.name);
 		root.blacklistedFromMRT = true;
-		/*
-		for _, subs := range root.subnodes {
-			TaintNode(subs.getNode());
-		}
-		*/
 
+		/* If a stage or pipeline is tainted, its parent should also be tainted. */
+		if root.parent != nil{
+			Println("PARENT: of %v: %v", root.name, root.parent.getNode().name);
+			TaintNode(root.parent.getNode());
+		}
+		
+		/* Any stage that depends on this node must be tainted, too */
 		for _, subs := range root.postnodes {
+			Println("POSTNODE:of %v: %v", root.name, subs.getNode().name);
 			TaintNode(subs.getNode());
 		}
 	}
@@ -139,7 +164,7 @@ func (n * Node) FindNodeByName(name string, out **Node) {
  *  Then it links all of the linkable stages from the old pipestance into the new pipestance.
  */
 
-func DoIt(newinfo *PSInfo, oldinfo *PSInfo) {
+func DoIt(newinfo *PSInfo, oldinfo *PSInfo, invalidate[]string) {
 	SetupSignalHandlers();
 	rtnew := NewRuntime("local", "disable", "disable", "2");
 	rtold := NewRuntime("local", "disable", "disable", "2");
@@ -153,30 +178,30 @@ func DoIt(newinfo *PSInfo, oldinfo *PSInfo) {
 	}
 
 
-	newcall, err := ioutil.ReadFile(newinfo.srcpath);
+	newcall, err := ioutil.ReadFile(newinfo.Srcpath);
 	DieIf(err);
 
 	psnew, err := rtnew.InvokePipeline(string(newcall),
-		newinfo.srcpath,
-		newinfo.psid,
-		newinfo.pipestancePath,
-		newinfo.mroPaths,
-		newinfo.mroVersion,
-		newinfo.envs,
+		newinfo.Srcpath,
+		newinfo.Psid,
+		newinfo.PipestancePath,
+		newinfo.MroPaths,
+		newinfo.MroVersion,
+		newinfo.Envs,
 		[]string{});
 
 	DieIf(err);
 
 
-	oldcall, err := ioutil.ReadFile(oldinfo.srcpath);
+	oldcall, err := ioutil.ReadFile(oldinfo.Srcpath);
 	DieIf(err);
 
-	psold, err := rtold.ReattachToPipestance(oldinfo.psid,
-		oldinfo.pipestancePath,
+	psold, err := rtold.ReattachToPipestance(oldinfo.Psid,
+		oldinfo.PipestancePath,
 		string(oldcall),
-		oldinfo.mroPaths,
-		oldinfo.mroVersion,
-		oldinfo.envs,
+		oldinfo.MroPaths,
+		oldinfo.MroVersion,
+		oldinfo.Envs,
 		false,
 		true);
 
@@ -193,7 +218,7 @@ func DoIt(newinfo *PSInfo, oldinfo *PSInfo) {
 
 	Println("MMM: %v", mapmap);
 
-	psnew.BlacklistMRTNodes([]string{"COUNT"});
+	psnew.BlacklistMRTNodes(invalidate);
 	Println("JXXXXX: %v", psnew.getNode());
 
 	LinkDirectories(psnew.getNode(), psold.getNode(), mapmap);

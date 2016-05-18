@@ -15,9 +15,37 @@ stage COLLATE(
         out string output1,
         src py "missing1",
 )
+
 stage COUNT(
         in string stuffC,
         out string output1,
+        src py "missing1",
+)
+
+stage COUNTX1(
+        in string stuff9,
+        in string stuff10,
+        out string res5,
+        src py "missing1",
+)
+
+stage COUNTI1(
+        in string stuff1,
+        out string res3,
+        src py "missing1",
+)
+
+stage COUNTI2(
+        in string stuff2,
+        in string stuff3,
+        out string out5, 
+        src py "missing1",
+)
+
+stage COUNTP(
+        in string stuff4,
+        in string stuff5,
+        out string res2,
         src py "missing1",
 )
 
