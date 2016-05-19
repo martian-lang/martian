@@ -29,7 +29,7 @@ func main() {
 	oldi.Srcpath = *old_pipestance_path + "/_mrosource"
 	oldi.Psid = "x"
 	oldi.PipestancePath = *old_pipestance_path
-	oldi.MroPaths = core.ParseMroPath(*old_pipestance_path)
+	//oldi.MroPaths = core.ParseMroPath(*old_pipestance_path)
 	oldi.MroVersion = "x"
 	oldi.Envs = map[string]string{}
 

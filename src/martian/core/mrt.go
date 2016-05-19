@@ -7,6 +7,7 @@ import (
 	"errors"
 	"io/ioutil"
 	"os"
+        "fmt"
 )
 
 /*
@@ -45,7 +46,7 @@ func mapR(curnode *Node, oldRoot *Node, m map[*Node]*Node) {
 		/*
 		 * Find the name of |curnode| in |oldRoot| and assign it.
 		 */
-		oldRoot.FindNodeByName(curnode.name, &oldNode)
+		oldRoot.FindNodeByName(partiallyQualifiedName(curnode.fqname), &oldNode)
 		m[curnode] = oldNode
 
 		/*
@@ -148,14 +149,28 @@ func TaintNode(root *Node) {
 	}
 }
 
+func partiallyQualifiedName(n string) string {
+
+        count := 0;
+        for i := 0; i < len(n); i++ {
+                if (n[i] == '.') {
+                        count++;
+                }
+                if (count == 2) {
+                        return n[i+1:len(n)]
+                }
+        }
+        return n;
+}
+
 /*
  * Find a node given a name and store the node in *out.  If the name appears
  * multiple times in the pipeline, crash.
  */
 func (n *Node) FindNodeByName(name string, out **Node) {
-	if name == n.name {
+	if name == partiallyQualifiedName(n.fqname) || name == n.name{
 		if *out != nil {
-			panic("Name collision!")
+			panic(fmt.Sprintf("Name collision! %v at %v. Use a fully qualified name instead.", name, n.fqname))
 		}
 		*out = n
 	} else {
@@ -213,7 +228,7 @@ func DoIt(newinfo *PipestanceSetup, oldinfo *PipestanceSetup, invalidate []strin
 	oldcall, err := ioutil.ReadFile(oldinfo.Srcpath)
 	DieIf(err)
 
-	psold, err := rtold.ReattachToPipestance(oldinfo.Psid,
+	psold, err := rtold.ReattachToPipestanceWithMroSrc(oldinfo.Psid,
 		oldinfo.PipestancePath,
 		string(oldcall),
 		oldinfo.MroPaths,
