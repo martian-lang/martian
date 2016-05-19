@@ -191,7 +191,7 @@ func (n *Node) FindNodeByName(name string, out **Node) {
  *
  * After this runs, the new directory can be mrp'ed to run the new pipestance.
  */
-func DoIt(newinfo *PipestanceSetup, oldinfo *PipestanceSetup, invalidate []string) {
+func MRTBuildPipeline(newinfo *PipestanceSetup, oldinfo *PipestanceSetup, invalidate []string) {
 	SetupSignalHandlers()
 
 	/*
@@ -263,10 +263,7 @@ func DoIt(newinfo *PipestanceSetup, oldinfo *PipestanceSetup, invalidate []strin
 	/* Link directoroes in the new pipestance to the old pipestance, when possible */
 	LinkDirectories(psnew.getNode(), psold.getNode(), mapmap)
 
-	/*
-	 * TODO:
-	 * We need to close the new pipestance and delete the lock file.
-	 */
+        psnew.Unlock();
 }
 
 func JM(x interface{}) string {

@@ -46,7 +46,7 @@ func main() {
 
 	invalidated_stages_a := strings.Split(*invalidated_stages, ",")
 
-	core.DoIt(&newi, &oldi, invalidated_stages_a)
+	core.MRTBuildPipeline(&newi, &oldi, invalidated_stages_a)
 
 	core.Println("DONE! To run your pipeline say: mrp %v %v", *input_new_mro, *input_new_psid);
 
