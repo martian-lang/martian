@@ -5,9 +5,9 @@ package core
 import (
 	"encoding/json"
 	"errors"
+	"fmt"
 	"io/ioutil"
 	"os"
-        "fmt"
 )
 
 /*
@@ -32,6 +32,18 @@ func MapTwoPipestances(newp *Pipestance, oldp *Pipestance) map[*Node]*Node {
 
 	m := make(map[*Node]*Node)
 	mapR(newp.node, oldp.node, m)
+
+	count := 0
+
+	for _, x := range m {
+		if x != nil {
+			count++
+		}
+	}
+
+	if count == 0 {
+		panic("Failed to link any stages between the new and old pipeline. Sorry")
+	}
 	return m
 }
 
@@ -44,7 +56,8 @@ func mapR(curnode *Node, oldRoot *Node, m map[*Node]*Node) {
 	if curnode != nil {
 		var oldNode *Node
 		/*
-		 * Find the name of |curnode| in |oldRoot| and assign it.
+		 * Find the name of |curnode| in |oldRoot| and assign it.  If we
+		 * don't find it, we just assign m[curnode] to null which is fine.
 		 */
 		oldRoot.FindNodeByName(partiallyQualifiedName(curnode.fqname), &oldNode)
 		m[curnode] = oldNode
@@ -59,7 +72,7 @@ func mapR(curnode *Node, oldRoot *Node, m map[*Node]*Node) {
 	}
 }
 
-/* This buids a set of symlinks from one pipestance to another. All of the nonblacklisted
+/* This builds a set of symlinks from one pipestance to another. All of the nonblacklisted
  * stages (and sub-pipelines) that have a corresponding node will be linked.  We try to
  * link entire sub-pipelines when possible.
  */
@@ -92,7 +105,9 @@ func linkDirectoriesR(cur *Node, oldRoot *Node, nodemap map[*Node]*Node) {
 			}
 
 		} else {
-			/* If we can't (or shouldn't), we recurse and try to link its children */
+			/* If we can't link the entire pipeline, make a directory for it and
+			 * then recurse into its children and try to link them.
+			 */
 			os.Mkdir(cur.path, 0777)
 			for _, chld := range cur.subnodes {
 				linkDirectoriesR(chld.getNode(), oldRoot, nodemap)
@@ -102,8 +117,8 @@ func linkDirectoriesR(cur *Node, oldRoot *Node, nodemap map[*Node]*Node) {
 }
 
 /*
- * This markts a set of nodes as well as any nodes dependent on them as blacklisted.
- * A node is dependet another node if it uses data that it provides (is in postnodes) or
+ * This marks a set of nodes as well as any nodes dependent on them as blacklisted.
+ * A node is dependent another node if it uses data that it provides (is in postnodes) or
  * if it is a parent of that node.
  */
 func (self *Pipestance) BlacklistMRTNodes(namesToBlacklist []string) error {
@@ -117,7 +132,7 @@ func (self *Pipestance) BlacklistMRTNodes(namesToBlacklist []string) error {
 }
 
 /*
- * Blacklist the node named |nameToBlacklist| as well as all of its descendents
+ * Blacklist a single name.
  */
 func (self *Pipestance) BlacklistMRTNode(nameToBlacklist string) error {
 	var start *Node
@@ -149,26 +164,34 @@ func TaintNode(root *Node) {
 	}
 }
 
+/*
+ * compute a "partially" Qualified stage name. This is a fully qualified name
+ * (ID.pipestance.pipe.pipe.pipe.....stage) with the initial ID and pipestance
+ * trimmed off. This allows for comparisons between different pipestances with
+ * the same (or similar) shapes.
+ */
+
 func partiallyQualifiedName(n string) string {
 
-        count := 0;
-        for i := 0; i < len(n); i++ {
-                if (n[i] == '.') {
-                        count++;
-                }
-                if (count == 2) {
-                        return n[i+1:len(n)]
-                }
-        }
-        return n;
+	count := 0
+	for i := 0; i < len(n); i++ {
+		if n[i] == '.' {
+			count++
+		}
+		if count == 2 {
+			return n[i+1 : len(n)]
+		}
+	}
+	return n
 }
 
 /*
- * Find a node given a name and store the node in *out.  If the name appears
- * multiple times in the pipeline, crash.
+ * Find a node by a name. |name| may be a "partially" qualified pipestance name
+ * (see partiallyQualifiedName() above) or just a stage name.  If it is a stage name,
+ * and that name occurs multiple times in the pipeline, we will panic().
  */
 func (n *Node) FindNodeByName(name string, out **Node) {
-	if name == partiallyQualifiedName(n.fqname) || name == n.name{
+	if name == partiallyQualifiedName(n.fqname) || name == n.name {
 		if *out != nil {
 			panic(fmt.Sprintf("Name collision! %v at %v. Use a fully qualified name instead.", name, n.fqname))
 		}
@@ -249,6 +272,7 @@ func MRTBuildPipeline(newinfo *PipestanceSetup, oldinfo *PipestanceSetup, invali
 
 	/* Compute an association between nodes in the parallel pipestances */
 	mapmap := MapTwoPipestances(psnew, psold)
+
 	/* TODO:
 	 * We should check for failures here. Failure to check for include
 	 * 1. No nodes mapped between the two pipestances
@@ -263,7 +287,7 @@ func MRTBuildPipeline(newinfo *PipestanceSetup, oldinfo *PipestanceSetup, invali
 	/* Link directoroes in the new pipestance to the old pipestance, when possible */
 	LinkDirectories(psnew.getNode(), psold.getNode(), mapmap)
 
-        psnew.Unlock();
+	psnew.Unlock()
 }
 
 func JM(x interface{}) string {
