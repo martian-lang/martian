@@ -3,7 +3,6 @@
 package core
 
 import (
-	"encoding/json"
 	"errors"
 	"fmt"
 	"io/ioutil"
@@ -121,51 +120,106 @@ func linkDirectoriesR(cur *Node, oldRoot *Node, nodemap map[*Node]*Node) {
  * A node is dependent another node if it uses data that it provides (is in postnodes) or
  * if it is a parent of that node.
  */
-func (self *Pipestance) BlacklistMRTNodes(namesToBlacklist []string) error {
+func (self *Pipestance) BlacklistMRTNodes(namesToBlacklist []string, nodemap map[*Node]*Node) error {
 	for _, s := range namesToBlacklist {
-		err := self.BlacklistMRTNode(s)
-		if err != nil {
-			return err
+		var start *Node
+		self.node.FindNodeByName(s, &start)
+		if start == nil {
+			return errors.New("Your name doesn't exist")
 		}
+		TaintNode(start, nodemap)
 	}
 	return nil
 }
 
 /*
- * Blacklist a single name.
- */
-func (self *Pipestance) BlacklistMRTNode(nameToBlacklist string) error {
-	var start *Node
-	self.node.FindNodeByName(nameToBlacklist, &start)
-	if start == nil {
-		return errors.New("Your name doesn't exist")
+ * Iterate over the entire tree and print the names of the nodes that have been blacklisted */
+func ScanTree(root *Node) {
+
+	if root.blacklistedFromMRT {
+		Println("Invalidated: %v", root.name)
 	}
-	TaintNode(start)
-	return nil
+
+	for _, s := range root.subnodes {
+		ScanTree(s.getNode())
+	}
 }
 
 /*
  * Recursively blacklist nodes.
  */
-func TaintNode(root *Node) {
+func TaintNode(root *Node, nodemap map[*Node]*Node) {
 	if root.blacklistedFromMRT == false {
-		Println("Invalidate: %v", root.name)
+		//Println("Invalidate: %v", root.name)
 		root.blacklistedFromMRT = true
 
 		/* If a stage or pipeline is tainted, its parent should also be tainted. */
 		if root.parent != nil {
-			TaintNode(root.parent.getNode())
+			TaintNode(root.parent.getNode(), nodemap)
 		}
 
 		/* Any stage that depends on this node must be tainted, too */
 		for _, subs := range root.postnodes {
-			TaintNode(subs.getNode())
+			TaintNode(subs.getNode(), nodemap)
+		}
+
+		/* Since we have to redo *THIS* node, make sure that its dependencies
+		 * have not been VDR'ed.  If they have, then blacklist them, too.
+		 */
+		VDRTaint(root, nodemap)
+	}
+}
+
+/*
+ * blacklist dependencies that have been VDR'ed.
+ */
+func VDRTaint(root *Node, nodemap map[*Node]*Node) {
+
+	for _, s := range root.prenodes {
+		sub := s.getNode()
+
+		oldnode := nodemap[sub]
+		if oldnode == nil {
+			/* If we can't map this dependency into the old tree, move up one level
+			 * and try again.
+			 * This fails "soft" if we never find a mappable dependency we just give
+			 * up and hope for the best.
+			 */
+			VDRTaint(sub, nodemap)
+		} else {
+			if oldnode.VDRMurdered() {
+				/* If we found a match and it has been VDR'ed, we need to
+				 * blacklist it. We also, have to walk a level up the tree and
+				 * blacklist its parent and check its dependents.
+				 *
+				 * Conversely, the recursion stops when we find a match
+				 * that has not been VDR'ed.
+				 */
+				sub.blacklistedFromMRT = true
+				parent := sub.parent.getNode()
+
+				/* XXX This step confuses me.  The tricky part is that
+				 * the VDRTaint recursion goes "up" the tree but the
+				 * TaintNode recursion goes down the tree. What if they meet?
+				 * In that case, note that VDRTaint() will also be explicitly
+				 * called on the parent node by TaintNode and it will do so
+				 * before it calls VDRTaint on it.  This guarantees that the
+				 * check below will never cause us to miss a node.
+				 */
+				if parent.blacklistedFromMRT == false {
+					parent.blacklistedFromMRT = true
+					VDRTaint(parent, nodemap)
+				}
+
+				/* Check sub's dependencies to see if they have been VDR'ed */
+				VDRTaint(sub.getNode(), nodemap)
+			}
 		}
 	}
 }
 
 /*
- * compute a "partially" Qualified stage name. This is a fully qualified name
+ * Compute a "partially" Qualified stage name. This is a fully qualified name
  * (ID.pipestance.pipe.pipe.pipe.....stage) with the initial ID and pipestance
  * trimmed off. This allows for comparisons between different pipestances with
  * the same (or similar) shapes.
@@ -201,6 +255,37 @@ func (n *Node) FindNodeByName(name string, out **Node) {
 			subs.getNode().FindNodeByName(name, out)
 		}
 	}
+}
+
+/*
+ * Return true if the data inside a node was VDR'ed.
+ */
+func (n *Node) VDRMurdered() bool {
+
+	if len(n.forks) == 0 {
+		Println("NO FORKS: %v", n.fqname)
+	}
+	anykilled := false
+	for _, f := range n.forks {
+		f.metadata.loadCache()
+		var thiskilled = f.metadata.exists("vdrkill")
+
+		if thiskilled {
+			jsondata := f.metadata.read("vdrkill")
+
+			/* TODO: Do some type checking here. */
+			m := jsondata.(map[string]interface{})
+			killcount := m["count"].(float64)
+
+			if killcount > 0 {
+				anykilled = true
+			}
+		} else {
+			Println("%v Has no VDR record", n.name)
+
+		}
+	}
+	return anykilled
 }
 
 /*
@@ -282,18 +367,12 @@ func MRTBuildPipeline(newinfo *PipestanceSetup, oldinfo *PipestanceSetup, invali
 	/* Blacklist nodes in the newpipestance that have changed, as well as dependents
 	 * of changed nodes.
 	 */
-	psnew.BlacklistMRTNodes(invalidate)
+	psnew.BlacklistMRTNodes(invalidate, mapmap)
+
+	ScanTree(psnew.getNode())
 
 	/* Link directoroes in the new pipestance to the old pipestance, when possible */
 	LinkDirectories(psnew.getNode(), psold.getNode(), mapmap)
 
 	psnew.Unlock()
-}
-
-func JM(x interface{}) string {
-	m, err := json.Marshal(x)
-	if err != nil {
-		Println("JSON ERR: %v", err)
-	}
-	return string(m)
 }
