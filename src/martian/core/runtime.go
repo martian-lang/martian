@@ -1720,6 +1720,14 @@ func mergeVDRKillReports(killReports []*VDRKillReport) *VDRKillReport {
 }
 
 func (self *Node) vdrKill() (*VDRKillReport, bool) {
+
+	statinfo, err := os.Lstat(self.path)
+
+	if (statinfo.Mode()&os.ModeSymlink) != 0 || err != nil {
+		Println("Refuse to VDR across a symlink: %v", self.fqname)
+		return &VDRKillReport{}, true
+	}
+
 	killReports := []*VDRKillReport{}
 	ok := true
 	for _, node := range self.postnodes {

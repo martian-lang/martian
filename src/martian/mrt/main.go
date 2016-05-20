@@ -13,6 +13,7 @@ var input_new_mro = flag.String("mro", "", "MRO invocation file for new pipestan
 var input_new_psid = flag.String("psid", "", "Pipestance ID for new pipestance")
 var old_pipestance_path = flag.String("base", "", "Base (original) pipestance path")
 var invalidated_stages = flag.String("inv", "", "Comma separated list of changed stages")
+var jobmode = flag.String("jobmode", "local", "job mode (sge, local, etc)");
 
 func main() {
 	flag.Parse()
@@ -32,6 +33,7 @@ func main() {
 	//oldi.MroPaths = core.ParseMroPath(*old_pipestance_path)
 	oldi.MroVersion = "x"
 	oldi.Envs = map[string]string{}
+	oldi.JobMode = "local"
 
 	/* Setup variables for the new pipestance */
 	var newi core.PipestanceSetup
@@ -43,6 +45,7 @@ func main() {
 	newi.MroPaths = core.ParseMroPath(os.Getenv("MROPATH"))
 	newi.MroVersion = "y"
 	newi.Envs = map[string]string{}
+	newi.JobMode = *jobmode;
 
 	invalidated_stages_a := strings.Split(*invalidated_stages, ",")
 

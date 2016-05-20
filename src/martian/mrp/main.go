@@ -28,12 +28,12 @@ func runLoop(pipestance *core.Pipestance, stepSecs int, vdrMode string,
 	noExit bool, enableUI bool) {
 	showedFailed := false
 	WAIT_SECS := 6
-	wait_forever := make(chan bool);
+	//wait_forever := make(chan bool);
 	pipestance.LoadMetadata()
 
 	for {
 		pipestance.RefreshState()
-		_ = <- wait_forever
+		//_ = <- wait_forever
 
 		// Check for completion states.
 		state := pipestance.GetState()

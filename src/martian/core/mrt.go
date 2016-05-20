@@ -20,6 +20,7 @@ type PipestanceSetup struct {
 	MroPaths       []string // Where to look for MROs
 	MroVersion     string
 	Envs           map[string]string
+	JobMode        string
 }
 
 /*
@@ -306,7 +307,7 @@ func MRTBuildPipeline(newinfo *PipestanceSetup, oldinfo *PipestanceSetup, invali
 	 * Build runtime objects. We never actually use these but the interfaces
 	 * to create pipestance objects require it.
 	 */
-	rtnew := NewRuntime("local", "disable", "disable", "2")
+	rtnew := NewRuntime(newinfo.JobMode, "disable", "disable", "2")
 	rtold := NewRuntime("local", "disable", "disable", "2")
 
 	if rtnew == nil {
