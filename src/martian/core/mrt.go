@@ -283,6 +283,7 @@ func (n *Node) VDRMurdered() bool {
 			}
 		} else {
 			Println("%v Has no VDR record", n.name)
+			anykilled = true
 
 		}
 	}
