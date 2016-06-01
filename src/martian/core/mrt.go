@@ -269,7 +269,17 @@ func (n *Node) VDRMurdered() bool {
 	anykilled := false
 	for _, f := range n.forks {
 		f.metadata.loadCache()
+		var exists = f.metadata.exists("complete")
 		var thiskilled = f.metadata.exists("vdrkill")
+
+		if !exists {
+			/* If the complete record does not exist, assume the stage
+			 * has been intentionally deleted and treat it like it is
+			 * VDR'ed.
+			 */
+			Println("Stage %v has no _complete record.", n.name)
+			return true
+		}
 
 		if thiskilled {
 			jsondata := f.metadata.read("vdrkill")
@@ -283,7 +293,6 @@ func (n *Node) VDRMurdered() bool {
 			}
 		} else {
 			Println("%v Has no VDR record", n.name)
-			anykilled = true
 
 		}
 	}
