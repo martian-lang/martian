@@ -466,7 +466,7 @@ func (self *RemoteJobManager) sendJob(shellCmd string, argv []string, envs map[s
 	cmd.Dir = metadata.filesPath
 	cmd.Stdin = strings.NewReader(jobscript)
 	if output, err := cmd.CombinedOutput(); err != nil {
-		metadata.writeRaw("errors", "jobcmd error:\n"+string(output))
+		metadata.writeRaw("errors", "jobcmd error ("+err.Error()+"):\n"+string(output))
 	}
 }
 
