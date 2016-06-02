@@ -266,7 +266,6 @@ func (n *Node) VDRMurdered() bool {
 	if len(n.forks) == 0 {
 		Println("NO FORKS: %v", n.fqname)
 	}
-	anykilled := false
 	for _, f := range n.forks {
 		f.metadata.loadCache()
 		var exists = f.metadata.exists("complete")
@@ -277,7 +276,7 @@ func (n *Node) VDRMurdered() bool {
 			 * has been intentionally deleted and treat it like it is
 			 * VDR'ed.
 			 */
-			Println("Stage %v has no _complete record.", n.name)
+			Println("Stage %v has no _complete record; treating as VDR'ed.", n.name)
 			return true
 		}
 
@@ -289,14 +288,15 @@ func (n *Node) VDRMurdered() bool {
 			killcount := m["count"].(float64)
 
 			if killcount > 0 {
-				anykilled = true
+                                Println("VDR DETECTED: %v", n.name);
+                                return true
 			}
 		} else {
 			Println("%v Has no VDR record", n.name)
 
 		}
 	}
-	return anykilled
+        return false
 }
 
 /*
