@@ -288,15 +288,15 @@ func (n *Node) VDRMurdered() bool {
 			killcount := m["count"].(float64)
 
 			if killcount > 0 {
-                                Println("VDR DETECTED: %v", n.name);
-                                return true
+				Println("VDR DETECTED: %v", n.name)
+				return true
 			}
 		} else {
 			Println("%v Has no VDR record", n.name)
 
 		}
 	}
-        return false
+	return false
 }
 
 /*

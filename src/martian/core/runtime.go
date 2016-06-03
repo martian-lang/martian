@@ -954,7 +954,7 @@ func (self *Fork) vdrKill() *VDRKillReport {
 		})
 		killReport.Paths = append(killReport.Paths, p)
 		os.RemoveAll(p)
-                Println("DELETEDELETEDELETE: %v", p);
+		Println("DELETEDELETEDELETE: %v", p)
 	}
 	// update timestamp to mark actual kill time
 	killReport.Timestamp = Timestamp()
@@ -1725,29 +1725,29 @@ func (self *Node) vdrCheckSymlink() bool {
 
 	statinfo, err := os.Lstat(self.path)
 
-        /* Yep! Found a symlink */
+	/* Yep! Found a symlink */
 	if (statinfo.Mode()&os.ModeSymlink) != 0 || err != nil {
-                return true;
+		return true
 	}
 
-        /* Nope! Got all the way to the top */
-        if (self.parent == nil) {
-                return false;
-        }
+	/* Nope! Got all the way to the top */
+	if self.parent == nil {
+		return false
+	}
 
-        return self.parent.getNode().vdrCheckSymlink();
+	return self.parent.getNode().vdrCheckSymlink()
 }
 
 func (self *Node) vdrKill() (*VDRKillReport, bool) {
 
-        /*
-         * Refuse to VDR a node if it, or any of its ancestors are symlinked.
-         */
-        if self.vdrCheckSymlink() == true{
+	/*
+	 * Refuse to VDR a node if it, or any of its ancestors are symlinked.
+	 */
+	if self.vdrCheckSymlink() == true {
 
-	        Println("Refuse to VDR across a symlink: %v", self.fqname)
-	        return &VDRKillReport{}, true
-        }
+		Println("Refuse to VDR across a symlink: %v", self.fqname)
+		return &VDRKillReport{}, true
+	}
 
 	killReports := []*VDRKillReport{}
 	ok := true
