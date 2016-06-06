@@ -154,6 +154,7 @@ Options:
     --inspect           Inspect pipestance without resetting failed stages.
     --debug             Enable debug logging for local job manager.
     --stest             Substitute real stages with stress-testing stage.
+    --vdrlist=LIST	List of stages to force eager VDR.
 
     -h --help           Show this message.
     --version           Show version.`
@@ -212,7 +213,7 @@ Options:
 
 	// Compute MRO path.
 	//cwd, _ := filepath.Abs(path.Dir(os.Args[0]))
-	cwd, _ := os.Getwd();
+	cwd, _ := os.Getwd()
 	mroPaths := core.ParseMroPath(cwd)
 	if value := os.Getenv("MROPATH"); len(value) > 0 {
 		mroPaths = core.ParseMroPath(value)
@@ -264,6 +265,12 @@ Options:
 		core.LogInfo("options", "--tag='%s'", tag)
 	}
 
+	var vdrlist []string
+
+	if vdrliststr := opts["--vdrlist"]; vdrliststr != nil {
+		vdrlist = strings.Split(vdrliststr.(string), ",")
+	}
+
 	// Compute stackVars flag.
 	stackVars := opts["--stackvars"].(bool)
 	core.LogInfo("options", "--stackvars=%v", stackVars)
@@ -308,7 +315,7 @@ Options:
 	//=========================================================================
 	rt := core.NewRuntimeWithCores(jobMode, vdrMode, profileMode, martianVersion,
 		reqCores, reqMem, reqMemPerCore, maxJobs, jobFreqMillis, stackVars, zip,
-		skipPreflight, enableMonitor, debug, stest)
+		skipPreflight, enableMonitor, debug, stest, vdrlist)
 	rt.MroCache.CacheMros(mroPaths)
 
 	// Print this here because the log makes more sense when this appears before

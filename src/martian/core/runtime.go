@@ -1603,6 +1603,16 @@ func (self *Node) getFatalError() (string, bool, string, string, string, []strin
 	return "", false, "", "", "", []string{}
 }
 
+/*
+ * Return true of we should try to vdr this stage as soonas possible,
+ * false otherwise.  If vdrMode is "rolling", we always vdr kill eagerly.
+ * Some stages will be mentioned in vdrlist and those get vdr killed ASAP
+ * irrespective of vdr mode.
+ */
+func (self *Node) eagerVDRKill() bool {
+	return (self.rt.vdrMode == "rolling" || self.rt.vdrList[self.fqname])
+}
+
 func (self *Node) step() {
 	if self.state == "running" {
 		for _, fork := range self.forks {
@@ -1624,7 +1634,7 @@ func (self *Node) step() {
 		}
 		self.addFrontierNode(self)
 	case "complete":
-		if self.rt.vdrMode == "rolling" {
+		if self.eagerVDRKill() {
 			for _, node := range self.prenodes {
 				node.getNode().vdrKill()
 				node.getNode().cachePerf()
@@ -2497,17 +2507,18 @@ type Runtime struct {
 	skipPreflight   bool
 	enableMonitor   bool
 	stest           bool
+	vdrList         map[string]bool
 }
 
 func NewRuntime(jobMode string, vdrMode string, profileMode string, martianVersion string) *Runtime {
 	return NewRuntimeWithCores(jobMode, vdrMode, profileMode, martianVersion,
-		-1, -1, -1, -1, -1, false, false, false, false, false, false)
+		-1, -1, -1, -1, -1, false, false, false, false, false, false, []string{})
 }
 
 func NewRuntimeWithCores(jobMode string, vdrMode string, profileMode string, martianVersion string,
 	reqCores int, reqMem int, reqMemPerCore int, maxJobs int, jobFreqMillis int,
 	enableStackVars bool, enableZip bool, skipPreflight bool, enableMonitor bool,
-	debug bool, stest bool) *Runtime {
+	debug bool, stest bool, vdrList []string) *Runtime {
 
 	self := &Runtime{}
 	self.adaptersPath = RelPath(path.Join("..", "adapters"))
@@ -2532,7 +2543,23 @@ func NewRuntimeWithCores(jobMode string, vdrMode string, profileMode string, mar
 	VerifyVDRMode(self.vdrMode)
 	VerifyProfileMode(self.profileMode)
 
+	self.vdrList = vdrListToMap(vdrList)
+
 	return self
+}
+
+/*
+ * Expand an array of keys into a map of key->true so that we can do fast
+ * membership checking.
+ */
+func vdrListToMap(vdrlist []string) map[string]bool {
+	m := make(map[string]bool, 0)
+
+	for _, s := range vdrlist {
+		m[s] = true
+	}
+
+	return m
 }
 
 // Compile an MRO file in cwd or mroPaths.
