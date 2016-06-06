@@ -1603,16 +1603,6 @@ func (self *Node) getFatalError() (string, bool, string, string, string, []strin
 	return "", false, "", "", "", []string{}
 }
 
-/*
- * Return true of we should try to vdr this stage as soonas possible,
- * false otherwise.  If vdrMode is "rolling", we always vdr kill eagerly.
- * Some stages will be mentioned in vdrlist and those get vdr killed ASAP
- * irrespective of vdr mode.
- */
-func (self *Node) eagerVDRKill() bool {
-	return (self.rt.vdrMode == "rolling" || self.rt.vdrList[self.fqname])
-}
-
 func (self *Node) step() {
 	if self.state == "running" {
 		for _, fork := range self.forks {
@@ -1634,7 +1624,7 @@ func (self *Node) step() {
 		}
 		self.addFrontierNode(self)
 	case "complete":
-		if self.eagerVDRKill() {
+		if self.rt.vdrMode == "rolling" {
 			for _, node := range self.prenodes {
 				node.getNode().vdrKill()
 				node.getNode().cachePerf()
@@ -1754,9 +1744,16 @@ func (self *Node) vdrKill() (*VDRKillReport, bool) {
 	 * Refuse to VDR a node if it, or any of its ancestors are symlinked.
 	 */
 	if self.vdrCheckSymlink() == true {
-
 		Println("Refuse to VDR across a symlink: %v", self.fqname)
 		return &VDRKillReport{}, true
+	}
+
+	if len(self.rt.vdrList) > 0 {
+		if !self.rt.vdrList[self.name] {
+			Println("vdrList is set. Refusing to VDR a node not in vdrlist: %v", self.name)
+			return &VDRKillReport{}, true
+		}
+
 	}
 
 	killReports := []*VDRKillReport{}
@@ -2559,6 +2556,7 @@ func vdrListToMap(vdrlist []string) map[string]bool {
 		m[s] = true
 	}
 
+	Println("VDRLIST: ", m)
 	return m
 }
 
