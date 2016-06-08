@@ -919,7 +919,7 @@ func (self *Fork) vdrKill() *VDRKillReport {
 
 	killPaths := []string{}
 	// For volatile nodes, kill fork-level files.
-	if self.node.volatile {
+	if self.node.rt.overrides.GetOverride(self.node, "force_volatile", self.node.volatile).(bool) {
 		if paths, err := self.metadata.enumerateFiles(); err == nil {
 			killPaths = append(killPaths, paths...)
 		}
@@ -934,7 +934,7 @@ func (self *Fork) vdrKill() *VDRKillReport {
 	// Must check for split here, otherwise we'll end up deleting
 	// output files of non-volatile nodes because single-chunk nodes
 	// get their output redirected to the one chunk's files path.
-	if self.node.split {
+	if self.node.split && self.node.rt.overrides.GetOverride(self.node, "force_volatile", true).(bool) {
 		for _, chunk := range self.chunks {
 			if paths, err := chunk.metadata.enumerateFiles(); err == nil {
 				killPaths = append(killPaths, paths...)
@@ -1748,14 +1748,13 @@ func (self *Node) vdrKill() (*VDRKillReport, bool) {
 		return &VDRKillReport{}, true
 	}
 
-	if len(self.rt.vdrList) > 0 {
-		if !self.rt.vdrList[self.name] {
+	/*
+		if (self.rt.overrides.GetOverride(self, "force_vdr", true).(bool) == false) {
 			Println("vdrList is set. Refusing to VDR a node not in vdrlist: %v", self.name)
 			return &VDRKillReport{}, true
+
 		}
-
-	}
-
+	*/
 	killReports := []*VDRKillReport{}
 	ok := true
 	for _, node := range self.postnodes {
@@ -1845,7 +1844,7 @@ func (self *Node) getJobReqs(jobDef map[string]interface{}) (int, int) {
 			threads = int(v)
 		}
 		if v, ok := jobDef["__mem_gb"].(float64); ok {
-			memGB = int(v)
+			memGB = int(self.rt.overrides.GetOverride(self, "__mem_gb", v).(float64))
 		}
 	}
 
@@ -2504,18 +2503,18 @@ type Runtime struct {
 	skipPreflight   bool
 	enableMonitor   bool
 	stest           bool
-	vdrList         map[string]bool
+	overrides       *PipestanceOverrides
 }
 
 func NewRuntime(jobMode string, vdrMode string, profileMode string, martianVersion string) *Runtime {
 	return NewRuntimeWithCores(jobMode, vdrMode, profileMode, martianVersion,
-		-1, -1, -1, -1, -1, false, false, false, false, false, false, []string{})
+		-1, -1, -1, -1, -1, false, false, false, false, false, false, "")
 }
 
 func NewRuntimeWithCores(jobMode string, vdrMode string, profileMode string, martianVersion string,
 	reqCores int, reqMem int, reqMemPerCore int, maxJobs int, jobFreqMillis int,
 	enableStackVars bool, enableZip bool, skipPreflight bool, enableMonitor bool,
-	debug bool, stest bool, vdrList []string) *Runtime {
+	debug bool, stest bool, overridesPath string) *Runtime {
 
 	self := &Runtime{}
 	self.adaptersPath = RelPath(path.Join("..", "adapters"))
@@ -2540,7 +2539,8 @@ func NewRuntimeWithCores(jobMode string, vdrMode string, profileMode string, mar
 	VerifyVDRMode(self.vdrMode)
 	VerifyProfileMode(self.profileMode)
 
-	self.vdrList = vdrListToMap(vdrList)
+	/* DSTAFF MOVE THIS */
+	self.overrides, _ = ReadOverrides(overridesPath)
 
 	return self
 }

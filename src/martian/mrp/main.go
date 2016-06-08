@@ -154,7 +154,7 @@ Options:
     --inspect           Inspect pipestance without resetting failed stages.
     --debug             Enable debug logging for local job manager.
     --stest             Substitute real stages with stress-testing stage.
-    --vdrlist=LIST	List of stages to force eager VDR.
+    --overrides=FILE	List of stages to force eager VDR.
 
     -h --help           Show this message.
     --version           Show version.`
@@ -265,10 +265,10 @@ Options:
 		core.LogInfo("options", "--tag='%s'", tag)
 	}
 
-	var vdrlist []string
 
-	if vdrliststr := opts["--vdrlist"]; vdrliststr != nil {
-		vdrlist = strings.Split(vdrliststr.(string), ",")
+	var overrides=""
+	if v:= opts["--overrides"]; v!= nil {
+		overrides = v.(string)
 	}
 
 	// Compute stackVars flag.
@@ -313,9 +313,10 @@ Options:
 	//=========================================================================
 	// Configure Martian runtime.
 	//=========================================================================
+
 	rt := core.NewRuntimeWithCores(jobMode, vdrMode, profileMode, martianVersion,
 		reqCores, reqMem, reqMemPerCore, maxJobs, jobFreqMillis, stackVars, zip,
-		skipPreflight, enableMonitor, debug, stest, vdrlist)
+		skipPreflight, enableMonitor, debug, stest, overrides)
 	rt.MroCache.CacheMros(mroPaths)
 
 	// Print this here because the log makes more sense when this appears before

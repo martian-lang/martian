@@ -220,27 +220,6 @@ func VDRTaint(root *Node, nodemap map[*Node]*Node) {
 }
 
 /*
- * Compute a "partially" Qualified stage name. This is a fully qualified name
- * (ID.pipestance.pipe.pipe.pipe.....stage) with the initial ID and pipestance
- * trimmed off. This allows for comparisons between different pipestances with
- * the same (or similar) shapes.
- */
-
-func partiallyQualifiedName(n string) string {
-
-	count := 0
-	for i := 0; i < len(n); i++ {
-		if n[i] == '.' {
-			count++
-		}
-		if count == 2 {
-			return n[i+1 : len(n)]
-		}
-	}
-	return n
-}
-
-/*
  * Find a node by a name. |name| may be a "partially" qualified pipestance name
  * (see partiallyQualifiedName() above) or just a stage name.  If it is a stage name,
  * and that name occurs multiple times in the pipeline, we will panic().

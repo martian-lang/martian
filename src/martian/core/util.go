@@ -384,3 +384,24 @@ func CreateZip(zipPath string, filePaths []string) error {
 
 	return nil
 }
+
+/*
+ * Compute a "partially" Qualified stage name. This is a fully qualified name
+ * (ID.pipestance.pipe.pipe.pipe.....stage) with the initial ID and pipestance
+ * trimmed off. This allows for comparisons between different pipestances with
+ * the same (or similar) shapes.
+ */
+
+func partiallyQualifiedName(n string) string {
+
+	count := 0
+	for i := 0; i < len(n); i++ {
+		if n[i] == '.' {
+			count++
+		}
+		if count == 2 {
+			return n[i+1 : len(n)]
+		}
+	}
+	return ""
+}
