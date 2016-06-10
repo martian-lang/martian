@@ -1,3 +1,4 @@
 adaptor/src/github.com
 adaptor/bin
 adaptor/pkg
+.*.sw*
