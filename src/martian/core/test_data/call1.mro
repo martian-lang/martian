@@ -1,5 +1,0 @@
-
-@include "pipeline1.mro"
-call AWESOME1(
-        data="abcd",
-)
