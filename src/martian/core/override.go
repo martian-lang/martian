@@ -96,7 +96,7 @@ func (self *PipestanceOverrides) GetOverride(node *Node, what string, def interf
 				/* If we found a node that exists *AND* it actually defines val,
 				 * use it. Otherwise, backtrack another level and try again.
 				 */
-				LogInfo("override", "At [%v:%v] replace %v with %v", 
+				LogInfo("override", "At [%v:%v] replace %v with %v",
 					what, node, cur.fqname, def, val)
 				return val
 			}
