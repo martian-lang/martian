@@ -954,7 +954,6 @@ func (self *Fork) vdrKill() *VDRKillReport {
 		})
 		killReport.Paths = append(killReport.Paths, p)
 		os.RemoveAll(p)
-		Println("DELETEDELETEDELETE: %v", p)
 	}
 	// update timestamp to mark actual kill time
 	killReport.Timestamp = Timestamp()
@@ -1491,7 +1490,7 @@ func (self *Node) getState() string {
 			return "waiting"
 		}
 	}
-	// DSTAFF
+	// Otherwise we're running.
 	return "running"
 
 }
@@ -1744,17 +1743,10 @@ func (self *Node) vdrKill() (*VDRKillReport, bool) {
 	 * Refuse to VDR a node if it, or any of its ancestors are symlinked.
 	 */
 	if self.vdrCheckSymlink() == true {
-		Println("Refuse to VDR across a symlink: %v", self.fqname)
+		LogInfo("runtime", "Refuse to VDR across a symlink: %v", self.fqname)
 		return &VDRKillReport{}, true
 	}
 
-	/*
-		if (self.rt.overrides.GetOverride(self, "force_vdr", true).(bool) == false) {
-			Println("vdrList is set. Refusing to VDR a node not in vdrlist: %v", self.name)
-			return &VDRKillReport{}, true
-
-		}
-	*/
 	killReports := []*VDRKillReport{}
 	ok := true
 	for _, node := range self.postnodes {
@@ -2508,13 +2500,13 @@ type Runtime struct {
 
 func NewRuntime(jobMode string, vdrMode string, profileMode string, martianVersion string) *Runtime {
 	return NewRuntimeWithCores(jobMode, vdrMode, profileMode, martianVersion,
-		-1, -1, -1, -1, -1, false, false, false, false, false, false, "")
+		-1, -1, -1, -1, -1, false, false, false, false, false, false, nil)
 }
 
 func NewRuntimeWithCores(jobMode string, vdrMode string, profileMode string, martianVersion string,
 	reqCores int, reqMem int, reqMemPerCore int, maxJobs int, jobFreqMillis int,
 	enableStackVars bool, enableZip bool, skipPreflight bool, enableMonitor bool,
-	debug bool, stest bool, overridesPath string) *Runtime {
+	debug bool, stest bool, overrides *PipestanceOverrides) *Runtime {
 
 	self := &Runtime{}
 	self.adaptersPath = RelPath(path.Join("..", "adapters"))
@@ -2539,25 +2531,13 @@ func NewRuntimeWithCores(jobMode string, vdrMode string, profileMode string, mar
 	VerifyVDRMode(self.vdrMode)
 	VerifyProfileMode(self.profileMode)
 
-	/* DSTAFF MOVE THIS */
-	self.overrides, _ = ReadOverrides(overridesPath)
-
-	return self
-}
-
-/*
- * Expand an array of keys into a map of key->true so that we can do fast
- * membership checking.
- */
-func vdrListToMap(vdrlist []string) map[string]bool {
-	m := make(map[string]bool, 0)
-
-	for _, s := range vdrlist {
-		m[s] = true
+	if overrides == nil {
+		self.overrides, _ = ReadOverrides("")
+	} else {
+		self.overrides = overrides
 	}
 
-	Println("VDRLIST: ", m)
-	return m
+	return self
 }
 
 // Compile an MRO file in cwd or mroPaths.

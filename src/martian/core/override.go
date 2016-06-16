@@ -46,35 +46,31 @@ func ReadOverrides(path string) (*PipestanceOverrides, error) {
 	pse.overridesbystage = make(map[string]StageOverride)
 
 	if path == "" {
-		Println("NOPENOPENOPE")
 		return pse, nil
 	}
 
 	fdata, err := ioutil.ReadFile(path)
 	if err != nil {
-		Println("UHOH: %v", err)
 		return nil, err
 	}
 
 	err = json.Unmarshal(fdata, &(pse.overridesbystage))
 
 	if err != nil {
-		Println("UHOH: %v", err)
+		return nil, err
 	}
 
 	Println("Loaded %v overrides from %v", len(pse.overridesbystage), path)
 	return pse, nil
 }
 
-func getparent(node *Node) *Node {
-
+func getParent(node *Node) *Node {
 	p := node.parent
 	if p == nil {
 		return nil
 	} else {
 		return p.getNode()
 	}
-
 }
 
 /*
@@ -85,17 +81,12 @@ func getparent(node *Node) *Node {
  */
 func (self *PipestanceOverrides) GetOverride(node *Node, what string, def interface{}) interface{} {
 
-	/* Is this sane??? */
-	if self == nil {
-		return def
-	}
-
 	var so StageOverride
 
 	/* Recursively search this node and its parents for a match. Use the most
 	 * closely matching node.  Here the root node is represented by the empty string.
 	 */
-	for cur := node; cur != nil; cur = getparent(cur) {
+	for cur := node; cur != nil; cur = getParent(cur) {
 		var exists bool
 		pqn := partiallyQualifiedName(cur.fqname)
 		so, exists = self.overridesbystage[pqn]
@@ -105,7 +96,8 @@ func (self *PipestanceOverrides) GetOverride(node *Node, what string, def interf
 				/* If we found a node that exists *AND* it actually defines val,
 				 * use it. Otherwise, backtrack another level and try again.
 				 */
-				Println("GETOVERRIDE[%v@%v]: replace %v with %v", what, node.fqname, def, val)
+				LogInfo("override", "At [%v:%v] replace %v with %v", 
+					what, node, cur.fqname, def, val)
 				return val
 			}
 		}

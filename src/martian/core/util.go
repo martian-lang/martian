@@ -33,7 +33,7 @@ func max(x int, y int) int {
 }
 
 func RelPath(p string) string {
-	base := os.Getenv("MBASE")
+	base := os.Getenv("MARTIAN_BASE")
 	if base != "" {
 		return path.Join(base, p)
 	} else {
@@ -391,9 +391,7 @@ func CreateZip(zipPath string, filePaths []string) error {
  * trimmed off. This allows for comparisons between different pipestances with
  * the same (or similar) shapes.
  */
-
 func partiallyQualifiedName(n string) string {
-
 	count := 0
 	for i := 0; i < len(n); i++ {
 		if n[i] == '.' {

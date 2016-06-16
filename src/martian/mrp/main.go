@@ -28,12 +28,10 @@ func runLoop(pipestance *core.Pipestance, stepSecs int, vdrMode string,
 	noExit bool, enableUI bool) {
 	showedFailed := false
 	WAIT_SECS := 6
-	//wait_forever := make(chan bool);
 	pipestance.LoadMetadata()
 
 	for {
 		pipestance.RefreshState()
-		//_ = <- wait_forever
 
 		// Check for completion states.
 		state := pipestance.GetState()
@@ -212,8 +210,7 @@ Options:
 	}
 
 	// Compute MRO path.
-	//cwd, _ := filepath.Abs(path.Dir(os.Args[0]))
-	cwd, _ := os.Getwd()
+	cwd, _ := filepath.Abs(path.Dir(os.Args[0]))
 	mroPaths := core.ParseMroPath(cwd)
 	if value := os.Getenv("MROPATH"); len(value) > 0 {
 		mroPaths = core.ParseMroPath(value)
@@ -266,9 +263,15 @@ Options:
 	}
 
 
-	var overrides=""
+	var overrides *core.PipestanceOverrides;
 	if v:= opts["--overrides"]; v!= nil {
-		overrides = v.(string)
+		var err error;
+		overrides, err = core.ReadOverrides(v.(string));
+		if (err != nil) {
+			core.LogError(err, "options", "Failed to read pipestance overrides file");
+			os.Exit(1);
+
+		}
 	}
 
 	// Compute stackVars flag.
@@ -313,7 +316,6 @@ Options:
 	//=========================================================================
 	// Configure Martian runtime.
 	//=========================================================================
-
 	rt := core.NewRuntimeWithCores(jobMode, vdrMode, profileMode, martianVersion,
 		reqCores, reqMem, reqMemPerCore, maxJobs, jobFreqMillis, stackVars, zip,
 		skipPreflight, enableMonitor, debug, stest, overrides)

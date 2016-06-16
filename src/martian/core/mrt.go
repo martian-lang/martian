@@ -11,16 +11,16 @@ import (
 
 /*
  * PipestanceSetup defines the parameters we need to start a pipestance.
- * It encapsulates the argument to InvokePipstance and friends
+ * It encapsulates the argument to InvokePipelineand friends.
  */
 type PipestanceSetup struct {
-	Srcpath        string   // Path to the mro invocation file
-	Psid           string   // pipestance ID
-	PipestancePath string   // Path to put this pipestance
-	MroPaths       []string // Where to look for MROs
-	MroVersion     string
-	Envs           map[string]string
-	JobMode        string
+	Srcpath        string            // Path to the mro invocation file
+	Psid           string            // pipestance ID
+	PipestancePath string            // Path to put this pipestance
+	MroPaths       []string          // Where to look for MROs
+	MroVersion     string            // mro version
+	Envs           map[string]string // mro environment vars to pass through
+	JobMode        string            // jobmode to use
 }
 
 /*
@@ -30,11 +30,12 @@ type PipestanceSetup struct {
  */
 func MapTwoPipestances(newp *Pipestance, oldp *Pipestance) map[*Node]*Node {
 
+	/* Actually do the mapping. */
 	m := make(map[*Node]*Node)
 	mapR(newp.node, oldp.node, m)
 
+	/* Check that at least one node was associated. */
 	count := 0
-
 	for _, x := range m {
 		if x != nil {
 			count++
@@ -52,7 +53,6 @@ func MapTwoPipestances(newp *Pipestance, oldp *Pipestance) map[*Node]*Node {
  * and mapping.
  */
 func mapR(curnode *Node, oldRoot *Node, m map[*Node]*Node) {
-
 	if curnode != nil {
 		var oldNode *Node
 		/*
@@ -72,17 +72,29 @@ func mapR(curnode *Node, oldRoot *Node, m map[*Node]*Node) {
 	}
 }
 
-/* This builds a set of symlinks from one pipestance to another. All of the nonblacklisted
+/*
+ * Find a node by a name. |name| may be a "partially" qualified pipestance name
+ * (see partiallyQualifiedName()) or just a stage name.  If it is a stage name,
+ * and that name occurs multiple times in the pipeline, we will panic().
+ */
+func (n *Node) FindNodeByName(name string, out **Node) {
+	if name == partiallyQualifiedName(n.fqname) || name == n.name {
+		if *out != nil {
+			panic(fmt.Sprintf("Name collision! %v at %v. Use a fully qualified name instead.", name, n.fqname))
+		}
+		*out = n
+	} else {
+		for _, subs := range n.subnodes {
+			subs.getNode().FindNodeByName(name, out)
+		}
+	}
+}
+
+/* This builds a set of symlinks from one pipestance to another. All of the non-blacklisted
  * stages (and sub-pipelines) that have a corresponding node will be linked.  We try to
  * link entire sub-pipelines when possible.
  */
-
-func LinkDirectories(curnode *Node, oldRoot *Node, nodemap map[*Node]*Node) {
-	linkDirectoriesR(curnode, oldRoot, nodemap)
-
-}
-
-func linkDirectoriesR(cur *Node, oldRoot *Node, nodemap map[*Node]*Node) {
+func linkDirectories(cur *Node, oldRoot *Node, nodemap map[*Node]*Node) {
 	oldNode := nodemap[cur]
 	if cur.kind == "stage" {
 		/* Just try to link this stage. If we can't we just do nothing and let it
@@ -110,7 +122,7 @@ func linkDirectoriesR(cur *Node, oldRoot *Node, nodemap map[*Node]*Node) {
 			 */
 			os.Mkdir(cur.path, 0777)
 			for _, chld := range cur.subnodes {
-				linkDirectoriesR(chld.getNode(), oldRoot, nodemap)
+				linkDirectories(chld.getNode(), oldRoot, nodemap)
 			}
 		}
 	}
@@ -134,24 +146,10 @@ func (self *Pipestance) BlacklistMRTNodes(namesToBlacklist []string, nodemap map
 }
 
 /*
- * Iterate over the entire tree and print the names of the nodes that have been blacklisted */
-func ScanTree(root *Node) {
-
-	if root.blacklistedFromMRT {
-		Println("Invalidated: %v", root.name)
-	}
-
-	for _, s := range root.subnodes {
-		ScanTree(s.getNode())
-	}
-}
-
-/*
  * Recursively blacklist nodes.
  */
 func TaintNode(root *Node, nodemap map[*Node]*Node) {
 	if root.blacklistedFromMRT == false {
-		//Println("Invalidate: %v", root.name)
 		root.blacklistedFromMRT = true
 
 		/* If a stage or pipeline is tainted, its parent should also be tainted. */
@@ -220,24 +218,6 @@ func VDRTaint(root *Node, nodemap map[*Node]*Node) {
 }
 
 /*
- * Find a node by a name. |name| may be a "partially" qualified pipestance name
- * (see partiallyQualifiedName() above) or just a stage name.  If it is a stage name,
- * and that name occurs multiple times in the pipeline, we will panic().
- */
-func (n *Node) FindNodeByName(name string, out **Node) {
-	if name == partiallyQualifiedName(n.fqname) || name == n.name {
-		if *out != nil {
-			panic(fmt.Sprintf("Name collision! %v at %v. Use a fully qualified name instead.", name, n.fqname))
-		}
-		*out = n
-	} else {
-		for _, subs := range n.subnodes {
-			subs.getNode().FindNodeByName(name, out)
-		}
-	}
-}
-
-/*
  * Return true if the data inside a node was VDR'ed.
  */
 func (n *Node) VDRMurdered() bool {
@@ -272,10 +252,23 @@ func (n *Node) VDRMurdered() bool {
 			}
 		} else {
 			Println("%v Has no VDR record", n.name)
-
 		}
 	}
 	return false
+}
+
+/*
+ * Iterate over the entire tree and print the names of the nodes that have been blacklisted
+ */
+func ScanTree(root *Node) {
+
+	if root.blacklistedFromMRT {
+		Println("Invalidated: %v", root.name)
+	}
+
+	for _, s := range root.subnodes {
+		ScanTree(s.getNode())
+	}
 }
 
 /*
@@ -340,29 +333,19 @@ func MRTBuildPipeline(newinfo *PipestanceSetup, oldinfo *PipestanceSetup, invali
 		panic(err)
 	}
 
-	/* TODO: We should check a few things here:
-	 * 1. Was the old pipestance built with no-vdr.
-	 * 2. Is the old pipestance complete.
-	 */
-
 	/* Compute an association between nodes in the parallel pipestances */
 	mapmap := MapTwoPipestances(psnew, psold)
-
-	/* TODO:
-	 * We should check for failures here. Failure to check for include
-	 * 1. No nodes mapped between the two pipestances
-	 * 2. Ambiguous maps. (This will cause a panic right now)
-	 */
 
 	/* Blacklist nodes in the newpipestance that have changed, as well as dependents
 	 * of changed nodes.
 	 */
 	psnew.BlacklistMRTNodes(invalidate, mapmap)
 
+	/* ScanTree just tells us which nodes we decided to blacklist */
 	ScanTree(psnew.getNode())
 
 	/* Link directoroes in the new pipestance to the old pipestance, when possible */
-	LinkDirectories(psnew.getNode(), psold.getNode(), mapmap)
+	linkDirectories(psnew.getNode(), psold.getNode(), mapmap)
 
 	psnew.Unlock()
 }
