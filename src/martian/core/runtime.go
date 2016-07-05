@@ -2504,22 +2504,13 @@ func NewRuntimeWithCores(jobMode string, vdrMode string, profileMode string, mar
 	return self
 }
 
-// Compile an MRO file in cwd or mroPaths.
-func (self *Runtime) Compile(fpath string, mroPaths []string, checkSrcPath bool) (string, []string, *Ast, error) {
-	if data, err := ioutil.ReadFile(fpath); err != nil {
-		return "", nil, nil, err
-	} else {
-		return parseSource(string(data), fpath, mroPaths, checkSrcPath)
-	}
-}
-
 // Compile all the MRO files in mroPaths.
 func (self *Runtime) CompileAll(mroPaths []string, checkSrcPath bool) (int, error) {
 	numFiles := 0
 	for _, mroPath := range mroPaths {
 		fpaths, _ := filepath.Glob(mroPath + "/[^_]*.mro")
 		for _, fpath := range fpaths {
-			if _, _, _, err := self.Compile(fpath, mroPaths, checkSrcPath); err != nil {
+			if _, _, _, err := Compile(fpath, mroPaths, checkSrcPath); err != nil {
 				return 0, err
 			}
 		}
