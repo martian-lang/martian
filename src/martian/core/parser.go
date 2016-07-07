@@ -7,6 +7,7 @@ package core
 
 import (
 	"fmt"
+	"io/ioutil"
 	"os"
 	"path/filepath"
 	"strings"
@@ -387,4 +388,13 @@ func parseSource(src string, srcPath string, incPaths []string, checkSrc bool) (
 		return "", nil, nil, err
 	}
 	return postsrc, ifnames, ast, nil
+}
+
+// Compile an MRO file in cwd or mroPaths.
+func Compile(fpath string, mroPaths []string, checkSrcPath bool) (string, []string, *Ast, error) {
+	if data, err := ioutil.ReadFile(fpath); err != nil {
+		return "", nil, nil, err
+	} else {
+		return parseSource(string(data), fpath, mroPaths, checkSrcPath)
+	}
 }
