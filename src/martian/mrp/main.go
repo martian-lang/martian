@@ -27,6 +27,7 @@ import (
 func runLoop(pipestance *core.Pipestance, stepSecs int, vdrMode string,
 	noExit bool, enableUI bool) {
 	showedFailed := false
+	showedComplete := false
 	WAIT_SECS := 6
 
 	pipestance.LoadMetadata()
@@ -37,6 +38,10 @@ func runLoop(pipestance *core.Pipestance, stepSecs int, vdrMode string,
 		// Check for completion states.
 		state := pipestance.GetState()
 		if state == "complete" {
+			if !showedComplete {
+				pipestance.NotifyHook()
+				showedComplete = true
+			}
 			if vdrMode == "disable" {
 				core.LogInfo("runtime", "VDR disabled. No files killed.")
 			} else {
@@ -61,6 +66,7 @@ func runLoop(pipestance *core.Pipestance, stepSecs int, vdrMode string,
 		} else if state == "failed" {
 			pipestance.Unlock()
 			if !showedFailed {
+				pipestance.NotifyHook()
 				if _, preflight, _, log, kind, errPaths := pipestance.GetFatalError(); kind == "assert" {
 					// Print preflight check failures.
 					core.Println("\n[%s] %s\n", "error", log)
@@ -153,6 +159,7 @@ Options:
     --inspect           Inspect pipestance without resetting failed stages.
     --debug             Enable debug logging for local job manager.
     --stest             Substitute real stages with stress-testing stage.
+    --notify=EXECUTABLE Send sms text message to user in case of failure.
 
     -h --help           Show this message.
     --version           Show version.`
@@ -234,6 +241,13 @@ Options:
 	core.LogInfo("options", "--vdrmode=%s", vdrMode)
 	core.VerifyVDRMode(vdrMode)
 
+	// Compute notify
+	notify := ""
+	if value := opts["--notify"]; value != nil {
+		notify = value.(string)
+		core.VerifyNotify(notify)
+	}
+
 	// Compute profiling mode.
 	profileMode := "disable"
 	if value := opts["--profile"]; value != nil {
@@ -306,7 +320,7 @@ Options:
 	//=========================================================================
 	rt := core.NewRuntimeWithCores(jobMode, vdrMode, profileMode, martianVersion,
 		reqCores, reqMem, reqMemPerCore, maxJobs, jobFreqMillis, stackVars, zip,
-		skipPreflight, enableMonitor, debug, stest)
+		skipPreflight, enableMonitor, debug, stest, notify)
 	rt.MroCache.CacheMros(mroPaths)
 
 	// Print this here because the log makes more sense when this appears before

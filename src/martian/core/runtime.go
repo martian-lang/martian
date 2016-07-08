@@ -11,6 +11,7 @@ import (
 	"io/ioutil"
 	"math"
 	"os"
+	"os/exec"
 	"path"
 	"path/filepath"
 	"reflect"
@@ -474,6 +475,13 @@ func VerifyVDRMode(vdrMode string) {
 	}
 	PrintInfo("runtime", "Invalid VDR mode: %s. Valid VDR modes: %s", vdrMode, strings.Join(validModes, ", "))
 	os.Exit(1)
+}
+
+func VerifyNotify(notify string) {
+	if _, err := exec.LookPath(notify); err != nil {
+		PrintInfo("runtime", "Invalid notify hook executable (%v): %v", err, notify)
+		os.Exit(1)
+	}
 }
 
 func VerifyProfileMode(profileMode string) {
@@ -1966,6 +1974,56 @@ type Pipestance struct {
 	node *Node
 }
 
+/* Run a notify script whenever a pipestance finishes */
+func (self *Pipestance) NotifyHook() {
+	exec_path := self.getNode().rt.notifyExec
+	if exec_path != "" {
+		/* Build command line arguments:
+		 *$1 = path to piestance
+		 *$2 = {complete|failed}
+		 *$3 = pipestance ID
+		 *$4 = path to error file (if there was an error)
+		 */
+		args := []string{exec_path, self.GetPath(), self.GetState(), self.getNode().name}
+		if self.GetState() == "failed" {
+			_, _, _, _, _, err_paths := self.GetFatalError()
+			if len(err_paths) > 0 {
+				err_path, _ := filepath.Rel(filepath.Dir(self.GetPath()), err_paths[0])
+				args = append(args, err_path)
+			}
+		}
+
+		/* Set up attributes for exec */
+		var pa os.ProcAttr
+		stdout := os.NewFile(1, "/dev/stdout")
+		stderr := os.NewFile(2, "/dev/stderr")
+		pa.Files = []*os.File{nil, stdout, stderr}
+
+		/* Find the real path to the script */
+		real_path, err := exec.LookPath(exec_path)
+		if err != nil {
+			LogInfo("runtime", "Can't find: %v: %v", exec_path, err)
+			return
+		}
+
+		/* Run it */
+		p, err := os.StartProcess(real_path, args, &pa)
+		if err != nil {
+			LogInfo("runtime", "Can't run %v: %v", real_path, err)
+			return
+		}
+
+		/* Wait for it to finish */
+		res, err := p.Wait()
+		if err != nil {
+			LogInfo("Error running %v: %v", real_path, err)
+		}
+		if !res.Success() {
+			LogInfo("runtime", "%v exited with non-zero status.", real_path)
+		}
+	}
+}
+
 func NewPipestance(parent Nodable, callStm *CallStm, callables *Callables) *Pipestance {
 	self := &Pipestance{}
 	self.node = NewNode(parent, "pipeline", callStm, callables)
@@ -2466,17 +2524,18 @@ type Runtime struct {
 	skipPreflight   bool
 	enableMonitor   bool
 	stest           bool
+	notifyExec      string
 }
 
 func NewRuntime(jobMode string, vdrMode string, profileMode string, martianVersion string) *Runtime {
 	return NewRuntimeWithCores(jobMode, vdrMode, profileMode, martianVersion,
-		-1, -1, -1, -1, -1, false, false, false, false, false, false)
+		-1, -1, -1, -1, -1, false, false, false, false, false, false, "")
 }
 
 func NewRuntimeWithCores(jobMode string, vdrMode string, profileMode string, martianVersion string,
 	reqCores int, reqMem int, reqMemPerCore int, maxJobs int, jobFreqMillis int,
 	enableStackVars bool, enableZip bool, skipPreflight bool, enableMonitor bool,
-	debug bool, stest bool) *Runtime {
+	debug bool, stest bool, notifyExec string) *Runtime {
 
 	self := &Runtime{}
 	self.adaptersPath = RelPath(path.Join("..", "adapters"))
@@ -2489,6 +2548,7 @@ func NewRuntimeWithCores(jobMode string, vdrMode string, profileMode string, mar
 	self.skipPreflight = skipPreflight
 	self.enableMonitor = enableMonitor
 	self.stest = stest
+	self.notifyExec = notifyExec
 
 	self.MroCache = NewMroCache()
 	self.LocalJobManager = NewLocalJobManager(reqCores, reqMem, debug)
