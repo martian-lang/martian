@@ -1804,6 +1804,7 @@ func (self *Node) getJobReqs(jobDef map[string]interface{}) (int, int, string) {
 	memGB := -1
 	nodeType := ""
 
+	// Get values passed from the stage code
 	if jobDef != nil {
 		if v, ok := jobDef["__threads"].(float64); ok {
 			threads = int(v)
@@ -1816,22 +1817,25 @@ func (self *Node) getJobReqs(jobDef map[string]interface{}) (int, int, string) {
 		}
 	}
 
+	// Override with job manager caps specified from commandline
 	if self.local {
 		threads, memGB = self.rt.LocalJobManager.GetSystemReqs(threads, memGB)
 	} else {
 		threads, memGB = self.rt.JobManager.GetSystemReqs(threads, memGB)
 	}
 
+	// Return modified values
 	return threads, memGB, nodeType
 }
 
 func (self *Node) setJobReqs(jobDef map[string]interface{}) (int, int, string) {
+	// Get values and possibly modify them
 	threads, memGB, nodeType := self.getJobReqs(jobDef)
 
+	// Write modified values back
 	if jobDef != nil {
 		jobDef["__threads"] = float64(threads)
 		jobDef["__mem_gb"] = float64(memGB)
-		jobDef["__node_type"] = nodeType
 	}
 
 	return threads, memGB, nodeType
