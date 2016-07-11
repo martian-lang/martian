@@ -159,7 +159,7 @@ Options:
     --inspect           Inspect pipestance without resetting failed stages.
     --debug             Enable debug logging for local job manager.
     --stest             Substitute real stages with stress-testing stage.
-    --onfinish=EXECUTABLE Send sms text message to user in case of failure.
+    --onfinish=EXEC     Run this when pipeline finishes, success or fail.
 
     -h --help           Show this message.
     --version           Show version.`
