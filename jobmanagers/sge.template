@@ -6,5 +6,6 @@
 #$ -o __MRO_STDOUT__
 #$ -e __MRO_STDERR__
 #$ -S "/usr/bin/env bash"
+__MRO_QUEUES__
 
 __MRO_CMD__

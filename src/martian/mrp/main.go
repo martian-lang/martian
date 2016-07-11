@@ -136,6 +136,8 @@ Options:
                             Only applies in cluster jobmodes.
     --jobinterval=NUM   Set delay between submitting jobs to cluster, in ms.
                             Only applies in cluster jobmodes.
+    --jobqueues=LIST    Semicolon-separated name:queue pairs for advanced use.
+                            Only applies in cluster jobmodes.
 
     --vdrmode=MODE      Enables Volatile Data Removal. Valid options:
                             post (default), rolling, or disable
@@ -208,6 +210,12 @@ Options:
 			core.LogInfo("options", "--jobinterval=%d", jobFreqMillis)
 		}
 	}
+
+	jobQueues := ""
+	if value := opts["--jobqueues"]; value != nil {
+		jobQueues = value.(string)
+	}
+	core.LogInfo("options", "--jobqueues=%s", jobQueues)
 
 	// Compute MRO path.
 	cwd, _ := filepath.Abs(path.Dir(os.Args[0]))
@@ -305,8 +313,8 @@ Options:
 	// Configure Martian runtime.
 	//=========================================================================
 	rt := core.NewRuntimeWithCores(jobMode, vdrMode, profileMode, martianVersion,
-		reqCores, reqMem, reqMemPerCore, maxJobs, jobFreqMillis, stackVars, zip,
-		skipPreflight, enableMonitor, debug, stest)
+		reqCores, reqMem, reqMemPerCore, maxJobs, jobFreqMillis, jobQueues, stackVars,
+		zip, skipPreflight, enableMonitor, debug, stest)
 	rt.MroCache.CacheMros(mroPaths)
 
 	// Print this here because the log makes more sense when this appears before

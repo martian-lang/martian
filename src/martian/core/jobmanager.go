@@ -64,7 +64,7 @@ func (self *Semaphore) len() int {
 // Job managers
 //
 type JobManager interface {
-	execJob(string, []string, map[string]string, *Metadata, int, int, string, string)
+	execJob(string, []string, map[string]string, *Metadata, int, int, string, string, string)
 	GetSystemReqs(int, int) (int, int)
 	GetMaxCores() int
 	GetMaxMemGB() int
@@ -83,7 +83,7 @@ type LocalJobManager struct {
 func NewLocalJobManager(userMaxCores int, userMaxMemGB int, debug bool) *LocalJobManager {
 	self := &LocalJobManager{}
 	self.debug = debug
-	self.jobSettings, _, _, _ = verifyJobManager("local", -1)
+	self.jobSettings, _, _, _, _ = verifyJobManager("local", -1)
 
 	// Set Max number of cores usable at one time.
 	if userMaxCores > 0 {
@@ -255,7 +255,7 @@ func (self *LocalJobManager) GetMaxMemGB() int {
 }
 
 func (self *LocalJobManager) execJob(shellCmd string, argv []string, envs map[string]string,
-	metadata *Metadata, threads int, memGB int, fqname string, shellName string) {
+	metadata *Metadata, threads int, memGB int, nodeType string, fqname string, shellName string) {
 	self.Enqueue(shellCmd, argv, envs, metadata, threads, memGB, fqname, 0, 0)
 }
 
@@ -263,6 +263,8 @@ type RemoteJobManager struct {
 	jobMode          string
 	jobTemplate      string
 	jobCmd           string
+	jobQueueOpt      string
+	jobQueueMappings map[string]string
 	jobSettings      *JobManagerSettings
 	threadingEnabled bool
 	memGBPerCore     int
@@ -274,14 +276,26 @@ type RemoteJobManager struct {
 }
 
 func NewRemoteJobManager(jobMode string, memGBPerCore int, maxJobs int, jobFreqMillis int,
-	debug bool) *RemoteJobManager {
+	jobQueues string, debug bool) *RemoteJobManager {
 	self := &RemoteJobManager{}
 	self.jobMode = jobMode
 	self.memGBPerCore = memGBPerCore
 	self.maxJobs = maxJobs
 	self.jobFreqMillis = jobFreqMillis
 	self.debug = debug
-	self.jobSettings, self.jobCmd, self.jobTemplate, self.threadingEnabled = verifyJobManager(jobMode, memGBPerCore)
+	self.jobSettings, self.jobCmd, self.jobQueueOpt, self.jobTemplate, self.threadingEnabled = verifyJobManager(jobMode, memGBPerCore)
+
+	// Parse jobqueue mappings
+	self.jobQueueMappings = map[string]string{}
+	for _, mapping := range strings.Split(jobQueues, ";") {
+		parts := strings.Split(mapping, ":")
+		if len(parts) == 2 {
+			self.jobQueueMappings[parts[0]] = parts[1]
+			LogInfo("jobmngr", "Mapping %s to %s", parts[0], parts[1])
+		} else {
+			LogInfo("jobmngr", "Could not parse mapping: %s", mapping)
+		}
+	}
 
 	if self.maxJobs > 0 {
 		self.jobSem = NewSemaphore(self.maxJobs)
@@ -331,11 +345,11 @@ func (self *RemoteJobManager) GetSystemReqs(threads int, memGB int) (int, int) {
 }
 
 func (self *RemoteJobManager) execJob(shellCmd string, argv []string, envs map[string]string,
-	metadata *Metadata, threads int, memGB int, fqname string, shellName string) {
+	metadata *Metadata, threads int, memGB int, nodeType string, fqname string, shellName string) {
 
 	// no limit, send the job
 	if self.maxJobs <= 0 {
-		self.sendJob(shellCmd, argv, envs, metadata, threads, memGB, fqname, shellName)
+		self.sendJob(shellCmd, argv, envs, metadata, threads, memGB, nodeType, fqname, shellName)
 		return
 	}
 
@@ -350,7 +364,7 @@ func (self *RemoteJobManager) execJob(shellCmd string, argv []string, envs map[s
 		if self.debug {
 			LogInfo("jobmngr", "Job sent: %s", fqname)
 		}
-		self.sendJob(shellCmd, argv, envs, metadata, threads, memGB, fqname, shellName)
+		self.sendJob(shellCmd, argv, envs, metadata, threads, memGB, nodeType, fqname, shellName)
 		for {
 			if state, _ := metadata.getState(""); state == "complete" || state == "failed" {
 				self.jobSem.V(1)
@@ -365,7 +379,7 @@ func (self *RemoteJobManager) execJob(shellCmd string, argv []string, envs map[s
 }
 
 func (self *RemoteJobManager) sendJob(shellCmd string, argv []string, envs map[string]string,
-	metadata *Metadata, threads int, memGB int, fqname string, shellName string) {
+	metadata *Metadata, threads int, memGB int, nodeType string, fqname string, shellName string) {
 
 	if self.jobFreqMillis > 0 {
 		<-(self.limiter.C)
@@ -388,6 +402,17 @@ func (self *RemoteJobManager) sendJob(shellCmd string, argv []string, envs map[s
 		}
 	}
 
+	mappedJobQueueOpt := ""
+	// If a node_type is specified for this stage, and the runtime was called
+	// with --jobqueues defining a mapping from node_type to a queue or list
+	// of queues, then populate the queue option into the template. Otherwise,
+	// leave it blank to revert to default queue behavior.
+	if len(nodeType) > 0 {
+		if queues, ok := self.jobQueueMappings[nodeType]; ok {
+			mappedJobQueueOpt = strings.Replace(self.jobQueueOpt, "__LIST__", queues, 1)
+		}
+	}
+
 	argv = append([]string{shellCmd}, argv...)
 	argv = append(FormatEnv(envs), argv...)
 	params := map[string]string{
@@ -400,6 +425,7 @@ func (self *RemoteJobManager) sendJob(shellCmd string, argv []string, envs map[s
 		"MEM_MB":            fmt.Sprintf("%d", memGB*1024),
 		"MEM_GB_PER_THREAD": fmt.Sprintf("%d", memGBPerThread),
 		"MEM_MB_PER_THREAD": fmt.Sprintf("%d", memGBPerThread*1024),
+		"QUEUES":            mappedJobQueueOpt,
 	}
 
 	// Replace template annotations with actual values
@@ -439,8 +465,9 @@ type JobModeEnv struct {
 }
 
 type JobModeJson struct {
-	Cmd     string        `json:"cmd"`
-	JobEnvs []*JobModeEnv `json:"envs"`
+	Cmd      string        `json:"cmd"`
+	QueueOpt string        `json:"queueopt"`
+	JobEnvs  []*JobModeEnv `json:"envs"`
 }
 
 type JobManagerSettings struct {
@@ -453,7 +480,7 @@ type JobManagerJson struct {
 	JobModes    map[string]*JobModeJson `json:"jobmodes"`
 }
 
-func verifyJobManager(jobMode string, memGBPerCore int) (*JobManagerSettings, string, string, bool) {
+func verifyJobManager(jobMode string, memGBPerCore int) (*JobManagerSettings, string, string, string, bool) {
 	jobPath := RelPath(path.Join("..", "jobmanagers"))
 
 	// Check for existence of job manager JSON file
@@ -489,7 +516,7 @@ func verifyJobManager(jobMode string, memGBPerCore int) (*JobManagerSettings, st
 
 	if jobMode == "local" {
 		// Local job mode only needs to verify settings parameters
-		return jobSettings, "", "", false
+		return jobSettings, "", "", "", false
 	}
 
 	var jobTemplateFile string
@@ -515,6 +542,9 @@ func verifyJobManager(jobMode string, memGBPerCore int) (*JobManagerSettings, st
 
 	jobCmd := jobModeJson.Cmd
 	LogInfo("jobmngr", "Job submit command = %s", jobCmd)
+
+	jobQueueOpt := jobModeJson.QueueOpt
+	LogInfo("jobmngr", "Job submit queue option = %s", jobQueueOpt)
 
 	// Check for existence of job manager template file
 	if _, err := os.Stat(jobTemplateFile); os.IsNotExist(err) {
@@ -551,5 +581,5 @@ func verifyJobManager(jobMode string, memGBPerCore int) (*JobManagerSettings, st
 	}
 	EnvRequire(envs, true)
 
-	return jobSettings, jobCmd, jobTemplate, jobThreadingEnabled
+	return jobSettings, jobCmd, jobQueueOpt, jobTemplate, jobThreadingEnabled
 }

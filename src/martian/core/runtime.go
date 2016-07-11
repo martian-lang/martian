@@ -554,7 +554,7 @@ func (self *Chunk) step() {
 		self.hasBeenRun = true
 	}
 
-	threads, memGB := self.node.setJobReqs(self.chunkDef)
+	threads, memGB, nodeType := self.node.setJobReqs(self.chunkDef)
 
 	// Resolve input argument bindings and merge in the chunk defs.
 	resolvedBindings := resolveBindings(self.node.argbindings, self.fork.argPermute)
@@ -567,7 +567,7 @@ func (self *Chunk) step() {
 	self.metadata.write("outs", makeOutArgs(self.node.outparams, self.metadata.filesPath))
 
 	// Run the chunk.
-	self.node.runChunk(self.fqname, self.metadata, threads, memGB)
+	self.node.runChunk(self.fqname, self.metadata, threads, memGB, nodeType)
 }
 
 func (self *Chunk) serializeState() *ChunkInfo {
@@ -580,7 +580,7 @@ func (self *Chunk) serializeState() *ChunkInfo {
 }
 
 func (self *Chunk) serializePerf() *ChunkPerfInfo {
-	numThreads, _ := self.node.getJobReqs(self.chunkDef)
+	numThreads, _, _ := self.node.getJobReqs(self.chunkDef)
 	stats := self.metadata.serializePerf(numThreads)
 	return &ChunkPerfInfo{
 		Index:      self.index,
@@ -821,11 +821,11 @@ func (self *Fork) step() {
 		if state == "ready" {
 			self.writeInvocation()
 			self.split_metadata.write("args", resolveBindings(self.node.argbindings, self.argPermute))
-			threads, memGB := self.node.setJobReqs(nil)
+			threads, memGB, nodeType := self.node.setJobReqs(nil)
 			if self.node.split {
 				if !self.split_has_run {
 					self.split_has_run = true
-					self.node.runSplit(self.fqname, self.split_metadata, threads, memGB)
+					self.node.runSplit(self.fqname, self.split_metadata, threads, memGB, nodeType)
 				}
 			} else {
 				self.split_metadata.write("stage_defs", self.stageDefs)
@@ -848,7 +848,7 @@ func (self *Fork) step() {
 				}
 			}
 		} else if state == "chunks_complete" {
-			threads, memGB := self.node.setJobReqs(self.stageDefs.JoinDef)
+			threads, memGB, nodeType := self.node.setJobReqs(self.stageDefs.JoinDef)
 			resolvedBindings := resolveBindings(self.node.argbindings, self.argPermute)
 			for id, value := range self.stageDefs.JoinDef {
 				resolvedBindings[id] = value
@@ -865,7 +865,7 @@ func (self *Fork) step() {
 				self.join_metadata.write("outs", makeOutArgs(self.node.outparams, self.metadata.filesPath))
 				if !self.join_has_run {
 					self.join_has_run = true
-					self.node.runJoin(self.fqname, self.join_metadata, threads, memGB)
+					self.node.runJoin(self.fqname, self.join_metadata, threads, memGB, nodeType)
 				}
 			} else {
 				self.join_metadata.write("outs", self.chunks[0].metadata.read("outs"))
@@ -1120,13 +1120,13 @@ func (self *Fork) serializePerf() (*ForkPerfInfo, *VDRKillReport) {
 		}
 	}
 
-	numThreads, _ := self.node.getJobReqs(nil)
+	numThreads, _, _ := self.node.getJobReqs(nil)
 	splitStats := self.split_metadata.serializePerf(numThreads)
 	if splitStats != nil {
 		stats = append(stats, splitStats)
 	}
 
-	numThreads, _ = self.node.getJobReqs(self.stageDefs.JoinDef)
+	numThreads, _, _ = self.node.getJobReqs(self.stageDefs.JoinDef)
 	joinStats := self.join_metadata.serializePerf(numThreads)
 	if joinStats != nil {
 		stats = append(stats, joinStats)
@@ -1799,15 +1799,20 @@ func (self *Node) serializePerf() *NodePerfInfo {
 //=============================================================================
 // Job Runners
 //=============================================================================
-func (self *Node) getJobReqs(jobDef map[string]interface{}) (int, int) {
+func (self *Node) getJobReqs(jobDef map[string]interface{}) (int, int, string) {
 	threads := -1
 	memGB := -1
+	nodeType := ""
+
 	if jobDef != nil {
 		if v, ok := jobDef["__threads"].(float64); ok {
 			threads = int(v)
 		}
 		if v, ok := jobDef["__mem_gb"].(float64); ok {
 			memGB = int(v)
+		}
+		if v, ok := jobDef["__node_type"].(string); ok {
+			nodeType = string(v)
 		}
 	}
 
@@ -1817,34 +1822,35 @@ func (self *Node) getJobReqs(jobDef map[string]interface{}) (int, int) {
 		threads, memGB = self.rt.JobManager.GetSystemReqs(threads, memGB)
 	}
 
-	return threads, memGB
+	return threads, memGB, nodeType
 }
 
-func (self *Node) setJobReqs(jobDef map[string]interface{}) (int, int) {
-	threads, memGB := self.getJobReqs(jobDef)
+func (self *Node) setJobReqs(jobDef map[string]interface{}) (int, int, string) {
+	threads, memGB, nodeType := self.getJobReqs(jobDef)
 
 	if jobDef != nil {
 		jobDef["__threads"] = float64(threads)
 		jobDef["__mem_gb"] = float64(memGB)
+		jobDef["__node_type"] = nodeType
 	}
 
-	return threads, memGB
+	return threads, memGB, nodeType
 }
 
-func (self *Node) runSplit(fqname string, metadata *Metadata, threads int, memGB int) {
-	self.runJob("split", fqname, metadata, threads, memGB)
+func (self *Node) runSplit(fqname string, metadata *Metadata, threads int, memGB int, nodeType string) {
+	self.runJob("split", fqname, metadata, threads, memGB, nodeType)
 }
 
-func (self *Node) runJoin(fqname string, metadata *Metadata, threads int, memGB int) {
-	self.runJob("join", fqname, metadata, threads, memGB)
+func (self *Node) runJoin(fqname string, metadata *Metadata, threads int, memGB int, nodeType string) {
+	self.runJob("join", fqname, metadata, threads, memGB, nodeType)
 }
 
-func (self *Node) runChunk(fqname string, metadata *Metadata, threads int, memGB int) {
-	self.runJob("main", fqname, metadata, threads, memGB)
+func (self *Node) runChunk(fqname string, metadata *Metadata, threads int, memGB int, nodeType string) {
+	self.runJob("main", fqname, metadata, threads, memGB, nodeType)
 }
 
 func (self *Node) runJob(shellName string, fqname string, metadata *Metadata,
-	threads int, memGB int) {
+	threads int, memGB int, nodeType string) {
 
 	// Configure local variable dumping.
 	stackVars := "disable"
@@ -1907,7 +1913,7 @@ func (self *Node) runJob(shellName string, fqname string, metadata *Metadata,
 		"invocation":     self.invocation,
 		"version":        version,
 	})
-	jobManager.execJob(shellCmd, argv, envs, metadata, threads, memGB, fqname, shellName)
+	jobManager.execJob(shellCmd, argv, envs, metadata, threads, memGB, nodeType, fqname, shellName)
 	ExitCriticalSection()
 }
 
@@ -2470,11 +2476,11 @@ type Runtime struct {
 
 func NewRuntime(jobMode string, vdrMode string, profileMode string, martianVersion string) *Runtime {
 	return NewRuntimeWithCores(jobMode, vdrMode, profileMode, martianVersion,
-		-1, -1, -1, -1, -1, false, false, false, false, false, false)
+		-1, -1, -1, -1, -1, "", false, false, false, false, false, false)
 }
 
 func NewRuntimeWithCores(jobMode string, vdrMode string, profileMode string, martianVersion string,
-	reqCores int, reqMem int, reqMemPerCore int, maxJobs int, jobFreqMillis int,
+	reqCores int, reqMem int, reqMemPerCore int, maxJobs int, jobFreqMillis int, jobQueues string,
 	enableStackVars bool, enableZip bool, skipPreflight bool, enableMonitor bool,
 	debug bool, stest bool) *Runtime {
 
@@ -2496,7 +2502,7 @@ func NewRuntimeWithCores(jobMode string, vdrMode string, profileMode string, mar
 		self.JobManager = self.LocalJobManager
 	} else {
 		self.JobManager = NewRemoteJobManager(self.jobMode, reqMemPerCore, maxJobs,
-			jobFreqMillis, debug)
+			jobFreqMillis, jobQueues, debug)
 	}
 	VerifyVDRMode(self.vdrMode)
 	VerifyProfileMode(self.profileMode)
