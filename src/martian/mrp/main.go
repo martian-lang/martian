@@ -27,6 +27,7 @@ import (
 func runLoop(pipestance *core.Pipestance, stepSecs int, vdrMode string,
 	noExit bool, enableUI bool) {
 	showedFailed := false
+	showedComplete := false
 	WAIT_SECS := 6
 
 	pipestance.LoadMetadata()
@@ -37,6 +38,10 @@ func runLoop(pipestance *core.Pipestance, stepSecs int, vdrMode string,
 		// Check for completion states.
 		state := pipestance.GetState()
 		if state == "complete" {
+			if !showedComplete {
+				pipestance.OnFinishHook()
+				showedComplete = true
+			}
 			if vdrMode == "disable" {
 				core.LogInfo("runtime", "VDR disabled. No files killed.")
 			} else {
@@ -61,6 +66,7 @@ func runLoop(pipestance *core.Pipestance, stepSecs int, vdrMode string,
 		} else if state == "failed" {
 			pipestance.Unlock()
 			if !showedFailed {
+				pipestance.OnFinishHook()
 				if _, preflight, _, log, kind, errPaths := pipestance.GetFatalError(); kind == "assert" {
 					// Print preflight check failures.
 					core.Println("\n[%s] %s\n", "error", log)
@@ -143,6 +149,7 @@ Options:
     --nopreflight       Skips preflight stages.
     --uiport=NUM        Serve UI at http://<hostname>:NUM
     --noexit            Keep UI running after pipestance completes or fails.
+    --onfinish=EXEC     Run this when pipeline finishes, success or fail.
     --zip               Zip metadata files after pipestance completes.
     --tags=TAGS         Tag pipestance with comma-separated key:value pairs.
 
@@ -234,6 +241,13 @@ Options:
 	core.LogInfo("options", "--vdrmode=%s", vdrMode)
 	core.VerifyVDRMode(vdrMode)
 
+	// Compute onfinish
+	onfinish := ""
+	if value := opts["--onfinish"]; value != nil {
+		onfinish = value.(string)
+		core.VerifyOnFinish(onfinish)
+	}
+
 	// Compute profiling mode.
 	profileMode := "disable"
 	if value := opts["--profile"]; value != nil {
@@ -306,7 +320,7 @@ Options:
 	//=========================================================================
 	rt := core.NewRuntimeWithCores(jobMode, vdrMode, profileMode, martianVersion,
 		reqCores, reqMem, reqMemPerCore, maxJobs, jobFreqMillis, stackVars, zip,
-		skipPreflight, enableMonitor, debug, stest)
+		skipPreflight, enableMonitor, debug, stest, onfinish)
 	rt.MroCache.CacheMros(mroPaths)
 
 	// Print this here because the log makes more sense when this appears before
