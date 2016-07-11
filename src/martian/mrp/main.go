@@ -149,6 +149,7 @@ Options:
     --nopreflight       Skips preflight stages.
     --uiport=NUM        Serve UI at http://<hostname>:NUM
     --noexit            Keep UI running after pipestance completes or fails.
+    --onfinish=EXEC     Run this when pipeline finishes, success or fail.
     --zip               Zip metadata files after pipestance completes.
     --tags=TAGS         Tag pipestance with comma-separated key:value pairs.
 
@@ -159,7 +160,6 @@ Options:
     --inspect           Inspect pipestance without resetting failed stages.
     --debug             Enable debug logging for local job manager.
     --stest             Substitute real stages with stress-testing stage.
-    --onfinish=EXEC     Run this when pipeline finishes, success or fail.
 
     -h --help           Show this message.
     --version           Show version.`
