@@ -39,7 +39,7 @@ func runLoop(pipestance *core.Pipestance, stepSecs int, vdrMode string,
 		state := pipestance.GetState()
 		if state == "complete" {
 			if !showedComplete {
-				pipestance.NotifyHook()
+				pipestance.OnFinishHook()
 				showedComplete = true
 			}
 			if vdrMode == "disable" {
@@ -66,7 +66,7 @@ func runLoop(pipestance *core.Pipestance, stepSecs int, vdrMode string,
 		} else if state == "failed" {
 			pipestance.Unlock()
 			if !showedFailed {
-				pipestance.NotifyHook()
+				pipestance.OnFinishHook()
 				if _, preflight, _, log, kind, errPaths := pipestance.GetFatalError(); kind == "assert" {
 					// Print preflight check failures.
 					core.Println("\n[%s] %s\n", "error", log)
@@ -159,7 +159,7 @@ Options:
     --inspect           Inspect pipestance without resetting failed stages.
     --debug             Enable debug logging for local job manager.
     --stest             Substitute real stages with stress-testing stage.
-    --notify=EXECUTABLE Send sms text message to user in case of failure.
+    --onfinish=EXECUTABLE Send sms text message to user in case of failure.
 
     -h --help           Show this message.
     --version           Show version.`
@@ -241,11 +241,11 @@ Options:
 	core.LogInfo("options", "--vdrmode=%s", vdrMode)
 	core.VerifyVDRMode(vdrMode)
 
-	// Compute notify
-	notify := ""
-	if value := opts["--notify"]; value != nil {
-		notify = value.(string)
-		core.VerifyNotify(notify)
+	// Compute onfinish
+	onfinish := ""
+	if value := opts["--onfinish"]; value != nil {
+		onfinish = value.(string)
+		core.VerifyOnFinish(onfinish)
 	}
 
 	// Compute profiling mode.
@@ -320,7 +320,7 @@ Options:
 	//=========================================================================
 	rt := core.NewRuntimeWithCores(jobMode, vdrMode, profileMode, martianVersion,
 		reqCores, reqMem, reqMemPerCore, maxJobs, jobFreqMillis, stackVars, zip,
-		skipPreflight, enableMonitor, debug, stest, notify)
+		skipPreflight, enableMonitor, debug, stest, onfinish)
 	rt.MroCache.CacheMros(mroPaths)
 
 	// Print this here because the log makes more sense when this appears before

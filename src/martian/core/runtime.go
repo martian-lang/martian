@@ -477,9 +477,9 @@ func VerifyVDRMode(vdrMode string) {
 	os.Exit(1)
 }
 
-func VerifyNotify(notify string) {
-	if _, err := exec.LookPath(notify); err != nil {
-		PrintInfo("runtime", "Invalid notify hook executable (%v): %v", err, notify)
+func VerifyOnFinish(onfinish string) {
+	if _, err := exec.LookPath(onfinish); err != nil {
+		PrintInfo("runtime", "Invalid onfinish hook executable (%v): %v", err, onfinish)
 		os.Exit(1)
 	}
 }
@@ -1974,9 +1974,9 @@ type Pipestance struct {
 	node *Node
 }
 
-/* Run a notify script whenever a pipestance finishes */
-func (self *Pipestance) NotifyHook() {
-	exec_path := self.getNode().rt.notifyExec
+/* Run a script whenever a pipestance finishes */
+func (self *Pipestance) OnFinishHook() {
+	exec_path := self.getNode().rt.onFinishExec
 	if exec_path != "" {
 		/* Build command line arguments:
 		 *$1 = path to piestance
@@ -2524,7 +2524,7 @@ type Runtime struct {
 	skipPreflight   bool
 	enableMonitor   bool
 	stest           bool
-	notifyExec      string
+	onFinishExec    string
 }
 
 func NewRuntime(jobMode string, vdrMode string, profileMode string, martianVersion string) *Runtime {
@@ -2535,7 +2535,7 @@ func NewRuntime(jobMode string, vdrMode string, profileMode string, martianVersi
 func NewRuntimeWithCores(jobMode string, vdrMode string, profileMode string, martianVersion string,
 	reqCores int, reqMem int, reqMemPerCore int, maxJobs int, jobFreqMillis int,
 	enableStackVars bool, enableZip bool, skipPreflight bool, enableMonitor bool,
-	debug bool, stest bool, notifyExec string) *Runtime {
+	debug bool, stest bool, onFinishExec string) *Runtime {
 
 	self := &Runtime{}
 	self.adaptersPath = RelPath(path.Join("..", "adapters"))
@@ -2548,7 +2548,7 @@ func NewRuntimeWithCores(jobMode string, vdrMode string, profileMode string, mar
 	self.skipPreflight = skipPreflight
 	self.enableMonitor = enableMonitor
 	self.stest = stest
-	self.notifyExec = notifyExec
+	self.onFinishExec = onFinishExec
 
 	self.MroCache = NewMroCache()
 	self.LocalJobManager = NewLocalJobManager(reqCores, reqMem, debug)
