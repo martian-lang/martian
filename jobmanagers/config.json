@@ -6,7 +6,7 @@
   "jobmodes": {
       "sge": {
           "cmd": "qsub",
-          "queueopt": "#$ -q __LIST__",
+          "resopt": "#$ -l __RESOURCES__",
           "envs": [
               {
                   "name":"SGE_ROOT",
@@ -24,7 +24,6 @@
       },
       "lsf": {
           "cmd": "bsub",
-          "queueopt": "#BSUB -q __LIST__",
           "envs": [
               {
                   "name":"LSF_SERVERDIR",
