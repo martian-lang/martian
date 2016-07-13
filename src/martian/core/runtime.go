@@ -1995,9 +1995,7 @@ func (self *Pipestance) OnFinishHook() {
 
 		/* Set up attributes for exec */
 		var pa os.ProcAttr
-		stdout := os.NewFile(1, "/dev/stdout")
-		stderr := os.NewFile(2, "/dev/stderr")
-		pa.Files = []*os.File{nil, stdout, stderr}
+		pa.Files = []*os.File{os.Stdin, os.Stdout, os.Stderr}
 
 		/* Find the real path to the script */
 		real_path, err := exec.LookPath(exec_path)
