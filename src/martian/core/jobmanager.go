@@ -255,7 +255,7 @@ func (self *LocalJobManager) GetMaxMemGB() int {
 }
 
 func (self *LocalJobManager) execJob(shellCmd string, argv []string, envs map[string]string,
-	metadata *Metadata, threads int, memGB int, nodeType string, fqname string, shellName string) {
+	metadata *Metadata, threads int, memGB int, special string, fqname string, shellName string) {
 	self.Enqueue(shellCmd, argv, envs, metadata, threads, memGB, fqname, 0, 0)
 }
 
@@ -345,11 +345,11 @@ func (self *RemoteJobManager) GetSystemReqs(threads int, memGB int) (int, int) {
 }
 
 func (self *RemoteJobManager) execJob(shellCmd string, argv []string, envs map[string]string,
-	metadata *Metadata, threads int, memGB int, nodeType string, fqname string, shellName string) {
+	metadata *Metadata, threads int, memGB int, special string, fqname string, shellName string) {
 
 	// no limit, send the job
 	if self.maxJobs <= 0 {
-		self.sendJob(shellCmd, argv, envs, metadata, threads, memGB, nodeType, fqname, shellName)
+		self.sendJob(shellCmd, argv, envs, metadata, threads, memGB, special, fqname, shellName)
 		return
 	}
 
@@ -364,7 +364,7 @@ func (self *RemoteJobManager) execJob(shellCmd string, argv []string, envs map[s
 		if self.debug {
 			LogInfo("jobmngr", "Job sent: %s", fqname)
 		}
-		self.sendJob(shellCmd, argv, envs, metadata, threads, memGB, nodeType, fqname, shellName)
+		self.sendJob(shellCmd, argv, envs, metadata, threads, memGB, special, fqname, shellName)
 		for {
 			if state, _ := metadata.getState(""); state == "complete" || state == "failed" {
 				self.jobSem.V(1)
