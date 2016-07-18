@@ -38,10 +38,6 @@ func runLoop(pipestance *core.Pipestance, stepSecs int, vdrMode string,
 		// Check for completion states.
 		state := pipestance.GetState()
 		if state == "complete" {
-			if !showedComplete {
-				pipestance.OnFinishHook()
-				showedComplete = true
-			}
 			if vdrMode == "disable" {
 				core.LogInfo("runtime", "VDR disabled. No files killed.")
 			} else {
@@ -51,6 +47,10 @@ func runLoop(pipestance *core.Pipestance, stepSecs int, vdrMode string,
 			}
 			pipestance.Unlock()
 			pipestance.PostProcess()
+			if !showedComplete {
+				pipestance.OnFinishHook()
+				showedComplete = true
+			}
 			if noExit {
 				core.Println("Pipestance completed successfully, staying alive because --noexit given.")
 				break
