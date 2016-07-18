@@ -554,7 +554,7 @@ func (self *Chunk) step() {
 		self.hasBeenRun = true
 	}
 
-	threads, memGB, nodeType := self.node.setJobReqs(self.chunkDef)
+	threads, memGB, special := self.node.setJobReqs(self.chunkDef)
 
 	// Resolve input argument bindings and merge in the chunk defs.
 	resolvedBindings := resolveBindings(self.node.argbindings, self.fork.argPermute)
@@ -567,7 +567,7 @@ func (self *Chunk) step() {
 	self.metadata.write("outs", makeOutArgs(self.node.outparams, self.metadata.filesPath))
 
 	// Run the chunk.
-	self.node.runChunk(self.fqname, self.metadata, threads, memGB, nodeType)
+	self.node.runChunk(self.fqname, self.metadata, threads, memGB, special)
 }
 
 func (self *Chunk) serializeState() *ChunkInfo {
@@ -821,11 +821,11 @@ func (self *Fork) step() {
 		if state == "ready" {
 			self.writeInvocation()
 			self.split_metadata.write("args", resolveBindings(self.node.argbindings, self.argPermute))
-			threads, memGB, nodeType := self.node.setJobReqs(nil)
+			threads, memGB, special := self.node.setJobReqs(nil)
 			if self.node.split {
 				if !self.split_has_run {
 					self.split_has_run = true
-					self.node.runSplit(self.fqname, self.split_metadata, threads, memGB, nodeType)
+					self.node.runSplit(self.fqname, self.split_metadata, threads, memGB, special)
 				}
 			} else {
 				self.split_metadata.write("stage_defs", self.stageDefs)
@@ -848,7 +848,7 @@ func (self *Fork) step() {
 				}
 			}
 		} else if state == "chunks_complete" {
-			threads, memGB, nodeType := self.node.setJobReqs(self.stageDefs.JoinDef)
+			threads, memGB, special := self.node.setJobReqs(self.stageDefs.JoinDef)
 			resolvedBindings := resolveBindings(self.node.argbindings, self.argPermute)
 			for id, value := range self.stageDefs.JoinDef {
 				resolvedBindings[id] = value
@@ -865,7 +865,7 @@ func (self *Fork) step() {
 				self.join_metadata.write("outs", makeOutArgs(self.node.outparams, self.metadata.filesPath))
 				if !self.join_has_run {
 					self.join_has_run = true
-					self.node.runJoin(self.fqname, self.join_metadata, threads, memGB, nodeType)
+					self.node.runJoin(self.fqname, self.join_metadata, threads, memGB, special)
 				}
 			} else {
 				self.join_metadata.write("outs", self.chunks[0].metadata.read("outs"))
@@ -1802,7 +1802,7 @@ func (self *Node) serializePerf() *NodePerfInfo {
 func (self *Node) getJobReqs(jobDef map[string]interface{}) (int, int, string) {
 	threads := -1
 	memGB := -1
-	nodeType := ""
+	special := ""
 
 	// Get values passed from the stage code
 	if jobDef != nil {
@@ -1812,8 +1812,8 @@ func (self *Node) getJobReqs(jobDef map[string]interface{}) (int, int, string) {
 		if v, ok := jobDef["__mem_gb"].(float64); ok {
 			memGB = int(v)
 		}
-		if v, ok := jobDef["__node_type"].(string); ok {
-			nodeType = string(v)
+		if v, ok := jobDef["__special"].(string); ok {
+			special = string(v)
 		}
 	}
 
@@ -1825,12 +1825,12 @@ func (self *Node) getJobReqs(jobDef map[string]interface{}) (int, int, string) {
 	}
 
 	// Return modified values
-	return threads, memGB, nodeType
+	return threads, memGB, special
 }
 
 func (self *Node) setJobReqs(jobDef map[string]interface{}) (int, int, string) {
 	// Get values and possibly modify them
-	threads, memGB, nodeType := self.getJobReqs(jobDef)
+	threads, memGB, special := self.getJobReqs(jobDef)
 
 	// Write modified values back
 	if jobDef != nil {
@@ -1838,23 +1838,23 @@ func (self *Node) setJobReqs(jobDef map[string]interface{}) (int, int, string) {
 		jobDef["__mem_gb"] = float64(memGB)
 	}
 
-	return threads, memGB, nodeType
+	return threads, memGB, special
 }
 
-func (self *Node) runSplit(fqname string, metadata *Metadata, threads int, memGB int, nodeType string) {
-	self.runJob("split", fqname, metadata, threads, memGB, nodeType)
+func (self *Node) runSplit(fqname string, metadata *Metadata, threads int, memGB int, special string) {
+	self.runJob("split", fqname, metadata, threads, memGB, special)
 }
 
-func (self *Node) runJoin(fqname string, metadata *Metadata, threads int, memGB int, nodeType string) {
-	self.runJob("join", fqname, metadata, threads, memGB, nodeType)
+func (self *Node) runJoin(fqname string, metadata *Metadata, threads int, memGB int, special string) {
+	self.runJob("join", fqname, metadata, threads, memGB, special)
 }
 
-func (self *Node) runChunk(fqname string, metadata *Metadata, threads int, memGB int, nodeType string) {
-	self.runJob("main", fqname, metadata, threads, memGB, nodeType)
+func (self *Node) runChunk(fqname string, metadata *Metadata, threads int, memGB int, special string) {
+	self.runJob("main", fqname, metadata, threads, memGB, special)
 }
 
 func (self *Node) runJob(shellName string, fqname string, metadata *Metadata,
-	threads int, memGB int, nodeType string) {
+	threads int, memGB int, special string) {
 
 	// Configure local variable dumping.
 	stackVars := "disable"
@@ -1917,7 +1917,7 @@ func (self *Node) runJob(shellName string, fqname string, metadata *Metadata,
 		"invocation":     self.invocation,
 		"version":        version,
 	})
-	jobManager.execJob(shellCmd, argv, envs, metadata, threads, memGB, nodeType, fqname, shellName)
+	jobManager.execJob(shellCmd, argv, envs, metadata, threads, memGB, special, fqname, shellName)
 	ExitCriticalSection()
 }
 
