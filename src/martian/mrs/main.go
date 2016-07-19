@@ -16,6 +16,7 @@ import (
 	"time"
 
 	"github.com/10XDev/docopt.go"
+	"github.com/dustin/go-humanize"
 )
 
 func main() {
@@ -162,7 +163,7 @@ Options:
 	//=========================================================================
 	rt := core.NewRuntimeWithCores(jobMode, vdrMode, profileMode, martianVersion,
 		reqCores, reqMem, reqMemPerCore, maxJobs, jobFreqMillis, jobResources,
-		stackVars, zip, skipPreflight, enableMonitor, debug, false)
+		stackVars, zip, skipPreflight, enableMonitor, debug, false, "")
 	rt.MroCache.CacheMros(mroPaths)
 
 	// Invoke stagestance.
