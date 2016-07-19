@@ -2884,6 +2884,7 @@ func (self *Runtime) BuildCallSource(incpaths []string, name string, args map[st
 	sweepargs []string, mroPaths []string) (string, error) {
 	callable, err := self.MroCache.GetCallable(mroPaths, name)
 	if err != nil {
+		LogInfo("package", "Could not get callable: %s", name)
 		return "", err
 	}
 
