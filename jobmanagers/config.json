@@ -6,6 +6,7 @@
   "jobmodes": {
       "sge": {
           "cmd": "qsub",
+          "resopt": "#$ -l __RESOURCES__",
           "envs": [
               {
                   "name":"SGE_ROOT",

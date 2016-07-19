@@ -16,6 +16,7 @@ import (
 	"time"
 
 	"github.com/10XDev/docopt.go"
+	"github.com/dustin/go-humanize"
 )
 
 func main() {
@@ -106,6 +107,13 @@ Options:
 		}
 	}
 
+	// Special to resources mappings
+	jobResources := ""
+	if value := os.Getenv("MRO_JOBRESOURCES"); len(value) > 0 {
+		jobResources = value
+		core.LogInfo("options", "MRO_JOBRESOURCES=%s", jobResources)
+	}
+
 	// Compute MRO path.
 	cwd, _ := filepath.Abs(path.Dir(os.Args[0]))
 	mroPaths := core.ParseMroPath(cwd)
@@ -154,8 +162,8 @@ Options:
 	// Configure Martian runtime.
 	//=========================================================================
 	rt := core.NewRuntimeWithCores(jobMode, vdrMode, profileMode, martianVersion,
-		reqCores, reqMem, reqMemPerCore, maxJobs, jobFreqMillis, stackVars, zip,
-		skipPreflight, enableMonitor, debug, false, "")
+		reqCores, reqMem, reqMemPerCore, maxJobs, jobFreqMillis, jobResources,
+		stackVars, zip, skipPreflight, enableMonitor, debug, false, "")
 	rt.MroCache.CacheMros(mroPaths)
 
 	// Invoke stagestance.
