@@ -16,7 +16,6 @@ import (
 	"time"
 
 	"github.com/10XDev/docopt.go"
-	"github.com/dustin/go-humanize"
 )
 
 func main() {
