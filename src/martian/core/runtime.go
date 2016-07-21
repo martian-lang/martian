@@ -1845,7 +1845,6 @@ func (self *Node) getJobReqs(jobDef map[string]interface{}, stageType string) (i
 	}
 
 	overrideThreads := self.rt.overrides.GetOverride(self, fmt.Sprintf("%s.threads", stageType), float64(threads))
-	LogInfo("runtime", "overrideThreads: %v", overrideThreads)
 	if overrideThreadsNum, ok := overrideThreads.(float64); ok {
 		threads = int(overrideThreadsNum)
 	} else {
