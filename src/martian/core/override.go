@@ -97,7 +97,7 @@ func (self *PipestanceOverrides) GetOverride(node *Node, what string, def interf
 				 * use it. Otherwise, backtrack another level and try again.
 				 */
 				LogInfo("override", "At [%v:%v] replace %v with %v",
-					what, node, cur.fqname, def, val)
+					what, cur.fqname, def, val)
 				return val
 			}
 		}

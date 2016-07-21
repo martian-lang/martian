@@ -24,6 +24,10 @@ import (
 
 const heartbeatTimeout = 60 // 60 minutes
 
+const STAGE_TYPE_SPLIT = "split"
+const STAGE_TYPE_CHUNK = "chunk"
+const STAGE_TYPE_JOIN = "join"
+
 //=============================================================================
 // Metadata
 //=============================================================================
@@ -554,7 +558,7 @@ func (self *Chunk) step() {
 		self.hasBeenRun = true
 	}
 
-	threads, memGB := self.node.setJobReqs(self.chunkDef)
+	threads, memGB := self.node.setChunkJobReqs(self.chunkDef)
 
 	// Resolve input argument bindings and merge in the chunk defs.
 	resolvedBindings := resolveBindings(self.node.argbindings, self.fork.argPermute)
@@ -580,7 +584,7 @@ func (self *Chunk) serializeState() *ChunkInfo {
 }
 
 func (self *Chunk) serializePerf() *ChunkPerfInfo {
-	numThreads, _ := self.node.getJobReqs(self.chunkDef)
+	numThreads, _ := self.node.getJobReqs(self.chunkDef, STAGE_TYPE_CHUNK)
 	stats := self.metadata.serializePerf(numThreads)
 	return &ChunkPerfInfo{
 		Index:      self.index,
@@ -821,7 +825,7 @@ func (self *Fork) step() {
 		if state == "ready" {
 			self.writeInvocation()
 			self.split_metadata.write("args", resolveBindings(self.node.argbindings, self.argPermute))
-			threads, memGB := self.node.setJobReqs(nil)
+			threads, memGB := self.node.setSplitJobReqs()
 			if self.node.split {
 				if !self.split_has_run {
 					self.split_has_run = true
@@ -848,7 +852,7 @@ func (self *Fork) step() {
 				}
 			}
 		} else if state == "chunks_complete" {
-			threads, memGB := self.node.setJobReqs(self.stageDefs.JoinDef)
+			threads, memGB := self.node.setJoinJobReqs(self.stageDefs.JoinDef)
 			resolvedBindings := resolveBindings(self.node.argbindings, self.argPermute)
 			for id, value := range self.stageDefs.JoinDef {
 				resolvedBindings[id] = value
@@ -1120,13 +1124,13 @@ func (self *Fork) serializePerf() (*ForkPerfInfo, *VDRKillReport) {
 		}
 	}
 
-	numThreads, _ := self.node.getJobReqs(nil)
+	numThreads, _ := self.node.getJobReqs(nil, STAGE_TYPE_SPLIT)
 	splitStats := self.split_metadata.serializePerf(numThreads)
 	if splitStats != nil {
 		stats = append(stats, splitStats)
 	}
 
-	numThreads, _ = self.node.getJobReqs(self.stageDefs.JoinDef)
+	numThreads, _ = self.node.getJobReqs(self.stageDefs.JoinDef, STAGE_TYPE_JOIN)
 	joinStats := self.join_metadata.serializePerf(numThreads)
 	if joinStats != nil {
 		stats = append(stats, joinStats)
@@ -1828,7 +1832,7 @@ func (self *Node) serializePerf() *NodePerfInfo {
 //=============================================================================
 // Job Runners
 //=============================================================================
-func (self *Node) getJobReqs(jobDef map[string]interface{}) (int, int) {
+func (self *Node) getJobReqs(jobDef map[string]interface{}, stageType string) (int, int) {
 	threads := -1
 	memGB := -1
 	if jobDef != nil {
@@ -1836,8 +1840,23 @@ func (self *Node) getJobReqs(jobDef map[string]interface{}) (int, int) {
 			threads = int(v)
 		}
 		if v, ok := jobDef["__mem_gb"].(float64); ok {
-			memGB = int(self.rt.overrides.GetOverride(self, "__mem_gb", v).(float64))
+			memGB = int(v)
 		}
+	}
+
+	overrideThreads := self.rt.overrides.GetOverride(self, fmt.Sprintf("%s.threads", stageType), float64(threads))
+	LogInfo("runtime", "overrideThreads: %v", overrideThreads)
+	if overrideThreadsNum, ok := overrideThreads.(float64); ok {
+		threads = int(overrideThreadsNum)
+	} else {
+		PrintInfo("runtime", "Invalid value for %s %s.threads: %v", self.fqname, stageType, overrideThreads)
+	}
+
+	overrideMem := self.rt.overrides.GetOverride(self, fmt.Sprintf("%s.mem_gb", stageType), float64(memGB))
+	if overrideMemFloat, ok := overrideMem.(float64); ok {
+		memGB = int(overrideMemFloat)
+	} else {
+		PrintInfo("runtime", "Invalid value for %s %s.mem_gb: %v", self.fqname, stageType, overrideMem)
 	}
 
 	if self.local {
@@ -1849,8 +1868,8 @@ func (self *Node) getJobReqs(jobDef map[string]interface{}) (int, int) {
 	return threads, memGB
 }
 
-func (self *Node) setJobReqs(jobDef map[string]interface{}) (int, int) {
-	threads, memGB := self.getJobReqs(jobDef)
+func (self *Node) setJobReqs(jobDef map[string]interface{}, stageType string) (int, int) {
+	threads, memGB := self.getJobReqs(jobDef, stageType)
 
 	if jobDef != nil {
 		jobDef["__threads"] = float64(threads)
@@ -1858,6 +1877,18 @@ func (self *Node) setJobReqs(jobDef map[string]interface{}) (int, int) {
 	}
 
 	return threads, memGB
+}
+
+func (self *Node) setSplitJobReqs() (int, int) {
+	return self.setJobReqs(nil, STAGE_TYPE_SPLIT)
+}
+
+func (self *Node) setChunkJobReqs(jobDef map[string]interface{}) (int, int) {
+	return self.setJobReqs(jobDef, STAGE_TYPE_CHUNK)
+}
+
+func (self *Node) setJoinJobReqs(jobDef map[string]interface{}) (int, int) {
+	return self.setJobReqs(jobDef, STAGE_TYPE_JOIN)
 }
 
 func (self *Node) runSplit(fqname string, metadata *Metadata, threads int, memGB int) {

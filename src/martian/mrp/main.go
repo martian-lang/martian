@@ -152,7 +152,7 @@ Options:
     --inspect           Inspect pipestance without resetting failed stages.
     --debug             Enable debug logging for local job manager.
     --stest             Substitute real stages with stress-testing stage.
-    --overrides=FILE	List of stages to force eager VDR.
+    --overrides=FILE	JSON file supplying custom run conditions per stage.
 
     -h --help           Show this message.
     --version           Show version.`
@@ -268,7 +268,7 @@ Options:
 		var err error;
 		overrides, err = core.ReadOverrides(v.(string));
 		if (err != nil) {
-			core.LogError(err, "options", "Failed to read pipestance overrides file");
+			core.Println("Failed to read pipestance overrides file: %v", err)
 			os.Exit(1);
 
 		}
