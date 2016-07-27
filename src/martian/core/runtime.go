@@ -155,6 +155,7 @@ func (self *Metadata) checkedReset() error {
 			PrintInfo("runtime", "Cannot reset the stage because some folder contents could not be deleted.\n\nPlease resolve this error in order to continue running the pipeline:")
 			return err
 		}
+		PrintInfo("runtime", "(reset-partial)   %s", self.fqname)
 		self.mkdirs()
 		self.mutex.Lock()
 		self.contents = map[string]bool{}
