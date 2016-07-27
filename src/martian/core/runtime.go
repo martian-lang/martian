@@ -149,17 +149,18 @@ func (self *Metadata) resetHeartbeat() {
 	self.lastHeartbeat = time.Time{}
 }
 
-func (self *Metadata) checkedReset() {
+func (self *Metadata) checkedReset() error {
 	if state, _ := self.getState(""); state == "failed" {
 		if err := self.removeAll(); err != nil {
 			PrintInfo("runtime", "mrp cannot reset the stage because its folder contents (in %s) could not be deleted. Error was:\n\n%s\n\nPlease resolve the error in order to continue running the pipeline.", self.path, err.Error())
-			return
+			return err
 		}
 		self.mkdirs()
 		self.mutex.Lock()
 		self.contents = map[string]bool{}
 		self.mutex.Unlock()
 	}
+	return nil
 }
 
 func (self *Metadata) checkHeartbeat() {
@@ -688,12 +689,19 @@ func (self *Fork) reset() {
 	self.join_has_run = false
 }
 
-func (self *Fork) resetPartial() {
-	self.split_metadata.checkedReset()
-	self.join_metadata.checkedReset()
-	for _, chunk := range self.chunks {
-		chunk.metadata.checkedReset()
+func (self *Fork) resetPartial() error {
+	if err := self.split_metadata.checkedReset(); err != nil {
+		return err
 	}
+	if err := self.join_metadata.checkedReset(); err != nil {
+		return err
+	}
+	for _, chunk := range self.chunks {
+		if err := chunk.metadata.checkedReset(); err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 func (self *Fork) collectMetadatas() []*Metadata {
@@ -1529,7 +1537,9 @@ func (self *Node) reset() error {
 		PrintInfo("runtime", "(reset-partial)   %s", self.fqname)
 
 		for _, fork := range self.forks {
-			fork.resetPartial()
+			if err := fork.resetPartial(); err != nil {
+				return err
+			}
 		}
 
 		return nil
