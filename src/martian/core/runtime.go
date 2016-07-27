@@ -152,7 +152,7 @@ func (self *Metadata) resetHeartbeat() {
 func (self *Metadata) checkedReset() error {
 	if state, _ := self.getState(""); state == "failed" {
 		if err := self.removeAll(); err != nil {
-			PrintInfo("runtime", "mrp cannot reset the stage because its folder contents (in %s) could not be deleted. Error was:\n\n%s\n\nPlease resolve the error in order to continue running the pipeline.", self.path, err.Error())
+			PrintInfo("runtime", "Cannot reset the stage because some folder contents could not be deleted.\n\nPlease resolve this error in order to continue running the pipeline:")
 			return err
 		}
 		self.mkdirs()
@@ -1548,7 +1548,7 @@ func (self *Node) reset() error {
 
 		// Blow away the entire stage node.
 		if err := os.RemoveAll(self.path); err != nil {
-			PrintInfo("runtime", "mrp cannot reset the stage because its folder contents could not be deleted. Error was:\n\n%s\n\nPlease resolve the error in order to continue running the pipeline.", err.Error())
+			PrintInfo("runtime", "Cannot reset the stage because its folder contents could not be deleted.\n\nPlease resolve this error in order to continue running the pipeline:")
 			return err
 		}
 		// Remove all related files from journal directory.
