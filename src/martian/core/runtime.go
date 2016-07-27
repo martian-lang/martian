@@ -66,9 +66,11 @@ func (self *Metadata) mkdirs() {
 	mkdir(self.filesPath)
 }
 
-func (self *Metadata) removeAll() {
-	os.RemoveAll(self.path)
-	os.RemoveAll(self.filesPath)
+func (self *Metadata) removeAll() error {
+	if err := os.RemoveAll(self.path); err != nil {
+		return err
+	}
+	return os.RemoveAll(self.filesPath)
 }
 
 func (self *Metadata) getState(name string) (string, bool) {
@@ -145,6 +147,19 @@ func (self *Metadata) remove(name string) { os.Remove(self.makePath(name)) }
 
 func (self *Metadata) resetHeartbeat() {
 	self.lastHeartbeat = time.Time{}
+}
+
+func (self *Metadata) checkedReset() {
+	if state, _ := self.getState(""); state == "failed" {
+		if err := self.removeAll(); err != nil {
+			PrintInfo("runtime", "mrp cannot reset the stage because its folder contents (in %s) could not be deleted. Error was:\n\n%s\n\nPlease resolve the error in order to continue running the pipeline.", self.path, err.Error())
+			return
+		}
+		self.mkdirs()
+		self.mutex.Lock()
+		self.contents = map[string]bool{}
+		self.mutex.Unlock()
+	}
 }
 
 func (self *Metadata) checkHeartbeat() {
@@ -671,6 +686,14 @@ func (self *Fork) reset() {
 	self.chunks = []*Chunk{}
 	self.split_has_run = false
 	self.join_has_run = false
+}
+
+func (self *Fork) resetPartial() {
+	self.split_metadata.checkedReset()
+	self.join_metadata.checkedReset()
+	for _, chunk := range self.chunks {
+		chunk.metadata.checkedReset()
+	}
 }
 
 func (self *Fork) collectMetadatas() []*Metadata {
@@ -1502,32 +1525,42 @@ func (self *Node) getState() string {
 }
 
 func (self *Node) reset() error {
-	PrintInfo("runtime", "(reset)           %s", self.fqname)
+	if true /* partial */ {
+		PrintInfo("runtime", "(reset-partial)   %s", self.fqname)
 
-	// Blow away the entire stage node.
-	if err := os.RemoveAll(self.path); err != nil {
-		PrintInfo("runtime", "mrp cannot reset the stage because its folder contents could not be deleted. Error was:\n\n%s\n\nPlease resolve the error in order to continue running the pipeline.", err.Error())
-		return err
-	}
-	// Remove all related files from journal directory.
-	if files, err := filepath.Glob(path.Join(self.journalPath, self.fqname+"*")); err == nil {
-		for _, file := range files {
-			os.Remove(file)
+		for _, fork := range self.forks {
+			fork.resetPartial()
 		}
+
+		return nil
+	} else {
+		PrintInfo("runtime", "(reset)           %s", self.fqname)
+
+		// Blow away the entire stage node.
+		if err := os.RemoveAll(self.path); err != nil {
+			PrintInfo("runtime", "mrp cannot reset the stage because its folder contents could not be deleted. Error was:\n\n%s\n\nPlease resolve the error in order to continue running the pipeline.", err.Error())
+			return err
+		}
+		// Remove all related files from journal directory.
+		if files, err := filepath.Glob(path.Join(self.journalPath, self.fqname+"*")); err == nil {
+			for _, file := range files {
+				os.Remove(file)
+			}
+		}
+
+		// Clear chunks in the forks so they can be rebuilt on split.
+		for _, fork := range self.forks {
+			fork.reset()
+		}
+
+		// Create stage node directories.
+		self.mkdirs()
+
+		// Load the metadata.
+		self.loadMetadata()
+
+		return nil
 	}
-
-	// Clear chunks in the forks so they can be rebuilt on split.
-	for _, fork := range self.forks {
-		fork.reset()
-	}
-
-	// Create stage node directories.
-	self.mkdirs()
-
-	// Load the metadata.
-	self.loadMetadata()
-
-	return nil
 }
 
 func (self *Node) checkHeartbeats() {
