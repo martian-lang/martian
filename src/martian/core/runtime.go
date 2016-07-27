@@ -1534,17 +1534,7 @@ func (self *Node) getState() string {
 }
 
 func (self *Node) reset() error {
-	if true /* partial */ {
-		PrintInfo("runtime", "(reset-partial)   %s", self.fqname)
-
-		for _, fork := range self.forks {
-			if err := fork.resetPartial(); err != nil {
-				return err
-			}
-		}
-
-		return nil
-	} else {
+	if self.rt.fullStageReset {
 		PrintInfo("runtime", "(reset)           %s", self.fqname)
 
 		// Blow away the entire stage node.
@@ -1570,6 +1560,13 @@ func (self *Node) reset() error {
 		// Load the metadata.
 		self.loadMetadata()
 
+		return nil
+	} else {
+		for _, fork := range self.forks {
+			if err := fork.resetPartial(); err != nil {
+				return err
+			}
+		}
 		return nil
 	}
 }
@@ -2571,6 +2568,7 @@ type Runtime struct {
 	MroCache        *MroCache
 	JobManager      JobManager
 	LocalJobManager JobManager
+	fullStageReset  bool
 	enableStackVars bool
 	enableZip       bool
 	skipPreflight   bool
@@ -2581,12 +2579,12 @@ type Runtime struct {
 
 func NewRuntime(jobMode string, vdrMode string, profileMode string, martianVersion string) *Runtime {
 	return NewRuntimeWithCores(jobMode, vdrMode, profileMode, martianVersion,
-		-1, -1, -1, -1, -1, "", false, false, false, false, false, false, "")
+		-1, -1, -1, -1, -1, "", false, false, false, false, false, false, false, "")
 }
 
 func NewRuntimeWithCores(jobMode string, vdrMode string, profileMode string, martianVersion string,
 	reqCores int, reqMem int, reqMemPerCore int, maxJobs int, jobFreqMillis int, jobQueues string,
-	enableStackVars bool, enableZip bool, skipPreflight bool, enableMonitor bool,
+	fullStageReset bool, enableStackVars bool, enableZip bool, skipPreflight bool, enableMonitor bool,
 	debug bool, stest bool, onFinishExec string) *Runtime {
 
 	self := &Runtime{}
@@ -2595,6 +2593,7 @@ func NewRuntimeWithCores(jobMode string, vdrMode string, profileMode string, mar
 	self.jobMode = jobMode
 	self.vdrMode = vdrMode
 	self.profileMode = profileMode
+	self.fullStageReset = fullStageReset
 	self.enableStackVars = enableStackVars
 	self.enableZip = enableZip
 	self.skipPreflight = skipPreflight
