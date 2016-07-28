@@ -1951,8 +1951,8 @@ func (self *Node) runJob(shellName string, fqname string, metadata *Metadata,
 		jobMode = "local"
 		jobManager = self.rt.LocalJobManager
 	}
-	padding := strings.Repeat(" ", int(math.Max(0, float64(10-len(jobMode)))))
-	msg := fmt.Sprintf("(run:%s) %s %s.%s", jobMode, padding, fqname, shellName)
+	padding := strings.Repeat(" ", int(math.Max(0, float64(10-len(path.Base(jobMode))))))
+	msg := fmt.Sprintf("(run:%s) %s %s.%s", path.Base(jobMode), padding, fqname, shellName)
 	if self.preflight {
 		LogInfo("runtime", msg)
 	} else {
