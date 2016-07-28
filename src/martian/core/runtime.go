@@ -1034,9 +1034,14 @@ func (self *Fork) postProcess() {
 					if _, err := os.Stat(filePath); err == nil {
 						if filePath, err := filepath.Rel(outsPath, filePath); err == nil {
 							mkdirAll(outsPath)
-							newValue := path.Join(outsPath, id)
-							if param.getTname() != "path" {
-								newValue += "." + param.getTname()
+							newValue := ""
+							if len(param.getOutName()) > 0 {
+								newValue = param.getOutName()
+							} else {
+								path.Join(outsPath, id)
+								if param.getTname() != "path" {
+									newValue += "." + param.getTname()
+								}
 							}
 							if err := os.Symlink(filePath, newValue); err != nil {
 								errMsg := err.Error()[strings.Index(err.Error(), newValue)+len(newValue)+1:]

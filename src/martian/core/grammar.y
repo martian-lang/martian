@@ -39,7 +39,7 @@ func unquote(qs string) string {
     retstm    *ReturnStm
 }
 
-%type <val>       id_list type help type src_lang
+%type <val>       id_list type help type src_lang type outname
 %type <modifiers> modifiers
 %type <arr>       arr_list
 %type <dec>       dec
@@ -127,8 +127,10 @@ in_param_list
     ;
 
 in_param
-    : IN type arr_list ID help
+    : IN type arr_list ID help COMMA
         {{ $$ = &InParam{NewAstNode(&mmlval), $2, $3, $4, unquote($5), false } }}
+    | IN type arr_list ID COMMA
+        {{ $$ = &InParam{NewAstNode(&mmlval), $2, $3, $4, "", false } }}
     ;
 
 out_param_list
@@ -142,10 +144,18 @@ out_param_list
     ;
 
 out_param
-    : OUT type arr_list help
-        {{ $$ = &OutParam{NewAstNode(&mmlval), $2, $3, "default", unquote($4), false } }}
-    | OUT type arr_list ID help
-        {{ $$ = &OutParam{NewAstNode(&mmlval), $2, $3, $4, unquote($5), false } }}
+    : OUT type arr_list COMMA
+        {{ $$ = &OutParam{NewAstNode(&mmlval), $2, $3, "default", "", "", false } }}
+    | OUT type arr_list help COMMA
+        {{ $$ = &OutParam{NewAstNode(&mmlval), $2, $3, "default", unquote($4), "", false } }}
+    | OUT type arr_list help outname COMMA
+        {{ $$ = &OutParam{NewAstNode(&mmlval), $2, $3, "default", unquote($4), unquote($5), false } }}
+    | OUT type arr_list ID COMMA
+        {{ $$ = &OutParam{NewAstNode(&mmlval), $2, $3, $4, "", "", false } }}
+    | OUT type arr_list ID help COMMA
+        {{ $$ = &OutParam{NewAstNode(&mmlval), $2, $3, $4, unquote($5), "", false } }}
+    | OUT type arr_list ID help outname COMMA
+        {{ $$ = &OutParam{NewAstNode(&mmlval), $2, $3, $4, unquote($5), unquote($6), false } }}
     ;
 
 src_stm
@@ -155,10 +165,13 @@ src_stm
     ;
 
 help
-    : LITSTRING COMMA
+    : LITSTRING
         {{ $$ = $1 }}
-    | COMMA
-        {{ $$ = "" }}
+    ;
+
+outname
+    : LITSTRING
+        {{ $$ = $1 }}
     ;
 
 type
