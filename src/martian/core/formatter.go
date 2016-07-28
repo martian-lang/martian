@@ -26,6 +26,9 @@ func (self *ValExp) format() string {
 	if self.Kind == "int" {
 		return fmt.Sprintf("%d", self.Value)
 	}
+	if self.Kind == "float" {
+		return fmt.Sprintf("%g", self.Value)
+	}
 	if self.Kind == "string" {
 		return fmt.Sprintf("\"%s\"", self.Value)
 	}
