@@ -1038,7 +1038,7 @@ func (self *Fork) postProcess() {
 							if len(param.getOutName()) > 0 {
 								newValue = param.getOutName()
 							} else {
-								path.Join(outsPath, id)
+								newValue = path.Join(outsPath, id)
 								if param.getTname() != "path" {
 									newValue += "." + param.getTname()
 								}
