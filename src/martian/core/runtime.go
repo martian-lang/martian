@@ -1034,9 +1034,14 @@ func (self *Fork) postProcess() {
 					if _, err := os.Stat(filePath); err == nil {
 						if filePath, err := filepath.Rel(outsPath, filePath); err == nil {
 							mkdirAll(outsPath)
-							newValue := path.Join(outsPath, id)
-							if param.getTname() != "path" {
-								newValue += "." + param.getTname()
+							newValue := outsPath
+							if len(param.getOutName()) > 0 {
+								newValue = path.Join(newValue, param.getOutName())
+							} else {
+								newValue = path.Join(newValue, id)
+								if param.getTname() != "path" {
+									newValue += "." + param.getTname()
+								}
 							}
 							if err := os.Symlink(filePath, newValue); err != nil {
 								errMsg := err.Error()[strings.Index(err.Error(), newValue)+len(newValue)+1:]
@@ -1946,8 +1951,9 @@ func (self *Node) runJob(shellName string, fqname string, metadata *Metadata,
 		jobMode = "local"
 		jobManager = self.rt.LocalJobManager
 	}
-	padding := strings.Repeat(" ", int(math.Max(0, float64(10-len(jobMode)))))
-	msg := fmt.Sprintf("(run:%s) %s %s.%s", jobMode, padding, fqname, shellName)
+	jobModeLabel := strings.Replace(jobMode, ".template", "", -1)
+	padding := strings.Repeat(" ", int(math.Max(0, float64(10-len(path.Base(jobModeLabel))))))
+	msg := fmt.Sprintf("(run:%s) %s %s.%s", path.Base(jobModeLabel), padding, fqname, shellName)
 	if self.preflight {
 		LogInfo("runtime", msg)
 	} else {
