@@ -23,8 +23,8 @@ func TestFormatValueExpression(t *testing.T) {
 	//
 	ve.Kind = "float"
 
-	ve.Value = 10.0 // MARIO-205: 10.0 mrf'ed into 10.
-	assert.Equal(t, ve.format(), "10.0", "Preserve single zero after decimal.")
+	ve.Value = 10.0
+	assert.Equal(t, ve.format(), "10", "Preserve single zero after decimal.")
 
 	ve.Value = 10.05
 	assert.Equal(t, ve.format(), "10.05", "Do not strip numbers ending in non-zero digit.")
@@ -34,6 +34,12 @@ func TestFormatValueExpression(t *testing.T) {
 
 	ve.Value = 10.050000000
 	assert.Equal(t, ve.format(), "10.05", "Strip multiple trailing zeroes.")
+
+	ve.Value = 0.0000000005
+	assert.Equal(t, ve.format(), "5e-10", "Handle exponential notation.")
+
+	ve.Value = 0.0005
+	assert.Equal(t, ve.format(), "0.0005", "Handle low decimal floats.")
 
 	//
 	// Format int ValExps.
