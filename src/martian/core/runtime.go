@@ -2920,10 +2920,10 @@ func buildVal(param Param, val interface{}) string {
 		switch val.(type) {
 		case json.Number:
 			if num, err := val.(json.Number).Float64(); err == nil {
-				return fmt.Sprintf("%f", num)
+				return fmt.Sprintf("%g", num)
 			}
 		default:
-			return fmt.Sprintf("%f", val)
+			return fmt.Sprintf("%g", val)
 		}
 	default:
 		indent := "    "
