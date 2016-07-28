@@ -23,15 +23,8 @@ func (self *ValExp) format() string {
 	if self.Value == nil {
 		return "null"
 	}
-	if self.Kind == "float" {
-		// Use %f because %v prints using exp notation, which we don't want.
-		// Also, strip trailing zeroes.
-		re := regexp.MustCompile("0+$")
-		str := re.ReplaceAllString(fmt.Sprintf("%f", self.Value), "")
-		// Put back a zero if it's all zeroes after decimal point.
-		re = regexp.MustCompile("\\.$")
-		return re.ReplaceAllString(str, ".0")
-		return str
+	if self.Kind == "int" {
+		return fmt.Sprintf("%d", self.Value)
 	}
 	if self.Kind == "string" {
 		return fmt.Sprintf("\"%s\"", self.Value)

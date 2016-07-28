@@ -127,7 +127,8 @@ func (exp *RefExp) resolveType(global *Ast, callable Callable) ([]string, int, e
 func checkTypeMatch(paramType string, valueType string) bool {
 	return (valueType == "null" ||
 		paramType == valueType ||
-		(paramType == "path" && valueType == "string"))
+		(paramType == "path" && valueType == "string") ||
+		(paramType == "float" && valueType == "int"))
 }
 
 func (bindings *BindStms) check(global *Ast, callable Callable, params *Params) error {
