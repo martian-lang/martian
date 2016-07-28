@@ -1034,11 +1034,11 @@ func (self *Fork) postProcess() {
 					if _, err := os.Stat(filePath); err == nil {
 						if filePath, err := filepath.Rel(outsPath, filePath); err == nil {
 							mkdirAll(outsPath)
-							newValue := ""
+							newValue := outsPath
 							if len(param.getOutName()) > 0 {
-								newValue = param.getOutName()
+								newValue = path.Join(newValue, param.getOutName())
 							} else {
-								newValue = path.Join(outsPath, id)
+								newValue = path.Join(newValue, id)
 								if param.getTname() != "path" {
 									newValue += "." + param.getTname()
 								}
