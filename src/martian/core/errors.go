@@ -190,6 +190,7 @@ func DieIf(err error) {
 	if err != nil {
 		fmt.Println()
 		fmt.Println(err.Error())
+		fmt.Println()
 		os.Exit(1)
 	}
 }

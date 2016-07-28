@@ -76,6 +76,7 @@ type (
 		getArrayDim() int
 		getId() string
 		getHelp() string
+		getOutName() string
 		getIsFile() bool
 		setIsFile(bool)
 	}
@@ -95,6 +96,7 @@ type (
 		ArrayDim int
 		Id       string
 		Help     string
+		OutName  string
 		Isfile   bool
 	}
 
@@ -240,25 +242,27 @@ func (s *Pipeline) getOutParams() *Params { return s.OutParams }
 
 func (s *CallStm) getLoc() int { return s.Node.Loc }
 
-func (s *InParam) getNode() *AstNode { return &s.Node }
-func (s *InParam) getMode() string   { return "in" }
-func (s *InParam) getTname() string  { return s.Tname }
-func (s *InParam) getArrayDim() int  { return s.ArrayDim }
-func (s *InParam) getId() string     { return s.Id }
-func (s *InParam) getHelp() string   { return s.Help }
-func (s *InParam) getLoc() int       { return s.Node.Loc }
-func (s *InParam) getIsFile() bool   { return s.Isfile }
-func (s *InParam) setIsFile(b bool)  { s.Isfile = b }
+func (s *InParam) getNode() *AstNode  { return &s.Node }
+func (s *InParam) getMode() string    { return "in" }
+func (s *InParam) getTname() string   { return s.Tname }
+func (s *InParam) getArrayDim() int   { return s.ArrayDim }
+func (s *InParam) getId() string      { return s.Id }
+func (s *InParam) getHelp() string    { return s.Help }
+func (s *InParam) getLoc() int        { return s.Node.Loc }
+func (s *InParam) getOutName() string { return "" }
+func (s *InParam) getIsFile() bool    { return s.Isfile }
+func (s *InParam) setIsFile(b bool)   { s.Isfile = b }
 
-func (s *OutParam) getNode() *AstNode { return &s.Node }
-func (s *OutParam) getMode() string   { return "out" }
-func (s *OutParam) getTname() string  { return s.Tname }
-func (s *OutParam) getArrayDim() int  { return s.ArrayDim }
-func (s *OutParam) getId() string     { return s.Id }
-func (s *OutParam) getHelp() string   { return s.Help }
-func (s *OutParam) getLoc() int       { return s.Node.Loc }
-func (s *OutParam) getIsFile() bool   { return s.Isfile }
-func (s *OutParam) setIsFile(b bool)  { s.Isfile = b }
+func (s *OutParam) getNode() *AstNode  { return &s.Node }
+func (s *OutParam) getMode() string    { return "out" }
+func (s *OutParam) getTname() string   { return s.Tname }
+func (s *OutParam) getArrayDim() int   { return s.ArrayDim }
+func (s *OutParam) getId() string      { return s.Id }
+func (s *OutParam) getHelp() string    { return s.Help }
+func (s *OutParam) getLoc() int        { return s.Node.Loc }
+func (s *OutParam) getOutName() string { return s.OutName }
+func (s *OutParam) getIsFile() bool    { return s.Isfile }
+func (s *OutParam) setIsFile(b bool)   { s.Isfile = b }
 
 func (s *ReturnStm) getLoc() int { return s.Node.Loc }
 func (s *BindStm) getLoc() int   { return s.Node.Loc }

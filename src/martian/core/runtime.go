@@ -66,9 +66,11 @@ func (self *Metadata) mkdirs() {
 	mkdir(self.filesPath)
 }
 
-func (self *Metadata) removeAll() {
-	os.RemoveAll(self.path)
-	os.RemoveAll(self.filesPath)
+func (self *Metadata) removeAll() error {
+	if err := os.RemoveAll(self.path); err != nil {
+		return err
+	}
+	return os.RemoveAll(self.filesPath)
 }
 
 func (self *Metadata) getState(name string) (string, bool) {
@@ -145,6 +147,21 @@ func (self *Metadata) remove(name string) { os.Remove(self.makePath(name)) }
 
 func (self *Metadata) resetHeartbeat() {
 	self.lastHeartbeat = time.Time{}
+}
+
+func (self *Metadata) checkedReset() error {
+	if state, _ := self.getState(""); state == "failed" {
+		if err := self.removeAll(); err != nil {
+			PrintInfo("runtime", "Cannot reset the stage because some folder contents could not be deleted.\n\nPlease resolve this error in order to continue running the pipeline:")
+			return err
+		}
+		PrintInfo("runtime", "(reset-partial)   %s", self.fqname)
+		self.mkdirs()
+		self.mutex.Lock()
+		self.contents = map[string]bool{}
+		self.mutex.Unlock()
+	}
+	return nil
 }
 
 func (self *Metadata) checkHeartbeat() {
@@ -673,6 +690,21 @@ func (self *Fork) reset() {
 	self.join_has_run = false
 }
 
+func (self *Fork) resetPartial() error {
+	if err := self.split_metadata.checkedReset(); err != nil {
+		return err
+	}
+	if err := self.join_metadata.checkedReset(); err != nil {
+		return err
+	}
+	for _, chunk := range self.chunks {
+		if err := chunk.metadata.checkedReset(); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
 func (self *Fork) collectMetadatas() []*Metadata {
 	metadatas := []*Metadata{self.metadata, self.split_metadata, self.join_metadata}
 	for _, chunk := range self.chunks {
@@ -1002,9 +1034,14 @@ func (self *Fork) postProcess() {
 					if _, err := os.Stat(filePath); err == nil {
 						if filePath, err := filepath.Rel(outsPath, filePath); err == nil {
 							mkdirAll(outsPath)
-							newValue := path.Join(outsPath, id)
-							if param.getTname() != "path" {
-								newValue += "." + param.getTname()
+							newValue := outsPath
+							if len(param.getOutName()) > 0 {
+								newValue = path.Join(newValue, param.getOutName())
+							} else {
+								newValue = path.Join(newValue, id)
+								if param.getTname() != "path" {
+									newValue += "." + param.getTname()
+								}
 							}
 							if err := os.Symlink(filePath, newValue); err != nil {
 								errMsg := err.Error()[strings.Index(err.Error(), newValue)+len(newValue)+1:]
@@ -1502,32 +1539,41 @@ func (self *Node) getState() string {
 }
 
 func (self *Node) reset() error {
-	PrintInfo("runtime", "(reset)           %s", self.fqname)
+	if self.rt.fullStageReset {
+		PrintInfo("runtime", "(reset)           %s", self.fqname)
 
-	// Blow away the entire stage node.
-	if err := os.RemoveAll(self.path); err != nil {
-		PrintInfo("runtime", "mrp cannot reset the stage because its folder contents could not be deleted. Error was:\n\n%s\n\nPlease resolve the error in order to continue running the pipeline.", err.Error())
-		return err
-	}
-	// Remove all related files from journal directory.
-	if files, err := filepath.Glob(path.Join(self.journalPath, self.fqname+"*")); err == nil {
-		for _, file := range files {
-			os.Remove(file)
+		// Blow away the entire stage node.
+		if err := os.RemoveAll(self.path); err != nil {
+			PrintInfo("runtime", "Cannot reset the stage because its folder contents could not be deleted.\n\nPlease resolve this error in order to continue running the pipeline:")
+			return err
 		}
+		// Remove all related files from journal directory.
+		if files, err := filepath.Glob(path.Join(self.journalPath, self.fqname+"*")); err == nil {
+			for _, file := range files {
+				os.Remove(file)
+			}
+		}
+
+		// Clear chunks in the forks so they can be rebuilt on split.
+		for _, fork := range self.forks {
+			fork.reset()
+		}
+
+		// Create stage node directories.
+		self.mkdirs()
+
+		// Load the metadata.
+		self.loadMetadata()
+
+		return nil
+	} else {
+		for _, fork := range self.forks {
+			if err := fork.resetPartial(); err != nil {
+				return err
+			}
+		}
+		return nil
 	}
-
-	// Clear chunks in the forks so they can be rebuilt on split.
-	for _, fork := range self.forks {
-		fork.reset()
-	}
-
-	// Create stage node directories.
-	self.mkdirs()
-
-	// Load the metadata.
-	self.loadMetadata()
-
-	return nil
 }
 
 func (self *Node) checkHeartbeats() {
@@ -1905,8 +1951,9 @@ func (self *Node) runJob(shellName string, fqname string, metadata *Metadata,
 		jobMode = "local"
 		jobManager = self.rt.LocalJobManager
 	}
-	padding := strings.Repeat(" ", int(math.Max(0, float64(10-len(jobMode)))))
-	msg := fmt.Sprintf("(run:%s) %s %s.%s", jobMode, padding, fqname, shellName)
+	jobModeLabel := strings.Replace(jobMode, ".template", "", -1)
+	padding := strings.Repeat(" ", int(math.Max(0, float64(10-len(path.Base(jobModeLabel))))))
+	msg := fmt.Sprintf("(run:%s) %s %s.%s", path.Base(jobModeLabel), padding, fqname, shellName)
 	if self.preflight {
 		LogInfo("runtime", msg)
 	} else {
@@ -2527,6 +2574,7 @@ type Runtime struct {
 	MroCache        *MroCache
 	JobManager      JobManager
 	LocalJobManager JobManager
+	fullStageReset  bool
 	enableStackVars bool
 	enableZip       bool
 	skipPreflight   bool
@@ -2537,12 +2585,12 @@ type Runtime struct {
 
 func NewRuntime(jobMode string, vdrMode string, profileMode string, martianVersion string) *Runtime {
 	return NewRuntimeWithCores(jobMode, vdrMode, profileMode, martianVersion,
-		-1, -1, -1, -1, -1, "", false, false, false, false, false, false, "")
+		-1, -1, -1, -1, -1, "", false, false, false, false, false, false, false, "")
 }
 
 func NewRuntimeWithCores(jobMode string, vdrMode string, profileMode string, martianVersion string,
 	reqCores int, reqMem int, reqMemPerCore int, maxJobs int, jobFreqMillis int, jobQueues string,
-	enableStackVars bool, enableZip bool, skipPreflight bool, enableMonitor bool,
+	fullStageReset bool, enableStackVars bool, enableZip bool, skipPreflight bool, enableMonitor bool,
 	debug bool, stest bool, onFinishExec string) *Runtime {
 
 	self := &Runtime{}
@@ -2551,6 +2599,7 @@ func NewRuntimeWithCores(jobMode string, vdrMode string, profileMode string, mar
 	self.jobMode = jobMode
 	self.vdrMode = vdrMode
 	self.profileMode = profileMode
+	self.fullStageReset = fullStageReset
 	self.enableStackVars = enableStackVars
 	self.enableZip = enableZip
 	self.skipPreflight = skipPreflight
