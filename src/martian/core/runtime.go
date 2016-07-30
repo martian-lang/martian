@@ -33,6 +33,7 @@ type Metadata struct {
 	path          string
 	contents      map[string]bool
 	filesPath     string
+	journalPath   string
 	lastHeartbeat time.Time
 	mutex         *sync.Mutex
 }
@@ -48,7 +49,14 @@ func NewMetadata(fqname string, p string) *Metadata {
 	self.path = p
 	self.contents = map[string]bool{}
 	self.filesPath = path.Join(p, "files")
+	self.journalPath = ""
 	self.mutex = &sync.Mutex{}
+	return self
+}
+
+func NewMetadataWithJournalPath(fqname string, p string, journalPath string) *Metadata {
+	self := NewMetadata(fqname, p)
+	self.journalPath = journalPath
 	return self
 }
 
@@ -151,6 +159,14 @@ func (self *Metadata) resetHeartbeat() {
 
 func (self *Metadata) checkedReset() error {
 	if state, _ := self.getState(""); state == "failed" {
+		// Remove all related files from journal directory.
+		if len(self.journalPath) > 0 {
+			if files, err := filepath.Glob(path.Join(self.journalPath, self.fqname+"*")); err == nil {
+				for _, file := range files {
+					os.Remove(file)
+				}
+			}
+		}
 		if err := self.removeAll(); err != nil {
 			PrintInfo("runtime", "Cannot reset the stage because some folder contents could not be deleted.\n\nPlease resolve this error in order to continue running the pipeline:")
 			return err
@@ -541,7 +557,7 @@ func NewChunk(nodable Nodable, fork *Fork, index int, chunkDef map[string]interf
 	self.chunkDef = chunkDef
 	self.path = path.Join(fork.path, fmt.Sprintf("chnk%d", index))
 	self.fqname = fork.fqname + fmt.Sprintf(".chnk%d", index)
-	self.metadata = NewMetadata(self.fqname, self.path)
+	self.metadata = NewMetadataWithJournalPath(self.fqname, self.path, self.node.journalPath)
 	self.hasBeenRun = false
 	if !self.node.split {
 		// If we're not splitting, just set the sole chunk's filesPath
@@ -1561,19 +1577,17 @@ func (self *Node) reset() error {
 
 		// Create stage node directories.
 		self.mkdirs()
-
-		// Load the metadata.
-		self.loadMetadata()
-
-		return nil
 	} else {
 		for _, fork := range self.forks {
 			if err := fork.resetPartial(); err != nil {
 				return err
 			}
 		}
-		return nil
 	}
+
+	// Refresh the metadata.
+	self.loadMetadata()
+	return nil
 }
 
 func (self *Node) checkHeartbeats() {
