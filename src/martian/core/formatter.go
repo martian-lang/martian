@@ -23,15 +23,11 @@ func (self *ValExp) format() string {
 	if self.Value == nil {
 		return "null"
 	}
+	if self.Kind == "int" {
+		return fmt.Sprintf("%d", self.Value)
+	}
 	if self.Kind == "float" {
-		// Use %f because %v prints using exp notation, which we don't want.
-		// Also, strip trailing zeroes.
-		re := regexp.MustCompile("0+$")
-		str := re.ReplaceAllString(fmt.Sprintf("%f", self.Value), "")
-		// Put back a zero if it's all zeroes after decimal point.
-		re = regexp.MustCompile("\\.$")
-		return re.ReplaceAllString(str, ".0")
-		return str
+		return fmt.Sprintf("%g", self.Value)
 	}
 	if self.Kind == "string" {
 		return fmt.Sprintf("\"%s\"", self.Value)
@@ -82,7 +78,7 @@ func (self *BindStms) format() string {
 //
 // Parameter
 //
-func paramFormat(param Param, modeWidth int, typeWidth int, idWidth int) string {
+func paramFormat(param Param, modeWidth int, typeWidth int, idWidth int, helpWidth int) string {
 	id := param.getId()
 	if id == "default" {
 		id = ""
@@ -92,6 +88,7 @@ func paramFormat(param Param, modeWidth int, typeWidth int, idWidth int) string 
 	modePad := strings.Repeat(" ", modeWidth-len(param.getMode()))
 	typePad := strings.Repeat(" ", typeWidth-len(param.getTname()))
 	idPad := strings.Repeat(" ", idWidth-len(id))
+	helpPad := strings.Repeat(" ", helpWidth-len(param.getHelp()))
 
 	// Common columns up to type name.
 	fsrc := fmt.Sprintf("%s%s%s%s %s", param.getNode().Comments, INDENT,
@@ -115,38 +112,50 @@ func paramFormat(param Param, modeWidth int, typeWidth int, idWidth int) string 
 		}
 		fsrc += fmt.Sprintf("%s  \"%s\"", idPad, param.getHelp())
 	}
+
+	// Add outname string if it exists.
+	if len(param.getOutName()) > 0 {
+		if param.getHelp() == "" {
+			fsrc += fmt.Sprintf("%s ", helpPad)
+		}
+		fsrc += fmt.Sprintf("%s  \"%s\"", helpPad, param.getOutName())
+	}
 	return fsrc + ","
 }
 
-func (self *Params) getWidths() (int, int, int) {
+func (self *Params) getWidths() (int, int, int, int) {
 	modeWidth := 0
 	typeWidth := 0
 	idWidth := 0
+	helpWidth := 0
 	for _, param := range self.List {
 		modeWidth = max(modeWidth, len(param.getMode()))
 		typeWidth = max(typeWidth, len(param.getTname())+2*param.getArrayDim())
 		idWidth = max(idWidth, len(param.getId()))
+		helpWidth = max(helpWidth, len(param.getHelp()))
 	}
-	return modeWidth, typeWidth, idWidth
+	return modeWidth, typeWidth, idWidth, helpWidth
 }
 
-func measureParamsWidths(paramsList []*Params) (int, int, int) {
+func measureParamsWidths(paramsList []*Params) (int, int, int, int) {
 	modeWidth := 0
 	typeWidth := 0
 	idWidth := 0
+	helpWidth := 0
 	for _, params := range paramsList {
-		mw, tw, iw := params.getWidths()
+		mw, tw, iw, hw := params.getWidths()
 		modeWidth = max(modeWidth, mw)
 		typeWidth = max(typeWidth, tw)
 		idWidth = max(idWidth, iw)
+		helpWidth = max(helpWidth, hw)
 	}
-	return modeWidth, typeWidth, idWidth
+	return modeWidth, typeWidth, idWidth, helpWidth
 }
 
-func (self *Params) format(modeWidth int, typeWidth int, idWidth int) string {
+func (self *Params) format(modeWidth int, typeWidth int, idWidth int, helpWidth int) string {
 	fsrc := ""
 	for _, param := range self.List {
-		fsrc += paramFormat(param, modeWidth, typeWidth, idWidth)
+		fsrc += paramFormat(param, modeWidth, typeWidth, idWidth, helpWidth)
 	}
 	return fsrc
 }
@@ -155,7 +164,7 @@ func (self *Params) format(modeWidth int, typeWidth int, idWidth int) string {
 // Pipeline, Call, Return
 //
 func (self *Pipeline) format() string {
-	modeWidth, typeWidth, idWidth := measureParamsWidths([]*Params{
+	modeWidth, typeWidth, idWidth, helpWidth := measureParamsWidths([]*Params{
 		self.InParams, self.OutParams,
 	})
 
@@ -168,8 +177,8 @@ func (self *Pipeline) format() string {
 
 	fsrc += NEWLINE
 	fsrc += fmt.Sprintf("pipeline %s(", self.Id)
-	fsrc += self.InParams.format(modeWidth, typeWidth, idWidth)
-	fsrc += self.OutParams.format(modeWidth, typeWidth, idWidth)
+	fsrc += self.InParams.format(modeWidth, typeWidth, idWidth, helpWidth)
+	fsrc += self.OutParams.format(modeWidth, typeWidth, idWidth, helpWidth)
 	fsrc += self.Node.Comments
 	fsrc += ")"
 	fsrc += NEWLINE
@@ -222,7 +231,7 @@ func (self *ReturnStm) format() string {
 // Stage
 //
 func (self *Stage) format() string {
-	modeWidth, typeWidth, idWidth := measureParamsWidths([]*Params{
+	modeWidth, typeWidth, idWidth, helpWidth := measureParamsWidths([]*Params{
 		self.InParams, self.OutParams, self.SplitParams,
 	})
 
@@ -234,14 +243,14 @@ func (self *Stage) format() string {
 	}
 
 	fsrc += fmt.Sprintf("stage %s(", self.Id)
-	fsrc += self.InParams.format(modeWidth, typeWidth, idWidth)
-	fsrc += self.OutParams.format(modeWidth, typeWidth, idWidth)
+	fsrc += self.InParams.format(modeWidth, typeWidth, idWidth, helpWidth)
+	fsrc += self.OutParams.format(modeWidth, typeWidth, idWidth, helpWidth)
 	fsrc += self.Src.format(modeWidth, typeWidth, idWidth)
 	fsrc += self.Node.Comments
 	fsrc += ")"
 	if self.Split {
 		fsrc += " split using ("
-		fsrc += self.SplitParams.format(modeWidth, typeWidth, idWidth)
+		fsrc += self.SplitParams.format(modeWidth, typeWidth, idWidth, helpWidth)
 		fsrc += NEWLINE + ")"
 	}
 	return fsrc
