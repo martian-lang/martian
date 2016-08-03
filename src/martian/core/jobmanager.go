@@ -562,7 +562,7 @@ func verifyJobManager(jobMode string, memGBPerCore int) (*JobManagerSettings, st
 	}
 
 	// Check if memory reservations or mempercore are enabled
-	if !strings.Contains(jobTemplate, "__MRO_MEM_GB__") && !strings.Contains(jobTemplate, "__MRO_MEM_MB__") && memGBPerCore <= 0 {
+	if !strings.Contains(jobTemplate, "__MRO_MEM_GB") && !strings.Contains(jobTemplate, "__MRO_MEM_MB") && memGBPerCore <= 0 {
 		Println("\nCLUSTER MODE WARNING:\n   Memory reservations are not enabled in your job template.\n   To avoid memory over-subscription, we highly recommend that you enable\n   memory reservations on your cluster, or use the --mempercore option.\nPlease consult the documentation for details.\n")
 	}
 
