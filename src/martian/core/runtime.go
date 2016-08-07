@@ -227,17 +227,18 @@ func (self *Metadata) serializePerf(numThreads int) *PerfInfo {
 // Binding
 //=============================================================================
 type Binding struct {
-	node       *Node
-	id         string
-	tname      string
-	sweep      bool
-	waiting    bool
-	valexp     string
-	mode       string
-	parentNode Nodable
-	boundNode  Nodable
-	output     string
-	value      interface{}
+	node        *Node
+	id          string
+	tname       string
+	sweep       bool
+	sweepRootId string
+	waiting     bool
+	valexp      string
+	mode        string
+	parentNode  Nodable
+	boundNode   Nodable
+	output      string
+	value       interface{}
 }
 
 type BindingInfo struct {
@@ -246,7 +247,8 @@ type BindingInfo struct {
 	ValExp      string      `json:"valexp"`
 	Mode        string      `json:"mode"`
 	Output      string      `json:"output"`
-	Sweep       bool        `json:"bool"`
+	Sweep       bool        `json:"sweep"`
+	SweepRootId string      `json:"sweepRootId"`
 	Node        interface{} `json:"node"`
 	MatchedFork interface{} `json:"matchedFork"`
 	Value       interface{} `json:"value"`
@@ -259,6 +261,7 @@ func newBinding(node *Node, bindStm *BindStm, returnBinding bool) *Binding {
 	self.id = bindStm.Id
 	self.tname = bindStm.Tname
 	self.sweep = bindStm.Sweep
+	self.sweepRootId = bindStm.Id
 	self.waiting = false
 	switch valueExp := bindStm.Exp.(type) {
 	case *RefExp:
@@ -273,6 +276,7 @@ func newBinding(node *Node, bindStm *BindStm, returnBinding bool) *Binding {
 				self.node = parentBinding.node
 				self.tname = parentBinding.tname
 				self.sweep = parentBinding.sweep
+				self.sweepRootId = parentBinding.sweepRootId
 				self.waiting = parentBinding.waiting
 				self.mode = parentBinding.mode
 				self.parentNode = parentBinding.parentNode
@@ -390,6 +394,7 @@ func (self *Binding) serializeState(argPermute map[string]interface{}) *BindingI
 		Mode:        self.mode,
 		Output:      self.output,
 		Sweep:       self.sweep,
+		SweepRootId: self.sweepRootId,
 		Node:        node,
 		MatchedFork: matchedFork,
 		Value:       self.resolve(argPermute),
@@ -866,7 +871,12 @@ func (self *Fork) step() {
 		state := self.getState()
 		if !strings.HasSuffix(state, "_running") && !strings.HasSuffix(state, "_queued") {
 			statePad := strings.Repeat(" ", int(math.Max(0, float64(15-len(state)))))
-			msg := fmt.Sprintf("(%s)%s %s", state, statePad, self.node.fqname)
+			// Only log fork num if we've got more than one fork
+			fqname := self.node.fqname
+			if len(self.node.forks) > 1 {
+				fqname = self.fqname
+			}
+			msg := fmt.Sprintf("(%s)%s %s", state, statePad, fqname)
 			if self.node.preflight {
 				LogInfo("runtime", msg)
 			} else {
@@ -1348,32 +1358,48 @@ func (self *Node) mkdirs() {
 //
 // Sweep management
 //
-func (self *Node) buildForks(bindings map[string]*Binding) {
-	// Use a map to uniquify bindings by id.
+func (self *Node) buildUniqueSweepBindings(bindings map[string]*Binding) {
+	// Add all unique sweep bindings to self.sweepbindings.
+	// Make sure to use sweepRootId to uniquify and not just id.
+	// This will ensure stages bind a sweep value to differently
+	// named local params will not create unnecessary fork multiplication.
+
 	bindingTable := map[string]*Binding{}
 
 	// Add local sweep bindings.
 	for _, binding := range bindings {
 		if binding.sweep {
-			bindingTable[binding.id] = binding
+			bindingTable[binding.sweepRootId] = binding
 		}
 	}
 	// Add upstream sweep bindings (from prenodes).
 	for _, prenode := range self.prenodes {
 		for _, binding := range prenode.getNode().sweepbindings {
-			bindingTable[binding.id] = binding
+			bindingTable[binding.sweepRootId] = binding
 		}
 	}
 
-	for _, binding := range bindingTable {
+	// Sort keys in bindingTable to ensure stable fork ordering.
+	ids := []string{}
+	for id, _ := range bindingTable {
+		ids = append(ids, id)
+	}
+	sort.Strings(ids)
+
+	// Save sorted, unique sweep bindings.
+	for _, id := range ids {
+		binding := bindingTable[id]
 		self.sweepbindings = append(self.sweepbindings, binding)
 	}
+}
 
-	// Add all unique bindings to self.sweepbindings.
+func (self *Node) buildForks(bindings map[string]*Binding) {
+	self.buildUniqueSweepBindings(bindings)
+
+	// Expand out sweep values for each binding.
 	paramIds := []string{}
 	argRanges := []interface{}{}
 	for _, binding := range self.sweepbindings {
-		//  self.sweepbindings = append(self.sweepbindings, binding)
 		paramIds = append(paramIds, binding.id)
 		argRanges = append(argRanges, binding.resolve(nil))
 	}
@@ -1387,6 +1413,7 @@ func (self *Node) buildForks(bindings map[string]*Binding) {
 		self.forks = append(self.forks, NewFork(self, i, argPermute))
 	}
 
+	// Match forks with their parallel, same-value upstream forks.
 	for _, fork := range self.forks {
 		for _, subnode := range self.subnodes {
 			if matchedFork := subnode.getNode().matchFork(fork.argPermute); matchedFork != nil {
