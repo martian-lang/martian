@@ -175,7 +175,7 @@ func (self *LocalJobManager) Enqueue(shellCmd string, argv []string, envs map[st
 		}
 		self.coreSem.P(threads)
 		if self.debug {
-			LogInfo("jobmngr", "Acquiring %d core%s (%d/%d in use)", threads,
+			LogInfo("jobmngr", "Acquired %d core%s (%d/%d in use)", threads,
 				Pluralize(threads), self.coreSem.len(), self.maxCores)
 		}
 

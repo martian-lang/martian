@@ -355,7 +355,10 @@ func (self *Binding) resolve(argPermute map[string]interface{}) interface{} {
 		}
 		// Replace literal sweep ranges with specific permuted argument values.
 		if self.sweep {
-			return argPermute[self.id]
+			// This needs to use self.sweepRootId because argPermute
+			// is populated with sweepRootId's (not just id's) in buildForks.
+			// This is required for proper forking when param names don't match.
+			return argPermute[self.sweepRootId]
 		} else {
 			return self.value
 		}
