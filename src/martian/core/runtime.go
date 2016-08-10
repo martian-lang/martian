@@ -1403,7 +1403,10 @@ func (self *Node) buildForks(bindings map[string]*Binding) {
 	paramIds := []string{}
 	argRanges := []interface{}{}
 	for _, binding := range self.sweepbindings {
-		paramIds = append(paramIds, binding.id)
+		// This needs to use self.sweepRootId because Binding::resolve
+		// will also match using sweepRootId, not id.
+		// This is required for proper forking when param names don't match.
+		paramIds = append(paramIds, binding.sweepRootId)
 		argRanges = append(argRanges, binding.resolve(nil))
 	}
 
