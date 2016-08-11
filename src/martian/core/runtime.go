@@ -2082,12 +2082,13 @@ type Pipestance struct {
 func (self *Pipestance) OnFinishHook() {
 	exec_path := self.getNode().rt.onFinishExec
 	if exec_path != "" {
-		/* Build command line arguments:
-		 *$1 = path to piestance
-		 *$2 = {complete|failed}
-		 *$3 = pipestance ID
-		 *$4 = path to error file (if there was an error)
-		 */
+		Println("\nRunning onfinish handler...")
+
+		// Build command line arguments:
+		// $1 = path to piestance
+		// $2 = {complete|failed}
+		// $3 = pipestance ID
+		// $4 = path to error file (if there was an error)
 		args := []string{exec_path, self.GetPath(), self.GetState(), self.getNode().name}
 		if self.GetState() == "failed" {
 			_, _, _, _, _, err_paths := self.GetFatalError()
@@ -2104,24 +2105,24 @@ func (self *Pipestance) OnFinishHook() {
 		/* Find the real path to the script */
 		real_path, err := exec.LookPath(exec_path)
 		if err != nil {
-			LogInfo("runtime", "Can't find: %v: %v", exec_path, err)
+			LogInfo("finishr", "Could not find %v: %v", exec_path, err)
 			return
 		}
 
 		/* Run it */
 		p, err := os.StartProcess(real_path, args, &pa)
 		if err != nil {
-			LogInfo("runtime", "Can't run %v: %v", real_path, err)
+			LogInfo("finishr", "Could not run %v: %v", real_path, err)
 			return
 		}
 
 		/* Wait for it to finish */
 		res, err := p.Wait()
 		if err != nil {
-			LogInfo("Error running %v: %v", real_path, err)
+			LogInfo("finishr", "Error running %v: %v", real_path, err)
 		}
 		if !res.Success() {
-			LogInfo("runtime", "%v exited with non-zero status.", real_path)
+			LogInfo("finishr", "%v exited with non-zero status.", real_path)
 		}
 	}
 }
@@ -2310,7 +2311,7 @@ func (self *Pipestance) Serialize(name string) interface{} {
 		}
 	}
 	if name == "perf" {
-		LogInfo("perf", "pipestance serialize")
+		LogInfo("perform", "Serializing pipestance performance data.")
 		if len(ser) > 0 {
 			self.ComputeDiskUsage(ser[0].(*NodePerfInfo))
 		}
