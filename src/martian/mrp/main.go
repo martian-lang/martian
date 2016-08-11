@@ -342,7 +342,7 @@ Options:
 	// Print this here because the log makes more sense when this appears before
 	// the runloop messages start to appear.
 	if enableUI {
-		core.Println("Serving UI at http://%s:%s", hostname, uiport)
+		core.Println("Serving UI at http://%s:%s\n", hostname, uiport)
 	} else {
 		core.LogInfo("webserv", "UI disabled.")
 	}
@@ -372,7 +372,7 @@ Options:
 		core.DieIf(err)
 	}
 	if executingPreflight {
-		core.Println("\nRunning preflight checks (please wait)...")
+		core.Println("Running preflight checks (please wait)...")
 	}
 
 	// Start writing (including cached entries) to log file.
