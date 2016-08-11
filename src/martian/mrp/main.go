@@ -53,7 +53,7 @@ func runLoop(pipestance *core.Pipestance, stepSecs int, vdrMode string,
 				showedComplete = true
 			}
 			if noExit {
-				core.Println("Pipestance completed successfully, staying alive because --noexit given.")
+				core.Println("Pipestance completed successfully, staying alive because --noexit given.\n")
 				break
 			} else {
 				if enableUI {
@@ -61,7 +61,7 @@ func runLoop(pipestance *core.Pipestance, stepSecs int, vdrMode string,
 					core.Println("Waiting %d seconds for UI to do final refresh.", WAIT_SECS)
 					time.Sleep(time.Second * time.Duration(WAIT_SECS))
 				}
-				core.Println("Pipestance completed successfully!")
+				core.Println("Pipestance completed successfully!\n")
 				os.Exit(0)
 			}
 		} else if state == "failed" {
@@ -89,14 +89,14 @@ func runLoop(pipestance *core.Pipestance, stepSecs int, vdrMode string,
 				// as long as we stay failed.
 				if !showedFailed {
 					showedFailed = true
-					core.Println("Pipestance failed, staying alive because --noexit given.")
+					core.Println("Pipestance failed, staying alive because --noexit given.\n")
 				}
 			} else {
 				if enableUI {
 					// Give time for web ui client to get last update.
 					core.Println("Waiting %d seconds for UI to do final refresh.", WAIT_SECS)
 					time.Sleep(time.Second * time.Duration(WAIT_SECS))
-					core.Println("Pipestance failed. Use --noexit option to keep UI running after failure.")
+					core.Println("Pipestance failed. Use --noexit option to keep UI running after failure.\n")
 				}
 				os.Exit(1)
 			}
