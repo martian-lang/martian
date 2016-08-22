@@ -18,6 +18,7 @@ func unquote(qs string) string {
 
 %union{
     global    *Ast
+    locmap    []FileLoc
     arr       int
     loc       int
     val       string
@@ -94,7 +95,7 @@ dec_list
 
 dec
     : FILETYPE id_list SEMICOLON
-        {{ $$ = &Filetype{NewAstNode(&mmlval), $2} }}
+        {{ $$ = &UserType{NewAstNode(&mmlval), $2} }}
     | STAGE ID LPAREN in_param_list out_param_list src_stm RPAREN
         {{ $$ = &Stage{NewAstNode(&mmlval), $2, $4, $5, $6, &Params{[]Param{}, map[string]Param{}}, false} }}
     | STAGE ID LPAREN in_param_list out_param_list src_stm RPAREN split_param_list

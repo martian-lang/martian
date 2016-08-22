@@ -80,6 +80,7 @@ type mmLexInfo struct {
 	loc    int    // Keep track of the line number
 	token  string // Cache the last token for error messaging
 	global *Ast
+	locmap []FileLoc
 }
 
 func (self *mmLexInfo) Lex(lval *mmSymType) int {
@@ -117,19 +118,24 @@ func (self *mmLexInfo) Lex(lval *mmSymType) int {
 		self.token = val
 		lval.val = val
 		lval.loc = self.loc // give grammar rules access to loc
+
+		// give NewAstNode access to locmap to calculate file-local locations
+		lval.locmap = self.locmap
+		lval.global = self.global
+
 		return r.tokid
 	}
 }
 
 func (self *mmLexInfo) Error(s string) {}
 
-func yaccParse(src string) (*Ast, *mmLexInfo) {
+func yaccParse(src string, locmap []FileLoc) (*Ast, *mmLexInfo) {
 	lexinfo := mmLexInfo{
 		src:    src,
 		pos:    0,
 		loc:    1,
 		token:  "",
-		global: &Ast{},
+		locmap: locmap,
 	}
 	if mmParse(&lexinfo) != 0 {
 		return nil, &lexinfo // return lex on error to provide loc and token info
