@@ -425,8 +425,12 @@ func (self *RemoteJobManager) sendJob(shellCmd string, argv []string, envs map[s
 		"CMD":               strings.Join(argv, " "),
 		"MEM_GB":            fmt.Sprintf("%d", memGB),
 		"MEM_MB":            fmt.Sprintf("%d", memGB*1024),
+		"MEM_KB":            fmt.Sprintf("%d", memGB*1024*1024),
+		"MEM_B":             fmt.Sprintf("%d", memGB*1024*1024*1024),
 		"MEM_GB_PER_THREAD": fmt.Sprintf("%d", memGBPerThread),
 		"MEM_MB_PER_THREAD": fmt.Sprintf("%d", memGBPerThread*1024),
+		"MEM_KB_PER_THREAD": fmt.Sprintf("%d", memGBPerThread*1024*1024),
+		"MEM_B_PER_THREAD":  fmt.Sprintf("%d", memGBPerThread*1024*1024*1024),
 		"RESOURCES":         mappedJobResourcesOpt,
 	}
 
