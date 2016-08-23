@@ -901,19 +901,29 @@ func (self *Fork) step() {
 				self.split_metadata.writeTime("complete")
 			}
 		} else if state == "split_complete" {
-			if err := json.Unmarshal([]byte(self.split_metadata.readRaw("stage_defs")), &self.stageDefs); err != nil || len(self.stageDefs.ChunkDefs) == 0 {
-				self.split_metadata.writeRaw("errors",
-					"The split method must return a dictionary {'chunks': [chunk def dicts], 'join': join def dict} but did not.\n")
-			} else {
-				if len(self.chunks) == 0 {
-					for i, chunkDef := range self.stageDefs.ChunkDefs {
-						chunk := NewChunk(self.node, self, i, chunkDef)
-						self.chunks = append(self.chunks, chunk)
-						chunk.mkdirs()
+			// MARTIAN-395 We have observed a possible race condition where
+			// split_complete could be detected but _stage_defs is not
+			// written yet or is corrupted. Check that stage_defs exists
+			// before attempting to read and unmarshal it.
+			if self.split_metadata.exists("stage_defs") {
+				if err := json.Unmarshal([]byte(self.split_metadata.readRaw("stage_defs")), &self.stageDefs); err != nil || len(self.stageDefs.ChunkDefs) == 0 {
+					errstring := "none"
+					if err != nil {
+						errstring = err.Error()
 					}
-				}
-				for _, chunk := range self.chunks {
-					chunk.step()
+					self.split_metadata.writeRaw("errors",
+						fmt.Sprintf("The split method did not return a dictionary {'chunks': [{}], 'join': {}}.\nError: %s\nChunk count: %d", errstring, len(self.stageDefs.ChunkDefs)))
+				} else {
+					if len(self.chunks) == 0 {
+						for i, chunkDef := range self.stageDefs.ChunkDefs {
+							chunk := NewChunk(self.node, self, i, chunkDef)
+							self.chunks = append(self.chunks, chunk)
+							chunk.mkdirs()
+						}
+					}
+					for _, chunk := range self.chunks {
+						chunk.step()
+					}
 				}
 			}
 		} else if state == "chunks_complete" {
