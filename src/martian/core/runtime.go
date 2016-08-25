@@ -2936,7 +2936,7 @@ func (self *MroCache) CacheMros(mroPaths []string) {
 		fpaths, _ := filepath.Glob(mroPath + "/[^_]*.mro")
 		for _, fpath := range fpaths {
 			if data, err := ioutil.ReadFile(fpath); err == nil {
-				if _, _, ast, err := parseSource(string(data), fpath, mroPaths, true); err == nil {
+				if _, _, ast, errs := parseSource(string(data), fpath, mroPaths, true); len(errs) == 0 {
 					for _, callable := range ast.Callables.Table {
 						self.callableTable[mroPath][callable.getId()] = callable
 						if _, ok := callable.(*Pipeline); ok {
