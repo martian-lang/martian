@@ -21,6 +21,8 @@ import (
 	"strings"
 	"sync"
 	"time"
+
+	"github.com/satori/go.uuid"
 )
 
 const heartbeatTimeout = 60 // 60 minutes
@@ -2767,13 +2769,14 @@ func (self *Runtime) InvokePipeline(src string, srcPath string, psid string,
 	// Write top-level metadata files.
 	metadata := NewMetadata("ID."+psid, pipestancePath)
 	metadata.writeRaw("invocation", src)
-	metadata.writeRaw("mrosource", postsrc)
 	metadata.writeRaw("jobmode", self.jobMode)
+	metadata.writeRaw("mrosource", postsrc)
 	metadata.write("versions", map[string]string{
 		"martian":   self.martianVersion,
 		"pipelines": mroVersion,
 	})
 	metadata.write("tags", tags)
+	metadata.writeRaw("uuid", uuid.NewV4().String())
 	metadata.writeRaw("timestamp", "start: "+Timestamp())
 
 	return pipestance, nil
