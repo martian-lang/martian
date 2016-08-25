@@ -182,6 +182,7 @@ type (
 func NewAst(decs []Dec, call *CallStm) *Ast {
 	self := &Ast{}
 	self.UserTypes = []*UserType{}
+    self.UserTypeTable = map[string]*UserType{}
 	self.TypeTable = map[string]Type{}
 	self.Stages = []*Stage{}
 	self.Pipelines = []*Pipeline{}
