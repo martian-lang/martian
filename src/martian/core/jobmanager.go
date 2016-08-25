@@ -197,7 +197,9 @@ func (self *LocalJobManager) Enqueue(shellCmd string, argv []string,
 		if stdoutFile, err := os.Create(stdoutPath); err == nil {
 			stdoutFile.WriteString("[stdout]\n")
 			// If preflight stage, let stdout go to the console
-			if !preflight {
+			if preflight {
+				cmd.Stdout = os.Stdout
+			} else {
 				cmd.Stdout = stdoutFile
 			}
 			defer stdoutFile.Close()
@@ -205,7 +207,9 @@ func (self *LocalJobManager) Enqueue(shellCmd string, argv []string,
 		if stderrFile, err := os.Create(stderrPath); err == nil {
 			stderrFile.WriteString("[stderr]\n")
 			// If preflight stage, let stderr go to the console
-			if !preflight {
+			if preflight {
+				cmd.Stderr = os.Stderr
+			} else {
 				cmd.Stderr = stderrFile
 			}
 			defer stderrFile.Close()
