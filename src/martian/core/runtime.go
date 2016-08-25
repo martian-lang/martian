@@ -2680,18 +2680,20 @@ func NewRuntimeWithCores(jobMode string, vdrMode string, profileMode string, mar
 }
 
 // Compile all the MRO files in mroPaths.
-func (self *Runtime) CompileAll(mroPaths []string, checkSrcPath bool) (int, error) {
+func (self *Runtime) CompileAll(mroPaths []string, checkSrcPath bool) (int, []*Ast, []error) {
 	numFiles := 0
+	allErrs := []error{}
+	asts := []*Ast{}
 	for _, mroPath := range mroPaths {
 		fpaths, _ := filepath.Glob(mroPath + "/[^_]*.mro")
 		for _, fpath := range fpaths {
-			if _, _, _, err := Compile(fpath, mroPaths, checkSrcPath); err != nil {
-				return 0, err
-			}
+			_, _, ast, errs := Compile(fpath, mroPaths, checkSrcPath)
+			allErrs = append(allErrs, errs...)
+			asts = append(asts, ast)
 		}
 		numFiles += len(fpaths)
 	}
-	return numFiles, nil
+	return numFiles, asts, allErrs
 }
 
 // Instantiate a pipestance object given a psid, MRO source, and a
@@ -2701,9 +2703,9 @@ func (self *Runtime) instantiatePipeline(src string, srcPath string, psid string
 	pipestancePath string, mroPaths []string, mroVersion string,
 	envs map[string]string, readOnly bool) (string, *Pipestance, error) {
 	// Parse the invocation source.
-	postsrc, _, ast, err := parseSource(src, srcPath, mroPaths, !readOnly)
-	if err != nil {
-		return "", nil, err
+	postsrc, _, ast, errs := parseSource(src, srcPath, mroPaths, !readOnly)
+	if len(errs) > 0 {
+		return "", nil, errs[0]
 	}
 
 	// Check there's a call.
@@ -2858,9 +2860,9 @@ func (self *Runtime) InvokeStage(src string, srcPath string, ssid string,
 
 	// Parse the invocation source.
 	src = os.ExpandEnv(src)
-	_, _, ast, err := parseSource(src, srcPath, mroPaths, true)
-	if err != nil {
-		return nil, err
+	_, _, ast, errs := parseSource(src, srcPath, mroPaths, true)
+	if len(errs) > 0 {
+		return nil, errs[0]
 	}
 
 	// Check there's a call.
@@ -3016,9 +3018,9 @@ func (self *Runtime) BuildCallSource(incpaths []string, name string, args map[st
 }
 
 func (self *Runtime) BuildCallJSON(src string, srcPath string, mroPaths []string) (map[string]interface{}, error) {
-	_, incpaths, ast, err := parseSource(src, srcPath, mroPaths, false)
-	if err != nil {
-		return nil, err
+	_, incpaths, ast, errs := parseSource(src, srcPath, mroPaths, false)
+	if len(errs) > 0 {
+		return nil, errs[0]
 	}
 
 	if ast.Call == nil {

@@ -157,22 +157,13 @@ func (self *PreprocessError) Error() string {
 
 // AstError
 type AstError struct {
-	global  *Ast
-	locable Locatable
-	msg     string
+	global *Ast
+	Node   *AstNode
+	Msg    string
 }
 
 func (self *AstError) Error() string {
-	// If there's no newline at the end of the source and the error is in the
-	// node at the end of the file, the loc can be one larger than the size
-	// of the locmap. So cap it so we don't have an array out of bounds.
-	loc := self.locable.getLoc()
-	if loc >= len(self.global.Locmap) {
-		loc = len(self.global.Locmap) - 1
-	}
-	return fmt.Sprintf("MRO %s at %s:%d.", self.msg,
-		self.global.Locmap[loc].fname,
-		self.global.Locmap[loc].loc)
+	return fmt.Sprintf("MRO %s at %s:%d.", self.Msg, self.Node.Fname, self.Node.Loc)
 }
 
 // ParseError
