@@ -168,13 +168,14 @@ type (
 	}
 
 	Ast struct {
-		UserTypes []*UserType
-		TypeTable map[string]Type
-		Stages    []*Stage
-		Pipelines []*Pipeline
-		Callables *Callables
-		Call      *CallStm
-		Errors    []error
+		UserTypes     []*UserType
+		UserTypeTable map[string]*UserType
+		TypeTable     map[string]Type
+		Stages        []*Stage
+		Pipelines     []*Pipeline
+		Callables     *Callables
+		Call          *CallStm
+		Errors        []error
 	}
 )
 

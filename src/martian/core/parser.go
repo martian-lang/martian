@@ -44,7 +44,7 @@ func (params *Params) check(global *Ast) {
 		}
 
 		// Cache if param is file or path.
-		_, ok := global.TypeTable[param.getTname()]
+		_, ok := global.UserTypeTable[param.getTname()]
 		param.setIsFile(ok)
 
 	}
@@ -59,7 +59,7 @@ func (exp *ValExp) resolveType(global *Ast, callable Callable) ([]string, int) {
 
 	// Handle strings (which could be files too).
 	case "string":
-		for t, _ := range global.TypeTable {
+		for t, _ := range global.UserTypeTable {
 			if strings.HasSuffix(exp.Value.(string), t) {
 				return []string{"string", t}, 0
 			}
@@ -73,9 +73,9 @@ func (exp *ValExp) resolveType(global *Ast, callable Callable) ([]string, int) {
 			return arrayKind, arrayDim + 1
 		}
 		return []string{"null"}, 1
-	// File: look for matching t in type table
+	// File: look for matching t in user/file type table
 	case "file":
-		for t, _ := range global.TypeTable {
+		for t, _ := range global.UserTypeTable {
 			if strings.HasSuffix(exp.Value.(string), t) {
 				return []string{t}, 0
 			}
@@ -206,6 +206,7 @@ func (global *Ast) check(stagecodePaths []string, checkSrcPath bool) {
 	}
 	for _, userType := range global.UserTypes {
 		global.TypeTable[userType.Id] = userType
+		global.UserTypeTable[userType.Id] = userType
 	}
 
 	// Check for duplicate names amongst callables.
