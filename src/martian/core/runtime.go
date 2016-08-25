@@ -21,6 +21,8 @@ import (
 	"strings"
 	"sync"
 	"time"
+
+	"github.com/satori/go.uuid"
 )
 
 const heartbeatTimeout = 60 // 60 minutes
@@ -2029,7 +2031,8 @@ func (self *Node) runJob(shellName string, fqname string, metadata *Metadata,
 		"invocation":     self.invocation,
 		"version":        version,
 	})
-	jobManager.execJob(shellCmd, argv, envs, metadata, threads, memGB, special, fqname, shellName, self.preflight)
+	jobManager.execJob(shellCmd, argv, envs, metadata, threads, memGB, special, fqname,
+		shellName, self.preflight && self.local)
 	ExitCriticalSection()
 }
 
@@ -2766,13 +2769,14 @@ func (self *Runtime) InvokePipeline(src string, srcPath string, psid string,
 	// Write top-level metadata files.
 	metadata := NewMetadata("ID."+psid, pipestancePath)
 	metadata.writeRaw("invocation", src)
-	metadata.writeRaw("mrosource", postsrc)
 	metadata.writeRaw("jobmode", self.jobMode)
+	metadata.writeRaw("mrosource", postsrc)
 	metadata.write("versions", map[string]string{
 		"martian":   self.martianVersion,
 		"pipelines": mroVersion,
 	})
 	metadata.write("tags", tags)
+	metadata.writeRaw("uuid", uuid.NewV4().String())
 	metadata.writeRaw("timestamp", "start: "+Timestamp())
 
 	return pipestance, nil
@@ -2936,7 +2940,7 @@ func (self *MroCache) CacheMros(mroPaths []string) {
 		fpaths, _ := filepath.Glob(mroPath + "/[^_]*.mro")
 		for _, fpath := range fpaths {
 			if data, err := ioutil.ReadFile(fpath); err == nil {
-				if _, _, ast, err := parseSource(string(data), fpath, mroPaths, true); err == nil {
+				if _, _, ast, errs := parseSource(string(data), fpath, mroPaths, true); len(errs) == 0 {
 					for _, callable := range ast.Callables.Table {
 						self.callableTable[mroPath][callable.getId()] = callable
 						if _, ok := callable.(*Pipeline); ok {

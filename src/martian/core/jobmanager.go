@@ -156,7 +156,7 @@ func (self *LocalJobManager) GetSystemReqs(threads int, memGB int) (int, int) {
 
 func (self *LocalJobManager) Enqueue(shellCmd string, argv []string,
 	envs map[string]string, metadata *Metadata, threads int, memGB int,
-	fqname string, retries int, waitTime int, preflight bool) {
+	fqname string, retries int, waitTime int, localpreflight bool) {
 
 	time.Sleep(time.Second * time.Duration(waitTime))
 	go func() {
@@ -196,18 +196,17 @@ func (self *LocalJobManager) Enqueue(shellCmd string, argv []string,
 		// Set up _stdout and _stderr for the job.
 		if stdoutFile, err := os.Create(stdoutPath); err == nil {
 			stdoutFile.WriteString("[stdout]\n")
-			// If preflight stage, let stdout go to the console
-			if !preflight {
+			// If local preflight stage, let stdout go to the console
+			if localpreflight {
+				cmd.Stdout = os.Stdout
+			} else {
 				cmd.Stdout = stdoutFile
 			}
 			defer stdoutFile.Close()
 		}
 		if stderrFile, err := os.Create(stderrPath); err == nil {
 			stderrFile.WriteString("[stderr]\n")
-			// If preflight stage, let stderr go to the console
-			if !preflight {
-				cmd.Stderr = stderrFile
-			}
+			cmd.Stderr = stderrFile
 			defer stderrFile.Close()
 		}
 
@@ -234,7 +233,8 @@ func (self *LocalJobManager) Enqueue(shellCmd string, argv []string,
 				metadata.writeRaw("errors", err.Error())
 			} else {
 				LogInfo("jobmngr", "Job failed: %s. Retrying job %s in %d seconds", err.Error(), fqname, waitTime)
-				self.Enqueue(shellCmd, argv, envs, metadata, threads, memGB, fqname, retries, waitTime, preflight)
+				self.Enqueue(shellCmd, argv, envs, metadata, threads, memGB, fqname, retries,
+					waitTime, localpreflight)
 			}
 		}
 
@@ -356,7 +356,7 @@ func (self *RemoteJobManager) GetSystemReqs(threads int, memGB int) (int, int) {
 
 func (self *RemoteJobManager) execJob(shellCmd string, argv []string,
 	envs map[string]string, metadata *Metadata, threads int, memGB int,
-	special string, fqname string, shellName string, preflight bool) {
+	special string, fqname string, shellName string, localpreflight bool) {
 
 	// no limit, send the job
 	if self.maxJobs <= 0 {
