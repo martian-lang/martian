@@ -2029,7 +2029,8 @@ func (self *Node) runJob(shellName string, fqname string, metadata *Metadata,
 		"invocation":     self.invocation,
 		"version":        version,
 	})
-	jobManager.execJob(shellCmd, argv, envs, metadata, threads, memGB, special, fqname, shellName, self.preflight)
+	jobManager.execJob(shellCmd, argv, envs, metadata, threads, memGB, special, fqname,
+		shellName, self.preflight && self.local)
 	ExitCriticalSection()
 }
 
