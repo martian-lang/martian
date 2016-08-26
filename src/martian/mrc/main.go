@@ -50,28 +50,24 @@ Options:
 	count := 0
 	if opts["--all"].(bool) {
 		// Compile all MRO files in MRO path.
-		num, asts, errs := rt.CompileAll(mroPaths, checkSrcPath)
+		num, asts, err := rt.CompileAll(mroPaths, checkSrcPath)
+
+		if err != nil {
+			fmt.Fprintln(os.Stderr, err.Error())
+			os.Exit(1)
+		}
 
 		if opts["--json"].(bool) {
 			fmt.Printf("%s", core.JsonDumpAsts(asts))
-		}
-
-		if len(errs) > 0 {
-			for _, err := range errs {
-				fmt.Fprintln(os.Stderr, err.Error())
-			}
-			os.Exit(1)
 		}
 
 		count += num
 	} else {
 		// Compile just the specified MRO files.
 		for _, fname := range opts["<file.mro>"].([]string) {
-			_, _, _, errs := core.Compile(path.Join(cwd, fname), mroPaths, checkSrcPath)
-			if len(errs) > 0 {
-				for _, err := range errs {
-					fmt.Fprintln(os.Stderr, err.Error())
-				}
+			_, _, _, err := core.Compile(path.Join(cwd, fname), mroPaths, checkSrcPath)
+			if err != nil {
+				fmt.Fprintln(os.Stderr, err.Error())
 				os.Exit(1)
 			}
 			count++

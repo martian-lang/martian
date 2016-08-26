@@ -312,40 +312,6 @@ func (self *Ast) format() string {
 	return fsrc
 }
 
-func JsonDumpAsts(asts []*Ast) string {
-	type JsonDump struct {
-		UserTypes map[string]*UserType
-		Stages    map[string]*Stage
-		Pipelines map[string]*Pipeline
-		Errors    []error
-	}
-
-	jd := JsonDump{
-		UserTypes: map[string]*UserType{},
-		Stages:    map[string]*Stage{},
-		Pipelines: map[string]*Pipeline{},
-		Errors:    []error{},
-	}
-
-	for _, ast := range asts {
-		for _, t := range ast.UserTypes {
-			jd.UserTypes[t.Id] = t
-		}
-		for _, stage := range ast.Stages {
-			jd.Stages[stage.Id] = stage
-		}
-		for _, pipeline := range ast.Pipelines {
-			jd.Pipelines[pipeline.Id] = pipeline
-		}
-		jd.Errors = append(jd.Errors, ast.Errors...)
-	}
-	if jsonBytes, err := json.MarshalIndent(jd, "", "    "); err == nil {
-		return string(jsonBytes)
-	} else {
-		return fmt.Sprintf("{ error: \"%s\" }", err.Error())
-	}
-}
-
 //
 // Exported API
 //
@@ -373,4 +339,35 @@ func FormatFile(filename string) (string, error) {
 	// Uncomment the @include lines.
 	fmtsrc = strings.Replace(fmtsrc, "#@include \"", "@include \"", -1)
 	return fmtsrc, nil
+}
+
+func JsonDumpAsts(asts []*Ast) string {
+	type JsonDump struct {
+		UserTypes map[string]*UserType
+		Stages    map[string]*Stage
+		Pipelines map[string]*Pipeline
+	}
+
+	jd := JsonDump{
+		UserTypes: map[string]*UserType{},
+		Stages:    map[string]*Stage{},
+		Pipelines: map[string]*Pipeline{},
+	}
+
+	for _, ast := range asts {
+		for _, t := range ast.UserTypes {
+			jd.UserTypes[t.Id] = t
+		}
+		for _, stage := range ast.Stages {
+			jd.Stages[stage.Id] = stage
+		}
+		for _, pipeline := range ast.Pipelines {
+			jd.Pipelines[pipeline.Id] = pipeline
+		}
+	}
+	if jsonBytes, err := json.MarshalIndent(jd, "", "    "); err == nil {
+		return string(jsonBytes)
+	} else {
+		return fmt.Sprintf("{ error: \"%s\" }", err.Error())
+	}
 }

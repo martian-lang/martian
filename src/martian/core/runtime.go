@@ -2683,20 +2683,21 @@ func NewRuntimeWithCores(jobMode string, vdrMode string, profileMode string, mar
 }
 
 // Compile all the MRO files in mroPaths.
-func (self *Runtime) CompileAll(mroPaths []string, checkSrcPath bool) (int, []*Ast, []error) {
+func (self *Runtime) CompileAll(mroPaths []string, checkSrcPath bool) (int, []*Ast, error) {
 	numFiles := 0
-	allErrs := []error{}
 	asts := []*Ast{}
 	for _, mroPath := range mroPaths {
 		fpaths, _ := filepath.Glob(mroPath + "/[^_]*.mro")
 		for _, fpath := range fpaths {
-			_, _, ast, errs := Compile(fpath, mroPaths, checkSrcPath)
-			allErrs = append(allErrs, errs...)
-			asts = append(asts, ast)
+			if _, _, ast, err := Compile(fpath, mroPaths, checkSrcPath); err != nil {
+				return 0, []*Ast{}, err
+			} else {
+				asts = append(asts, ast)
+			}
 		}
 		numFiles += len(fpaths)
 	}
-	return numFiles, asts, allErrs
+	return numFiles, asts, nil
 }
 
 // Instantiate a pipestance object given a psid, MRO source, and a
@@ -2706,9 +2707,9 @@ func (self *Runtime) instantiatePipeline(src string, srcPath string, psid string
 	pipestancePath string, mroPaths []string, mroVersion string,
 	envs map[string]string, readOnly bool) (string, *Pipestance, error) {
 	// Parse the invocation source.
-	postsrc, _, ast, errs := parseSource(src, srcPath, mroPaths, !readOnly)
-	if len(errs) > 0 {
-		return "", nil, errs[0]
+	postsrc, _, ast, err := parseSource(src, srcPath, mroPaths, !readOnly)
+	if err != nil {
+		return "", nil, err
 	}
 
 	// Check there's a call.
@@ -2864,9 +2865,9 @@ func (self *Runtime) InvokeStage(src string, srcPath string, ssid string,
 
 	// Parse the invocation source.
 	src = os.ExpandEnv(src)
-	_, _, ast, errs := parseSource(src, srcPath, mroPaths, true)
-	if len(errs) > 0 {
-		return nil, errs[0]
+	_, _, ast, err := parseSource(src, srcPath, mroPaths, true)
+	if err != nil {
+		return nil, err
 	}
 
 	// Check there's a call.
@@ -2940,7 +2941,7 @@ func (self *MroCache) CacheMros(mroPaths []string) {
 		fpaths, _ := filepath.Glob(mroPath + "/[^_]*.mro")
 		for _, fpath := range fpaths {
 			if data, err := ioutil.ReadFile(fpath); err == nil {
-				if _, _, ast, errs := parseSource(string(data), fpath, mroPaths, true); len(errs) == 0 {
+				if _, _, ast, err := parseSource(string(data), fpath, mroPaths, true); err == nil {
 					for _, callable := range ast.Callables.Table {
 						self.callableTable[mroPath][callable.getId()] = callable
 						if _, ok := callable.(*Pipeline); ok {
@@ -3022,9 +3023,9 @@ func (self *Runtime) BuildCallSource(incpaths []string, name string, args map[st
 }
 
 func (self *Runtime) BuildCallJSON(src string, srcPath string, mroPaths []string) (map[string]interface{}, error) {
-	_, incpaths, ast, errs := parseSource(src, srcPath, mroPaths, false)
-	if len(errs) > 0 {
-		return nil, errs[0]
+	_, incpaths, ast, err := parseSource(src, srcPath, mroPaths, false)
+	if err != nil {
+		return nil, err
 	}
 
 	if ast.Call == nil {
