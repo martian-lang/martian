@@ -223,13 +223,19 @@ func NewAstNode(lval *mmSymType) AstNode {
 
 	locmap := lval.locmap
 	loc := lval.loc
-	// If there's no newline at the end of the source and the error is in the
-	// node at the end of the file, the loc can be one larger than the size
-	// of the locmap. So cap it so we don't have an array out of bounds.
-	if loc >= len(locmap) {
-		loc = len(locmap) - 1
+
+	if len(locmap) > 0 {
+		// If there's no newline at the end of the source and the error is in the
+		// node at the end of the file, the loc can be one larger than the size
+		// of the locmap. So cap it so we don't have an array out of bounds.
+		if loc >= len(locmap) {
+			loc = len(locmap) - 1
+		}
+		return AstNode{locmap[loc].loc, locmap[loc].fname, comments}
+	} else {
+		// locmap will be empty when yaccParse is called from mrf
+		return AstNode{1, "", comments}
 	}
-	return AstNode{locmap[loc].loc, locmap[loc].fname, comments}
 }
 
 // Interface whitelist for Dec, Param, Exp, and Stm implementors.
