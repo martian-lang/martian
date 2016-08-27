@@ -1043,14 +1043,14 @@ func (self *Fork) vdrKill() *VDRKillReport {
 }
 
 func (self *Fork) postProcess() {
+	// Handle formal output parameters
+
+	// Create outs/ folder
 	pipestancePath := self.node.parent.getNode().path
 	outsPath := path.Join(pipestancePath, "outs")
-	paramList := self.node.outparams.List
+	mkdirAll(outsPath)
 
-	if len(paramList) == 0 {
-		return
-	}
-
+	// Print outputs header
 	if len(self.node.forks) > 1 {
 		outsPath = path.Join(outsPath, fmt.Sprintf("fork%d", self.index))
 		Print("\nOutputs (fork%d):\n", self.index)
@@ -1058,6 +1058,7 @@ func (self *Fork) postProcess() {
 		Print("\nOutputs:\n")
 	}
 
+	// Get fork's output parameter values
 	outs := map[string]interface{}{}
 	if data := self.metadata.read("outs"); data != nil {
 		if v, ok := data.(map[string]interface{}); ok {
@@ -1065,56 +1066,106 @@ func (self *Fork) postProcess() {
 		}
 	}
 
-	errorTypes := make(map[string]bool)
+	// Error message accumulator
+	errors := []error{}
+
+	// Calculate longest key name for alignment
+	paramList := self.node.outparams.List
+	keyWidth := 0
 	for _, param := range paramList {
-		id := param.getId()
-		value, ok := outs[id]
-		if ok && value != nil {
-			if param.getIsFile() || param.getTname() == "path" {
-				if filePath, ok := value.(string); ok {
-					if _, err := os.Stat(filePath); err == nil {
-						if filePath, err := filepath.Rel(outsPath, filePath); err == nil {
-							mkdirAll(outsPath)
-							newValue := outsPath
-							if len(param.getOutName()) > 0 {
-								newValue = path.Join(newValue, param.getOutName())
-							} else {
-								newValue = path.Join(newValue, id)
-								if param.getTname() != "path" {
-									newValue += "." + param.getTname()
-								}
-							}
-							if err := os.Symlink(filePath, newValue); err != nil {
-								errMsg := err.Error()[strings.Index(err.Error(), newValue)+len(newValue)+1:]
-								errorTypes[errMsg] = true
-								value = "null"
-							} else {
-								value = newValue
-							}
-						}
-					}
-				}
-			}
-		} else {
-			value = "null"
-		}
+		// Print out the param help and value
 		key := param.getHelp()
 		if len(key) == 0 {
 			key = param.getId()
 		}
-		Print("- %s: %v\n", key, value)
-	}
-	if len(errorTypes) > 0 {
-		i := 0
-		distinctErrors := make([]string, len(errorTypes))
-		for key := range errorTypes {
-			distinctErrors[i] = key
-			i++
+		if len(key) > keyWidth {
+			keyWidth = len(key)
 		}
-		Print("\nCould not create symlinks to output files: %s", strings.Join(distinctErrors, ", "))
+	}
+
+	// Iterate through output parameters
+	for _, param := range paramList {
+		// Pull the param value from the fork _outs
+		// If value not available, report null
+		id := param.getId()
+		value, ok := outs[id]
+		if !ok || value == nil {
+			value = "null"
+		}
+
+		// Handle file and path params
+		for {
+			if !param.getIsFile() && param.getTname() != "path" {
+				break
+			}
+			// Make sure value is a string
+			filePath, ok := value.(string)
+			if !ok {
+				break
+			}
+
+			// Generate the outs path for this param
+			outPath := ""
+			if len(param.getOutName()) > 0 {
+				// If MRO explicitly specifies an out name
+				// override, just use that verbatim.
+				outPath = path.Join(outsPath, param.getOutName())
+			} else {
+				// Otherwise, just use the parameter name, and
+				// append the type unless it is a path.
+				outPath = path.Join(outsPath, id)
+				if param.getTname() != "path" {
+					outPath += "." + param.getTname()
+				}
+			}
+
+			// If this param has already been moved to outs/, we're done
+			if _, err := os.Stat(outPath); err == nil {
+				break
+			}
+
+			// If source file exists, move it to outs/
+			if err := os.Rename(filePath, outPath); err != nil {
+				errors = append(errors, err)
+				break
+			}
+
+			// Generate the relative path from files/ to outs/
+			relPath, err := filepath.Rel(filepath.Dir(filePath), outPath)
+			if err != nil {
+				errors = append(errors, err)
+				break
+			}
+
+			// Symlink it back to the original files/ folder
+			if err := os.Symlink(relPath, filePath); err != nil {
+				errors = append(errors, err)
+				break
+			}
+
+			value = outPath
+			break
+		}
+
+		// Print out the param help and value
+		key := param.getHelp()
+		if len(key) == 0 {
+			key = param.getId()
+		}
+		keyPad := strings.Repeat(" ", keyWidth-len(key))
+		Print("- %s:%s %v\n", key, keyPad, value)
+	}
+
+	// Print errors
+	if len(errors) > 0 {
+		Print("\nCould not move output files:\n")
+		for _, err := range errors {
+			Print("%s\n", err.Error())
+		}
 	}
 	Print("\n")
 
+	// Print alerts
 	if alarms := self.getAlarms(); len(alarms) > 0 {
 		if len(self.node.forks) > 1 {
 			Print("Alerts (fork%d):\n", self.index)
