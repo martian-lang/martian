@@ -67,7 +67,7 @@ type (
 	}
 
 	Params struct {
-		List  []Param `json:"-"`
+		List  []Param
 		Table map[string]Param
 	}
 
