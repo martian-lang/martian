@@ -1104,6 +1104,11 @@ func (self *Fork) postProcess() {
 				break
 			}
 
+			// Only continue if path to be copied is inside the pipestance
+			if !(strings.Contains(filePath, pipestancePath)) {
+				break
+			}
+
 			// Generate the outs path for this param
 			outPath := ""
 			if len(param.getOutName()) > 0 {
