@@ -1104,15 +1104,6 @@ func (self *Fork) postProcess() {
 				break
 			}
 
-			// Only continue if path to be copied is inside the pipestance
-			if absFilePath, err := filepath.Abs(filePath); err == nil {
-				if absPipestancePath, err := filepath.Abs(pipestancePath); err == nil {
-					if !strings.Contains(absFilePath, absPipestancePath) {
-						break
-					}
-				}
-			}
-
 			// Generate the outs path for this param
 			outPath := ""
 			if len(param.getOutName()) > 0 {
@@ -1125,6 +1116,19 @@ func (self *Fork) postProcess() {
 				outPath = path.Join(outsPath, id)
 				if param.getTname() != "path" {
 					outPath += "." + param.getTname()
+				}
+			}
+
+			// Only continue if path to be copied is inside the pipestance
+			if absFilePath, err := filepath.Abs(filePath); err == nil {
+				if absPipestancePath, err := filepath.Abs(pipestancePath); err == nil {
+					if !strings.Contains(absFilePath, absPipestancePath) {
+						// But we still want a symlink
+						if err := os.Symlink(absFilePath, outPath); err != nil {
+							errors = append(errors, err)
+						}
+						break
+					}
 				}
 			}
 
