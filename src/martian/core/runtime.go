@@ -1044,19 +1044,19 @@ func (self *Fork) vdrKill() *VDRKillReport {
 
 func (self *Fork) postProcess() {
 	// Handle formal output parameters
-
-	// Create outs/ folder
 	pipestancePath := self.node.parent.getNode().path
 	outsPath := path.Join(pipestancePath, "outs")
-	mkdirAll(outsPath)
 
-	// Print outputs header
+	// Handle multi-fork sweeps
 	if len(self.node.forks) > 1 {
 		outsPath = path.Join(outsPath, fmt.Sprintf("fork%d", self.index))
 		Print("\nOutputs (fork%d):\n", self.index)
 	} else {
 		Print("\nOutputs:\n")
 	}
+
+	// Create the fork-specific outs/ folder
+	mkdirAll(outsPath)
 
 	// Get fork's output parameter values
 	outs := map[string]interface{}{}
