@@ -1104,6 +1104,13 @@ func (self *Fork) postProcess() {
 				break
 			}
 
+			// If file doesn't exist (e.g. stage just didn't create it)
+			// then report null
+			if _, err := os.Stat(filePath); os.IsNotExist(err) {
+				value = "null"
+				break
+			}
+
 			// Generate the outs path for this param
 			outPath := ""
 			if len(param.getOutName()) > 0 {
