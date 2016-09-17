@@ -1,0 +1,1260 @@
+[
+    {
+        "name": "AWESOME",
+        "fqname": "ID.pipeline_test.AWESOME",
+        "type": "pipeline",
+        "forks": [
+            {
+                "stages": [
+                    {
+                        "name": "ADD_KEY1",
+                        "fqname": "ID.pipeline_test.AWESOME.ADD_KEY1",
+                        "forki": 0
+                    },
+                    {
+                        "name": "ADD_KEY2",
+                        "fqname": "ID.pipeline_test.AWESOME.ADD_KEY2",
+                        "forki": 0
+                    },
+                    {
+                        "name": "ADD_KEY3",
+                        "fqname": "ID.pipeline_test.AWESOME.ADD_KEY3",
+                        "forki": 0
+                    },
+                    {
+                        "name": "ADD_KEY4",
+                        "fqname": "ID.pipeline_test.AWESOME.ADD_KEY4",
+                        "forki": 0
+                    },
+                    {
+                        "name": "MERGE_JSON",
+                        "fqname": "ID.pipeline_test.AWESOME.MERGE_JSON",
+                        "forki": 0
+                    }
+                ],
+                "index": 0,
+                "chunks": [],
+                "split_stats": null,
+                "join_stats": null,
+                "fork_stats": {
+                    "num_jobs": 5,
+                    "num_threads": 5,
+                    "duration": 0.0905301570892334,
+                    "core_hours": 2.5147265858120388e-05,
+                    "maxrss": 9224192,
+                    "in_blocks": 0,
+                    "out_blocks": 4,
+                    "total_blocks": 4,
+                    "in_blocks_rate": 0,
+                    "out_blocks_rate": 44.18417164633102,
+                    "total_blocks_rate": 44.18417164633102,
+                    "start": "2016-09-19T15:10:50Z",
+                    "end": "2016-09-19T15:11:35Z",
+                    "walltime": 45,
+                    "usertime": 0.209955,
+                    "systemtime": 0.21297099999999997,
+                    "total_files": 5,
+                    "total_bytes": 177,
+                    "output_files": 5,
+                    "output_bytes": 177,
+                    "vdr_files": 0,
+                    "vdr_bytes": 0
+                }
+            },
+            {
+                "stages": [
+                    {
+                        "name": "ADD_KEY1",
+                        "fqname": "ID.pipeline_test.AWESOME.ADD_KEY1",
+                        "forki": 0
+                    },
+                    {
+                        "name": "ADD_KEY2",
+                        "fqname": "ID.pipeline_test.AWESOME.ADD_KEY2",
+                        "forki": 1
+                    },
+                    {
+                        "name": "ADD_KEY3",
+                        "fqname": "ID.pipeline_test.AWESOME.ADD_KEY3",
+                        "forki": 1
+                    },
+                    {
+                        "name": "ADD_KEY4",
+                        "fqname": "ID.pipeline_test.AWESOME.ADD_KEY4",
+                        "forki": 1
+                    },
+                    {
+                        "name": "MERGE_JSON",
+                        "fqname": "ID.pipeline_test.AWESOME.MERGE_JSON",
+                        "forki": 1
+                    }
+                ],
+                "index": 1,
+                "chunks": [],
+                "split_stats": null,
+                "join_stats": null,
+                "fork_stats": {
+                    "num_jobs": 5,
+                    "num_threads": 5,
+                    "duration": 0.08692216873168945,
+                    "core_hours": 2.4145046869913732e-05,
+                    "maxrss": 9244672,
+                    "in_blocks": 0,
+                    "out_blocks": 2,
+                    "total_blocks": 2,
+                    "in_blocks_rate": 0,
+                    "out_blocks_rate": 23.009089961544582,
+                    "total_blocks_rate": 23.009089961544582,
+                    "start": "2016-09-19T15:10:50Z",
+                    "end": "2016-09-19T15:11:35Z",
+                    "walltime": 45,
+                    "usertime": 0.207014,
+                    "systemtime": 0.20945499999999997,
+                    "total_files": 5,
+                    "total_bytes": 180,
+                    "output_files": 5,
+                    "output_bytes": 180,
+                    "vdr_files": 0,
+                    "vdr_bytes": 0
+                }
+            },
+            {
+                "stages": [
+                    {
+                        "name": "ADD_KEY2",
+                        "fqname": "ID.pipeline_test.AWESOME.ADD_KEY2",
+                        "forki": 0
+                    },
+                    {
+                        "name": "ADD_KEY3",
+                        "fqname": "ID.pipeline_test.AWESOME.ADD_KEY3",
+                        "forki": 0
+                    },
+                    {
+                        "name": "ADD_KEY4",
+                        "fqname": "ID.pipeline_test.AWESOME.ADD_KEY4",
+                        "forki": 2
+                    },
+                    {
+                        "name": "MERGE_JSON",
+                        "fqname": "ID.pipeline_test.AWESOME.MERGE_JSON",
+                        "forki": 2
+                    },
+                    {
+                        "name": "ADD_KEY1",
+                        "fqname": "ID.pipeline_test.AWESOME.ADD_KEY1",
+                        "forki": 0
+                    }
+                ],
+                "index": 2,
+                "chunks": [],
+                "split_stats": null,
+                "join_stats": null,
+                "fork_stats": {
+                    "num_jobs": 5,
+                    "num_threads": 5,
+                    "duration": 0.08879232406616211,
+                    "core_hours": 2.4664534462822808e-05,
+                    "maxrss": 9224192,
+                    "in_blocks": 0,
+                    "out_blocks": 4,
+                    "total_blocks": 4,
+                    "in_blocks_rate": 0,
+                    "out_blocks_rate": 45.048939106712275,
+                    "total_blocks_rate": 45.048939106712275,
+                    "start": "2016-09-19T15:10:50Z",
+                    "end": "2016-09-19T15:11:35Z",
+                    "walltime": 45,
+                    "usertime": 0.20506299999999997,
+                    "systemtime": 0.207609,
+                    "total_files": 5,
+                    "total_bytes": 177,
+                    "output_files": 5,
+                    "output_bytes": 177,
+                    "vdr_files": 0,
+                    "vdr_bytes": 0
+                }
+            },
+            {
+                "stages": [
+                    {
+                        "name": "ADD_KEY1",
+                        "fqname": "ID.pipeline_test.AWESOME.ADD_KEY1",
+                        "forki": 0
+                    },
+                    {
+                        "name": "ADD_KEY2",
+                        "fqname": "ID.pipeline_test.AWESOME.ADD_KEY2",
+                        "forki": 1
+                    },
+                    {
+                        "name": "ADD_KEY3",
+                        "fqname": "ID.pipeline_test.AWESOME.ADD_KEY3",
+                        "forki": 1
+                    },
+                    {
+                        "name": "ADD_KEY4",
+                        "fqname": "ID.pipeline_test.AWESOME.ADD_KEY4",
+                        "forki": 3
+                    },
+                    {
+                        "name": "MERGE_JSON",
+                        "fqname": "ID.pipeline_test.AWESOME.MERGE_JSON",
+                        "forki": 3
+                    }
+                ],
+                "index": 3,
+                "chunks": [],
+                "split_stats": null,
+                "join_stats": null,
+                "fork_stats": {
+                    "num_jobs": 5,
+                    "num_threads": 5,
+                    "duration": 0.08642315864562988,
+                    "core_hours": 2.400643295711941e-05,
+                    "maxrss": 9183232,
+                    "in_blocks": 0,
+                    "out_blocks": 1,
+                    "total_blocks": 1,
+                    "in_blocks_rate": 0,
+                    "out_blocks_rate": 11.570972591969323,
+                    "total_blocks_rate": 11.570972591969323,
+                    "start": "2016-09-19T15:10:50Z",
+                    "end": "2016-09-19T15:11:35Z",
+                    "walltime": 45,
+                    "usertime": 0.202176,
+                    "systemtime": 0.20615499999999998,
+                    "total_files": 5,
+                    "total_bytes": 180,
+                    "output_files": 5,
+                    "output_bytes": 180,
+                    "vdr_files": 0,
+                    "vdr_bytes": 0
+                }
+            }
+        ],
+        "maxbytes": 506,
+        "bytehist": [
+            {
+                "ts": "2016-09-19T15:10:50Z",
+                "bytes": 16,
+                "desc": "ID.pipeline_test.AWESOME.ADD_KEY1.fork0 alloc"
+            },
+            {
+                "ts": "2016-09-19T15:11:05Z",
+                "bytes": 48,
+                "desc": "ID.pipeline_test.AWESOME.ADD_KEY2.fork1 alloc"
+            },
+            {
+                "ts": "2016-09-19T15:11:05Z",
+                "bytes": 79,
+                "desc": "ID.pipeline_test.AWESOME.ADD_KEY2.fork0 alloc"
+            },
+            {
+                "ts": "2016-09-19T15:11:20Z",
+                "bytes": 127,
+                "desc": "ID.pipeline_test.AWESOME.ADD_KEY4.fork1 alloc"
+            },
+            {
+                "ts": "2016-09-19T15:11:20Z",
+                "bytes": 176,
+                "desc": "ID.pipeline_test.AWESOME.ADD_KEY3.fork1 alloc"
+            },
+            {
+                "ts": "2016-09-19T15:11:20Z",
+                "bytes": 224,
+                "desc": "ID.pipeline_test.AWESOME.ADD_KEY3.fork0 alloc"
+            },
+            {
+                "ts": "2016-09-19T15:11:20Z",
+                "bytes": 271,
+                "desc": "ID.pipeline_test.AWESOME.ADD_KEY4.fork2 alloc"
+            },
+            {
+                "ts": "2016-09-19T15:11:20Z",
+                "bytes": 318,
+                "desc": "ID.pipeline_test.AWESOME.ADD_KEY4.fork0 alloc"
+            },
+            {
+                "ts": "2016-09-19T15:11:20Z",
+                "bytes": 366,
+                "desc": "ID.pipeline_test.AWESOME.ADD_KEY4.fork3 alloc"
+            },
+            {
+                "ts": "2016-09-19T15:11:35Z",
+                "bytes": 401,
+                "desc": "ID.pipeline_test.AWESOME.MERGE_JSON.fork3 alloc"
+            },
+            {
+                "ts": "2016-09-19T15:11:35Z",
+                "bytes": 436,
+                "desc": "ID.pipeline_test.AWESOME.MERGE_JSON.fork2 alloc"
+            },
+            {
+                "ts": "2016-09-19T15:11:35Z",
+                "bytes": 471,
+                "desc": "ID.pipeline_test.AWESOME.MERGE_JSON.fork0 alloc"
+            },
+            {
+                "ts": "2016-09-19T15:11:35Z",
+                "bytes": 506,
+                "desc": "ID.pipeline_test.AWESOME.MERGE_JSON.fork1 alloc"
+            },
+            {
+                "ts": "2016-09-19T15:11:50Z",
+                "bytes": 506,
+                "desc": "ID.pipeline_test.AWESOME.ADD_KEY2.fork0 delete"
+            },
+            {
+                "ts": "2016-09-19T15:11:50Z",
+                "bytes": 506,
+                "desc": "ID.pipeline_test.AWESOME.ADD_KEY1.fork0 delete"
+            },
+            {
+                "ts": "2016-09-19T15:11:50Z",
+                "bytes": 506,
+                "desc": "ID.pipeline_test.AWESOME.ADD_KEY2.fork1 delete"
+            },
+            {
+                "ts": "2016-09-19T15:11:50Z",
+                "bytes": 506,
+                "desc": "ID.pipeline_test.AWESOME.MERGE_JSON.fork3 delete"
+            },
+            {
+                "ts": "2016-09-19T15:11:50Z",
+                "bytes": 506,
+                "desc": "ID.pipeline_test.AWESOME.ADD_KEY4.fork3 delete"
+            },
+            {
+                "ts": "2016-09-19T15:11:50Z",
+                "bytes": 506,
+                "desc": "ID.pipeline_test.AWESOME.MERGE_JSON.fork1 delete"
+            },
+            {
+                "ts": "2016-09-19T15:11:50Z",
+                "bytes": 506,
+                "desc": "ID.pipeline_test.AWESOME.MERGE_JSON.fork2 delete"
+            },
+            {
+                "ts": "2016-09-19T15:11:50Z",
+                "bytes": 506,
+                "desc": "ID.pipeline_test.AWESOME.MERGE_JSON.fork0 delete"
+            },
+            {
+                "ts": "2016-09-19T15:11:50Z",
+                "bytes": 506,
+                "desc": "ID.pipeline_test.AWESOME.ADD_KEY3.fork0 delete"
+            },
+            {
+                "ts": "2016-09-19T15:11:50Z",
+                "bytes": 506,
+                "desc": "ID.pipeline_test.AWESOME.ADD_KEY4.fork2 delete"
+            },
+            {
+                "ts": "2016-09-19T15:11:50Z",
+                "bytes": 506,
+                "desc": "ID.pipeline_test.AWESOME.ADD_KEY3.fork1 delete"
+            },
+            {
+                "ts": "2016-09-19T15:11:50Z",
+                "bytes": 506,
+                "desc": "ID.pipeline_test.AWESOME.ADD_KEY4.fork1 delete"
+            },
+            {
+                "ts": "2016-09-19T15:11:50Z",
+                "bytes": 506,
+                "desc": "ID.pipeline_test.AWESOME.ADD_KEY4.fork0 delete"
+            }
+        ]
+    },
+    {
+        "name": "ADD_KEY1",
+        "fqname": "ID.pipeline_test.AWESOME.ADD_KEY1",
+        "type": "stage",
+        "forks": [
+            {
+                "stages": [
+                    {
+                        "name": "ADD_KEY1",
+                        "fqname": "ID.pipeline_test.AWESOME.ADD_KEY1",
+                        "forki": 0
+                    }
+                ],
+                "index": 0,
+                "chunks": [
+                    {
+                        "index": 0,
+                        "chunk_stats": {
+                            "num_jobs": 1,
+                            "num_threads": 1,
+                            "duration": 0.020908117294311523,
+                            "core_hours": 5.807810359530978e-06,
+                            "maxrss": 9179136,
+                            "in_blocks": 0,
+                            "out_blocks": 1,
+                            "total_blocks": 1,
+                            "in_blocks_rate": 0,
+                            "out_blocks_rate": 47.82831404298991,
+                            "total_blocks_rate": 47.82831404298991,
+                            "start": "2016-09-19T15:10:50Z",
+                            "end": "2016-09-19T15:10:50Z",
+                            "walltime": 0,
+                            "usertime": 0.042538,
+                            "systemtime": 0.042436,
+                            "total_files": 1,
+                            "total_bytes": 16,
+                            "output_files": 0,
+                            "output_bytes": 0,
+                            "vdr_files": 0,
+                            "vdr_bytes": 0
+                        }
+                    }
+                ],
+                "split_stats": null,
+                "join_stats": null,
+                "fork_stats": {
+                    "num_jobs": 1,
+                    "num_threads": 1,
+                    "duration": 0.020908117294311523,
+                    "core_hours": 5.807810359530978e-06,
+                    "maxrss": 9179136,
+                    "in_blocks": 0,
+                    "out_blocks": 1,
+                    "total_blocks": 1,
+                    "in_blocks_rate": 0,
+                    "out_blocks_rate": 47.82831404298991,
+                    "total_blocks_rate": 47.82831404298991,
+                    "start": "2016-09-19T15:10:50Z",
+                    "end": "2016-09-19T15:10:50Z",
+                    "walltime": 0,
+                    "usertime": 0.042538,
+                    "systemtime": 0.042436,
+                    "total_files": 1,
+                    "total_bytes": 16,
+                    "output_files": 1,
+                    "output_bytes": 16,
+                    "vdr_files": 0,
+                    "vdr_bytes": 0
+                }
+            }
+        ],
+        "maxbytes": 0,
+        "bytehist": null
+    },
+    {
+        "name": "ADD_KEY2",
+        "fqname": "ID.pipeline_test.AWESOME.ADD_KEY2",
+        "type": "stage",
+        "forks": [
+            {
+                "stages": [
+                    {
+                        "name": "ADD_KEY2",
+                        "fqname": "ID.pipeline_test.AWESOME.ADD_KEY2",
+                        "forki": 0
+                    }
+                ],
+                "index": 0,
+                "chunks": [
+                    {
+                        "index": 0,
+                        "chunk_stats": {
+                            "num_jobs": 1,
+                            "num_threads": 1,
+                            "duration": 0.017785072326660156,
+                            "core_hours": 4.94029786851671e-06,
+                            "maxrss": 9150464,
+                            "in_blocks": 0,
+                            "out_blocks": 0,
+                            "total_blocks": 0,
+                            "in_blocks_rate": 0,
+                            "out_blocks_rate": 0,
+                            "total_blocks_rate": 0,
+                            "start": "2016-09-19T15:11:05Z",
+                            "end": "2016-09-19T15:11:05Z",
+                            "walltime": 0,
+                            "usertime": 0.041059,
+                            "systemtime": 0.042467,
+                            "total_files": 1,
+                            "total_bytes": 31,
+                            "output_files": 0,
+                            "output_bytes": 0,
+                            "vdr_files": 0,
+                            "vdr_bytes": 0
+                        }
+                    }
+                ],
+                "split_stats": null,
+                "join_stats": null,
+                "fork_stats": {
+                    "num_jobs": 1,
+                    "num_threads": 1,
+                    "duration": 0.017785072326660156,
+                    "core_hours": 4.94029786851671e-06,
+                    "maxrss": 9150464,
+                    "in_blocks": 0,
+                    "out_blocks": 0,
+                    "total_blocks": 0,
+                    "in_blocks_rate": 0,
+                    "out_blocks_rate": 0,
+                    "total_blocks_rate": 0,
+                    "start": "2016-09-19T15:11:05Z",
+                    "end": "2016-09-19T15:11:05Z",
+                    "walltime": 0,
+                    "usertime": 0.041059,
+                    "systemtime": 0.042467,
+                    "total_files": 1,
+                    "total_bytes": 31,
+                    "output_files": 1,
+                    "output_bytes": 31,
+                    "vdr_files": 0,
+                    "vdr_bytes": 0
+                }
+            },
+            {
+                "stages": [
+                    {
+                        "name": "ADD_KEY2",
+                        "fqname": "ID.pipeline_test.AWESOME.ADD_KEY2",
+                        "forki": 1
+                    }
+                ],
+                "index": 1,
+                "chunks": [
+                    {
+                        "index": 0,
+                        "chunk_stats": {
+                            "num_jobs": 1,
+                            "num_threads": 1,
+                            "duration": 0.019829988479614258,
+                            "core_hours": 5.5083301332261826e-06,
+                            "maxrss": 9179136,
+                            "in_blocks": 0,
+                            "out_blocks": 0,
+                            "total_blocks": 0,
+                            "in_blocks_rate": 0,
+                            "out_blocks_rate": 0,
+                            "total_blocks_rate": 0,
+                            "start": "2016-09-19T15:11:05Z",
+                            "end": "2016-09-19T15:11:05Z",
+                            "walltime": 0,
+                            "usertime": 0.04183,
+                            "systemtime": 0.043008,
+                            "total_files": 1,
+                            "total_bytes": 32,
+                            "output_files": 0,
+                            "output_bytes": 0,
+                            "vdr_files": 0,
+                            "vdr_bytes": 0
+                        }
+                    }
+                ],
+                "split_stats": null,
+                "join_stats": null,
+                "fork_stats": {
+                    "num_jobs": 1,
+                    "num_threads": 1,
+                    "duration": 0.019829988479614258,
+                    "core_hours": 5.5083301332261826e-06,
+                    "maxrss": 9179136,
+                    "in_blocks": 0,
+                    "out_blocks": 0,
+                    "total_blocks": 0,
+                    "in_blocks_rate": 0,
+                    "out_blocks_rate": 0,
+                    "total_blocks_rate": 0,
+                    "start": "2016-09-19T15:11:05Z",
+                    "end": "2016-09-19T15:11:05Z",
+                    "walltime": 0,
+                    "usertime": 0.04183,
+                    "systemtime": 0.043008,
+                    "total_files": 1,
+                    "total_bytes": 32,
+                    "output_files": 1,
+                    "output_bytes": 32,
+                    "vdr_files": 0,
+                    "vdr_bytes": 0
+                }
+            }
+        ],
+        "maxbytes": 0,
+        "bytehist": null
+    },
+    {
+        "name": "ADD_KEY3",
+        "fqname": "ID.pipeline_test.AWESOME.ADD_KEY3",
+        "type": "stage",
+        "forks": [
+            {
+                "stages": [
+                    {
+                        "name": "ADD_KEY3",
+                        "fqname": "ID.pipeline_test.AWESOME.ADD_KEY3",
+                        "forki": 0
+                    }
+                ],
+                "index": 0,
+                "chunks": [
+                    {
+                        "index": 0,
+                        "chunk_stats": {
+                            "num_jobs": 1,
+                            "num_threads": 1,
+                            "duration": 0.021344900131225586,
+                            "core_hours": 5.9291389253404405e-06,
+                            "maxrss": 9224192,
+                            "in_blocks": 0,
+                            "out_blocks": 1,
+                            "total_blocks": 1,
+                            "in_blocks_rate": 0,
+                            "out_blocks_rate": 46.849598445161796,
+                            "total_blocks_rate": 46.849598445161796,
+                            "start": "2016-09-19T15:11:20Z",
+                            "end": "2016-09-19T15:11:20Z",
+                            "walltime": 0,
+                            "usertime": 0.044584,
+                            "systemtime": 0.044535,
+                            "total_files": 1,
+                            "total_bytes": 48,
+                            "output_files": 0,
+                            "output_bytes": 0,
+                            "vdr_files": 0,
+                            "vdr_bytes": 0
+                        }
+                    }
+                ],
+                "split_stats": null,
+                "join_stats": null,
+                "fork_stats": {
+                    "num_jobs": 1,
+                    "num_threads": 1,
+                    "duration": 0.021344900131225586,
+                    "core_hours": 5.9291389253404405e-06,
+                    "maxrss": 9224192,
+                    "in_blocks": 0,
+                    "out_blocks": 1,
+                    "total_blocks": 1,
+                    "in_blocks_rate": 0,
+                    "out_blocks_rate": 46.849598445161796,
+                    "total_blocks_rate": 46.849598445161796,
+                    "start": "2016-09-19T15:11:20Z",
+                    "end": "2016-09-19T15:11:20Z",
+                    "walltime": 0,
+                    "usertime": 0.044584,
+                    "systemtime": 0.044535,
+                    "total_files": 1,
+                    "total_bytes": 48,
+                    "output_files": 1,
+                    "output_bytes": 48,
+                    "vdr_files": 0,
+                    "vdr_bytes": 0
+                }
+            },
+            {
+                "stages": [
+                    {
+                        "name": "ADD_KEY3",
+                        "fqname": "ID.pipeline_test.AWESOME.ADD_KEY3",
+                        "forki": 1
+                    }
+                ],
+                "index": 1,
+                "chunks": [
+                    {
+                        "index": 0,
+                        "chunk_stats": {
+                            "num_jobs": 1,
+                            "num_threads": 1,
+                            "duration": 0.017229080200195312,
+                            "core_hours": 4.785855611165365e-06,
+                            "maxrss": 9175040,
+                            "in_blocks": 0,
+                            "out_blocks": 0,
+                            "total_blocks": 0,
+                            "in_blocks_rate": 0,
+                            "out_blocks_rate": 0,
+                            "total_blocks_rate": 0,
+                            "start": "2016-09-19T15:11:20Z",
+                            "end": "2016-09-19T15:11:20Z",
+                            "walltime": 0,
+                            "usertime": 0.041124999999999995,
+                            "systemtime": 0.042540999999999995,
+                            "total_files": 1,
+                            "total_bytes": 49,
+                            "output_files": 0,
+                            "output_bytes": 0,
+                            "vdr_files": 0,
+                            "vdr_bytes": 0
+                        }
+                    }
+                ],
+                "split_stats": null,
+                "join_stats": null,
+                "fork_stats": {
+                    "num_jobs": 1,
+                    "num_threads": 1,
+                    "duration": 0.017229080200195312,
+                    "core_hours": 4.785855611165365e-06,
+                    "maxrss": 9175040,
+                    "in_blocks": 0,
+                    "out_blocks": 0,
+                    "total_blocks": 0,
+                    "in_blocks_rate": 0,
+                    "out_blocks_rate": 0,
+                    "total_blocks_rate": 0,
+                    "start": "2016-09-19T15:11:20Z",
+                    "end": "2016-09-19T15:11:20Z",
+                    "walltime": 0,
+                    "usertime": 0.041124999999999995,
+                    "systemtime": 0.042540999999999995,
+                    "total_files": 1,
+                    "total_bytes": 49,
+                    "output_files": 1,
+                    "output_bytes": 49,
+                    "vdr_files": 0,
+                    "vdr_bytes": 0
+                }
+            }
+        ],
+        "maxbytes": 0,
+        "bytehist": null
+    },
+    {
+        "name": "ADD_KEY4",
+        "fqname": "ID.pipeline_test.AWESOME.ADD_KEY4",
+        "type": "stage",
+        "forks": [
+            {
+                "stages": [
+                    {
+                        "name": "ADD_KEY4",
+                        "fqname": "ID.pipeline_test.AWESOME.ADD_KEY4",
+                        "forki": 0
+                    }
+                ],
+                "index": 0,
+                "chunks": [
+                    {
+                        "index": 0,
+                        "chunk_stats": {
+                            "num_jobs": 1,
+                            "num_threads": 1,
+                            "duration": 0.01817798614501953,
+                            "core_hours": 5.0494405958387586e-06,
+                            "maxrss": 9207808,
+                            "in_blocks": 0,
+                            "out_blocks": 1,
+                            "total_blocks": 1,
+                            "in_blocks_rate": 0,
+                            "out_blocks_rate": 55.01159435496564,
+                            "total_blocks_rate": 55.01159435496564,
+                            "start": "2016-09-19T15:11:20Z",
+                            "end": "2016-09-19T15:11:20Z",
+                            "walltime": 0,
+                            "usertime": 0.040471,
+                            "systemtime": 0.041138999999999995,
+                            "total_files": 1,
+                            "total_bytes": 47,
+                            "output_files": 0,
+                            "output_bytes": 0,
+                            "vdr_files": 0,
+                            "vdr_bytes": 0
+                        }
+                    }
+                ],
+                "split_stats": null,
+                "join_stats": null,
+                "fork_stats": {
+                    "num_jobs": 1,
+                    "num_threads": 1,
+                    "duration": 0.01817798614501953,
+                    "core_hours": 5.0494405958387586e-06,
+                    "maxrss": 9207808,
+                    "in_blocks": 0,
+                    "out_blocks": 1,
+                    "total_blocks": 1,
+                    "in_blocks_rate": 0,
+                    "out_blocks_rate": 55.01159435496564,
+                    "total_blocks_rate": 55.01159435496564,
+                    "start": "2016-09-19T15:11:20Z",
+                    "end": "2016-09-19T15:11:20Z",
+                    "walltime": 0,
+                    "usertime": 0.040471,
+                    "systemtime": 0.041138999999999995,
+                    "total_files": 1,
+                    "total_bytes": 47,
+                    "output_files": 1,
+                    "output_bytes": 47,
+                    "vdr_files": 0,
+                    "vdr_bytes": 0
+                }
+            },
+            {
+                "stages": [
+                    {
+                        "name": "ADD_KEY4",
+                        "fqname": "ID.pipeline_test.AWESOME.ADD_KEY4",
+                        "forki": 1
+                    }
+                ],
+                "index": 1,
+                "chunks": [
+                    {
+                        "index": 0,
+                        "chunk_stats": {
+                            "num_jobs": 1,
+                            "num_threads": 1,
+                            "duration": 0.017102956771850586,
+                            "core_hours": 4.750821325514051e-06,
+                            "maxrss": 9244672,
+                            "in_blocks": 0,
+                            "out_blocks": 0,
+                            "total_blocks": 0,
+                            "in_blocks_rate": 0,
+                            "out_blocks_rate": 0,
+                            "total_blocks_rate": 0,
+                            "start": "2016-09-19T15:11:20Z",
+                            "end": "2016-09-19T15:11:20Z",
+                            "walltime": 0,
+                            "usertime": 0.044166,
+                            "systemtime": 0.043998999999999996,
+                            "total_files": 1,
+                            "total_bytes": 48,
+                            "output_files": 0,
+                            "output_bytes": 0,
+                            "vdr_files": 0,
+                            "vdr_bytes": 0
+                        }
+                    }
+                ],
+                "split_stats": null,
+                "join_stats": null,
+                "fork_stats": {
+                    "num_jobs": 1,
+                    "num_threads": 1,
+                    "duration": 0.017102956771850586,
+                    "core_hours": 4.750821325514051e-06,
+                    "maxrss": 9244672,
+                    "in_blocks": 0,
+                    "out_blocks": 0,
+                    "total_blocks": 0,
+                    "in_blocks_rate": 0,
+                    "out_blocks_rate": 0,
+                    "total_blocks_rate": 0,
+                    "start": "2016-09-19T15:11:20Z",
+                    "end": "2016-09-19T15:11:20Z",
+                    "walltime": 0,
+                    "usertime": 0.044166,
+                    "systemtime": 0.043998999999999996,
+                    "total_files": 1,
+                    "total_bytes": 48,
+                    "output_files": 1,
+                    "output_bytes": 48,
+                    "vdr_files": 0,
+                    "vdr_bytes": 0
+                }
+            },
+            {
+                "stages": [
+                    {
+                        "name": "ADD_KEY4",
+                        "fqname": "ID.pipeline_test.AWESOME.ADD_KEY4",
+                        "forki": 2
+                    }
+                ],
+                "index": 2,
+                "chunks": [
+                    {
+                        "index": 0,
+                        "chunk_stats": {
+                            "num_jobs": 1,
+                            "num_threads": 1,
+                            "duration": 0.017324209213256836,
+                            "core_hours": 4.812280337015788e-06,
+                            "maxrss": 9175040,
+                            "in_blocks": 0,
+                            "out_blocks": 0,
+                            "total_blocks": 0,
+                            "in_blocks_rate": 0,
+                            "out_blocks_rate": 0,
+                            "total_blocks_rate": 0,
+                            "start": "2016-09-19T15:11:20Z",
+                            "end": "2016-09-19T15:11:20Z",
+                            "walltime": 0,
+                            "usertime": 0.039654999999999996,
+                            "systemtime": 0.040742,
+                            "total_files": 1,
+                            "total_bytes": 47,
+                            "output_files": 0,
+                            "output_bytes": 0,
+                            "vdr_files": 0,
+                            "vdr_bytes": 0
+                        }
+                    }
+                ],
+                "split_stats": null,
+                "join_stats": null,
+                "fork_stats": {
+                    "num_jobs": 1,
+                    "num_threads": 1,
+                    "duration": 0.017324209213256836,
+                    "core_hours": 4.812280337015788e-06,
+                    "maxrss": 9175040,
+                    "in_blocks": 0,
+                    "out_blocks": 0,
+                    "total_blocks": 0,
+                    "in_blocks_rate": 0,
+                    "out_blocks_rate": 0,
+                    "total_blocks_rate": 0,
+                    "start": "2016-09-19T15:11:20Z",
+                    "end": "2016-09-19T15:11:20Z",
+                    "walltime": 0,
+                    "usertime": 0.039654999999999996,
+                    "systemtime": 0.040742,
+                    "total_files": 1,
+                    "total_bytes": 47,
+                    "output_files": 1,
+                    "output_bytes": 47,
+                    "vdr_files": 0,
+                    "vdr_bytes": 0
+                }
+            },
+            {
+                "stages": [
+                    {
+                        "name": "ADD_KEY4",
+                        "fqname": "ID.pipeline_test.AWESOME.ADD_KEY4",
+                        "forki": 3
+                    }
+                ],
+                "index": 3,
+                "chunks": [
+                    {
+                        "index": 0,
+                        "chunk_stats": {
+                            "num_jobs": 1,
+                            "num_threads": 1,
+                            "duration": 0.017459869384765625,
+                            "core_hours": 4.8499637179904514e-06,
+                            "maxrss": 9183232,
+                            "in_blocks": 0,
+                            "out_blocks": 0,
+                            "total_blocks": 0,
+                            "in_blocks_rate": 0,
+                            "out_blocks_rate": 0,
+                            "total_blocks_rate": 0,
+                            "start": "2016-09-19T15:11:20Z",
+                            "end": "2016-09-19T15:11:20Z",
+                            "walltime": 0,
+                            "usertime": 0.039486,
+                            "systemtime": 0.040457,
+                            "total_files": 1,
+                            "total_bytes": 48,
+                            "output_files": 0,
+                            "output_bytes": 0,
+                            "vdr_files": 0,
+                            "vdr_bytes": 0
+                        }
+                    }
+                ],
+                "split_stats": null,
+                "join_stats": null,
+                "fork_stats": {
+                    "num_jobs": 1,
+                    "num_threads": 1,
+                    "duration": 0.017459869384765625,
+                    "core_hours": 4.8499637179904514e-06,
+                    "maxrss": 9183232,
+                    "in_blocks": 0,
+                    "out_blocks": 0,
+                    "total_blocks": 0,
+                    "in_blocks_rate": 0,
+                    "out_blocks_rate": 0,
+                    "total_blocks_rate": 0,
+                    "start": "2016-09-19T15:11:20Z",
+                    "end": "2016-09-19T15:11:20Z",
+                    "walltime": 0,
+                    "usertime": 0.039486,
+                    "systemtime": 0.040457,
+                    "total_files": 1,
+                    "total_bytes": 48,
+                    "output_files": 1,
+                    "output_bytes": 48,
+                    "vdr_files": 0,
+                    "vdr_bytes": 0
+                }
+            }
+        ],
+        "maxbytes": 0,
+        "bytehist": null
+    },
+    {
+        "name": "MERGE_JSON",
+        "fqname": "ID.pipeline_test.AWESOME.MERGE_JSON",
+        "type": "stage",
+        "forks": [
+            {
+                "stages": [
+                    {
+                        "name": "MERGE_JSON",
+                        "fqname": "ID.pipeline_test.AWESOME.MERGE_JSON",
+                        "forki": 0
+                    }
+                ],
+                "index": 0,
+                "chunks": [
+                    {
+                        "index": 0,
+                        "chunk_stats": {
+                            "num_jobs": 1,
+                            "num_threads": 1,
+                            "duration": 0.012314081192016602,
+                            "core_hours": 3.4205781088935004e-06,
+                            "maxrss": 9105408,
+                            "in_blocks": 0,
+                            "out_blocks": 1,
+                            "total_blocks": 1,
+                            "in_blocks_rate": 0,
+                            "out_blocks_rate": 81.20784526321904,
+                            "total_blocks_rate": 81.20784526321904,
+                            "start": "2016-09-19T15:11:35Z",
+                            "end": "2016-09-19T15:11:35Z",
+                            "walltime": 0,
+                            "usertime": 0.041303,
+                            "systemtime": 0.042394,
+                            "total_files": 1,
+                            "total_bytes": 35,
+                            "output_files": 0,
+                            "output_bytes": 0,
+                            "vdr_files": 0,
+                            "vdr_bytes": 0
+                        }
+                    }
+                ],
+                "split_stats": null,
+                "join_stats": null,
+                "fork_stats": {
+                    "num_jobs": 1,
+                    "num_threads": 1,
+                    "duration": 0.012314081192016602,
+                    "core_hours": 3.4205781088935004e-06,
+                    "maxrss": 9105408,
+                    "in_blocks": 0,
+                    "out_blocks": 1,
+                    "total_blocks": 1,
+                    "in_blocks_rate": 0,
+                    "out_blocks_rate": 81.20784526321904,
+                    "total_blocks_rate": 81.20784526321904,
+                    "start": "2016-09-19T15:11:35Z",
+                    "end": "2016-09-19T15:11:35Z",
+                    "walltime": 0,
+                    "usertime": 0.041303,
+                    "systemtime": 0.042394,
+                    "total_files": 1,
+                    "total_bytes": 35,
+                    "output_files": 1,
+                    "output_bytes": 35,
+                    "vdr_files": 0,
+                    "vdr_bytes": 0
+                }
+            },
+            {
+                "stages": [
+                    {
+                        "name": "MERGE_JSON",
+                        "fqname": "ID.pipeline_test.AWESOME.MERGE_JSON",
+                        "forki": 1
+                    }
+                ],
+                "index": 1,
+                "chunks": [
+                    {
+                        "index": 0,
+                        "chunk_stats": {
+                            "num_jobs": 1,
+                            "num_threads": 1,
+                            "duration": 0.011852025985717773,
+                            "core_hours": 3.292229440477159e-06,
+                            "maxrss": 9015296,
+                            "in_blocks": 0,
+                            "out_blocks": 1,
+                            "total_blocks": 1,
+                            "in_blocks_rate": 0,
+                            "out_blocks_rate": 84.37376033473477,
+                            "total_blocks_rate": 84.37376033473477,
+                            "start": "2016-09-19T15:11:35Z",
+                            "end": "2016-09-19T15:11:35Z",
+                            "walltime": 0,
+                            "usertime": 0.037355,
+                            "systemtime": 0.037471,
+                            "total_files": 1,
+                            "total_bytes": 35,
+                            "output_files": 0,
+                            "output_bytes": 0,
+                            "vdr_files": 0,
+                            "vdr_bytes": 0
+                        }
+                    }
+                ],
+                "split_stats": null,
+                "join_stats": null,
+                "fork_stats": {
+                    "num_jobs": 1,
+                    "num_threads": 1,
+                    "duration": 0.011852025985717773,
+                    "core_hours": 3.292229440477159e-06,
+                    "maxrss": 9015296,
+                    "in_blocks": 0,
+                    "out_blocks": 1,
+                    "total_blocks": 1,
+                    "in_blocks_rate": 0,
+                    "out_blocks_rate": 84.37376033473477,
+                    "total_blocks_rate": 84.37376033473477,
+                    "start": "2016-09-19T15:11:35Z",
+                    "end": "2016-09-19T15:11:35Z",
+                    "walltime": 0,
+                    "usertime": 0.037355,
+                    "systemtime": 0.037471,
+                    "total_files": 1,
+                    "total_bytes": 35,
+                    "output_files": 1,
+                    "output_bytes": 35,
+                    "vdr_files": 0,
+                    "vdr_bytes": 0
+                }
+            },
+            {
+                "stages": [
+                    {
+                        "name": "MERGE_JSON",
+                        "fqname": "ID.pipeline_test.AWESOME.MERGE_JSON",
+                        "forki": 2
+                    }
+                ],
+                "index": 2,
+                "chunks": [
+                    {
+                        "index": 0,
+                        "chunk_stats": {
+                            "num_jobs": 1,
+                            "num_threads": 1,
+                            "duration": 0.011430025100708008,
+                            "core_hours": 3.1750069724188912e-06,
+                            "maxrss": 9064448,
+                            "in_blocks": 0,
+                            "out_blocks": 2,
+                            "total_blocks": 2,
+                            "in_blocks_rate": 0,
+                            "out_blocks_rate": 174.97774347635635,
+                            "total_blocks_rate": 174.97774347635635,
+                            "start": "2016-09-19T15:11:35Z",
+                            "end": "2016-09-19T15:11:35Z",
+                            "walltime": 0,
+                            "usertime": 0.037226999999999996,
+                            "systemtime": 0.037429,
+                            "total_files": 1,
+                            "total_bytes": 35,
+                            "output_files": 0,
+                            "output_bytes": 0,
+                            "vdr_files": 0,
+                            "vdr_bytes": 0
+                        }
+                    }
+                ],
+                "split_stats": null,
+                "join_stats": null,
+                "fork_stats": {
+                    "num_jobs": 1,
+                    "num_threads": 1,
+                    "duration": 0.011430025100708008,
+                    "core_hours": 3.1750069724188912e-06,
+                    "maxrss": 9064448,
+                    "in_blocks": 0,
+                    "out_blocks": 2,
+                    "total_blocks": 2,
+                    "in_blocks_rate": 0,
+                    "out_blocks_rate": 174.97774347635635,
+                    "total_blocks_rate": 174.97774347635635,
+                    "start": "2016-09-19T15:11:35Z",
+                    "end": "2016-09-19T15:11:35Z",
+                    "walltime": 0,
+                    "usertime": 0.037226999999999996,
+                    "systemtime": 0.037429,
+                    "total_files": 1,
+                    "total_bytes": 35,
+                    "output_files": 1,
+                    "output_bytes": 35,
+                    "vdr_files": 0,
+                    "vdr_bytes": 0
+                }
+            },
+            {
+                "stages": [
+                    {
+                        "name": "MERGE_JSON",
+                        "fqname": "ID.pipeline_test.AWESOME.MERGE_JSON",
+                        "forki": 3
+                    }
+                ],
+                "index": 3,
+                "chunks": [
+                    {
+                        "index": 0,
+                        "chunk_stats": {
+                            "num_jobs": 1,
+                            "num_threads": 1,
+                            "duration": 0.010996103286743164,
+                            "core_hours": 3.0544731352064344e-06,
+                            "maxrss": 9105408,
+                            "in_blocks": 0,
+                            "out_blocks": 0,
+                            "total_blocks": 0,
+                            "in_blocks_rate": 0,
+                            "out_blocks_rate": 0,
+                            "total_blocks_rate": 0,
+                            "start": "2016-09-19T15:11:35Z",
+                            "end": "2016-09-19T15:11:35Z",
+                            "walltime": 0,
+                            "usertime": 0.037197,
+                            "systemtime": 0.037712999999999997,
+                            "total_files": 1,
+                            "total_bytes": 35,
+                            "output_files": 0,
+                            "output_bytes": 0,
+                            "vdr_files": 0,
+                            "vdr_bytes": 0
+                        }
+                    }
+                ],
+                "split_stats": null,
+                "join_stats": null,
+                "fork_stats": {
+                    "num_jobs": 1,
+                    "num_threads": 1,
+                    "duration": 0.010996103286743164,
+                    "core_hours": 3.0544731352064344e-06,
+                    "maxrss": 9105408,
+                    "in_blocks": 0,
+                    "out_blocks": 0,
+                    "total_blocks": 0,
+                    "in_blocks_rate": 0,
+                    "out_blocks_rate": 0,
+                    "total_blocks_rate": 0,
+                    "start": "2016-09-19T15:11:35Z",
+                    "end": "2016-09-19T15:11:35Z",
+                    "walltime": 0,
+                    "usertime": 0.037197,
+                    "systemtime": 0.037712999999999997,
+                    "total_files": 1,
+                    "total_bytes": 35,
+                    "output_files": 1,
+                    "output_bytes": 35,
+                    "vdr_files": 0,
+                    "vdr_bytes": 0
+                }
+            }
+        ],
+        "maxbytes": 0,
+        "bytehist": null
+    }
+]
