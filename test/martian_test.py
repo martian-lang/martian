@@ -14,6 +14,8 @@ from fnmatch import fnmatchcase
 
 
 def ExpectationDir(config_filename, config):
+    """Gets the absolute path of the 'expected output' directory from
+    the config file."""
     if 'expected_dir' in config:
         return os.path.abspath(os.path.join(os.path.dirname(config_filename),
                                             config['expected_dir']))
@@ -23,6 +25,8 @@ def ExpectationDir(config_filename, config):
 
 
 def OutputDir(config):
+    """Computes the absolute path of the test pipeline work directory from
+    the config."""
     if 'output_dir' in config:
         return os.path.abspath(os.path.join(config['work_dir'],
                                             config['output_dir']))
@@ -31,6 +35,15 @@ def OutputDir(config):
 
 
 def ExpandGlob(root, pattern):
+    """Finds all of the files and directories matching pattern,
+    relative to root.
+
+    For example, if root is /mnt/awesome and pattern is 'foo/*/_outs' it might
+    return foo/bar/_outs, foo/baz/_outs, foo/bar/baz/_outs and so on.
+
+    This would be unnessessary in python3 because glob understands the
+    ** recursive wildcard syntax, but in python 2 it is needed.
+    """
     for cur, dirnames, filenames in os.walk(root):
         for fn in filenames:
             if fnmatchcase(os.path.relpath(os.path.join(cur, fn), root), pattern):
@@ -41,6 +54,8 @@ def ExpandGlob(root, pattern):
 
 
 def CheckExists(output, expect, filename):
+    """Checks that a given file, directory, or link in the expected directory
+    also exists in the output directory."""
     if os.path.isdir(os.path.join(expect, filename)):
         if not os.path.isdir(os.path.join(output, filename)):
             sys.stderr.write('Missing directory %s\n'
@@ -63,6 +78,11 @@ def CheckExists(output, expect, filename):
 
 
 def CompareDicts(actual, expected, keys):
+    """Compares selected keys from two dictionaries."""
+    if not actual:
+        return not expected
+    if not expected:
+        return not actual
     for key in keys:
         if key in actual:
             if key in expected:
@@ -80,6 +100,8 @@ def CompareDicts(actual, expected, keys):
 
 
 def CompareJobinfo(output, expect, filename):
+    """Compare two _jobinfo json files.  Only compares keys which are expected
+    to remain the same across all runs."""
     try:
         with open(os.path.join(output, filename)) as act:
             actual = json.load(act)
@@ -96,6 +118,8 @@ def CompareJobinfo(output, expect, filename):
 
 
 def CompareFinalState(output, expect, filename):
+    """Compare two _finalstate json files.  Only compares keys within each
+    element which are expected to remain the same across runs."""
     try:
         with open(os.path.join(output, filename)) as act:
             actual = json.load(act)
@@ -122,6 +146,7 @@ _TIMESTAMP_REGEX = re.compile(
 
 
 def CompareTimestamped(output, expect, filename):
+    """Compare two files, replacing every timestamp with __TIMESTAMP__."""
     with open(os.path.join(output, filename)) as act:
         with open(os.path.join(expect, filename)) as exp:
             for actual, expected in itertools.izip_longest(act, exp):
@@ -133,6 +158,7 @@ def CompareTimestamped(output, expect, filename):
 
 
 def CompareFileContent(output, expect, filename):
+    """Compare two files.  Return True if they match."""
     if os.path.basename(filename) == '_jobinfo':
         return CompareJobinfo(output, expect, filename)
     elif os.path.basename(filename) == '_finalstate':
@@ -148,6 +174,8 @@ def CompareFileContent(output, expect, filename):
 
 
 def CompareContent(output, expect, filename):
+    """Check that two paths contain the same content if they are files.  Does
+    not check anything about non-file objects."""
     if not os.path.isfile(os.path.join(expect, filename)):
         if os.path.isfile(os.path.join(output, filename)):
             sys.stderr.write('File should not exist: %s\n'
@@ -161,6 +189,9 @@ def CompareContent(output, expect, filename):
 
 
 def CheckResult(output_dir, expectation_dir, config):
+    """Given an output directory and an expected output directory, and a config
+    file containing the tests to apply, checks that the configured success
+    criteria all pass."""
     ok = True
     if 'contains_files' in config:
         for pat in config['contains_files']:
