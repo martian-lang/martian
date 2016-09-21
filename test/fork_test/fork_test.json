@@ -3,10 +3,5 @@
   "expected_return": 0,
   "output_dir": "pipeline_test",
   "contains_only_files": ["*"],
-  "contents_match": ["AWESOME/*",
-                     "_invocation",
-                     "outs/*",
-                     "_finalstate",
-                     "_jobmode",
-                     "_tags"]
+  "contents_match": ["*"]
 }

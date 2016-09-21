@@ -1,6 +1,6 @@
 
 
 call MERGE_JSON(
-    json1 = "/Users/adam.azarchs/repos/martian/test/fork_test/pipeline_test/AWESOME/ADD_KEY3/fork1/files/result.json",
-    json2 = "/Users/adam.azarchs/repos/martian/test/fork_test/pipeline_test/AWESOME/ADD_KEY4/fork3/files/result.json",
+    json1 = "/Users/testuser/repos/martian/test/fork_test/pipeline_test/AWESOME/ADD_KEY3/fork1/files/result.json",
+    json2 = "/Users/testuser/repos/martian/test/fork_test/pipeline_test/AWESOME/ADD_KEY4/fork3/files/result.json",
 )

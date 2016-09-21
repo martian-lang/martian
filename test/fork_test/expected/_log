@@ -1,6 +1,6 @@
 Martian Runtime - <version not embedded>
 2016-09-19 15:10:46 [cmdline] mrp pipeline.mro pipeline_test
-2016-09-19 15:10:46 [environ] MROPATH=/Users/adam.azarchs/repos/martian/test/fork_test
+2016-09-19 15:10:46 [environ] MROPATH=/Users/testuser/repos/martian/test/fork_test
 2016-09-19 15:10:46 [version] MRO Version=2.1.0-1-g7642695
 2016-09-19 15:10:46 [options] --jobmode=local
 2016-09-19 15:10:46 [options] --vdrmode=post
@@ -9,7 +9,7 @@ Martian Runtime - <version not embedded>
 2016-09-19 15:10:46 [options] --zip=false
 2016-09-19 15:10:46 [options] --noexit=false
 2016-09-19 15:10:46 [options] --nopreflight=false
-2016-09-19 15:10:46 [jobmngr] Job config = /Users/adam.azarchs/repos/martian/jobmanagers/config.json
+2016-09-19 15:10:46 [jobmngr] Job config = /Users/testuser/repos/martian/jobmanagers/config.json
 2016-09-19 15:10:46 [jobmngr] Using 4 cores available on system.
 2016-09-19 15:10:46 [jobmngr] Using 8 GB, 100% of system memory.
 2016-09-19 15:10:46 [webserv] UI disabled.
@@ -82,19 +82,19 @@ Running preflight checks (please wait)...
 2016-09-19 15:11:50 [runtime] VDR killed 0 files, 0B.
 
 Outputs (fork0):
-- outfile: /Users/adam.azarchs/repos/martian/test/fork_test/pipeline_test/outs/fork0/outfile.json
+- outfile: /Users/testuser/repos/martian/test/fork_test/pipeline_test/outs/fork0/outfile.json
 
 
 Outputs (fork1):
-- outfile: /Users/adam.azarchs/repos/martian/test/fork_test/pipeline_test/outs/fork1/outfile.json
+- outfile: /Users/testuser/repos/martian/test/fork_test/pipeline_test/outs/fork1/outfile.json
 
 
 Outputs (fork2):
-- outfile: /Users/adam.azarchs/repos/martian/test/fork_test/pipeline_test/outs/fork2/outfile.json
+- outfile: /Users/testuser/repos/martian/test/fork_test/pipeline_test/outs/fork2/outfile.json
 
 
 Outputs (fork3):
-- outfile: /Users/adam.azarchs/repos/martian/test/fork_test/pipeline_test/outs/fork3/outfile.json
+- outfile: /Users/testuser/repos/martian/test/fork_test/pipeline_test/outs/fork3/outfile.json
 
 2016-09-19 15:11:50 [perform] Serializing pipestance performance data.
 Pipestance completed successfully!

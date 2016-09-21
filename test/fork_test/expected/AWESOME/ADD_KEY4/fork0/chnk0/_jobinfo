@@ -7,7 +7,7 @@
     }, 
     "monitor_flag": "disable", 
     "pid": 15184, 
-    "cwd": "/Users/adam.azarchs/repos/martian/test/fork_test/pipeline_test/AWESOME/ADD_KEY4/fork0/files", 
+    "cwd": "/Users/testuser/repos/martian/test/fork_test/pipeline_test/AWESOME/ADD_KEY4/fork0/files", 
     "wallclock": {
         "start": "2016-09-19 15:11:20", 
         "end": "2016-09-19 15:11:20", 

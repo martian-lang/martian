@@ -3,10 +3,10 @@
         "name": "AWESOME",
         "fqname": "ID.pipeline_test.AWESOME",
         "type": "pipeline",
-        "path": "/Users/adam.azarchs/repos/martian/test/fork_test/pipeline_test/AWESOME",
+        "path": "/Users/testuser/repos/martian/test/fork_test/pipeline_test/AWESOME",
         "state": "complete",
         "metadata": {
-            "path": "/Users/adam.azarchs/repos/martian/test/fork_test/pipeline_test/AWESOME",
+            "path": "/Users/testuser/repos/martian/test/fork_test/pipeline_test/AWESOME",
             "names": []
         },
         "sweepbindings": [
@@ -53,7 +53,7 @@
                 "joinDef": {},
                 "state": "complete",
                 "metadata": {
-                    "path": "/Users/adam.azarchs/repos/martian/test/fork_test/pipeline_test/AWESOME/fork0",
+                    "path": "/Users/testuser/repos/martian/test/fork_test/pipeline_test/AWESOME/fork0",
                     "names": [
                         "complete",
                         "invocation",
@@ -62,11 +62,11 @@
                     ]
                 },
                 "split_metadata": {
-                    "path": "/Users/adam.azarchs/repos/martian/test/fork_test/pipeline_test/AWESOME/fork0/split",
+                    "path": "/Users/testuser/repos/martian/test/fork_test/pipeline_test/AWESOME/fork0/split",
                     "names": []
                 },
                 "join_metadata": {
-                    "path": "/Users/adam.azarchs/repos/martian/test/fork_test/pipeline_test/AWESOME/fork0/join",
+                    "path": "/Users/testuser/repos/martian/test/fork_test/pipeline_test/AWESOME/fork0/join",
                     "names": []
                 },
                 "chunks": [],
@@ -136,7 +136,7 @@
                             "sweepRootId": "outfile",
                             "node": "MERGE_JSON",
                             "matchedFork": 0,
-                            "value": "/Users/adam.azarchs/repos/martian/test/fork_test/pipeline_test/AWESOME/MERGE_JSON/fork0/files/result.json",
+                            "value": "/Users/testuser/repos/martian/test/fork_test/pipeline_test/AWESOME/MERGE_JSON/fork0/files/result.json",
                             "waiting": false
                         }
                     ]
@@ -151,7 +151,7 @@
                 "joinDef": {},
                 "state": "complete",
                 "metadata": {
-                    "path": "/Users/adam.azarchs/repos/martian/test/fork_test/pipeline_test/AWESOME/fork1",
+                    "path": "/Users/testuser/repos/martian/test/fork_test/pipeline_test/AWESOME/fork1",
                     "names": [
                         "complete",
                         "invocation",
@@ -160,11 +160,11 @@
                     ]
                 },
                 "split_metadata": {
-                    "path": "/Users/adam.azarchs/repos/martian/test/fork_test/pipeline_test/AWESOME/fork1/split",
+                    "path": "/Users/testuser/repos/martian/test/fork_test/pipeline_test/AWESOME/fork1/split",
                     "names": []
                 },
                 "join_metadata": {
-                    "path": "/Users/adam.azarchs/repos/martian/test/fork_test/pipeline_test/AWESOME/fork1/join",
+                    "path": "/Users/testuser/repos/martian/test/fork_test/pipeline_test/AWESOME/fork1/join",
                     "names": []
                 },
                 "chunks": [],
@@ -234,7 +234,7 @@
                             "sweepRootId": "outfile",
                             "node": "MERGE_JSON",
                             "matchedFork": 1,
-                            "value": "/Users/adam.azarchs/repos/martian/test/fork_test/pipeline_test/AWESOME/MERGE_JSON/fork1/files/result.json",
+                            "value": "/Users/testuser/repos/martian/test/fork_test/pipeline_test/AWESOME/MERGE_JSON/fork1/files/result.json",
                             "waiting": false
                         }
                     ]
@@ -249,7 +249,7 @@
                 "joinDef": {},
                 "state": "complete",
                 "metadata": {
-                    "path": "/Users/adam.azarchs/repos/martian/test/fork_test/pipeline_test/AWESOME/fork2",
+                    "path": "/Users/testuser/repos/martian/test/fork_test/pipeline_test/AWESOME/fork2",
                     "names": [
                         "complete",
                         "invocation",
@@ -258,11 +258,11 @@
                     ]
                 },
                 "split_metadata": {
-                    "path": "/Users/adam.azarchs/repos/martian/test/fork_test/pipeline_test/AWESOME/fork2/split",
+                    "path": "/Users/testuser/repos/martian/test/fork_test/pipeline_test/AWESOME/fork2/split",
                     "names": []
                 },
                 "join_metadata": {
-                    "path": "/Users/adam.azarchs/repos/martian/test/fork_test/pipeline_test/AWESOME/fork2/join",
+                    "path": "/Users/testuser/repos/martian/test/fork_test/pipeline_test/AWESOME/fork2/join",
                     "names": []
                 },
                 "chunks": [],
@@ -332,7 +332,7 @@
                             "sweepRootId": "outfile",
                             "node": "MERGE_JSON",
                             "matchedFork": 2,
-                            "value": "/Users/adam.azarchs/repos/martian/test/fork_test/pipeline_test/AWESOME/MERGE_JSON/fork2/files/result.json",
+                            "value": "/Users/testuser/repos/martian/test/fork_test/pipeline_test/AWESOME/MERGE_JSON/fork2/files/result.json",
                             "waiting": false
                         }
                     ]
@@ -347,7 +347,7 @@
                 "joinDef": {},
                 "state": "complete",
                 "metadata": {
-                    "path": "/Users/adam.azarchs/repos/martian/test/fork_test/pipeline_test/AWESOME/fork3",
+                    "path": "/Users/testuser/repos/martian/test/fork_test/pipeline_test/AWESOME/fork3",
                     "names": [
                         "complete",
                         "invocation",
@@ -356,11 +356,11 @@
                     ]
                 },
                 "split_metadata": {
-                    "path": "/Users/adam.azarchs/repos/martian/test/fork_test/pipeline_test/AWESOME/fork3/split",
+                    "path": "/Users/testuser/repos/martian/test/fork_test/pipeline_test/AWESOME/fork3/split",
                     "names": []
                 },
                 "join_metadata": {
-                    "path": "/Users/adam.azarchs/repos/martian/test/fork_test/pipeline_test/AWESOME/fork3/join",
+                    "path": "/Users/testuser/repos/martian/test/fork_test/pipeline_test/AWESOME/fork3/join",
                     "names": []
                 },
                 "chunks": [],
@@ -430,7 +430,7 @@
                             "sweepRootId": "outfile",
                             "node": "MERGE_JSON",
                             "matchedFork": 3,
-                            "value": "/Users/adam.azarchs/repos/martian/test/fork_test/pipeline_test/AWESOME/MERGE_JSON/fork3/files/result.json",
+                            "value": "/Users/testuser/repos/martian/test/fork_test/pipeline_test/AWESOME/MERGE_JSON/fork3/files/result.json",
                             "waiting": false
                         }
                     ]
@@ -451,10 +451,10 @@
         "name": "ADD_KEY1",
         "fqname": "ID.pipeline_test.AWESOME.ADD_KEY1",
         "type": "stage",
-        "path": "/Users/adam.azarchs/repos/martian/test/fork_test/pipeline_test/AWESOME/ADD_KEY1",
+        "path": "/Users/testuser/repos/martian/test/fork_test/pipeline_test/AWESOME/ADD_KEY1",
         "state": "complete",
         "metadata": {
-            "path": "/Users/adam.azarchs/repos/martian/test/fork_test/pipeline_test/AWESOME/ADD_KEY1",
+            "path": "/Users/testuser/repos/martian/test/fork_test/pipeline_test/AWESOME/ADD_KEY1",
             "names": []
         },
         "sweepbindings": [],
@@ -468,7 +468,7 @@
                 },
                 "state": "complete",
                 "metadata": {
-                    "path": "/Users/adam.azarchs/repos/martian/test/fork_test/pipeline_test/AWESOME/ADD_KEY1/fork0",
+                    "path": "/Users/testuser/repos/martian/test/fork_test/pipeline_test/AWESOME/ADD_KEY1/fork0",
                     "names": [
                         "complete",
                         "invocation",
@@ -477,7 +477,7 @@
                     ]
                 },
                 "split_metadata": {
-                    "path": "/Users/adam.azarchs/repos/martian/test/fork_test/pipeline_test/AWESOME/ADD_KEY1/fork0/split",
+                    "path": "/Users/testuser/repos/martian/test/fork_test/pipeline_test/AWESOME/ADD_KEY1/fork0/split",
                     "names": [
                         "args",
                         "complete",
@@ -485,7 +485,7 @@
                     ]
                 },
                 "join_metadata": {
-                    "path": "/Users/adam.azarchs/repos/martian/test/fork_test/pipeline_test/AWESOME/ADD_KEY1/fork0/join",
+                    "path": "/Users/testuser/repos/martian/test/fork_test/pipeline_test/AWESOME/ADD_KEY1/fork0/join",
                     "names": [
                         "args",
                         "chunk_defs",
@@ -502,7 +502,7 @@
                         },
                         "state": "complete",
                         "metadata": {
-                            "path": "/Users/adam.azarchs/repos/martian/test/fork_test/pipeline_test/AWESOME/ADD_KEY1/fork0/chnk0",
+                            "path": "/Users/testuser/repos/martian/test/fork_test/pipeline_test/AWESOME/ADD_KEY1/fork0/chnk0",
                             "names": [
                                 "args",
                                 "complete",
@@ -564,17 +564,17 @@
         ],
         "edges": [],
         "stagecodeLang": "Python",
-        "stagecodeCmd": "/Users/adam.azarchs/repos/martian/test/fork_test/stages/add_key",
+        "stagecodeCmd": "/Users/testuser/repos/martian/test/fork_test/stages/add_key",
         "error": null
     },
     {
         "name": "ADD_KEY2",
         "fqname": "ID.pipeline_test.AWESOME.ADD_KEY2",
         "type": "stage",
-        "path": "/Users/adam.azarchs/repos/martian/test/fork_test/pipeline_test/AWESOME/ADD_KEY2",
+        "path": "/Users/testuser/repos/martian/test/fork_test/pipeline_test/AWESOME/ADD_KEY2",
         "state": "complete",
         "metadata": {
-            "path": "/Users/adam.azarchs/repos/martian/test/fork_test/pipeline_test/AWESOME/ADD_KEY2",
+            "path": "/Users/testuser/repos/martian/test/fork_test/pipeline_test/AWESOME/ADD_KEY2",
             "names": []
         },
         "sweepbindings": [
@@ -607,7 +607,7 @@
                 },
                 "state": "complete",
                 "metadata": {
-                    "path": "/Users/adam.azarchs/repos/martian/test/fork_test/pipeline_test/AWESOME/ADD_KEY2/fork0",
+                    "path": "/Users/testuser/repos/martian/test/fork_test/pipeline_test/AWESOME/ADD_KEY2/fork0",
                     "names": [
                         "complete",
                         "invocation",
@@ -616,7 +616,7 @@
                     ]
                 },
                 "split_metadata": {
-                    "path": "/Users/adam.azarchs/repos/martian/test/fork_test/pipeline_test/AWESOME/ADD_KEY2/fork0/split",
+                    "path": "/Users/testuser/repos/martian/test/fork_test/pipeline_test/AWESOME/ADD_KEY2/fork0/split",
                     "names": [
                         "args",
                         "complete",
@@ -624,7 +624,7 @@
                     ]
                 },
                 "join_metadata": {
-                    "path": "/Users/adam.azarchs/repos/martian/test/fork_test/pipeline_test/AWESOME/ADD_KEY2/fork0/join",
+                    "path": "/Users/testuser/repos/martian/test/fork_test/pipeline_test/AWESOME/ADD_KEY2/fork0/join",
                     "names": [
                         "args",
                         "chunk_defs",
@@ -641,7 +641,7 @@
                         },
                         "state": "complete",
                         "metadata": {
-                            "path": "/Users/adam.azarchs/repos/martian/test/fork_test/pipeline_test/AWESOME/ADD_KEY2/fork0/chnk0",
+                            "path": "/Users/testuser/repos/martian/test/fork_test/pipeline_test/AWESOME/ADD_KEY2/fork0/chnk0",
                             "names": [
                                 "args",
                                 "complete",
@@ -667,7 +667,7 @@
                             "sweepRootId": "start",
                             "node": "ADD_KEY1",
                             "matchedFork": 0,
-                            "value": "/Users/adam.azarchs/repos/martian/test/fork_test/pipeline_test/AWESOME/ADD_KEY1/fork0/files/result.json",
+                            "value": "/Users/testuser/repos/martian/test/fork_test/pipeline_test/AWESOME/ADD_KEY1/fork0/files/result.json",
                             "waiting": false
                         },
                         {
@@ -711,7 +711,7 @@
                 },
                 "state": "complete",
                 "metadata": {
-                    "path": "/Users/adam.azarchs/repos/martian/test/fork_test/pipeline_test/AWESOME/ADD_KEY2/fork1",
+                    "path": "/Users/testuser/repos/martian/test/fork_test/pipeline_test/AWESOME/ADD_KEY2/fork1",
                     "names": [
                         "complete",
                         "invocation",
@@ -720,7 +720,7 @@
                     ]
                 },
                 "split_metadata": {
-                    "path": "/Users/adam.azarchs/repos/martian/test/fork_test/pipeline_test/AWESOME/ADD_KEY2/fork1/split",
+                    "path": "/Users/testuser/repos/martian/test/fork_test/pipeline_test/AWESOME/ADD_KEY2/fork1/split",
                     "names": [
                         "args",
                         "complete",
@@ -728,7 +728,7 @@
                     ]
                 },
                 "join_metadata": {
-                    "path": "/Users/adam.azarchs/repos/martian/test/fork_test/pipeline_test/AWESOME/ADD_KEY2/fork1/join",
+                    "path": "/Users/testuser/repos/martian/test/fork_test/pipeline_test/AWESOME/ADD_KEY2/fork1/join",
                     "names": [
                         "args",
                         "chunk_defs",
@@ -745,7 +745,7 @@
                         },
                         "state": "complete",
                         "metadata": {
-                            "path": "/Users/adam.azarchs/repos/martian/test/fork_test/pipeline_test/AWESOME/ADD_KEY2/fork1/chnk0",
+                            "path": "/Users/testuser/repos/martian/test/fork_test/pipeline_test/AWESOME/ADD_KEY2/fork1/chnk0",
                             "names": [
                                 "args",
                                 "complete",
@@ -771,7 +771,7 @@
                             "sweepRootId": "start",
                             "node": "ADD_KEY1",
                             "matchedFork": 0,
-                            "value": "/Users/adam.azarchs/repos/martian/test/fork_test/pipeline_test/AWESOME/ADD_KEY1/fork0/files/result.json",
+                            "value": "/Users/testuser/repos/martian/test/fork_test/pipeline_test/AWESOME/ADD_KEY1/fork0/files/result.json",
                             "waiting": false
                         },
                         {
@@ -812,17 +812,17 @@
             }
         ],
         "stagecodeLang": "Python",
-        "stagecodeCmd": "/Users/adam.azarchs/repos/martian/test/fork_test/stages/add_key",
+        "stagecodeCmd": "/Users/testuser/repos/martian/test/fork_test/stages/add_key",
         "error": null
     },
     {
         "name": "ADD_KEY3",
         "fqname": "ID.pipeline_test.AWESOME.ADD_KEY3",
         "type": "stage",
-        "path": "/Users/adam.azarchs/repos/martian/test/fork_test/pipeline_test/AWESOME/ADD_KEY3",
+        "path": "/Users/testuser/repos/martian/test/fork_test/pipeline_test/AWESOME/ADD_KEY3",
         "state": "complete",
         "metadata": {
-            "path": "/Users/adam.azarchs/repos/martian/test/fork_test/pipeline_test/AWESOME/ADD_KEY3",
+            "path": "/Users/testuser/repos/martian/test/fork_test/pipeline_test/AWESOME/ADD_KEY3",
             "names": []
         },
         "sweepbindings": [
@@ -855,7 +855,7 @@
                 },
                 "state": "complete",
                 "metadata": {
-                    "path": "/Users/adam.azarchs/repos/martian/test/fork_test/pipeline_test/AWESOME/ADD_KEY3/fork0",
+                    "path": "/Users/testuser/repos/martian/test/fork_test/pipeline_test/AWESOME/ADD_KEY3/fork0",
                     "names": [
                         "complete",
                         "invocation",
@@ -864,7 +864,7 @@
                     ]
                 },
                 "split_metadata": {
-                    "path": "/Users/adam.azarchs/repos/martian/test/fork_test/pipeline_test/AWESOME/ADD_KEY3/fork0/split",
+                    "path": "/Users/testuser/repos/martian/test/fork_test/pipeline_test/AWESOME/ADD_KEY3/fork0/split",
                     "names": [
                         "args",
                         "complete",
@@ -872,7 +872,7 @@
                     ]
                 },
                 "join_metadata": {
-                    "path": "/Users/adam.azarchs/repos/martian/test/fork_test/pipeline_test/AWESOME/ADD_KEY3/fork0/join",
+                    "path": "/Users/testuser/repos/martian/test/fork_test/pipeline_test/AWESOME/ADD_KEY3/fork0/join",
                     "names": [
                         "args",
                         "chunk_defs",
@@ -889,7 +889,7 @@
                         },
                         "state": "complete",
                         "metadata": {
-                            "path": "/Users/adam.azarchs/repos/martian/test/fork_test/pipeline_test/AWESOME/ADD_KEY3/fork0/chnk0",
+                            "path": "/Users/testuser/repos/martian/test/fork_test/pipeline_test/AWESOME/ADD_KEY3/fork0/chnk0",
                             "names": [
                                 "args",
                                 "complete",
@@ -928,7 +928,7 @@
                             "sweepRootId": "start",
                             "node": "ADD_KEY2",
                             "matchedFork": 0,
-                            "value": "/Users/adam.azarchs/repos/martian/test/fork_test/pipeline_test/AWESOME/ADD_KEY2/fork0/files/result.json",
+                            "value": "/Users/testuser/repos/martian/test/fork_test/pipeline_test/AWESOME/ADD_KEY2/fork0/files/result.json",
                             "waiting": false
                         },
                         {
@@ -959,7 +959,7 @@
                 },
                 "state": "complete",
                 "metadata": {
-                    "path": "/Users/adam.azarchs/repos/martian/test/fork_test/pipeline_test/AWESOME/ADD_KEY3/fork1",
+                    "path": "/Users/testuser/repos/martian/test/fork_test/pipeline_test/AWESOME/ADD_KEY3/fork1",
                     "names": [
                         "complete",
                         "invocation",
@@ -968,7 +968,7 @@
                     ]
                 },
                 "split_metadata": {
-                    "path": "/Users/adam.azarchs/repos/martian/test/fork_test/pipeline_test/AWESOME/ADD_KEY3/fork1/split",
+                    "path": "/Users/testuser/repos/martian/test/fork_test/pipeline_test/AWESOME/ADD_KEY3/fork1/split",
                     "names": [
                         "args",
                         "complete",
@@ -976,7 +976,7 @@
                     ]
                 },
                 "join_metadata": {
-                    "path": "/Users/adam.azarchs/repos/martian/test/fork_test/pipeline_test/AWESOME/ADD_KEY3/fork1/join",
+                    "path": "/Users/testuser/repos/martian/test/fork_test/pipeline_test/AWESOME/ADD_KEY3/fork1/join",
                     "names": [
                         "args",
                         "chunk_defs",
@@ -993,7 +993,7 @@
                         },
                         "state": "complete",
                         "metadata": {
-                            "path": "/Users/adam.azarchs/repos/martian/test/fork_test/pipeline_test/AWESOME/ADD_KEY3/fork1/chnk0",
+                            "path": "/Users/testuser/repos/martian/test/fork_test/pipeline_test/AWESOME/ADD_KEY3/fork1/chnk0",
                             "names": [
                                 "args",
                                 "complete",
@@ -1032,7 +1032,7 @@
                             "sweepRootId": "start",
                             "node": "ADD_KEY2",
                             "matchedFork": 1,
-                            "value": "/Users/adam.azarchs/repos/martian/test/fork_test/pipeline_test/AWESOME/ADD_KEY2/fork1/files/result.json",
+                            "value": "/Users/testuser/repos/martian/test/fork_test/pipeline_test/AWESOME/ADD_KEY2/fork1/files/result.json",
                             "waiting": false
                         },
                         {
@@ -1060,17 +1060,17 @@
             }
         ],
         "stagecodeLang": "Python",
-        "stagecodeCmd": "/Users/adam.azarchs/repos/martian/test/fork_test/stages/add_key",
+        "stagecodeCmd": "/Users/testuser/repos/martian/test/fork_test/stages/add_key",
         "error": null
     },
     {
         "name": "ADD_KEY4",
         "fqname": "ID.pipeline_test.AWESOME.ADD_KEY4",
         "type": "stage",
-        "path": "/Users/adam.azarchs/repos/martian/test/fork_test/pipeline_test/AWESOME/ADD_KEY4",
+        "path": "/Users/testuser/repos/martian/test/fork_test/pipeline_test/AWESOME/ADD_KEY4",
         "state": "complete",
         "metadata": {
-            "path": "/Users/adam.azarchs/repos/martian/test/fork_test/pipeline_test/AWESOME/ADD_KEY4",
+            "path": "/Users/testuser/repos/martian/test/fork_test/pipeline_test/AWESOME/ADD_KEY4",
             "names": []
         },
         "sweepbindings": [
@@ -1120,7 +1120,7 @@
                 },
                 "state": "complete",
                 "metadata": {
-                    "path": "/Users/adam.azarchs/repos/martian/test/fork_test/pipeline_test/AWESOME/ADD_KEY4/fork0",
+                    "path": "/Users/testuser/repos/martian/test/fork_test/pipeline_test/AWESOME/ADD_KEY4/fork0",
                     "names": [
                         "complete",
                         "invocation",
@@ -1129,7 +1129,7 @@
                     ]
                 },
                 "split_metadata": {
-                    "path": "/Users/adam.azarchs/repos/martian/test/fork_test/pipeline_test/AWESOME/ADD_KEY4/fork0/split",
+                    "path": "/Users/testuser/repos/martian/test/fork_test/pipeline_test/AWESOME/ADD_KEY4/fork0/split",
                     "names": [
                         "args",
                         "complete",
@@ -1137,7 +1137,7 @@
                     ]
                 },
                 "join_metadata": {
-                    "path": "/Users/adam.azarchs/repos/martian/test/fork_test/pipeline_test/AWESOME/ADD_KEY4/fork0/join",
+                    "path": "/Users/testuser/repos/martian/test/fork_test/pipeline_test/AWESOME/ADD_KEY4/fork0/join",
                     "names": [
                         "args",
                         "chunk_defs",
@@ -1154,7 +1154,7 @@
                         },
                         "state": "complete",
                         "metadata": {
-                            "path": "/Users/adam.azarchs/repos/martian/test/fork_test/pipeline_test/AWESOME/ADD_KEY4/fork0/chnk0",
+                            "path": "/Users/testuser/repos/martian/test/fork_test/pipeline_test/AWESOME/ADD_KEY4/fork0/chnk0",
                             "names": [
                                 "args",
                                 "complete",
@@ -1206,7 +1206,7 @@
                             "sweepRootId": "start",
                             "node": "ADD_KEY2",
                             "matchedFork": 0,
-                            "value": "/Users/adam.azarchs/repos/martian/test/fork_test/pipeline_test/AWESOME/ADD_KEY2/fork0/files/result.json",
+                            "value": "/Users/testuser/repos/martian/test/fork_test/pipeline_test/AWESOME/ADD_KEY2/fork0/files/result.json",
                             "waiting": false
                         }
                     ],
@@ -1225,7 +1225,7 @@
                 },
                 "state": "complete",
                 "metadata": {
-                    "path": "/Users/adam.azarchs/repos/martian/test/fork_test/pipeline_test/AWESOME/ADD_KEY4/fork1",
+                    "path": "/Users/testuser/repos/martian/test/fork_test/pipeline_test/AWESOME/ADD_KEY4/fork1",
                     "names": [
                         "complete",
                         "invocation",
@@ -1234,7 +1234,7 @@
                     ]
                 },
                 "split_metadata": {
-                    "path": "/Users/adam.azarchs/repos/martian/test/fork_test/pipeline_test/AWESOME/ADD_KEY4/fork1/split",
+                    "path": "/Users/testuser/repos/martian/test/fork_test/pipeline_test/AWESOME/ADD_KEY4/fork1/split",
                     "names": [
                         "args",
                         "complete",
@@ -1242,7 +1242,7 @@
                     ]
                 },
                 "join_metadata": {
-                    "path": "/Users/adam.azarchs/repos/martian/test/fork_test/pipeline_test/AWESOME/ADD_KEY4/fork1/join",
+                    "path": "/Users/testuser/repos/martian/test/fork_test/pipeline_test/AWESOME/ADD_KEY4/fork1/join",
                     "names": [
                         "args",
                         "chunk_defs",
@@ -1259,7 +1259,7 @@
                         },
                         "state": "complete",
                         "metadata": {
-                            "path": "/Users/adam.azarchs/repos/martian/test/fork_test/pipeline_test/AWESOME/ADD_KEY4/fork1/chnk0",
+                            "path": "/Users/testuser/repos/martian/test/fork_test/pipeline_test/AWESOME/ADD_KEY4/fork1/chnk0",
                             "names": [
                                 "args",
                                 "complete",
@@ -1311,7 +1311,7 @@
                             "sweepRootId": "start",
                             "node": "ADD_KEY2",
                             "matchedFork": 1,
-                            "value": "/Users/adam.azarchs/repos/martian/test/fork_test/pipeline_test/AWESOME/ADD_KEY2/fork1/files/result.json",
+                            "value": "/Users/testuser/repos/martian/test/fork_test/pipeline_test/AWESOME/ADD_KEY2/fork1/files/result.json",
                             "waiting": false
                         }
                     ],
@@ -1330,7 +1330,7 @@
                 },
                 "state": "complete",
                 "metadata": {
-                    "path": "/Users/adam.azarchs/repos/martian/test/fork_test/pipeline_test/AWESOME/ADD_KEY4/fork2",
+                    "path": "/Users/testuser/repos/martian/test/fork_test/pipeline_test/AWESOME/ADD_KEY4/fork2",
                     "names": [
                         "complete",
                         "invocation",
@@ -1339,7 +1339,7 @@
                     ]
                 },
                 "split_metadata": {
-                    "path": "/Users/adam.azarchs/repos/martian/test/fork_test/pipeline_test/AWESOME/ADD_KEY4/fork2/split",
+                    "path": "/Users/testuser/repos/martian/test/fork_test/pipeline_test/AWESOME/ADD_KEY4/fork2/split",
                     "names": [
                         "args",
                         "complete",
@@ -1347,7 +1347,7 @@
                     ]
                 },
                 "join_metadata": {
-                    "path": "/Users/adam.azarchs/repos/martian/test/fork_test/pipeline_test/AWESOME/ADD_KEY4/fork2/join",
+                    "path": "/Users/testuser/repos/martian/test/fork_test/pipeline_test/AWESOME/ADD_KEY4/fork2/join",
                     "names": [
                         "args",
                         "chunk_defs",
@@ -1364,7 +1364,7 @@
                         },
                         "state": "complete",
                         "metadata": {
-                            "path": "/Users/adam.azarchs/repos/martian/test/fork_test/pipeline_test/AWESOME/ADD_KEY4/fork2/chnk0",
+                            "path": "/Users/testuser/repos/martian/test/fork_test/pipeline_test/AWESOME/ADD_KEY4/fork2/chnk0",
                             "names": [
                                 "args",
                                 "complete",
@@ -1416,7 +1416,7 @@
                             "sweepRootId": "start",
                             "node": "ADD_KEY2",
                             "matchedFork": 0,
-                            "value": "/Users/adam.azarchs/repos/martian/test/fork_test/pipeline_test/AWESOME/ADD_KEY2/fork0/files/result.json",
+                            "value": "/Users/testuser/repos/martian/test/fork_test/pipeline_test/AWESOME/ADD_KEY2/fork0/files/result.json",
                             "waiting": false
                         }
                     ],
@@ -1435,7 +1435,7 @@
                 },
                 "state": "complete",
                 "metadata": {
-                    "path": "/Users/adam.azarchs/repos/martian/test/fork_test/pipeline_test/AWESOME/ADD_KEY4/fork3",
+                    "path": "/Users/testuser/repos/martian/test/fork_test/pipeline_test/AWESOME/ADD_KEY4/fork3",
                     "names": [
                         "complete",
                         "invocation",
@@ -1444,7 +1444,7 @@
                     ]
                 },
                 "split_metadata": {
-                    "path": "/Users/adam.azarchs/repos/martian/test/fork_test/pipeline_test/AWESOME/ADD_KEY4/fork3/split",
+                    "path": "/Users/testuser/repos/martian/test/fork_test/pipeline_test/AWESOME/ADD_KEY4/fork3/split",
                     "names": [
                         "args",
                         "complete",
@@ -1452,7 +1452,7 @@
                     ]
                 },
                 "join_metadata": {
-                    "path": "/Users/adam.azarchs/repos/martian/test/fork_test/pipeline_test/AWESOME/ADD_KEY4/fork3/join",
+                    "path": "/Users/testuser/repos/martian/test/fork_test/pipeline_test/AWESOME/ADD_KEY4/fork3/join",
                     "names": [
                         "args",
                         "chunk_defs",
@@ -1469,7 +1469,7 @@
                         },
                         "state": "complete",
                         "metadata": {
-                            "path": "/Users/adam.azarchs/repos/martian/test/fork_test/pipeline_test/AWESOME/ADD_KEY4/fork3/chnk0",
+                            "path": "/Users/testuser/repos/martian/test/fork_test/pipeline_test/AWESOME/ADD_KEY4/fork3/chnk0",
                             "names": [
                                 "args",
                                 "complete",
@@ -1521,7 +1521,7 @@
                             "sweepRootId": "start",
                             "node": "ADD_KEY2",
                             "matchedFork": 1,
-                            "value": "/Users/adam.azarchs/repos/martian/test/fork_test/pipeline_test/AWESOME/ADD_KEY2/fork1/files/result.json",
+                            "value": "/Users/testuser/repos/martian/test/fork_test/pipeline_test/AWESOME/ADD_KEY2/fork1/files/result.json",
                             "waiting": false
                         }
                     ],
@@ -1536,17 +1536,17 @@
             }
         ],
         "stagecodeLang": "Python",
-        "stagecodeCmd": "/Users/adam.azarchs/repos/martian/test/fork_test/stages/add_key",
+        "stagecodeCmd": "/Users/testuser/repos/martian/test/fork_test/stages/add_key",
         "error": null
     },
     {
         "name": "MERGE_JSON",
         "fqname": "ID.pipeline_test.AWESOME.MERGE_JSON",
         "type": "stage",
-        "path": "/Users/adam.azarchs/repos/martian/test/fork_test/pipeline_test/AWESOME/MERGE_JSON",
+        "path": "/Users/testuser/repos/martian/test/fork_test/pipeline_test/AWESOME/MERGE_JSON",
         "state": "complete",
         "metadata": {
-            "path": "/Users/adam.azarchs/repos/martian/test/fork_test/pipeline_test/AWESOME/MERGE_JSON",
+            "path": "/Users/testuser/repos/martian/test/fork_test/pipeline_test/AWESOME/MERGE_JSON",
             "names": []
         },
         "sweepbindings": [
@@ -1596,7 +1596,7 @@
                 },
                 "state": "complete",
                 "metadata": {
-                    "path": "/Users/adam.azarchs/repos/martian/test/fork_test/pipeline_test/AWESOME/MERGE_JSON/fork0",
+                    "path": "/Users/testuser/repos/martian/test/fork_test/pipeline_test/AWESOME/MERGE_JSON/fork0",
                     "names": [
                         "complete",
                         "invocation",
@@ -1605,7 +1605,7 @@
                     ]
                 },
                 "split_metadata": {
-                    "path": "/Users/adam.azarchs/repos/martian/test/fork_test/pipeline_test/AWESOME/MERGE_JSON/fork0/split",
+                    "path": "/Users/testuser/repos/martian/test/fork_test/pipeline_test/AWESOME/MERGE_JSON/fork0/split",
                     "names": [
                         "args",
                         "complete",
@@ -1613,7 +1613,7 @@
                     ]
                 },
                 "join_metadata": {
-                    "path": "/Users/adam.azarchs/repos/martian/test/fork_test/pipeline_test/AWESOME/MERGE_JSON/fork0/join",
+                    "path": "/Users/testuser/repos/martian/test/fork_test/pipeline_test/AWESOME/MERGE_JSON/fork0/join",
                     "names": [
                         "args",
                         "chunk_defs",
@@ -1630,7 +1630,7 @@
                         },
                         "state": "complete",
                         "metadata": {
-                            "path": "/Users/adam.azarchs/repos/martian/test/fork_test/pipeline_test/AWESOME/MERGE_JSON/fork0/chnk0",
+                            "path": "/Users/testuser/repos/martian/test/fork_test/pipeline_test/AWESOME/MERGE_JSON/fork0/chnk0",
                             "names": [
                                 "args",
                                 "complete",
@@ -1656,7 +1656,7 @@
                             "sweepRootId": "json1",
                             "node": "ADD_KEY3",
                             "matchedFork": 0,
-                            "value": "/Users/adam.azarchs/repos/martian/test/fork_test/pipeline_test/AWESOME/ADD_KEY3/fork0/files/result.json",
+                            "value": "/Users/testuser/repos/martian/test/fork_test/pipeline_test/AWESOME/ADD_KEY3/fork0/files/result.json",
                             "waiting": false
                         },
                         {
@@ -1669,7 +1669,7 @@
                             "sweepRootId": "json2",
                             "node": "ADD_KEY4",
                             "matchedFork": 0,
-                            "value": "/Users/adam.azarchs/repos/martian/test/fork_test/pipeline_test/AWESOME/ADD_KEY4/fork0/files/result.json",
+                            "value": "/Users/testuser/repos/martian/test/fork_test/pipeline_test/AWESOME/ADD_KEY4/fork0/files/result.json",
                             "waiting": false
                         }
                     ],
@@ -1688,7 +1688,7 @@
                 },
                 "state": "complete",
                 "metadata": {
-                    "path": "/Users/adam.azarchs/repos/martian/test/fork_test/pipeline_test/AWESOME/MERGE_JSON/fork1",
+                    "path": "/Users/testuser/repos/martian/test/fork_test/pipeline_test/AWESOME/MERGE_JSON/fork1",
                     "names": [
                         "complete",
                         "invocation",
@@ -1697,7 +1697,7 @@
                     ]
                 },
                 "split_metadata": {
-                    "path": "/Users/adam.azarchs/repos/martian/test/fork_test/pipeline_test/AWESOME/MERGE_JSON/fork1/split",
+                    "path": "/Users/testuser/repos/martian/test/fork_test/pipeline_test/AWESOME/MERGE_JSON/fork1/split",
                     "names": [
                         "args",
                         "complete",
@@ -1705,7 +1705,7 @@
                     ]
                 },
                 "join_metadata": {
-                    "path": "/Users/adam.azarchs/repos/martian/test/fork_test/pipeline_test/AWESOME/MERGE_JSON/fork1/join",
+                    "path": "/Users/testuser/repos/martian/test/fork_test/pipeline_test/AWESOME/MERGE_JSON/fork1/join",
                     "names": [
                         "args",
                         "chunk_defs",
@@ -1722,7 +1722,7 @@
                         },
                         "state": "complete",
                         "metadata": {
-                            "path": "/Users/adam.azarchs/repos/martian/test/fork_test/pipeline_test/AWESOME/MERGE_JSON/fork1/chnk0",
+                            "path": "/Users/testuser/repos/martian/test/fork_test/pipeline_test/AWESOME/MERGE_JSON/fork1/chnk0",
                             "names": [
                                 "args",
                                 "complete",
@@ -1748,7 +1748,7 @@
                             "sweepRootId": "json1",
                             "node": "ADD_KEY3",
                             "matchedFork": 1,
-                            "value": "/Users/adam.azarchs/repos/martian/test/fork_test/pipeline_test/AWESOME/ADD_KEY3/fork1/files/result.json",
+                            "value": "/Users/testuser/repos/martian/test/fork_test/pipeline_test/AWESOME/ADD_KEY3/fork1/files/result.json",
                             "waiting": false
                         },
                         {
@@ -1761,7 +1761,7 @@
                             "sweepRootId": "json2",
                             "node": "ADD_KEY4",
                             "matchedFork": 1,
-                            "value": "/Users/adam.azarchs/repos/martian/test/fork_test/pipeline_test/AWESOME/ADD_KEY4/fork1/files/result.json",
+                            "value": "/Users/testuser/repos/martian/test/fork_test/pipeline_test/AWESOME/ADD_KEY4/fork1/files/result.json",
                             "waiting": false
                         }
                     ],
@@ -1780,7 +1780,7 @@
                 },
                 "state": "complete",
                 "metadata": {
-                    "path": "/Users/adam.azarchs/repos/martian/test/fork_test/pipeline_test/AWESOME/MERGE_JSON/fork2",
+                    "path": "/Users/testuser/repos/martian/test/fork_test/pipeline_test/AWESOME/MERGE_JSON/fork2",
                     "names": [
                         "complete",
                         "invocation",
@@ -1789,7 +1789,7 @@
                     ]
                 },
                 "split_metadata": {
-                    "path": "/Users/adam.azarchs/repos/martian/test/fork_test/pipeline_test/AWESOME/MERGE_JSON/fork2/split",
+                    "path": "/Users/testuser/repos/martian/test/fork_test/pipeline_test/AWESOME/MERGE_JSON/fork2/split",
                     "names": [
                         "args",
                         "complete",
@@ -1797,7 +1797,7 @@
                     ]
                 },
                 "join_metadata": {
-                    "path": "/Users/adam.azarchs/repos/martian/test/fork_test/pipeline_test/AWESOME/MERGE_JSON/fork2/join",
+                    "path": "/Users/testuser/repos/martian/test/fork_test/pipeline_test/AWESOME/MERGE_JSON/fork2/join",
                     "names": [
                         "args",
                         "chunk_defs",
@@ -1814,7 +1814,7 @@
                         },
                         "state": "complete",
                         "metadata": {
-                            "path": "/Users/adam.azarchs/repos/martian/test/fork_test/pipeline_test/AWESOME/MERGE_JSON/fork2/chnk0",
+                            "path": "/Users/testuser/repos/martian/test/fork_test/pipeline_test/AWESOME/MERGE_JSON/fork2/chnk0",
                             "names": [
                                 "args",
                                 "complete",
@@ -1840,7 +1840,7 @@
                             "sweepRootId": "json1",
                             "node": "ADD_KEY3",
                             "matchedFork": 0,
-                            "value": "/Users/adam.azarchs/repos/martian/test/fork_test/pipeline_test/AWESOME/ADD_KEY3/fork0/files/result.json",
+                            "value": "/Users/testuser/repos/martian/test/fork_test/pipeline_test/AWESOME/ADD_KEY3/fork0/files/result.json",
                             "waiting": false
                         },
                         {
@@ -1853,7 +1853,7 @@
                             "sweepRootId": "json2",
                             "node": "ADD_KEY4",
                             "matchedFork": 2,
-                            "value": "/Users/adam.azarchs/repos/martian/test/fork_test/pipeline_test/AWESOME/ADD_KEY4/fork2/files/result.json",
+                            "value": "/Users/testuser/repos/martian/test/fork_test/pipeline_test/AWESOME/ADD_KEY4/fork2/files/result.json",
                             "waiting": false
                         }
                     ],
@@ -1872,7 +1872,7 @@
                 },
                 "state": "complete",
                 "metadata": {
-                    "path": "/Users/adam.azarchs/repos/martian/test/fork_test/pipeline_test/AWESOME/MERGE_JSON/fork3",
+                    "path": "/Users/testuser/repos/martian/test/fork_test/pipeline_test/AWESOME/MERGE_JSON/fork3",
                     "names": [
                         "complete",
                         "invocation",
@@ -1881,7 +1881,7 @@
                     ]
                 },
                 "split_metadata": {
-                    "path": "/Users/adam.azarchs/repos/martian/test/fork_test/pipeline_test/AWESOME/MERGE_JSON/fork3/split",
+                    "path": "/Users/testuser/repos/martian/test/fork_test/pipeline_test/AWESOME/MERGE_JSON/fork3/split",
                     "names": [
                         "args",
                         "complete",
@@ -1889,7 +1889,7 @@
                     ]
                 },
                 "join_metadata": {
-                    "path": "/Users/adam.azarchs/repos/martian/test/fork_test/pipeline_test/AWESOME/MERGE_JSON/fork3/join",
+                    "path": "/Users/testuser/repos/martian/test/fork_test/pipeline_test/AWESOME/MERGE_JSON/fork3/join",
                     "names": [
                         "args",
                         "chunk_defs",
@@ -1906,7 +1906,7 @@
                         },
                         "state": "complete",
                         "metadata": {
-                            "path": "/Users/adam.azarchs/repos/martian/test/fork_test/pipeline_test/AWESOME/MERGE_JSON/fork3/chnk0",
+                            "path": "/Users/testuser/repos/martian/test/fork_test/pipeline_test/AWESOME/MERGE_JSON/fork3/chnk0",
                             "names": [
                                 "args",
                                 "complete",
@@ -1932,7 +1932,7 @@
                             "sweepRootId": "json1",
                             "node": "ADD_KEY3",
                             "matchedFork": 1,
-                            "value": "/Users/adam.azarchs/repos/martian/test/fork_test/pipeline_test/AWESOME/ADD_KEY3/fork1/files/result.json",
+                            "value": "/Users/testuser/repos/martian/test/fork_test/pipeline_test/AWESOME/ADD_KEY3/fork1/files/result.json",
                             "waiting": false
                         },
                         {
@@ -1945,7 +1945,7 @@
                             "sweepRootId": "json2",
                             "node": "ADD_KEY4",
                             "matchedFork": 3,
-                            "value": "/Users/adam.azarchs/repos/martian/test/fork_test/pipeline_test/AWESOME/ADD_KEY4/fork3/files/result.json",
+                            "value": "/Users/testuser/repos/martian/test/fork_test/pipeline_test/AWESOME/ADD_KEY4/fork3/files/result.json",
                             "waiting": false
                         }
                     ],
@@ -1964,7 +1964,7 @@
             }
         ],
         "stagecodeLang": "Python",
-        "stagecodeCmd": "/Users/adam.azarchs/repos/martian/test/fork_test/stages/merge_json",
+        "stagecodeCmd": "/Users/testuser/repos/martian/test/fork_test/stages/merge_json",
         "error": null
     }
 ]
