@@ -1,4 +1,7 @@
 #!/usr/bin/env python
+#
+# Copyright (c) 2016 10x Genomics, Inc. All rights reserved.
+#
 
 import filecmp
 import itertools
