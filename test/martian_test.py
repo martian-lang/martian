@@ -3,6 +3,12 @@
 # Copyright (c) 2016 10x Genomics, Inc. All rights reserved.
 #
 
+"""Script to run a test script and compare the output to an expected result.
+
+Includes logic to ignore differences we expect from pipeline outputs, such as
+timestamps, versions, and perf information.
+"""
+
 import filecmp
 import itertools
 import json
@@ -104,7 +110,11 @@ def CompareDicts(actual, expected, keys):
 
 def CompareJobinfo(output, expect, filename):
     """Compare two _jobinfo json files.  Only compares keys which are expected
-    to remain the same across all runs."""
+    to remain the same across all runs.
+
+    In particular we do not compare rusage, various version, host, cwd, and
+    time-related keys, or invocation (which can contain absolute paths).
+    """
     try:
         with open(os.path.join(output, filename)) as act:
             actual = json.load(act)
@@ -122,7 +132,11 @@ def CompareJobinfo(output, expect, filename):
 
 def CompareFinalState(output, expect, filename):
     """Compare two _finalstate json files.  Only compares keys within each
-    element which are expected to remain the same across runs."""
+    element which are expected to remain the same across runs.
+
+    In particular, we do not compare path, metadata, sweepbindings, or forks,
+    all of which may contain absolute paths.
+    """
     try:
         with open(os.path.join(output, filename)) as act:
             actual = json.load(act)
@@ -148,32 +162,38 @@ _TIMESTAMP_REGEX = re.compile(
     '[0-9]{4}-[0-9]{2}-[0-9]{2} [0-9]{1,2}:[0-9]{2}:[0-9]{2}')
 
 
-def CompareTimestamped(output, expect, filename):
-    """Compare two files, replacing every timestamp with __TIMESTAMP__."""
+_PATH_REGEX = re.compile('"/.*/([^/]+)"')
+
+
+def CompareLines(output, expect, filename):
+    """Compare two files, replacing everything that might be an absolute path
+    with the base path, and timestamps with __TIMESTAMP__."""
+    def clean_line(line):
+        """Remove absolute paths and timestamps."""
+        def pathrepl(match):
+            """Just take the matched group."""
+            return '"%s"' % match.group(1)
+        return _TIMESTAMP_REGEX.sub('__TIMESTAMP__',
+                                    _PATH_REGEX.sub(pathrepl, line))
     with open(os.path.join(output, filename)) as act:
         with open(os.path.join(expect, filename)) as exp:
             for actual, expected in itertools.izip_longest(act, exp):
                 if actual and expected:
-                    if (_TIMESTAMP_REGEX.sub(actual, '__TIMESTAMP__') !=
-                            _TIMESTAMP_REGEX.sub(expected, '__TIMESTAMP__')):
-                        return False
+                  if clean_line(actual) != clean_line(expected):
+                      return False
     return True
 
 
 def CompareFileContent(output, expect, filename):
     """Compare two files.  Return True if they match."""
+    if filename in ['_perf', '_uuid', '_versions', '_log']:
+        return True  # we never really expect these files to match.
     if os.path.basename(filename) == '_jobinfo':
         return CompareJobinfo(output, expect, filename)
     elif os.path.basename(filename) == '_finalstate':
         return CompareFinalState(output, expect, filename)
-    elif os.path.basename(filename) in ['_complete',
-                                        '_vdrkill',
-                                        '_log',
-                                       ]:
-        return CompareTimestamped(output, expect, filename)
     else:
-        return filecmp.cmp(os.path.join(output, filename),
-                           os.path.join(expect, filename))
+        return CompareLines(output, expect, filename)
 
 
 def CompareContent(output, expect, filename):
@@ -210,6 +230,7 @@ def CheckResult(output_dir, expectation_dir, config):
         for pat in config['contents_match']:
             for fn in ExpandGlob(expectation_dir, pat):
                 ok = CompareContent(output_dir, expectation_dir, fn) and ok
+    return ok
 
 
 def main(argv):
