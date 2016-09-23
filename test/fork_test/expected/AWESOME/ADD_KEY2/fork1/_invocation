@@ -3,5 +3,6 @@
 call ADD_KEY2(
     key = "2",
     value = "deux",
-    start = "/Users/testuser/repos/martian/test/fork_test/pipeline_test/AWESOME/ADD_KEY1/fork0/files/result.json",
+    start = "/Users/testuser/repos/martian/test/fail_test/pipeline_test/AWESOME/ADD_KEY1/fork0/files/result.json",
+    failfile = "fail2",
 )

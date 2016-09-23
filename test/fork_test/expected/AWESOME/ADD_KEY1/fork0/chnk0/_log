@@ -1,3 +1,3 @@
-2016-09-19 15:10:50 [time] __start__
-2016-09-19 15:10:50 [adapter] Adapter could not increase file handle ulimit to 9223372036854775807: current limit exceeds maximum limit
-2016-09-19 15:10:50 [time] __end__
+2016-09-22 16:37:48 [time] __start__
+2016-09-22 16:37:48 [adapter] Adapter could not increase file handle ulimit to 9223372036854775807: current limit exceeds maximum limit
+2016-09-22 16:37:48 [time] __end__

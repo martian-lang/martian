@@ -1,6 +1,7 @@
 {
     "__mem_gb": 6,
     "__threads": 1,
+    "failfile": "fail1",
     "key": "1",
     "start": null,
     "value": "one"

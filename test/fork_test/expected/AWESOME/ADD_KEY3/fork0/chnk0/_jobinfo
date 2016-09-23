@@ -6,17 +6,17 @@
         "version": "2.7.10 (default, Oct 23 2015, 19:19:21) \n[GCC 4.2.1 Compatible Apple LLVM 7.0.0 (clang-700.0.59.5)]"
     }, 
     "monitor_flag": "disable", 
-    "pid": 15176, 
-    "cwd": "/Users/testuser/repos/martian/test/fork_test/pipeline_test/AWESOME/ADD_KEY3/fork0/files", 
+    "pid": 27062, 
+    "cwd": "/Users/testuser/repos/martian/test/fail_test/pipeline_test/AWESOME/ADD_KEY3/fork0/files", 
     "wallclock": {
-        "start": "2016-09-19 15:11:20", 
-        "end": "2016-09-19 15:11:20", 
-        "duration_seconds": 0.021344900131225586
+        "start": "2016-09-22 16:38:18", 
+        "end": "2016-09-22 16:38:18", 
+        "duration_seconds": 0.02097320556640625
     }, 
     "host": "adamaz-mba.local", 
     "version": {
         "martian": "<version not embedded>", 
-        "pipelines": "2.1.0-1-g7642695"
+        "pipelines": "2.1.0-7-gefe5541"
     }, 
     "threads": 1, 
     "memGB": 6, 
@@ -41,17 +41,17 @@
     "rusage": {
         "self": {
             "ru_msgrcv": 0, 
-            "ru_utime": 0.044584, 
+            "ru_utime": 0.048318, 
             "ru_majflt": 0, 
             "ru_isrss": 0, 
             "ru_nsignals": 0, 
             "ru_msgsnd": 0, 
             "ru_idrss": 0, 
-            "ru_stime": 0.044535, 
+            "ru_stime": 0.054708, 
             "ru_inblock": 0, 
-            "ru_minflt": 3854, 
-            "ru_nivcsw": 166, 
-            "ru_maxrss": 9224192, 
+            "ru_minflt": 3879, 
+            "ru_nivcsw": 293, 
+            "ru_maxrss": 9244672, 
             "ru_nvcsw": 207, 
             "ru_nswap": 0, 
             "ru_oublock": 1, 

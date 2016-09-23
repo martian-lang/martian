@@ -1,101 +1,101 @@
 Martian Runtime - <version not embedded>
-2016-09-19 15:10:46 [cmdline] mrp pipeline.mro pipeline_test
-2016-09-19 15:10:46 [environ] MROPATH=/Users/testuser/repos/martian/test/fork_test
-2016-09-19 15:10:46 [version] MRO Version=2.1.0-1-g7642695
-2016-09-19 15:10:46 [options] --jobmode=local
-2016-09-19 15:10:46 [options] --vdrmode=post
-2016-09-19 15:10:46 [options] --profile=disable
-2016-09-19 15:10:46 [options] --stackvars=false
-2016-09-19 15:10:46 [options] --zip=false
-2016-09-19 15:10:46 [options] --noexit=false
-2016-09-19 15:10:46 [options] --nopreflight=false
-2016-09-19 15:10:46 [jobmngr] Job config = /Users/testuser/repos/martian/jobmanagers/config.json
-2016-09-19 15:10:46 [jobmngr] Using 4 cores available on system.
-2016-09-19 15:10:46 [jobmngr] Using 8 GB, 100% of system memory.
-2016-09-19 15:10:46 [webserv] UI disabled.
+2016-09-22 16:37:45 [cmdline] mrp pipeline.mro pipeline_test
+2016-09-22 16:37:45 [environ] MROPATH=/Users/testuser/repos/martian/test/fail_test
+2016-09-22 16:37:45 [version] MRO Version=2.1.0-7-gefe5541
+2016-09-22 16:37:45 [options] --jobmode=local
+2016-09-22 16:37:45 [options] --vdrmode=post
+2016-09-22 16:37:45 [options] --profile=disable
+2016-09-22 16:37:45 [options] --stackvars=false
+2016-09-22 16:37:45 [options] --zip=false
+2016-09-22 16:37:45 [options] --noexit=false
+2016-09-22 16:37:45 [options] --nopreflight=false
+2016-09-22 16:37:45 [jobmngr] Job config = /Users/testuser/repos/martian/jobmanagers/config.json
+2016-09-22 16:37:45 [jobmngr] Using 4 cores available on system.
+2016-09-22 16:37:45 [jobmngr] Using 8 GB, 100% of system memory.
+2016-09-22 16:37:45 [webserv] UI disabled.
 Running preflight checks (please wait)...
-2016-09-19 15:10:46 [runtime] (ready)           ID.pipeline_test.AWESOME.ADD_KEY1
-2016-09-19 15:10:49 [runtime] (split_complete)  ID.pipeline_test.AWESOME.ADD_KEY1
-2016-09-19 15:10:49 [runtime] (run:local)       ID.pipeline_test.AWESOME.ADD_KEY1.fork0.chnk0.main
-2016-09-19 15:10:52 [runtime] (chunks_complete) ID.pipeline_test.AWESOME.ADD_KEY1
-2016-09-19 15:10:55 [runtime] (join_complete)   ID.pipeline_test.AWESOME.ADD_KEY1
-2016-09-19 15:11:01 [runtime] (ready)           ID.pipeline_test.AWESOME.ADD_KEY2.fork0
-2016-09-19 15:11:01 [runtime] (ready)           ID.pipeline_test.AWESOME.ADD_KEY2.fork1
-2016-09-19 15:11:04 [runtime] (split_complete)  ID.pipeline_test.AWESOME.ADD_KEY2.fork0
-2016-09-19 15:11:04 [runtime] (run:local)       ID.pipeline_test.AWESOME.ADD_KEY2.fork0.chnk0.main
-2016-09-19 15:11:04 [runtime] (split_complete)  ID.pipeline_test.AWESOME.ADD_KEY2.fork1
-2016-09-19 15:11:04 [runtime] (run:local)       ID.pipeline_test.AWESOME.ADD_KEY2.fork1.chnk0.main
-2016-09-19 15:11:07 [runtime] (chunks_complete) ID.pipeline_test.AWESOME.ADD_KEY2.fork0
-2016-09-19 15:11:07 [runtime] (chunks_complete) ID.pipeline_test.AWESOME.ADD_KEY2.fork1
-2016-09-19 15:11:10 [runtime] (join_complete)   ID.pipeline_test.AWESOME.ADD_KEY2.fork0
-2016-09-19 15:11:10 [runtime] (join_complete)   ID.pipeline_test.AWESOME.ADD_KEY2.fork1
-2016-09-19 15:11:16 [runtime] (ready)           ID.pipeline_test.AWESOME.ADD_KEY3.fork0
-2016-09-19 15:11:16 [runtime] (ready)           ID.pipeline_test.AWESOME.ADD_KEY3.fork1
-2016-09-19 15:11:16 [runtime] (ready)           ID.pipeline_test.AWESOME.ADD_KEY4.fork0
-2016-09-19 15:11:16 [runtime] (ready)           ID.pipeline_test.AWESOME.ADD_KEY4.fork1
-2016-09-19 15:11:16 [runtime] (ready)           ID.pipeline_test.AWESOME.ADD_KEY4.fork2
-2016-09-19 15:11:16 [runtime] (ready)           ID.pipeline_test.AWESOME.ADD_KEY4.fork3
-2016-09-19 15:11:19 [runtime] (split_complete)  ID.pipeline_test.AWESOME.ADD_KEY3.fork0
-2016-09-19 15:11:19 [runtime] (run:local)       ID.pipeline_test.AWESOME.ADD_KEY3.fork0.chnk0.main
-2016-09-19 15:11:19 [runtime] (split_complete)  ID.pipeline_test.AWESOME.ADD_KEY3.fork1
-2016-09-19 15:11:19 [runtime] (run:local)       ID.pipeline_test.AWESOME.ADD_KEY3.fork1.chnk0.main
-2016-09-19 15:11:19 [runtime] (split_complete)  ID.pipeline_test.AWESOME.ADD_KEY4.fork0
-2016-09-19 15:11:19 [runtime] (run:local)       ID.pipeline_test.AWESOME.ADD_KEY4.fork0.chnk0.main
-2016-09-19 15:11:19 [runtime] (split_complete)  ID.pipeline_test.AWESOME.ADD_KEY4.fork1
-2016-09-19 15:11:19 [runtime] (run:local)       ID.pipeline_test.AWESOME.ADD_KEY4.fork1.chnk0.main
-2016-09-19 15:11:19 [runtime] (split_complete)  ID.pipeline_test.AWESOME.ADD_KEY4.fork2
-2016-09-19 15:11:19 [runtime] (run:local)       ID.pipeline_test.AWESOME.ADD_KEY4.fork2.chnk0.main
-2016-09-19 15:11:19 [runtime] (split_complete)  ID.pipeline_test.AWESOME.ADD_KEY4.fork3
-2016-09-19 15:11:19 [runtime] (run:local)       ID.pipeline_test.AWESOME.ADD_KEY4.fork3.chnk0.main
-2016-09-19 15:11:23 [runtime] (chunks_complete) ID.pipeline_test.AWESOME.ADD_KEY4.fork0
-2016-09-19 15:11:23 [runtime] (chunks_complete) ID.pipeline_test.AWESOME.ADD_KEY4.fork1
-2016-09-19 15:11:23 [runtime] (chunks_complete) ID.pipeline_test.AWESOME.ADD_KEY4.fork2
-2016-09-19 15:11:23 [runtime] (chunks_complete) ID.pipeline_test.AWESOME.ADD_KEY4.fork3
-2016-09-19 15:11:23 [runtime] (chunks_complete) ID.pipeline_test.AWESOME.ADD_KEY3.fork0
-2016-09-19 15:11:23 [runtime] (chunks_complete) ID.pipeline_test.AWESOME.ADD_KEY3.fork1
-2016-09-19 15:11:26 [runtime] (join_complete)   ID.pipeline_test.AWESOME.ADD_KEY3.fork0
-2016-09-19 15:11:26 [runtime] (join_complete)   ID.pipeline_test.AWESOME.ADD_KEY3.fork1
-2016-09-19 15:11:26 [runtime] (join_complete)   ID.pipeline_test.AWESOME.ADD_KEY4.fork0
-2016-09-19 15:11:26 [runtime] (join_complete)   ID.pipeline_test.AWESOME.ADD_KEY4.fork1
-2016-09-19 15:11:26 [runtime] (join_complete)   ID.pipeline_test.AWESOME.ADD_KEY4.fork2
-2016-09-19 15:11:26 [runtime] (join_complete)   ID.pipeline_test.AWESOME.ADD_KEY4.fork3
-2016-09-19 15:11:32 [runtime] (ready)           ID.pipeline_test.AWESOME.MERGE_JSON.fork0
-2016-09-19 15:11:32 [runtime] (ready)           ID.pipeline_test.AWESOME.MERGE_JSON.fork1
-2016-09-19 15:11:32 [runtime] (ready)           ID.pipeline_test.AWESOME.MERGE_JSON.fork2
-2016-09-19 15:11:32 [runtime] (ready)           ID.pipeline_test.AWESOME.MERGE_JSON.fork3
-2016-09-19 15:11:35 [runtime] (split_complete)  ID.pipeline_test.AWESOME.MERGE_JSON.fork0
-2016-09-19 15:11:35 [runtime] (run:local)       ID.pipeline_test.AWESOME.MERGE_JSON.fork0.chnk0.main
-2016-09-19 15:11:35 [runtime] (split_complete)  ID.pipeline_test.AWESOME.MERGE_JSON.fork1
-2016-09-19 15:11:35 [runtime] (run:local)       ID.pipeline_test.AWESOME.MERGE_JSON.fork1.chnk0.main
-2016-09-19 15:11:35 [runtime] (split_complete)  ID.pipeline_test.AWESOME.MERGE_JSON.fork2
-2016-09-19 15:11:35 [runtime] (run:local)       ID.pipeline_test.AWESOME.MERGE_JSON.fork2.chnk0.main
-2016-09-19 15:11:35 [runtime] (split_complete)  ID.pipeline_test.AWESOME.MERGE_JSON.fork3
-2016-09-19 15:11:35 [runtime] (run:local)       ID.pipeline_test.AWESOME.MERGE_JSON.fork3.chnk0.main
-2016-09-19 15:11:38 [runtime] (chunks_complete) ID.pipeline_test.AWESOME.MERGE_JSON.fork0
-2016-09-19 15:11:38 [runtime] (chunks_complete) ID.pipeline_test.AWESOME.MERGE_JSON.fork1
-2016-09-19 15:11:38 [runtime] (chunks_complete) ID.pipeline_test.AWESOME.MERGE_JSON.fork2
-2016-09-19 15:11:38 [runtime] (chunks_complete) ID.pipeline_test.AWESOME.MERGE_JSON.fork3
-2016-09-19 15:11:41 [runtime] (join_complete)   ID.pipeline_test.AWESOME.MERGE_JSON.fork0
-2016-09-19 15:11:41 [runtime] (join_complete)   ID.pipeline_test.AWESOME.MERGE_JSON.fork1
-2016-09-19 15:11:41 [runtime] (join_complete)   ID.pipeline_test.AWESOME.MERGE_JSON.fork2
-2016-09-19 15:11:41 [runtime] (join_complete)   ID.pipeline_test.AWESOME.MERGE_JSON.fork3
-2016-09-19 15:11:50 [runtime] VDR killed 0 files, 0B.
+2016-09-22 16:37:45 [runtime] (ready)           ID.pipeline_test.AWESOME.ADD_KEY1
+2016-09-22 16:37:48 [runtime] (split_complete)  ID.pipeline_test.AWESOME.ADD_KEY1
+2016-09-22 16:37:48 [runtime] (run:local)       ID.pipeline_test.AWESOME.ADD_KEY1.fork0.chnk0.main
+2016-09-22 16:37:51 [runtime] (chunks_complete) ID.pipeline_test.AWESOME.ADD_KEY1
+2016-09-22 16:37:54 [runtime] (join_complete)   ID.pipeline_test.AWESOME.ADD_KEY1
+2016-09-22 16:38:00 [runtime] (ready)           ID.pipeline_test.AWESOME.ADD_KEY2.fork0
+2016-09-22 16:38:00 [runtime] (ready)           ID.pipeline_test.AWESOME.ADD_KEY2.fork1
+2016-09-22 16:38:03 [runtime] (split_complete)  ID.pipeline_test.AWESOME.ADD_KEY2.fork0
+2016-09-22 16:38:03 [runtime] (run:local)       ID.pipeline_test.AWESOME.ADD_KEY2.fork0.chnk0.main
+2016-09-22 16:38:03 [runtime] (split_complete)  ID.pipeline_test.AWESOME.ADD_KEY2.fork1
+2016-09-22 16:38:03 [runtime] (run:local)       ID.pipeline_test.AWESOME.ADD_KEY2.fork1.chnk0.main
+2016-09-22 16:38:06 [runtime] (chunks_complete) ID.pipeline_test.AWESOME.ADD_KEY2.fork0
+2016-09-22 16:38:06 [runtime] (chunks_complete) ID.pipeline_test.AWESOME.ADD_KEY2.fork1
+2016-09-22 16:38:09 [runtime] (join_complete)   ID.pipeline_test.AWESOME.ADD_KEY2.fork0
+2016-09-22 16:38:09 [runtime] (join_complete)   ID.pipeline_test.AWESOME.ADD_KEY2.fork1
+2016-09-22 16:38:15 [runtime] (ready)           ID.pipeline_test.AWESOME.ADD_KEY3.fork0
+2016-09-22 16:38:15 [runtime] (ready)           ID.pipeline_test.AWESOME.ADD_KEY3.fork1
+2016-09-22 16:38:15 [runtime] (ready)           ID.pipeline_test.AWESOME.ADD_KEY4.fork0
+2016-09-22 16:38:15 [runtime] (ready)           ID.pipeline_test.AWESOME.ADD_KEY4.fork1
+2016-09-22 16:38:15 [runtime] (ready)           ID.pipeline_test.AWESOME.ADD_KEY4.fork2
+2016-09-22 16:38:15 [runtime] (ready)           ID.pipeline_test.AWESOME.ADD_KEY4.fork3
+2016-09-22 16:38:18 [runtime] (split_complete)  ID.pipeline_test.AWESOME.ADD_KEY3.fork0
+2016-09-22 16:38:18 [runtime] (run:local)       ID.pipeline_test.AWESOME.ADD_KEY3.fork0.chnk0.main
+2016-09-22 16:38:18 [runtime] (split_complete)  ID.pipeline_test.AWESOME.ADD_KEY3.fork1
+2016-09-22 16:38:18 [runtime] (run:local)       ID.pipeline_test.AWESOME.ADD_KEY3.fork1.chnk0.main
+2016-09-22 16:38:18 [runtime] (split_complete)  ID.pipeline_test.AWESOME.ADD_KEY4.fork0
+2016-09-22 16:38:18 [runtime] (run:local)       ID.pipeline_test.AWESOME.ADD_KEY4.fork0.chnk0.main
+2016-09-22 16:38:18 [runtime] (split_complete)  ID.pipeline_test.AWESOME.ADD_KEY4.fork1
+2016-09-22 16:38:18 [runtime] (run:local)       ID.pipeline_test.AWESOME.ADD_KEY4.fork1.chnk0.main
+2016-09-22 16:38:18 [runtime] (split_complete)  ID.pipeline_test.AWESOME.ADD_KEY4.fork2
+2016-09-22 16:38:18 [runtime] (run:local)       ID.pipeline_test.AWESOME.ADD_KEY4.fork2.chnk0.main
+2016-09-22 16:38:18 [runtime] (split_complete)  ID.pipeline_test.AWESOME.ADD_KEY4.fork3
+2016-09-22 16:38:18 [runtime] (run:local)       ID.pipeline_test.AWESOME.ADD_KEY4.fork3.chnk0.main
+2016-09-22 16:38:21 [runtime] (chunks_complete) ID.pipeline_test.AWESOME.ADD_KEY3.fork0
+2016-09-22 16:38:21 [runtime] (chunks_complete) ID.pipeline_test.AWESOME.ADD_KEY3.fork1
+2016-09-22 16:38:21 [runtime] (chunks_complete) ID.pipeline_test.AWESOME.ADD_KEY4.fork0
+2016-09-22 16:38:21 [runtime] (chunks_complete) ID.pipeline_test.AWESOME.ADD_KEY4.fork1
+2016-09-22 16:38:21 [runtime] (chunks_complete) ID.pipeline_test.AWESOME.ADD_KEY4.fork2
+2016-09-22 16:38:21 [runtime] (chunks_complete) ID.pipeline_test.AWESOME.ADD_KEY4.fork3
+2016-09-22 16:38:24 [runtime] (join_complete)   ID.pipeline_test.AWESOME.ADD_KEY3.fork0
+2016-09-22 16:38:24 [runtime] (join_complete)   ID.pipeline_test.AWESOME.ADD_KEY3.fork1
+2016-09-22 16:38:24 [runtime] (join_complete)   ID.pipeline_test.AWESOME.ADD_KEY4.fork0
+2016-09-22 16:38:24 [runtime] (join_complete)   ID.pipeline_test.AWESOME.ADD_KEY4.fork1
+2016-09-22 16:38:24 [runtime] (join_complete)   ID.pipeline_test.AWESOME.ADD_KEY4.fork2
+2016-09-22 16:38:24 [runtime] (join_complete)   ID.pipeline_test.AWESOME.ADD_KEY4.fork3
+2016-09-22 16:38:30 [runtime] (ready)           ID.pipeline_test.AWESOME.MERGE_JSON.fork0
+2016-09-22 16:38:30 [runtime] (ready)           ID.pipeline_test.AWESOME.MERGE_JSON.fork1
+2016-09-22 16:38:30 [runtime] (ready)           ID.pipeline_test.AWESOME.MERGE_JSON.fork2
+2016-09-22 16:38:30 [runtime] (ready)           ID.pipeline_test.AWESOME.MERGE_JSON.fork3
+2016-09-22 16:38:33 [runtime] (split_complete)  ID.pipeline_test.AWESOME.MERGE_JSON.fork0
+2016-09-22 16:38:33 [runtime] (run:local)       ID.pipeline_test.AWESOME.MERGE_JSON.fork0.chnk0.main
+2016-09-22 16:38:33 [runtime] (split_complete)  ID.pipeline_test.AWESOME.MERGE_JSON.fork1
+2016-09-22 16:38:33 [runtime] (run:local)       ID.pipeline_test.AWESOME.MERGE_JSON.fork1.chnk0.main
+2016-09-22 16:38:33 [runtime] (split_complete)  ID.pipeline_test.AWESOME.MERGE_JSON.fork2
+2016-09-22 16:38:33 [runtime] (run:local)       ID.pipeline_test.AWESOME.MERGE_JSON.fork2.chnk0.main
+2016-09-22 16:38:33 [runtime] (split_complete)  ID.pipeline_test.AWESOME.MERGE_JSON.fork3
+2016-09-22 16:38:33 [runtime] (run:local)       ID.pipeline_test.AWESOME.MERGE_JSON.fork3.chnk0.main
+2016-09-22 16:38:36 [runtime] (chunks_complete) ID.pipeline_test.AWESOME.MERGE_JSON.fork0
+2016-09-22 16:38:36 [runtime] (chunks_complete) ID.pipeline_test.AWESOME.MERGE_JSON.fork1
+2016-09-22 16:38:36 [runtime] (chunks_complete) ID.pipeline_test.AWESOME.MERGE_JSON.fork2
+2016-09-22 16:38:36 [runtime] (chunks_complete) ID.pipeline_test.AWESOME.MERGE_JSON.fork3
+2016-09-22 16:38:39 [runtime] (join_complete)   ID.pipeline_test.AWESOME.MERGE_JSON.fork0
+2016-09-22 16:38:39 [runtime] (join_complete)   ID.pipeline_test.AWESOME.MERGE_JSON.fork1
+2016-09-22 16:38:39 [runtime] (join_complete)   ID.pipeline_test.AWESOME.MERGE_JSON.fork2
+2016-09-22 16:38:39 [runtime] (join_complete)   ID.pipeline_test.AWESOME.MERGE_JSON.fork3
+2016-09-22 16:38:48 [runtime] VDR killed 0 files, 0B.
 
 Outputs (fork0):
-- outfile: /Users/testuser/repos/martian/test/fork_test/pipeline_test/outs/fork0/outfile.json
+- outfile: /Users/testuser/repos/martian/test/fail_test/pipeline_test/outs/fork0/outfile.json
 
 
 Outputs (fork1):
-- outfile: /Users/testuser/repos/martian/test/fork_test/pipeline_test/outs/fork1/outfile.json
+- outfile: /Users/testuser/repos/martian/test/fail_test/pipeline_test/outs/fork1/outfile.json
 
 
 Outputs (fork2):
-- outfile: /Users/testuser/repos/martian/test/fork_test/pipeline_test/outs/fork2/outfile.json
+- outfile: /Users/testuser/repos/martian/test/fail_test/pipeline_test/outs/fork2/outfile.json
 
 
 Outputs (fork3):
-- outfile: /Users/testuser/repos/martian/test/fork_test/pipeline_test/outs/fork3/outfile.json
+- outfile: /Users/testuser/repos/martian/test/fail_test/pipeline_test/outs/fork3/outfile.json
 
-2016-09-19 15:11:50 [perform] Serializing pipestance performance data.
+2016-09-22 16:38:48 [perform] Serializing pipestance performance data.
 Pipestance completed successfully!
 
