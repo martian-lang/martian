@@ -254,9 +254,10 @@ def main(argv):
     sys.stderr.write("Running %s in %s.\n" %
                      (' '.join(config['command']), config['work_dir']))
     return_code = subprocess.call(config['command'], cwd=config['work_dir'])
-    if 'expected_return' in config and return_code != config['expected_return']:
-        sys.stderr.write('Command returned %d\n' % return_code)
-        return 2
+    if 'expected_return' in config:
+        if return_code != config['expected_return']:
+            sys.stderr.write('Command returned %d\n' % return_code)
+            return 2
     elif return_code != 0:
         sys.stderr.write('Command returned %d\n' % return_code)
         return 2
@@ -264,10 +265,10 @@ def main(argv):
     if output_dir and expectation_dir:
         correct = CheckResult(output_dir, expectation_dir, config)
         if correct:
-            sys.stderr.write('Output correct.')
+            sys.stderr.write('Output correct.\n')
             return 0
         else:
-            sys.stderr.write('Output incorrect!')
+            sys.stderr.write('Output incorrect!\n')
             return 3
 
 
