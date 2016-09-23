@@ -1784,6 +1784,37 @@ func (self *Node) getFatalError() (string, bool, string, string, string, []strin
 	return "", false, "", "", "", []string{}
 }
 
+// Returns true if there is no error or if the error is one we expect to not
+// recur if the pipeline is rerun.
+func (self *Node) isErrorTransient() bool {
+	// TODO(azarchs): Add more recoverable cases
+	passRegexp := [...]*regexp.Regexp{
+		regexp.MustCompile("^signal: "),
+		regexp.MustCompile("resource temporarily unavailable"),
+		regexp.MustCompile("No heartbeat detected for"),
+	}
+	for _, metadata := range self.collectMetadatas() {
+		if state, _ := metadata.getState(""); state != "failed" {
+			continue
+		}
+		if metadata.exists("assert") {
+			return false
+		}
+		if metadata.exists("errors") {
+			errlog := metadata.readRaw("errors")
+			for _, line := range strings.Split(errlog, "\n") {
+				for _, re := range passRegexp {
+					if re.MatchString(line) {
+						return true
+					}
+				}
+			}
+			return false
+		}
+	}
+	return true
+}
+
 func (self *Node) step() {
 	if self.state == "running" {
 		for _, fork := range self.forks {
@@ -2365,6 +2396,18 @@ func (self *Pipestance) GetFatalError() (string, bool, string, string, string, [
 	return "", false, "", "", "", []string{}
 }
 
+// Returns true if there is no error or if the error is one we expect to not
+// recur if the pipeline is rerun.
+func (self *Pipestance) IsErrorTransient() bool {
+	nodes := self.node.getFrontierNodes()
+	for _, node := range nodes {
+		if !node.isErrorTransient() {
+			return false
+		}
+	}
+	return true
+}
+
 func (self *Pipestance) StepNodes() {
 	for _, node := range self.node.getFrontierNodes() {
 		node.step()
@@ -2401,6 +2444,52 @@ func (self *Pipestance) Serialize(name string) interface{} {
 		}
 	}
 	return ser
+}
+
+type PipestanceFactory interface {
+	ReattachToPipestance() (*Pipestance, error)
+	InvokePipeline() (*Pipestance, error)
+}
+
+type runtimePipeFactory struct {
+	rt             *Runtime
+	invocationSrc  string
+	invocationPath string
+	psid           string
+	mroPaths       []string
+	pipestancePath string
+	mroVersion     string
+	envs           map[string]string
+	checkSrc       bool
+	readOnly       bool
+	tags           []string
+}
+
+func NewRuntimePipestanceFactory(rt *Runtime,
+	invocationSrc string,
+	invocationPath string,
+	psid string,
+	mroPaths []string,
+	pipestancePath string,
+	mroVersion string,
+	envs map[string]string,
+	checkSrc bool,
+	readOnly bool,
+	tags []string) PipestanceFactory {
+	return runtimePipeFactory{rt,
+		invocationSrc, invocationPath, psid, mroPaths, pipestancePath, mroVersion,
+		envs, checkSrc, readOnly, tags}
+}
+
+func (self runtimePipeFactory) ReattachToPipestance() (*Pipestance, error) {
+	return self.rt.ReattachToPipestance(self.psid, self.pipestancePath,
+		self.invocationSrc, self.mroPaths, self.mroVersion, self.envs,
+		self.checkSrc, self.readOnly)
+}
+
+func (self runtimePipeFactory) InvokePipeline() (*Pipestance, error) {
+	return self.rt.InvokePipeline(self.invocationSrc, self.invocationPath, self.psid,
+		self.pipestancePath, self.mroPaths, self.mroVersion, self.envs, self.tags)
 }
 
 type StorageEvent struct {

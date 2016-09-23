@@ -12,3 +12,5 @@ Parameters are swept for ADD_KEY2 and ADD_KEY4, so there are a total of 4 forks.
 fork_test.json tests normal operation
 fail_test.json tests ADD_KEY1 failing with an exception
 retry_test.json tests ADD_KEY1 failing with an exception and the passing on second run.
+autoretry_pass.json tests that autoretry retries for killed processes.
+autoretry_fail.json tests that autoretry does not retry exceptions.
