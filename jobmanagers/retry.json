@@ -1,0 +1,8 @@
+{
+  "default_retries": 1,
+  "retry_on": [
+    "^signal: ",
+    "resource temporarily unavailable",
+    "No heartbeat detected for"
+  ]
+}

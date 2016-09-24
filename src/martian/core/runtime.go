@@ -1784,15 +1784,41 @@ func (self *Node) getFatalError() (string, bool, string, string, string, []strin
 	return "", false, "", "", "", []string{}
 }
 
+// Reads config file for regexps which, when matched, indicate that
+// an error is likely transient.
+func getRetryRegexps() []*regexp.Regexp {
+	retryfile := RelPath(path.Join("..", "jobmanagers", "retry.json"))
+
+	if _, err := os.Stat(retryfile); os.IsNotExist(err) {
+		return []*regexp.Regexp{
+			regexp.MustCompile("^signal: "),
+		}
+	}
+	type retryJson struct {
+		DefaultRetries int      `json:"default_retries"`
+		RetryOn        []string `json:"retry_on"`
+	}
+	bytes, err := ioutil.ReadFile(retryfile)
+	if err != nil {
+		PrintInfo("runtime", "Retry config file could not be loaded:\n%v\n", err)
+		os.Exit(1)
+	}
+	var retryInfo *retryJson
+	if err = json.Unmarshal(bytes, &retryInfo); err != nil {
+		PrintInfo("runtime", "Retry config file could not be parsed:\n%v\n", err)
+		os.Exit(1)
+	}
+	regexps := make([]*regexp.Regexp, len(retryInfo.RetryOn))
+	for i, exp := range retryInfo.RetryOn {
+		regexps[i] = regexp.MustCompile(exp)
+	}
+	return regexps
+}
+
 // Returns true if there is no error or if the error is one we expect to not
 // recur if the pipeline is rerun.
 func (self *Node) isErrorTransient() bool {
-	// TODO(azarchs): Add more recoverable cases
-	passRegexp := [...]*regexp.Regexp{
-		regexp.MustCompile("^signal: "),
-		regexp.MustCompile("resource temporarily unavailable"),
-		regexp.MustCompile("No heartbeat detected for"),
-	}
+	passRegexp := getRetryRegexps()
 	for _, metadata := range self.collectMetadatas() {
 		if state, _ := metadata.getState(""); state != "failed" {
 			continue
