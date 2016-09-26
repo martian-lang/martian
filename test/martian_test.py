@@ -9,7 +9,6 @@ Includes logic to ignore differences we expect from pipeline outputs, such as
 timestamps, versions, and perf information.
 """
 
-import filecmp
 import itertools
 import json
 import optparse
@@ -92,7 +91,10 @@ def CompareDicts(actual, expected, keys):
     for key in keys:
         if key in actual:
             if key in expected:
-                if actual[key] != expected[key]:
+                if (isinstance(actual[key], list) and
+                        isinstance(expected[key], list) and
+                        sorted(actual[key]) != sorted(expected[key]) or
+                        actual[key] != expected[key]):
                     sys.stderr.write('%s: %s != %s\n' %
                                      (key, actual[key], expected[key]))
                     return False
@@ -176,8 +178,8 @@ def CompareLines(output, expect, filename):
         with open(os.path.join(expect, filename)) as exp:
             for actual, expected in itertools.izip_longest(act, exp):
                 if actual and expected:
-                  if clean_line(actual) != clean_line(expected):
-                      return False
+                    if clean_line(actual) != clean_line(expected):
+                        return False
     return True
 
 
