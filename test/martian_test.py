@@ -66,10 +66,7 @@ def CheckExists(output, expect, filename):
     """Checks that a given file, directory, or link in the expected directory
     also exists in the output directory."""
     if os.path.isdir(os.path.join(expect, filename)):
-        if not os.path.isdir(os.path.join(output, filename)):
-            sys.stderr.write('Missing directory %s\n'
-                             % os.path.join(output, filename))
-            return False
+        return True  # git does not preserve empty directories
     elif os.path.isfile(os.path.join(expect, filename)):
         if not os.path.isfile(os.path.join(output, filename)):
             sys.stderr.write('Missing file %s\n'
