@@ -64,6 +64,8 @@ def ExpandGlob(root, pattern):
 def CheckExists(output, expect, filename):
     """Checks that a given file, directory, or link in the expected directory
     also exists in the output directory."""
+    if os.path.basename(filename).startswith('.nfs'):
+        return True  # These are temporary files created by nfs.
     if os.path.isdir(os.path.join(expect, filename)):
         return True  # git does not preserve empty directories
     elif os.path.isfile(os.path.join(expect, filename)):
