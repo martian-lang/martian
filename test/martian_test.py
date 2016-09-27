@@ -93,10 +93,10 @@ def CompareDicts(actual, expected, keys):
     for key in keys:
         if key in actual:
             if key in expected:
-                if (isinstance(actual[key], list) and
+                if not (isinstance(actual[key], list) and
                         isinstance(expected[key], list) and
-                        sorted(actual[key]) != sorted(expected[key]) or
-                        actual[key] != expected[key]):
+                        sorted(actual[key]) == sorted(expected[key]) or
+                        actual[key] == expected[key]):
                     sys.stderr.write('%s: %s != %s\n' %
                                      (key, actual[key], expected[key]))
                     return False
