@@ -338,8 +338,8 @@ Options:
 			core.LogInfo("options", "--autoretry=%d", retries)
 		}
 	}
-	if value > 0 && fullStageReset {
-		value = 0
+	if retries > 0 && fullStageReset {
+		retries = 0
 		core.Println(
 			"\nWARNING: ignoring autoretry when MRO_FULLSTAGERESET is set.\n")
 		core.LogInfo("options", "autoretry diabled due to MRO_FULLSTAGERESET.\n")
