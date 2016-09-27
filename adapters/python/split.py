@@ -12,6 +12,9 @@ try:
     # Initialize Martian with command line args.
     martian.initialize(sys.argv)
 
+    # Register handlers for SIGTERM etc.
+    martian.setup_signal_handlers()
+
     # Load args and retvals from metadata.
     args = martian.Record(martian.metadata.read("args"))
 
