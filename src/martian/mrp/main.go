@@ -334,6 +334,10 @@ Options:
 	retries := 0
 	if value := opts["--autoretry"]; value != nil {
 		if value, err := strconv.Atoi(value.(string)); err == nil {
+			if value > 0 && fullStageReset {
+				value = 0
+				Println("\nWARNING: ignoring autoretry when MRO_FULLSTAGERESET is set.\n")
+			}
 			retries = value
 			core.LogInfo("options", "--autoretry=%d", retries)
 		}
