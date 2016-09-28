@@ -9,6 +9,7 @@ import sys
 import json
 import time
 import datetime
+import signal
 import socket
 import subprocess
 import multiprocessing
@@ -20,6 +21,25 @@ import cProfile
 import traceback
 import line_profiler
 import math
+
+def setup_signal_handlers():
+    """Registers signal handlers to actually write an error file.
+    
+    The error string is intended to match what would be written if running in
+    local mode.  This prevents the martian runtime from waiting for a
+    heartbeat failure if the cluster kills a job for some reason.
+    """
+    def handler(signum, frame):
+        global metadata
+        metadata.write_raw("errors", "signal: %d" % signum)
+        done()
+    # These are the signals which are guaranteed to work on all platforms.
+    # They should be enough for the cases we're actually interested in.
+    signal.signal(signal.SIGABRT, handler)
+    signal.signal(signal.SIGFPE, handler)
+    signal.signal(signal.SIGILL, handler)
+    signal.signal(signal.SIGINT, handler)
+    signal.signal(signal.SIGTERM, handler)
 
 def json_sanitize(data):
     if (type(data) == float):
