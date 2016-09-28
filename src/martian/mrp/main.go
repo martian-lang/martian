@@ -68,6 +68,7 @@ func runLoop(pipestance *core.Pipestance, stepSecs int, vdrMode string,
 			if retries > 0 && pipestance.IsErrorTransient() {
 				pipestance.Unlock()
 				retries--
+				core.LogInfo("runtime", "Attempting retry.")
 				ps, err := factory.ReattachToPipestance()
 				if err == nil {
 					pipestance = ps
