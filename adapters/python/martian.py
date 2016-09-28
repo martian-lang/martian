@@ -39,7 +39,7 @@ def setup_signal_handlers():
     signal.signal(signal.SIGFPE, handler)
     signal.signal(signal.SIGILL, handler)
     signal.signal(signal.SIGINT, handler)
-    signal.signal(signal.SIGTERM, handler)
+    # signal.signal(signal.SIGTERM, handler)
 
 def json_sanitize(data):
     if (type(data) == float):
