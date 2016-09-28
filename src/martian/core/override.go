@@ -6,7 +6,7 @@
  * An overrides file might look like:
  * {
  *  	"FULLY.QUALIFIED.STAGE.NAME": {
- *        	"mem_gb": 17
+ *        	"chunk.mem_gb": 17
  *        	"force_volatile: false,
  *  	},
  *	"FULLY.QUALIFIED": {
@@ -27,13 +27,30 @@ package core
 
 import (
 	"encoding/json"
+	"errors"
+	"fmt"
 	"io/ioutil"
+	"reflect"
 )
 
 type StageOverride map[string]interface{}
 
 type PipestanceOverrides struct {
 	overridesbystage map[string]StageOverride
+}
+
+/*
+ * What are the expected types for elements in a stageoverride map. Note that
+ * all JSON numeric types look like Float64s when we stick them in an interface.
+ */
+var LegalOverrideTypes map[string]reflect.Kind = map[string]reflect.Kind{
+	"force_volatile": reflect.Bool,
+	"join.threads":   reflect.Float64,
+	"join.mem_gb":    reflect.Float64,
+	"chunk.threads":  reflect.Float64,
+	"chunk.mem_gb":   reflect.Float64,
+	"split.threads":  reflect.Float64,
+	"split.mem_gb":   reflect.Float64,
 }
 
 /*
@@ -58,6 +75,32 @@ func ReadOverrides(path string) (*PipestanceOverrides, error) {
 
 	if err != nil {
 		return nil, err
+	}
+
+	/*
+	 * Validate semantic correctness of the overrides we just loaded.  We
+	 * want to do this here so that future calls to GetOverride can safely
+	 * cast the return value to the expected type. We'll catch any type
+	 * errors here and prevent mrp from starting. We also want to keep the
+	 * overrides untypes so that GetOverride can operate as a generic
+	 * funciton for all possible types.
+	 */
+
+	for _, stage_override_data := range pse.overridesbystage {
+		for override_key, data := range stage_override_data {
+
+			val_kind, ok := LegalOverrideTypes[override_key]
+
+			/* Can't refer to an unspecified override key */
+			if !ok {
+				return nil, errors.New(fmt.Sprintf("%v is not a legal override", override_key))
+			}
+
+			/* Overrides have to match to expected type */
+			if reflect.ValueOf(data).Kind() != val_kind {
+				return nil, errors.New(fmt.Sprintf("%v (%v) is the wrong type. Expected type is %v", override_key, data, val_kind))
+			}
+		}
 	}
 
 	Println("Loaded %v overrides from %v", len(pse.overridesbystage), path)
