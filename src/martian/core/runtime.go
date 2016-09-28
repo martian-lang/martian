@@ -1786,13 +1786,13 @@ func (self *Node) getFatalError() (string, bool, string, string, string, []strin
 
 // Reads config file for regexps which, when matched, indicate that
 // an error is likely transient.
-func getRetryRegexps() []*regexp.Regexp {
+func getRetryRegexps() (retryOn []*regexp.Regexp, defaultRetries int) {
 	retryfile := RelPath(path.Join("..", "jobmanagers", "retry.json"))
 
 	if _, err := os.Stat(retryfile); os.IsNotExist(err) {
 		return []*regexp.Regexp{
 			regexp.MustCompile("^signal: "),
-		}
+		}, 0
 	}
 	type retryJson struct {
 		DefaultRetries int      `json:"default_retries"`
@@ -1812,13 +1812,18 @@ func getRetryRegexps() []*regexp.Regexp {
 	for i, exp := range retryInfo.RetryOn {
 		regexps[i] = regexp.MustCompile(exp)
 	}
-	return regexps
+	return regexps, retryInfo.DefaultRetries
+}
+
+func DefaultRetries() int {
+	_, def := getRetryRegexps()
+	return def
 }
 
 // Returns true if there is no error or if the error is one we expect to not
 // recur if the pipeline is rerun.
 func (self *Node) isErrorTransient() bool {
-	passRegexp := getRetryRegexps()
+	passRegexp, _ := getRetryRegexps()
 	for _, metadata := range self.collectMetadatas() {
 		if state, _ := metadata.getState(""); state != "failed" {
 			continue

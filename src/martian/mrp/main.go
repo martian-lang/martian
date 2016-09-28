@@ -331,7 +331,7 @@ Options:
 	stest := opts["--stest"].(bool)
 	envs := map[string]string{}
 
-	retries := 0
+	retries := core.DefaultRetries()
 	if value := opts["--autoretry"]; value != nil {
 		if value, err := strconv.Atoi(value.(string)); err == nil {
 			retries = value
