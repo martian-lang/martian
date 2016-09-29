@@ -31,7 +31,10 @@ def setup_signal_handlers():
     """
     def handler(signum, frame):
         global metadata
-        metadata.write_raw("errors", "signal: %d" % signum)
+        signal.signal(signum, signal.SIG_DFL)  # only catch first signal.
+        metadata.write_raw("errors", "signal: %d\n\n%s\n" %
+                           (signum, ''.join(reversed(
+                               traceback.format_stack(frame)))))
         done()
     # These are the signals which are guaranteed to work on all platforms.
     # They should be enough for the cases we're actually interested in.
