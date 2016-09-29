@@ -261,8 +261,12 @@ def test_initialize(path):
     global metadata
     metadata = TestMetadata(path, path, "", "main")
 
-def heartbeat(metadata):
-    while True:
+# Needs to be global so that the GC doesn't eat it.
+_heartbeat_process = None
+_done_called = multiprocessing.Value('i', 0)
+
+def heartbeat(metadata, done):
+    while done == 0:
         metadata.update_journal("heartbeat", force=True)
         time.sleep(120)
 
@@ -275,8 +279,11 @@ def monitor(metadata, limit_kb):
         time.sleep(120)
 
 def start_heartbeat():
-    t = multiprocessing.Process(target=heartbeat, args=(metadata,))
+    global _done_called
+    t = multiprocessing.Process(target=heartbeat, args=(metadata, _done_called))
     t.daemon = True
+    global _heartbeat_process
+    _heartbeat_process = t
     t.start()
 
 def start_monitor(limit_kb):
@@ -344,6 +351,8 @@ def initialize(argv):
 
 def done():
     log_time("__end__")
+    global _done_called
+    _done_called.value = 1
 
     # Common to fail() and complete()
     endtime = time.time()
