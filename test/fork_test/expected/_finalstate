@@ -1,0 +1,2087 @@
+[
+    {
+        "name": "AWESOME",
+        "fqname": "ID.pipeline_test.AWESOME",
+        "type": "pipeline",
+        "path": "/Users/testuser/repos/martian/test/fail_test/pipeline_test/AWESOME",
+        "state": "complete",
+        "metadata": {
+            "path": "/Users/testuser/repos/martian/test/fail_test/pipeline_test/AWESOME",
+            "names": []
+        },
+        "sweepbindings": [
+            {
+                "id": "value",
+                "type": "string",
+                "valexp": "",
+                "mode": "value",
+                "output": "",
+                "sweep": true,
+                "sweepRootId": "value",
+                "node": "ADD_KEY4",
+                "matchedFork": null,
+                "value": [
+                    "four",
+                    "feir"
+                ],
+                "waiting": false
+            },
+            {
+                "id": "value",
+                "type": "string",
+                "valexp": "self.value2",
+                "mode": "value",
+                "output": "",
+                "sweep": true,
+                "sweepRootId": "value2",
+                "node": "AWESOME",
+                "matchedFork": null,
+                "value": [
+                    "two",
+                    "deux"
+                ],
+                "waiting": false
+            }
+        ],
+        "forks": [
+            {
+                "index": 0,
+                "argPermute": {
+                    "value": "four",
+                    "value2": "two"
+                },
+                "joinDef": {},
+                "state": "complete",
+                "metadata": {
+                    "path": "/Users/testuser/repos/martian/test/fail_test/pipeline_test/AWESOME/fork0",
+                    "names": [
+                        "complete",
+                        "invocation",
+                        "outs",
+                        "vdrkill"
+                    ]
+                },
+                "split_metadata": {
+                    "path": "/Users/testuser/repos/martian/test/fail_test/pipeline_test/AWESOME/fork0/split",
+                    "names": []
+                },
+                "join_metadata": {
+                    "path": "/Users/testuser/repos/martian/test/fail_test/pipeline_test/AWESOME/fork0/join",
+                    "names": []
+                },
+                "chunks": [],
+                "bindings": {
+                    "Argument": [
+                        {
+                            "id": "value1",
+                            "type": "string",
+                            "valexp": "",
+                            "mode": "value",
+                            "output": "",
+                            "sweep": false,
+                            "sweepRootId": "value1",
+                            "node": "AWESOME",
+                            "matchedFork": 0,
+                            "value": "one",
+                            "waiting": false
+                        },
+                        {
+                            "id": "key2",
+                            "type": "string",
+                            "valexp": "",
+                            "mode": "value",
+                            "output": "",
+                            "sweep": false,
+                            "sweepRootId": "key2",
+                            "node": "AWESOME",
+                            "matchedFork": 0,
+                            "value": "2",
+                            "waiting": false
+                        },
+                        {
+                            "id": "value2",
+                            "type": "string",
+                            "valexp": "",
+                            "mode": "value",
+                            "output": "",
+                            "sweep": true,
+                            "sweepRootId": "value2",
+                            "node": "AWESOME",
+                            "matchedFork": 0,
+                            "value": "two",
+                            "waiting": false
+                        },
+                        {
+                            "id": "key1",
+                            "type": "string",
+                            "valexp": "",
+                            "mode": "value",
+                            "output": "",
+                            "sweep": false,
+                            "sweepRootId": "key1",
+                            "node": "AWESOME",
+                            "matchedFork": 0,
+                            "value": "1",
+                            "waiting": false
+                        }
+                    ],
+                    "Return": [
+                        {
+                            "id": "outfile",
+                            "type": "json",
+                            "valexp": "MERGE_JSON.result",
+                            "mode": "reference",
+                            "output": "result",
+                            "sweep": false,
+                            "sweepRootId": "outfile",
+                            "node": "MERGE_JSON",
+                            "matchedFork": 0,
+                            "value": "/Users/testuser/repos/martian/test/fail_test/pipeline_test/AWESOME/MERGE_JSON/fork0/files/result.json",
+                            "waiting": false
+                        }
+                    ]
+                }
+            },
+            {
+                "index": 1,
+                "argPermute": {
+                    "value": "four",
+                    "value2": "deux"
+                },
+                "joinDef": {},
+                "state": "complete",
+                "metadata": {
+                    "path": "/Users/testuser/repos/martian/test/fail_test/pipeline_test/AWESOME/fork1",
+                    "names": [
+                        "complete",
+                        "invocation",
+                        "outs",
+                        "vdrkill"
+                    ]
+                },
+                "split_metadata": {
+                    "path": "/Users/testuser/repos/martian/test/fail_test/pipeline_test/AWESOME/fork1/split",
+                    "names": []
+                },
+                "join_metadata": {
+                    "path": "/Users/testuser/repos/martian/test/fail_test/pipeline_test/AWESOME/fork1/join",
+                    "names": []
+                },
+                "chunks": [],
+                "bindings": {
+                    "Argument": [
+                        {
+                            "id": "value1",
+                            "type": "string",
+                            "valexp": "",
+                            "mode": "value",
+                            "output": "",
+                            "sweep": false,
+                            "sweepRootId": "value1",
+                            "node": "AWESOME",
+                            "matchedFork": 1,
+                            "value": "one",
+                            "waiting": false
+                        },
+                        {
+                            "id": "key2",
+                            "type": "string",
+                            "valexp": "",
+                            "mode": "value",
+                            "output": "",
+                            "sweep": false,
+                            "sweepRootId": "key2",
+                            "node": "AWESOME",
+                            "matchedFork": 1,
+                            "value": "2",
+                            "waiting": false
+                        },
+                        {
+                            "id": "value2",
+                            "type": "string",
+                            "valexp": "",
+                            "mode": "value",
+                            "output": "",
+                            "sweep": true,
+                            "sweepRootId": "value2",
+                            "node": "AWESOME",
+                            "matchedFork": 1,
+                            "value": "deux",
+                            "waiting": false
+                        },
+                        {
+                            "id": "key1",
+                            "type": "string",
+                            "valexp": "",
+                            "mode": "value",
+                            "output": "",
+                            "sweep": false,
+                            "sweepRootId": "key1",
+                            "node": "AWESOME",
+                            "matchedFork": 1,
+                            "value": "1",
+                            "waiting": false
+                        }
+                    ],
+                    "Return": [
+                        {
+                            "id": "outfile",
+                            "type": "json",
+                            "valexp": "MERGE_JSON.result",
+                            "mode": "reference",
+                            "output": "result",
+                            "sweep": false,
+                            "sweepRootId": "outfile",
+                            "node": "MERGE_JSON",
+                            "matchedFork": 1,
+                            "value": "/Users/testuser/repos/martian/test/fail_test/pipeline_test/AWESOME/MERGE_JSON/fork1/files/result.json",
+                            "waiting": false
+                        }
+                    ]
+                }
+            },
+            {
+                "index": 2,
+                "argPermute": {
+                    "value": "feir",
+                    "value2": "two"
+                },
+                "joinDef": {},
+                "state": "complete",
+                "metadata": {
+                    "path": "/Users/testuser/repos/martian/test/fail_test/pipeline_test/AWESOME/fork2",
+                    "names": [
+                        "complete",
+                        "invocation",
+                        "outs",
+                        "vdrkill"
+                    ]
+                },
+                "split_metadata": {
+                    "path": "/Users/testuser/repos/martian/test/fail_test/pipeline_test/AWESOME/fork2/split",
+                    "names": []
+                },
+                "join_metadata": {
+                    "path": "/Users/testuser/repos/martian/test/fail_test/pipeline_test/AWESOME/fork2/join",
+                    "names": []
+                },
+                "chunks": [],
+                "bindings": {
+                    "Argument": [
+                        {
+                            "id": "value1",
+                            "type": "string",
+                            "valexp": "",
+                            "mode": "value",
+                            "output": "",
+                            "sweep": false,
+                            "sweepRootId": "value1",
+                            "node": "AWESOME",
+                            "matchedFork": 2,
+                            "value": "one",
+                            "waiting": false
+                        },
+                        {
+                            "id": "key2",
+                            "type": "string",
+                            "valexp": "",
+                            "mode": "value",
+                            "output": "",
+                            "sweep": false,
+                            "sweepRootId": "key2",
+                            "node": "AWESOME",
+                            "matchedFork": 2,
+                            "value": "2",
+                            "waiting": false
+                        },
+                        {
+                            "id": "value2",
+                            "type": "string",
+                            "valexp": "",
+                            "mode": "value",
+                            "output": "",
+                            "sweep": true,
+                            "sweepRootId": "value2",
+                            "node": "AWESOME",
+                            "matchedFork": 2,
+                            "value": "two",
+                            "waiting": false
+                        },
+                        {
+                            "id": "key1",
+                            "type": "string",
+                            "valexp": "",
+                            "mode": "value",
+                            "output": "",
+                            "sweep": false,
+                            "sweepRootId": "key1",
+                            "node": "AWESOME",
+                            "matchedFork": 2,
+                            "value": "1",
+                            "waiting": false
+                        }
+                    ],
+                    "Return": [
+                        {
+                            "id": "outfile",
+                            "type": "json",
+                            "valexp": "MERGE_JSON.result",
+                            "mode": "reference",
+                            "output": "result",
+                            "sweep": false,
+                            "sweepRootId": "outfile",
+                            "node": "MERGE_JSON",
+                            "matchedFork": 2,
+                            "value": "/Users/testuser/repos/martian/test/fail_test/pipeline_test/AWESOME/MERGE_JSON/fork2/files/result.json",
+                            "waiting": false
+                        }
+                    ]
+                }
+            },
+            {
+                "index": 3,
+                "argPermute": {
+                    "value": "feir",
+                    "value2": "deux"
+                },
+                "joinDef": {},
+                "state": "complete",
+                "metadata": {
+                    "path": "/Users/testuser/repos/martian/test/fail_test/pipeline_test/AWESOME/fork3",
+                    "names": [
+                        "complete",
+                        "invocation",
+                        "outs",
+                        "vdrkill"
+                    ]
+                },
+                "split_metadata": {
+                    "path": "/Users/testuser/repos/martian/test/fail_test/pipeline_test/AWESOME/fork3/split",
+                    "names": []
+                },
+                "join_metadata": {
+                    "path": "/Users/testuser/repos/martian/test/fail_test/pipeline_test/AWESOME/fork3/join",
+                    "names": []
+                },
+                "chunks": [],
+                "bindings": {
+                    "Argument": [
+                        {
+                            "id": "value1",
+                            "type": "string",
+                            "valexp": "",
+                            "mode": "value",
+                            "output": "",
+                            "sweep": false,
+                            "sweepRootId": "value1",
+                            "node": "AWESOME",
+                            "matchedFork": 3,
+                            "value": "one",
+                            "waiting": false
+                        },
+                        {
+                            "id": "key2",
+                            "type": "string",
+                            "valexp": "",
+                            "mode": "value",
+                            "output": "",
+                            "sweep": false,
+                            "sweepRootId": "key2",
+                            "node": "AWESOME",
+                            "matchedFork": 3,
+                            "value": "2",
+                            "waiting": false
+                        },
+                        {
+                            "id": "value2",
+                            "type": "string",
+                            "valexp": "",
+                            "mode": "value",
+                            "output": "",
+                            "sweep": true,
+                            "sweepRootId": "value2",
+                            "node": "AWESOME",
+                            "matchedFork": 3,
+                            "value": "deux",
+                            "waiting": false
+                        },
+                        {
+                            "id": "key1",
+                            "type": "string",
+                            "valexp": "",
+                            "mode": "value",
+                            "output": "",
+                            "sweep": false,
+                            "sweepRootId": "key1",
+                            "node": "AWESOME",
+                            "matchedFork": 3,
+                            "value": "1",
+                            "waiting": false
+                        }
+                    ],
+                    "Return": [
+                        {
+                            "id": "outfile",
+                            "type": "json",
+                            "valexp": "MERGE_JSON.result",
+                            "mode": "reference",
+                            "output": "result",
+                            "sweep": false,
+                            "sweepRootId": "outfile",
+                            "node": "MERGE_JSON",
+                            "matchedFork": 3,
+                            "value": "/Users/testuser/repos/martian/test/fail_test/pipeline_test/AWESOME/MERGE_JSON/fork3/files/result.json",
+                            "waiting": false
+                        }
+                    ]
+                }
+            }
+        ],
+        "edges": [
+            {
+                "from": "ID.pipeline_test.AWESOME.MERGE_JSON",
+                "to": "ID.pipeline_test.AWESOME"
+            }
+        ],
+        "stagecodeLang": "",
+        "stagecodeCmd": "",
+        "error": null
+    },
+    {
+        "name": "ADD_KEY1",
+        "fqname": "ID.pipeline_test.AWESOME.ADD_KEY1",
+        "type": "stage",
+        "path": "/Users/testuser/repos/martian/test/fail_test/pipeline_test/AWESOME/ADD_KEY1",
+        "state": "complete",
+        "metadata": {
+            "path": "/Users/testuser/repos/martian/test/fail_test/pipeline_test/AWESOME/ADD_KEY1",
+            "names": []
+        },
+        "sweepbindings": [],
+        "forks": [
+            {
+                "index": 0,
+                "argPermute": {},
+                "joinDef": {
+                    "__mem_gb": 6,
+                    "__threads": 1
+                },
+                "state": "complete",
+                "metadata": {
+                    "path": "/Users/testuser/repos/martian/test/fail_test/pipeline_test/AWESOME/ADD_KEY1/fork0",
+                    "names": [
+                        "complete",
+                        "invocation",
+                        "outs",
+                        "vdrkill"
+                    ]
+                },
+                "split_metadata": {
+                    "path": "/Users/testuser/repos/martian/test/fail_test/pipeline_test/AWESOME/ADD_KEY1/fork0/split",
+                    "names": [
+                        "args",
+                        "complete",
+                        "stage_defs"
+                    ]
+                },
+                "join_metadata": {
+                    "path": "/Users/testuser/repos/martian/test/fail_test/pipeline_test/AWESOME/ADD_KEY1/fork0/join",
+                    "names": [
+                        "args",
+                        "chunk_defs",
+                        "complete",
+                        "outs"
+                    ]
+                },
+                "chunks": [
+                    {
+                        "index": 0,
+                        "chunkDef": {
+                            "__mem_gb": 6,
+                            "__threads": 1
+                        },
+                        "state": "complete",
+                        "metadata": {
+                            "path": "/Users/testuser/repos/martian/test/fail_test/pipeline_test/AWESOME/ADD_KEY1/fork0/chnk0",
+                            "names": [
+                                "args",
+                                "complete",
+                                "heartbeat",
+                                "jobinfo",
+                                "log",
+                                "outs",
+                                "stderr",
+                                "stdout"
+                            ]
+                        }
+                    }
+                ],
+                "bindings": {
+                    "Argument": [
+                        {
+                            "id": "key",
+                            "type": "string",
+                            "valexp": "self.key1",
+                            "mode": "value",
+                            "output": "",
+                            "sweep": false,
+                            "sweepRootId": "key1",
+                            "node": "AWESOME",
+                            "matchedFork": null,
+                            "value": "1",
+                            "waiting": false
+                        },
+                        {
+                            "id": "value",
+                            "type": "string",
+                            "valexp": "self.value1",
+                            "mode": "value",
+                            "output": "",
+                            "sweep": false,
+                            "sweepRootId": "value1",
+                            "node": "AWESOME",
+                            "matchedFork": null,
+                            "value": "one",
+                            "waiting": false
+                        },
+                        {
+                            "id": "failfile",
+                            "type": "string",
+                            "valexp": "",
+                            "mode": "value",
+                            "output": "",
+                            "sweep": false,
+                            "sweepRootId": "failfile",
+                            "node": "ADD_KEY1",
+                            "matchedFork": 0,
+                            "value": "fail1",
+                            "waiting": false
+                        },
+                        {
+                            "id": "start",
+                            "type": "json",
+                            "valexp": "",
+                            "mode": "value",
+                            "output": "",
+                            "sweep": false,
+                            "sweepRootId": "start",
+                            "node": "ADD_KEY1",
+                            "matchedFork": 0,
+                            "value": null,
+                            "waiting": false
+                        }
+                    ],
+                    "Return": []
+                }
+            }
+        ],
+        "edges": [],
+        "stagecodeLang": "Python",
+        "stagecodeCmd": "/Users/testuser/repos/martian/test/fail_test/stages/add_key",
+        "error": null
+    },
+    {
+        "name": "ADD_KEY2",
+        "fqname": "ID.pipeline_test.AWESOME.ADD_KEY2",
+        "type": "stage",
+        "path": "/Users/testuser/repos/martian/test/fail_test/pipeline_test/AWESOME/ADD_KEY2",
+        "state": "complete",
+        "metadata": {
+            "path": "/Users/testuser/repos/martian/test/fail_test/pipeline_test/AWESOME/ADD_KEY2",
+            "names": []
+        },
+        "sweepbindings": [
+            {
+                "id": "value",
+                "type": "string",
+                "valexp": "self.value2",
+                "mode": "value",
+                "output": "",
+                "sweep": true,
+                "sweepRootId": "value2",
+                "node": "AWESOME",
+                "matchedFork": null,
+                "value": [
+                    "two",
+                    "deux"
+                ],
+                "waiting": false
+            }
+        ],
+        "forks": [
+            {
+                "index": 0,
+                "argPermute": {
+                    "value2": "two"
+                },
+                "joinDef": {
+                    "__mem_gb": 6,
+                    "__threads": 1
+                },
+                "state": "complete",
+                "metadata": {
+                    "path": "/Users/testuser/repos/martian/test/fail_test/pipeline_test/AWESOME/ADD_KEY2/fork0",
+                    "names": [
+                        "complete",
+                        "invocation",
+                        "outs",
+                        "vdrkill"
+                    ]
+                },
+                "split_metadata": {
+                    "path": "/Users/testuser/repos/martian/test/fail_test/pipeline_test/AWESOME/ADD_KEY2/fork0/split",
+                    "names": [
+                        "args",
+                        "complete",
+                        "stage_defs"
+                    ]
+                },
+                "join_metadata": {
+                    "path": "/Users/testuser/repos/martian/test/fail_test/pipeline_test/AWESOME/ADD_KEY2/fork0/join",
+                    "names": [
+                        "args",
+                        "chunk_defs",
+                        "complete",
+                        "outs"
+                    ]
+                },
+                "chunks": [
+                    {
+                        "index": 0,
+                        "chunkDef": {
+                            "__mem_gb": 6,
+                            "__threads": 1
+                        },
+                        "state": "complete",
+                        "metadata": {
+                            "path": "/Users/testuser/repos/martian/test/fail_test/pipeline_test/AWESOME/ADD_KEY2/fork0/chnk0",
+                            "names": [
+                                "args",
+                                "complete",
+                                "heartbeat",
+                                "jobinfo",
+                                "log",
+                                "outs",
+                                "stderr",
+                                "stdout"
+                            ]
+                        }
+                    }
+                ],
+                "bindings": {
+                    "Argument": [
+                        {
+                            "id": "key",
+                            "type": "string",
+                            "valexp": "self.key2",
+                            "mode": "value",
+                            "output": "",
+                            "sweep": false,
+                            "sweepRootId": "key2",
+                            "node": "AWESOME",
+                            "matchedFork": null,
+                            "value": "2",
+                            "waiting": false
+                        },
+                        {
+                            "id": "value",
+                            "type": "string",
+                            "valexp": "self.value2",
+                            "mode": "value",
+                            "output": "",
+                            "sweep": true,
+                            "sweepRootId": "value2",
+                            "node": "AWESOME",
+                            "matchedFork": null,
+                            "value": "two",
+                            "waiting": false
+                        },
+                        {
+                            "id": "failfile",
+                            "type": "string",
+                            "valexp": "",
+                            "mode": "value",
+                            "output": "",
+                            "sweep": false,
+                            "sweepRootId": "failfile",
+                            "node": "ADD_KEY2",
+                            "matchedFork": 0,
+                            "value": "fail2",
+                            "waiting": false
+                        },
+                        {
+                            "id": "start",
+                            "type": "json",
+                            "valexp": "ADD_KEY1.result",
+                            "mode": "reference",
+                            "output": "result",
+                            "sweep": false,
+                            "sweepRootId": "start",
+                            "node": "ADD_KEY1",
+                            "matchedFork": 0,
+                            "value": "/Users/testuser/repos/martian/test/fail_test/pipeline_test/AWESOME/ADD_KEY1/fork0/files/result.json",
+                            "waiting": false
+                        }
+                    ],
+                    "Return": []
+                }
+            },
+            {
+                "index": 1,
+                "argPermute": {
+                    "value2": "deux"
+                },
+                "joinDef": {
+                    "__mem_gb": 6,
+                    "__threads": 1
+                },
+                "state": "complete",
+                "metadata": {
+                    "path": "/Users/testuser/repos/martian/test/fail_test/pipeline_test/AWESOME/ADD_KEY2/fork1",
+                    "names": [
+                        "complete",
+                        "invocation",
+                        "outs",
+                        "vdrkill"
+                    ]
+                },
+                "split_metadata": {
+                    "path": "/Users/testuser/repos/martian/test/fail_test/pipeline_test/AWESOME/ADD_KEY2/fork1/split",
+                    "names": [
+                        "args",
+                        "complete",
+                        "stage_defs"
+                    ]
+                },
+                "join_metadata": {
+                    "path": "/Users/testuser/repos/martian/test/fail_test/pipeline_test/AWESOME/ADD_KEY2/fork1/join",
+                    "names": [
+                        "args",
+                        "chunk_defs",
+                        "complete",
+                        "outs"
+                    ]
+                },
+                "chunks": [
+                    {
+                        "index": 0,
+                        "chunkDef": {
+                            "__mem_gb": 6,
+                            "__threads": 1
+                        },
+                        "state": "complete",
+                        "metadata": {
+                            "path": "/Users/testuser/repos/martian/test/fail_test/pipeline_test/AWESOME/ADD_KEY2/fork1/chnk0",
+                            "names": [
+                                "args",
+                                "complete",
+                                "heartbeat",
+                                "jobinfo",
+                                "log",
+                                "outs",
+                                "stderr",
+                                "stdout"
+                            ]
+                        }
+                    }
+                ],
+                "bindings": {
+                    "Argument": [
+                        {
+                            "id": "key",
+                            "type": "string",
+                            "valexp": "self.key2",
+                            "mode": "value",
+                            "output": "",
+                            "sweep": false,
+                            "sweepRootId": "key2",
+                            "node": "AWESOME",
+                            "matchedFork": null,
+                            "value": "2",
+                            "waiting": false
+                        },
+                        {
+                            "id": "value",
+                            "type": "string",
+                            "valexp": "self.value2",
+                            "mode": "value",
+                            "output": "",
+                            "sweep": true,
+                            "sweepRootId": "value2",
+                            "node": "AWESOME",
+                            "matchedFork": null,
+                            "value": "deux",
+                            "waiting": false
+                        },
+                        {
+                            "id": "failfile",
+                            "type": "string",
+                            "valexp": "",
+                            "mode": "value",
+                            "output": "",
+                            "sweep": false,
+                            "sweepRootId": "failfile",
+                            "node": "ADD_KEY2",
+                            "matchedFork": 1,
+                            "value": "fail2",
+                            "waiting": false
+                        },
+                        {
+                            "id": "start",
+                            "type": "json",
+                            "valexp": "ADD_KEY1.result",
+                            "mode": "reference",
+                            "output": "result",
+                            "sweep": false,
+                            "sweepRootId": "start",
+                            "node": "ADD_KEY1",
+                            "matchedFork": 0,
+                            "value": "/Users/testuser/repos/martian/test/fail_test/pipeline_test/AWESOME/ADD_KEY1/fork0/files/result.json",
+                            "waiting": false
+                        }
+                    ],
+                    "Return": []
+                }
+            }
+        ],
+        "edges": [
+            {
+                "from": "ID.pipeline_test.AWESOME.ADD_KEY1",
+                "to": "ID.pipeline_test.AWESOME.ADD_KEY2"
+            }
+        ],
+        "stagecodeLang": "Python",
+        "stagecodeCmd": "/Users/testuser/repos/martian/test/fail_test/stages/add_key",
+        "error": null
+    },
+    {
+        "name": "ADD_KEY3",
+        "fqname": "ID.pipeline_test.AWESOME.ADD_KEY3",
+        "type": "stage",
+        "path": "/Users/testuser/repos/martian/test/fail_test/pipeline_test/AWESOME/ADD_KEY3",
+        "state": "complete",
+        "metadata": {
+            "path": "/Users/testuser/repos/martian/test/fail_test/pipeline_test/AWESOME/ADD_KEY3",
+            "names": []
+        },
+        "sweepbindings": [
+            {
+                "id": "value",
+                "type": "string",
+                "valexp": "self.value2",
+                "mode": "value",
+                "output": "",
+                "sweep": true,
+                "sweepRootId": "value2",
+                "node": "AWESOME",
+                "matchedFork": null,
+                "value": [
+                    "two",
+                    "deux"
+                ],
+                "waiting": false
+            }
+        ],
+        "forks": [
+            {
+                "index": 0,
+                "argPermute": {
+                    "value2": "two"
+                },
+                "joinDef": {
+                    "__mem_gb": 6,
+                    "__threads": 1
+                },
+                "state": "complete",
+                "metadata": {
+                    "path": "/Users/testuser/repos/martian/test/fail_test/pipeline_test/AWESOME/ADD_KEY3/fork0",
+                    "names": [
+                        "complete",
+                        "invocation",
+                        "outs",
+                        "vdrkill"
+                    ]
+                },
+                "split_metadata": {
+                    "path": "/Users/testuser/repos/martian/test/fail_test/pipeline_test/AWESOME/ADD_KEY3/fork0/split",
+                    "names": [
+                        "args",
+                        "complete",
+                        "stage_defs"
+                    ]
+                },
+                "join_metadata": {
+                    "path": "/Users/testuser/repos/martian/test/fail_test/pipeline_test/AWESOME/ADD_KEY3/fork0/join",
+                    "names": [
+                        "args",
+                        "chunk_defs",
+                        "complete",
+                        "outs"
+                    ]
+                },
+                "chunks": [
+                    {
+                        "index": 0,
+                        "chunkDef": {
+                            "__mem_gb": 6,
+                            "__threads": 1
+                        },
+                        "state": "complete",
+                        "metadata": {
+                            "path": "/Users/testuser/repos/martian/test/fail_test/pipeline_test/AWESOME/ADD_KEY3/fork0/chnk0",
+                            "names": [
+                                "args",
+                                "complete",
+                                "heartbeat",
+                                "jobinfo",
+                                "log",
+                                "outs",
+                                "stderr",
+                                "stdout"
+                            ]
+                        }
+                    }
+                ],
+                "bindings": {
+                    "Argument": [
+                        {
+                            "id": "key",
+                            "type": "string",
+                            "valexp": "",
+                            "mode": "value",
+                            "output": "",
+                            "sweep": false,
+                            "sweepRootId": "key",
+                            "node": "ADD_KEY3",
+                            "matchedFork": 0,
+                            "value": "3",
+                            "waiting": false
+                        },
+                        {
+                            "id": "value",
+                            "type": "string",
+                            "valexp": "",
+                            "mode": "value",
+                            "output": "",
+                            "sweep": false,
+                            "sweepRootId": "value",
+                            "node": "ADD_KEY3",
+                            "matchedFork": 0,
+                            "value": "three",
+                            "waiting": false
+                        },
+                        {
+                            "id": "failfile",
+                            "type": "string",
+                            "valexp": "",
+                            "mode": "value",
+                            "output": "",
+                            "sweep": false,
+                            "sweepRootId": "failfile",
+                            "node": "ADD_KEY3",
+                            "matchedFork": 0,
+                            "value": "fail3",
+                            "waiting": false
+                        },
+                        {
+                            "id": "start",
+                            "type": "json",
+                            "valexp": "ADD_KEY2.result",
+                            "mode": "reference",
+                            "output": "result",
+                            "sweep": false,
+                            "sweepRootId": "start",
+                            "node": "ADD_KEY2",
+                            "matchedFork": 0,
+                            "value": "/Users/testuser/repos/martian/test/fail_test/pipeline_test/AWESOME/ADD_KEY2/fork0/files/result.json",
+                            "waiting": false
+                        }
+                    ],
+                    "Return": []
+                }
+            },
+            {
+                "index": 1,
+                "argPermute": {
+                    "value2": "deux"
+                },
+                "joinDef": {
+                    "__mem_gb": 6,
+                    "__threads": 1
+                },
+                "state": "complete",
+                "metadata": {
+                    "path": "/Users/testuser/repos/martian/test/fail_test/pipeline_test/AWESOME/ADD_KEY3/fork1",
+                    "names": [
+                        "complete",
+                        "invocation",
+                        "outs",
+                        "vdrkill"
+                    ]
+                },
+                "split_metadata": {
+                    "path": "/Users/testuser/repos/martian/test/fail_test/pipeline_test/AWESOME/ADD_KEY3/fork1/split",
+                    "names": [
+                        "args",
+                        "complete",
+                        "stage_defs"
+                    ]
+                },
+                "join_metadata": {
+                    "path": "/Users/testuser/repos/martian/test/fail_test/pipeline_test/AWESOME/ADD_KEY3/fork1/join",
+                    "names": [
+                        "args",
+                        "chunk_defs",
+                        "complete",
+                        "outs"
+                    ]
+                },
+                "chunks": [
+                    {
+                        "index": 0,
+                        "chunkDef": {
+                            "__mem_gb": 6,
+                            "__threads": 1
+                        },
+                        "state": "complete",
+                        "metadata": {
+                            "path": "/Users/testuser/repos/martian/test/fail_test/pipeline_test/AWESOME/ADD_KEY3/fork1/chnk0",
+                            "names": [
+                                "args",
+                                "complete",
+                                "heartbeat",
+                                "jobinfo",
+                                "log",
+                                "outs",
+                                "stderr",
+                                "stdout"
+                            ]
+                        }
+                    }
+                ],
+                "bindings": {
+                    "Argument": [
+                        {
+                            "id": "key",
+                            "type": "string",
+                            "valexp": "",
+                            "mode": "value",
+                            "output": "",
+                            "sweep": false,
+                            "sweepRootId": "key",
+                            "node": "ADD_KEY3",
+                            "matchedFork": 1,
+                            "value": "3",
+                            "waiting": false
+                        },
+                        {
+                            "id": "value",
+                            "type": "string",
+                            "valexp": "",
+                            "mode": "value",
+                            "output": "",
+                            "sweep": false,
+                            "sweepRootId": "value",
+                            "node": "ADD_KEY3",
+                            "matchedFork": 1,
+                            "value": "three",
+                            "waiting": false
+                        },
+                        {
+                            "id": "failfile",
+                            "type": "string",
+                            "valexp": "",
+                            "mode": "value",
+                            "output": "",
+                            "sweep": false,
+                            "sweepRootId": "failfile",
+                            "node": "ADD_KEY3",
+                            "matchedFork": 1,
+                            "value": "fail3",
+                            "waiting": false
+                        },
+                        {
+                            "id": "start",
+                            "type": "json",
+                            "valexp": "ADD_KEY2.result",
+                            "mode": "reference",
+                            "output": "result",
+                            "sweep": false,
+                            "sweepRootId": "start",
+                            "node": "ADD_KEY2",
+                            "matchedFork": 1,
+                            "value": "/Users/testuser/repos/martian/test/fail_test/pipeline_test/AWESOME/ADD_KEY2/fork1/files/result.json",
+                            "waiting": false
+                        }
+                    ],
+                    "Return": []
+                }
+            }
+        ],
+        "edges": [
+            {
+                "from": "ID.pipeline_test.AWESOME.ADD_KEY2",
+                "to": "ID.pipeline_test.AWESOME.ADD_KEY3"
+            }
+        ],
+        "stagecodeLang": "Python",
+        "stagecodeCmd": "/Users/testuser/repos/martian/test/fail_test/stages/add_key",
+        "error": null
+    },
+    {
+        "name": "ADD_KEY4",
+        "fqname": "ID.pipeline_test.AWESOME.ADD_KEY4",
+        "type": "stage",
+        "path": "/Users/testuser/repos/martian/test/fail_test/pipeline_test/AWESOME/ADD_KEY4",
+        "state": "complete",
+        "metadata": {
+            "path": "/Users/testuser/repos/martian/test/fail_test/pipeline_test/AWESOME/ADD_KEY4",
+            "names": []
+        },
+        "sweepbindings": [
+            {
+                "id": "value",
+                "type": "string",
+                "valexp": "",
+                "mode": "value",
+                "output": "",
+                "sweep": true,
+                "sweepRootId": "value",
+                "node": "ADD_KEY4",
+                "matchedFork": null,
+                "value": [
+                    "four",
+                    "feir"
+                ],
+                "waiting": false
+            },
+            {
+                "id": "value",
+                "type": "string",
+                "valexp": "self.value2",
+                "mode": "value",
+                "output": "",
+                "sweep": true,
+                "sweepRootId": "value2",
+                "node": "AWESOME",
+                "matchedFork": null,
+                "value": [
+                    "two",
+                    "deux"
+                ],
+                "waiting": false
+            }
+        ],
+        "forks": [
+            {
+                "index": 0,
+                "argPermute": {
+                    "value": "four",
+                    "value2": "two"
+                },
+                "joinDef": {
+                    "__mem_gb": 6,
+                    "__threads": 1
+                },
+                "state": "complete",
+                "metadata": {
+                    "path": "/Users/testuser/repos/martian/test/fail_test/pipeline_test/AWESOME/ADD_KEY4/fork0",
+                    "names": [
+                        "complete",
+                        "invocation",
+                        "outs",
+                        "vdrkill"
+                    ]
+                },
+                "split_metadata": {
+                    "path": "/Users/testuser/repos/martian/test/fail_test/pipeline_test/AWESOME/ADD_KEY4/fork0/split",
+                    "names": [
+                        "args",
+                        "complete",
+                        "stage_defs"
+                    ]
+                },
+                "join_metadata": {
+                    "path": "/Users/testuser/repos/martian/test/fail_test/pipeline_test/AWESOME/ADD_KEY4/fork0/join",
+                    "names": [
+                        "args",
+                        "chunk_defs",
+                        "complete",
+                        "outs"
+                    ]
+                },
+                "chunks": [
+                    {
+                        "index": 0,
+                        "chunkDef": {
+                            "__mem_gb": 6,
+                            "__threads": 1
+                        },
+                        "state": "complete",
+                        "metadata": {
+                            "path": "/Users/testuser/repos/martian/test/fail_test/pipeline_test/AWESOME/ADD_KEY4/fork0/chnk0",
+                            "names": [
+                                "args",
+                                "complete",
+                                "heartbeat",
+                                "jobinfo",
+                                "log",
+                                "outs",
+                                "stderr",
+                                "stdout"
+                            ]
+                        }
+                    }
+                ],
+                "bindings": {
+                    "Argument": [
+                        {
+                            "id": "key",
+                            "type": "string",
+                            "valexp": "",
+                            "mode": "value",
+                            "output": "",
+                            "sweep": false,
+                            "sweepRootId": "key",
+                            "node": "ADD_KEY4",
+                            "matchedFork": 0,
+                            "value": "4",
+                            "waiting": false
+                        },
+                        {
+                            "id": "value",
+                            "type": "string",
+                            "valexp": "",
+                            "mode": "value",
+                            "output": "",
+                            "sweep": true,
+                            "sweepRootId": "value",
+                            "node": "ADD_KEY4",
+                            "matchedFork": 0,
+                            "value": "four",
+                            "waiting": false
+                        },
+                        {
+                            "id": "failfile",
+                            "type": "string",
+                            "valexp": "",
+                            "mode": "value",
+                            "output": "",
+                            "sweep": false,
+                            "sweepRootId": "failfile",
+                            "node": "ADD_KEY4",
+                            "matchedFork": 0,
+                            "value": "fail4",
+                            "waiting": false
+                        },
+                        {
+                            "id": "start",
+                            "type": "json",
+                            "valexp": "ADD_KEY2.result",
+                            "mode": "reference",
+                            "output": "result",
+                            "sweep": false,
+                            "sweepRootId": "start",
+                            "node": "ADD_KEY2",
+                            "matchedFork": 0,
+                            "value": "/Users/testuser/repos/martian/test/fail_test/pipeline_test/AWESOME/ADD_KEY2/fork0/files/result.json",
+                            "waiting": false
+                        }
+                    ],
+                    "Return": []
+                }
+            },
+            {
+                "index": 1,
+                "argPermute": {
+                    "value": "four",
+                    "value2": "deux"
+                },
+                "joinDef": {
+                    "__mem_gb": 6,
+                    "__threads": 1
+                },
+                "state": "complete",
+                "metadata": {
+                    "path": "/Users/testuser/repos/martian/test/fail_test/pipeline_test/AWESOME/ADD_KEY4/fork1",
+                    "names": [
+                        "complete",
+                        "invocation",
+                        "outs",
+                        "vdrkill"
+                    ]
+                },
+                "split_metadata": {
+                    "path": "/Users/testuser/repos/martian/test/fail_test/pipeline_test/AWESOME/ADD_KEY4/fork1/split",
+                    "names": [
+                        "args",
+                        "complete",
+                        "stage_defs"
+                    ]
+                },
+                "join_metadata": {
+                    "path": "/Users/testuser/repos/martian/test/fail_test/pipeline_test/AWESOME/ADD_KEY4/fork1/join",
+                    "names": [
+                        "args",
+                        "chunk_defs",
+                        "complete",
+                        "outs"
+                    ]
+                },
+                "chunks": [
+                    {
+                        "index": 0,
+                        "chunkDef": {
+                            "__mem_gb": 6,
+                            "__threads": 1
+                        },
+                        "state": "complete",
+                        "metadata": {
+                            "path": "/Users/testuser/repos/martian/test/fail_test/pipeline_test/AWESOME/ADD_KEY4/fork1/chnk0",
+                            "names": [
+                                "args",
+                                "complete",
+                                "heartbeat",
+                                "jobinfo",
+                                "log",
+                                "outs",
+                                "stderr",
+                                "stdout"
+                            ]
+                        }
+                    }
+                ],
+                "bindings": {
+                    "Argument": [
+                        {
+                            "id": "key",
+                            "type": "string",
+                            "valexp": "",
+                            "mode": "value",
+                            "output": "",
+                            "sweep": false,
+                            "sweepRootId": "key",
+                            "node": "ADD_KEY4",
+                            "matchedFork": 1,
+                            "value": "4",
+                            "waiting": false
+                        },
+                        {
+                            "id": "value",
+                            "type": "string",
+                            "valexp": "",
+                            "mode": "value",
+                            "output": "",
+                            "sweep": true,
+                            "sweepRootId": "value",
+                            "node": "ADD_KEY4",
+                            "matchedFork": 1,
+                            "value": "four",
+                            "waiting": false
+                        },
+                        {
+                            "id": "failfile",
+                            "type": "string",
+                            "valexp": "",
+                            "mode": "value",
+                            "output": "",
+                            "sweep": false,
+                            "sweepRootId": "failfile",
+                            "node": "ADD_KEY4",
+                            "matchedFork": 1,
+                            "value": "fail4",
+                            "waiting": false
+                        },
+                        {
+                            "id": "start",
+                            "type": "json",
+                            "valexp": "ADD_KEY2.result",
+                            "mode": "reference",
+                            "output": "result",
+                            "sweep": false,
+                            "sweepRootId": "start",
+                            "node": "ADD_KEY2",
+                            "matchedFork": 1,
+                            "value": "/Users/testuser/repos/martian/test/fail_test/pipeline_test/AWESOME/ADD_KEY2/fork1/files/result.json",
+                            "waiting": false
+                        }
+                    ],
+                    "Return": []
+                }
+            },
+            {
+                "index": 2,
+                "argPermute": {
+                    "value": "feir",
+                    "value2": "two"
+                },
+                "joinDef": {
+                    "__mem_gb": 6,
+                    "__threads": 1
+                },
+                "state": "complete",
+                "metadata": {
+                    "path": "/Users/testuser/repos/martian/test/fail_test/pipeline_test/AWESOME/ADD_KEY4/fork2",
+                    "names": [
+                        "complete",
+                        "invocation",
+                        "outs",
+                        "vdrkill"
+                    ]
+                },
+                "split_metadata": {
+                    "path": "/Users/testuser/repos/martian/test/fail_test/pipeline_test/AWESOME/ADD_KEY4/fork2/split",
+                    "names": [
+                        "args",
+                        "complete",
+                        "stage_defs"
+                    ]
+                },
+                "join_metadata": {
+                    "path": "/Users/testuser/repos/martian/test/fail_test/pipeline_test/AWESOME/ADD_KEY4/fork2/join",
+                    "names": [
+                        "args",
+                        "chunk_defs",
+                        "complete",
+                        "outs"
+                    ]
+                },
+                "chunks": [
+                    {
+                        "index": 0,
+                        "chunkDef": {
+                            "__mem_gb": 6,
+                            "__threads": 1
+                        },
+                        "state": "complete",
+                        "metadata": {
+                            "path": "/Users/testuser/repos/martian/test/fail_test/pipeline_test/AWESOME/ADD_KEY4/fork2/chnk0",
+                            "names": [
+                                "args",
+                                "complete",
+                                "heartbeat",
+                                "jobinfo",
+                                "log",
+                                "outs",
+                                "stderr",
+                                "stdout"
+                            ]
+                        }
+                    }
+                ],
+                "bindings": {
+                    "Argument": [
+                        {
+                            "id": "key",
+                            "type": "string",
+                            "valexp": "",
+                            "mode": "value",
+                            "output": "",
+                            "sweep": false,
+                            "sweepRootId": "key",
+                            "node": "ADD_KEY4",
+                            "matchedFork": 2,
+                            "value": "4",
+                            "waiting": false
+                        },
+                        {
+                            "id": "value",
+                            "type": "string",
+                            "valexp": "",
+                            "mode": "value",
+                            "output": "",
+                            "sweep": true,
+                            "sweepRootId": "value",
+                            "node": "ADD_KEY4",
+                            "matchedFork": 2,
+                            "value": "feir",
+                            "waiting": false
+                        },
+                        {
+                            "id": "failfile",
+                            "type": "string",
+                            "valexp": "",
+                            "mode": "value",
+                            "output": "",
+                            "sweep": false,
+                            "sweepRootId": "failfile",
+                            "node": "ADD_KEY4",
+                            "matchedFork": 2,
+                            "value": "fail4",
+                            "waiting": false
+                        },
+                        {
+                            "id": "start",
+                            "type": "json",
+                            "valexp": "ADD_KEY2.result",
+                            "mode": "reference",
+                            "output": "result",
+                            "sweep": false,
+                            "sweepRootId": "start",
+                            "node": "ADD_KEY2",
+                            "matchedFork": 0,
+                            "value": "/Users/testuser/repos/martian/test/fail_test/pipeline_test/AWESOME/ADD_KEY2/fork0/files/result.json",
+                            "waiting": false
+                        }
+                    ],
+                    "Return": []
+                }
+            },
+            {
+                "index": 3,
+                "argPermute": {
+                    "value": "feir",
+                    "value2": "deux"
+                },
+                "joinDef": {
+                    "__mem_gb": 6,
+                    "__threads": 1
+                },
+                "state": "complete",
+                "metadata": {
+                    "path": "/Users/testuser/repos/martian/test/fail_test/pipeline_test/AWESOME/ADD_KEY4/fork3",
+                    "names": [
+                        "complete",
+                        "invocation",
+                        "outs",
+                        "vdrkill"
+                    ]
+                },
+                "split_metadata": {
+                    "path": "/Users/testuser/repos/martian/test/fail_test/pipeline_test/AWESOME/ADD_KEY4/fork3/split",
+                    "names": [
+                        "args",
+                        "complete",
+                        "stage_defs"
+                    ]
+                },
+                "join_metadata": {
+                    "path": "/Users/testuser/repos/martian/test/fail_test/pipeline_test/AWESOME/ADD_KEY4/fork3/join",
+                    "names": [
+                        "args",
+                        "chunk_defs",
+                        "complete",
+                        "outs"
+                    ]
+                },
+                "chunks": [
+                    {
+                        "index": 0,
+                        "chunkDef": {
+                            "__mem_gb": 6,
+                            "__threads": 1
+                        },
+                        "state": "complete",
+                        "metadata": {
+                            "path": "/Users/testuser/repos/martian/test/fail_test/pipeline_test/AWESOME/ADD_KEY4/fork3/chnk0",
+                            "names": [
+                                "args",
+                                "complete",
+                                "heartbeat",
+                                "jobinfo",
+                                "log",
+                                "outs",
+                                "stderr",
+                                "stdout"
+                            ]
+                        }
+                    }
+                ],
+                "bindings": {
+                    "Argument": [
+                        {
+                            "id": "key",
+                            "type": "string",
+                            "valexp": "",
+                            "mode": "value",
+                            "output": "",
+                            "sweep": false,
+                            "sweepRootId": "key",
+                            "node": "ADD_KEY4",
+                            "matchedFork": 3,
+                            "value": "4",
+                            "waiting": false
+                        },
+                        {
+                            "id": "value",
+                            "type": "string",
+                            "valexp": "",
+                            "mode": "value",
+                            "output": "",
+                            "sweep": true,
+                            "sweepRootId": "value",
+                            "node": "ADD_KEY4",
+                            "matchedFork": 3,
+                            "value": "feir",
+                            "waiting": false
+                        },
+                        {
+                            "id": "failfile",
+                            "type": "string",
+                            "valexp": "",
+                            "mode": "value",
+                            "output": "",
+                            "sweep": false,
+                            "sweepRootId": "failfile",
+                            "node": "ADD_KEY4",
+                            "matchedFork": 3,
+                            "value": "fail4",
+                            "waiting": false
+                        },
+                        {
+                            "id": "start",
+                            "type": "json",
+                            "valexp": "ADD_KEY2.result",
+                            "mode": "reference",
+                            "output": "result",
+                            "sweep": false,
+                            "sweepRootId": "start",
+                            "node": "ADD_KEY2",
+                            "matchedFork": 1,
+                            "value": "/Users/testuser/repos/martian/test/fail_test/pipeline_test/AWESOME/ADD_KEY2/fork1/files/result.json",
+                            "waiting": false
+                        }
+                    ],
+                    "Return": []
+                }
+            }
+        ],
+        "edges": [
+            {
+                "from": "ID.pipeline_test.AWESOME.ADD_KEY2",
+                "to": "ID.pipeline_test.AWESOME.ADD_KEY4"
+            }
+        ],
+        "stagecodeLang": "Python",
+        "stagecodeCmd": "/Users/testuser/repos/martian/test/fail_test/stages/add_key",
+        "error": null
+    },
+    {
+        "name": "MERGE_JSON",
+        "fqname": "ID.pipeline_test.AWESOME.MERGE_JSON",
+        "type": "stage",
+        "path": "/Users/testuser/repos/martian/test/fail_test/pipeline_test/AWESOME/MERGE_JSON",
+        "state": "complete",
+        "metadata": {
+            "path": "/Users/testuser/repos/martian/test/fail_test/pipeline_test/AWESOME/MERGE_JSON",
+            "names": []
+        },
+        "sweepbindings": [
+            {
+                "id": "value",
+                "type": "string",
+                "valexp": "",
+                "mode": "value",
+                "output": "",
+                "sweep": true,
+                "sweepRootId": "value",
+                "node": "ADD_KEY4",
+                "matchedFork": null,
+                "value": [
+                    "four",
+                    "feir"
+                ],
+                "waiting": false
+            },
+            {
+                "id": "value",
+                "type": "string",
+                "valexp": "self.value2",
+                "mode": "value",
+                "output": "",
+                "sweep": true,
+                "sweepRootId": "value2",
+                "node": "AWESOME",
+                "matchedFork": null,
+                "value": [
+                    "two",
+                    "deux"
+                ],
+                "waiting": false
+            }
+        ],
+        "forks": [
+            {
+                "index": 0,
+                "argPermute": {
+                    "value": "four",
+                    "value2": "two"
+                },
+                "joinDef": {
+                    "__mem_gb": 6,
+                    "__threads": 1
+                },
+                "state": "complete",
+                "metadata": {
+                    "path": "/Users/testuser/repos/martian/test/fail_test/pipeline_test/AWESOME/MERGE_JSON/fork0",
+                    "names": [
+                        "complete",
+                        "invocation",
+                        "outs",
+                        "vdrkill"
+                    ]
+                },
+                "split_metadata": {
+                    "path": "/Users/testuser/repos/martian/test/fail_test/pipeline_test/AWESOME/MERGE_JSON/fork0/split",
+                    "names": [
+                        "args",
+                        "complete",
+                        "stage_defs"
+                    ]
+                },
+                "join_metadata": {
+                    "path": "/Users/testuser/repos/martian/test/fail_test/pipeline_test/AWESOME/MERGE_JSON/fork0/join",
+                    "names": [
+                        "args",
+                        "chunk_defs",
+                        "complete",
+                        "outs"
+                    ]
+                },
+                "chunks": [
+                    {
+                        "index": 0,
+                        "chunkDef": {
+                            "__mem_gb": 6,
+                            "__threads": 1
+                        },
+                        "state": "complete",
+                        "metadata": {
+                            "path": "/Users/testuser/repos/martian/test/fail_test/pipeline_test/AWESOME/MERGE_JSON/fork0/chnk0",
+                            "names": [
+                                "args",
+                                "complete",
+                                "heartbeat",
+                                "jobinfo",
+                                "log",
+                                "outs",
+                                "stderr",
+                                "stdout"
+                            ]
+                        }
+                    }
+                ],
+                "bindings": {
+                    "Argument": [
+                        {
+                            "id": "json1",
+                            "type": "json",
+                            "valexp": "ADD_KEY3.result",
+                            "mode": "reference",
+                            "output": "result",
+                            "sweep": false,
+                            "sweepRootId": "json1",
+                            "node": "ADD_KEY3",
+                            "matchedFork": 0,
+                            "value": "/Users/testuser/repos/martian/test/fail_test/pipeline_test/AWESOME/ADD_KEY3/fork0/files/result.json",
+                            "waiting": false
+                        },
+                        {
+                            "id": "json2",
+                            "type": "json",
+                            "valexp": "ADD_KEY4.result",
+                            "mode": "reference",
+                            "output": "result",
+                            "sweep": false,
+                            "sweepRootId": "json2",
+                            "node": "ADD_KEY4",
+                            "matchedFork": 0,
+                            "value": "/Users/testuser/repos/martian/test/fail_test/pipeline_test/AWESOME/ADD_KEY4/fork0/files/result.json",
+                            "waiting": false
+                        }
+                    ],
+                    "Return": []
+                }
+            },
+            {
+                "index": 1,
+                "argPermute": {
+                    "value": "four",
+                    "value2": "deux"
+                },
+                "joinDef": {
+                    "__mem_gb": 6,
+                    "__threads": 1
+                },
+                "state": "complete",
+                "metadata": {
+                    "path": "/Users/testuser/repos/martian/test/fail_test/pipeline_test/AWESOME/MERGE_JSON/fork1",
+                    "names": [
+                        "complete",
+                        "invocation",
+                        "outs",
+                        "vdrkill"
+                    ]
+                },
+                "split_metadata": {
+                    "path": "/Users/testuser/repos/martian/test/fail_test/pipeline_test/AWESOME/MERGE_JSON/fork1/split",
+                    "names": [
+                        "args",
+                        "complete",
+                        "stage_defs"
+                    ]
+                },
+                "join_metadata": {
+                    "path": "/Users/testuser/repos/martian/test/fail_test/pipeline_test/AWESOME/MERGE_JSON/fork1/join",
+                    "names": [
+                        "args",
+                        "chunk_defs",
+                        "complete",
+                        "outs"
+                    ]
+                },
+                "chunks": [
+                    {
+                        "index": 0,
+                        "chunkDef": {
+                            "__mem_gb": 6,
+                            "__threads": 1
+                        },
+                        "state": "complete",
+                        "metadata": {
+                            "path": "/Users/testuser/repos/martian/test/fail_test/pipeline_test/AWESOME/MERGE_JSON/fork1/chnk0",
+                            "names": [
+                                "args",
+                                "complete",
+                                "heartbeat",
+                                "jobinfo",
+                                "log",
+                                "outs",
+                                "stderr",
+                                "stdout"
+                            ]
+                        }
+                    }
+                ],
+                "bindings": {
+                    "Argument": [
+                        {
+                            "id": "json1",
+                            "type": "json",
+                            "valexp": "ADD_KEY3.result",
+                            "mode": "reference",
+                            "output": "result",
+                            "sweep": false,
+                            "sweepRootId": "json1",
+                            "node": "ADD_KEY3",
+                            "matchedFork": 1,
+                            "value": "/Users/testuser/repos/martian/test/fail_test/pipeline_test/AWESOME/ADD_KEY3/fork1/files/result.json",
+                            "waiting": false
+                        },
+                        {
+                            "id": "json2",
+                            "type": "json",
+                            "valexp": "ADD_KEY4.result",
+                            "mode": "reference",
+                            "output": "result",
+                            "sweep": false,
+                            "sweepRootId": "json2",
+                            "node": "ADD_KEY4",
+                            "matchedFork": 1,
+                            "value": "/Users/testuser/repos/martian/test/fail_test/pipeline_test/AWESOME/ADD_KEY4/fork1/files/result.json",
+                            "waiting": false
+                        }
+                    ],
+                    "Return": []
+                }
+            },
+            {
+                "index": 2,
+                "argPermute": {
+                    "value": "feir",
+                    "value2": "two"
+                },
+                "joinDef": {
+                    "__mem_gb": 6,
+                    "__threads": 1
+                },
+                "state": "complete",
+                "metadata": {
+                    "path": "/Users/testuser/repos/martian/test/fail_test/pipeline_test/AWESOME/MERGE_JSON/fork2",
+                    "names": [
+                        "complete",
+                        "invocation",
+                        "outs",
+                        "vdrkill"
+                    ]
+                },
+                "split_metadata": {
+                    "path": "/Users/testuser/repos/martian/test/fail_test/pipeline_test/AWESOME/MERGE_JSON/fork2/split",
+                    "names": [
+                        "args",
+                        "complete",
+                        "stage_defs"
+                    ]
+                },
+                "join_metadata": {
+                    "path": "/Users/testuser/repos/martian/test/fail_test/pipeline_test/AWESOME/MERGE_JSON/fork2/join",
+                    "names": [
+                        "args",
+                        "chunk_defs",
+                        "complete",
+                        "outs"
+                    ]
+                },
+                "chunks": [
+                    {
+                        "index": 0,
+                        "chunkDef": {
+                            "__mem_gb": 6,
+                            "__threads": 1
+                        },
+                        "state": "complete",
+                        "metadata": {
+                            "path": "/Users/testuser/repos/martian/test/fail_test/pipeline_test/AWESOME/MERGE_JSON/fork2/chnk0",
+                            "names": [
+                                "args",
+                                "complete",
+                                "heartbeat",
+                                "jobinfo",
+                                "log",
+                                "outs",
+                                "stderr",
+                                "stdout"
+                            ]
+                        }
+                    }
+                ],
+                "bindings": {
+                    "Argument": [
+                        {
+                            "id": "json1",
+                            "type": "json",
+                            "valexp": "ADD_KEY3.result",
+                            "mode": "reference",
+                            "output": "result",
+                            "sweep": false,
+                            "sweepRootId": "json1",
+                            "node": "ADD_KEY3",
+                            "matchedFork": 0,
+                            "value": "/Users/testuser/repos/martian/test/fail_test/pipeline_test/AWESOME/ADD_KEY3/fork0/files/result.json",
+                            "waiting": false
+                        },
+                        {
+                            "id": "json2",
+                            "type": "json",
+                            "valexp": "ADD_KEY4.result",
+                            "mode": "reference",
+                            "output": "result",
+                            "sweep": false,
+                            "sweepRootId": "json2",
+                            "node": "ADD_KEY4",
+                            "matchedFork": 2,
+                            "value": "/Users/testuser/repos/martian/test/fail_test/pipeline_test/AWESOME/ADD_KEY4/fork2/files/result.json",
+                            "waiting": false
+                        }
+                    ],
+                    "Return": []
+                }
+            },
+            {
+                "index": 3,
+                "argPermute": {
+                    "value": "feir",
+                    "value2": "deux"
+                },
+                "joinDef": {
+                    "__mem_gb": 6,
+                    "__threads": 1
+                },
+                "state": "complete",
+                "metadata": {
+                    "path": "/Users/testuser/repos/martian/test/fail_test/pipeline_test/AWESOME/MERGE_JSON/fork3",
+                    "names": [
+                        "complete",
+                        "invocation",
+                        "outs",
+                        "vdrkill"
+                    ]
+                },
+                "split_metadata": {
+                    "path": "/Users/testuser/repos/martian/test/fail_test/pipeline_test/AWESOME/MERGE_JSON/fork3/split",
+                    "names": [
+                        "args",
+                        "complete",
+                        "stage_defs"
+                    ]
+                },
+                "join_metadata": {
+                    "path": "/Users/testuser/repos/martian/test/fail_test/pipeline_test/AWESOME/MERGE_JSON/fork3/join",
+                    "names": [
+                        "args",
+                        "chunk_defs",
+                        "complete",
+                        "outs"
+                    ]
+                },
+                "chunks": [
+                    {
+                        "index": 0,
+                        "chunkDef": {
+                            "__mem_gb": 6,
+                            "__threads": 1
+                        },
+                        "state": "complete",
+                        "metadata": {
+                            "path": "/Users/testuser/repos/martian/test/fail_test/pipeline_test/AWESOME/MERGE_JSON/fork3/chnk0",
+                            "names": [
+                                "args",
+                                "complete",
+                                "heartbeat",
+                                "jobinfo",
+                                "log",
+                                "outs",
+                                "stderr",
+                                "stdout"
+                            ]
+                        }
+                    }
+                ],
+                "bindings": {
+                    "Argument": [
+                        {
+                            "id": "json1",
+                            "type": "json",
+                            "valexp": "ADD_KEY3.result",
+                            "mode": "reference",
+                            "output": "result",
+                            "sweep": false,
+                            "sweepRootId": "json1",
+                            "node": "ADD_KEY3",
+                            "matchedFork": 1,
+                            "value": "/Users/testuser/repos/martian/test/fail_test/pipeline_test/AWESOME/ADD_KEY3/fork1/files/result.json",
+                            "waiting": false
+                        },
+                        {
+                            "id": "json2",
+                            "type": "json",
+                            "valexp": "ADD_KEY4.result",
+                            "mode": "reference",
+                            "output": "result",
+                            "sweep": false,
+                            "sweepRootId": "json2",
+                            "node": "ADD_KEY4",
+                            "matchedFork": 3,
+                            "value": "/Users/testuser/repos/martian/test/fail_test/pipeline_test/AWESOME/ADD_KEY4/fork3/files/result.json",
+                            "waiting": false
+                        }
+                    ],
+                    "Return": []
+                }
+            }
+        ],
+        "edges": [
+            {
+                "from": "ID.pipeline_test.AWESOME.ADD_KEY3",
+                "to": "ID.pipeline_test.AWESOME.MERGE_JSON"
+            },
+            {
+                "from": "ID.pipeline_test.AWESOME.ADD_KEY4",
+                "to": "ID.pipeline_test.AWESOME.MERGE_JSON"
+            }
+        ],
+        "stagecodeLang": "Python",
+        "stagecodeCmd": "/Users/testuser/repos/martian/test/fail_test/stages/merge_json",
+        "error": null
+    }
+]

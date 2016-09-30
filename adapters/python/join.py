@@ -12,6 +12,9 @@ try:
     # Initialize Martian with command line args.
     martian.initialize(sys.argv)
 
+    # Register handlers for SIGTERM etc.
+    martian.setup_signal_handlers()
+
     args = martian.Record(martian.metadata.read("args"))
     outs = martian.Record(martian.metadata.read("outs"))
     chunk_defs = [martian.Record(chunk_def) for chunk_def in martian.metadata.read("chunk_defs")]

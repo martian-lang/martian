@@ -1,0 +1,86 @@
+filetype json;
+
+stage ADD_KEY1(
+    in string key,
+    in string value,
+    in json start,
+    in string failfile,
+    out json result,
+    src py "stages/add_key",
+)
+
+stage ADD_KEY2(
+    in string key,
+    in string value,
+    in json start,
+    in string failfile,
+    out json result,
+    src py "stages/add_key",
+)
+
+stage ADD_KEY3(
+    in string key,
+    in string value,
+    in json start,
+    in string failfile,
+    out json result,
+    src py "stages/add_key",
+)
+
+stage ADD_KEY4(
+    in string key,
+    in string value,
+    in json start,
+    in string failfile,
+    out json result,
+    src py "stages/add_key",
+)
+
+stage MERGE_JSON(
+    in json json1,
+    in json json2,
+    out json result,
+    src py "stages/merge_json",
+)
+
+pipeline AWESOME(
+    in string key1,
+    in string value1,
+    in string key2,
+    in string value2,
+    out json outfile,
+    ) {
+        call ADD_KEY1(key = self.key1,
+                      value = self.value1,
+                      failfile = "fail1",
+                      start = null,
+        )
+        call ADD_KEY2(key = self.key2,
+                      value = self.value2,
+                      failfile = "fail2",
+                      start = ADD_KEY1.result,
+        )
+        call ADD_KEY3(key = "3",
+                      value = "three",
+                      failfile = "fail3",
+                      start = ADD_KEY2.result,
+        )
+        call ADD_KEY4(key = "4",
+                      value = sweep("four", "feir"),
+                      failfile = "fail4",
+                      start = ADD_KEY2.result,
+        )
+        call MERGE_JSON(json1 = ADD_KEY3.result,
+                        json2 = ADD_KEY4.result,
+        )
+        return (
+            outfile = MERGE_JSON.result,
+        )
+    }
+
+call AWESOME(
+    key1 = "1",
+    value1 = "one",
+    key2 = "2",
+    value2 = sweep("two", "deux"),
+)

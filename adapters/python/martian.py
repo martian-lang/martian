@@ -9,6 +9,7 @@ import sys
 import json
 import time
 import datetime
+import signal
 import socket
 import subprocess
 import multiprocessing
@@ -20,6 +21,28 @@ import cProfile
 import traceback
 import line_profiler
 import math
+
+def setup_signal_handlers():
+    """Registers signal handlers to actually write an error file.
+    
+    The error string is intended to match what would be written if running in
+    local mode.  This prevents the martian runtime from waiting for a
+    heartbeat failure if the cluster kills a job for some reason.
+    """
+    def handler(signum, frame):
+        global metadata
+        metadata.write_raw("errors", "signal: %d\n\n%s\n" %
+                           (signum, ''.join(reversed(
+                               traceback.format_stack(frame)))))
+        signal.signal(signum, signal.SIG_DFL)  # only catch first signal.
+        done()
+    # These are the signals which are guaranteed to work on all platforms.
+    # They should be enough for the cases we're actually interested in.
+    signal.signal(signal.SIGABRT, handler)
+    signal.signal(signal.SIGFPE, handler)
+    signal.signal(signal.SIGILL, handler)
+    signal.signal(signal.SIGINT, handler)
+    signal.signal(signal.SIGTERM, handler)
 
 def json_sanitize(data):
     if (type(data) == float):
@@ -238,8 +261,12 @@ def test_initialize(path):
     global metadata
     metadata = TestMetadata(path, path, "", "main")
 
-def heartbeat(metadata):
-    while True:
+# Needs to be global so that the GC doesn't eat it.
+_heartbeat_process = None
+_done_called = multiprocessing.Value('i', 0)
+
+def heartbeat(metadata, done):
+    while done.value == 0:
         metadata.update_journal("heartbeat", force=True)
         time.sleep(120)
 
@@ -252,8 +279,11 @@ def monitor(metadata, limit_kb):
         time.sleep(120)
 
 def start_heartbeat():
-    t = multiprocessing.Process(target=heartbeat, args=(metadata,))
+    global _done_called
+    t = multiprocessing.Process(target=heartbeat, args=(metadata, _done_called))
     t.daemon = True
+    global _heartbeat_process
+    _heartbeat_process = t
     t.start()
 
 def start_monitor(limit_kb):
@@ -321,6 +351,12 @@ def initialize(argv):
 
 def done():
     log_time("__end__")
+
+    # Stop the heartbeat.
+    global _done_called
+    global _heartbeat_process
+    _done_called.value = 1
+    _heartbeat_process = None
 
     # Common to fail() and complete()
     endtime = time.time()

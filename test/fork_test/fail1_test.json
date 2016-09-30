@@ -1,0 +1,8 @@
+{
+  "command": ["run_fail1_test.sh"],
+  "expected_return": 1,
+  "output_dir": "pipeline_test",
+  "expected_dir": "expected_fail1",
+  "contains_only_files": ["*"],
+  "contents_match": ["*"]
+}
