@@ -31,10 +31,10 @@ def setup_signal_handlers():
     """
     def handler(signum, frame):
         global metadata
-        signal.signal(signum, signal.SIG_DFL)  # only catch first signal.
         metadata.write_raw("errors", "signal: %d\n\n%s\n" %
                            (signum, ''.join(reversed(
                                traceback.format_stack(frame)))))
+        signal.signal(signum, signal.SIG_DFL)  # only catch first signal.
         done()
     # These are the signals which are guaranteed to work on all platforms.
     # They should be enough for the cases we're actually interested in.
@@ -42,7 +42,7 @@ def setup_signal_handlers():
     signal.signal(signal.SIGFPE, handler)
     signal.signal(signal.SIGILL, handler)
     signal.signal(signal.SIGINT, handler)
-    # signal.signal(signal.SIGTERM, handler)
+    signal.signal(signal.SIGTERM, handler)
 
 def json_sanitize(data):
     if (type(data) == float):
@@ -266,7 +266,7 @@ _heartbeat_process = None
 _done_called = multiprocessing.Value('i', 0)
 
 def heartbeat(metadata, done):
-    while done == 0:
+    while done.value == 0:
         metadata.update_journal("heartbeat", force=True)
         time.sleep(120)
 
@@ -351,8 +351,12 @@ def initialize(argv):
 
 def done():
     log_time("__end__")
+
+    # Stop the heartbeat.
     global _done_called
+    global _heartbeat_process
     _done_called.value = 1
+    _heartbeat_process = None
 
     # Common to fail() and complete()
     endtime = time.time()
