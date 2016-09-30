@@ -343,7 +343,7 @@ Options:
 		retries = 0
 		core.Println(
 			"\nWARNING: ignoring autoretry when MRO_FULLSTAGERESET is set.\n")
-		core.LogInfo("options", "autoretry diabled due to MRO_FULLSTAGERESET.\n")
+		core.LogInfo("options", "autoretry disabled due to MRO_FULLSTAGERESET.\n")
 	}
 	// Validate psid.
 	core.DieIf(core.ValidateID(psid))
