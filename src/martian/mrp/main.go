@@ -232,8 +232,9 @@ Options:
 	}
 
 	// Compute MRO path.
-	cwd, _ := filepath.Abs(path.Dir(os.Args[1]))
-	mroPaths := core.ParseMroPath(cwd)
+	cwd, _ := os.Getwd()
+	mro_dir, _ := filepath.Abs(path.Dir(os.Args[1]))
+	mroPaths := core.ParseMroPath(mro_dir)
 	if value := os.Getenv("MROPATH"); len(value) > 0 {
 		mroPaths = core.ParseMroPath(value)
 	}
