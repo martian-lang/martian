@@ -26,7 +26,7 @@ import (
 // Pipestance runner.
 //=============================================================================
 func runLoop(pipestance *core.Pipestance, stepSecs int, vdrMode string,
-	noExit bool, enableUI bool) {
+	noExit bool, enableUI bool, retries int, factory core.PipestanceFactory) {
 	showedFailed := false
 	showedComplete := false
 	WAIT_SECS := 6
@@ -65,40 +65,55 @@ func runLoop(pipestance *core.Pipestance, stepSecs int, vdrMode string,
 				os.Exit(0)
 			}
 		} else if state == "failed" {
-			pipestance.Unlock()
-			if !showedFailed {
-				pipestance.OnFinishHook()
-				if _, preflight, _, log, kind, errPaths := pipestance.GetFatalError(); kind == "assert" {
-					// Print preflight check failures.
-					core.Println("\n[%s] %s\n", "error", log)
-					if preflight {
-						os.Exit(2)
-					} else {
-						os.Exit(1)
-					}
-				} else if len(errPaths) > 0 {
-					// Build relative path to _errors file
-					errPath, _ := filepath.Rel(filepath.Dir(pipestance.GetPath()), errPaths[0])
-
-					// Print path to _errors metadata file in failed stage.
-					core.Println("\n[%s] Pipestance failed. Please see log at:\n%s\n", "error", errPath)
-				}
-			}
-			if noExit {
-				// If pipestance failed but we're staying alive, only print this once
-				// as long as we stay failed.
-				if !showedFailed {
-					showedFailed = true
-					core.Println("Pipestance failed, staying alive because --noexit given.\n")
+			if retries > 0 && pipestance.IsErrorTransient() {
+				pipestance.Unlock()
+				retries--
+				core.LogInfo("runtime", "Attempting retry.")
+				ps, err := factory.ReattachToPipestance()
+				if err == nil {
+					pipestance = ps
+					err = pipestance.Reset()
+					pipestance.LoadMetadata()
+				} else {
+					core.LogInfo("runtime", "Retry failed:\n%v\n", err)
+					// Let the next loop around actually handle the failure.
 				}
 			} else {
-				if enableUI {
-					// Give time for web ui client to get last update.
-					core.Println("Waiting %d seconds for UI to do final refresh.", WAIT_SECS)
-					time.Sleep(time.Second * time.Duration(WAIT_SECS))
-					core.Println("Pipestance failed. Use --noexit option to keep UI running after failure.\n")
+				pipestance.Unlock()
+				if !showedFailed {
+					pipestance.OnFinishHook()
+					if _, preflight, _, log, kind, errPaths := pipestance.GetFatalError(); kind == "assert" {
+						// Print preflight check failures.
+						core.Println("\n[%s] %s\n", "error", log)
+						if preflight {
+							os.Exit(2)
+						} else {
+							os.Exit(1)
+						}
+					} else if len(errPaths) > 0 {
+						// Build relative path to _errors file
+						errPath, _ := filepath.Rel(filepath.Dir(pipestance.GetPath()), errPaths[0])
+
+						// Print path to _errors metadata file in failed stage.
+						core.Println("\n[%s] Pipestance failed. Please see log at:\n%s\n", "error", errPath)
+					}
 				}
-				os.Exit(1)
+				if noExit {
+					// If pipestance failed but we're staying alive, only print this once
+					// as long as we stay failed.
+					if !showedFailed {
+						showedFailed = true
+						core.Println("Pipestance failed, staying alive because --noexit given.\n")
+					}
+				} else {
+					if enableUI {
+						// Give time for web ui client to get last update.
+						core.Println("Waiting %d seconds for UI to do final refresh.", WAIT_SECS)
+						time.Sleep(time.Second * time.Duration(WAIT_SECS))
+						core.Println("Pipestance failed. Use --noexit option to keep UI running after failure.\n")
+					}
+					os.Exit(1)
+				}
 			}
 		} else {
 			// If we went from failed to something else, allow the failure message to
@@ -161,6 +176,7 @@ Options:
     --inspect           Inspect pipestance without resetting failed stages.
     --debug             Enable debug logging for local job manager.
     --stest             Substitute real stages with stress-testing stage.
+    --autoretry=NUM     Automatically retry failed runs up to NUM times.
 
     -h --help           Show this message.
     --version           Show version.`
@@ -317,6 +333,19 @@ Options:
 	stest := opts["--stest"].(bool)
 	envs := map[string]string{}
 
+	retries := core.DefaultRetries()
+	if value := opts["--autoretry"]; value != nil {
+		if value, err := strconv.Atoi(value.(string)); err == nil {
+			retries = value
+			core.LogInfo("options", "--autoretry=%d", retries)
+		}
+	}
+	if retries > 0 && fullStageReset {
+		retries = 0
+		core.Println(
+			"\nWARNING: ignoring autoretry when MRO_FULLSTAGERESET is set.\n")
+		core.LogInfo("options", "autoretry disabled due to MRO_FULLSTAGERESET.\n")
+	}
 	// Validate psid.
 	core.DieIf(core.ValidateID(psid))
 
@@ -356,14 +385,16 @@ Options:
 	invocationSrc := string(data)
 	executingPreflight := !skipPreflight
 
-	pipestance, err := rt.InvokePipeline(invocationSrc, invocationPath, psid, pipestancePath,
-		mroPaths, mroVersion, envs, tags)
+	factory := core.NewRuntimePipestanceFactory(rt,
+		invocationSrc, invocationPath, psid, mroPaths, pipestancePath, mroVersion,
+		envs, checkSrc, readOnly, tags)
+
+	pipestance, err := factory.InvokePipeline()
 	if err != nil {
 		if _, ok := err.(*core.PipestanceExistsError); ok {
 			executingPreflight = false
 			// If it already exists, try to reattach to it.
-			if pipestance, err = rt.ReattachToPipestance(psid, pipestancePath, invocationSrc,
-				mroPaths, mroVersion, envs, checkSrc, readOnly); err == nil {
+			if pipestance, err = factory.ReattachToPipestance(); err == nil {
 				martianVersion, mroVersion, _ = pipestance.GetVersions()
 				if !inspect {
 					err = pipestance.Reset()
@@ -441,7 +472,7 @@ Options:
 	//=========================================================================
 	// Start run loop.
 	//=========================================================================
-	go runLoop(pipestance, stepSecs, vdrMode, noExit, enableUI)
+	go runLoop(pipestance, stepSecs, vdrMode, noExit, enableUI, retries, factory)
 
 	// Let daemons take over.
 	done := make(chan bool)

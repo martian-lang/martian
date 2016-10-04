@@ -1,0 +1,9 @@
+{
+  "default_retries": 2,
+  "retry_on": [
+    "^signal: ",
+    "resource temporarily unavailable",
+    "No heartbeat detected for",
+    "^error: .Errno 12. Cannot allocate memory"
+  ]
+}
