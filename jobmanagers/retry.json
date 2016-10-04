@@ -1,5 +1,5 @@
 {
-  "default_retries": 0,
+  "default_retries": 2,
   "retry_on": [
     "^signal: ",
     "resource temporarily unavailable",
