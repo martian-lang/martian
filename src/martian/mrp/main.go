@@ -215,24 +215,6 @@ Options:
 		}
 	}
 
-	// Max parallel jobs.
-	maxJobs := -1
-	if value := opts["--maxjobs"]; value != nil {
-		if value, err := strconv.Atoi(value.(string)); err == nil {
-			maxJobs = value
-			core.LogInfo("options", "--maxjobs=%d", maxJobs)
-		}
-	}
-	// frequency (in milliseconds) that jobs will be sent to the queue
-	// (this is a minimum bound, as it may take longer to emit jobs)
-	jobFreqMillis := -1
-	if value := opts["--jobinterval"]; value != nil {
-		if value, err := strconv.Atoi(value.(string)); err == nil {
-			jobFreqMillis = value
-			core.LogInfo("options", "--jobinterval=%d", jobFreqMillis)
-		}
-	}
-
 	// Special to resources mappings
 	jobResources := ""
 	if value := os.Getenv("MRO_JOBRESOURCES"); len(value) > 0 {
@@ -264,6 +246,30 @@ Options:
 		jobMode = value.(string)
 	}
 	core.LogInfo("options", "--jobmode=%s", jobMode)
+
+	// Max parallel jobs.
+	maxJobs := -1
+	if jobMode != "local" {
+		maxJobs = 64
+	}
+	if value := opts["--maxjobs"]; value != nil {
+		if value, err := strconv.Atoi(value.(string)); err == nil {
+			maxJobs = value
+			core.LogInfo("options", "--maxjobs=%d", maxJobs)
+		}
+	}
+	// frequency (in milliseconds) that jobs will be sent to the queue
+	// (this is a minimum bound, as it may take longer to emit jobs)
+	jobFreqMillis := -1
+	if jobMode != "local" {
+		jobFreqMillis = 100
+	}
+	if value := opts["--jobinterval"]; value != nil {
+		if value, err := strconv.Atoi(value.(string)); err == nil {
+			jobFreqMillis = value
+			core.LogInfo("options", "--jobinterval=%d", jobFreqMillis)
+		}
+	}
 
 	// Compute vdrMode.
 	vdrMode := "post"
