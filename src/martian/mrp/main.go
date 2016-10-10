@@ -255,9 +255,10 @@ Options:
 	if value := opts["--maxjobs"]; value != nil {
 		if value, err := strconv.Atoi(value.(string)); err == nil {
 			maxJobs = value
-			core.LogInfo("options", "--maxjobs=%d", maxJobs)
 		}
 	}
+	core.LogInfo("options", "--maxjobs=%d", maxJobs)
+
 	// frequency (in milliseconds) that jobs will be sent to the queue
 	// (this is a minimum bound, as it may take longer to emit jobs)
 	jobFreqMillis := -1
@@ -267,9 +268,9 @@ Options:
 	if value := opts["--jobinterval"]; value != nil {
 		if value, err := strconv.Atoi(value.(string)); err == nil {
 			jobFreqMillis = value
-			core.LogInfo("options", "--jobinterval=%d", jobFreqMillis)
 		}
 	}
+	core.LogInfo("options", "--jobinterval=%d", jobFreqMillis)
 
 	// Compute vdrMode.
 	vdrMode := "post"
