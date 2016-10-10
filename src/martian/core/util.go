@@ -33,8 +33,13 @@ func max(x int, y int) int {
 }
 
 func RelPath(p string) string {
-	folder, _ := osext.ExecutableFolder()
-	return path.Join(folder, p)
+	base := os.Getenv("MARTIAN_BASE")
+	if base != "" {
+		return path.Join(base, p)
+	} else {
+		folder, _ := osext.ExecutableFolder()
+		return path.Join(folder, p)
+	}
 }
 
 func mkdir(p string) {
@@ -387,4 +392,23 @@ func SearchPipestanceParams(pipestance *Ast, what string) interface{} {
 	} else {
 		return b1.Exp.(*ValExp).Value
 	}
+}
+
+/*
+ * Compute a "partially" Qualified stage name. This is a fully qualified name
+ * (ID.pipestance.pipe.pipe.pipe.....stage) with the initial ID and pipestance
+ * trimmed off. This allows for comparisons between different pipestances with
+ * the same (or similar) shapes.
+ */
+func partiallyQualifiedName(n string) string {
+	count := 0
+	for i := 0; i < len(n); i++ {
+		if n[i] == '.' {
+			count++
+		}
+		if count == 2 {
+			return n[i+1 : len(n)]
+		}
+	}
+	return ""
 }

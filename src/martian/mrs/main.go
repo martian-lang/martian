@@ -170,7 +170,7 @@ Options:
 	rt := core.NewRuntimeWithCores(jobMode, vdrMode, profileMode, martianVersion,
 		reqCores, reqMem, reqMemPerCore, maxJobs, jobFreqMillis, jobResources,
 		fullStageReset, stackVars, zip, skipPreflight, enableMonitor,
-		debug, false, "")
+		debug, false, "", nil)
 	rt.MroCache.CacheMros(mroPaths)
 
 	// Invoke stagestance.

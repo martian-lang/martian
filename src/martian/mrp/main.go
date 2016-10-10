@@ -30,7 +30,6 @@ func runLoop(pipestance *core.Pipestance, stepSecs int, vdrMode string,
 	showedFailed := false
 	showedComplete := false
 	WAIT_SECS := 6
-
 	pipestance.LoadMetadata()
 
 	for {
@@ -177,6 +176,7 @@ Options:
     --debug             Enable debug logging for local job manager.
     --stest             Substitute real stages with stress-testing stage.
     --autoretry=NUM     Automatically retry failed runs up to NUM times.
+    --overrides=JSON	JSON file supplying custom run conditions per stage.
 
     -h --help           Show this message.
     --version           Show version.`
@@ -308,6 +308,18 @@ Options:
 		core.LogInfo("options", "--tag='%s'", tag)
 	}
 
+	// Parse supplied overrides file.
+	var overrides *core.PipestanceOverrides
+	if v := opts["--overrides"]; v != nil {
+		var err error
+		overrides, err = core.ReadOverrides(v.(string))
+		if err != nil {
+			core.Println("Failed to parse overrides file: %v", err)
+			os.Exit(1)
+
+		}
+	}
+
 	// Compute stackVars flag.
 	stackVars := opts["--stackvars"].(bool)
 	core.LogInfo("options", "--stackvars=%v", stackVars)
@@ -364,9 +376,9 @@ Options:
 	// Configure Martian runtime.
 	//=========================================================================
 	rt := core.NewRuntimeWithCores(jobMode, vdrMode, profileMode, martianVersion,
-		reqCores, reqMem, reqMemPerCore, maxJobs, jobFreqMillis, jobResources,
-		fullStageReset, stackVars, zip, skipPreflight, enableMonitor,
-		debug, stest, onfinish)
+		reqCores, reqMem, reqMemPerCore, maxJobs, jobFreqMillis, "", fullStageReset,
+		stackVars, zip, skipPreflight, enableMonitor, debug, stest, onfinish,
+		overrides)
 	rt.MroCache.CacheMros(mroPaths)
 
 	// Print this here because the log makes more sense when this appears before
