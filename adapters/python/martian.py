@@ -31,6 +31,10 @@ def setup_signal_handlers():
     """
     def handler(signum, frame):
         global metadata
+        global done
+        done.value != 0:
+            signal.signal(signum, signal.SIG_DFL)
+            return
         metadata.write_raw("errors", "signal: %d\n\n%s\n" %
                            (signum, ''.join(reversed(
                                traceback.format_stack(frame)))))
