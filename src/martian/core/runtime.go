@@ -1972,6 +1972,12 @@ func mergeVDRKillReports(killReports []*VDRKillReport) *VDRKillReport {
 /* Is self or any of its ancestors symlinked? */
 func (self *Node) vdrCheckSymlink() bool {
 
+	/* Nope! Got all the way to the top.
+	 * (We don't care of the top-level directory is a symlink)
+	 */
+	if self.parent == nil {
+		return false
+	}
 	statinfo, err := os.Lstat(self.path)
 
 	/* Yep! Found a symlink */
@@ -1979,10 +1985,6 @@ func (self *Node) vdrCheckSymlink() bool {
 		return true
 	}
 
-	/* Nope! Got all the way to the top */
-	if self.parent == nil {
-		return false
-	}
 
 	return self.parent.getNode().vdrCheckSymlink()
 }
