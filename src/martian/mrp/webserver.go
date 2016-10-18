@@ -67,7 +67,7 @@ func runWebServer(uiport string, rt *core.Runtime, pipestanceBox *pipestanceHold
 	// Page renderers.
 	//=========================================================================
 	app.Get("/", func() string {
-		pipestance := pipestanceBox.Pipestance
+		pipestance := pipestanceBox.getPipestance()
 		tmpl, _ := template.New("graph.html").Delims("[[", "]]").ParseFiles(core.RelPath("../web/martian/templates/graph.html"))
 		var doc bytes.Buffer
 		tmpl.Execute(&doc, &GraphPage{
@@ -87,7 +87,7 @@ func runWebServer(uiport string, rt *core.Runtime, pipestanceBox *pipestanceHold
 	//=========================================================================
 	// Get pipestance state: nodes and fatal error (if any).
 	app.Get("/api/get-info", func(p martini.Params) string {
-		pipestance := pipestanceBox.Pipestance
+		pipestance := pipestanceBox.getPipestance()
 		info["state"] = pipestance.GetState()
 		bytes, _ := json.Marshal(info)
 		return string(bytes)
@@ -96,7 +96,7 @@ func runWebServer(uiport string, rt *core.Runtime, pipestanceBox *pipestanceHold
 	// Get pipestance state: nodes and fatal error (if any).
 	app.Get("/api/get-state/:container/:pname/:psid",
 		func(p martini.Params) string {
-			pipestance := pipestanceBox.Pipestance
+			pipestance := pipestanceBox.getPipestance()
 			state := map[string]interface{}{}
 			info["state"] = pipestance.GetState()
 			state["nodes"] = getSerialization(rt, pipestance, "finalstate")
@@ -109,7 +109,7 @@ func runWebServer(uiport string, rt *core.Runtime, pipestanceBox *pipestanceHold
 	if !core.IsRelease() {
 		app.Get("/api/get-perf/:container/:pname/:psid",
 			func(p martini.Params) string {
-				pipestance := pipestanceBox.Pipestance
+				pipestance := pipestanceBox.getPipestance()
 				state := map[string]interface{}{}
 				state["nodes"] = getSerialization(rt, pipestance, "perf")
 				bytes, _ := json.Marshal(state)
@@ -120,7 +120,7 @@ func runWebServer(uiport string, rt *core.Runtime, pipestanceBox *pipestanceHold
 	// Get metadata file contents.
 	app.Post("/api/get-metadata/:container/:pname/:psid", binding.Bind(MetadataForm{}),
 		func(body MetadataForm, p martini.Params) string {
-			pipestance := pipestanceBox.Pipestance
+			pipestance := pipestanceBox.getPipestance()
 			if strings.Index(body.Path, "..") > -1 {
 				return "'..' not allowed in path."
 			}
@@ -134,7 +134,7 @@ func runWebServer(uiport string, rt *core.Runtime, pipestanceBox *pipestanceHold
 	// Restart failed stage.
 	app.Post("/api/restart/:container/:pname/:psid",
 		func(p martini.Params) string {
-			pipestance := pipestanceBox.Pipestance
+			pipestance := pipestanceBox.getPipestance()
 			if err := pipestance.Reset(); err != nil {
 				return err.Error()
 			}

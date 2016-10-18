@@ -25,7 +25,15 @@ import (
 // We need to be able to recreate pipestances and share the new pipestance
 // object between the runloop and the UI.
 type pipestanceHolder struct {
-	Pipestance *core.Pipestance
+	pipestance *core.Pipestance
+}
+
+func (self *pipestanceHolder) getPipestance() *core.Pipestance {
+	return self.pipestance
+}
+
+func (self *pipestanceHolder) setPipestance(newPipe *core.Pipestance) {
+	self.pipestance = newPipe
 }
 
 //=============================================================================
@@ -36,10 +44,10 @@ func runLoop(pipestanceBox *pipestanceHolder, stepSecs int, vdrMode string,
 	showedFailed := false
 	showedComplete := false
 	WAIT_SECS := 6
-	pipestanceBox.Pipestance.LoadMetadata()
+	pipestanceBox.getPipestance().LoadMetadata()
 
 	for {
-		pipestance := pipestanceBox.Pipestance
+		pipestance := pipestanceBox.getPipestance()
 		pipestance.RefreshState()
 
 		// Check for completion states.
@@ -80,7 +88,7 @@ func runLoop(pipestanceBox *pipestanceHolder, stepSecs int, vdrMode string,
 					pipestance = ps
 					err = pipestance.Reset()
 					pipestance.LoadMetadata()
-					pipestanceBox.Pipestance = pipestance
+					pipestanceBox.setPipestance(pipestance)
 				} else {
 					core.LogInfo("runtime", "Retry failed:\n%v\n", err)
 					// Let the next loop around actually handle the failure.
