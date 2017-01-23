@@ -5,6 +5,6 @@
     "resource temporarily unavailable",
     "No heartbeat detected for",
     "^error: .Errno 12. Cannot allocate memory",
-    "^Unable to run job: failed receiving gdi request response",
+    "^Unable to run job: failed receiving gdi request response"
   ]
 }
