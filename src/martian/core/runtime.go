@@ -1985,7 +1985,6 @@ func (self *Node) vdrCheckSymlink() bool {
 		return true
 	}
 
-
 	return self.parent.getNode().vdrCheckSymlink()
 }
 
