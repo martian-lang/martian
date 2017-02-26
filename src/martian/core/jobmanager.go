@@ -6,22 +6,85 @@
 package core
 
 import (
+	"bufio"
 	"encoding/json"
 	"fmt"
+	"github.com/cloudfoundry/gosigar"
+	"io"
 	"io/ioutil"
 	"os"
 	"os/exec"
 	"path"
 	"runtime"
+	"strconv"
 	"strings"
 	"sync"
 	"time"
-
-	"github.com/cloudfoundry/gosigar"
 )
 
 const maxRetries = 5
 const retryExitCode = 513
+
+func GetCPUInfo() (int, int, int, int) {
+	// From Linux /proc/cpuinfo, count sockets, physical cores, and logical cores.
+	// runtime.numCPU() does not provide this
+	//
+	fname := "/proc/cpuinfo"
+
+	f, err := os.Open(fname)
+	if err != nil {
+		return 0, 0, 0, 0
+	}
+	defer f.Close()
+
+	reader := bufio.NewReader(f)
+	sockets := -1
+	physicalCoresPerSocket := -1
+	logicalCores := -1
+
+	for {
+		line, _, err := reader.ReadLine()
+		if err == io.EOF {
+			break
+		}
+
+		fields := strings.Split(string(line), ":")
+		if len(fields) < 2 {
+			continue
+		}
+
+		k := strings.TrimSpace(fields[0])
+		v := strings.TrimSpace(fields[1])
+
+		switch k {
+		case "physical id":
+			i, err := strconv.ParseInt(v, 10, 32)
+			if err == nil {
+				sockets = int(i)
+			}
+		case "core id":
+			i, err := strconv.ParseInt(v, 10, 32)
+			if err == nil {
+				physicalCoresPerSocket = int(i)
+			}
+		case "processor":
+			i, err := strconv.ParseInt(v, 10, 32)
+			if err == nil {
+				logicalCores = int(i)
+			}
+		}
+	}
+
+	if sockets > -1 && physicalCoresPerSocket > -1 && logicalCores > -1 {
+		sockets += 1
+		physicalCoresPerSocket += 1
+		physicalCores := sockets * physicalCoresPerSocket
+		logicalCores += 1
+		return sockets, physicalCoresPerSocket, physicalCores, logicalCores
+	} else {
+		return 0, 0, 0, 0
+	}
+}
 
 //
 // Semaphore implementation
@@ -94,8 +157,13 @@ func NewLocalJobManager(userMaxCores int, userMaxMemGB int, debug bool) *LocalJo
 	} else {
 		// Otherwise, set Max usable cores to total number of cores reported
 		// by the system.
-		self.maxCores = runtime.NumCPU()
-		LogInfo("jobmngr", "Using %d core%s available on system.",
+		_, _, physicalCores, _ := GetCPUInfo()
+		if physicalCores > 0 {
+			self.maxCores = physicalCores
+		} else {
+			self.maxCores = runtime.NumCPU()
+		}
+		LogInfo("jobmngr", "Using %d physical core%s available on system.",
 			self.maxCores, Pluralize(self.maxCores))
 	}
 
