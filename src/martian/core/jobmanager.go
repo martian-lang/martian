@@ -59,17 +59,17 @@ func GetCPUInfo() (int, int, int, int) {
 		switch k {
 		case "physical id":
 			i, err := strconv.ParseInt(v, 10, 32)
-			if err == nil {
+			if err == nil && int(i) > sockets {
 				sockets = int(i)
 			}
 		case "core id":
 			i, err := strconv.ParseInt(v, 10, 32)
-			if err == nil {
+			if err == nil && int(i) > physicalCoresPerSocket {
 				physicalCoresPerSocket = int(i)
 			}
 		case "processor":
 			i, err := strconv.ParseInt(v, 10, 32)
-			if err == nil {
+			if err == nil && int(i) > logicalCores {
 				logicalCores = int(i)
 			}
 		}
