@@ -6,6 +6,8 @@
   "jobmodes": {
       "sge": {
           "cmd": "qsub",
+          "args": [ "-terse" ],
+          "queue_query": "sge_queue.py",
           "resopt": "#$ -l __RESOURCES__",
           "envs": [
               {

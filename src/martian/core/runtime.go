@@ -2459,9 +2459,55 @@ func (self *Pipestance) RestartRunningNodes(jobMode string) error {
 }
 
 func (self *Pipestance) CheckHeartbeats() {
+	self.queryQueue()
+
 	nodes := self.node.getFrontierNodes()
 	for _, node := range nodes {
 		node.checkHeartbeats()
+	}
+}
+
+// Check that the queued jobs are actually queued.
+func (self *Pipestance) queryQueue() {
+	if self.node == nil || self.node.rt == nil || self.node.rt.JobManager == nil {
+		return
+	}
+	// Get the jobids which need to be queried, and the metadatas which need to
+	// be poked if they're not in the queue.
+	needsQuery := make(map[string]*Metadata)
+	{
+		metas := make(map[*Metadata]bool) // avoid double-reading any metadatas
+		nodes := self.node.getFrontierNodes()
+		for _, node := range nodes {
+			for _, m := range node.collectMetadatas() {
+				if !metas[m] {
+					if st, ok := m.getState(""); ok && st == "queued" && m.exists("jobid") {
+						metas[m] = true
+						id := m.readRaw("jobid")
+						if id != "" {
+							needsQuery[id] = m
+						}
+					}
+				}
+			}
+		}
+	}
+	if len(needsQuery) == 0 {
+		return
+	}
+	jobsIn := make([]string, 0, len(needsQuery))
+	for id, _ := range needsQuery {
+		jobsIn = append(jobsIn, id)
+	}
+	queued := self.node.rt.JobManager.checkQueue(jobsIn)
+	for _, id := range queued {
+		delete(needsQuery, id)
+	}
+	for _, m := range needsQuery {
+		if m != nil {
+			// Trick it into thinking it's started running.
+			m.cache("log")
+		}
 	}
 }
 
