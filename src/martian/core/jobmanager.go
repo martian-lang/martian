@@ -559,8 +559,9 @@ func (self *RemoteJobManager) checkQueue(ids []string) []string {
 	if self.queueQueryCmd == "" {
 		return ids
 	}
-	cmd := exec.Command(self.queueQueryCmd)
-	cmd.Dir = path.Join("..", "jobmanagers")
+	jobPath := RelPath(path.Join("..", "jobmanagers"))
+	cmd := exec.Command(path.Join(jobPath, self.queueQueryCmd))
+	cmd.Dir = jobPath
 	cmd.Stdin = strings.NewReader(strings.Join(ids, "\n"))
 	output, err := cmd.Output()
 	if err != nil {

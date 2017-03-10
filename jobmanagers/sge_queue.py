@@ -20,7 +20,7 @@ def get_ids():
 
 def mkopts(ids):
     """Gets the command line for qstat."""
-    if len(ids) == 0:
+    if not ids:
         sys.exit(0)
     return ['qstat', '-s', 'p', '-xml']
 
@@ -48,7 +48,7 @@ def parse_output(out):
 def main():
     """Reads a set of ids from standard input, queries qstat, and outputs the
     jobids to standard output for jobs which are in the pending state."""
-    for jobid in parse_output(execute(mkopts(get_ids))):
+    for jobid in parse_output(execute(mkopts(get_ids()))):
         sys.stdout.write('%s\n' % jobid)
     return 0
 
