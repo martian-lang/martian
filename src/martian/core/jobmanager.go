@@ -551,6 +551,7 @@ func (self *RemoteJobManager) sendJob(shellCmd string, argv []string, envs map[s
 		// check that a string is actually a jobid.
 		if trimmed != "" && !strings.ContainsAny(trimmed, " \t\n\r") {
 			metadata.writeRaw("jobid", strings.TrimSpace(string(output)))
+			metadata.cache("jobid")
 		}
 	}
 }

@@ -95,6 +95,10 @@ func (self *Metadata) getState(name string) (string, bool) {
 		return "failed", true
 	}
 	if self.exists("complete") {
+		if self.exists("jobid") {
+			self.remove("jobid")
+			self.uncache("jobid")
+		}
 		return name + "complete", true
 	}
 	if self.exists("log") {
