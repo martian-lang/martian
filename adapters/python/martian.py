@@ -9,6 +9,7 @@ import sys
 import json
 import time
 import datetime
+import errno
 import signal
 import socket
 import subprocess
@@ -241,7 +242,13 @@ class Metadata:
             tmp_run_file = "%s.tmp" % run_file
             with open(tmp_run_file, "w") as f:
                 f.write(self.make_timestamp_now())
-            os.rename(tmp_run_file, run_file)
+            try:
+                os.rename(tmp_run_file, run_file)
+            except OSError as err:
+                if err.errno == errno.ENOENT:
+                    log_warn('Ignoring error moving temp-file %s' % err)
+                else:
+                    raise
             self.cache[name] = True
 
 class TestMetadata(Metadata):
