@@ -16,6 +16,7 @@ def get_ids():
     ids = []
     for jobid in sys.stdin.readlines():
         ids.append(jobid.strip())
+    return ids
 
 
 def mkopts(ids):
