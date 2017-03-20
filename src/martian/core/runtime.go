@@ -20,6 +20,7 @@ import (
 	"strconv"
 	"strings"
 	"sync"
+	"syscall"
 	"time"
 
 	"github.com/satori/go.uuid"
@@ -169,23 +170,78 @@ func (self *Metadata) resetHeartbeat() {
 
 func (self *Metadata) checkedReset() error {
 	if state, _ := self.getState(""); state == "failed" {
-		// Remove all related files from journal directory.
-		if len(self.journalPath) > 0 {
-			if files, err := filepath.Glob(path.Join(self.journalPath, self.fqname+"*")); err == nil {
-				for _, file := range files {
-					os.Remove(file)
+		if err := self.uncheckedReset(); err == nil {
+			PrintInfo("runtime", "(reset-partial)   %s", self.fqname)
+		} else {
+			return err
+		}
+	}
+	return nil
+}
+
+func (self *Metadata) uncheckedReset() error {
+	// Remove all related files from journal directory.
+	if len(self.journalPath) > 0 {
+		if files, err := filepath.Glob(path.Join(self.journalPath, self.fqname+"*")); err == nil {
+			for _, file := range files {
+				os.Remove(file)
+			}
+		}
+	}
+	if err := self.removeAll(); err != nil {
+		PrintInfo("runtime", "Cannot reset the stage because some folder contents could not be deleted.\n\nPlease resolve this error in order to continue running the pipeline:")
+		return err
+	}
+	self.mkdirs()
+	self.mutex.Lock()
+	self.contents = make(map[string]bool)
+	self.mutex.Unlock()
+	return nil
+}
+
+// Resets the metadata if the state was queued, or if the state was running and
+// the pid is not a process that is still running.  This is to handle cases of
+// pipelines running in local mode when MRP is killed and restarted, so all
+// queued jobs are no longer actually queued, and running jobs MAY have been
+// killed as well (if mrp was killed by ctrl-C or by a job manager that killed
+// the entire process group).  It may miss cases where a PID was reused, but
+// the heartbeat will catch those cases eventually and in the ideal case the
+// adaptor should have written an error anyway unless it was a SIGKILL.
+func (self *Metadata) restartLocal() error {
+	state, ok := self.getState("")
+	if !ok {
+		return nil
+	}
+	if state == "queued" {
+		if err := self.uncheckedReset(); err == nil {
+			PrintInfo("runtime", "(reset-queued)    %s", self.fqname)
+		} else {
+			return err
+		}
+	} else if state == "running" {
+		data := self.readRaw("jobinfo")
+
+		var jobInfo *JobInfo
+		if err := json.Unmarshal([]byte(data), &jobInfo); err == nil &&
+			jobInfo.Pid != 0 {
+			if proc, err := os.FindProcess(jobInfo.Pid); err == nil && proc != nil {
+				// From man 2 kill: If sig is 0, then no signal is sent, but error
+				// checking is still performed; this can be used to check for the
+				// existence of a process ID or process group ID.
+				// If sending signal 0 to the process returns an error, either the
+				// process is not running or it is owned by another user, which we
+				// can assume means the PID was reused.
+				if err := proc.Signal(syscall.Signal(0)); err != nil {
+					if err := self.uncheckedReset(); err == nil {
+						PrintInfo("runtime", "(reset-running)   %s", self.fqname)
+					} else {
+						return err
+					}
+				} else {
+					PrintInfo("runtime", "Possibly running  %s", self.fqname)
 				}
 			}
 		}
-		if err := self.removeAll(); err != nil {
-			PrintInfo("runtime", "Cannot reset the stage because some folder contents could not be deleted.\n\nPlease resolve this error in order to continue running the pipeline:")
-			return err
-		}
-		PrintInfo("runtime", "(reset-partial)   %s", self.fqname)
-		self.mkdirs()
-		self.mutex.Lock()
-		self.contents = map[string]bool{}
-		self.mutex.Unlock()
 	}
 	return nil
 }
@@ -733,6 +789,21 @@ func (self *Fork) resetPartial() error {
 	}
 	for _, chunk := range self.chunks {
 		if err := chunk.metadata.checkedReset(); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func (self *Fork) restartLocalJobs() error {
+	if err := self.split_metadata.restartLocal(); err != nil {
+		return err
+	}
+	if err := self.join_metadata.restartLocal(); err != nil {
+		return err
+	}
+	for _, chunk := range self.chunks {
+		if err := chunk.metadata.restartLocal(); err != nil {
 			return err
 		}
 	}
@@ -1716,6 +1787,19 @@ func (self *Node) reset() error {
 	return nil
 }
 
+func (self *Node) restartLocalJobs() error {
+	if self.rt.fullStageReset {
+		// If entire stages got blown away then this isn't needed.
+		return nil
+	}
+	for _, fork := range self.forks {
+		if err := fork.restartLocalJobs(); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
 func (self *Node) checkHeartbeats() {
 	for _, metadata := range self.collectMetadatas() {
 		metadata.checkHeartbeat()
@@ -2457,6 +2541,22 @@ func (self *Pipestance) RestartRunningNodes(jobMode string) error {
 	for _, node := range localNodes {
 		if err := node.reset(); err != nil {
 			return err
+		}
+	}
+	return nil
+}
+
+// Resets local nodes which are queued or are running with a PID that is not
+// a running job.  If |jobMode| is "local" then all nodes are treated as local.
+// This is nessessary for when e.g. mrp is restarted in local mode after ctrl-C
+// kills it and all of its child processes.
+func (self *Pipestance) RestartLocalJobs(jobMode string) error {
+	for _, node := range self.node.getFrontierNodes() {
+		if node.state == "running" && (jobMode == "local" || node.local) {
+			PrintInfo("runtime", "Found orphaned local stage: %s", node.fqname)
+			if err := node.restartLocalJobs(); err != nil {
+				return err
+			}
 		}
 	}
 	return nil

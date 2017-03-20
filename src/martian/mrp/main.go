@@ -433,6 +433,9 @@ Options:
 				martianVersion, mroVersion, _ = pipestance.GetVersions()
 				if !inspect {
 					err = pipestance.Reset()
+					if err == nil {
+						err = pipestance.RestartLocalJobs(jobMode)
+					}
 				}
 			}
 		}
