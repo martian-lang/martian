@@ -10,7 +10,7 @@ import (
 
 type JobInfo struct {
 	Name          string         `json:"name"`
-	Pid           int            `json:"int"`
+	Pid           int            `json:"pid"`
 	Host          string         `json:"host"`
 	Type          string         `json:"type"`
 	Cwd           string         `json:"cwd"`
