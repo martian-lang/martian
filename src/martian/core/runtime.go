@@ -131,8 +131,12 @@ func (self *Metadata) uncache(name string) {
 func (self *Metadata) loadCache() {
 	paths := self.glob()
 	self.mutex.Lock()
-	self.contents = map[string]bool{}
-	self.readCache = make(map[string]interface{})
+	if len(self.contents) > 0 {
+		self.contents = map[string]bool{}
+	}
+	if len(self.readCache) > 0 {
+		self.readCache = make(map[string]interface{})
+	}
 	for _, p := range paths {
 		self.contents[path.Base(p)[1:]] = true
 	}
@@ -148,9 +152,15 @@ func (self *Metadata) exists(name string) bool {
 	self.mutex.Unlock()
 	return ok
 }
+
+func (self *Metadata) readRawSafe(name string) (string, error) {
+	bytes, err := ioutil.ReadFile(self.makePath(name))
+	return string(bytes), err
+}
+
 func (self *Metadata) readRaw(name string) string {
-	bytes, _ := ioutil.ReadFile(self.makePath(name))
-	return string(bytes)
+	s, _ := self.readRawSafe(name)
+	return s
 }
 
 func (self *Metadata) readFromCache(name string) (interface{}, bool) {
@@ -171,8 +181,11 @@ func (self *Metadata) read(name string) interface{} {
 	if ok {
 		return v
 	}
-	json.Unmarshal([]byte(self.readRaw(name)), &v)
-	self.saveToCache(name, v)
+	str, err := self.readRawSafe(name)
+	json.Unmarshal([]byte(str), &v)
+	if err != nil {
+		self.saveToCache(name, v)
+	}
 	return v
 }
 func (self *Metadata) writeRaw(name string, text string) {
