@@ -161,13 +161,8 @@ func NewLocalJobManager(userMaxCores int, userMaxMemGB int, debug bool) *LocalJo
 	} else {
 		// Otherwise, set Max usable cores to total number of cores reported
 		// by the system.
-		_, _, physicalCores, _ := GetCPUInfo()
-		if physicalCores > 0 {
-			self.maxCores = physicalCores
-		} else {
-			self.maxCores = runtime.NumCPU()
-		}
-		LogInfo("jobmngr", "Using %d physical core%s available on system.",
+		self.maxCores = runtime.NumCPU()
+		LogInfo("jobmngr", "Using %d logical core%s available on system.",
 			self.maxCores, Pluralize(self.maxCores))
 	}
 
