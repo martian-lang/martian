@@ -232,6 +232,7 @@ func (self *Metadata) uncheckedReset() error {
 	self.mkdirs()
 	self.mutex.Lock()
 	self.contents = make(map[string]bool)
+	self.readCache = make(map[string]interface{})
 	self.mutex.Unlock()
 	return nil
 }
