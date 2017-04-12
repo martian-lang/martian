@@ -84,6 +84,14 @@ func (self *Metadata) mkdirs() {
 }
 
 func (self *Metadata) removeAll() error {
+	self.mutex.Lock()
+	if len(self.contents) > 0 {
+		self.contents = map[string]bool{}
+	}
+	if len(self.readCache) > 0 {
+		self.readCache = make(map[string]interface{})
+	}
+	self.mutex.Unlock()
 	if err := os.RemoveAll(self.path); err != nil {
 		return err
 	}
@@ -199,7 +207,10 @@ func (self *Metadata) write(name string, object interface{}) {
 func (self *Metadata) writeTime(name string) {
 	self.writeRaw(name, Timestamp())
 }
-func (self *Metadata) remove(name string) { os.Remove(self.makePath(name)) }
+func (self *Metadata) remove(name string) {
+	self.uncache(name)
+	os.Remove(self.makePath(name))
+}
 
 func (self *Metadata) resetHeartbeat() {
 	self.lastHeartbeat = time.Time{}
@@ -230,10 +241,6 @@ func (self *Metadata) uncheckedReset() error {
 		return err
 	}
 	self.mkdirs()
-	self.mutex.Lock()
-	self.contents = make(map[string]bool)
-	self.readCache = make(map[string]interface{})
-	self.mutex.Unlock()
 	return nil
 }
 
