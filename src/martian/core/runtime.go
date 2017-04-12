@@ -2407,6 +2407,10 @@ func (self *Stagestance) GetFatalError() (string, bool, string, string, string, 
 //=============================================================================
 type Pipestance struct {
 	node *Node
+
+	queueCheckLock   sync.Mutex
+	queueCheckActive bool
+	lastQueueCheck   time.Time
 }
 
 /* Run a script whenever a pipestance finishes */
@@ -2613,6 +2617,15 @@ func (self *Pipestance) queryQueue() {
 	if self.node == nil || self.node.rt == nil || self.node.rt.JobManager == nil {
 		return
 	}
+	QUEUE_CHECK_LIMIT := 5 * time.Minute
+	self.queueCheckLock.Lock()
+	if self.queueCheckActive || time.Since(self.lastQueueCheck) < QUEUE_CHECK_LIMIT {
+		self.queueCheckLock.Unlock()
+		return
+	} else {
+		self.queueCheckActive = true
+		self.queueCheckLock.Unlock()
+	}
 	// Get the jobids which need to be queried, and the metadatas which need to
 	// be poked if they're not in the queue.
 	needsQuery := make(map[string]*Metadata)
@@ -2634,22 +2647,31 @@ func (self *Pipestance) queryQueue() {
 		}
 	}
 	if len(needsQuery) == 0 {
+		self.queueCheckLock.Lock()
+		self.queueCheckActive = false
+		self.queueCheckLock.Unlock()
 		return
 	}
 	jobsIn := make([]string, 0, len(needsQuery))
 	for id, _ := range needsQuery {
 		jobsIn = append(jobsIn, id)
 	}
-	queued := self.node.rt.JobManager.checkQueue(jobsIn)
-	for _, id := range queued {
-		delete(needsQuery, id)
-	}
-	for _, m := range needsQuery {
-		if m != nil {
-			// Trick it into thinking it's started running.
-			m.cache("log")
+	go func() {
+		queued := self.node.rt.JobManager.checkQueue(jobsIn)
+		for _, id := range queued {
+			delete(needsQuery, id)
 		}
-	}
+		for _, m := range needsQuery {
+			if m != nil {
+				// Trick it into thinking it's started running.
+				m.cache("log")
+			}
+		}
+		self.queueCheckLock.Lock()
+		self.queueCheckActive = false
+		self.lastQueueCheck = time.Now()
+		self.queueCheckLock.Unlock()
+	}()
 }
 
 func (self *Pipestance) GetFailedNodes() []*Node {
