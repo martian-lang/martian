@@ -38,6 +38,7 @@ func unquote(qs string) string {
     binding   *BindStm
     bindings  *BindStms
     retstm    *ReturnStm
+    nodeGen   func() AstNode
 }
 
 %type <val>       id_list type help type src_lang type outname
@@ -95,13 +96,13 @@ dec_list
 
 dec
     : FILETYPE id_list SEMICOLON
-        {{ $$ = &UserType{NewAstNode(&mmlval), $2} }}
+        {{ $$ = &UserType{$<nodeGen>1(), $2} }}
     | STAGE ID LPAREN in_param_list out_param_list src_stm RPAREN
-        {{ $$ = &Stage{NewAstNode(&mmlval), $2, $4, $5, $6, &Params{[]Param{}, map[string]Param{}}, false} }}
+        {{ $$ = &Stage{$<nodeGen>1(), $2, $4, $5, $6, &Params{[]Param{}, map[string]Param{}}, false} }}
     | STAGE ID LPAREN in_param_list out_param_list src_stm RPAREN split_param_list
-        {{ $$ = &Stage{NewAstNode(&mmlval), $2, $4, $5, $6, $8, true} }}
+        {{ $$ = &Stage{$<nodeGen>1(), $2, $4, $5, $6, $8, true} }}
     | PIPELINE ID LPAREN in_param_list out_param_list RPAREN LBRACE call_stm_list return_stm RBRACE
-        {{ $$ = &Pipeline{NewAstNode(&mmlval), $2, $4, $5, $8, &Callables{[]Callable{}, map[string]Callable{}}, $9} }}
+        {{ $$ = &Pipeline{$<nodeGen>1(), $2, $4, $5, $8, &Callables{[]Callable{}, map[string]Callable{}}, $9} }}
     ;
 
 id_list
@@ -129,9 +130,9 @@ in_param_list
 
 in_param
     : IN type arr_list ID help COMMA
-        {{ $$ = &InParam{NewAstNode(&mmlval), $2, $3, $4, unquote($5), false } }}
+        {{ $$ = &InParam{$<nodeGen>1(), $2, $3, $4, unquote($5), false } }}
     | IN type arr_list ID COMMA
-        {{ $$ = &InParam{NewAstNode(&mmlval), $2, $3, $4, "", false } }}
+        {{ $$ = &InParam{$<nodeGen>1(), $2, $3, $4, "", false } }}
     ;
 
 out_param_list
@@ -146,23 +147,23 @@ out_param_list
 
 out_param
     : OUT type arr_list COMMA
-        {{ $$ = &OutParam{NewAstNode(&mmlval), $2, $3, "default", "", "", false } }}
+        {{ $$ = &OutParam{$<nodeGen>1(), $2, $3, "default", "", "", false } }}
     | OUT type arr_list help COMMA
-        {{ $$ = &OutParam{NewAstNode(&mmlval), $2, $3, "default", unquote($4), "", false } }}
+        {{ $$ = &OutParam{$<nodeGen>1(), $2, $3, "default", unquote($4), "", false } }}
     | OUT type arr_list help outname COMMA
-        {{ $$ = &OutParam{NewAstNode(&mmlval), $2, $3, "default", unquote($4), unquote($5), false } }}
+        {{ $$ = &OutParam{$<nodeGen>1(), $2, $3, "default", unquote($4), unquote($5), false } }}
     | OUT type arr_list ID COMMA
-        {{ $$ = &OutParam{NewAstNode(&mmlval), $2, $3, $4, "", "", false } }}
+        {{ $$ = &OutParam{$<nodeGen>1(), $2, $3, $4, "", "", false } }}
     | OUT type arr_list ID help COMMA
-        {{ $$ = &OutParam{NewAstNode(&mmlval), $2, $3, $4, unquote($5), "", false } }}
+        {{ $$ = &OutParam{$<nodeGen>1(), $2, $3, $4, unquote($5), "", false } }}
     | OUT type arr_list ID help outname COMMA
-        {{ $$ = &OutParam{NewAstNode(&mmlval), $2, $3, $4, unquote($5), unquote($6), false } }}
+        {{ $$ = &OutParam{$<nodeGen>1(), $2, $3, $4, unquote($5), unquote($6), false } }}
     ;
 
 src_stm
     : SRC src_lang LITSTRING COMMA
         {{ stagecodeParts := strings.Split(unquote($3), " ")
-	   $$ = &SrcParam{NewAstNode(&mmlval), $2, stagecodeParts[0], stagecodeParts[1:]} }}
+	   $$ = &SrcParam{$<nodeGen>1(), $2, stagecodeParts[0], stagecodeParts[1:]} }}
     ;
 
 help
@@ -199,7 +200,7 @@ split_param_list
 
 return_stm
     : RETURN LPAREN bind_stm_list RPAREN
-        {{ $$ = &ReturnStm{NewAstNode(&mmlval), $3} }}
+        {{ $$ = &ReturnStm{$<nodeGen>1(), $3} }}
     ;
 
 call_stm_list
@@ -211,7 +212,7 @@ call_stm_list
 
 call_stm
     : CALL modifiers ID LPAREN bind_stm_list RPAREN
-        {{ $$ = &CallStm{NewAstNode(&mmlval), $2, $3, $5} }}
+        {{ $$ = &CallStm{$<nodeGen>1(), $2, $3, $5} }}
     ;
 
 modifiers
@@ -227,7 +228,7 @@ modifiers
 
 bind_stm_list
     :
-        {{ $$ = &BindStms{NewAstNode(&mmlval), []*BindStm{}, map[string]*BindStm{}} }}
+        {{ $$ = &BindStms{$<nodeGen>0(), []*BindStm{}, map[string]*BindStm{}} }}
     | bind_stm_list bind_stm
         {{
             $1.List = append($1.List, $2)
@@ -237,9 +238,9 @@ bind_stm_list
 
 bind_stm
     : ID EQUALS exp COMMA
-        {{ $$ = &BindStm{NewAstNode(&mmlval), $1, $3, false, ""} }}
+        {{ $$ = &BindStm{$<nodeGen>1(), $1, $3, false, ""} }}
     | ID EQUALS SWEEP LPAREN exp_list RPAREN COMMA
-        {{ $$ = &BindStm{NewAstNode(&mmlval), $1, &ValExp{Node:NewAstNode(&mmlval), Kind: "array", Value: $5}, true, ""} }}
+        {{ $$ = &BindStm{$<nodeGen>1(), $1, &ValExp{Node:$<nodeGen>1(), Kind: "array", Value: $5}, true, ""} }}
     ;
 
 exp_list
@@ -261,41 +262,41 @@ kvpair_list
 
 exp
     : LBRACKET exp_list RBRACKET
-        {{ $$ = &ValExp{Node:NewAstNode(&mmlval), Kind: "array", Value: $2} }}
+        {{ $$ = &ValExp{Node:$<nodeGen>1(), Kind: "array", Value: $2} }}
     | LBRACKET RBRACKET
-        {{ $$ = &ValExp{Node:NewAstNode(&mmlval), Kind: "array", Value: []Exp{}} }}
+        {{ $$ = &ValExp{Node:$<nodeGen>1(), Kind: "array", Value: []Exp{}} }}
     | LBRACE RBRACE
-        {{ $$ = &ValExp{Node:NewAstNode(&mmlval), Kind: "map", Value: map[string]interface{}{}} }}
+        {{ $$ = &ValExp{Node:$<nodeGen>1(), Kind: "map", Value: map[string]interface{}{}} }}
     | LBRACE kvpair_list RBRACE
-        {{ $$ = &ValExp{Node:NewAstNode(&mmlval), Kind: "map", Value: $2} }}
+        {{ $$ = &ValExp{Node:$<nodeGen>1(), Kind: "map", Value: $2} }}
     | NUM_FLOAT
         {{  // Lexer guarantees parseable float strings.
             f, _ := strconv.ParseFloat($1, 64)
-            $$ = &ValExp{Node:NewAstNode(&mmlval), Kind: "float", Value: f }
+            $$ = &ValExp{Node:$<nodeGen>1(), Kind: "float", Value: f }
         }}
     | NUM_INT
         {{  // Lexer guarantees parseable int strings.
             i, _ := strconv.ParseInt($1, 0, 64)
-            $$ = &ValExp{Node:NewAstNode(&mmlval), Kind: "int", Value: i }
+            $$ = &ValExp{Node:$<nodeGen>1(), Kind: "int", Value: i }
         }}
     | LITSTRING
-        {{ $$ = &ValExp{Node:NewAstNode(&mmlval), Kind: "string", Value: unquote($1)} }}
+        {{ $$ = &ValExp{Node:$<nodeGen>1(), Kind: "string", Value: unquote($1)} }}
     | TRUE
-        {{ $$ = &ValExp{Node:NewAstNode(&mmlval), Kind: "bool", Value: true} }}
+        {{ $$ = &ValExp{Node:$<nodeGen>1(), Kind: "bool", Value: true} }}
     | FALSE
-        {{ $$ = &ValExp{Node:NewAstNode(&mmlval), Kind: "bool", Value: false} }}
+        {{ $$ = &ValExp{Node:$<nodeGen>1(), Kind: "bool", Value: false} }}
     | NULL
-        {{ $$ = &ValExp{Node:NewAstNode(&mmlval), Kind: "null", Value: nil} }}
+        {{ $$ = &ValExp{Node:$<nodeGen>1(), Kind: "null", Value: nil} }}
     | ref_exp
         {{ $$ = $1 }}
     ;
 
 ref_exp
     : ID DOT ID
-        {{ $$ = &RefExp{NewAstNode(&mmlval), "call", $1, $3} }}
+        {{ $$ = &RefExp{$<nodeGen>1(), "call", $1, $3} }}
     | ID
-        {{ $$ = &RefExp{NewAstNode(&mmlval), "call", $1, "default"} }}
+        {{ $$ = &RefExp{$<nodeGen>1(), "call", $1, "default"} }}
     | SELF DOT ID
-        {{ $$ = &RefExp{NewAstNode(&mmlval), "self", $3, ""} }}
+        {{ $$ = &RefExp{$<nodeGen>1(), "self", $3, ""} }}
     ;
 %%

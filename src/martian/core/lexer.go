@@ -83,6 +83,12 @@ type mmLexInfo struct {
 	locmap []FileLoc
 }
 
+func nodeGen(lval *mmSymType) func() AstNode {
+	return func() AstNode {
+		return NewAstNode(lval)
+	}
+}
+
 func (self *mmLexInfo) Lex(lval *mmSymType) int {
 	// Loop until we return a token or run out of data.
 	for {
@@ -122,6 +128,7 @@ func (self *mmLexInfo) Lex(lval *mmSymType) int {
 		// give NewAstNode access to locmap to calculate file-local locations
 		lval.locmap = self.locmap
 		lval.global = self.global
+		lval.nodeGen = nodeGen(lval)
 
 		return r.tokid
 	}
