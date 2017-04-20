@@ -212,6 +212,14 @@ func (self *Metadata) remove(name string) {
 	os.Remove(self.makePath(name))
 }
 
+func (self *Metadata) clearReadCache() {
+	self.mutex.Lock()
+	if len(self.readCache) > 0 {
+		self.readCache = make(map[string]interface{})
+	}
+	self.mutex.Unlock()
+}
+
 func (self *Metadata) resetHeartbeat() {
 	self.lastHeartbeat = time.Time{}
 }
@@ -2719,6 +2727,11 @@ func (self *Pipestance) IsErrorTransient() bool {
 func (self *Pipestance) StepNodes() {
 	for _, node := range self.node.getFrontierNodes() {
 		node.step()
+	}
+	for _, node := range self.node.allNodes() {
+		for _, m := range node.collectMetadatas() {
+			m.clearReadCache()
+		}
 	}
 }
 
