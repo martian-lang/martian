@@ -94,6 +94,23 @@ class StageException(Exception):
     pass
 
 
+class PyflameProfile:
+    def run(self, cmd):
+        try:
+            pid = os.getpid()
+            raw_output = metadata.make_path('profile.out')
+            html_output = metadata.make_path('profile.out.html')
+            subprocess.Popen(['pyflame', '-s', '-1', '-o', raw_output, '-H', html_output, str(pid)])
+
+        except OSError as e:
+            log_info('Could not start pyflame: %s' % e)
+
+        import __main__
+        exec(cmd, __main__.__dict__, __main__.__dict__)
+
+    def dump_stats(self, output):
+        pass
+
 class MemoryProfile:
 
     def __init__(self):
@@ -508,6 +525,9 @@ def run(cmd):
         stats = pstats.Stats(profiler, stream=iostr).sort_stats('cumulative')
         stats.print_stats()
         metadata.write_raw('profile_cpu_txt', iostr.getvalue())
+    elif profile_mode == 'pyflame':
+        profiler = PyflameProfile()
+        run_profiler(cmd, profiler, 'profile.out')
     else:
         import __main__
         exec(cmd, __main__.__dict__, __main__.__dict__)

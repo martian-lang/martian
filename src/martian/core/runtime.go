@@ -645,7 +645,7 @@ func VerifyOnFinish(onfinish string) {
 }
 
 func VerifyProfileMode(profileMode string) {
-	validModes := []string{"cpu", "mem", "line", "disable"}
+	validModes := []string{"cpu", "mem", "line", "disable", "pyflame"}
 	for _, validMode := range validModes {
 		if validMode == profileMode {
 			return
