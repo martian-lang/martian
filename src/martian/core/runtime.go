@@ -245,7 +245,7 @@ func (self *Metadata) uncheckedReset() error {
 		}
 	}
 	if err := self.removeAll(); err != nil {
-		PrintInfo("runtime", "Cannot reset the stage because some folder contents could not be deleted.\n\nPlease resolve this error in order to continue running the pipeline:")
+		PrintInfo("runtime", "Cannot reset the stage because some folder contents could not be deleted.\n\nPlease resolve this error in order to continue running the pipeline: %v", err)
 		return err
 	}
 	self.mkdirs()
@@ -1969,28 +1969,28 @@ func DefaultRetries() int {
 
 // Returns true if there is no error or if the error is one we expect to not
 // recur if the pipeline is rerun.
-func (self *Node) isErrorTransient() bool {
+func (self *Node) isErrorTransient() (bool, string) {
 	passRegexp, _ := getRetryRegexps()
 	for _, metadata := range self.collectMetadatas() {
 		if state, _ := metadata.getState(""); state != "failed" {
 			continue
 		}
 		if metadata.exists("assert") {
-			return false
+			return false, ""
 		}
 		if metadata.exists("errors") {
 			errlog := metadata.readRaw("errors")
 			for _, line := range strings.Split(errlog, "\n") {
 				for _, re := range passRegexp {
 					if re.MatchString(line) {
-						return true
+						return true, errlog
 					}
 				}
 			}
-			return false
+			return false, errlog
 		}
 	}
-	return true
+	return true, ""
 }
 
 func (self *Node) step() {
@@ -2713,15 +2713,19 @@ func (self *Pipestance) GetFatalError() (string, bool, string, string, string, [
 }
 
 // Returns true if there is no error or if the error is one we expect to not
-// recur if the pipeline is rerun.
-func (self *Pipestance) IsErrorTransient() bool {
+// recur if the pipeline is rerun, and the log message from the first error
+// found, if any.
+func (self *Pipestance) IsErrorTransient() (bool, string) {
 	nodes := self.node.getFrontierNodes()
+	firstLog := ""
 	for _, node := range nodes {
-		if !node.isErrorTransient() {
-			return false
+		if transient, log := node.isErrorTransient(); !transient {
+			return false, log
+		} else if firstLog == "" {
+			firstLog = log
 		}
 	}
-	return true
+	return true, firstLog
 }
 
 func (self *Pipestance) StepNodes() {

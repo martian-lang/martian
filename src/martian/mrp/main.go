@@ -79,9 +79,17 @@ func runLoop(pipestanceBox *pipestanceHolder, stepSecs int, vdrMode string,
 				os.Exit(0)
 			}
 		} else if state == "failed" {
-			if retries > 0 && pipestance.IsErrorTransient() {
+			canRetry := false
+			var transient_log string
+			if retries > 0 {
+				canRetry, transient_log = pipestance.IsErrorTransient()
+			}
+			if canRetry {
 				pipestance.Unlock()
 				retries--
+				if transient_log != "" {
+					core.LogInfo("runtime", "Transient error detected.  Log content:\n\n%s\n", transient_log)
+				}
 				core.LogInfo("runtime", "Attempting retry.")
 				ps, err := factory.ReattachToPipestance()
 				if err == nil {
@@ -109,8 +117,13 @@ func runLoop(pipestanceBox *pipestanceHolder, stepSecs int, vdrMode string,
 						// Build relative path to _errors file
 						errPath, _ := filepath.Rel(filepath.Dir(pipestance.GetPath()), errPaths[0])
 
-						// Print path to _errors metadata file in failed stage.
-						core.Println("\n[%s] Pipestance failed. Please see log at:\n%s\n", "error", errPath)
+						if log != "" {
+							core.Println("\n[%s] Pipestance failed. Error log at:\n%s\n\nLog message:\n%s\n",
+								"error", errPath, log)
+						} else {
+							// Print path to _errors metadata file in failed stage.
+							core.Println("\n[%s] Pipestance failed. Please see log at:\n%s\n", "error", errPath)
+						}
 					}
 				}
 				if noExit {
