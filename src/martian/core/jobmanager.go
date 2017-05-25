@@ -130,8 +130,11 @@ type JobManager interface {
 	execJob(string, []string, map[string]string, *Metadata, int, int, string, string, string, bool)
 
 	// Given a list of candidate job IDs, returns a list of jobIds which may be
-	// still queued.
+	// still queued or running.  If this job manager doesn't know how to check
+	// the queue, it simply returns the list it was given.
 	checkQueue([]string) []string
+	// Returns true if checkQueue does something useful.
+	hasQueueCheck() bool
 	GetSystemReqs(int, int) (int, int)
 	GetMaxCores() int
 	GetMaxMemGB() int
@@ -223,6 +226,10 @@ func (self *LocalJobManager) GetSystemReqs(threads int, memGB int) (int, int) {
 
 func (self *LocalJobManager) checkQueue(ids []string) []string {
 	return ids
+}
+
+func (self *LocalJobManager) hasQueueCheck() bool {
+	return false
 }
 
 func (self *LocalJobManager) Enqueue(shellCmd string, argv []string,
@@ -564,6 +571,10 @@ func (self *RemoteJobManager) checkQueue(ids []string) []string {
 		return ids
 	}
 	return strings.Split(string(output), "\n")
+}
+
+func (self *RemoteJobManager) hasQueueCheck() bool {
+	return self.queueQueryCmd != ""
 }
 
 //

@@ -4,7 +4,7 @@
 #
 
 """Queries qstat about a list of jobs and parses the output, returning the list
-of jobs in the queued state."""
+of jobs which are queued, running, or on hold."""
 
 import subprocess
 import sys
@@ -23,7 +23,7 @@ def mkopts(ids):
     """Gets the command line for qstat."""
     if not ids:
         sys.exit(0)
-    return ['qstat', '-s', 'p', '-xml']
+    return ['qstat', '-s', 'a', '-xml']
 
 
 def execute(cmd):
@@ -42,8 +42,9 @@ def parse_output(out):
     element = ElementTree.fromstring(out)
     jobs = element.find('job_info').findall('job_list')
     for item in jobs:
-        if item.get('state') == 'pending':
-            yield item.find('JB_job_number').text
+        if item.get('state') == 'pending' or item.get('state') == 'running':
+            if not 'E' in item.find('state').text:
+                yield item.find('JB_job_number').text
 
 
 def main():

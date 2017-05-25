@@ -181,6 +181,9 @@ def CompareLines(output, expect, filename):
             for actual, expected in itertools.izip_longest(act, exp):
                 if actual and expected:
                     if clean_line(actual) != clean_line(expected):
+                        sys.stderr.write(
+                            'Expected:\n%s\nActual:\n%s\n' %
+                            (clean_line(expected), clean_line(actual)))
                         return False
     return True
 

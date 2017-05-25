@@ -98,41 +98,56 @@ func (self *Metadata) removeAll() error {
 	return os.RemoveAll(self.filesPath)
 }
 
-func (self *Metadata) getState(name string) (string, bool) {
-	if self.exists("errors") {
+// Must be called within a lock.
+func (self *Metadata) _getStateNoLock(name string) (string, bool) {
+	if self._existsNoLock("errors") {
 		return "failed", true
 	}
-	if self.exists("assert") {
+	if self._existsNoLock("assert") {
 		return "failed", true
 	}
-	if self.exists("complete") {
-		if self.exists("jobid") {
-			self.remove("jobid")
-			self.uncache("jobid")
+	if self._existsNoLock("complete") {
+		if self._existsNoLock("jobid") {
+			self._removeNoLock("jobid")
 		}
 		return name + "complete", true
 	}
-	if self.exists("log") {
+	if self._existsNoLock("log") {
 		return name + "running", true
 	}
-	if self.exists("jobinfo") {
+	if self._existsNoLock("jobinfo") {
 		return name + "queued", true
 	}
 	return "", false
 }
 
+func (self *Metadata) getState(name string) (string, bool) {
+	self.mutex.Lock()
+	state, ok := self._getStateNoLock(name)
+	self.mutex.Unlock()
+	return state, ok
+}
+
+func (self *Metadata) _cacheNoLock(name string) {
+	self.contents[name] = true
+	// cache is usually called on write or update
+	delete(self.readCache, name)
+}
+
 func (self *Metadata) cache(name string) {
 	self.mutex.Lock()
-	self.contents[name] = true
-	// cache is called by writeRaw
-	delete(self.readCache, name)
+	self._cacheNoLock(name)
 	self.mutex.Unlock()
+}
+
+func (self *Metadata) _uncacheNoLock(name string) {
+	delete(self.contents, name)
+	delete(self.readCache, name)
 }
 
 func (self *Metadata) uncache(name string) {
 	self.mutex.Lock()
-	delete(self.contents, name)
-	delete(self.readCache, name)
+	self._uncacheNoLock(name)
 	self.mutex.Unlock()
 }
 
@@ -154,9 +169,15 @@ func (self *Metadata) loadCache() {
 func (self *Metadata) makePath(name string) string {
 	return path.Join(self.path, "_"+name)
 }
+
+func (self *Metadata) _existsNoLock(name string) bool {
+	_, ok := self.contents[name]
+	return ok
+}
+
 func (self *Metadata) exists(name string) bool {
 	self.mutex.Lock()
-	_, ok := self.contents[name]
+	ok := self._existsNoLock(name)
 	self.mutex.Unlock()
 	return ok
 }
@@ -196,6 +217,10 @@ func (self *Metadata) read(name string) interface{} {
 	}
 	return v
 }
+func (self *Metadata) _writeRawNoLock(name string, text string) {
+	ioutil.WriteFile(self.makePath(name), []byte(text), 0644)
+	self._cacheNoLock(name)
+}
 func (self *Metadata) writeRaw(name string, text string) {
 	ioutil.WriteFile(self.makePath(name), []byte(text), 0644)
 	self.cache(name)
@@ -211,6 +236,10 @@ func (self *Metadata) remove(name string) {
 	self.uncache(name)
 	os.Remove(self.makePath(name))
 }
+func (self *Metadata) _removeNoLock(name string) {
+	self._uncacheNoLock(name)
+	os.Remove(self.makePath(name))
+}
 
 func (self *Metadata) clearReadCache() {
 	self.mutex.Lock()
@@ -224,13 +253,48 @@ func (self *Metadata) resetHeartbeat() {
 	self.lastHeartbeat = time.Time{}
 }
 
+// Write an error for this metadata indicating it is not running.
+//
+// In case the metadata was reset between when the query began and when it
+// ended, the error is only written if the jobid matches what was queried and
+// the job has not already completed.
+func (self *Metadata) failNotRunning(jobid string) {
+	if !self.exists("jobid") {
+		return
+	}
+	if st, _ := self.getState(""); st != "running" && st != "queued" {
+		return
+	}
+	self.mutex.Lock()
+	if self.readRaw("jobid") != jobid {
+		self.mutex.Unlock()
+		return
+	}
+	// Double-check that the job wasn't reset while jobid was being read.
+	if !self._existsNoLock("jobid") {
+		self.mutex.Unlock()
+		return
+	}
+	self._writeRawNoLock("errors", fmt.Sprintf(
+		"According to the job manager, JobID %s was not queued or running.",
+		jobid))
+	self.mutex.Unlock()
+}
+
 func (self *Metadata) checkedReset() error {
-	if state, _ := self.getState(""); state == "failed" {
+	self.mutex.Lock()
+	if state, _ := self._getStateNoLock(""); state == "failed" {
+		if len(self.contents) > 0 {
+			self.contents = make(map[string]bool)
+		}
+		self.mutex.Unlock()
 		if err := self.uncheckedReset(); err == nil {
 			PrintInfo("runtime", "(reset-partial)   %s", self.fqname)
 		} else {
 			return err
 		}
+	} else {
+		self.mutex.Unlock()
 	}
 	return nil
 }
@@ -2630,7 +2694,9 @@ func (self *Pipestance) CheckHeartbeats() {
 
 // Check that the queued jobs are actually queued.
 func (self *Pipestance) queryQueue() {
-	if self.node == nil || self.node.rt == nil || self.node.rt.JobManager == nil {
+	if self.node == nil || self.node.rt == nil ||
+		self.node.rt.JobManager == nil ||
+		!self.node.rt.JobManager.hasQueueCheck() {
 		return
 	}
 	QUEUE_CHECK_LIMIT := 5 * time.Minute
@@ -2651,7 +2717,9 @@ func (self *Pipestance) queryQueue() {
 		for _, node := range nodes {
 			for _, m := range node.collectMetadatas() {
 				if !metas[m] {
-					if st, ok := m.getState(""); ok && st == "queued" && m.exists("jobid") {
+					if st, ok := m.getState(""); ok &&
+						(st == "queued" || st == "running") &&
+						m.exists("jobid") {
 						metas[m] = true
 						id := m.readRaw("jobid")
 						if id != "" {
@@ -2677,10 +2745,9 @@ func (self *Pipestance) queryQueue() {
 		for _, id := range queued {
 			delete(needsQuery, id)
 		}
-		for _, m := range needsQuery {
+		for id, m := range needsQuery {
 			if m != nil {
-				// Trick it into thinking it's started running.
-				m.cache("log")
+				m.failNotRunning(id)
 			}
 		}
 		self.queueCheckLock.Lock()
