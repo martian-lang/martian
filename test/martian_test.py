@@ -21,28 +21,26 @@ import sys
 from fnmatch import fnmatchcase
 
 
-def ExpectationDir(config_filename, config):
+def get_expectation_dir(config_filename, config):
     """Gets the absolute path of the 'expected output' directory from
     the config file."""
     if 'expected_dir' in config:
         return os.path.abspath(os.path.join(os.path.dirname(config_filename),
                                             config['expected_dir']))
-    else:
-        return os.path.abspath(os.path.join(os.path.dirname(config_filename),
-                                            'expected'))
+    return os.path.abspath(os.path.join(os.path.dirname(config_filename),
+                                        'expected'))
 
 
-def OutputDir(config):
+def get_output_dir(config):
     """Computes the absolute path of the test pipeline work directory from
     the config."""
     if 'output_dir' in config:
         return os.path.abspath(os.path.join(config['work_dir'],
                                             config['output_dir']))
-    else:
-        return None
+    return None
 
 
-def ExpandGlob(root, pattern):
+def expand_glob(root, pattern):
     """Finds all of the files and directories matching pattern,
     relative to root.
 
@@ -53,15 +51,15 @@ def ExpandGlob(root, pattern):
     ** recursive wildcard syntax, but in python 2 it is needed.
     """
     for cur, dirnames, filenames in os.walk(root):
-        for fn in filenames:
-            if fnmatchcase(os.path.relpath(os.path.join(cur, fn), root), pattern):
-                yield os.path.relpath(os.path.join(cur, fn), root)
-        for fn in dirnames:
-            if fnmatchcase(os.path.relpath(os.path.join(cur, fn), root), pattern):
-                yield os.path.relpath(os.path.join(cur, fn), root)
+        for name in filenames:
+            if fnmatchcase(os.path.relpath(os.path.join(cur, name), root), pattern):
+                yield os.path.relpath(os.path.join(cur, name), root)
+        for name in dirnames:
+            if fnmatchcase(os.path.relpath(os.path.join(cur, name), root), pattern):
+                yield os.path.relpath(os.path.join(cur, name), root)
 
 
-def CheckExists(output, expect, filename):
+def check_exists(output, expect, filename):
     """Checks that a given file, directory, or link in the expected directory
     also exists in the output directory."""
     if os.path.basename(filename).startswith('.nfs'):
@@ -84,7 +82,7 @@ def CheckExists(output, expect, filename):
     return True
 
 
-def CompareDicts(actual, expected, keys):
+def compare_dicts(actual, expected, keys):
     """Compares selected keys from two dictionaries."""
     if not actual:
         return not expected
@@ -109,7 +107,7 @@ def CompareDicts(actual, expected, keys):
     return True
 
 
-def CompareJobinfo(output, expect, filename):
+def compare_jobinfo(output, expect, filename):
     """Compare two _jobinfo json files.  Only compares keys which are expected
     to remain the same across all runs.
 
@@ -121,17 +119,23 @@ def CompareJobinfo(output, expect, filename):
             actual = json.load(act)
         with open(os.path.join(expect, filename)) as exp:
             expected = json.load(exp)
-    except Exception as err:
+    except IOError as err:
         sys.stderr.write('Error reading %s: %s\n' % (filename, err))
         return False
-    return CompareDicts(actual, expected, ['name',
-                                           'threads',
-                                           'memGB',
-                                           'type',
-                                          ])
+    except ValueError as err:
+        sys.stderr.write('%s was not valid json: %s\n' % (filename, err))
+        return False
+    except TypeError as err:
+        sys.stderr.write('%s contained invalid json types: %s\n' % (filename, err))
+        return False
+    return compare_dicts(actual, expected, ['name',
+                                            'threads',
+                                            'memGB',
+                                            'type',
+                                           ])
 
 
-def CompareFinalState(output, expect, filename):
+def compare_final_state(output, expect, filename):
     """Compare two _finalstate json files.  Only compares keys within each
     element which are expected to remain the same across runs.
 
@@ -143,18 +147,24 @@ def CompareFinalState(output, expect, filename):
             actual = json.load(act)
         with open(os.path.join(expect, filename)) as exp:
             expected = json.load(exp)
-    except Exception as err:
+    except IOError as err:
         sys.stderr.write('Error reading %s: %s\n' % (filename, err))
         return False
+    except ValueError as err:
+        sys.stderr.write('%s was not valid json: %s\n' % (filename, err))
+        return False
+    except TypeError as err:
+        sys.stderr.write('%s contained invalid json types: %s\n' % (filename, err))
+        return False
     for actual_info, expected_info in itertools.izip_longest(actual, expected):
-        if not CompareDicts(actual_info, expected_info, ['name',
-                                                         'fqname',
-                                                         'type',
-                                                         'state',
-                                                         'edges',
-                                                         'stagecodeLang',
-                                                         'error',
-                                                        ]):
+        if not compare_dicts(actual_info, expected_info, ['name',
+                                                          'fqname',
+                                                          'type',
+                                                          'state',
+                                                          'edges',
+                                                          'stagecodeLang',
+                                                          'error',
+                                                         ]):
             return False
     return True
 
@@ -166,7 +176,7 @@ _TIMESTAMP_REGEX = re.compile(
 _PATH_REGEX = re.compile('"/.*/([^/]+)"')
 
 
-def CompareLines(output, expect, filename):
+def compare_lines(output, expect, filename):
     """Compare two files, replacing everything that might be an absolute path
     with the base path, and timestamps with __TIMESTAMP__."""
     def clean_line(line):
@@ -188,19 +198,18 @@ def CompareLines(output, expect, filename):
     return True
 
 
-def CompareFileContent(output, expect, filename):
+def compare_file_content(output, expect, filename):
     """Compare two files.  Return True if they match."""
     if filename in ['_perf', '_uuid', '_versions', '_log']:
         return True  # we never really expect these files to match.
     if os.path.basename(filename) == '_jobinfo':
-        return CompareJobinfo(output, expect, filename)
+        return compare_jobinfo(output, expect, filename)
     elif os.path.basename(filename) == '_finalstate':
-        return CompareFinalState(output, expect, filename)
-    else:
-        return CompareLines(output, expect, filename)
+        return compare_final_state(output, expect, filename)
+    return compare_lines(output, expect, filename)
 
 
-def CompareContent(output, expect, filename):
+def compare_content(output, expect, filename):
     """Check that two paths contain the same content if they are files.  Does
     not check anything about non-file objects."""
     if not os.path.isfile(os.path.join(expect, filename)):
@@ -209,37 +218,38 @@ def CompareContent(output, expect, filename):
                              % os.path.join(output, filename))
             return False
     else:
-        if not CompareFileContent(output, expect, filename):
+        if not compare_file_content(output, expect, filename):
             sys.stderr.write('File content mismatch: %s\n' % filename)
             return False
     return True
 
 
-def CheckResult(output_dir, expectation_dir, config):
+def check_result(output_dir, expectation_dir, config):
     """Given an output directory and an expected output directory, and a config
     file containing the tests to apply, checks that the configured success
     criteria all pass."""
-    ok = True
+    result_ok = True
     if 'contains_files' in config:
         for pat in config['contains_files']:
-            for fn in ExpandGlob(expectation_dir, pat):
-                ok = CheckExists(output_dir, expectation_dir, fn) and ok
+            for fname in expand_glob(expectation_dir, pat):
+                result_ok = check_exists(output_dir, expectation_dir, fname) and result_ok
     if 'contains_only_files' in config:
         for pat in config['contains_only_files']:
-            for fn in ExpandGlob(expectation_dir, pat):
-                ok = CheckExists(output_dir, expectation_dir, fn) and ok
-            for fn in ExpandGlob(output_dir, pat):
-                ok = CheckExists(expectation_dir, output_dir, fn) and ok
+            for fname in expand_glob(expectation_dir, pat):
+                result_ok = check_exists(output_dir, expectation_dir, fname) and result_ok
+            for fname in expand_glob(output_dir, pat):
+                result_ok = check_exists(expectation_dir, output_dir, fname) and result_ok
     if 'contents_match' in config:
         for pat in config['contents_match']:
-            for fn in ExpandGlob(expectation_dir, pat):
-                ok = CompareContent(output_dir, expectation_dir, fn) and ok
-    return ok
+            for fname in expand_glob(expectation_dir, pat):
+                result_ok = compare_content(output_dir, expectation_dir, fname) and result_ok
+    return result_ok
 
 
 def main(argv):
+    """Execute the test case."""
     parser = optparse.OptionParser(usage='usage: %prog [options] <config>')
-    options, argv = parser.parse_args(argv)
+    _, argv = parser.parse_args(argv)
     if len(argv) != 2:
         parser.print_help()
         return 1
@@ -252,7 +262,7 @@ def main(argv):
     config['work_dir'] = os.path.abspath(config['work_dir'])
     config['command'][0] = os.path.abspath(os.path.join(
         os.path.dirname(argv[1]), config['command'][0]))
-    output_dir = OutputDir(config)
+    output_dir = get_output_dir(config)
     if output_dir and os.path.isdir(output_dir):
         shutil.rmtree(output_dir)
     sys.stderr.write("Running %s in %s.\n" %
@@ -265,15 +275,14 @@ def main(argv):
     elif return_code != 0:
         sys.stderr.write('Command returned %d\n' % return_code)
         return 2
-    expectation_dir = ExpectationDir(argv[1], config)
+    expectation_dir = get_expectation_dir(argv[1], config)
     if output_dir and expectation_dir:
-        correct = CheckResult(output_dir, expectation_dir, config)
+        correct = check_result(output_dir, expectation_dir, config)
         if correct:
             sys.stderr.write('Output correct.\n')
             return 0
-        else:
-            sys.stderr.write('Output incorrect!\n')
-            return 3
+        sys.stderr.write('Output incorrect!\n')
+        return 3
 
 
 if __name__ == '__main__':
