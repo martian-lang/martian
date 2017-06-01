@@ -66,9 +66,12 @@ func newSignalHandler() *SignalHandler {
 
 func SetupSignalHandlers() {
 	// Handle CTRL-C and kill.
-	sigchan := make(chan os.Signal, 1)
+	sigchan := make(chan os.Signal, 4)
 	signal.Notify(sigchan, os.Interrupt)
+	signal.Notify(sigchan, syscall.SIGHUP)
 	signal.Notify(sigchan, syscall.SIGTERM)
+	signal.Notify(sigchan, syscall.SIGUSR1)
+	signal.Notify(sigchan, syscall.SIGUSR2)
 
 	signalHandler = newSignalHandler()
 	go func() {

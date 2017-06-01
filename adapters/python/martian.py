@@ -57,10 +57,11 @@ def setup_signal_handlers():
     # These are the signals which are guaranteed to work on all platforms.
     # They should be enough for the cases we're actually interested in.
     signal.signal(signal.SIGABRT, handler)
-    signal.signal(signal.SIGFPE, handler)
-    signal.signal(signal.SIGILL, handler)
     signal.signal(signal.SIGINT, handler)
+    signal.signal(signal.SIGHUP, handler)
     signal.signal(signal.SIGTERM, handler)
+    signal.signal(signal.SIGUSR1, handler)
+    signal.signal(signal.SIGUSR2, handler)
 
 
 def json_sanitize(data):
