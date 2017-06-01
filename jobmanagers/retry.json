@@ -7,6 +7,6 @@
     "^error: .Errno 12. Cannot allocate memory",
     "^error: JSV stderr: error: commlib error: got select error (Connection refused)",
     "^Unable to run job: failed receiving gdi request response",
-    "^According to the job manager, JobID \\S+ was not queued or running."
+    "^According to the job manager, the job for .+ was not queued or running."
   ]
 }

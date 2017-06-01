@@ -44,6 +44,13 @@ type Metadata struct {
 	journalPath   string
 	lastHeartbeat time.Time
 	mutex         *sync.Mutex
+
+	// If true, the cache is in the process of being refreshed.
+	refreshing bool
+	// If true, the job was not found last time the job manager was queried, and
+	// the chunk will be failed out if the state seems like it's still running at
+	// the end of the next refresh.
+	notRunning bool
 }
 
 type MetadataInfo struct {
@@ -91,6 +98,7 @@ func (self *Metadata) removeAll() error {
 	if len(self.readCache) > 0 {
 		self.readCache = make(map[string]interface{})
 	}
+	self.notRunning = false
 	self.mutex.Unlock()
 	if err := os.RemoveAll(self.path); err != nil {
 		return err
@@ -152,6 +160,7 @@ func (self *Metadata) uncache(name string) {
 }
 
 func (self *Metadata) loadCache() {
+	self.beginRefresh()
 	paths := self.glob()
 	self.mutex.Lock()
 	if len(self.contents) > 0 {
@@ -164,6 +173,7 @@ func (self *Metadata) loadCache() {
 		self.contents[path.Base(p)[1:]] = true
 	}
 	self.mutex.Unlock()
+	self.endRefresh()
 }
 
 func (self *Metadata) makePath(name string) string {
@@ -253,11 +263,48 @@ func (self *Metadata) resetHeartbeat() {
 	self.lastHeartbeat = time.Time{}
 }
 
-// Write an error for this metadata indicating it is not running.
+// Indicates that the scan for updated metadata has begun.
+// Returns true if the state was already in a refresh.
+func (self *Metadata) beginRefresh() {
+	self.mutex.Lock()
+	self.refreshing = true
+	self.mutex.Unlock()
+}
+
+// Indicates that the scan for updated metadata has finished.  If the metadata
+// was marked by failNotRunning before the start of the refresh and the state
+// has not been otherwise updated, mark the job as failed.
+func (self *Metadata) endRefresh() {
+	self.mutex.Lock()
+	// Check that failNotRunning has not declared a failure since the last call
+	// to beginRefresh()
+	if self.refreshing {
+		self.refreshing = false
+		// Check whether failNotRunning declared a failure
+		if self.notRunning {
+			self.notRunning = false
+			// Check wheter job normal job completion occurred.
+			if state, _ := self._getStateNoLock(""); state == "running" || state == "queued" {
+				// The job is not running but the metadata thinks it still is.
+				// The check for metadata updates was completed since the time that
+				// the queue query completed.  This job has failed.  Write an error.
+				self._writeRawNoLock("errors", fmt.Sprintf(
+					"According to the job manager, the job for %s was not queued or running.",
+					self.fqname))
+			}
+		}
+	}
+	self.mutex.Unlock()
+}
+
+// Mark a job as possibly failed if it is not running.
 //
 // In case the metadata was reset between when the query began and when it
-// ended, the error is only written if the jobid matches what was queried and
-// the job has not already completed.
+// ended, the job is marked as failed only if the jobid matches what was
+// queried and the job has not already completed.  The actual error is not
+// written until the next time the pipestance run loop has a chance to refresh
+// the metadata, as it's possible the job completed between the last check for
+// metadata updates and when the query completed.
 func (self *Metadata) failNotRunning(jobid string) {
 	if !self.exists("jobid") {
 		return
@@ -275,9 +322,12 @@ func (self *Metadata) failNotRunning(jobid string) {
 		self.mutex.Unlock()
 		return
 	}
-	self._writeRawNoLock("errors", fmt.Sprintf(
-		"According to the job manager, JobID %s was not queued or running.",
-		jobid))
+	// In case the result came in during the middle of a refresh loop, don't
+	// allow the failure to be recorded until after the *next* refresh loop
+	// happens.
+	self.refreshing = false
+	// Indicate that the job should be failed out after the next refresh.
+	self.notRunning = true
 	self.mutex.Unlock()
 }
 
@@ -895,6 +945,8 @@ func (self *Fork) reset() {
 	self.chunks = []*Chunk{}
 	self.split_has_run = false
 	self.join_has_run = false
+	self.split_metadata.notRunning = false
+	self.join_metadata.notRunning = false
 }
 
 func (self *Fork) resetPartial() error {
@@ -2111,6 +2163,12 @@ func (self *Node) parseRunFilename(fqname string) (string, int, int, string) {
 }
 
 func (self *Node) refreshState() {
+	nodes := self.getFrontierNodes()
+	for _, node := range nodes {
+		for _, meta := range node.collectMetadatas() {
+			meta.beginRefresh()
+		}
+	}
 	files, _ := filepath.Glob(path.Join(self.journalPath, "*"))
 	for _, file := range files {
 		filename := path.Base(file)
@@ -2131,6 +2189,11 @@ func (self *Node) refreshState() {
 			}
 		}
 		os.Remove(file)
+	}
+	for _, node := range nodes {
+		for _, meta := range node.collectMetadatas() {
+			meta.endRefresh()
+		}
 	}
 }
 
@@ -2741,9 +2804,14 @@ func (self *Pipestance) queryQueue() {
 		jobsIn = append(jobsIn, id)
 	}
 	go func() {
-		queued := self.node.rt.JobManager.checkQueue(jobsIn)
+		queued, raw := self.node.rt.JobManager.checkQueue(jobsIn)
 		for _, id := range queued {
 			delete(needsQuery, id)
+		}
+		if len(needsQuery) > 0 && raw != "" {
+			LogInfo("runtime",
+				"Some jobs thought to be queued were unknown to the job manager.  Raw output:\n%s\n",
+				raw)
 		}
 		for id, m := range needsQuery {
 			if m != nil {

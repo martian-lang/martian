@@ -33,6 +33,7 @@ def execute(cmd):
     out, err = proc.communicate()
     if proc.returncode:
         raise OSError(err)
+    sys.stderr.write(out)
     return out
 
 

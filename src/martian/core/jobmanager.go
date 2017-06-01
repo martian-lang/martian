@@ -7,6 +7,7 @@ package core
 
 import (
 	"bufio"
+	"bytes"
 	"encoding/json"
 	"fmt"
 	"github.com/cloudfoundry/gosigar"
@@ -130,9 +131,10 @@ type JobManager interface {
 	execJob(string, []string, map[string]string, *Metadata, int, int, string, string, string, bool)
 
 	// Given a list of candidate job IDs, returns a list of jobIds which may be
-	// still queued or running.  If this job manager doesn't know how to check
-	// the queue, it simply returns the list it was given.
-	checkQueue([]string) []string
+	// still queued or running, as well as the stderr output of the queue check.
+	// If this job manager doesn't know how to check the queue or the query
+	// fails, it simply returns the list it was given.
+	checkQueue([]string) ([]string, string)
 	// Returns true if checkQueue does something useful.
 	hasQueueCheck() bool
 	GetSystemReqs(int, int) (int, int)
@@ -224,8 +226,8 @@ func (self *LocalJobManager) GetSystemReqs(threads int, memGB int) (int, int) {
 	return threads, memGB
 }
 
-func (self *LocalJobManager) checkQueue(ids []string) []string {
-	return ids
+func (self *LocalJobManager) checkQueue(ids []string) ([]string, string) {
+	return ids, ""
 }
 
 func (self *LocalJobManager) hasQueueCheck() bool {
@@ -558,19 +560,21 @@ func (self *RemoteJobManager) sendJob(shellCmd string, argv []string, envs map[s
 	}
 }
 
-func (self *RemoteJobManager) checkQueue(ids []string) []string {
+func (self *RemoteJobManager) checkQueue(ids []string) ([]string, string) {
 	if self.queueQueryCmd == "" {
-		return ids
+		return ids, ""
 	}
 	jobPath := RelPath(path.Join("..", "jobmanagers"))
 	cmd := exec.Command(path.Join(jobPath, self.queueQueryCmd))
 	cmd.Dir = jobPath
 	cmd.Stdin = strings.NewReader(strings.Join(ids, "\n"))
+	var stderr bytes.Buffer
+	cmd.Stderr = &stderr
 	output, err := cmd.Output()
 	if err != nil {
-		return ids
+		return ids, stderr.String()
 	}
-	return strings.Split(string(output), "\n")
+	return strings.Split(string(output), "\n"), stderr.String()
 }
 
 func (self *RemoteJobManager) hasQueueCheck() bool {
