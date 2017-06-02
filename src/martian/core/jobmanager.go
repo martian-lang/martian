@@ -155,7 +155,7 @@ type LocalJobManager struct {
 func NewLocalJobManager(userMaxCores int, userMaxMemGB int, debug bool) *LocalJobManager {
 	self := &LocalJobManager{}
 	self.debug = debug
-	self.jobSettings, _, _, _, _, _, _ = verifyJobManager("local", -1)
+	self.jobSettings = verifyJobManager("local", -1).jobSettings
 
 	// Set Max number of cores usable at one time.
 	if userMaxCores > 0 {
@@ -349,14 +349,8 @@ func (self *LocalJobManager) execJob(shellCmd string, argv []string,
 
 type RemoteJobManager struct {
 	jobMode              string
-	jobTemplate          string
-	jobCmd               string
-	jobCmdArgs           []string
-	jobResourcesOpt      string
 	jobResourcesMappings map[string]string
-	jobSettings          *JobManagerSettings
-	queueQueryCmd        string
-	threadingEnabled     bool
+	config               jobManagerConfig
 	memGBPerCore         int
 	maxJobs              int
 	jobFreqMillis        int
@@ -373,7 +367,7 @@ func NewRemoteJobManager(jobMode string, memGBPerCore int, maxJobs int, jobFreqM
 	self.maxJobs = maxJobs
 	self.jobFreqMillis = jobFreqMillis
 	self.debug = debug
-	self.jobSettings, self.jobCmd, self.jobCmdArgs, self.queueQueryCmd, self.jobResourcesOpt, self.jobTemplate, self.threadingEnabled = verifyJobManager(jobMode, memGBPerCore)
+	self.config = verifyJobManager(jobMode, memGBPerCore)
 
 	// Parse jobresources mappings
 	self.jobResourcesMappings = map[string]string{}
@@ -415,12 +409,12 @@ func (self *RemoteJobManager) GetMaxMemGB() int {
 func (self *RemoteJobManager) GetSystemReqs(threads int, memGB int) (int, int) {
 	// Sanity check the thread count.
 	if threads < 1 {
-		threads = self.jobSettings.ThreadsPerJob
+		threads = self.config.jobSettings.ThreadsPerJob
 	}
 
 	// Sanity check memory requirements.
 	if memGB < 1 {
-		memGB = self.jobSettings.MemGBPerJob
+		memGB = self.config.jobSettings.MemGBPerJob
 	}
 
 	// Compute threads needed based on memory requirements.
@@ -429,7 +423,7 @@ func (self *RemoteJobManager) GetSystemReqs(threads int, memGB int) (int, int) {
 	}
 
 	// If threading is disabled, use only 1 thread.
-	if !self.threadingEnabled {
+	if !self.config.threadingEnabled {
 		threads = 1
 	}
 
@@ -502,7 +496,9 @@ func (self *RemoteJobManager) sendJob(shellCmd string, argv []string, envs map[s
 	// leave it blank to revert to default behavior.
 	if len(special) > 0 {
 		if resources, ok := self.jobResourcesMappings[special]; ok {
-			mappedJobResourcesOpt = strings.Replace(self.jobResourcesOpt, "__RESOURCES__", resources, 1)
+			mappedJobResourcesOpt = strings.Replace(
+				self.config.jobResourcesOpt,
+				"__RESOURCES__", resources, 1)
 		}
 	}
 
@@ -527,7 +523,7 @@ func (self *RemoteJobManager) sendJob(shellCmd string, argv []string, envs map[s
 
 	// Replace template annotations with actual values
 	args := []string{}
-	template := self.jobTemplate
+	template := self.config.jobTemplate
 	for key, val := range params {
 		if len(val) > 0 {
 			args = append(args, fmt.Sprintf("__MRO_%s__", key), val)
@@ -544,7 +540,7 @@ func (self *RemoteJobManager) sendJob(shellCmd string, argv []string, envs map[s
 	jobscript := r.Replace(template)
 	metadata.writeRaw("jobscript", jobscript)
 
-	cmd := exec.Command(self.jobCmd, self.jobCmdArgs...)
+	cmd := exec.Command(self.config.jobCmd, self.config.jobCmdArgs...)
 	cmd.Dir = metadata.filesPath
 	cmd.Stdin = strings.NewReader(jobscript)
 	if output, err := cmd.CombinedOutput(); err != nil {
@@ -561,11 +557,11 @@ func (self *RemoteJobManager) sendJob(shellCmd string, argv []string, envs map[s
 }
 
 func (self *RemoteJobManager) checkQueue(ids []string) ([]string, string) {
-	if self.queueQueryCmd == "" {
+	if self.config.queueQueryCmd == "" {
 		return ids, ""
 	}
 	jobPath := RelPath(path.Join("..", "jobmanagers"))
-	cmd := exec.Command(path.Join(jobPath, self.queueQueryCmd))
+	cmd := exec.Command(path.Join(jobPath, self.config.queueQueryCmd))
 	cmd.Dir = jobPath
 	cmd.Stdin = strings.NewReader(strings.Join(ids, "\n"))
 	var stderr bytes.Buffer
@@ -578,7 +574,7 @@ func (self *RemoteJobManager) checkQueue(ids []string) ([]string, string) {
 }
 
 func (self *RemoteJobManager) hasQueueCheck() bool {
-	return self.queueQueryCmd != ""
+	return self.config.queueQueryCmd != ""
 }
 
 //
@@ -608,13 +604,17 @@ type JobManagerJson struct {
 	JobModes    map[string]*JobModeJson `json:"jobmodes"`
 }
 
-func verifyJobManager(jobMode string, memGBPerCore int) (
-	*JobManagerSettings,
-	string, []string,
-	string,
-	string,
-	string,
-	bool) {
+type jobManagerConfig struct {
+	jobSettings      *JobManagerSettings
+	jobCmd           string
+	jobCmdArgs       []string
+	queueQueryCmd    string
+	jobResourcesOpt  string
+	jobTemplate      string
+	threadingEnabled bool
+}
+
+func verifyJobManager(jobMode string, memGBPerCore int) jobManagerConfig {
 	jobPath := RelPath(path.Join("..", "jobmanagers"))
 
 	// Check for existence of job manager JSON file
@@ -650,7 +650,7 @@ func verifyJobManager(jobMode string, memGBPerCore int) (
 
 	if jobMode == "local" {
 		// Local job mode only needs to verify settings parameters
-		return jobSettings, "", nil, "", "", "", false
+		return jobManagerConfig{jobSettings: jobSettings}
 	}
 
 	var jobTemplateFile string
@@ -719,5 +719,13 @@ func verifyJobManager(jobMode string, memGBPerCore int) (
 	}
 	EnvRequire(envs, true)
 
-	return jobSettings, jobCmd, jobModeJson.Args, jobModeJson.QueueQuery, jobResourcesOpt, jobTemplate, jobThreadingEnabled
+	return jobManagerConfig{
+		jobSettings,
+		jobCmd,
+		jobModeJson.Args,
+		jobModeJson.QueueQuery,
+		jobResourcesOpt,
+		jobTemplate,
+		jobThreadingEnabled,
+	}
 }
