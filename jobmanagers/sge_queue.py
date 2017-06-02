@@ -50,9 +50,8 @@ def parse_output(out):
 def list_jobs(jobs):
     """Gets the list of jobs from a job_list."""
     for item in jobs.findall('job_list'):
-        if item.get('state') == 'pending' or item.get('state') == 'running':
-            if not 'E' in item.find('state').text:
-                yield item.find('JB_job_number').text
+        if not 'E' in item.find('state').text:
+            yield item.find('JB_job_number').text
 
 
 def main():

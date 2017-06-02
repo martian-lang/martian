@@ -137,6 +137,11 @@ type JobManager interface {
 	checkQueue([]string) ([]string, string)
 	// Returns true if checkQueue does something useful.
 	hasQueueCheck() bool
+	// Returns the amount of time to wait, after a job is found to be unknown
+	// to the job manager, before declaring the job dead.  This is to protect
+	// against races between NFS caching in the directories Martian watches and
+	// whatever the queue manager uses to syncronize state.
+	queueCheckGrace() time.Duration
 	GetSystemReqs(int, int) (int, int)
 	GetMaxCores() int
 	GetMaxMemGB() int
@@ -232,6 +237,10 @@ func (self *LocalJobManager) checkQueue(ids []string) ([]string, string) {
 
 func (self *LocalJobManager) hasQueueCheck() bool {
 	return false
+}
+
+func (self *LocalJobManager) queueCheckGrace() time.Duration {
+	return 0
 }
 
 func (self *LocalJobManager) Enqueue(shellCmd string, argv []string,
@@ -577,6 +586,10 @@ func (self *RemoteJobManager) hasQueueCheck() bool {
 	return self.config.queueQueryCmd != ""
 }
 
+func (self *RemoteJobManager) queueCheckGrace() time.Duration {
+	return self.config.queueQueryGrace
+}
+
 //
 // Helper functions for job manager file parsing
 //
@@ -587,11 +600,12 @@ type JobModeEnv struct {
 }
 
 type JobModeJson struct {
-	Cmd          string        `json:"cmd"`
-	Args         []string      `json:"args,omitempty"`
-	QueueQuery   string        `json:"queue_query,omitempty"`
-	ResourcesOpt string        `json:"resopt"`
-	JobEnvs      []*JobModeEnv `json:"envs"`
+	Cmd             string        `json:"cmd"`
+	Args            []string      `json:"args,omitempty"`
+	QueueQuery      string        `json:"queue_query,omitempty"`
+	QueueQueryGrace int           `json:"queue_query_grace_secs,omitempty"`
+	ResourcesOpt    string        `json:"resopt"`
+	JobEnvs         []*JobModeEnv `json:"envs"`
 }
 
 type JobManagerSettings struct {
@@ -609,6 +623,7 @@ type jobManagerConfig struct {
 	jobCmd           string
 	jobCmdArgs       []string
 	queueQueryCmd    string
+	queueQueryGrace  time.Duration
 	jobResourcesOpt  string
 	jobTemplate      string
 	threadingEnabled bool
@@ -719,11 +734,21 @@ func verifyJobManager(jobMode string, memGBPerCore int) jobManagerConfig {
 	}
 	EnvRequire(envs, true)
 
+	var queueGrace time.Duration
+	if jobModeJson.QueueQuery != "" {
+		queueGrace = time.Duration(jobModeJson.QueueQueryGrace) * time.Second
+		// Default to 1 hour.
+		if queueGrace == 0 {
+			queueGrace = time.Hour
+		}
+	}
+
 	return jobManagerConfig{
 		jobSettings,
 		jobCmd,
 		jobModeJson.Args,
 		jobModeJson.QueueQuery,
+		queueGrace,
 		jobResourcesOpt,
 		jobTemplate,
 		jobThreadingEnabled,
