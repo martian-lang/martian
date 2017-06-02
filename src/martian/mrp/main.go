@@ -213,6 +213,8 @@ Options:
 	opts, _ := docopt.Parse(doc, nil, true, martianVersion, false)
 	core.Println("Martian Runtime - %s", martianVersion)
 	core.LogInfo("cmdline", strings.Join(os.Args, " "))
+	core.LogInfo("pid    ", strconv.Itoa(os.Getpid()))
+	core.LogInfo("environ", strings.Join(os.Environ(), " "))
 
 	martianFlags := ""
 	if martianFlags = os.Getenv("MROFLAGS"); len(martianFlags) > 0 {
