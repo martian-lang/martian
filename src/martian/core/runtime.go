@@ -296,6 +296,10 @@ func (self *Metadata) failNotRunning(jobid string) {
 		return
 	}
 	self.mutex.Lock()
+	if !self.notRunningSince.IsZero() {
+		self.mutex.Unlock()
+		return
+	}
 	if self.readRaw("jobid") != jobid {
 		self.mutex.Unlock()
 		return
