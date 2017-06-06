@@ -2228,7 +2228,7 @@ func (self *Node) vdrCheckSymlink() bool {
 	statinfo, err := os.Lstat(self.path)
 
 	/* Yep! Found a symlink */
-	if (statinfo.Mode()&os.ModeSymlink) != 0 || err != nil {
+	if err != nil || (statinfo.Mode()&os.ModeSymlink) != 0  {
 		return true
 	}
 
