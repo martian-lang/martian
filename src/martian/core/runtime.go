@@ -83,9 +83,20 @@ func (self *Metadata) enumerateFiles() ([]string, error) {
 	return filepath.Glob(path.Join(self.filesPath, "*"))
 }
 
-func (self *Metadata) mkdirs() {
-	mkdir(self.path)
-	mkdir(self.filesPath)
+func (self *Metadata) mkdirs() error {
+	if err := mkdir(self.path); err != nil {
+		msg := fmt.Sprintf("Could not create directories for %s: %s", self.fqname, err.Error())
+		LogError(err, "runtime", msg)
+		self.writeRaw("errors", msg)
+		return err
+	}
+	if err := mkdir(self.filesPath); err != nil {
+		msg := fmt.Sprintf("Could not create directories for %s: %s", self.fqname, err.Error())
+		LogError(err, "runtime", msg)
+		self.writeRaw("errors", msg)
+		return err
+	}
+	return nil
 }
 
 func (self *Metadata) removeAll() error {
@@ -224,20 +235,36 @@ func (self *Metadata) read(name string) interface{} {
 	}
 	return v
 }
-func (self *Metadata) _writeRawNoLock(name string, text string) {
-	ioutil.WriteFile(self.makePath(name), []byte(text), 0644)
+func (self *Metadata) _writeRawNoLock(name string, text string) error {
+	err := ioutil.WriteFile(self.makePath(name), []byte(text), 0644)
 	self._cacheNoLock(name)
+	if err != nil {
+		msg := fmt.Sprintf("Could not write %s for %s: %s", name, self.fqname, err.Error())
+		LogError(err, "runtime", msg)
+		if name != "errors" {
+			self._writeRawNoLock("errors", msg)
+		}
+	}
+	return err
 }
-func (self *Metadata) writeRaw(name string, text string) {
-	ioutil.WriteFile(self.makePath(name), []byte(text), 0644)
+func (self *Metadata) writeRaw(name string, text string) error {
+	err := ioutil.WriteFile(self.makePath(name), []byte(text), 0644)
 	self.cache(name)
+	if err != nil {
+		msg := fmt.Sprintf("Could not write %s for %s: %s", name, self.fqname, err.Error())
+		LogError(err, "runtime", msg)
+		if name != "errors" {
+			self.writeRaw("errors", msg)
+		}
+	}
+	return err
 }
-func (self *Metadata) write(name string, object interface{}) {
+func (self *Metadata) write(name string, object interface{}) error {
 	bytes, _ := json.MarshalIndent(object, "", "    ")
-	self.writeRaw(name, string(bytes))
+	return self.writeRaw(name, string(bytes))
 }
-func (self *Metadata) writeTime(name string) {
-	self.writeRaw(name, Timestamp())
+func (self *Metadata) writeTime(name string) error {
+	return self.writeRaw(name, Timestamp())
 }
 func (self *Metadata) remove(name string) {
 	self.uncache(name)
@@ -344,8 +371,7 @@ func (self *Metadata) uncheckedReset() error {
 		PrintInfo("runtime", "Cannot reset the stage because some folder contents could not be deleted.\n\nPlease resolve this error in order to continue running the pipeline: %v", err)
 		return err
 	}
-	self.mkdirs()
-	return nil
+	return self.mkdirs()
 }
 
 // Resets the metadata if the state was queued, or if the state was running and
@@ -790,8 +816,8 @@ func NewChunk(nodable Nodable, fork *Fork, index int, chunkDef map[string]interf
 	return self
 }
 
-func (self *Chunk) mkdirs() {
-	self.metadata.mkdirs()
+func (self *Chunk) mkdirs() error {
+	return self.metadata.mkdirs()
 }
 
 func (self *Chunk) getState() string {
@@ -997,7 +1023,10 @@ func (self *Fork) verifyOutput() (bool, string) {
 	msg := ""
 	ret := true
 	if len(outparams.List) > 0 {
-		outputs := self.metadata.read("outs").(map[string]interface{})
+		outputs, ok := self.metadata.read("outs").(map[string]interface{})
+		if !ok {
+			msg += fmt.Sprintf("Fork outs were not a map\n")
+		}
 		for _, param := range outparams.Table {
 			val, ok := outputs[param.getId()]
 			if !ok {
@@ -1656,10 +1685,25 @@ func NewNode(parent Nodable, kind string, callStm *CallStm, callables *Callables
 //
 // Folder construction
 //
-func (self *Node) mkdirs() {
-	mkdirAll(self.path)
-	mkdir(self.journalPath)
-	mkdir(self.tmpPath)
+func (self *Node) mkdirs() error {
+	if err := mkdirAll(self.path); err != nil {
+		msg := fmt.Sprintf("Could not create root directory for %s: %s", self.fqname, err.Error())
+		LogError(err, "runtime", msg)
+		self.metadata.writeRaw("errors", msg)
+		return err
+	}
+	if err := mkdir(self.journalPath); err != nil {
+		msg := fmt.Sprintf("Could not create directories for %s: %s", self.fqname, err.Error())
+		LogError(err, "runtime", msg)
+		self.metadata.writeRaw("errors", msg)
+		return err
+	}
+	if err := mkdir(self.tmpPath); err != nil {
+		msg := fmt.Sprintf("Could not create directories for %s: %s", self.fqname, err.Error())
+		LogError(err, "runtime", msg)
+		self.metadata.writeRaw("errors", msg)
+		return err
+	}
 
 	var wg sync.WaitGroup
 	for _, fork := range self.forks {
@@ -1670,6 +1714,7 @@ func (self *Node) mkdirs() {
 		}(fork)
 	}
 	wg.Wait()
+	return nil
 }
 
 //
@@ -1924,7 +1969,9 @@ func (self *Node) reset() error {
 		}
 
 		// Create stage node directories.
-		self.mkdirs()
+		if err := self.mkdirs(); err != nil {
+			return err
+		}
 	} else {
 		for _, fork := range self.forks {
 			if err := fork.resetPartial(); err != nil {

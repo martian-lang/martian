@@ -42,12 +42,17 @@ func RelPath(p string) string {
 	}
 }
 
-func mkdir(p string) {
-	os.Mkdir(p, 0777)
+func mkdir(p string) error {
+	if err := os.Mkdir(p, 0777); err != nil {
+		if !os.IsExist(err) {
+			return err
+		}
+	}
+	return nil
 }
 
-func mkdirAll(p string) {
-	os.MkdirAll(p, 0777)
+func mkdirAll(p string) error {
+	return os.MkdirAll(p, 0777)
 }
 
 func MakeJSON(data interface{}) string {
