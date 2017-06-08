@@ -21,7 +21,12 @@ import StringIO
 import cProfile
 import traceback
 import math
-import line_profiler
+
+try:
+    import line_profiler
+except ImportError:
+    # Rather than failing here, just assume that line profiling was disabled.
+    pass
 
 
 metadata = None
@@ -512,7 +517,11 @@ def run(cmd):
         profiler = MemoryProfile()
         run_profiler(cmd, profiler, 'profile_mem_txt')
     elif profile_mode == 'line':
-        profiler = line_profiler.LineProfiler()
+        profiler = None
+        try:
+            profiler = line_profiler.LineProfiler()
+        except NameError:
+            throw('Line-level profiling was requested, but line_profiler was not found.')
         for f in funcs:
             profiler.add_function(f)
         run_profiler(cmd, profiler, 'profile_line_bin')
