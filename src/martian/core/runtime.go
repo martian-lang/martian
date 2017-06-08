@@ -42,6 +42,7 @@ type Metadata struct {
 	readCache     map[string]interface{}
 	filesPath     string
 	journalPath   string
+	lastRefresh   time.Time
 	lastHeartbeat time.Time
 	mutex         *sync.Mutex
 
@@ -108,6 +109,7 @@ func (self *Metadata) removeAll() error {
 		self.readCache = make(map[string]interface{})
 	}
 	self.notRunningSince = time.Time{}
+	self.lastRefresh = time.Time{}
 	self.mutex.Unlock()
 	if err := os.RemoveAll(self.path); err != nil {
 		return err
@@ -181,6 +183,7 @@ func (self *Metadata) loadCache() {
 		self.contents[path.Base(p)[1:]] = true
 	}
 	self.notRunningSince = time.Time{}
+	self.lastRefresh = time.Time{}
 	self.mutex.Unlock()
 }
 
@@ -291,9 +294,10 @@ func (self *Metadata) resetHeartbeat() {
 // notRuningSince was before the given time, which should be the start of the
 // refresh cycle minus the configured queue query grace period, then the
 // pipestance should be marked failed.
-func (self *Metadata) endRefresh(honorNotRunningBefore time.Time) {
+func (self *Metadata) endRefresh(lastRefresh time.Time) {
 	self.mutex.Lock()
-	if !self.notRunningSince.IsZero() && self.notRunningSince.Before(honorNotRunningBefore) {
+	self.lastRefresh = lastRefresh
+	if !self.notRunningSince.IsZero() && self.notRunningSince.Before(lastRefresh) {
 		self.notRunningSince = time.Time{}
 		if state, _ := self._getStateNoLock(""); state == "running" || state == "queued" {
 			// The job is not running but the metadata thinks it still is.
@@ -427,7 +431,7 @@ func (self *Metadata) checkHeartbeat() {
 			self.uncache("heartbeat")
 			self.lastHeartbeat = time.Now()
 		}
-		if time.Since(self.lastHeartbeat) > time.Minute*heartbeatTimeout {
+		if self.lastRefresh.Sub(self.lastHeartbeat) > time.Minute*heartbeatTimeout {
 			self.writeRaw("errors", fmt.Sprintf(
 				"%s: No heartbeat detected for %d minutes. Assuming job has failed. This may be "+
 					"due to a user manually terminating the job, or the operating system or cluster "+
@@ -954,7 +958,9 @@ func (self *Fork) reset() {
 	self.split_has_run = false
 	self.join_has_run = false
 	self.split_metadata.notRunningSince = time.Time{}
+	self.split_metadata.lastRefresh = time.Time{}
 	self.join_metadata.notRunningSince = time.Time{}
+	self.join_metadata.lastRefresh = time.Time{}
 }
 
 func (self *Fork) resetPartial() error {
