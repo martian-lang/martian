@@ -398,6 +398,14 @@ func (self *Metadata) restartLocal() error {
 			return err
 		}
 	} else if state == "running" {
+		if self.exists("queued_locally") {
+			if err := self.uncheckedReset(); err == nil {
+				PrintInfo("runtime", "(reset-running)   %s", self.fqname)
+				return nil
+			} else {
+				return err
+			}
+		}
 		data := self.readRaw("jobinfo")
 
 		var jobInfo *JobInfo
@@ -2513,6 +2521,7 @@ func (self *Node) runJob(shellName string, fqname string, metadata *Metadata,
 	}
 
 	EnterCriticalSection()
+	metadata.writeTime("queued_locally")
 	metadata.write("jobinfo", map[string]interface{}{
 		"name":           fqname,
 		"type":           jobMode,
