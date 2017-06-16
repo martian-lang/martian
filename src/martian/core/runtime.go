@@ -378,6 +378,20 @@ func (self *Metadata) uncheckedReset() error {
 	return self.mkdirs()
 }
 
+// Resets the metadata if the state was queued, but the job manager had not yet
+// started the job locally or queued it remotely.
+func (self *Metadata) restartQueuedLocal() error {
+	if self.exists("queued_locally") {
+		if err := self.uncheckedReset(); err == nil {
+			PrintInfo("runtime", "(reset-running)   %s", self.fqname)
+			return nil
+		} else {
+			return err
+		}
+	}
+	return nil
+}
+
 // Resets the metadata if the state was queued, or if the state was running and
 // the pid is not a process that is still running.  This is to handle cases of
 // pipelines running in local mode when MRP is killed and restarted, so all
@@ -398,14 +412,6 @@ func (self *Metadata) restartLocal() error {
 			return err
 		}
 	} else if state == "running" {
-		if self.exists("queued_locally") {
-			if err := self.uncheckedReset(); err == nil {
-				PrintInfo("runtime", "(reset-running)   %s", self.fqname)
-				return nil
-			} else {
-				return err
-			}
-		}
 		data := self.readRaw("jobinfo")
 
 		var jobInfo *JobInfo
@@ -980,6 +986,21 @@ func (self *Fork) resetPartial() error {
 	}
 	for _, chunk := range self.chunks {
 		if err := chunk.metadata.checkedReset(); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func (self *Fork) restartLocallyQueuedJobs() error {
+	if err := self.split_metadata.restartQueuedLocal(); err != nil {
+		return err
+	}
+	if err := self.join_metadata.restartQueuedLocal(); err != nil {
+		return err
+	}
+	for _, chunk := range self.chunks {
+		if err := chunk.metadata.restartQueuedLocal(); err != nil {
 			return err
 		}
 	}
@@ -1999,6 +2020,19 @@ func (self *Node) reset() error {
 	return nil
 }
 
+func (self *Node) restartLocallyQueuedJobs() error {
+	if self.rt.fullStageReset {
+		// If entire stages got blown away then this isn't needed.
+		return nil
+	}
+	for _, fork := range self.forks {
+		if err := fork.restartLocallyQueuedJobs(); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
 func (self *Node) restartLocalJobs() error {
 	if self.rt.fullStageReset {
 		// If entire stages got blown away then this isn't needed.
@@ -2777,6 +2811,11 @@ func (self *Pipestance) RestartRunningNodes(jobMode string) error {
 // kills it and all of its child processes.
 func (self *Pipestance) RestartLocalJobs(jobMode string) error {
 	for _, node := range self.node.getFrontierNodes() {
+		if node.state == "running" {
+			if err := node.restartLocallyQueuedJobs(); err != nil {
+				return err
+			}
+		}
 		if node.state == "running" && (jobMode == "local" || node.local) {
 			PrintInfo("runtime", "Found orphaned local stage: %s", node.fqname)
 			if err := node.restartLocalJobs(); err != nil {
