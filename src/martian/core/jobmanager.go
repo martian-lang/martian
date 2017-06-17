@@ -300,9 +300,16 @@ func (self *LocalJobManager) Enqueue(shellCmd string, argv []string,
 		}
 
 		// Run the command and wait for completion.
-		var err error
-		if err = cmd.Start(); err == nil {
-			metadata.remove("queued_locally")
+		err := func(metadata *Metadata, cmd *exec.Cmd) error {
+			EnterCriticalSection()
+			defer ExitCriticalSection()
+			err := cmd.Start()
+			if err == nil {
+				metadata.remove("queued_locally")
+			}
+			return err
+		}(metadata, cmd)
+		if err == nil {
 			err = cmd.Wait()
 		}
 
@@ -553,6 +560,9 @@ func (self *RemoteJobManager) sendJob(shellCmd string, argv []string, envs map[s
 	cmd := exec.Command(self.config.jobCmd, self.config.jobCmdArgs...)
 	cmd.Dir = metadata.filesPath
 	cmd.Stdin = strings.NewReader(jobscript)
+
+	EnterCriticalSection()
+	defer ExitCriticalSection()
 	metadata.remove("queued_locally")
 	if output, err := cmd.CombinedOutput(); err != nil {
 		metadata.writeRaw("errors", "jobcmd error ("+err.Error()+"):\n"+string(output))
