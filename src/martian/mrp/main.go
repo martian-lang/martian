@@ -186,6 +186,8 @@ Options:
                             Only applies in cluster jobmodes.
     --jobinterval=NUM   Set delay between submitting jobs to cluster, in ms.
                             Only applies in cluster jobmodes.
+    --limit-loadavg     Avoid scheduling jobs when the system loadavg is high.
+                            Only applies when --jobmode=local.
 
     --vdrmode=MODE      Enables Volatile Data Removal. Valid options:
                             post (default), rolling, or disable
@@ -205,7 +207,7 @@ Options:
     --debug             Enable debug logging for local job manager.
     --stest             Substitute real stages with stress-testing stage.
     --autoretry=NUM     Automatically retry failed runs up to NUM times.
-    --overrides=JSON	JSON file supplying custom run conditions per stage.
+    --overrides=JSON    JSON file supplying custom run conditions per stage.
 
     -h --help           Show this message.
     --version           Show version.`
@@ -365,6 +367,9 @@ Options:
 	zip := opts["--zip"].(bool)
 	core.LogInfo("options", "--zip=%v", zip)
 
+	limitLoadavg := opts["--limit-loadavg"].(bool)
+	core.LogInfo("options", "--limit-loadavg=%v", limitLoadavg)
+
 	noExit := opts["--noexit"].(bool)
 	core.LogInfo("options", "--noexit=%v", noExit)
 
@@ -416,7 +421,7 @@ Options:
 	rt := core.NewRuntimeWithCores(jobMode, vdrMode, profileMode, martianVersion,
 		reqCores, reqMem, reqMemPerCore, maxJobs, jobFreqMillis, "", fullStageReset,
 		stackVars, zip, skipPreflight, enableMonitor, debug, stest, onfinish,
-		overrides)
+		overrides, limitLoadavg)
 	rt.MroCache.CacheMros(mroPaths)
 
 	// Print this here because the log makes more sense when this appears before

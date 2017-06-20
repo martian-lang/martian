@@ -2944,6 +2944,9 @@ func (self *Pipestance) IsErrorTransient() (bool, string) {
 }
 
 func (self *Pipestance) StepNodes() {
+	if err := self.node.rt.LocalJobManager.refreshLocalResources(); err != nil {
+		LogError(err, "runtime", "Error refreshing local resources: %s", err.Error())
+	}
 	for _, node := range self.node.getFrontierNodes() {
 		node.step()
 	}
@@ -3347,13 +3350,13 @@ type Runtime struct {
 
 func NewRuntime(jobMode string, vdrMode string, profileMode string, martianVersion string) *Runtime {
 	return NewRuntimeWithCores(jobMode, vdrMode, profileMode, martianVersion,
-		-1, -1, -1, -1, -1, "", false, false, false, false, false, false, false, "", nil)
+		-1, -1, -1, -1, -1, "", false, false, false, false, false, false, false, "", nil, false)
 }
 
 func NewRuntimeWithCores(jobMode string, vdrMode string, profileMode string, martianVersion string,
 	reqCores int, reqMem int, reqMemPerCore int, maxJobs int, jobFreqMillis int, jobQueues string,
 	fullStageReset bool, enableStackVars bool, enableZip bool, skipPreflight bool, enableMonitor bool,
-	debug bool, stest bool, onFinishExec string, overrides *PipestanceOverrides) *Runtime {
+	debug bool, stest bool, onFinishExec string, overrides *PipestanceOverrides, limitLoadavg bool) *Runtime {
 
 	self := &Runtime{}
 	self.adaptersPath = RelPath(path.Join("..", "adapters"))
@@ -3370,7 +3373,7 @@ func NewRuntimeWithCores(jobMode string, vdrMode string, profileMode string, mar
 	self.onFinishExec = onFinishExec
 
 	self.MroCache = NewMroCache()
-	self.LocalJobManager = NewLocalJobManager(reqCores, reqMem, debug)
+	self.LocalJobManager = NewLocalJobManager(reqCores, reqMem, debug, limitLoadavg)
 	if self.jobMode == "local" {
 		self.JobManager = self.LocalJobManager
 	} else {

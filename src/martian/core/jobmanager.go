@@ -142,6 +142,7 @@ type JobManager interface {
 	// against races between NFS caching in the directories Martian watches and
 	// whatever the queue manager uses to syncronize state.
 	queueCheckGrace() time.Duration
+	refreshLocalResources() error
 	GetSystemReqs(int, int) (int, int)
 	GetMaxCores() int
 	GetMaxMemGB() int
@@ -151,15 +152,20 @@ type LocalJobManager struct {
 	maxCores    int
 	maxMemGB    int
 	jobSettings *JobManagerSettings
-	coreSem     *Semaphore
-	memGBSem    *Semaphore
+	coreSem     *ResourceSemaphore
+	memMBSem    *ResourceSemaphore
+	lastMemDiff int64
 	queue       []*exec.Cmd
 	debug       bool
+	limitLoad   bool
 }
 
-func NewLocalJobManager(userMaxCores int, userMaxMemGB int, debug bool) *LocalJobManager {
-	self := &LocalJobManager{}
-	self.debug = debug
+func NewLocalJobManager(userMaxCores int, userMaxMemGB int,
+	debug bool, limitLoadavg bool) *LocalJobManager {
+	self := &LocalJobManager{
+		debug:     debug,
+		limitLoad: limitLoadavg,
+	}
 	self.jobSettings = verifyJobManager("local", -1).jobSettings
 
 	// Set Max number of cores usable at one time.
@@ -184,7 +190,7 @@ func NewLocalJobManager(userMaxCores int, userMaxMemGB int, debug bool) *LocalJo
 	} else {
 		// Otherwise, set Max usable GB to MAXMEM_FRACTION * GB of total
 		// memory reported by the system.
-		MAXMEM_FRACTION := 1.0
+		MAXMEM_FRACTION := 0.9
 		sysMem := sigar.Mem{}
 		sysMem.Get()
 		sysMemGB := int(float64(sysMem.Total) * MAXMEM_FRACTION / 1073741824)
@@ -197,10 +203,34 @@ func NewLocalJobManager(userMaxCores int, userMaxMemGB int, debug bool) *LocalJo
 			int(MAXMEM_FRACTION*100))
 	}
 
-	self.coreSem = NewSemaphore(self.maxCores)
-	self.memGBSem = NewSemaphore(self.maxMemGB)
+	self.coreSem = NewResourceSemaphore(int64(self.maxCores), "threads")
+	self.memMBSem = NewResourceSemaphore(int64(self.maxMemGB)*1024, "MB of memory")
 	self.queue = []*exec.Cmd{}
 	return self
+}
+
+func (self *LocalJobManager) refreshLocalResources() error {
+	sysMem := sigar.Mem{}
+	if err := sysMem.Get(); err != nil {
+		return err
+	}
+	memDiff := self.memMBSem.UpdateActual(int64(sysMem.ActualFree+(1024*1024-1)) /
+		(1024 * 1024))
+	if memDiff < -int64(self.maxMemGB)*1024/8 && memDiff/128 < self.lastMemDiff {
+		LogInfo("jobmngr", "%.1fGB less memory than expected was free", float64(-memDiff)/1024)
+	}
+	self.lastMemDiff = memDiff / 128
+	if self.limitLoad {
+		load := sigar.LoadAverage{}
+		if err := load.Get(); err != nil {
+			return err
+		}
+		if diff := self.coreSem.UpdateActual(int64(
+			float64(runtime.NumCPU()) - load.One + 0.9)); diff < -int64(self.maxCores)/4 {
+			LogInfo("jobmngr", "%d fewer core%s than expected were free.", -diff, Pluralize(int(-diff)))
+		}
+	}
+	return nil
 }
 
 func (self *LocalJobManager) GetSystemReqs(threads int, memGB int) (int, int) {
@@ -263,20 +293,32 @@ func (self *LocalJobManager) Enqueue(shellCmd string, argv []string,
 		if self.debug {
 			LogInfo("jobmngr", "Waiting for %d core%s", threads, Pluralize(threads))
 		}
-		self.coreSem.P(threads)
+		if err := self.coreSem.Acquire(int64(threads)); err != nil {
+			LogError(err, "jobmngr",
+				"%s requested %d threads, but the job manager was only configured to use %d.",
+				metadata.fqname, threads, self.maxCores)
+			metadata.writeRaw("errors", err.Error())
+			return
+		}
 		if self.debug {
 			LogInfo("jobmngr", "Acquired %d core%s (%d/%d in use)", threads,
-				Pluralize(threads), self.coreSem.len(), self.maxCores)
+				Pluralize(threads), self.coreSem.InUse(), self.maxCores)
 		}
 
 		// Acquire memory.
 		if self.debug {
 			LogInfo("jobmngr", "Waiting for %d GB", memGB)
 		}
-		self.memGBSem.P(memGB)
+		if err := self.memMBSem.Acquire(int64(memGB) * 1024); err != nil {
+			LogError(err, "jobmngr",
+				"%s requested %d GB of memory, but the job manager was only configured to use %d.",
+				metadata.fqname, memGB, self.maxMemGB)
+			metadata.writeRaw("errors", err.Error())
+			return
+		}
 		if self.debug {
-			LogInfo("jobmngr", "Acquired %d GB (%d/%d in use)", memGB,
-				self.memGBSem.len(), self.maxMemGB)
+			LogInfo("jobmngr", "Acquired %d GB (%.1f/%d in use)", memGB,
+				float64(self.memMBSem.InUse())/1024, self.maxMemGB)
 		}
 		if self.debug {
 			LogInfo("jobmngr", "%d goroutines", runtime.NumGoroutine())
@@ -336,16 +378,16 @@ func (self *LocalJobManager) Enqueue(shellCmd string, argv []string,
 		}
 
 		// Release cores.
-		self.coreSem.V(threads)
+		self.coreSem.Release(int64(threads))
 		if self.debug {
 			LogInfo("jobmngr", "Released %d core%s (%d/%d in use)", threads,
-				Pluralize(threads), self.coreSem.len(), self.maxCores)
+				Pluralize(threads), self.coreSem.InUse(), self.maxCores)
 		}
 		// Release memory.
-		self.memGBSem.V(memGB)
+		self.memMBSem.Release(int64(memGB) * 1024)
 		if self.debug {
-			LogInfo("jobmngr", "Released %d GB (%d/%d in use)", memGB,
-				self.memGBSem.len(), self.maxMemGB)
+			LogInfo("jobmngr", "Released %d GB (%.1f/%d in use)", memGB,
+				float64(self.memMBSem.InUse())/1024, self.maxMemGB)
 		}
 	}()
 }
@@ -413,6 +455,11 @@ func NewRemoteJobManager(jobMode string, memGBPerCore int, maxJobs int, jobFreqM
 		self.limiter = time.NewTicker(time.Millisecond * 1)
 	}
 	return self
+}
+
+func (self *RemoteJobManager) refreshLocalResources() error {
+	// Remote job manager doesn't manage resources.
+	return nil
 }
 
 func (self *RemoteJobManager) GetMaxCores() int {
