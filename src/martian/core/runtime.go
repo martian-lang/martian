@@ -304,8 +304,9 @@ func (self *Metadata) endRefresh(lastRefresh time.Time) {
 			// The check for metadata updates was completed since the time that
 			// the queue query completed.  This job has failed.  Write an error.
 			self._writeRawNoLock("errors", fmt.Sprintf(
-				"According to the job manager, the job for %s was not queued or running.",
-				self.fqname))
+				"According to the job manager, the job for %s was not queued "+
+					"or running, since at least %s.",
+				self.fqname, self.notRunningSince.Format(TIMEFMT)))
 		}
 	}
 	self.mutex.Unlock()
