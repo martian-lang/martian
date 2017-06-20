@@ -459,7 +459,7 @@ func (self *Metadata) checkHeartbeat() {
 func (self *Metadata) serializeState() *MetadataInfo {
 	names := []string{}
 	self.mutex.Lock()
-	for content, _ := range self.contents {
+	for content := range self.contents {
 		names = append(names, content)
 	}
 	self.mutex.Unlock()
@@ -1779,7 +1779,7 @@ func (self *Node) buildUniqueSweepBindings(bindings map[string]*Binding) {
 
 	// Sort keys in bindingTable to ensure stable fork ordering.
 	ids := []string{}
-	for id, _ := range bindingTable {
+	for id := range bindingTable {
 		ids = append(ids, id)
 	}
 	sort.Strings(ids)
@@ -1891,7 +1891,7 @@ func (self *Node) allNodes() []*Node {
 	// Enumerate and sort the keys in subnodes first.
 	// This ensures a stable chirality for the dag UI.
 	ids := []string{}
-	for id, _ := range self.subnodes {
+	for id := range self.subnodes {
 		ids = append(ids, id)
 	}
 	sort.Strings(ids)
@@ -2881,7 +2881,7 @@ func (self *Pipestance) queryQueue() {
 		return
 	}
 	jobsIn := make([]string, 0, len(needsQuery))
-	for id, _ := range needsQuery {
+	for id := range needsQuery {
 		jobsIn = append(jobsIn, id)
 	}
 	go func() {
@@ -3667,7 +3667,7 @@ func (self *MroCache) CacheMros(mroPaths []string) {
 
 func (self *MroCache) GetPipelines() []string {
 	pipelines := []string{}
-	for pipeline, _ := range self.pipelines {
+	for pipeline := range self.pipelines {
 		pipelines = append(pipelines, pipeline)
 	}
 	return pipelines
@@ -3693,7 +3693,7 @@ func buildVal(param Param, val interface{}) string {
 	if data, err := json.MarshalIndent(val, "", indent); err == nil {
 		// Indent multi-line values (but not first line).
 		sublines := strings.Split(string(data), "\n")
-		for i, _ := range sublines[1:] {
+		for i := range sublines[1:] {
 			sublines[i+1] = indent + sublines[i+1]
 		}
 		return strings.Join(sublines, "\n")

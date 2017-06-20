@@ -60,7 +60,7 @@ func (exp *ValExp) resolveType(global *Ast, callable Callable) ([]string, int, e
 
 	// Handle strings (which could be files too).
 	case "string":
-		for userType, _ := range global.UserTypeTable {
+		for userType := range global.UserTypeTable {
 			if strings.HasSuffix(exp.Value.(string), userType) {
 				return []string{"string", userType}, 0, nil
 			}
@@ -76,7 +76,7 @@ func (exp *ValExp) resolveType(global *Ast, callable Callable) ([]string, int, e
 		return []string{"null"}, 1, nil
 	// File: look for matching t in user/file type table
 	case "file":
-		for userType, _ := range global.UserTypeTable {
+		for userType := range global.UserTypeTable {
 			if strings.HasSuffix(exp.Value.(string), userType) {
 				return []string{userType}, 0, nil
 			}
@@ -198,13 +198,13 @@ func (bindings *BindStms) check(global *Ast, callable Callable, params *Params) 
 func (global *Ast) check(stagecodePaths []string, checkSrcPath bool) error {
 	// Build type table, starting with builtins. Duplicates allowed.
 	builtinTypes := []*BuiltinType{
-		&BuiltinType{"string"},
-		&BuiltinType{"int"},
-		&BuiltinType{"float"},
-		&BuiltinType{"bool"},
-		&BuiltinType{"path"},
-		&BuiltinType{"file"},
-		&BuiltinType{"map"},
+		{"string"},
+		{"int"},
+		{"float"},
+		{"bool"},
+		{"path"},
+		{"file"},
+		{"map"},
 	}
 	for _, builtinType := range builtinTypes {
 		global.TypeTable[builtinType.Id] = builtinType

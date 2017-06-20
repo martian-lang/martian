@@ -265,7 +265,7 @@ func ParseMroFlags(opts map[string]interface{}, doc string, martianOptions []str
 	}
 	// Remove unallowed options
 	newMartianOptions := []string{}
-	for allowedOption, _ := range allowedOptions {
+	for allowedOption := range allowedOptions {
 		for _, option := range martianOptions {
 			if strings.HasPrefix(option, allowedOption) {
 				newMartianOptions = append(newMartianOptions, option)
@@ -412,7 +412,7 @@ func partiallyQualifiedName(n string) string {
 			count++
 		}
 		if count == 2 {
-			return n[i+1 : len(n)]
+			return n[i+1:]
 		}
 	}
 	return ""

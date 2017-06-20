@@ -43,7 +43,7 @@ func preprocess(src string, fname string, incPaths []string) (string, []string, 
 	// Locmap tracks original filenames and line numbers and captures
 	// the source insertion mechanics.
 	locmap := make([]FileLoc, lineCount(src))
-	for i, _ := range locmap {
+	for i := range locmap {
 		locmap[i] = FileLoc{fname, i}
 	}
 	insertOffset := 0

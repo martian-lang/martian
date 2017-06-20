@@ -87,7 +87,7 @@ func SetupSignalHandlers() {
 			time.Sleep(1)
 			signalHandler.mutex.Lock()
 		}
-		for object, _ := range signalHandler.objects {
+		for object := range signalHandler.objects {
 			object.handleSignal()
 		}
 		os.Exit(1)
