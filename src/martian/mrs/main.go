@@ -15,7 +15,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/10XDev/docopt.go"
+	"github.com/martian-lang/docopt.go"
 )
 
 func main() {

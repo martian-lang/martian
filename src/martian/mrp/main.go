@@ -18,8 +18,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/10XDev/docopt.go"
 	"github.com/dustin/go-humanize"
+	"github.com/martian-lang/docopt.go"
 )
 
 // We need to be able to recreate pipestances and share the new pipestance

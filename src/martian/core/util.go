@@ -10,7 +10,6 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
-	"github.com/10XDev/osext"
 	"html/template"
 	"io"
 	"io/ioutil"
@@ -22,7 +21,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/10XDev/docopt.go"
+	"github.com/martian-lang/docopt.go"
 )
 
 func max(x int, y int) int {
@@ -37,7 +36,7 @@ func RelPath(p string) string {
 	if base != "" {
 		return path.Join(base, p)
 	} else {
-		folder, _ := osext.ExecutableFolder()
+		folder, _ := os.Readlink(os.Args[0])
 		return path.Join(folder, p)
 	}
 }
