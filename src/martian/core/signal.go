@@ -75,7 +75,8 @@ func SetupSignalHandlers() {
 
 	signalHandler = newSignalHandler()
 	go func() {
-		<-sigchan
+		sig := <-sigchan
+		Println("Caught signal %v", sig)
 
 		// Set exit flag
 		signalHandler.mutex.Lock()
