@@ -6,7 +6,6 @@
 package core
 
 import (
-	"fmt"
 	"io/ioutil"
 	"regexp"
 	"strings"
@@ -27,13 +26,6 @@ func lineCount(src string) int {
 func lineNumOfOffset(src string, offset int) int {
 	// Converts a character offset in text into a line number.
 	return strings.Count(src[0:offset], "\n")
-}
-
-func printSourceMap(src string, locmap []FileLoc) {
-	lines := strings.Split(src, "\n")
-	for i, line := range lines {
-		fmt.Println(i, locmap[i].fname, locmap[i].loc+1, line)
-	}
 }
 
 /*

@@ -289,10 +289,6 @@ func (self *UserType) format() string {
 	return fsrc
 }
 
-func (self *BuiltinType) format() string {
-	return ""
-}
-
 //
 // AST
 //

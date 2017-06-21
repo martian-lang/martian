@@ -120,10 +120,6 @@ func (self *Semaphore) V(n int) {
 	self.vmutex.Unlock()
 }
 
-func (self *Semaphore) len() int {
-	return len(self.counter)
-}
-
 //
 // Job managers
 //
