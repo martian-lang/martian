@@ -36,8 +36,15 @@ func RelPath(p string) string {
 	if base != "" {
 		return path.Join(base, p)
 	} else {
-		folder, _ := os.Readlink(os.Args[0])
-		return path.Join(folder, p)
+		if exe, err := os.Executable(); err != nil {
+			panic(err)
+		} else {
+			if exe, err := filepath.EvalSymlinks(exe); err != nil {
+				panic(err)
+			} else {
+				return path.Join(path.Dir(exe), p)
+			}
+		}
 	}
 }
 
