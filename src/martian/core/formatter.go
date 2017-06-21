@@ -19,7 +19,7 @@ var NEWLINE string = "\n"
 //
 // Expression
 //
-func (self *ValExp) format() string {
+func (self *ValExp) format(prefix string) string {
 	if self.Value == nil {
 		return "null"
 	}
@@ -33,13 +33,16 @@ func (self *ValExp) format() string {
 		return fmt.Sprintf("\"%s\"", self.Value)
 	}
 	if self.Kind == "map" || self.Kind == "array" {
-		bytes, _ := json.Marshal(expToInterface(self))
+		bytes, err := json.MarshalIndent(expToInterface(self), prefix, INDENT)
+		if err != nil {
+			panic(err)
+		}
 		return string(bytes)
 	}
 	return fmt.Sprintf("%v", self.Value)
 }
 
-func (self *RefExp) format() string {
+func (self *RefExp) format(prefix string) string {
 	if self.Kind == "call" {
 		fsrc := self.Id
 		if self.OutputId != "default" {
@@ -53,24 +56,24 @@ func (self *RefExp) format() string {
 //
 // Binding
 //
-func (self *BindStm) format(idWidth int) string {
+func (self *BindStm) format(prefix string, idWidth int) string {
 	idPad := strings.Repeat(" ", idWidth-len(self.Id))
-	fmtExp := self.Exp.format()
+	fmtExp := self.Exp.format(prefix + INDENT)
 	if self.Sweep {
 		fmtExp = fmt.Sprintf("sweep(%s)", strings.Trim(fmtExp, "[]"))
 	}
 	return fmt.Sprintf("%s%s%s%s%s = %s,", self.Exp.getNode().Comments,
-		INDENT, INDENT, self.Id, idPad, fmtExp)
+		prefix, INDENT, self.Id, idPad, fmtExp)
 }
 
-func (self *BindStms) format() string {
+func (self *BindStms) format(prefix string) string {
 	idWidth := 0
 	for _, bindstm := range self.List {
 		idWidth = max(idWidth, len(bindstm.Id))
 	}
 	fsrc := ""
 	for _, bindstm := range self.List {
-		fsrc += bindstm.format(idWidth)
+		fsrc += bindstm.format(prefix, idWidth)
 	}
 	return fsrc
 }
@@ -192,10 +195,11 @@ func (self *Pipeline) format() string {
 }
 
 func (self *CallStm) format(prefix string) string {
-	fsrc := ""
+	fsrc := self.Bindings.Node.Comments
+	self.Bindings.Node.Comments = ""
 	if len(self.Bindings.List) > 0 {
-		fsrc += self.Bindings.List[0].Exp.getNode().Comments
-		self.Bindings.List[0].Exp.getNode().Comments = ""
+		self.Bindings.List[0].Exp.getNode().Comments = strings.TrimSpace(
+			self.Bindings.List[0].Exp.getNode().Comments)
 	}
 	volatile := ""
 	local := ""
@@ -210,7 +214,7 @@ func (self *CallStm) format(prefix string) string {
 		volatile = "volatile "
 	}
 	fsrc += fmt.Sprintf("%scall %s%s%s%s(%s", prefix, local, preflight, volatile, self.Id, NEWLINE)
-	fsrc += self.Bindings.format()
+	fsrc += self.Bindings.format(prefix)
 	fsrc += self.Node.Comments
 	fsrc += fmt.Sprintf("%s)", prefix)
 	fsrc += NEWLINE
@@ -220,7 +224,7 @@ func (self *CallStm) format(prefix string) string {
 func (self *ReturnStm) format() string {
 	fsrc := self.Node.Comments
 	fsrc += fmt.Sprintf("%sreturn (", INDENT)
-	fsrc += self.Bindings.format()
+	fsrc += self.Bindings.format(INDENT)
 	fsrc += NEWLINE
 	fsrc += fmt.Sprintf("%s)", INDENT)
 	fsrc += self.Node.Comments
@@ -234,6 +238,7 @@ func (self *Stage) format() string {
 	modeWidth, typeWidth, idWidth, helpWidth := measureParamsWidths([]*Params{
 		self.InParams, self.OutParams, self.SplitParams,
 	})
+	modeWidth = max(modeWidth, len("src"))
 
 	// Steal comment from first in param.
 	fsrc := ""
@@ -258,8 +263,9 @@ func (self *Stage) format() string {
 
 func (self *SrcParam) format(modeWidth int, typeWidth int, idWidth int) string {
 	langPad := strings.Repeat(" ", typeWidth-len(self.Lang))
-	return fmt.Sprintf("%s%ssrc %s%s \"%s\",", self.Node.Comments, INDENT,
-		self.Lang, langPad, self.Path)
+	modePad := strings.Repeat(" ", modeWidth-len("src"))
+	return fmt.Sprintf("%s%ssrc%s %s%s \"%s\",", self.Node.Comments, INDENT,
+		modePad, self.Lang, langPad, self.Path)
 }
 
 //
@@ -301,13 +307,13 @@ func (self *Ast) format() string {
 		fsrc += NEWLINE
 	}
 
+	// callables.
+	fsrc += self.Callables.format()
+
 	// call.
 	if self.Call != nil {
 		fsrc += self.Call.format("")
 	}
-
-	// callables.
-	fsrc += self.Callables.format()
 
 	return fsrc
 }

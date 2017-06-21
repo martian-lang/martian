@@ -1,8 +1,8 @@
 @include "phaser_pd.mro"
 
 call PHASER_PD(
-    input_mode = "BCL_PROCESSOR",
-    sample_def = [
+    input_mode           = "BCL_PROCESSOR",
+    sample_def           = [
         {
             "gem_group": null,
             "lanes": null,
@@ -13,26 +13,26 @@ call PHASER_PD(
             ]
         }
     ],
-    sex = "MALE",
-    restrict_locus = null,
+    sex                  = "MALE",
+    restrict_locus       = null,
     exclude_non_bc_reads = false,
-    sample_id = "3545",
-    genome = "hg19",
-    lena_url = "lena",
-    targets_file = null,
-    confident_regions = "/mnt/opt/meowmix/genometracks/hg19/human_conf_35.bed",
-    genes_file = "/mnt/opt/meowmix/genesets/hg19/refseq_genes.tsv",
-    trim_length = 10,
-    barcode_whitelist = "737K-april-2014",
-    primers = [
+    sample_id            = "3545",
+    genome               = "hg19",
+    lena_url             = "lena",
+    targets_file         = null,
+    confident_regions    = "/mnt/opt/meowmix/genometracks/hg19/human_conf_35.bed",
+    genes_file           = "/mnt/opt/meowmix/genesets/hg19/refseq_genes.tsv",
+    trim_length          = 10,
+    barcode_whitelist    = "737K-april-2014",
+    primers              = [
         "R1-alt2:TTGCTCATTCCCTACACGACGCTCTTCCGATCT",
         "R2RC:GTGACTGGAGTTCAGACGTGTGCTCTTCCGATCT",
         "Alt2-10N:AATGATACGGCGACCACCGAGATCTACACTAGATCGCTTGCTCATTCCCTACACGACGCTCTTCCGATCTNNNNNNNNNN",
         "P7RC:CAAGCAGAAGACGGCATACGAGAT",
         "P5:AATGATACGGCGACCACCGAGA"
     ],
-    called_vars = "/mnt/opt/meowmix/variants/hg19/NA12877/NA12877_snps_phased_sorted_current.vcf",
-    ground_truth = "/mnt/opt/meowmix/variants/hg19/NA12877/NA12877_snps_phased_sorted_current.vcf",
-    template_mass = 1.000000,
-    common_vars = "/mnt/opt/meowmix/variants/hg19/common/hg19.pickle",
+    called_vars          = "/mnt/opt/meowmix/variants/hg19/NA12877/NA12877_snps_phased_sorted_current.vcf",
+    ground_truth         = "/mnt/opt/meowmix/variants/hg19/NA12877/NA12877_snps_phased_sorted_current.vcf",
+    template_mass        = 1,
+    common_vars          = "/mnt/opt/meowmix/variants/hg19/common/hg19.pickle",
 )

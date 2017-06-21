@@ -1,8 +1,8 @@
 @include "phaser_svcaller_pd.mro"
 
 call PHASER_SVCALLER_PD(
-    input_mode = "BCL_PROCESSOR",
-    sample_def = [
+    input_mode           = "BCL_PROCESSOR",
+    sample_def           = [
         {
             "gem_group": null,
             "lanes": null,
@@ -13,35 +13,35 @@ call PHASER_SVCALLER_PD(
             ]
         }
     ],
-    sex = "male",
-    restrict_locus = null,
-    filter_params = null,
+    sex                  = "male",
+    restrict_locus       = null,
+    filter_params        = null,
     exclude_non_bc_reads = false,
-    sample_id = "4075",
-    genome = "hg19",
-    lena_url = "lena",
-    targets_file = null,
-    sv_pd_targets_file = "/mnt/opt/meowmix/targetsets/hg19/chr19_noMY_noGaps.bed",
-    confident_regions = "/mnt/opt/meowmix/genometracks/hg19/human_conf_35.bed",
-    genes_file = "/mnt/opt/meowmix/genesets/hg19/refseq_genes_v2.tsv",
-    trim_length = 10,
-    barcode_whitelist = "737K-april-2014",
-    primers = [
+    sample_id            = "4075",
+    genome               = "hg19",
+    lena_url             = "lena",
+    targets_file         = null,
+    sv_pd_targets_file   = "/mnt/opt/meowmix/targetsets/hg19/chr19_noMY_noGaps.bed",
+    confident_regions    = "/mnt/opt/meowmix/genometracks/hg19/human_conf_35.bed",
+    genes_file           = "/mnt/opt/meowmix/genesets/hg19/refseq_genes_v2.tsv",
+    trim_length          = 10,
+    barcode_whitelist    = "737K-april-2014",
+    primers              = [
         "R1-alt2:TTGCTCATTCCCTACACGACGCTCTTCCGATCT",
         "R2RC:GTGACTGGAGTTCAGACGTGTGCTCTTCCGATCT",
         "Alt2-10N:AATGATACGGCGACCACCGAGATCTACACTAGATCGCTTGCTCATTCCCTACACGACGCTCTTCCGATCTNNNNNNNNNN",
         "P7RC:CAAGCAGAAGACGGCATACGAGAT",
         "P5:AATGATACGGCGACCACCGAGA"
     ],
-    called_vars = "/mnt/opt/meowmix/variants/hg19/CraigVenter/CraigVenter_snps_phased_sorted_current_v2.vcf",
-    ground_truth = null,
-    gt_variants = null,
+    called_vars          = "/mnt/opt/meowmix/variants/hg19/CraigVenter/CraigVenter_snps_phased_sorted_current_v2.vcf",
+    ground_truth         = null,
+    gt_variants          = null,
     neighbor_gt_variants = "/mnt/opt/meowmix/targetsets/hg19/chr19_random_breaks.bed",
-    window_size = 10000,
-    step = 2000,
-    min_reads = 0,
-    max_sv_logp = -4.000000,
-    max_sv_detect_dist = 10000,
-    template_mass = 1.400000,
-    common_vars = "/mnt/opt/meowmix/variants/hg19/common/hg19.pickle",
+    window_size          = 10000,
+    step                 = 2000,
+    min_reads            = 0,
+    max_sv_logp          = -4,
+    max_sv_detect_dist   = 10000,
+    template_mass        = 1.4,
+    common_vars          = "/mnt/opt/meowmix/variants/hg19/common/hg19.pickle",
 )

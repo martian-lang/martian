@@ -151,7 +151,7 @@ type (
 		getNode() *AstNode
 		getKind() string
 		resolveType(*Ast, Callable) ([]string, int, error)
-		format() string
+		format(prefix string) string
 	}
 
 	ValExp struct {
