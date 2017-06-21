@@ -18,13 +18,13 @@
 	url = https://github.com/stretchr/testify
 [submodule "src/github.com/martini-contrib/gzip"]
 	path = src/github.com/martini-contrib/gzip
-	url = https://github.com/martini-contrib/gzip.git
+	url = https://github.com/martini-contrib/gzip
 [submodule "src/github.com/martian-lang/docopt.go"]
 	path = src/github.com/martian-lang/docopt.go
-	url = https://github.com/martian-lang/docopt.go.git
+	url = https://github.com/martian-lang/docopt.go
 [submodule "src/github.com/satori/go.uuid"]
 	path = src/github.com/satori/go.uuid
-	url = https://github.com:satori/go.uuid.git
+	url = https://github.com:satori/go.uuid
 [submodule "src/github.com/golang/tools"]
 	path = src/github.com/golang/tools
-	url = https://github.com/golang/tools.git
+	url = https://github.com/golang/tools
