@@ -24,7 +24,7 @@
 	url = https://github.com/martian-lang/docopt.go
 [submodule "src/github.com/satori/go.uuid"]
 	path = src/github.com/satori/go.uuid
-	url = https://github.com:satori/go.uuid
+	url = https://github.com/satori/go.uuid
 [submodule "src/github.com/golang/tools"]
 	path = src/github.com/golang/tools
 	url = https://github.com/golang/tools
