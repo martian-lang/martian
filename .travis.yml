@@ -1,0 +1,29 @@
+# Travis CI (http://travis-ci.org/) is a continuous integration
+# service for open source projects. This file configures it
+# to run integration tests for martian.
+
+language: go
+
+go:
+    - 1.x
+
+cache:
+  directories:
+  - "$HOME/.nvm"
+before_cache:
+- rm -f $HOME/.npm/anonymous-cli-metrics.json
+
+sudo: false
+before_script:
+- nvm install node
+- npm install -g gulp
+
+script:
+    - make all
+    - ./.travis.gofmt.sh
+    - make test
+    - test/martian_test.py test/fork_test/fork_test.json
+    - test/martian_test.py test/fork_test/fail1_test.json
+    - test/martian_test.py test/fork_test/retry_test.json
+    - test/martian_test.py test/fork_test/autoretry_pass.json
+    - test/martian_test.py test/fork_test/autoretry_fail.json
