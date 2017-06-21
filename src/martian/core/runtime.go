@@ -2945,7 +2945,8 @@ func (self *Pipestance) IsErrorTransient() (bool, string) {
 }
 
 func (self *Pipestance) StepNodes() {
-	if err := self.node.rt.LocalJobManager.refreshLocalResources(); err != nil {
+	if err := self.node.rt.LocalJobManager.refreshLocalResources(
+		self.node.rt.jobMode == "local"); err != nil {
 		LogError(err, "runtime", "Error refreshing local resources: %s", err.Error())
 	}
 	for _, node := range self.node.getFrontierNodes() {

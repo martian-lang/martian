@@ -138,7 +138,7 @@ type JobManager interface {
 	// against races between NFS caching in the directories Martian watches and
 	// whatever the queue manager uses to syncronize state.
 	queueCheckGrace() time.Duration
-	refreshLocalResources() error
+	refreshLocalResources(localMode bool) error
 	GetSystemReqs(int, int) (int, int)
 	GetMaxCores() int
 	GetMaxMemGB() int
@@ -205,14 +205,16 @@ func NewLocalJobManager(userMaxCores int, userMaxMemGB int,
 	return self
 }
 
-func (self *LocalJobManager) refreshLocalResources() error {
+func (self *LocalJobManager) refreshLocalResources(localMode bool) error {
 	sysMem := sigar.Mem{}
 	if err := sysMem.Get(); err != nil {
 		return err
 	}
 	memDiff := self.memMBSem.UpdateActual(int64(sysMem.ActualFree+(1024*1024-1)) /
 		(1024 * 1024))
-	if memDiff < -int64(self.maxMemGB)*1024/8 && memDiff/128 < self.lastMemDiff {
+	if memDiff < -int64(self.maxMemGB)*1024/8 &&
+		memDiff/128 < self.lastMemDiff &&
+		(localMode || sysMem.ActualFree < 2*1024*1024*1024) {
 		LogInfo("jobmngr", "%.1fGB less memory than expected was free", float64(-memDiff)/1024)
 	}
 	self.lastMemDiff = memDiff / 128
@@ -222,7 +224,8 @@ func (self *LocalJobManager) refreshLocalResources() error {
 			return err
 		}
 		if diff := self.coreSem.UpdateActual(int64(
-			float64(runtime.NumCPU()) - load.One + 0.9)); diff < -int64(self.maxCores)/4 {
+			float64(runtime.NumCPU()) - load.One + 0.9)); diff < -int64(self.maxCores)/4 &&
+			localMode {
 			LogInfo("jobmngr", "%d fewer core%s than expected were free.", -diff, Pluralize(int(-diff)))
 		}
 	}
@@ -453,7 +456,7 @@ func NewRemoteJobManager(jobMode string, memGBPerCore int, maxJobs int, jobFreqM
 	return self
 }
 
-func (self *RemoteJobManager) refreshLocalResources() error {
+func (self *RemoteJobManager) refreshLocalResources(localMode bool) error {
 	// Remote job manager doesn't manage resources.
 	return nil
 }
