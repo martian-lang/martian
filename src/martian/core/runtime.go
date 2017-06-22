@@ -298,6 +298,7 @@ func (self *Metadata) endRefresh(lastRefresh time.Time) {
 	self.mutex.Lock()
 	self.lastRefresh = lastRefresh
 	if !self.notRunningSince.IsZero() && self.notRunningSince.Before(lastRefresh) {
+		notRunningSince := self.notRunningSince
 		self.notRunningSince = time.Time{}
 		if state, _ := self._getStateNoLock(""); state == "running" || state == "queued" {
 			// The job is not running but the metadata thinks it still is.
@@ -306,7 +307,7 @@ func (self *Metadata) endRefresh(lastRefresh time.Time) {
 			self._writeRawNoLock("errors", fmt.Sprintf(
 				"According to the job manager, the job for %s was not queued "+
 					"or running, since at least %s.",
-				self.fqname, self.notRunningSince.Format(TIMEFMT)))
+				self.fqname, notRunningSince.Format(TIMEFMT)))
 		}
 	}
 	self.mutex.Unlock()
