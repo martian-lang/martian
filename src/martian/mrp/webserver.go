@@ -15,6 +15,7 @@ import (
 	"os"
 	"path"
 	"strings"
+	"sync"
 
 	"github.com/go-martini/martini"
 	"github.com/martini-contrib/binding"
@@ -82,14 +83,19 @@ func runWebServer(uiport string, rt *core.Runtime, pipestanceBox *pipestanceHold
 		return doc.String()
 	})
 
+	var infoLock sync.Mutex
+
 	//=========================================================================
 	// API endpoints.
 	//=========================================================================
 	// Get pipestance state: nodes and fatal error (if any).
 	app.Get("/api/get-info", func(p martini.Params) string {
 		pipestance := pipestanceBox.getPipestance()
-		info["state"] = pipestance.GetState()
+		st := pipestance.GetState()
+		infoLock.Lock()
+		info["state"] = st
 		bytes, _ := json.Marshal(info)
+		infoLock.Unlock()
 		return string(bytes)
 	})
 
@@ -98,10 +104,13 @@ func runWebServer(uiport string, rt *core.Runtime, pipestanceBox *pipestanceHold
 		func(p martini.Params) string {
 			pipestance := pipestanceBox.getPipestance()
 			state := map[string]interface{}{}
-			info["state"] = pipestance.GetState()
+			st := pipestance.GetState()
 			state["nodes"] = getSerialization(rt, pipestance, "finalstate")
 			state["info"] = info
+			infoLock.Lock()
+			info["state"] = st
 			bytes, _ := json.Marshal(state)
+			infoLock.Unlock()
 			return string(bytes)
 		})
 
