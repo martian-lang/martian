@@ -112,6 +112,14 @@ func (self *ResourceSemaphore) InUse() int64 {
 	return used
 }
 
+// Get the number of items waiting on the semaphore.
+func (self *ResourceSemaphore) QueueLength() int {
+	self.mu.Lock()
+	length := len(self.waiters)
+	self.mu.Unlock()
+	return length
+}
+
 // Set the current actual availability, e.g. by checking free memory.
 // Returns the difference between the unreserved and actual.  A negative return
 // value indicates either a job which is using more memory than it reserved,

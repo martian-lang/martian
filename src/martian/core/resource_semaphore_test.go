@@ -3,6 +3,7 @@
 package core
 
 import (
+	"runtime"
 	"testing"
 	"time"
 )
@@ -85,7 +86,7 @@ func TestResourceSemaphoreRelease(t *testing.T) {
 		acquired := make(chan int)
 		released := make(chan int)
 		allowRelease := make(chan int)
-		hasAcquired := make([]bool, 5)
+		hasAcquired := make([]bool, 4)
 		acquire := func(id int, amount int64, releaseAny bool) {
 			started <- id
 			if err := sem.Acquire(amount); err != nil {
@@ -100,7 +101,9 @@ func TestResourceSemaphoreRelease(t *testing.T) {
 			released <- id
 		}
 		go acquire(0, 30, false)
-		<-started
+		if id := <-started; id != 0 {
+			t.Errorf("Unexpected id %d", id)
+		}
 		if msg := <-acquired; msg != 0 {
 			t.Errorf("Expected acquire 0, got %d", msg)
 		}
@@ -112,10 +115,20 @@ func TestResourceSemaphoreRelease(t *testing.T) {
 		}
 		go acquire(1, 20, true)
 		go acquire(2, 20, true)
-		<-started
-		<-started
-		go acquire(3, 30, false)
-		<-started
+		if id := <-started; id != 1 && id != 2 {
+			t.Errorf("Unexpected id %d", id)
+		}
+		if id := <-started; id != 1 && id != 2 {
+			t.Errorf("Unexpected id %d", id)
+		}
+		go acquire(3, 35, false)
+		// Make sure 1 and 2 get in the queue before 3.
+		for sem.QueueLength() != 2 {
+			time.Sleep(time.Millisecond)
+		}
+		if id := <-started; id != 3 {
+			t.Errorf("Unexpected id %d", id)
+		}
 		if hasAcquired[1] {
 			t.Errorf("Expected %d to block.", 1)
 		}
@@ -164,8 +177,8 @@ func TestResourceSemaphoreRelease(t *testing.T) {
 		if msg := <-acquired; msg != 3 {
 			t.Errorf("Expected acquire 3, got %d", msg)
 		}
-		if sem.InUse() != 30 {
-			t.Errorf("Expected 40 in use, got %d", sem.InUse())
+		if sem.InUse() != 35 {
+			t.Errorf("Expected 35 in use, got %d", sem.InUse())
 		}
 		if !hasAcquired[3] {
 			t.Errorf("Expected %d to have acquired.", 3)
@@ -178,6 +191,9 @@ func TestResourceSemaphoreRelease(t *testing.T) {
 	case <-done:
 		return
 	case <-timer.C:
+		buf := make([]byte, 4096)
+		buf = buf[:runtime.Stack(buf, true)]
+		t.Log(string(buf))
 		t.Errorf("Timed out.")
 	}
 }
