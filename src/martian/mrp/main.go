@@ -231,6 +231,10 @@ Options:
 		if value, err := strconv.Atoi(value.(string)); err == nil {
 			reqCores = value
 			core.LogInfo("options", "--localcores=%d", reqCores)
+		} else {
+			core.PrintError(err, "options",
+				"Could not parse --localcores value \"%s\"", opts["--localcores"].(string))
+			os.Exit(1)
 		}
 	}
 	reqMem := -1
@@ -238,6 +242,10 @@ Options:
 		if value, err := strconv.Atoi(value.(string)); err == nil {
 			reqMem = value
 			core.LogInfo("options", "--localmem=%d", reqMem)
+		} else {
+			core.PrintError(err, "options",
+				"Could not parse --localmem value \"%s\"", opts["--localmem"].(string))
+			os.Exit(1)
 		}
 	}
 	reqMemPerCore := -1
@@ -245,6 +253,10 @@ Options:
 		if value, err := strconv.Atoi(value.(string)); err == nil {
 			reqMemPerCore = value
 			core.LogInfo("options", "--mempercore=%d", reqMemPerCore)
+		} else {
+			core.PrintError(err, "options",
+				"Could not parse --mempercore value \"%s\"", opts["--mempercore"].(string))
+			os.Exit(1)
 		}
 	}
 
@@ -288,6 +300,9 @@ Options:
 	if value := opts["--maxjobs"]; value != nil {
 		if value, err := strconv.Atoi(value.(string)); err == nil {
 			maxJobs = value
+		} else {
+			core.PrintError(err, "options", "Could not parse --maxjobs value \"%s\"", opts["--maxjobs"].(string))
+			os.Exit(1)
 		}
 	}
 	core.LogInfo("options", "--maxjobs=%d", maxJobs)
@@ -301,6 +316,9 @@ Options:
 	if value := opts["--jobinterval"]; value != nil {
 		if value, err := strconv.Atoi(value.(string)); err == nil {
 			jobFreqMillis = value
+		} else {
+			core.PrintError(err, "options", "Could not parse --jobinterval value \"%s\"", opts["--jobinterval"].(string))
+			os.Exit(1)
 		}
 	}
 	core.LogInfo("options", "--jobinterval=%d", jobFreqMillis)
@@ -393,6 +411,10 @@ Options:
 		if value, err := strconv.Atoi(value.(string)); err == nil {
 			retries = value
 			core.LogInfo("options", "--autoretry=%d", retries)
+		} else {
+			core.PrintError(err, "options",
+				"Could not parse --autoretry value \"%s\"", opts["--autoretry"].(string))
+			os.Exit(1)
 		}
 	}
 	if retries > 0 && fullStageReset {
