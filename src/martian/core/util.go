@@ -12,7 +12,6 @@ import (
 	"fmt"
 	"html/template"
 	"io"
-	"io/ioutil"
 	"os"
 	"path"
 	"path/filepath"
@@ -177,10 +176,13 @@ func Pluralize(n int) string {
 
 func GetFilenameWithSuffix(dir string, fname string) string {
 	suffix := 0
-	infos, _ := ioutil.ReadDir(dir)
+	names, err := Readdirnames(dir)
+	if err != nil {
+		return fmt.Sprintf("%s-%d", fname, 0)
+	}
 	re := regexp.MustCompile(fmt.Sprintf("^%s-(\\d+)$", fname))
-	for _, info := range infos {
-		if m := re.FindStringSubmatch(info.Name()); m != nil {
+	for _, name := range names {
+		if m := re.FindStringSubmatch(name); m != nil {
 			infoSuffix, _ := strconv.Atoi(m[1])
 			if suffix <= infoSuffix {
 				suffix = infoSuffix + 1
@@ -422,4 +424,14 @@ func partiallyQualifiedName(n string) string {
 		}
 	}
 	return ""
+}
+
+func Readdirnames(readPath string) (names []string, err error) {
+	dir, err := os.Open(readPath)
+	if err != nil {
+		return nil, err
+	}
+	names, err = dir.Readdirnames(0)
+	dir.Close()
+	return names, err
 }
