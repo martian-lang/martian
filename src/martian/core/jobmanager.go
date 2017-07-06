@@ -516,7 +516,7 @@ func (self *RemoteJobManager) execJob(shellCmd string, argv []string,
 		}
 		self.sendJob(shellCmd, argv, envs, metadata, threads, memGB, special, fqname, shellName)
 		for {
-			if state, _ := metadata.getState(""); state == "complete" || state == "failed" {
+			if state, _ := metadata.getState(); state == Complete || state == Failed {
 				self.jobSem.V(1)
 				if self.debug {
 					LogInfo("jobmngr", "Job finished: %s (%s)", fqname, state)

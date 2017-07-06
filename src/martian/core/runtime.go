@@ -174,7 +174,7 @@ func (self *Binding) resolve(argPermute map[string]interface{}) interface{} {
 	}
 	if self.boundNode != nil {
 		matchedFork := self.boundNode.getNode().matchFork(argPermute)
-		outputs, ok := matchedFork.metadata.read("outs").(map[string]interface{})
+		outputs, ok := matchedFork.metadata.read(OutsFile).(map[string]interface{})
 		if ok {
 			output, ok := outputs[self.output]
 			if ok {
@@ -359,7 +359,7 @@ type Chunk struct {
 type ChunkInfo struct {
 	Index    int                    `json:"index"`
 	ChunkDef map[string]interface{} `json:"chunkDef"`
-	State    string                 `json:"state"`
+	State    MetadataState          `json:"state"`
 	Metadata *MetadataInfo          `json:"metadata"`
 }
 
@@ -385,20 +385,20 @@ func (self *Chunk) mkdirs() error {
 	return self.metadata.mkdirs()
 }
 
-func (self *Chunk) getState() string {
-	if state, ok := self.metadata.getState(""); ok {
+func (self *Chunk) getState() MetadataState {
+	if state, ok := self.metadata.getState(); ok {
 		return state
 	} else {
-		return "ready"
+		return Ready
 	}
 }
 
-func (self *Chunk) updateState(state string) {
+func (self *Chunk) updateState(state MetadataFileName) {
 	self.metadata.cache(state)
 }
 
 func (self *Chunk) step() {
-	if self.getState() != "ready" {
+	if self.getState() != Ready {
 		return
 	}
 
@@ -418,8 +418,8 @@ func (self *Chunk) step() {
 	}
 
 	// Write out input and ouput args for the chunk.
-	self.metadata.write("args", resolvedBindings)
-	self.metadata.write("outs", makeOutArgs(self.node.outparams, self.metadata.filesPath))
+	self.metadata.write(ArgsFile, resolvedBindings)
+	self.metadata.write(OutsFile, makeOutArgs(self.node.outparams, self.metadata.filesPath))
 
 	// Run the chunk.
 	self.node.runChunk(self.fqname, self.metadata, threads, memGB, special)
@@ -468,7 +468,7 @@ type ForkInfo struct {
 	Index         int                    `json:"index"`
 	ArgPermute    map[string]interface{} `json:"argPermute"`
 	JoinDef       map[string]interface{} `json:"joinDef"`
-	State         string                 `json:"state"`
+	State         MetadataState          `json:"state"`
 	Metadata      *MetadataInfo          `json:"metadata"`
 	SplitMetadata *MetadataInfo          `json:"split_metadata"`
 	JoinMetadata  *MetadataInfo          `json:"join_metadata"`
@@ -505,7 +505,7 @@ func NewFork(nodable Nodable, index int, argPermute map[string]interface{}) *For
 	self.stageDefs = &StageDefs{ChunkDefs: []map[string]interface{}{}, JoinDef: map[string]interface{}{}}
 	self.stageDefs.ChunkDefs = append(self.stageDefs.ChunkDefs, map[string]interface{}{})
 
-	if err := json.Unmarshal([]byte(self.split_metadata.readRaw("stage_defs")), &self.stageDefs); err == nil {
+	if err := json.Unmarshal([]byte(self.split_metadata.readRaw(StageDefsFile)), &self.stageDefs); err == nil {
 		for i, chunkDef := range self.stageDefs.ChunkDefs {
 			chunk := NewChunk(self.node, self, i, chunkDef)
 			self.chunks = append(self.chunks, chunk)
@@ -605,7 +605,7 @@ func (self *Fork) verifyOutput() (bool, string) {
 	msg := ""
 	ret := true
 	if len(outparams.List) > 0 {
-		outputs, ok := self.metadata.read("outs").(map[string]interface{})
+		outputs, ok := self.metadata.read(OutsFile).(map[string]interface{})
 		if !ok {
 			msg += fmt.Sprintf("Fork outs were not a map\n")
 		}
@@ -629,37 +629,34 @@ func (self *Fork) verifyOutput() (bool, string) {
 	return ret, msg
 }
 
-func (self *Fork) getState() string {
-	if state, _ := self.metadata.getState(""); state == "failed" {
-		return "failed"
-	}
-	if state, _ := self.metadata.getState(""); state == "complete" {
-		return "complete"
-	}
-	if state, ok := self.join_metadata.getState("join_"); ok {
+func (self *Fork) getState() MetadataState {
+	if state, _ := self.metadata.getState(); state == Failed || state == Complete {
 		return state
+	}
+	if state, ok := self.join_metadata.getState(); ok {
+		return state.Prefixed(JoinPrefix)
 	}
 	if len(self.chunks) > 0 {
 		// If any chunks have failed, we're failed.
 		for _, chunk := range self.chunks {
-			if chunk.getState() == "failed" {
-				return "failed"
+			if chunk.getState() == Failed {
+				return Failed
 			}
 		}
 		// If every chunk is complete, we're complete.
 		every := true
 		for _, chunk := range self.chunks {
-			if chunk.getState() != "complete" {
+			if chunk.getState() != Complete {
 				every = false
 				break
 			}
 		}
 		if every {
-			return "chunks_complete"
+			return Complete.Prefixed(ChunksPrefix)
 		}
 		// If every chunk is queued, running, or complete, we're complete.
 		every = true
-		runningStates := map[string]bool{"queued": true, "running": true, "complete": true}
+		runningStates := map[MetadataState]bool{Queued: true, Running: true, Complete: true}
 		for _, chunk := range self.chunks {
 			if _, ok := runningStates[chunk.getState()]; !ok {
 				every = false
@@ -667,22 +664,22 @@ func (self *Fork) getState() string {
 			}
 		}
 		if every {
-			return "chunks_running"
+			return Running.Prefixed(ChunksPrefix)
 		}
 	}
-	if state, ok := self.split_metadata.getState("split_"); ok {
-		return state
+	if state, ok := self.split_metadata.getState(); ok {
+		return state.Prefixed(SplitPrefix)
 	}
-	return "ready"
+	return Ready
 }
 
 func (self *Fork) updateState(state string) {
-	if strings.HasPrefix(state, "split_") {
-		self.split_metadata.cache(strings.TrimPrefix(state, "split_"))
-	} else if strings.HasPrefix(state, "join_") {
-		self.join_metadata.cache(strings.TrimPrefix(state, "join_"))
+	if strings.HasPrefix(state, SplitPrefix) {
+		self.split_metadata.cache(MetadataFileName(strings.TrimPrefix(state, SplitPrefix)))
+	} else if strings.HasPrefix(state, JoinPrefix) {
+		self.join_metadata.cache(MetadataFileName(strings.TrimPrefix(state, JoinPrefix)))
 	} else {
-		self.metadata.cache(state)
+		self.metadata.cache(MetadataFileName(state))
 	}
 }
 
@@ -694,16 +691,16 @@ func (self *Fork) getChunk(index int) *Chunk {
 }
 
 func (self *Fork) skip() {
-	self.metadata.writeTime("complete")
+	self.metadata.writeTime(CompleteFile)
 }
 
 func (self *Fork) writeInvocation() {
-	if !self.metadata.exists("invocation") {
+	if !self.metadata.exists(InvocationFile) {
 		argBindings := resolveBindings(self.node.argbindings, self.argPermute)
 		sweepBindings := []string{}
 		incpaths := self.node.invocation["incpaths"].([]string)
 		invocation, _ := self.node.rt.BuildCallSource(incpaths, self.node.name, argBindings, sweepBindings, self.node.mroPaths)
-		self.metadata.writeRaw("invocation", invocation)
+		self.metadata.writeRaw(InvocationFile, invocation)
 	}
 }
 
@@ -715,7 +712,7 @@ type StageDefs struct {
 func (self *Fork) step() {
 	if self.node.kind == "stage" {
 		state := self.getState()
-		if !strings.HasSuffix(state, "_running") && !strings.HasSuffix(state, "_queued") {
+		if !state.IsRunning() && !state.IsQueued() {
 			statePad := strings.Repeat(" ", int(math.Max(0, float64(15-len(state)))))
 			// Only log fork num if we've got more than one fork
 			fqname := self.node.fqname
@@ -730,9 +727,9 @@ func (self *Fork) step() {
 			}
 		}
 
-		if state == "ready" {
+		if state == Ready {
 			self.writeInvocation()
-			self.split_metadata.write("args", resolveBindings(self.node.argbindings, self.argPermute))
+			self.split_metadata.write(ArgsFile, resolveBindings(self.node.argbindings, self.argPermute))
 			threads, memGB, special := self.node.setSplitJobReqs()
 			if self.node.split {
 				if !self.split_has_run {
@@ -740,21 +737,21 @@ func (self *Fork) step() {
 					self.node.runSplit(self.fqname, self.split_metadata, threads, memGB, special)
 				}
 			} else {
-				self.split_metadata.write("stage_defs", self.stageDefs)
-				self.split_metadata.writeTime("complete")
+				self.split_metadata.write(StageDefsFile, self.stageDefs)
+				self.split_metadata.writeTime(CompleteFile)
 			}
-		} else if state == "split_complete" {
+		} else if state == Complete.Prefixed(SplitPrefix) {
 			// MARTIAN-395 We have observed a possible race condition where
 			// split_complete could be detected but _stage_defs is not
 			// written yet or is corrupted. Check that stage_defs exists
 			// before attempting to read and unmarshal it.
-			if self.split_metadata.exists("stage_defs") {
-				if err := json.Unmarshal([]byte(self.split_metadata.readRaw("stage_defs")), &self.stageDefs); err != nil || len(self.stageDefs.ChunkDefs) == 0 {
+			if self.split_metadata.exists(StageDefsFile) {
+				if err := json.Unmarshal([]byte(self.split_metadata.readRaw(StageDefsFile)), &self.stageDefs); err != nil || len(self.stageDefs.ChunkDefs) == 0 {
 					errstring := "none"
 					if err != nil {
 						errstring = err.Error()
 					}
-					self.split_metadata.writeRaw("errors",
+					self.split_metadata.writeRaw(Errors,
 						fmt.Sprintf("The split method did not return a dictionary {'chunks': [{}], 'join': {}}.\nError: %s\nChunk count: %d", errstring, len(self.stageDefs.ChunkDefs)))
 				} else {
 					if len(self.chunks) == 0 {
@@ -769,46 +766,46 @@ func (self *Fork) step() {
 					}
 				}
 			}
-		} else if state == "chunks_complete" {
+		} else if state == Complete.Prefixed(ChunksPrefix) {
 			threads, memGB, special := self.node.setJoinJobReqs(self.stageDefs.JoinDef)
 			resolvedBindings := resolveBindings(self.node.argbindings, self.argPermute)
 			for id, value := range self.stageDefs.JoinDef {
 				resolvedBindings[id] = value
 			}
-			self.join_metadata.write("args", resolvedBindings)
-			self.join_metadata.write("chunk_defs", self.stageDefs.ChunkDefs)
+			self.join_metadata.write(ArgsFile, resolvedBindings)
+			self.join_metadata.write(ChunkDefsFile, self.stageDefs.ChunkDefs)
 			if self.node.split {
 				chunkOuts := []interface{}{}
 				for _, chunk := range self.chunks {
-					outs := chunk.metadata.read("outs")
+					outs := chunk.metadata.read(OutsFile)
 					chunkOuts = append(chunkOuts, outs)
 				}
-				self.join_metadata.write("chunk_outs", chunkOuts)
-				self.join_metadata.write("outs", makeOutArgs(self.node.outparams, self.metadata.filesPath))
+				self.join_metadata.write(ChunkOutsFile, chunkOuts)
+				self.join_metadata.write(OutsFile, makeOutArgs(self.node.outparams, self.metadata.filesPath))
 				if !self.join_has_run {
 					self.join_has_run = true
 					self.node.runJoin(self.fqname, self.join_metadata, threads, memGB, special)
 				}
 			} else {
-				self.join_metadata.write("outs", self.chunks[0].metadata.read("outs"))
-				self.join_metadata.writeTime("complete")
+				self.join_metadata.write(OutsFile, self.chunks[0].metadata.read(OutsFile))
+				self.join_metadata.writeTime(CompleteFile)
 			}
-		} else if state == "join_complete" {
-			self.metadata.write("outs", self.join_metadata.read("outs"))
+		} else if state == Complete.Prefixed(JoinPrefix) {
+			self.metadata.write(OutsFile, self.join_metadata.read(OutsFile))
 			if ok, msg := self.verifyOutput(); ok {
-				self.metadata.writeTime("complete")
+				self.metadata.writeTime(CompleteFile)
 			} else {
-				self.metadata.writeRaw("errors", msg)
+				self.metadata.writeRaw(Errors, msg)
 			}
 		}
 
 	} else if self.node.kind == "pipeline" {
 		self.writeInvocation()
-		self.metadata.write("outs", resolveBindings(self.node.retbindings, self.argPermute))
+		self.metadata.write(OutsFile, resolveBindings(self.node.retbindings, self.argPermute))
 		if ok, msg := self.verifyOutput(); ok {
-			self.metadata.writeTime("complete")
+			self.metadata.writeTime(CompleteFile)
 		} else {
-			self.metadata.writeRaw("errors", msg)
+			self.metadata.writeRaw(Errors, msg)
 		}
 	}
 }
@@ -821,8 +818,8 @@ func (self *Fork) cachePerf() {
 func (self *Fork) getVdrKillReport() (*VDRKillReport, bool) {
 	killReport := &VDRKillReport{}
 	ok := false
-	if self.metadata.exists("vdrkill") {
-		data := self.metadata.readRaw("vdrkill")
+	if self.metadata.exists(VdrKill) {
+		data := self.metadata.readRaw(VdrKill)
 		if err := json.Unmarshal([]byte(data), &killReport); err == nil {
 			ok = true
 		}
@@ -879,7 +876,7 @@ func (self *Fork) vdrKill() *VDRKillReport {
 	}
 	// update timestamp to mark actual kill time
 	killReport.Timestamp = Timestamp()
-	self.metadata.write("vdrkill", killReport)
+	self.metadata.write(VdrKill, killReport)
 	return killReport
 }
 
@@ -901,7 +898,7 @@ func (self *Fork) postProcess() {
 
 	// Get fork's output parameter values
 	outs := map[string]interface{}{}
-	if data := self.metadata.read("outs"); data != nil {
+	if data := self.metadata.read(OutsFile); data != nil {
 		if v, ok := data.(map[string]interface{}); ok {
 			outs = v
 		}
@@ -1040,10 +1037,10 @@ func (self *Fork) postProcess() {
 func (self *Fork) getAlarms() string {
 	alarms := ""
 	for _, metadata := range self.collectMetadatas() {
-		if !metadata.exists("alarm") {
+		if !metadata.exists(AlarmFile) {
 			continue
 		}
-		alarms += metadata.readRaw("alarm")
+		alarms += metadata.readRaw(AlarmFile)
 	}
 	for _, subfork := range self.subforks {
 		alarms += subfork.getAlarms()
@@ -1182,7 +1179,7 @@ type Node struct {
 	frontierNodes      map[string]Nodable
 	forks              []*Fork
 	split              bool
-	state              string
+	state              MetadataState
 	volatile           bool
 	local              bool
 	preflight          bool
@@ -1202,7 +1199,7 @@ type NodeInfo struct {
 	Fqname        string         `json:"fqname"`
 	Type          string         `json:"type"`
 	Path          string         `json:"path"`
-	State         string         `json:"state"`
+	State         MetadataState  `json:"state"`
 	Metadata      *MetadataInfo  `json:"metadata"`
 	SweepBindings []*BindingInfo `json:"sweepbindings"`
 	Forks         []*ForkInfo    `json:"forks"`
@@ -1271,19 +1268,19 @@ func (self *Node) mkdirs() error {
 	if err := mkdirAll(self.path); err != nil {
 		msg := fmt.Sprintf("Could not create root directory for %s: %s", self.fqname, err.Error())
 		LogError(err, "runtime", msg)
-		self.metadata.writeRaw("errors", msg)
+		self.metadata.writeRaw(Errors, msg)
 		return err
 	}
 	if err := mkdir(self.journalPath); err != nil {
 		msg := fmt.Sprintf("Could not create directories for %s: %s", self.fqname, err.Error())
 		LogError(err, "runtime", msg)
-		self.metadata.writeRaw("errors", msg)
+		self.metadata.writeRaw(Errors, msg)
 		return err
 	}
 	if err := mkdir(self.tmpPath); err != nil {
 		msg := fmt.Sprintf("Could not create directories for %s: %s", self.fqname, err.Error())
 		LogError(err, "runtime", msg)
-		self.metadata.writeRaw("errors", msg)
+		self.metadata.writeRaw(Errors, msg)
 		return err
 	}
 
@@ -1500,32 +1497,32 @@ func (self *Node) getFork(index int) *Fork {
 	return nil
 }
 
-func (self *Node) getState() string {
+func (self *Node) getState() MetadataState {
 	// If every fork is complete, we're complete.
 	complete := true
 	for _, fork := range self.forks {
-		if fork.getState() != "complete" {
+		if fork.getState() != Complete {
 			complete = false
 			break
 		}
 	}
 	if complete {
-		return "complete"
+		return Complete
 	}
 	// If any fork is failed, we're failed.
 	for _, fork := range self.forks {
-		if fork.getState() == "failed" {
-			return "failed"
+		if fork.getState() == Failed {
+			return Failed
 		}
 	}
 	// If any prenode is not complete, we're waiting.
 	for _, prenode := range self.prenodes {
-		if prenode.getNode().getState() != "complete" {
-			return "waiting"
+		if prenode.getNode().getState() != Complete {
+			return Waiting
 		}
 	}
 	// Otherwise we're running.
-	return "running"
+	return Running
 
 }
 
@@ -1601,10 +1598,10 @@ func (self *Node) checkHeartbeats() {
 
 func (self *Node) kill() {
 	for _, metadata := range self.collectMetadatas() {
-		if state, _ := metadata.getState(""); state == "failed" {
+		if state, _ := metadata.getState(); state == Failed {
 			continue
 		}
-		metadata.writeRaw("errors", "Job was killed by Martian.")
+		metadata.writeRaw(Errors, "Job was killed by Martian.")
 	}
 }
 
@@ -1630,13 +1627,13 @@ func (self *Node) GetFQName() string {
 	return self.fqname
 }
 
-func (self *Node) getFatalError() (string, bool, string, string, string, []string) {
+func (self *Node) getFatalError() (string, bool, string, string, MetadataFileName, []string) {
 	for _, metadata := range self.collectMetadatas() {
-		if state, _ := metadata.getState(""); state != "failed" {
+		if state, _ := metadata.getState(); state != Failed {
 			continue
 		}
-		if metadata.exists("errors") {
-			errlog := metadata.readRaw("errors")
+		if metadata.exists(Errors) {
+			errlog := metadata.readRaw(Errors)
 			summary := "<none>"
 			if self.stagecodeLang == "Python" {
 				errlines := strings.Split(errlog, "\n")
@@ -1647,24 +1644,24 @@ func (self *Node) getFatalError() (string, bool, string, string, string, []strin
 				}
 			}
 			errpaths := []string{
-				metadata.makePath("errors"),
-				metadata.makePath("stdout"),
-				metadata.makePath("stderr"),
+				metadata.makePath(Errors),
+				metadata.makePath(StdOut),
+				metadata.makePath(StdErr),
 			}
 			if self.rt.enableStackVars {
-				errpaths = append(errpaths, metadata.makePath("stackvars"))
+				errpaths = append(errpaths, metadata.makePath(Stackvars))
 			}
-			return metadata.fqname, self.preflight, summary, errlog, "errors", errpaths
+			return metadata.fqname, self.preflight, summary, errlog, Errors, errpaths
 		}
-		if metadata.exists("assert") {
-			assertlog := metadata.readRaw("assert")
+		if metadata.exists(Assert) {
+			assertlog := metadata.readRaw(Assert)
 			summary := "<none>"
 			assertlines := strings.Split(assertlog, "\n")
 			if len(assertlines) >= 1 {
 				summary = assertlines[len(assertlines)-1]
 			}
-			return metadata.fqname, self.preflight, summary, assertlog, "assert", []string{
-				metadata.makePath("assert"),
+			return metadata.fqname, self.preflight, summary, assertlog, Assert, []string{
+				metadata.makePath(Assert),
 			}
 		}
 	}
@@ -1712,14 +1709,14 @@ func DefaultRetries() int {
 func (self *Node) isErrorTransient() (bool, string) {
 	passRegexp, _ := getRetryRegexps()
 	for _, metadata := range self.collectMetadatas() {
-		if state, _ := metadata.getState(""); state != "failed" {
+		if state, _ := metadata.getState(); state != Failed {
 			continue
 		}
-		if metadata.exists("assert") {
+		if metadata.exists(Assert) {
 			return false, ""
 		}
-		if metadata.exists("errors") {
-			errlog := metadata.readRaw("errors")
+		if metadata.exists(Errors) {
+			errlog := metadata.readRaw(Errors)
 			for _, line := range strings.Split(errlog, "\n") {
 				for _, re := range passRegexp {
 					if re.MatchString(line) {
@@ -1734,7 +1731,7 @@ func (self *Node) isErrorTransient() (bool, string) {
 }
 
 func (self *Node) step() {
-	if self.state == "running" {
+	if self.state == Running {
 		for _, fork := range self.forks {
 			if self.preflight && self.rt.skipPreflight {
 				fork.skip()
@@ -1746,14 +1743,14 @@ func (self *Node) step() {
 	previousState := self.state
 	self.state = self.getState()
 	switch self.state {
-	case "failed":
+	case Failed:
 		self.addFrontierNode(self)
-	case "running":
+	case Running:
 		if self.state != previousState {
 			self.mkdirs()
 		}
 		self.addFrontierNode(self)
-	case "complete":
+	case Complete:
 		if self.rt.vdrMode == "rolling" {
 			for _, node := range self.prenodes {
 				node.getNode().vdrKill()
@@ -1800,7 +1797,7 @@ func (self *Node) refreshState() {
 			if fork := node.getFork(forkIndex); fork != nil {
 				if chunkIndex >= 0 {
 					if chunk := fork.getChunk(chunkIndex); chunk != nil {
-						chunk.updateState(state)
+						chunk.updateState(MetadataFileName(state))
 					}
 				} else {
 					fork.updateState(state)
@@ -1890,7 +1887,7 @@ func (self *Node) vdrKill() (*VDRKillReport, bool) {
 	killReports := []*VDRKillReport{}
 	ok := true
 	for _, node := range self.postnodes {
-		if node.getNode().state != "complete" {
+		if node.getNode().state != Complete {
 			ok = false
 		}
 	}
@@ -1922,7 +1919,7 @@ func (self *Node) serializeState() *NodeInfo {
 		})
 	}
 	var err interface{} = nil
-	if self.state == "failed" {
+	if self.state == Failed {
 		fqname, _, summary, log, _, errpaths := self.getFatalError()
 		errpath := ""
 		if len(errpaths) > 0 {
@@ -2102,8 +2099,8 @@ func (self *Node) runJob(shellName string, fqname string, metadata *Metadata,
 	}
 
 	EnterCriticalSection()
-	metadata.writeTime("queued_locally")
-	metadata.write("jobinfo", map[string]interface{}{
+	metadata.writeTime(QueuedLocally)
+	metadata.write(JobInfoFile, map[string]interface{}{
 		"name":           fqname,
 		"type":           jobMode,
 		"threads":        threads,
@@ -2156,14 +2153,14 @@ func NewStagestance(parent Nodable, callStm *CallStm, callables *Callables) *Sta
 	return self
 }
 
-func (self *Stagestance) getNode() *Node   { return self.node }
-func (self *Stagestance) GetState() string { return self.getNode().getState() }
-func (self *Stagestance) Step()            { self.getNode().step() }
-func (self *Stagestance) CheckHeartbeats() { self.getNode().checkHeartbeats() }
-func (self *Stagestance) RefreshState()    { self.getNode().refreshState() }
-func (self *Stagestance) LoadMetadata()    { self.getNode().loadMetadata() }
-func (self *Stagestance) PostProcess()     { self.getNode().postProcess() }
-func (self *Stagestance) GetFatalError() (string, bool, string, string, string, []string) {
+func (self *Stagestance) getNode() *Node          { return self.node }
+func (self *Stagestance) GetState() MetadataState { return self.getNode().getState() }
+func (self *Stagestance) Step()                   { self.getNode().step() }
+func (self *Stagestance) CheckHeartbeats()        { self.getNode().checkHeartbeats() }
+func (self *Stagestance) RefreshState()           { self.getNode().refreshState() }
+func (self *Stagestance) LoadMetadata()           { self.getNode().loadMetadata() }
+func (self *Stagestance) PostProcess()            { self.getNode().postProcess() }
+func (self *Stagestance) GetFatalError() (string, bool, string, string, MetadataFileName, []string) {
 	return self.getNode().getFatalError()
 }
 
@@ -2189,8 +2186,8 @@ func (self *Pipestance) OnFinishHook() {
 		// $2 = {complete|failed}
 		// $3 = pipestance ID
 		// $4 = path to error file (if there was an error)
-		args := []string{exec_path, self.GetPath(), self.GetState(), self.getNode().name}
-		if self.GetState() == "failed" {
+		args := []string{exec_path, self.GetPath(), string(self.GetState()), self.getNode().name}
+		if self.GetState() == Failed {
 			_, _, _, _, _, err_paths := self.GetFatalError()
 			if len(err_paths) > 0 {
 				err_path, _ := filepath.Rel(filepath.Dir(self.GetPath()), err_paths[0])
@@ -2291,35 +2288,35 @@ func (self *Pipestance) LoadMetadata() {
 	}
 	for _, node := range self.node.allNodes() {
 		node.state = node.getState()
-		if node.state == "running" {
+		if node.state == Running {
 			node.mkdirs()
 		}
 	}
 }
 
-func (self *Pipestance) GetState() string {
+func (self *Pipestance) GetState() MetadataState {
 	nodes := self.node.getFrontierNodes()
 	for _, node := range nodes {
-		if node.state == "failed" {
-			return "failed"
+		if node.state == Failed {
+			return Failed
 		}
 	}
 	for _, node := range nodes {
-		if node.state == "running" {
-			return "running"
+		if node.state == Running {
+			return Running
 		}
 	}
 	every := true
 	for _, node := range self.node.allNodes() {
-		if node.state != "complete" {
+		if node.state != Complete {
 			every = false
 			break
 		}
 	}
 	if every {
-		return "complete"
+		return Complete
 	}
-	return "waiting"
+	return ForkWaiting
 }
 
 func (self *Pipestance) Kill() {
@@ -2335,7 +2332,7 @@ func (self *Pipestance) RestartRunningNodes(jobMode string) error {
 	localNodes := []*Node{}
 	remoteNodes := []*Node{}
 	for _, node := range nodes {
-		if node.state == "running" {
+		if node.state == Running {
 			PrintInfo("runtime", "Found orphaned stage: %s", node.fqname)
 			if jobMode == "local" || node.local {
 				localNodes = append(localNodes, node)
@@ -2358,12 +2355,12 @@ func (self *Pipestance) RestartRunningNodes(jobMode string) error {
 // kills it and all of its child processes.
 func (self *Pipestance) RestartLocalJobs(jobMode string) error {
 	for _, node := range self.node.getFrontierNodes() {
-		if node.state == "running" {
+		if node.state == Running {
 			if err := node.restartLocallyQueuedJobs(); err != nil {
 				return err
 			}
 		}
-		if node.state == "running" && (jobMode == "local" || node.local) {
+		if node.state == Running && (jobMode == "local" || node.local) {
 			PrintInfo("runtime", "Found orphaned local stage: %s", node.fqname)
 			if err := node.restartLocalJobs(); err != nil {
 				return err
@@ -2407,11 +2404,11 @@ func (self *Pipestance) queryQueue() {
 		for _, node := range nodes {
 			for _, m := range node.collectMetadatas() {
 				if !metas[m] {
-					if st, ok := m.getState(""); ok &&
-						(st == "queued" || st == "running") &&
-						m.exists("jobid") {
+					if st, ok := m.getState(); ok &&
+						(st == Queued || st == Running) &&
+						m.exists(JobId) {
 						metas[m] = true
-						id := m.readRaw("jobid")
+						id := m.readRaw(JobId)
 						if id != "" {
 							needsQuery[id] = m
 						}
@@ -2457,17 +2454,17 @@ func (self *Pipestance) GetFailedNodes() []*Node {
 
 	nodes := self.node.getFrontierNodes()
 	for _, node := range nodes {
-		if node.state == "failed" {
+		if node.state == Failed {
 			failedNodes = append(failedNodes, node)
 		}
 	}
 	return failedNodes
 }
 
-func (self *Pipestance) GetFatalError() (string, bool, string, string, string, []string) {
+func (self *Pipestance) GetFatalError() (string, bool, string, string, MetadataFileName, []string) {
 	nodes := self.node.getFrontierNodes()
 	for _, node := range nodes {
-		if node.state == "failed" {
+		if node.state == Failed {
 			return node.getFatalError()
 		}
 	}
@@ -2507,7 +2504,7 @@ func (self *Pipestance) StepNodes() {
 
 func (self *Pipestance) Reset() error {
 	for _, node := range self.node.allNodes() {
-		if node.state == "failed" {
+		if node.state == Failed {
 			if err := node.reset(); err != nil {
 				return err
 			}
@@ -2516,19 +2513,19 @@ func (self *Pipestance) Reset() error {
 	return nil
 }
 
-func (self *Pipestance) Serialize(name string) interface{} {
+func (self *Pipestance) Serialize(name MetadataFileName) interface{} {
 	ser := []interface{}{}
 	for _, node := range self.node.allNodes() {
 		switch name {
-		case "finalstate":
+		case FinalState:
 			ser = append(ser, node.serializeState())
-		case "perf":
+		case Perf:
 			ser = append(ser, node.serializePerf())
 		default:
-			panic(fmt.Sprintf("Unsupported serialization type: %s", name))
+			panic(fmt.Sprintf("Unsupported serialization type: %v", name))
 		}
 	}
-	if name == "perf" {
+	if name == Perf {
 		LogInfo("perform", "Serializing pipestance performance data.")
 		if len(ser) > 0 {
 			self.ComputeDiskUsage(ser[0].(*NodePerfInfo))
@@ -2754,8 +2751,8 @@ func (self *Pipestance) GetInvocation() interface{} {
 func (self *Pipestance) VerifyJobMode() error {
 	metadata := NewMetadata(self.node.parent.getNode().fqname, self.GetPath())
 	metadata.loadCache()
-	if metadata.exists("jobmode") {
-		jobMode := metadata.readRaw("jobmode")
+	if metadata.exists(JobModeFile) {
+		jobMode := metadata.readRaw(JobModeFile)
 		if jobMode != self.node.rt.jobMode {
 			return &PipestanceJobModeError{self.GetPsid(), jobMode}
 		}
@@ -2765,34 +2762,34 @@ func (self *Pipestance) VerifyJobMode() error {
 
 func (self *Pipestance) GetTimestamp() string {
 	metadata := NewMetadata(self.node.parent.getNode().fqname, self.GetPath())
-	data := metadata.readRaw("timestamp")
+	data := metadata.readRaw(TimestampFile)
 	return ParseTimestamp(data)
 }
 
 func (self *Pipestance) GetVersions() (string, string, error) {
 	metadata := NewMetadata(self.node.parent.getNode().fqname, self.GetPath())
-	data := metadata.readRaw("versions")
+	data := metadata.readRaw(VersionsFile)
 	return ParseVersions(data)
 }
 
 func (self *Pipestance) PostProcess() {
 	self.node.postProcess()
 	metadata := NewMetadata(self.node.parent.getNode().fqname, self.GetPath())
-	metadata.writeRaw("timestamp", metadata.readRaw("timestamp")+"\nend: "+Timestamp())
+	metadata.writeRaw(TimestampFile, metadata.readRaw(TimestampFile)+"\nend: "+Timestamp())
 	self.Immortalize()
 }
 
 func (self *Pipestance) Immortalize() {
 	metadata := NewMetadata(self.node.parent.getNode().fqname, self.GetPath())
 	metadata.loadCache()
-	if !metadata.exists("perf") {
-		metadata.write("perf", self.Serialize("perf"))
+	if !metadata.exists(Perf) {
+		metadata.write(Perf, self.Serialize(Perf))
 	}
-	if !metadata.exists("finalstate") {
-		metadata.write("finalstate", self.Serialize("finalstate"))
+	if !metadata.exists(FinalState) {
+		metadata.write(FinalState, self.Serialize(FinalState))
 	}
-	if !metadata.exists("metadata.zip") {
-		zipPath := metadata.makePath("metadata.zip")
+	if !metadata.exists(MetadataZip) {
+		zipPath := metadata.makePath(MetadataZip)
 		if err := self.ZipMetadata(zipPath); err != nil {
 			LogError(err, "runtime", "Failed to create metadata zip file %s: %s",
 				zipPath, err.Error())
@@ -2809,24 +2806,24 @@ func (self *Pipestance) VDRKill() *VDRKillReport {
 	}
 	killReport := mergeVDRKillReports(killReports)
 	metadata := NewMetadata(self.node.parent.getNode().fqname, self.GetPath())
-	metadata.write("vdrkill", killReport)
+	metadata.write(VdrKill, killReport)
 	return killReport
 }
 
 func (self *Pipestance) Lock() error {
 	metadata := NewMetadata(self.node.parent.getNode().fqname, self.GetPath())
 	metadata.loadCache()
-	if metadata.exists("lock") {
+	if metadata.exists(Lock) {
 		return &PipestanceLockedError{self.node.parent.getNode().name, self.GetPath()}
 	}
 	RegisterSignalHandler(self)
-	metadata.writeTime("lock")
+	metadata.writeTime(Lock)
 	return nil
 }
 
 func (self *Pipestance) unlock() {
 	metadata := NewMetadata(self.node.parent.getNode().fqname, self.GetPath())
-	metadata.remove("lock")
+	metadata.remove(Lock)
 }
 
 func (self *Pipestance) Unlock() {
@@ -3027,16 +3024,16 @@ func (self *Runtime) InvokePipeline(src string, srcPath string, psid string,
 
 	// Write top-level metadata files.
 	metadata := NewMetadata("ID."+psid, pipestancePath)
-	metadata.writeRaw("invocation", src)
-	metadata.writeRaw("jobmode", self.jobMode)
-	metadata.writeRaw("mrosource", postsrc)
-	metadata.write("versions", map[string]string{
+	metadata.writeRaw(InvocationFile, src)
+	metadata.writeRaw(JobModeFile, self.jobMode)
+	metadata.writeRaw(MroSourceFile, postsrc)
+	metadata.write(VersionsFile, map[string]string{
 		"martian":   self.martianVersion,
 		"pipelines": mroVersion,
 	})
-	metadata.write("tags", tags)
-	metadata.writeRaw("uuid", uuid.NewV4().String())
-	metadata.writeRaw("timestamp", "start: "+Timestamp())
+	metadata.write(TagsFile, tags)
+	metadata.writeRaw(UuidFile, uuid.NewV4().String())
+	metadata.writeRaw(TimestampFile, "start: "+Timestamp())
 
 	return pipestance, nil
 }
@@ -3151,7 +3148,7 @@ func (self *Runtime) InvokeStage(src string, srcPath string, ssid string,
 	return stagestance, nil
 }
 
-func (self *Runtime) GetSerialization(pipestancePath string, name string) (interface{}, bool) {
+func (self *Runtime) GetSerialization(pipestancePath string, name MetadataFileName) (interface{}, bool) {
 	metadata := NewMetadata("", pipestancePath)
 	metadata.loadCache()
 	if metadata.exists(name) {
@@ -3163,12 +3160,12 @@ func (self *Runtime) GetSerialization(pipestancePath string, name string) (inter
 func (self *Runtime) GetMetadata(pipestancePath string, metadataPath string) (string, error) {
 	metadata := NewMetadata("", pipestancePath)
 	metadata.loadCache()
-	if metadata.exists("metadata.zip") {
+	if metadata.exists(MetadataZip) {
 		relPath, _ := filepath.Rel(pipestancePath, metadataPath)
 
 		// Relative paths outside the pipestance directory will be ignored.
 		if !strings.Contains(relPath, "..") {
-			if data, err := ReadZip(metadata.makePath("metadata.zip"), relPath); err == nil {
+			if data, err := ReadZip(metadata.makePath(MetadataZip), relPath); err == nil {
 				return data, nil
 			}
 		}

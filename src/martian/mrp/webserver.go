@@ -40,7 +40,7 @@ type MetadataForm struct {
 	Name string
 }
 
-func getSerialization(rt *core.Runtime, pipestance *core.Pipestance, name string) interface{} {
+func getSerialization(rt *core.Runtime, pipestance *core.Pipestance, name core.MetadataFileName) interface{} {
 	if ser, ok := rt.GetSerialization(pipestance.GetPath(), name); ok {
 		return ser
 	}
@@ -93,7 +93,7 @@ func runWebServer(uiport string, rt *core.Runtime, pipestanceBox *pipestanceHold
 		pipestance := pipestanceBox.getPipestance()
 		st := pipestance.GetState()
 		infoLock.Lock()
-		info["state"] = st
+		info["state"] = string(st)
 		bytes, _ := json.Marshal(info)
 		infoLock.Unlock()
 		return string(bytes)
@@ -108,7 +108,7 @@ func runWebServer(uiport string, rt *core.Runtime, pipestanceBox *pipestanceHold
 			state["nodes"] = getSerialization(rt, pipestance, "finalstate")
 			state["info"] = info
 			infoLock.Lock()
-			info["state"] = st
+			info["state"] = string(st)
 			bytes, _ := json.Marshal(state)
 			infoLock.Unlock()
 			return string(bytes)

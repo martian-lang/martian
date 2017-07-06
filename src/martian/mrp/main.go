@@ -504,7 +504,7 @@ Options:
 		"version":    martianVersion,
 		"pname":      pipestance.GetPname(),
 		"psid":       psid,
-		"state":      pipestance.GetState(),
+		"state":      string(pipestance.GetState()),
 		"jobmode":    jobMode,
 		"maxcores":   strconv.Itoa(rt.JobManager.GetMaxCores()),
 		"maxmemgb":   strconv.Itoa(rt.JobManager.GetMaxMemGB()),
