@@ -9,21 +9,21 @@ import (
 )
 
 type JobInfo struct {
-	Name          string                 `json:"name"`
-	Pid           int                    `json:"pid,omitempty"`
-	Host          string                 `json:"host,omitempty"`
-	Type          string                 `json:"type,omitempty"`
-	Cwd           string                 `json:"cwd,omitempty"`
-	PythonInfo    *PythonInfo            `json:"python,omitempty"`
-	RusageInfo    *RusageInfo            `json:"rusage,omitempty"`
-	WallClockInfo *WallClockInfo         `json:"wallclock,omitempty"`
-	Threads       int                    `json:"threads,omitempty"`
-	MemGB         int                    `json:"memGB,omitempty"`
-	ProfileMode   string                 `json:"profile_mode,omitempty"`
-	Stackvars     string                 `json:"stackvars_flag,omitempty"`
-	Monitor       string                 `json:"monitor_flag,omitempty"`
-	Invocation    map[string]interface{} `json:"invocation,omitempty"`
-	Version       map[string]interface{} `json:"version,omitempty"`
+	Name          string          `json:"name"`
+	Pid           int             `json:"pid,omitempty"`
+	Host          string          `json:"host,omitempty"`
+	Type          string          `json:"type,omitempty"`
+	Cwd           string          `json:"cwd,omitempty"`
+	PythonInfo    *PythonInfo     `json:"python,omitempty"`
+	RusageInfo    *RusageInfo     `json:"rusage,omitempty"`
+	WallClockInfo *WallClockInfo  `json:"wallclock,omitempty"`
+	Threads       int             `json:"threads,omitempty"`
+	MemGB         int             `json:"memGB,omitempty"`
+	ProfileMode   string          `json:"profile_mode,omitempty"`
+	Stackvars     string          `json:"stackvars_flag,omitempty"`
+	Monitor       string          `json:"monitor_flag,omitempty"`
+	Invocation    *InvocationData `json:"invocation,omitempty"`
+	Version       *VersionInfo    `json:"version,omitempty"`
 }
 
 type PythonInfo struct {

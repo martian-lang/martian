@@ -29,6 +29,18 @@ const STAGE_TYPE_SPLIT = "split"
 const STAGE_TYPE_CHUNK = "chunk"
 const STAGE_TYPE_JOIN = "join"
 
+type InvocationData struct {
+	Call         string                 `json:"call"`
+	Args         map[string]interface{} `json:"args"`
+	SweepArgs    []string               `json:"sweepargs"`
+	IncludePaths []string               `json:"incpaths"`
+}
+
+type VersionInfo struct {
+	Martian   string `json:"martian"`
+	Pipelines string `json:"pipelines"`
+}
+
 //=============================================================================
 // Binding
 //=============================================================================
@@ -290,11 +302,11 @@ func ParseTimestamp(data string) string {
 }
 
 func ParseVersions(data string) (string, string, error) {
-	var versions map[string]string
+	var versions VersionInfo
 	if err := json.Unmarshal([]byte(data), &versions); err != nil {
 		return "", "", err
 	}
-	return versions["martian"], versions["pipelines"], nil
+	return versions.Martian, versions.Pipelines, nil
 }
 
 func ParseJobMode(data string) (string, string, string) {
@@ -698,7 +710,7 @@ func (self *Fork) writeInvocation() {
 	if !self.metadata.exists(InvocationFile) {
 		argBindings := resolveBindings(self.node.argbindings, self.argPermute)
 		sweepBindings := []string{}
-		incpaths := self.node.invocation["incpaths"].([]string)
+		incpaths := self.node.invocation.IncludePaths
 		invocation, _ := self.node.rt.BuildCallSource(incpaths, self.node.name, argBindings, sweepBindings, self.node.mroPaths)
 		self.metadata.writeRaw(InvocationFile, invocation)
 	}
@@ -1190,7 +1202,7 @@ type Node struct {
 	mroPaths           []string
 	mroVersion         string
 	envs               map[string]string
-	invocation         map[string]interface{}
+	invocation         *InvocationData
 	blacklistedFromMRT bool // Don't used cached data when MRT'ing
 }
 
@@ -2065,9 +2077,9 @@ func (self *Node) runJob(shellName string, fqname string, metadata *Metadata,
 	argv := []string{}
 	stagecodeParts := strings.Split(self.stagecodeCmd, " ")
 	runFile := path.Join(self.journalPath, fqname)
-	version := map[string]interface{}{
-		"martian":   self.rt.martianVersion,
-		"pipelines": self.mroVersion,
+	version := &VersionInfo{
+		Martian:   self.rt.martianVersion,
+		Pipelines: self.mroVersion,
 	}
 	envs := self.envs
 
@@ -2845,7 +2857,7 @@ type TopNode struct {
 func (self *TopNode) getNode() *Node { return self.node }
 
 func NewTopNode(rt *Runtime, psid string, p string, mroPaths []string, mroVersion string,
-	envs map[string]string, j map[string]interface{}) *TopNode {
+	envs map[string]string, j *InvocationData) *TopNode {
 	self := &TopNode{}
 	self.node = &Node{}
 	self.node.frontierNodes = map[string]Nodable{}
@@ -2976,10 +2988,10 @@ func (self *Runtime) instantiatePipeline(src string, srcPath string, psid string
 		return "", nil, &RuntimeError{fmt.Sprintf("'%s' is not a declared pipeline", ast.Call.Id)}
 	}
 
-	invocationJson, _ := self.BuildCallJSON(src, srcPath, mroPaths)
+	invocationData, _ := self.BuildCallData(src, srcPath, mroPaths)
 
 	// Instantiate the pipeline.
-	pipestance := NewPipestance(NewTopNode(self, psid, pipestancePath, mroPaths, mroVersion, envs, invocationJson),
+	pipestance := NewPipestance(NewTopNode(self, psid, pipestancePath, mroPaths, mroVersion, envs, invocationData),
 		ast.Call, ast.Callables)
 	if pipestance == nil {
 		return "", nil, &RuntimeError{fmt.Sprintf("'%s' is not a declared pipeline", ast.Call.Id)}
@@ -3027,9 +3039,9 @@ func (self *Runtime) InvokePipeline(src string, srcPath string, psid string,
 	metadata.writeRaw(InvocationFile, src)
 	metadata.writeRaw(JobModeFile, self.jobMode)
 	metadata.writeRaw(MroSourceFile, postsrc)
-	metadata.write(VersionsFile, map[string]string{
-		"martian":   self.martianVersion,
-		"pipelines": mroVersion,
+	metadata.write(VersionsFile, &VersionInfo{
+		Martian:   self.martianVersion,
+		Pipelines: mroVersion,
 	})
 	metadata.write(TagsFile, tags)
 	metadata.writeRaw(UuidFile, uuid.NewV4().String())
@@ -3134,10 +3146,10 @@ func (self *Runtime) InvokeStage(src string, srcPath string, ssid string,
 		return nil, &RuntimeError{fmt.Sprintf("'%s' is not a declared stage", ast.Call.Id)}
 	}
 
-	invocationJson, _ := self.BuildCallJSON(src, srcPath, mroPaths)
+	invocationData, _ := self.BuildCallData(src, srcPath, mroPaths)
 
 	// Instantiate stagestance.
-	stagestance := NewStagestance(NewTopNode(self, "", stagestancePath, mroPaths, mroVersion, envs, invocationJson),
+	stagestance := NewStagestance(NewTopNode(self, "", stagestancePath, mroPaths, mroVersion, envs, invocationData),
 		ast.Call, ast.Callables)
 	if stagestance == nil {
 		return nil, &RuntimeError{fmt.Sprintf("'%s' is not a declared stage", ast.Call.Id)}
@@ -3277,7 +3289,7 @@ func (self *Runtime) BuildCallSource(incpaths []string, name string, args map[st
 		name, strings.Join(lines, "\n")), nil
 }
 
-func (self *Runtime) BuildCallJSON(src string, srcPath string, mroPaths []string) (map[string]interface{}, error) {
+func (self *Runtime) BuildCallData(src string, srcPath string, mroPaths []string) (*InvocationData, error) {
 	_, incpaths, ast, err := parseSource(src, srcPath, mroPaths, false)
 	if err != nil {
 		return nil, err
@@ -3295,10 +3307,10 @@ func (self *Runtime) BuildCallJSON(src string, srcPath string, mroPaths []string
 			sweepargs = append(sweepargs, binding.Id)
 		}
 	}
-	return map[string]interface{}{
-		"call":      ast.Call.Id,
-		"args":      args,
-		"sweepargs": sweepargs,
-		"incpaths":  incpaths,
+	return &InvocationData{
+		Call:         ast.Call.Id,
+		Args:         args,
+		SweepArgs:    sweepargs,
+		IncludePaths: incpaths,
 	}, nil
 }
