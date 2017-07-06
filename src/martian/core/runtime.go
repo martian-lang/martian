@@ -2100,16 +2100,16 @@ func (self *Node) runJob(shellName string, fqname string, metadata *Metadata,
 
 	EnterCriticalSection()
 	metadata.writeTime(QueuedLocally)
-	metadata.write(JobInfoFile, map[string]interface{}{
-		"name":           fqname,
-		"type":           jobMode,
-		"threads":        threads,
-		"memGB":          memGB,
-		"profile_mode":   self.rt.profileMode,
-		"stackvars_flag": stackVars,
-		"monitor_flag":   monitor,
-		"invocation":     self.invocation,
-		"version":        version,
+	metadata.write(JobInfoFile, &JobInfo{
+		Name:        fqname,
+		Type:        jobMode,
+		Threads:     threads,
+		MemGB:       memGB,
+		ProfileMode: self.rt.profileMode,
+		Stackvars:   stackVars,
+		Monitor:     monitor,
+		Invocation:  self.invocation,
+		Version:     version,
 	})
 	jobManager.execJob(shellCmd, argv, envs, metadata, threads, memGB, special, fqname,
 		shellName, self.preflight && self.local)

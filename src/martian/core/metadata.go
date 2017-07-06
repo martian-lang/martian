@@ -490,10 +490,8 @@ func (self *Metadata) restartLocal() error {
 			return err
 		}
 	} else if state == Running {
-		data := self.readRaw(JobInfoFile)
-
 		var jobInfo *JobInfo
-		if err := json.Unmarshal([]byte(data), &jobInfo); err == nil &&
+		if err := self.readInto(JobInfoFile, jobInfo); err == nil &&
 			jobInfo.Pid != 0 {
 			if proc, err := os.FindProcess(jobInfo.Pid); err == nil && proc != nil {
 				// From man 2 kill: If sig is 0, then no signal is sent, but error
