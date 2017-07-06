@@ -343,14 +343,36 @@ func VerifyOnFinish(onfinish string) {
 	}
 }
 
-func VerifyProfileMode(profileMode string) {
-	validModes := []string{"cpu", "mem", "line", "disable", "pyflame"}
-	for _, validMode := range validModes {
+//=============================================================================
+// Profile mode
+//=============================================================================
+type ProfileMode string
+
+const (
+	DisableProfile ProfileMode = "disable"
+	CpuProfile     ProfileMode = "cpu"
+	MemProfile     ProfileMode = "mem"
+	LineProfile    ProfileMode = "line"
+	PyflameProfile ProfileMode = "pyflame"
+)
+
+var validProfileModes = []ProfileMode{
+	DisableProfile,
+	CpuProfile,
+	MemProfile,
+	LineProfile,
+	PyflameProfile,
+}
+
+func VerifyProfileMode(profileMode ProfileMode) {
+	profileModeStrings := make([]string, len(validProfileModes))
+	for i, validMode := range validProfileModes {
 		if validMode == profileMode {
 			return
 		}
+		profileModeStrings[i] = string(validMode)
 	}
-	PrintInfo("runtime", "Invalid profile mode: %s. Valid profile modes: %s", profileMode, strings.Join(validModes, ", "))
+	PrintInfo("runtime", "Invalid profile mode: %s. Valid profile modes: %s", profileMode, strings.Join(profileModeStrings, ", "))
 	os.Exit(1)
 }
 
@@ -2891,7 +2913,7 @@ type Runtime struct {
 	martianVersion  string
 	vdrMode         string
 	jobMode         string
-	profileMode     string
+	profileMode     ProfileMode
 	MroCache        *MroCache
 	JobManager      JobManager
 	LocalJobManager JobManager
@@ -2905,12 +2927,12 @@ type Runtime struct {
 	overrides       *PipestanceOverrides
 }
 
-func NewRuntime(jobMode string, vdrMode string, profileMode string, martianVersion string) *Runtime {
+func NewRuntime(jobMode string, vdrMode string, profileMode ProfileMode, martianVersion string) *Runtime {
 	return NewRuntimeWithCores(jobMode, vdrMode, profileMode, martianVersion,
 		-1, -1, -1, -1, -1, "", false, false, false, false, false, false, false, "", nil, false)
 }
 
-func NewRuntimeWithCores(jobMode string, vdrMode string, profileMode string, martianVersion string,
+func NewRuntimeWithCores(jobMode string, vdrMode string, profileMode ProfileMode, martianVersion string,
 	reqCores int, reqMem int, reqMemPerCore int, maxJobs int, jobFreqMillis int, jobQueues string,
 	fullStageReset bool, enableStackVars bool, enableZip bool, skipPreflight bool, enableMonitor bool,
 	debug bool, stest bool, onFinishExec string, overrides *PipestanceOverrides, limitLoadavg bool) *Runtime {

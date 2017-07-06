@@ -339,9 +339,9 @@ Options:
 	}
 
 	// Compute profiling mode.
-	profileMode := "disable"
+	profileMode := core.DisableProfile
 	if value := opts["--profile"]; value != nil {
-		profileMode = value.(string)
+		profileMode = value.(core.ProfileMode)
 	}
 	core.LogInfo("options", "--profile=%s", profileMode)
 	core.VerifyProfileMode(profileMode)
@@ -511,7 +511,7 @@ Options:
 		"invokepath": invocationPath,
 		"invokesrc":  invocationSrc,
 		"mropath":    core.FormatMroPath(mroPaths),
-		"mroprofile": profileMode,
+		"mroprofile": string(profileMode),
 		"mroport":    uiport,
 		"mroversion": mroVersion,
 	}

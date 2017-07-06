@@ -19,7 +19,7 @@ type JobInfo struct {
 	WallClockInfo *WallClockInfo  `json:"wallclock,omitempty"`
 	Threads       int             `json:"threads,omitempty"`
 	MemGB         int             `json:"memGB,omitempty"`
-	ProfileMode   string          `json:"profile_mode,omitempty"`
+	ProfileMode   ProfileMode     `json:"profile_mode,omitempty"`
 	Stackvars     string          `json:"stackvars_flag,omitempty"`
 	Monitor       string          `json:"monitor_flag,omitempty"`
 	Invocation    *InvocationData `json:"invocation,omitempty"`
