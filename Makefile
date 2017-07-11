@@ -19,8 +19,8 @@ export GOPATH=$(shell pwd)
 #
 all: grammar $(GOBINS) web test
 
-bin/goyacc: src/github.com/golang/tools/cmd/goyacc/yacc.go
-	go install github.com/golang/tools/cmd/goyacc
+bin/goyacc: src/golang.org/x/tools/cmd/goyacc/yacc.go
+	go install golang.org/x/tools/cmd/goyacc
 
 src/martian/core/grammar.go: bin/goyacc src/martian/core/grammar.y
 	bin/goyacc -p "mm" -o src/martian/core/grammar.go src/martian/core/grammar.y && rm y.output
