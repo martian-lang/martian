@@ -20,468 +20,25 @@ import (
 	"strconv"
 	"strings"
 	"sync"
-	"syscall"
 	"time"
 
 	"github.com/satori/go.uuid"
 )
 
-const heartbeatTimeout = 60 // 60 minutes
-
 const STAGE_TYPE_SPLIT = "split"
 const STAGE_TYPE_CHUNK = "chunk"
 const STAGE_TYPE_JOIN = "join"
 
-//=============================================================================
-// Metadata
-//=============================================================================
-type Metadata struct {
-	fqname        string
-	path          string
-	contents      map[string]bool
-	readCache     map[string]interface{}
-	filesPath     string
-	journalPath   string
-	lastRefresh   time.Time
-	lastHeartbeat time.Time
-	mutex         *sync.Mutex
-
-	// If non-zero the job was not found last time the job manager was queried,
-	// the chunk will be failed out if the state seems like it's still running
-	// after the job manager's grace period has elapsed.
-	notRunningSince time.Time
+type InvocationData struct {
+	Call         string                 `json:"call"`
+	Args         map[string]interface{} `json:"args"`
+	SweepArgs    []string               `json:"sweepargs"`
+	IncludePaths []string               `json:"incpaths"`
 }
 
-type MetadataInfo struct {
-	Path  string   `json:"path"`
-	Names []string `json:"names"`
-}
-
-func NewMetadata(fqname string, p string) *Metadata {
-	self := &Metadata{}
-	self.fqname = fqname
-	self.path = p
-	self.contents = map[string]bool{}
-	self.readCache = make(map[string]interface{})
-	self.filesPath = path.Join(p, "files")
-	self.journalPath = ""
-	self.mutex = &sync.Mutex{}
-	return self
-}
-
-func NewMetadataWithJournalPath(fqname string, p string, journalPath string) *Metadata {
-	self := NewMetadata(fqname, p)
-	self.journalPath = journalPath
-	return self
-}
-
-func (self *Metadata) glob() []string {
-	paths, _ := filepath.Glob(path.Join(self.path, "_*"))
-	return paths
-}
-
-func (self *Metadata) enumerateFiles() ([]string, error) {
-	return filepath.Glob(path.Join(self.filesPath, "*"))
-}
-
-func (self *Metadata) mkdirs() error {
-	if err := mkdir(self.path); err != nil {
-		msg := fmt.Sprintf("Could not create directories for %s: %s", self.fqname, err.Error())
-		LogError(err, "runtime", msg)
-		self.writeRaw("errors", msg)
-		return err
-	}
-	if err := mkdir(self.filesPath); err != nil {
-		msg := fmt.Sprintf("Could not create directories for %s: %s", self.fqname, err.Error())
-		LogError(err, "runtime", msg)
-		self.writeRaw("errors", msg)
-		return err
-	}
-	return nil
-}
-
-func (self *Metadata) removeAll() error {
-	self.mutex.Lock()
-	if len(self.contents) > 0 {
-		self.contents = map[string]bool{}
-	}
-	if len(self.readCache) > 0 {
-		self.readCache = make(map[string]interface{})
-	}
-	self.notRunningSince = time.Time{}
-	self.lastRefresh = time.Time{}
-	self.mutex.Unlock()
-	if err := os.RemoveAll(self.path); err != nil {
-		return err
-	}
-	return os.RemoveAll(self.filesPath)
-}
-
-// Must be called within a lock.
-func (self *Metadata) _getStateNoLock(name string) (string, bool) {
-	if self._existsNoLock("errors") {
-		return "failed", true
-	}
-	if self._existsNoLock("assert") {
-		return "failed", true
-	}
-	if self._existsNoLock("complete") {
-		if self._existsNoLock("jobid") {
-			self._removeNoLock("jobid")
-		}
-		return name + "complete", true
-	}
-	if self._existsNoLock("log") {
-		return name + "running", true
-	}
-	if self._existsNoLock("jobinfo") {
-		return name + "queued", true
-	}
-	return "", false
-}
-
-func (self *Metadata) getState(name string) (string, bool) {
-	self.mutex.Lock()
-	state, ok := self._getStateNoLock(name)
-	self.mutex.Unlock()
-	return state, ok
-}
-
-func (self *Metadata) _cacheNoLock(name string) {
-	self.contents[name] = true
-	// cache is usually called on write or update
-	delete(self.readCache, name)
-}
-
-func (self *Metadata) cache(name string) {
-	self.mutex.Lock()
-	self._cacheNoLock(name)
-	self.mutex.Unlock()
-}
-
-func (self *Metadata) _uncacheNoLock(name string) {
-	delete(self.contents, name)
-	delete(self.readCache, name)
-}
-
-func (self *Metadata) uncache(name string) {
-	self.mutex.Lock()
-	self._uncacheNoLock(name)
-	self.mutex.Unlock()
-}
-
-func (self *Metadata) loadCache() {
-	paths := self.glob()
-	self.mutex.Lock()
-	if len(self.contents) > 0 {
-		self.contents = map[string]bool{}
-	}
-	if len(self.readCache) > 0 {
-		self.readCache = make(map[string]interface{})
-	}
-	for _, p := range paths {
-		self.contents[path.Base(p)[1:]] = true
-	}
-	self.notRunningSince = time.Time{}
-	self.lastRefresh = time.Time{}
-	self.mutex.Unlock()
-}
-
-func (self *Metadata) makePath(name string) string {
-	return path.Join(self.path, "_"+name)
-}
-
-func (self *Metadata) _existsNoLock(name string) bool {
-	_, ok := self.contents[name]
-	return ok
-}
-
-func (self *Metadata) exists(name string) bool {
-	self.mutex.Lock()
-	ok := self._existsNoLock(name)
-	self.mutex.Unlock()
-	return ok
-}
-
-func (self *Metadata) readRawSafe(name string) (string, error) {
-	bytes, err := ioutil.ReadFile(self.makePath(name))
-	return string(bytes), err
-}
-
-func (self *Metadata) readRaw(name string) string {
-	s, _ := self.readRawSafe(name)
-	return s
-}
-
-func (self *Metadata) readFromCache(name string) (interface{}, bool) {
-	self.mutex.Lock()
-	i, ok := self.readCache[name]
-	self.mutex.Unlock()
-	return i, ok
-}
-
-func (self *Metadata) saveToCache(name string, value interface{}) {
-	self.mutex.Lock()
-	self.readCache[name] = value
-	self.mutex.Unlock()
-}
-
-func (self *Metadata) read(name string) interface{} {
-	v, ok := self.readFromCache(name)
-	if ok {
-		return v
-	}
-	str, err := self.readRawSafe(name)
-	json.Unmarshal([]byte(str), &v)
-	if err != nil {
-		self.saveToCache(name, v)
-	}
-	return v
-}
-func (self *Metadata) _writeRawNoLock(name string, text string) error {
-	err := ioutil.WriteFile(self.makePath(name), []byte(text), 0644)
-	self._cacheNoLock(name)
-	if err != nil {
-		msg := fmt.Sprintf("Could not write %s for %s: %s", name, self.fqname, err.Error())
-		LogError(err, "runtime", msg)
-		if name != "errors" {
-			self._writeRawNoLock("errors", msg)
-		}
-	}
-	return err
-}
-func (self *Metadata) writeRaw(name string, text string) error {
-	err := ioutil.WriteFile(self.makePath(name), []byte(text), 0644)
-	self.cache(name)
-	if err != nil {
-		msg := fmt.Sprintf("Could not write %s for %s: %s", name, self.fqname, err.Error())
-		LogError(err, "runtime", msg)
-		if name != "errors" {
-			self.writeRaw("errors", msg)
-		}
-	}
-	return err
-}
-func (self *Metadata) write(name string, object interface{}) error {
-	bytes, _ := json.MarshalIndent(object, "", "    ")
-	return self.writeRaw(name, string(bytes))
-}
-func (self *Metadata) writeTime(name string) error {
-	return self.writeRaw(name, Timestamp())
-}
-func (self *Metadata) remove(name string) {
-	self.uncache(name)
-	os.Remove(self.makePath(name))
-}
-func (self *Metadata) _removeNoLock(name string) {
-	self._uncacheNoLock(name)
-	os.Remove(self.makePath(name))
-}
-
-func (self *Metadata) clearReadCache() {
-	self.mutex.Lock()
-	if len(self.readCache) > 0 {
-		self.readCache = make(map[string]interface{})
-	}
-	self.mutex.Unlock()
-}
-
-func (self *Metadata) resetHeartbeat() {
-	self.lastHeartbeat = time.Time{}
-}
-
-// After a metadata refresh scan has completed, this is called.  If
-// notRuningSince was before the given time, which should be the start of the
-// refresh cycle minus the configured queue query grace period, then the
-// pipestance should be marked failed.
-func (self *Metadata) endRefresh(lastRefresh time.Time) {
-	self.mutex.Lock()
-	self.lastRefresh = lastRefresh
-	if !self.notRunningSince.IsZero() && self.notRunningSince.Before(lastRefresh) {
-		notRunningSince := self.notRunningSince
-		self.notRunningSince = time.Time{}
-		if state, _ := self._getStateNoLock(""); state == "running" || state == "queued" {
-			// The job is not running but the metadata thinks it still is.
-			// The check for metadata updates was completed since the time that
-			// the queue query completed.  This job has failed.  Write an error.
-			self._writeRawNoLock("errors", fmt.Sprintf(
-				"According to the job manager, the job for %s was not queued "+
-					"or running, since at least %s.",
-				self.fqname, notRunningSince.Format(TIMEFMT)))
-		}
-	}
-	self.mutex.Unlock()
-}
-
-// Mark a job as possibly failed if it is not running.
-//
-// In case the metadata was reset between when the query began and when it
-// ended, the job is marked as failed only if the jobid matches what was
-// queried and the job has not already completed.  The actual error is not
-// written until the next time the pipestance run loop has a chance to refresh
-// the metadata, as it's possible the job completed between the last check for
-// metadata updates and when the query completed.
-func (self *Metadata) failNotRunning(jobid string) {
-	if !self.exists("jobid") {
-		return
-	}
-	if st, _ := self.getState(""); st != "running" && st != "queued" {
-		return
-	}
-	self.mutex.Lock()
-	if !self.notRunningSince.IsZero() {
-		self.mutex.Unlock()
-		return
-	}
-	if self.readRaw("jobid") != jobid {
-		self.mutex.Unlock()
-		return
-	}
-	// Double-check that the job wasn't reset while jobid was being read.
-	if !self._existsNoLock("jobid") {
-		self.mutex.Unlock()
-		return
-	}
-	self.notRunningSince = time.Now()
-	self.mutex.Unlock()
-}
-
-func (self *Metadata) checkedReset() error {
-	self.mutex.Lock()
-	if state, _ := self._getStateNoLock(""); state == "failed" {
-		if len(self.contents) > 0 {
-			self.contents = make(map[string]bool)
-		}
-		self.mutex.Unlock()
-		if err := self.uncheckedReset(); err == nil {
-			PrintInfo("runtime", "(reset-partial)   %s", self.fqname)
-		} else {
-			return err
-		}
-	} else {
-		self.mutex.Unlock()
-	}
-	return nil
-}
-
-func (self *Metadata) uncheckedReset() error {
-	// Remove all related files from journal directory.
-	if len(self.journalPath) > 0 {
-		if files, err := filepath.Glob(path.Join(self.journalPath, self.fqname+"*")); err == nil {
-			for _, file := range files {
-				os.Remove(file)
-			}
-		}
-	}
-	if err := self.removeAll(); err != nil {
-		PrintInfo("runtime", "Cannot reset the stage because some folder contents could not be deleted.\n\nPlease resolve this error in order to continue running the pipeline: %v", err)
-		return err
-	}
-	return self.mkdirs()
-}
-
-// Resets the metadata if the state was queued, but the job manager had not yet
-// started the job locally or queued it remotely.
-func (self *Metadata) restartQueuedLocal() error {
-	if self.exists("queued_locally") {
-		if err := self.uncheckedReset(); err == nil {
-			PrintInfo("runtime", "(reset-running)   %s", self.fqname)
-			return nil
-		} else {
-			return err
-		}
-	}
-	return nil
-}
-
-// Resets the metadata if the state was queued, or if the state was running and
-// the pid is not a process that is still running.  This is to handle cases of
-// pipelines running in local mode when MRP is killed and restarted, so all
-// queued jobs are no longer actually queued, and running jobs MAY have been
-// killed as well (if mrp was killed by ctrl-C or by a job manager that killed
-// the entire process group).  It may miss cases where a PID was reused, but
-// the heartbeat will catch those cases eventually and in the ideal case the
-// adaptor should have written an error anyway unless it was a SIGKILL.
-func (self *Metadata) restartLocal() error {
-	state, ok := self.getState("")
-	if !ok {
-		return nil
-	}
-	if state == "queued" {
-		if err := self.uncheckedReset(); err == nil {
-			PrintInfo("runtime", "(reset-queued)    %s", self.fqname)
-		} else {
-			return err
-		}
-	} else if state == "running" {
-		data := self.readRaw("jobinfo")
-
-		var jobInfo *JobInfo
-		if err := json.Unmarshal([]byte(data), &jobInfo); err == nil &&
-			jobInfo.Pid != 0 {
-			if proc, err := os.FindProcess(jobInfo.Pid); err == nil && proc != nil {
-				// From man 2 kill: If sig is 0, then no signal is sent, but error
-				// checking is still performed; this can be used to check for the
-				// existence of a process ID or process group ID.
-				// If sending signal 0 to the process returns an error, either the
-				// process is not running or it is owned by another user, which we
-				// can assume means the PID was reused.
-				if err := proc.Signal(syscall.Signal(0)); err != nil {
-					if err := self.uncheckedReset(); err == nil {
-						PrintInfo("runtime", "(reset-running)   %s", self.fqname)
-					} else {
-						return err
-					}
-				} else {
-					PrintInfo("runtime", "Possibly running  %s", self.fqname)
-				}
-			}
-		}
-	}
-	return nil
-}
-
-func (self *Metadata) checkHeartbeat() {
-	if state, _ := self.getState(""); state == "running" {
-		if self.lastHeartbeat.IsZero() || self.exists("heartbeat") {
-			self.uncache("heartbeat")
-			self.lastHeartbeat = time.Now()
-		}
-		if self.lastRefresh.Sub(self.lastHeartbeat) > time.Minute*heartbeatTimeout {
-			self.writeRaw("errors", fmt.Sprintf(
-				"%s: No heartbeat detected for %d minutes. Assuming job has failed. This may be "+
-					"due to a user manually terminating the job, or the operating system or cluster "+
-					"terminating it due to resource or time limits.",
-				Timestamp(), heartbeatTimeout))
-		}
-	}
-}
-
-func (self *Metadata) serializeState() *MetadataInfo {
-	names := []string{}
-	self.mutex.Lock()
-	for content := range self.contents {
-		names = append(names, content)
-	}
-	self.mutex.Unlock()
-	sort.Strings(names)
-	return &MetadataInfo{
-		Path:  self.path,
-		Names: names,
-	}
-}
-
-func (self *Metadata) serializePerf(numThreads int) *PerfInfo {
-	if self.exists("complete") && self.exists("jobinfo") {
-		data := self.readRaw("jobinfo")
-
-		var jobInfo *JobInfo
-		if err := json.Unmarshal([]byte(data), &jobInfo); err == nil {
-			fpaths, _ := self.enumerateFiles()
-			return reduceJobInfo(jobInfo, fpaths, numThreads)
-		}
-	}
-	return nil
+type VersionInfo struct {
+	Martian   string `json:"martian"`
+	Pipelines string `json:"pipelines"`
 }
 
 //=============================================================================
@@ -629,7 +186,7 @@ func (self *Binding) resolve(argPermute map[string]interface{}) interface{} {
 	}
 	if self.boundNode != nil {
 		matchedFork := self.boundNode.getNode().matchFork(argPermute)
-		outputs, ok := matchedFork.metadata.read("outs").(map[string]interface{})
+		outputs, ok := matchedFork.metadata.read(OutsFile).(map[string]interface{})
 		if ok {
 			output, ok := outputs[self.output]
 			if ok {
@@ -745,11 +302,11 @@ func ParseTimestamp(data string) string {
 }
 
 func ParseVersions(data string) (string, string, error) {
-	var versions map[string]string
+	var versions VersionInfo
 	if err := json.Unmarshal([]byte(data), &versions); err != nil {
 		return "", "", err
 	}
-	return versions["martian"], versions["pipelines"], nil
+	return versions.Martian, versions.Pipelines, nil
 }
 
 func ParseJobMode(data string) (string, string, string) {
@@ -786,14 +343,36 @@ func VerifyOnFinish(onfinish string) {
 	}
 }
 
-func VerifyProfileMode(profileMode string) {
-	validModes := []string{"cpu", "mem", "line", "disable", "pyflame"}
-	for _, validMode := range validModes {
+//=============================================================================
+// Profile mode
+//=============================================================================
+type ProfileMode string
+
+const (
+	DisableProfile ProfileMode = "disable"
+	CpuProfile     ProfileMode = "cpu"
+	MemProfile     ProfileMode = "mem"
+	LineProfile    ProfileMode = "line"
+	PyflameProfile ProfileMode = "pyflame"
+)
+
+var validProfileModes = []ProfileMode{
+	DisableProfile,
+	CpuProfile,
+	MemProfile,
+	LineProfile,
+	PyflameProfile,
+}
+
+func VerifyProfileMode(profileMode ProfileMode) {
+	profileModeStrings := make([]string, len(validProfileModes))
+	for i, validMode := range validProfileModes {
 		if validMode == profileMode {
 			return
 		}
+		profileModeStrings[i] = string(validMode)
 	}
-	PrintInfo("runtime", "Invalid profile mode: %s. Valid profile modes: %s", profileMode, strings.Join(validModes, ", "))
+	PrintInfo("runtime", "Invalid profile mode: %s. Valid profile modes: %s", profileMode, strings.Join(profileModeStrings, ", "))
 	os.Exit(1)
 }
 
@@ -814,7 +393,7 @@ type Chunk struct {
 type ChunkInfo struct {
 	Index    int                    `json:"index"`
 	ChunkDef map[string]interface{} `json:"chunkDef"`
-	State    string                 `json:"state"`
+	State    MetadataState          `json:"state"`
 	Metadata *MetadataInfo          `json:"metadata"`
 }
 
@@ -840,20 +419,20 @@ func (self *Chunk) mkdirs() error {
 	return self.metadata.mkdirs()
 }
 
-func (self *Chunk) getState() string {
-	if state, ok := self.metadata.getState(""); ok {
+func (self *Chunk) getState() MetadataState {
+	if state, ok := self.metadata.getState(); ok {
 		return state
 	} else {
-		return "ready"
+		return Ready
 	}
 }
 
-func (self *Chunk) updateState(state string) {
+func (self *Chunk) updateState(state MetadataFileName) {
 	self.metadata.cache(state)
 }
 
 func (self *Chunk) step() {
-	if self.getState() != "ready" {
+	if self.getState() != Ready {
 		return
 	}
 
@@ -873,8 +452,8 @@ func (self *Chunk) step() {
 	}
 
 	// Write out input and ouput args for the chunk.
-	self.metadata.write("args", resolvedBindings)
-	self.metadata.write("outs", makeOutArgs(self.node.outparams, self.metadata.filesPath))
+	self.metadata.write(ArgsFile, resolvedBindings)
+	self.metadata.write(OutsFile, makeOutArgs(self.node.outparams, self.metadata.filesPath))
 
 	// Run the chunk.
 	self.node.runChunk(self.fqname, self.metadata, threads, memGB, special)
@@ -923,7 +502,7 @@ type ForkInfo struct {
 	Index         int                    `json:"index"`
 	ArgPermute    map[string]interface{} `json:"argPermute"`
 	JoinDef       map[string]interface{} `json:"joinDef"`
-	State         string                 `json:"state"`
+	State         MetadataState          `json:"state"`
 	Metadata      *MetadataInfo          `json:"metadata"`
 	SplitMetadata *MetadataInfo          `json:"split_metadata"`
 	JoinMetadata  *MetadataInfo          `json:"join_metadata"`
@@ -960,7 +539,7 @@ func NewFork(nodable Nodable, index int, argPermute map[string]interface{}) *For
 	self.stageDefs = &StageDefs{ChunkDefs: []map[string]interface{}{}, JoinDef: map[string]interface{}{}}
 	self.stageDefs.ChunkDefs = append(self.stageDefs.ChunkDefs, map[string]interface{}{})
 
-	if err := json.Unmarshal([]byte(self.split_metadata.readRaw("stage_defs")), &self.stageDefs); err == nil {
+	if err := json.Unmarshal([]byte(self.split_metadata.readRaw(StageDefsFile)), &self.stageDefs); err == nil {
 		for i, chunkDef := range self.stageDefs.ChunkDefs {
 			chunk := NewChunk(self.node, self, i, chunkDef)
 			self.chunks = append(self.chunks, chunk)
@@ -1060,7 +639,7 @@ func (self *Fork) verifyOutput() (bool, string) {
 	msg := ""
 	ret := true
 	if len(outparams.List) > 0 {
-		outputs, ok := self.metadata.read("outs").(map[string]interface{})
+		outputs, ok := self.metadata.read(OutsFile).(map[string]interface{})
 		if !ok {
 			msg += fmt.Sprintf("Fork outs were not a map\n")
 		}
@@ -1084,37 +663,34 @@ func (self *Fork) verifyOutput() (bool, string) {
 	return ret, msg
 }
 
-func (self *Fork) getState() string {
-	if state, _ := self.metadata.getState(""); state == "failed" {
-		return "failed"
-	}
-	if state, _ := self.metadata.getState(""); state == "complete" {
-		return "complete"
-	}
-	if state, ok := self.join_metadata.getState("join_"); ok {
+func (self *Fork) getState() MetadataState {
+	if state, _ := self.metadata.getState(); state == Failed || state == Complete {
 		return state
+	}
+	if state, ok := self.join_metadata.getState(); ok {
+		return state.Prefixed(JoinPrefix)
 	}
 	if len(self.chunks) > 0 {
 		// If any chunks have failed, we're failed.
 		for _, chunk := range self.chunks {
-			if chunk.getState() == "failed" {
-				return "failed"
+			if chunk.getState() == Failed {
+				return Failed
 			}
 		}
 		// If every chunk is complete, we're complete.
 		every := true
 		for _, chunk := range self.chunks {
-			if chunk.getState() != "complete" {
+			if chunk.getState() != Complete {
 				every = false
 				break
 			}
 		}
 		if every {
-			return "chunks_complete"
+			return Complete.Prefixed(ChunksPrefix)
 		}
 		// If every chunk is queued, running, or complete, we're complete.
 		every = true
-		runningStates := map[string]bool{"queued": true, "running": true, "complete": true}
+		runningStates := map[MetadataState]bool{Queued: true, Running: true, Complete: true}
 		for _, chunk := range self.chunks {
 			if _, ok := runningStates[chunk.getState()]; !ok {
 				every = false
@@ -1122,22 +698,22 @@ func (self *Fork) getState() string {
 			}
 		}
 		if every {
-			return "chunks_running"
+			return Running.Prefixed(ChunksPrefix)
 		}
 	}
-	if state, ok := self.split_metadata.getState("split_"); ok {
-		return state
+	if state, ok := self.split_metadata.getState(); ok {
+		return state.Prefixed(SplitPrefix)
 	}
-	return "ready"
+	return Ready
 }
 
 func (self *Fork) updateState(state string) {
-	if strings.HasPrefix(state, "split_") {
-		self.split_metadata.cache(strings.TrimPrefix(state, "split_"))
-	} else if strings.HasPrefix(state, "join_") {
-		self.join_metadata.cache(strings.TrimPrefix(state, "join_"))
+	if strings.HasPrefix(state, SplitPrefix) {
+		self.split_metadata.cache(MetadataFileName(strings.TrimPrefix(state, SplitPrefix)))
+	} else if strings.HasPrefix(state, JoinPrefix) {
+		self.join_metadata.cache(MetadataFileName(strings.TrimPrefix(state, JoinPrefix)))
 	} else {
-		self.metadata.cache(state)
+		self.metadata.cache(MetadataFileName(state))
 	}
 }
 
@@ -1149,16 +725,16 @@ func (self *Fork) getChunk(index int) *Chunk {
 }
 
 func (self *Fork) skip() {
-	self.metadata.writeTime("complete")
+	self.metadata.writeTime(CompleteFile)
 }
 
 func (self *Fork) writeInvocation() {
-	if !self.metadata.exists("invocation") {
+	if !self.metadata.exists(InvocationFile) {
 		argBindings := resolveBindings(self.node.argbindings, self.argPermute)
 		sweepBindings := []string{}
-		incpaths := self.node.invocation["incpaths"].([]string)
+		incpaths := self.node.invocation.IncludePaths
 		invocation, _ := self.node.rt.BuildCallSource(incpaths, self.node.name, argBindings, sweepBindings, self.node.mroPaths)
-		self.metadata.writeRaw("invocation", invocation)
+		self.metadata.writeRaw(InvocationFile, invocation)
 	}
 }
 
@@ -1170,7 +746,7 @@ type StageDefs struct {
 func (self *Fork) step() {
 	if self.node.kind == "stage" {
 		state := self.getState()
-		if !strings.HasSuffix(state, "_running") && !strings.HasSuffix(state, "_queued") {
+		if !state.IsRunning() && !state.IsQueued() {
 			statePad := strings.Repeat(" ", int(math.Max(0, float64(15-len(state)))))
 			// Only log fork num if we've got more than one fork
 			fqname := self.node.fqname
@@ -1185,9 +761,9 @@ func (self *Fork) step() {
 			}
 		}
 
-		if state == "ready" {
+		if state == Ready {
 			self.writeInvocation()
-			self.split_metadata.write("args", resolveBindings(self.node.argbindings, self.argPermute))
+			self.split_metadata.write(ArgsFile, resolveBindings(self.node.argbindings, self.argPermute))
 			threads, memGB, special := self.node.setSplitJobReqs()
 			if self.node.split {
 				if !self.split_has_run {
@@ -1195,21 +771,21 @@ func (self *Fork) step() {
 					self.node.runSplit(self.fqname, self.split_metadata, threads, memGB, special)
 				}
 			} else {
-				self.split_metadata.write("stage_defs", self.stageDefs)
-				self.split_metadata.writeTime("complete")
+				self.split_metadata.write(StageDefsFile, self.stageDefs)
+				self.split_metadata.writeTime(CompleteFile)
 			}
-		} else if state == "split_complete" {
+		} else if state == Complete.Prefixed(SplitPrefix) {
 			// MARTIAN-395 We have observed a possible race condition where
 			// split_complete could be detected but _stage_defs is not
 			// written yet or is corrupted. Check that stage_defs exists
 			// before attempting to read and unmarshal it.
-			if self.split_metadata.exists("stage_defs") {
-				if err := json.Unmarshal([]byte(self.split_metadata.readRaw("stage_defs")), &self.stageDefs); err != nil || len(self.stageDefs.ChunkDefs) == 0 {
+			if self.split_metadata.exists(StageDefsFile) {
+				if err := json.Unmarshal([]byte(self.split_metadata.readRaw(StageDefsFile)), &self.stageDefs); err != nil || len(self.stageDefs.ChunkDefs) == 0 {
 					errstring := "none"
 					if err != nil {
 						errstring = err.Error()
 					}
-					self.split_metadata.writeRaw("errors",
+					self.split_metadata.writeRaw(Errors,
 						fmt.Sprintf("The split method did not return a dictionary {'chunks': [{}], 'join': {}}.\nError: %s\nChunk count: %d", errstring, len(self.stageDefs.ChunkDefs)))
 				} else {
 					if len(self.chunks) == 0 {
@@ -1224,46 +800,46 @@ func (self *Fork) step() {
 					}
 				}
 			}
-		} else if state == "chunks_complete" {
+		} else if state == Complete.Prefixed(ChunksPrefix) {
 			threads, memGB, special := self.node.setJoinJobReqs(self.stageDefs.JoinDef)
 			resolvedBindings := resolveBindings(self.node.argbindings, self.argPermute)
 			for id, value := range self.stageDefs.JoinDef {
 				resolvedBindings[id] = value
 			}
-			self.join_metadata.write("args", resolvedBindings)
-			self.join_metadata.write("chunk_defs", self.stageDefs.ChunkDefs)
+			self.join_metadata.write(ArgsFile, resolvedBindings)
+			self.join_metadata.write(ChunkDefsFile, self.stageDefs.ChunkDefs)
 			if self.node.split {
 				chunkOuts := []interface{}{}
 				for _, chunk := range self.chunks {
-					outs := chunk.metadata.read("outs")
+					outs := chunk.metadata.read(OutsFile)
 					chunkOuts = append(chunkOuts, outs)
 				}
-				self.join_metadata.write("chunk_outs", chunkOuts)
-				self.join_metadata.write("outs", makeOutArgs(self.node.outparams, self.metadata.filesPath))
+				self.join_metadata.write(ChunkOutsFile, chunkOuts)
+				self.join_metadata.write(OutsFile, makeOutArgs(self.node.outparams, self.metadata.filesPath))
 				if !self.join_has_run {
 					self.join_has_run = true
 					self.node.runJoin(self.fqname, self.join_metadata, threads, memGB, special)
 				}
 			} else {
-				self.join_metadata.write("outs", self.chunks[0].metadata.read("outs"))
-				self.join_metadata.writeTime("complete")
+				self.join_metadata.write(OutsFile, self.chunks[0].metadata.read(OutsFile))
+				self.join_metadata.writeTime(CompleteFile)
 			}
-		} else if state == "join_complete" {
-			self.metadata.write("outs", self.join_metadata.read("outs"))
+		} else if state == Complete.Prefixed(JoinPrefix) {
+			self.metadata.write(OutsFile, self.join_metadata.read(OutsFile))
 			if ok, msg := self.verifyOutput(); ok {
-				self.metadata.writeTime("complete")
+				self.metadata.writeTime(CompleteFile)
 			} else {
-				self.metadata.writeRaw("errors", msg)
+				self.metadata.writeRaw(Errors, msg)
 			}
 		}
 
 	} else if self.node.kind == "pipeline" {
 		self.writeInvocation()
-		self.metadata.write("outs", resolveBindings(self.node.retbindings, self.argPermute))
+		self.metadata.write(OutsFile, resolveBindings(self.node.retbindings, self.argPermute))
 		if ok, msg := self.verifyOutput(); ok {
-			self.metadata.writeTime("complete")
+			self.metadata.writeTime(CompleteFile)
 		} else {
-			self.metadata.writeRaw("errors", msg)
+			self.metadata.writeRaw(Errors, msg)
 		}
 	}
 }
@@ -1276,8 +852,8 @@ func (self *Fork) cachePerf() {
 func (self *Fork) getVdrKillReport() (*VDRKillReport, bool) {
 	killReport := &VDRKillReport{}
 	ok := false
-	if self.metadata.exists("vdrkill") {
-		data := self.metadata.readRaw("vdrkill")
+	if self.metadata.exists(VdrKill) {
+		data := self.metadata.readRaw(VdrKill)
 		if err := json.Unmarshal([]byte(data), &killReport); err == nil {
 			ok = true
 		}
@@ -1334,7 +910,7 @@ func (self *Fork) vdrKill() *VDRKillReport {
 	}
 	// update timestamp to mark actual kill time
 	killReport.Timestamp = Timestamp()
-	self.metadata.write("vdrkill", killReport)
+	self.metadata.write(VdrKill, killReport)
 	return killReport
 }
 
@@ -1356,7 +932,7 @@ func (self *Fork) postProcess() {
 
 	// Get fork's output parameter values
 	outs := map[string]interface{}{}
-	if data := self.metadata.read("outs"); data != nil {
+	if data := self.metadata.read(OutsFile); data != nil {
 		if v, ok := data.(map[string]interface{}); ok {
 			outs = v
 		}
@@ -1495,10 +1071,10 @@ func (self *Fork) postProcess() {
 func (self *Fork) getAlarms() string {
 	alarms := ""
 	for _, metadata := range self.collectMetadatas() {
-		if !metadata.exists("alarm") {
+		if !metadata.exists(AlarmFile) {
 			continue
 		}
-		alarms += metadata.readRaw("alarm")
+		alarms += metadata.readRaw(AlarmFile)
 	}
 	for _, subfork := range self.subforks {
 		alarms += subfork.getAlarms()
@@ -1637,7 +1213,7 @@ type Node struct {
 	frontierNodes      map[string]Nodable
 	forks              []*Fork
 	split              bool
-	state              string
+	state              MetadataState
 	volatile           bool
 	local              bool
 	preflight          bool
@@ -1648,7 +1224,7 @@ type Node struct {
 	mroPaths           []string
 	mroVersion         string
 	envs               map[string]string
-	invocation         map[string]interface{}
+	invocation         *InvocationData
 	blacklistedFromMRT bool // Don't used cached data when MRT'ing
 }
 
@@ -1657,7 +1233,7 @@ type NodeInfo struct {
 	Fqname        string         `json:"fqname"`
 	Type          string         `json:"type"`
 	Path          string         `json:"path"`
-	State         string         `json:"state"`
+	State         MetadataState  `json:"state"`
 	Metadata      *MetadataInfo  `json:"metadata"`
 	SweepBindings []*BindingInfo `json:"sweepbindings"`
 	Forks         []*ForkInfo    `json:"forks"`
@@ -1726,19 +1302,19 @@ func (self *Node) mkdirs() error {
 	if err := mkdirAll(self.path); err != nil {
 		msg := fmt.Sprintf("Could not create root directory for %s: %s", self.fqname, err.Error())
 		LogError(err, "runtime", msg)
-		self.metadata.writeRaw("errors", msg)
+		self.metadata.writeRaw(Errors, msg)
 		return err
 	}
 	if err := mkdir(self.journalPath); err != nil {
 		msg := fmt.Sprintf("Could not create directories for %s: %s", self.fqname, err.Error())
 		LogError(err, "runtime", msg)
-		self.metadata.writeRaw("errors", msg)
+		self.metadata.writeRaw(Errors, msg)
 		return err
 	}
 	if err := mkdir(self.tmpPath); err != nil {
 		msg := fmt.Sprintf("Could not create directories for %s: %s", self.fqname, err.Error())
 		LogError(err, "runtime", msg)
-		self.metadata.writeRaw("errors", msg)
+		self.metadata.writeRaw(Errors, msg)
 		return err
 	}
 
@@ -1955,32 +1531,32 @@ func (self *Node) getFork(index int) *Fork {
 	return nil
 }
 
-func (self *Node) getState() string {
+func (self *Node) getState() MetadataState {
 	// If every fork is complete, we're complete.
 	complete := true
 	for _, fork := range self.forks {
-		if fork.getState() != "complete" {
+		if fork.getState() != Complete {
 			complete = false
 			break
 		}
 	}
 	if complete {
-		return "complete"
+		return Complete
 	}
 	// If any fork is failed, we're failed.
 	for _, fork := range self.forks {
-		if fork.getState() == "failed" {
-			return "failed"
+		if fork.getState() == Failed {
+			return Failed
 		}
 	}
 	// If any prenode is not complete, we're waiting.
 	for _, prenode := range self.prenodes {
-		if prenode.getNode().getState() != "complete" {
-			return "waiting"
+		if prenode.getNode().getState() != Complete {
+			return Waiting
 		}
 	}
 	// Otherwise we're running.
-	return "running"
+	return Running
 
 }
 
@@ -2056,10 +1632,10 @@ func (self *Node) checkHeartbeats() {
 
 func (self *Node) kill() {
 	for _, metadata := range self.collectMetadatas() {
-		if state, _ := metadata.getState(""); state == "failed" {
+		if state, _ := metadata.getState(); state == Failed {
 			continue
 		}
-		metadata.writeRaw("errors", "Job was killed by Martian.")
+		metadata.writeRaw(Errors, "Job was killed by Martian.")
 	}
 }
 
@@ -2085,13 +1661,13 @@ func (self *Node) GetFQName() string {
 	return self.fqname
 }
 
-func (self *Node) getFatalError() (string, bool, string, string, string, []string) {
+func (self *Node) getFatalError() (string, bool, string, string, MetadataFileName, []string) {
 	for _, metadata := range self.collectMetadatas() {
-		if state, _ := metadata.getState(""); state != "failed" {
+		if state, _ := metadata.getState(); state != Failed {
 			continue
 		}
-		if metadata.exists("errors") {
-			errlog := metadata.readRaw("errors")
+		if metadata.exists(Errors) {
+			errlog := metadata.readRaw(Errors)
 			summary := "<none>"
 			if self.stagecodeLang == "Python" {
 				errlines := strings.Split(errlog, "\n")
@@ -2102,24 +1678,24 @@ func (self *Node) getFatalError() (string, bool, string, string, string, []strin
 				}
 			}
 			errpaths := []string{
-				metadata.makePath("errors"),
-				metadata.makePath("stdout"),
-				metadata.makePath("stderr"),
+				metadata.makePath(Errors),
+				metadata.makePath(StdOut),
+				metadata.makePath(StdErr),
 			}
 			if self.rt.enableStackVars {
-				errpaths = append(errpaths, metadata.makePath("stackvars"))
+				errpaths = append(errpaths, metadata.makePath(Stackvars))
 			}
-			return metadata.fqname, self.preflight, summary, errlog, "errors", errpaths
+			return metadata.fqname, self.preflight, summary, errlog, Errors, errpaths
 		}
-		if metadata.exists("assert") {
-			assertlog := metadata.readRaw("assert")
+		if metadata.exists(Assert) {
+			assertlog := metadata.readRaw(Assert)
 			summary := "<none>"
 			assertlines := strings.Split(assertlog, "\n")
 			if len(assertlines) >= 1 {
 				summary = assertlines[len(assertlines)-1]
 			}
-			return metadata.fqname, self.preflight, summary, assertlog, "assert", []string{
-				metadata.makePath("assert"),
+			return metadata.fqname, self.preflight, summary, assertlog, Assert, []string{
+				metadata.makePath(Assert),
 			}
 		}
 	}
@@ -2167,14 +1743,14 @@ func DefaultRetries() int {
 func (self *Node) isErrorTransient() (bool, string) {
 	passRegexp, _ := getRetryRegexps()
 	for _, metadata := range self.collectMetadatas() {
-		if state, _ := metadata.getState(""); state != "failed" {
+		if state, _ := metadata.getState(); state != Failed {
 			continue
 		}
-		if metadata.exists("assert") {
+		if metadata.exists(Assert) {
 			return false, ""
 		}
-		if metadata.exists("errors") {
-			errlog := metadata.readRaw("errors")
+		if metadata.exists(Errors) {
+			errlog := metadata.readRaw(Errors)
 			for _, line := range strings.Split(errlog, "\n") {
 				for _, re := range passRegexp {
 					if re.MatchString(line) {
@@ -2189,7 +1765,7 @@ func (self *Node) isErrorTransient() (bool, string) {
 }
 
 func (self *Node) step() {
-	if self.state == "running" {
+	if self.state == Running {
 		for _, fork := range self.forks {
 			if self.preflight && self.rt.skipPreflight {
 				fork.skip()
@@ -2201,14 +1777,14 @@ func (self *Node) step() {
 	previousState := self.state
 	self.state = self.getState()
 	switch self.state {
-	case "failed":
+	case Failed:
 		self.addFrontierNode(self)
-	case "running":
+	case Running:
 		if self.state != previousState {
 			self.mkdirs()
 		}
 		self.addFrontierNode(self)
-	case "complete":
+	case Complete:
 		if self.rt.vdrMode == "rolling" {
 			for _, node := range self.prenodes {
 				node.getNode().vdrKill()
@@ -2255,7 +1831,7 @@ func (self *Node) refreshState() {
 			if fork := node.getFork(forkIndex); fork != nil {
 				if chunkIndex >= 0 {
 					if chunk := fork.getChunk(chunkIndex); chunk != nil {
-						chunk.updateState(state)
+						chunk.updateState(MetadataFileName(state))
 					}
 				} else {
 					fork.updateState(state)
@@ -2345,7 +1921,7 @@ func (self *Node) vdrKill() (*VDRKillReport, bool) {
 	killReports := []*VDRKillReport{}
 	ok := true
 	for _, node := range self.postnodes {
-		if node.getNode().state != "complete" {
+		if node.getNode().state != Complete {
 			ok = false
 		}
 	}
@@ -2377,7 +1953,7 @@ func (self *Node) serializeState() *NodeInfo {
 		})
 	}
 	var err interface{} = nil
-	if self.state == "failed" {
+	if self.state == Failed {
 		fqname, _, summary, log, _, errpaths := self.getFatalError()
 		errpath := ""
 		if len(errpaths) > 0 {
@@ -2523,9 +2099,9 @@ func (self *Node) runJob(shellName string, fqname string, metadata *Metadata,
 	argv := []string{}
 	stagecodeParts := strings.Split(self.stagecodeCmd, " ")
 	runFile := path.Join(self.journalPath, fqname)
-	version := map[string]interface{}{
-		"martian":   self.rt.martianVersion,
-		"pipelines": self.mroVersion,
+	version := &VersionInfo{
+		Martian:   self.rt.martianVersion,
+		Pipelines: self.mroVersion,
 	}
 	envs := self.envs
 
@@ -2557,17 +2133,17 @@ func (self *Node) runJob(shellName string, fqname string, metadata *Metadata,
 	}
 
 	EnterCriticalSection()
-	metadata.writeTime("queued_locally")
-	metadata.write("jobinfo", map[string]interface{}{
-		"name":           fqname,
-		"type":           jobMode,
-		"threads":        threads,
-		"memGB":          memGB,
-		"profile_mode":   self.rt.profileMode,
-		"stackvars_flag": stackVars,
-		"monitor_flag":   monitor,
-		"invocation":     self.invocation,
-		"version":        version,
+	metadata.writeTime(QueuedLocally)
+	metadata.write(JobInfoFile, &JobInfo{
+		Name:        fqname,
+		Type:        jobMode,
+		Threads:     threads,
+		MemGB:       memGB,
+		ProfileMode: self.rt.profileMode,
+		Stackvars:   stackVars,
+		Monitor:     monitor,
+		Invocation:  self.invocation,
+		Version:     version,
 	})
 	jobManager.execJob(shellCmd, argv, envs, metadata, threads, memGB, special, fqname,
 		shellName, self.preflight && self.local)
@@ -2611,14 +2187,14 @@ func NewStagestance(parent Nodable, callStm *CallStm, callables *Callables) *Sta
 	return self
 }
 
-func (self *Stagestance) getNode() *Node   { return self.node }
-func (self *Stagestance) GetState() string { return self.getNode().getState() }
-func (self *Stagestance) Step()            { self.getNode().step() }
-func (self *Stagestance) CheckHeartbeats() { self.getNode().checkHeartbeats() }
-func (self *Stagestance) RefreshState()    { self.getNode().refreshState() }
-func (self *Stagestance) LoadMetadata()    { self.getNode().loadMetadata() }
-func (self *Stagestance) PostProcess()     { self.getNode().postProcess() }
-func (self *Stagestance) GetFatalError() (string, bool, string, string, string, []string) {
+func (self *Stagestance) getNode() *Node          { return self.node }
+func (self *Stagestance) GetState() MetadataState { return self.getNode().getState() }
+func (self *Stagestance) Step()                   { self.getNode().step() }
+func (self *Stagestance) CheckHeartbeats()        { self.getNode().checkHeartbeats() }
+func (self *Stagestance) RefreshState()           { self.getNode().refreshState() }
+func (self *Stagestance) LoadMetadata()           { self.getNode().loadMetadata() }
+func (self *Stagestance) PostProcess()            { self.getNode().postProcess() }
+func (self *Stagestance) GetFatalError() (string, bool, string, string, MetadataFileName, []string) {
 	return self.getNode().getFatalError()
 }
 
@@ -2644,8 +2220,8 @@ func (self *Pipestance) OnFinishHook() {
 		// $2 = {complete|failed}
 		// $3 = pipestance ID
 		// $4 = path to error file (if there was an error)
-		args := []string{exec_path, self.GetPath(), self.GetState(), self.getNode().name}
-		if self.GetState() == "failed" {
+		args := []string{exec_path, self.GetPath(), string(self.GetState()), self.getNode().name}
+		if self.GetState() == Failed {
 			_, _, _, _, _, err_paths := self.GetFatalError()
 			if len(err_paths) > 0 {
 				err_path, _ := filepath.Rel(filepath.Dir(self.GetPath()), err_paths[0])
@@ -2746,35 +2322,35 @@ func (self *Pipestance) LoadMetadata() {
 	}
 	for _, node := range self.node.allNodes() {
 		node.state = node.getState()
-		if node.state == "running" {
+		if node.state == Running {
 			node.mkdirs()
 		}
 	}
 }
 
-func (self *Pipestance) GetState() string {
+func (self *Pipestance) GetState() MetadataState {
 	nodes := self.node.getFrontierNodes()
 	for _, node := range nodes {
-		if node.state == "failed" {
-			return "failed"
+		if node.state == Failed {
+			return Failed
 		}
 	}
 	for _, node := range nodes {
-		if node.state == "running" {
-			return "running"
+		if node.state == Running {
+			return Running
 		}
 	}
 	every := true
 	for _, node := range self.node.allNodes() {
-		if node.state != "complete" {
+		if node.state != Complete {
 			every = false
 			break
 		}
 	}
 	if every {
-		return "complete"
+		return Complete
 	}
-	return "waiting"
+	return ForkWaiting
 }
 
 func (self *Pipestance) Kill() {
@@ -2790,7 +2366,7 @@ func (self *Pipestance) RestartRunningNodes(jobMode string) error {
 	localNodes := []*Node{}
 	remoteNodes := []*Node{}
 	for _, node := range nodes {
-		if node.state == "running" {
+		if node.state == Running {
 			PrintInfo("runtime", "Found orphaned stage: %s", node.fqname)
 			if jobMode == "local" || node.local {
 				localNodes = append(localNodes, node)
@@ -2813,12 +2389,12 @@ func (self *Pipestance) RestartRunningNodes(jobMode string) error {
 // kills it and all of its child processes.
 func (self *Pipestance) RestartLocalJobs(jobMode string) error {
 	for _, node := range self.node.getFrontierNodes() {
-		if node.state == "running" {
+		if node.state == Running {
 			if err := node.restartLocallyQueuedJobs(); err != nil {
 				return err
 			}
 		}
-		if node.state == "running" && (jobMode == "local" || node.local) {
+		if node.state == Running && (jobMode == "local" || node.local) {
 			PrintInfo("runtime", "Found orphaned local stage: %s", node.fqname)
 			if err := node.restartLocalJobs(); err != nil {
 				return err
@@ -2862,11 +2438,11 @@ func (self *Pipestance) queryQueue() {
 		for _, node := range nodes {
 			for _, m := range node.collectMetadatas() {
 				if !metas[m] {
-					if st, ok := m.getState(""); ok &&
-						(st == "queued" || st == "running") &&
-						m.exists("jobid") {
+					if st, ok := m.getState(); ok &&
+						(st == Queued || st == Running) &&
+						m.exists(JobId) {
 						metas[m] = true
-						id := m.readRaw("jobid")
+						id := m.readRaw(JobId)
 						if id != "" {
 							needsQuery[id] = m
 						}
@@ -2912,17 +2488,17 @@ func (self *Pipestance) GetFailedNodes() []*Node {
 
 	nodes := self.node.getFrontierNodes()
 	for _, node := range nodes {
-		if node.state == "failed" {
+		if node.state == Failed {
 			failedNodes = append(failedNodes, node)
 		}
 	}
 	return failedNodes
 }
 
-func (self *Pipestance) GetFatalError() (string, bool, string, string, string, []string) {
+func (self *Pipestance) GetFatalError() (string, bool, string, string, MetadataFileName, []string) {
 	nodes := self.node.getFrontierNodes()
 	for _, node := range nodes {
-		if node.state == "failed" {
+		if node.state == Failed {
 			return node.getFatalError()
 		}
 	}
@@ -2962,7 +2538,7 @@ func (self *Pipestance) StepNodes() {
 
 func (self *Pipestance) Reset() error {
 	for _, node := range self.node.allNodes() {
-		if node.state == "failed" {
+		if node.state == Failed {
 			if err := node.reset(); err != nil {
 				return err
 			}
@@ -2971,19 +2547,19 @@ func (self *Pipestance) Reset() error {
 	return nil
 }
 
-func (self *Pipestance) Serialize(name string) interface{} {
+func (self *Pipestance) Serialize(name MetadataFileName) interface{} {
 	ser := []interface{}{}
 	for _, node := range self.node.allNodes() {
 		switch name {
-		case "finalstate":
+		case FinalState:
 			ser = append(ser, node.serializeState())
-		case "perf":
+		case Perf:
 			ser = append(ser, node.serializePerf())
 		default:
-			panic(fmt.Sprintf("Unsupported serialization type: %s", name))
+			panic(fmt.Sprintf("Unsupported serialization type: %v", name))
 		}
 	}
-	if name == "perf" {
+	if name == Perf {
 		LogInfo("perform", "Serializing pipestance performance data.")
 		if len(ser) > 0 {
 			self.ComputeDiskUsage(ser[0].(*NodePerfInfo))
@@ -3209,8 +2785,8 @@ func (self *Pipestance) GetInvocation() interface{} {
 func (self *Pipestance) VerifyJobMode() error {
 	metadata := NewMetadata(self.node.parent.getNode().fqname, self.GetPath())
 	metadata.loadCache()
-	if metadata.exists("jobmode") {
-		jobMode := metadata.readRaw("jobmode")
+	if metadata.exists(JobModeFile) {
+		jobMode := metadata.readRaw(JobModeFile)
 		if jobMode != self.node.rt.jobMode {
 			return &PipestanceJobModeError{self.GetPsid(), jobMode}
 		}
@@ -3220,34 +2796,34 @@ func (self *Pipestance) VerifyJobMode() error {
 
 func (self *Pipestance) GetTimestamp() string {
 	metadata := NewMetadata(self.node.parent.getNode().fqname, self.GetPath())
-	data := metadata.readRaw("timestamp")
+	data := metadata.readRaw(TimestampFile)
 	return ParseTimestamp(data)
 }
 
 func (self *Pipestance) GetVersions() (string, string, error) {
 	metadata := NewMetadata(self.node.parent.getNode().fqname, self.GetPath())
-	data := metadata.readRaw("versions")
+	data := metadata.readRaw(VersionsFile)
 	return ParseVersions(data)
 }
 
 func (self *Pipestance) PostProcess() {
 	self.node.postProcess()
 	metadata := NewMetadata(self.node.parent.getNode().fqname, self.GetPath())
-	metadata.writeRaw("timestamp", metadata.readRaw("timestamp")+"\nend: "+Timestamp())
+	metadata.writeRaw(TimestampFile, metadata.readRaw(TimestampFile)+"\nend: "+Timestamp())
 	self.Immortalize()
 }
 
 func (self *Pipestance) Immortalize() {
 	metadata := NewMetadata(self.node.parent.getNode().fqname, self.GetPath())
 	metadata.loadCache()
-	if !metadata.exists("perf") {
-		metadata.write("perf", self.Serialize("perf"))
+	if !metadata.exists(Perf) {
+		metadata.write(Perf, self.Serialize(Perf))
 	}
-	if !metadata.exists("finalstate") {
-		metadata.write("finalstate", self.Serialize("finalstate"))
+	if !metadata.exists(FinalState) {
+		metadata.write(FinalState, self.Serialize(FinalState))
 	}
-	if !metadata.exists("metadata.zip") {
-		zipPath := metadata.makePath("metadata.zip")
+	if !metadata.exists(MetadataZip) {
+		zipPath := metadata.makePath(MetadataZip)
 		if err := self.ZipMetadata(zipPath); err != nil {
 			LogError(err, "runtime", "Failed to create metadata zip file %s: %s",
 				zipPath, err.Error())
@@ -3264,24 +2840,24 @@ func (self *Pipestance) VDRKill() *VDRKillReport {
 	}
 	killReport := mergeVDRKillReports(killReports)
 	metadata := NewMetadata(self.node.parent.getNode().fqname, self.GetPath())
-	metadata.write("vdrkill", killReport)
+	metadata.write(VdrKill, killReport)
 	return killReport
 }
 
 func (self *Pipestance) Lock() error {
 	metadata := NewMetadata(self.node.parent.getNode().fqname, self.GetPath())
 	metadata.loadCache()
-	if metadata.exists("lock") {
+	if metadata.exists(Lock) {
 		return &PipestanceLockedError{self.node.parent.getNode().name, self.GetPath()}
 	}
 	RegisterSignalHandler(self)
-	metadata.writeTime("lock")
+	metadata.writeTime(Lock)
 	return nil
 }
 
 func (self *Pipestance) unlock() {
 	metadata := NewMetadata(self.node.parent.getNode().fqname, self.GetPath())
-	metadata.remove("lock")
+	metadata.remove(Lock)
 }
 
 func (self *Pipestance) Unlock() {
@@ -3303,7 +2879,7 @@ type TopNode struct {
 func (self *TopNode) getNode() *Node { return self.node }
 
 func NewTopNode(rt *Runtime, psid string, p string, mroPaths []string, mroVersion string,
-	envs map[string]string, j map[string]interface{}) *TopNode {
+	envs map[string]string, j *InvocationData) *TopNode {
 	self := &TopNode{}
 	self.node = &Node{}
 	self.node.frontierNodes = map[string]Nodable{}
@@ -3337,7 +2913,7 @@ type Runtime struct {
 	martianVersion  string
 	vdrMode         string
 	jobMode         string
-	profileMode     string
+	profileMode     ProfileMode
 	MroCache        *MroCache
 	JobManager      JobManager
 	LocalJobManager JobManager
@@ -3351,12 +2927,12 @@ type Runtime struct {
 	overrides       *PipestanceOverrides
 }
 
-func NewRuntime(jobMode string, vdrMode string, profileMode string, martianVersion string) *Runtime {
+func NewRuntime(jobMode string, vdrMode string, profileMode ProfileMode, martianVersion string) *Runtime {
 	return NewRuntimeWithCores(jobMode, vdrMode, profileMode, martianVersion,
 		-1, -1, -1, -1, -1, "", false, false, false, false, false, false, false, "", nil, false)
 }
 
-func NewRuntimeWithCores(jobMode string, vdrMode string, profileMode string, martianVersion string,
+func NewRuntimeWithCores(jobMode string, vdrMode string, profileMode ProfileMode, martianVersion string,
 	reqCores int, reqMem int, reqMemPerCore int, maxJobs int, jobFreqMillis int, jobQueues string,
 	fullStageReset bool, enableStackVars bool, enableZip bool, skipPreflight bool, enableMonitor bool,
 	debug bool, stest bool, onFinishExec string, overrides *PipestanceOverrides, limitLoadavg bool) *Runtime {
@@ -3434,10 +3010,10 @@ func (self *Runtime) instantiatePipeline(src string, srcPath string, psid string
 		return "", nil, &RuntimeError{fmt.Sprintf("'%s' is not a declared pipeline", ast.Call.Id)}
 	}
 
-	invocationJson, _ := self.BuildCallJSON(src, srcPath, mroPaths)
+	invocationData, _ := self.BuildCallData(src, srcPath, mroPaths)
 
 	// Instantiate the pipeline.
-	pipestance := NewPipestance(NewTopNode(self, psid, pipestancePath, mroPaths, mroVersion, envs, invocationJson),
+	pipestance := NewPipestance(NewTopNode(self, psid, pipestancePath, mroPaths, mroVersion, envs, invocationData),
 		ast.Call, ast.Callables)
 	if pipestance == nil {
 		return "", nil, &RuntimeError{fmt.Sprintf("'%s' is not a declared pipeline", ast.Call.Id)}
@@ -3482,16 +3058,16 @@ func (self *Runtime) InvokePipeline(src string, srcPath string, psid string,
 
 	// Write top-level metadata files.
 	metadata := NewMetadata("ID."+psid, pipestancePath)
-	metadata.writeRaw("invocation", src)
-	metadata.writeRaw("jobmode", self.jobMode)
-	metadata.writeRaw("mrosource", postsrc)
-	metadata.write("versions", map[string]string{
-		"martian":   self.martianVersion,
-		"pipelines": mroVersion,
+	metadata.writeRaw(InvocationFile, src)
+	metadata.writeRaw(JobModeFile, self.jobMode)
+	metadata.writeRaw(MroSourceFile, postsrc)
+	metadata.write(VersionsFile, &VersionInfo{
+		Martian:   self.martianVersion,
+		Pipelines: mroVersion,
 	})
-	metadata.write("tags", tags)
-	metadata.writeRaw("uuid", uuid.NewV4().String())
-	metadata.writeRaw("timestamp", "start: "+Timestamp())
+	metadata.write(TagsFile, tags)
+	metadata.writeRaw(UuidFile, uuid.NewV4().String())
+	metadata.writeRaw(TimestampFile, "start: "+Timestamp())
 
 	return pipestance, nil
 }
@@ -3592,10 +3168,10 @@ func (self *Runtime) InvokeStage(src string, srcPath string, ssid string,
 		return nil, &RuntimeError{fmt.Sprintf("'%s' is not a declared stage", ast.Call.Id)}
 	}
 
-	invocationJson, _ := self.BuildCallJSON(src, srcPath, mroPaths)
+	invocationData, _ := self.BuildCallData(src, srcPath, mroPaths)
 
 	// Instantiate stagestance.
-	stagestance := NewStagestance(NewTopNode(self, "", stagestancePath, mroPaths, mroVersion, envs, invocationJson),
+	stagestance := NewStagestance(NewTopNode(self, "", stagestancePath, mroPaths, mroVersion, envs, invocationData),
 		ast.Call, ast.Callables)
 	if stagestance == nil {
 		return nil, &RuntimeError{fmt.Sprintf("'%s' is not a declared stage", ast.Call.Id)}
@@ -3606,7 +3182,7 @@ func (self *Runtime) InvokeStage(src string, srcPath string, ssid string,
 	return stagestance, nil
 }
 
-func (self *Runtime) GetSerialization(pipestancePath string, name string) (interface{}, bool) {
+func (self *Runtime) GetSerialization(pipestancePath string, name MetadataFileName) (interface{}, bool) {
 	metadata := NewMetadata("", pipestancePath)
 	metadata.loadCache()
 	if metadata.exists(name) {
@@ -3618,12 +3194,12 @@ func (self *Runtime) GetSerialization(pipestancePath string, name string) (inter
 func (self *Runtime) GetMetadata(pipestancePath string, metadataPath string) (string, error) {
 	metadata := NewMetadata("", pipestancePath)
 	metadata.loadCache()
-	if metadata.exists("metadata.zip") {
+	if metadata.exists(MetadataZip) {
 		relPath, _ := filepath.Rel(pipestancePath, metadataPath)
 
 		// Relative paths outside the pipestance directory will be ignored.
 		if !strings.Contains(relPath, "..") {
-			if data, err := ReadZip(metadata.makePath("metadata.zip"), relPath); err == nil {
+			if data, err := ReadZip(metadata.makePath(MetadataZip), relPath); err == nil {
 				return data, nil
 			}
 		}
@@ -3735,7 +3311,7 @@ func (self *Runtime) BuildCallSource(incpaths []string, name string, args map[st
 		name, strings.Join(lines, "\n")), nil
 }
 
-func (self *Runtime) BuildCallJSON(src string, srcPath string, mroPaths []string) (map[string]interface{}, error) {
+func (self *Runtime) BuildCallData(src string, srcPath string, mroPaths []string) (*InvocationData, error) {
 	_, incpaths, ast, err := parseSource(src, srcPath, mroPaths, false)
 	if err != nil {
 		return nil, err
@@ -3753,10 +3329,10 @@ func (self *Runtime) BuildCallJSON(src string, srcPath string, mroPaths []string
 			sweepargs = append(sweepargs, binding.Id)
 		}
 	}
-	return map[string]interface{}{
-		"call":      ast.Call.Id,
-		"args":      args,
-		"sweepargs": sweepargs,
-		"incpaths":  incpaths,
+	return &InvocationData{
+		Call:         ast.Call.Id,
+		Args:         args,
+		SweepArgs:    sweepargs,
+		IncludePaths: incpaths,
 	}, nil
 }

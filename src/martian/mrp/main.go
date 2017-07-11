@@ -339,9 +339,9 @@ Options:
 	}
 
 	// Compute profiling mode.
-	profileMode := "disable"
+	profileMode := core.DisableProfile
 	if value := opts["--profile"]; value != nil {
-		profileMode = value.(string)
+		profileMode = value.(core.ProfileMode)
 	}
 	core.LogInfo("options", "--profile=%s", profileMode)
 	core.VerifyProfileMode(profileMode)
@@ -504,14 +504,14 @@ Options:
 		"version":    martianVersion,
 		"pname":      pipestance.GetPname(),
 		"psid":       psid,
-		"state":      pipestance.GetState(),
+		"state":      string(pipestance.GetState()),
 		"jobmode":    jobMode,
 		"maxcores":   strconv.Itoa(rt.JobManager.GetMaxCores()),
 		"maxmemgb":   strconv.Itoa(rt.JobManager.GetMaxMemGB()),
 		"invokepath": invocationPath,
 		"invokesrc":  invocationSrc,
 		"mropath":    core.FormatMroPath(mroPaths),
-		"mroprofile": profileMode,
+		"mroprofile": string(profileMode),
 		"mroport":    uiport,
 		"mroversion": mroVersion,
 	}
