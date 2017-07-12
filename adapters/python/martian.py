@@ -281,6 +281,9 @@ class Metadata:
     def alarm(self, message):
         self._append(message, 'alarm')
 
+    def progress(self, message):
+        self.write_raw('progress', message)
+
     def _assert(self, message):
         self.write_raw('assert', message)
 
@@ -602,6 +605,10 @@ def get_martian_version():
 def get_pipelines_version():
     return version['pipelines']
 
+def update_progress(message):
+    """Updates the current progress of the stage, which will be displayed to
+    the user (in the mrp log) next time mrp reads the file."""
+    metadata.progress(message)
 
 def log_info(message):
     metadata.log('info', message)

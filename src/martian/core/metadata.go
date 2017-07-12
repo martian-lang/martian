@@ -44,6 +44,7 @@ const (
 	MroSourceFile                   = "mrosource"
 	OutsFile                        = "outs"
 	Perf                            = "perf"
+	ProgressFile                    = "progress"
 	QueuedLocally                   = "queued_locally"
 	Stackvars                       = "stackvars"
 	StageDefsFile                   = "stage_defs"
@@ -86,6 +87,10 @@ const (
 
 func (self MetadataState) Prefixed(prefix string) MetadataState {
 	return MetadataState(string(prefix) + string(self))
+}
+
+func (self MetadataState) HasPrefix(prefix string) bool {
+	return strings.HasPrefix(string(self), prefix)
 }
 
 func (self MetadataState) IsRunning() bool {

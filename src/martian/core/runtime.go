@@ -29,6 +29,8 @@ const STAGE_TYPE_SPLIT = "split"
 const STAGE_TYPE_CHUNK = "chunk"
 const STAGE_TYPE_JOIN = "join"
 
+const forkPrintInterval = 5 * time.Minute
+
 type InvocationData struct {
 	Call         string                 `json:"call"`
 	Args         map[string]interface{} `json:"args"`
@@ -429,6 +431,14 @@ func (self *Chunk) getState() MetadataState {
 
 func (self *Chunk) updateState(state MetadataFileName) {
 	self.metadata.cache(state)
+	if state == ProgressFile {
+		self.fork.lastPrint = time.Now()
+		if msg, err := self.metadata.readRawSafe(state); err == nil {
+			PrintInfo("progres", "(%s) %s", self.fqname, msg)
+		} else {
+			LogError(err, "progres", "Error reading progress file for %s", self.fqname)
+		}
+	}
 }
 
 func (self *Chunk) step() {
@@ -456,6 +466,7 @@ func (self *Chunk) step() {
 	self.metadata.write(OutsFile, makeOutArgs(self.node.outparams, self.metadata.filesPath))
 
 	// Run the chunk.
+	self.fork.lastPrint = time.Now()
 	self.node.runChunk(self.fqname, self.metadata, threads, memGB, special)
 }
 
@@ -496,6 +507,7 @@ type Fork struct {
 	argPermute     map[string]interface{}
 	stageDefs      *StageDefs
 	perfCache      *ForkPerfCache
+	lastPrint      time.Time
 }
 
 type ForkInfo struct {
@@ -534,6 +546,7 @@ func NewFork(nodable Nodable, index int, argPermute map[string]interface{}) *For
 	self.join_has_run = false
 	self.subforks = []*Fork{}
 	self.chunks = []*Chunk{}
+	self.lastPrint = time.Now()
 
 	// By default, initialize stage defs with one empty chunk.
 	self.stageDefs = &StageDefs{ChunkDefs: []map[string]interface{}{}, JoinDef: map[string]interface{}{}}
@@ -559,6 +572,7 @@ func (self *Fork) reset() {
 }
 
 func (self *Fork) resetPartial() error {
+	self.lastPrint = time.Now()
 	if err := self.split_metadata.checkedReset(); err != nil {
 		return err
 	}
@@ -574,6 +588,7 @@ func (self *Fork) resetPartial() error {
 }
 
 func (self *Fork) restartLocallyQueuedJobs() error {
+	self.lastPrint = time.Now()
 	if err := self.split_metadata.restartQueuedLocal(); err != nil {
 		return err
 	}
@@ -589,6 +604,7 @@ func (self *Fork) restartLocallyQueuedJobs() error {
 }
 
 func (self *Fork) restartLocalJobs() error {
+	self.lastPrint = time.Now()
 	if err := self.split_metadata.restartLocal(); err != nil {
 		return err
 	}
@@ -708,6 +724,14 @@ func (self *Fork) getState() MetadataState {
 }
 
 func (self *Fork) updateState(state string) {
+	if state == string(ProgressFile) {
+		self.lastPrint = time.Now()
+		if msg, err := self.metadata.readRawSafe(MetadataFileName(state)); err == nil {
+			PrintInfo("progres", "(%s) %s", self.fqname, msg)
+		} else {
+			LogError(err, "progres", "Error reading progress file for %s", self.fqname)
+		}
+	}
 	if strings.HasPrefix(state, SplitPrefix) {
 		self.split_metadata.cache(MetadataFileName(strings.TrimPrefix(state, SplitPrefix)))
 	} else if strings.HasPrefix(state, JoinPrefix) {
@@ -753,6 +777,7 @@ func (self *Fork) step() {
 			if len(self.node.forks) > 1 {
 				fqname = self.fqname
 			}
+			self.lastPrint = time.Now()
 			msg := fmt.Sprintf("(%s)%s %s", state, statePad, fqname)
 			if self.node.preflight {
 				LogInfo("runtime", msg)
@@ -768,6 +793,7 @@ func (self *Fork) step() {
 			if self.node.split {
 				if !self.split_has_run {
 					self.split_has_run = true
+					self.lastPrint = time.Now()
 					self.node.runSplit(self.fqname, self.split_metadata, threads, memGB, special)
 				}
 			} else {
@@ -818,6 +844,7 @@ func (self *Fork) step() {
 				self.join_metadata.write(OutsFile, makeOutArgs(self.node.outparams, self.metadata.filesPath))
 				if !self.join_has_run {
 					self.join_has_run = true
+					self.lastPrint = time.Now()
 					self.node.runJoin(self.fqname, self.join_metadata, threads, memGB, special)
 				}
 			} else {
@@ -840,6 +867,27 @@ func (self *Fork) step() {
 			self.metadata.writeTime(CompleteFile)
 		} else {
 			self.metadata.writeRaw(Errors, msg)
+		}
+	}
+}
+
+func (self *Fork) printUpdateIfNeeded() {
+	if time.Since(self.lastPrint) > forkPrintInterval {
+		if state := self.getState(); state.IsRunning() {
+			if state.HasPrefix(ChunksPrefix) {
+				doneCount := 0
+				for _, chunk := range self.chunks {
+					if chunk.getState() == Complete {
+						doneCount++
+					}
+				}
+				self.lastPrint = time.Now()
+				PrintInfo("update ", "%s chunks running (%d/%d completed)",
+					self.fqname, doneCount, len(self.chunks))
+			} else {
+				self.lastPrint = time.Now()
+				PrintInfo("update ", "%s %v", self.fqname, state)
+			}
 		}
 	}
 }
@@ -1059,6 +1107,7 @@ func (self *Fork) postProcess() {
 
 	// Print alerts
 	if alarms := self.getAlarms(); len(alarms) > 0 {
+		self.lastPrint = time.Now()
 		if len(self.node.forks) > 1 {
 			Print("Alerts (fork%d):\n", self.index)
 		} else {
@@ -1820,6 +1869,7 @@ func (self *Node) parseRunFilename(fqname string) (string, int, int, string) {
 func (self *Node) refreshState() {
 	startTime := time.Now().Add(-self.rt.JobManager.queueCheckGrace())
 	files, _ := filepath.Glob(path.Join(self.journalPath, "*"))
+	updatedForks := make(map[*Fork]bool)
 	for _, file := range files {
 		filename := path.Base(file)
 		if strings.HasSuffix(filename, ".tmp") {
@@ -1836,6 +1886,7 @@ func (self *Node) refreshState() {
 				} else {
 					fork.updateState(state)
 				}
+				updatedForks[fork] = true
 			}
 		}
 		os.Remove(file)
@@ -1846,6 +1897,9 @@ func (self *Node) refreshState() {
 				meta.endRefresh(startTime)
 			}
 		}
+	}
+	for fork, _ := range updatedForks {
+		fork.printUpdateIfNeeded()
 	}
 }
 
