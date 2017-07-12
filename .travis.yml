@@ -22,6 +22,7 @@ script:
     - make all
     - ./.travis.gofmt.sh
     - make test
+    - test/martian_test.py test/split_test/split_test.json
     - test/martian_test.py test/fork_test/fork_test.json
     - test/martian_test.py test/fork_test/fail1_test.json
     - test/martian_test.py test/fork_test/retry_test.json

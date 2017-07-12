@@ -1,0 +1,75 @@
+{
+    "stackvars_flag": "disable", 
+    "name": "ID.pipeline_test.SUM_SQUARE_PIPELINE.SUM_SQUARES.fork0", 
+    "python": {
+        "binpath": "/usr/bin/python", 
+        "version": "2.7.12 (default, Sep  1 2016, 22:14:00) \n[GCC 4.8.3 20140911 (Red Hat 4.8.3-9)]"
+    }, 
+    "monitor_flag": "disable", 
+    "pid": 109423, 
+    "cwd": "martian/test/split_test/pipeline_test/SUM_SQUARE_PIPELINE/SUM_SQUARES/fork0/split/files", 
+    "wallclock": {
+        "start": "2017-07-12 16:12:24", 
+        "end": "2017-07-12 16:12:24", 
+        "duration_seconds": 0.022037029266357422
+    }, 
+    "host": "bespin1.fuzzplex.com", 
+    "version": {
+        "martian": "'77b3550-dirty'", 
+        "pipelines": "a167627"
+    }, 
+    "threads": 1, 
+    "memGB": 6, 
+    "invocation": {
+        "incpaths": [], 
+        "args": {
+            "values": [
+                1, 
+                2, 
+                3
+            ]
+        }, 
+        "call": "SUM_SQUARE_PIPELINE", 
+        "sweepargs": []
+    }, 
+    "profile_mode": "disable", 
+    "type": "local", 
+    "rusage": {
+        "self": {
+            "ru_msgrcv": 0, 
+            "ru_utime": 0.027999999999999997, 
+            "ru_majflt": 0, 
+            "ru_isrss": 0, 
+            "ru_nsignals": 0, 
+            "ru_msgsnd": 0, 
+            "ru_idrss": 0, 
+            "ru_stime": 0.008, 
+            "ru_inblock": 0, 
+            "ru_minflt": 2232, 
+            "ru_nivcsw": 2, 
+            "ru_maxrss": 13588, 
+            "ru_nvcsw": 71, 
+            "ru_nswap": 0, 
+            "ru_oublock": 96, 
+            "ru_ixrss": 0
+        }, 
+        "children": {
+            "ru_msgrcv": 0, 
+            "ru_utime": 0.0, 
+            "ru_majflt": 0, 
+            "ru_isrss": 0, 
+            "ru_nsignals": 0, 
+            "ru_msgsnd": 0, 
+            "ru_idrss": 0, 
+            "ru_stime": 0.0, 
+            "ru_inblock": 0, 
+            "ru_minflt": 0, 
+            "ru_nivcsw": 0, 
+            "ru_maxrss": 0, 
+            "ru_nvcsw": 0, 
+            "ru_nswap": 0, 
+            "ru_oublock": 0, 
+            "ru_ixrss": 0
+        }
+    }
+}

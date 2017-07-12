@@ -1,0 +1,5 @@
+Tests for a pipeline with splits.  It consists of a single stage, SUM_SQUARES,
+which splits, computes the square of each argument in the input list in a
+separate chunk, and then sums the chunk outputs in a join phase.
+
+split_test.json tests normal operation

@@ -1,0 +1,239 @@
+[
+    {
+        "name": "SUM_SQUARE_PIPELINE",
+        "fqname": "ID.pipeline_test.SUM_SQUARE_PIPELINE",
+        "type": "pipeline",
+        "path": "martian/test/split_test/pipeline_test/SUM_SQUARE_PIPELINE",
+        "state": "complete",
+        "metadata": {
+            "path": "martian/test/split_test/pipeline_test/SUM_SQUARE_PIPELINE",
+            "names": []
+        },
+        "sweepbindings": [],
+        "forks": [
+            {
+                "index": 0,
+                "argPermute": {},
+                "joinDef": {},
+                "state": "complete",
+                "metadata": {
+                    "path": "martian/test/split_test/pipeline_test/SUM_SQUARE_PIPELINE/fork0",
+                    "names": [
+                        "complete",
+                        "invocation",
+                        "outs",
+                        "vdrkill"
+                    ]
+                },
+                "split_metadata": {
+                    "path": "martian/test/split_test/pipeline_test/SUM_SQUARE_PIPELINE/fork0/split",
+                    "names": []
+                },
+                "join_metadata": {
+                    "path": "martian/test/split_test/pipeline_test/SUM_SQUARE_PIPELINE/fork0/join",
+                    "names": []
+                },
+                "chunks": [],
+                "bindings": {
+                    "Argument": [
+                        {
+                            "id": "values",
+                            "type": "float",
+                            "valexp": "",
+                            "mode": "value",
+                            "output": "",
+                            "sweep": false,
+                            "sweepRootId": "values",
+                            "node": "SUM_SQUARE_PIPELINE",
+                            "matchedFork": 0,
+                            "value": [
+                                1,
+                                2,
+                                3
+                            ],
+                            "waiting": false
+                        }
+                    ],
+                    "Return": [
+                        {
+                            "id": "sum",
+                            "type": "float",
+                            "valexp": "SUM_SQUARES.sum",
+                            "mode": "reference",
+                            "output": "sum",
+                            "sweep": false,
+                            "sweepRootId": "sum",
+                            "node": "SUM_SQUARES",
+                            "matchedFork": 0,
+                            "value": 14,
+                            "waiting": false
+                        }
+                    ]
+                }
+            }
+        ],
+        "edges": [
+            {
+                "from": "ID.pipeline_test.SUM_SQUARE_PIPELINE.SUM_SQUARES",
+                "to": "ID.pipeline_test.SUM_SQUARE_PIPELINE"
+            }
+        ],
+        "stagecodeLang": "",
+        "stagecodeCmd": "",
+        "error": null
+    },
+    {
+        "name": "SUM_SQUARES",
+        "fqname": "ID.pipeline_test.SUM_SQUARE_PIPELINE.SUM_SQUARES",
+        "type": "stage",
+        "path": "martian/test/split_test/pipeline_test/SUM_SQUARE_PIPELINE/SUM_SQUARES",
+        "state": "complete",
+        "metadata": {
+            "path": "martian/test/split_test/pipeline_test/SUM_SQUARE_PIPELINE/SUM_SQUARES",
+            "names": []
+        },
+        "sweepbindings": [],
+        "forks": [
+            {
+                "index": 0,
+                "argPermute": {},
+                "joinDef": {
+                    "__mem_gb": 6,
+                    "__threads": 1
+                },
+                "state": "complete",
+                "metadata": {
+                    "path": "martian/test/split_test/pipeline_test/SUM_SQUARE_PIPELINE/SUM_SQUARES/fork0",
+                    "names": [
+                        "complete",
+                        "invocation",
+                        "outs",
+                        "vdrkill"
+                    ]
+                },
+                "split_metadata": {
+                    "path": "martian/test/split_test/pipeline_test/SUM_SQUARE_PIPELINE/SUM_SQUARES/fork0/split",
+                    "names": [
+                        "args",
+                        "complete",
+                        "heartbeat",
+                        "jobinfo",
+                        "log",
+                        "stage_defs",
+                        "stderr",
+                        "stdout"
+                    ]
+                },
+                "join_metadata": {
+                    "path": "martian/test/split_test/pipeline_test/SUM_SQUARE_PIPELINE/SUM_SQUARES/fork0/join",
+                    "names": [
+                        "args",
+                        "chunk_defs",
+                        "chunk_outs",
+                        "complete",
+                        "heartbeat",
+                        "jobinfo",
+                        "log",
+                        "outs",
+                        "stderr",
+                        "stdout"
+                    ]
+                },
+                "chunks": [
+                    {
+                        "index": 0,
+                        "chunkDef": {
+                            "__mem_gb": 1,
+                            "__threads": 1,
+                            "value": 1
+                        },
+                        "state": "complete",
+                        "metadata": {
+                            "path": "martian/test/split_test/pipeline_test/SUM_SQUARE_PIPELINE/SUM_SQUARES/fork0/chnk0",
+                            "names": [
+                                "args",
+                                "complete",
+                                "heartbeat",
+                                "jobinfo",
+                                "log",
+                                "outs",
+                                "stderr",
+                                "stdout"
+                            ]
+                        }
+                    },
+                    {
+                        "index": 1,
+                        "chunkDef": {
+                            "__mem_gb": 1,
+                            "__threads": 1,
+                            "value": 2
+                        },
+                        "state": "complete",
+                        "metadata": {
+                            "path": "martian/test/split_test/pipeline_test/SUM_SQUARE_PIPELINE/SUM_SQUARES/fork0/chnk1",
+                            "names": [
+                                "args",
+                                "complete",
+                                "heartbeat",
+                                "jobinfo",
+                                "log",
+                                "outs",
+                                "stderr",
+                                "stdout"
+                            ]
+                        }
+                    },
+                    {
+                        "index": 2,
+                        "chunkDef": {
+                            "__mem_gb": 1,
+                            "__threads": 1,
+                            "value": 3
+                        },
+                        "state": "complete",
+                        "metadata": {
+                            "path": "martian/test/split_test/pipeline_test/SUM_SQUARE_PIPELINE/SUM_SQUARES/fork0/chnk2",
+                            "names": [
+                                "args",
+                                "complete",
+                                "heartbeat",
+                                "jobinfo",
+                                "log",
+                                "outs",
+                                "stderr",
+                                "stdout"
+                            ]
+                        }
+                    }
+                ],
+                "bindings": {
+                    "Argument": [
+                        {
+                            "id": "values",
+                            "type": "float",
+                            "valexp": "self.values",
+                            "mode": "value",
+                            "output": "",
+                            "sweep": false,
+                            "sweepRootId": "values",
+                            "node": "SUM_SQUARE_PIPELINE",
+                            "matchedFork": 0,
+                            "value": [
+                                1,
+                                2,
+                                3
+                            ],
+                            "waiting": false
+                        }
+                    ],
+                    "Return": []
+                }
+            }
+        ],
+        "edges": [],
+        "stagecodeLang": "Python",
+        "stagecodeCmd": "martian/test/split_test/sum_squares",
+        "error": null
+    }
+]

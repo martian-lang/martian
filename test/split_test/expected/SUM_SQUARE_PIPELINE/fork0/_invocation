@@ -1,0 +1,9 @@
+
+
+call SUM_SQUARE_PIPELINE(
+    values = [
+        1,
+        2,
+        3
+    ],
+)

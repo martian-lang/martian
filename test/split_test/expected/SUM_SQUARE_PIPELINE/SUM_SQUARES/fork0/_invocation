@@ -1,0 +1,9 @@
+
+
+call SUM_SQUARES(
+    values = [
+        1,
+        2,
+        3
+    ],
+)
