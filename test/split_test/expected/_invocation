@@ -5,9 +5,16 @@
 stage SUM_SQUARES(
     in  float[] values,
     out float   sum,
-    src py      "sum_squares",
+    src py      "stages/sum_squares",
 ) split using (
     in  float   value,
+)
+
+# Prints the output to the user, but only if the pipestance doesn't finish.
+stage REPORT(
+    in  float[] values,
+    in  float   sum,
+    src py      "stages/report",
 )
 
 # Runs the stage.
@@ -18,6 +25,10 @@ pipeline SUM_SQUARE_PIPELINE(
 {
     call SUM_SQUARES(
         values = self.values,
+    )
+    call REPORT(
+        values = self.values,
+        sum    = SUM_SQUARES.sum,
     )
     return (
         sum = SUM_SQUARES.sum,

@@ -83,6 +83,123 @@
         "error": null
     },
     {
+        "name": "REPORT",
+        "fqname": "ID.pipeline_test.SUM_SQUARE_PIPELINE.REPORT",
+        "type": "stage",
+        "path": "martian/test/split_test/pipeline_test/SUM_SQUARE_PIPELINE/REPORT",
+        "state": "complete",
+        "metadata": {
+            "path": "martian/test/split_test/pipeline_test/SUM_SQUARE_PIPELINE/REPORT",
+            "names": []
+        },
+        "sweepbindings": [],
+        "forks": [
+            {
+                "index": 0,
+                "argPermute": {},
+                "joinDef": {
+                    "__mem_gb": 6,
+                    "__threads": 1
+                },
+                "state": "complete",
+                "metadata": {
+                    "path": "martian/test/split_test/pipeline_test/SUM_SQUARE_PIPELINE/REPORT/fork0",
+                    "names": [
+                        "complete",
+                        "invocation",
+                        "outs",
+                        "vdrkill"
+                    ]
+                },
+                "split_metadata": {
+                    "path": "martian/test/split_test/pipeline_test/SUM_SQUARE_PIPELINE/REPORT/fork0/split",
+                    "names": [
+                        "args",
+                        "complete",
+                        "stage_defs"
+                    ]
+                },
+                "join_metadata": {
+                    "path": "martian/test/split_test/pipeline_test/SUM_SQUARE_PIPELINE/REPORT/fork0/join",
+                    "names": [
+                        "args",
+                        "chunk_defs",
+                        "complete",
+                        "outs"
+                    ]
+                },
+                "chunks": [
+                    {
+                        "index": 0,
+                        "chunkDef": {
+                            "__mem_gb": 6,
+                            "__threads": 1
+                        },
+                        "state": "complete",
+                        "metadata": {
+                            "path": "martian/test/split_test/pipeline_test/SUM_SQUARE_PIPELINE/REPORT/fork0/chnk0",
+                            "names": [
+                                "args",
+                                "complete",
+                                "heartbeat",
+                                "jobinfo",
+                                "log",
+                                "outs",
+                                "progress",
+                                "stderr",
+                                "stdout"
+                            ]
+                        }
+                    }
+                ],
+                "bindings": {
+                    "Argument": [
+                        {
+                            "id": "values",
+                            "type": "float",
+                            "valexp": "self.values",
+                            "mode": "value",
+                            "output": "",
+                            "sweep": false,
+                            "sweepRootId": "values",
+                            "node": "SUM_SQUARE_PIPELINE",
+                            "matchedFork": 0,
+                            "value": [
+                                1,
+                                2,
+                                3
+                            ],
+                            "waiting": false
+                        },
+                        {
+                            "id": "sum",
+                            "type": "float",
+                            "valexp": "SUM_SQUARES.sum",
+                            "mode": "reference",
+                            "output": "sum",
+                            "sweep": false,
+                            "sweepRootId": "sum",
+                            "node": "SUM_SQUARES",
+                            "matchedFork": 0,
+                            "value": 14,
+                            "waiting": false
+                        }
+                    ],
+                    "Return": []
+                }
+            }
+        ],
+        "edges": [
+            {
+                "from": "ID.pipeline_test.SUM_SQUARE_PIPELINE.SUM_SQUARES",
+                "to": "ID.pipeline_test.SUM_SQUARE_PIPELINE.REPORT"
+            }
+        ],
+        "stagecodeLang": "Python",
+        "stagecodeCmd": "martian/test/split_test/stages/report",
+        "error": null
+    },
+    {
         "name": "SUM_SQUARES",
         "fqname": "ID.pipeline_test.SUM_SQUARE_PIPELINE.SUM_SQUARES",
         "type": "stage",
@@ -233,7 +350,7 @@
         ],
         "edges": [],
         "stagecodeLang": "Python",
-        "stagecodeCmd": "martian/test/split_test/sum_squares",
+        "stagecodeCmd": "martian/test/split_test/stages/sum_squares",
         "error": null
     }
 ]

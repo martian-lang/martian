@@ -684,7 +684,11 @@ func (self *Fork) getState() MetadataState {
 		return state
 	}
 	if state, ok := self.join_metadata.getState(); ok {
-		return state.Prefixed(JoinPrefix)
+		if state == Failed {
+			return state
+		} else {
+			return state.Prefixed(JoinPrefix)
+		}
 	}
 	if len(self.chunks) > 0 {
 		// If any chunks have failed, we're failed.
@@ -718,7 +722,11 @@ func (self *Fork) getState() MetadataState {
 		}
 	}
 	if state, ok := self.split_metadata.getState(); ok {
-		return state.Prefixed(SplitPrefix)
+		if state == Failed {
+			return state
+		} else {
+			return state.Prefixed(SplitPrefix)
+		}
 	}
 	return Ready
 }
