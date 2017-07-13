@@ -434,7 +434,7 @@ func (self *Chunk) updateState(state MetadataFileName) {
 	if state == ProgressFile {
 		self.fork.lastPrint = time.Now()
 		if msg, err := self.metadata.readRawSafe(state); err == nil {
-			PrintInfo("progres", "(%s) %s", self.fqname, msg)
+			PrintInfo("runtime", "(progress)        %s: %s", self.fqname, msg)
 		} else {
 			LogError(err, "progres", "Error reading progress file for %s", self.fqname)
 		}
@@ -735,7 +735,7 @@ func (self *Fork) updateState(state string) {
 	if state == string(ProgressFile) {
 		self.lastPrint = time.Now()
 		if msg, err := self.metadata.readRawSafe(MetadataFileName(state)); err == nil {
-			PrintInfo("progres", "(%s) %s", self.fqname, msg)
+			PrintInfo("runtime", "(progress)        %s: %s", self.fqname, msg)
 		} else {
 			LogError(err, "progres", "Error reading progress file for %s", self.fqname)
 		}
@@ -882,7 +882,7 @@ func (self *Fork) step() {
 func (self *Fork) printUpdateIfNeeded() {
 	if time.Since(self.lastPrint) > forkPrintInterval {
 		if state := self.getState(); state.IsRunning() {
-			if state.HasPrefix(ChunksPrefix) {
+			if state.HasPrefix(ChunksPrefix) && len(self.chunks) > 1 {
 				doneCount := 0
 				for _, chunk := range self.chunks {
 					if chunk.getState() == Complete {
@@ -890,11 +890,13 @@ func (self *Fork) printUpdateIfNeeded() {
 					}
 				}
 				self.lastPrint = time.Now()
-				PrintInfo("update ", "%s chunks running (%d/%d completed)",
+				PrintInfo("runtime",
+					"(update)          %s chunks running (%d/%d completed)",
 					self.fqname, doneCount, len(self.chunks))
 			} else {
 				self.lastPrint = time.Now()
-				PrintInfo("update ", "%s %v", self.fqname, state)
+				PrintInfo("runtime",
+					"(update)          %s %v", self.fqname, state)
 			}
 		}
 	}
