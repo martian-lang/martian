@@ -160,6 +160,79 @@ func runLoop(pipestanceBox *pipestanceHolder, stepSecs int, vdrMode string,
 	}
 }
 
+// List of environment variables which might be useful in debugging.
+var loggedEnvs = map[string]bool{
+	"COMMD_PORT":   true,
+	"CWD":          true,
+	"ENVIRONMENT":  true, // SGE
+	"EXE":          true,
+	"HOME":         true,
+	"HOST":         true,
+	"HOSTNAME":     true,
+	"HOSTTYPE":     true, // LSF
+	"HYDRA_ROOT":   true,
+	"LANG":         true,
+	"LIBRARY_PATH": true,
+	"LOGNAME":      true,
+	"NHOSTS":       true, // SGE
+	"NQUEUES":      true, // SGE
+	"NSLOTS":       true, // SGE
+	"PATH":         true,
+	"PID":          true,
+	"PWD":          true,
+	"SHELL":        true,
+	"SHLVL":        true,
+	"SPOOLDIR":     true, // LSF
+	"TERM":         true,
+	"TMPDIR":       true,
+	"USER":         true,
+	"WAFDIR":       true,
+	"_":            true,
+}
+
+// List of environment variable prefixes which might be useful in debugging.
+// These are accepted for variables of the form "KEY_*"
+var loggedEnvPrefixes = map[string]bool{
+	"BASH":    true,
+	"CONDA":   true,
+	"DYLD":    true, // Linker
+	"EC2":     true,
+	"EGO":     true, // LSF
+	"JAVA":    true,
+	"JOB":     true, // SGE
+	"LC":      true,
+	"LD":      true, // Linker
+	"LS":      true, // LSF
+	"LSB":     true, // LSF
+	"LSF":     true, // LSF
+	"MYSYS2":  true, // Anaconda
+	"PBS":     true, // PBS
+	"PD":      true,
+	"SBATCH":  true, // Slurm
+	"SELINUX": true, // Linux
+	"SGE":     true,
+	"SLURM":   true,
+	"SSH":     true,
+	"TENX":    true,
+	"XDG":     true,
+}
+
+// Returns true if the environment variable should be logged.
+func logEnv(env string) bool {
+	if loggedEnvs[env] {
+		return true
+	}
+	// Various important PYTHON environment variables don't have a _ separator.
+	if strings.HasPrefix(env, "PYTHON") {
+		return true
+	}
+	if idx := strings.Index(env, "_"); idx >= 0 {
+		return loggedEnvPrefixes[env[:idx]]
+	} else {
+		return loggedEnvPrefixes[env]
+	}
+}
+
 func main() {
 	core.SetupSignalHandlers()
 
@@ -216,7 +289,13 @@ Options:
 	core.Println("Martian Runtime - %s", martianVersion)
 	core.LogInfo("cmdline", strings.Join(os.Args, " "))
 	core.LogInfo("pid    ", strconv.Itoa(os.Getpid()))
-	core.LogInfo("environ", strings.Join(os.Environ(), " "))
+
+	for _, env := range os.Environ() {
+		pair := strings.Split(env, "=")
+		if len(pair) == 2 && logEnv(pair[0]) {
+			core.LogInfo("environ", env)
+		}
+	}
 
 	martianFlags := ""
 	if martianFlags = os.Getenv("MROFLAGS"); len(martianFlags) > 0 {
