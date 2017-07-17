@@ -20,6 +20,7 @@ import (
 	"strconv"
 	"strings"
 	"sync"
+	"syscall"
 	"time"
 )
 
@@ -333,6 +334,9 @@ func (self *LocalJobManager) Enqueue(shellCmd string, argv []string,
 				cmd.Stdout = stdoutFile
 			}
 			defer stdoutFile.Close()
+		}
+		cmd.SysProcAttr = &syscall.SysProcAttr{
+			Pdeathsig: syscall.SIGTERM,
 		}
 		if stderrFile, err := os.Create(stderrPath); err == nil {
 			stderrFile.WriteString("[stderr]\n")
