@@ -133,8 +133,14 @@ app.controller('MartianGraphCtrl', ($scope, $compile, $http, $interval) ->
     $scope.adminstyle = adminstyle
     $scope.release = release
     $scope.urlprefix = if adminstyle then '/admin' else '/'
+    auth = ''
+    for v in window.location.search.substring(1).split("&")
+        [key, val] = v.split("=")
+        if key == 'auth'
+            auth = '?' + v
+            break
 
-    $http.get("/api/get-state/#{container}/#{pname}/#{psid}").success((state) ->
+    $http.get("/api/get-state/#{container}/#{pname}/#{psid}#{auth}").success((state) ->
         $scope.topnode = state.nodes[0]
         $scope.nodes = _.indexBy(state.nodes, 'fqname')
         $scope.info = state.info
@@ -172,7 +178,7 @@ app.controller('MartianGraphCtrl', ($scope, $compile, $http, $interval) ->
 
     $scope.$watch('perf', () ->
         if $scope.perf
-            $http.get("/api/get-perf/#{container}/#{pname}/#{psid}").success((state) ->
+            $http.get("/api/get-perf/#{container}/#{pname}/#{psid}#{auth}").success((state) ->
                 $scope.pnodes = _.indexBy(state.nodes, 'fqname')
                 $scope.pnode = $scope.pnodes[$scope.topnode.fqname]
             )
@@ -227,7 +233,7 @@ app.controller('MartianGraphCtrl', ($scope, $compile, $http, $interval) ->
 
     $scope.restart = () ->
         $scope.showRestart = false
-        $http.post("/api/restart/#{container}/#{pname}/#{psid}").success((data) ->
+        $http.post("/api/restart/#{container}/#{pname}/#{psid}#{auth}").success((data) ->
             $scope.stopRefresh = $interval(() ->
                 $scope.refresh()
             , 3000)
@@ -244,7 +250,7 @@ app.controller('MartianGraphCtrl', ($scope, $compile, $http, $interval) ->
         $scope.expand[view][index][name] = true
 
     $scope.selectMetadata = (view, index, name, path) ->
-        $http.post("/api/get-metadata/#{container}/#{pname}/#{psid}", { path:path, name:name }, { transformResponse: (d) -> d }).success((metadata) ->
+        $http.post("/api/get-metadata/#{container}/#{pname}/#{psid}#{auth}", { path:path, name:name }, { transformResponse: (d) -> d }).success((metadata) ->
             $scope.mdviews[view][index] = metadata
         )
 
@@ -255,7 +261,7 @@ app.controller('MartianGraphCtrl', ($scope, $compile, $http, $interval) ->
         return !found
 
     $scope.refresh = () ->
-        $http.get("/api/get-state/#{container}/#{pname}/#{psid}").success((state) ->
+        $http.get("/api/get-state/#{container}/#{pname}/#{psid}#{auth}").success((state) ->
             $scope.nodes = _.indexBy(state.nodes, 'fqname')
             if $scope.id then $scope.node = $scope.nodes[$scope.id]
             $scope.info = state.info

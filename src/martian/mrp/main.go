@@ -6,8 +6,12 @@
 package main
 
 import (
+	"crypto/rand"
+	"encoding/base64"
+	"fmt"
 	"io/ioutil"
 	"martian/core"
+	"net"
 	"net/http"
 	"net/url"
 	"os"
@@ -34,6 +38,54 @@ func (self *pipestanceHolder) getPipestance() *core.Pipestance {
 
 func (self *pipestanceHolder) setPipestance(newPipe *core.Pipestance) {
 	self.pipestance = newPipe
+}
+
+type PipestanceInfo struct {
+	Hostname     string             `json:"hostname"`
+	Username     string             `json:"username"`
+	Cwd          string             `json:"cwd"`
+	Binpath      string             `json:"binpath"`
+	Cmdline      string             `json:"cmdline"`
+	Pid          int                `json:"pid"`
+	Start        string             `json:"start"`
+	Version      string             `json:"version"`
+	Pname        string             `json:"pname"`
+	PsId         string             `json:"psid"`
+	State        core.MetadataState `json:"state"`
+	JobMode      string             `json:"jobmode"`
+	MaxCores     int                `json:"maxcores"`
+	MaxMemGB     int                `json:"maxmemgb"`
+	InvokePath   string             `json:"invokepath"`
+	InvokeSource string             `json:"invokesrc"`
+	MroPath      string             `json:"mropath"`
+	ProfileMode  core.ProfileMode   `json:"mroprofile"`
+	Port         string             `json:"mroport"`
+	MroVersion   string             `json:"mroversion"`
+}
+
+func (self *PipestanceInfo) AsForm() url.Values {
+	form := url.Values{}
+	form.Add("hostname", self.Hostname)
+	form.Add("username", self.Username)
+	form.Add("cwd", self.Cwd)
+	form.Add("binpath", self.Binpath)
+	form.Add("cmdline", self.Cmdline)
+	form.Add("pid", strconv.Itoa(self.Pid))
+	form.Add("start", self.Start)
+	form.Add("version", self.Version)
+	form.Add("pname", self.Pname)
+	form.Add("psid", self.PsId)
+	form.Add("state", string(self.State))
+	form.Add("jobmode", self.JobMode)
+	form.Add("maxcores", strconv.Itoa(self.MaxCores))
+	form.Add("maxmemgb", strconv.Itoa(self.MaxMemGB))
+	form.Add("invokepath", self.InvokePath)
+	form.Add("invokesrc", self.InvokeSource)
+	form.Add("mropath", self.MroPath)
+	form.Add("mroprofile", string(self.ProfileMode))
+	form.Add("mroport", self.Port)
+	form.Add("mroversion", self.MroVersion)
+	return form
 }
 
 //=============================================================================
@@ -267,6 +319,12 @@ Options:
 
     --nopreflight       Skips preflight stages.
     --uiport=NUM        Serve UI at http://<hostname>:NUM
+    --disable-ui        Do not serve the UI.
+    --disable-auth      Do not require authentication for reading the web UI.
+    --require-auth      Always require authentication (this is the default
+                        if --uiport is not set).
+    --auth-key=KEY      Set the authentication key required for accessing the
+                        web UI.
     --noexit            Keep UI running after pipestance completes or fails.
     --onfinish=EXEC     Run this when pipeline finishes, success or fail.
     --zip               Zip metadata files after pipestance completes.
@@ -426,14 +484,39 @@ Options:
 	core.VerifyProfileMode(profileMode)
 
 	// Compute UI port.
+	requireAuth := true
 	uiport := ""
-	enableUI := false
 	if value := opts["--uiport"]; value != nil {
 		uiport = value.(string)
-		enableUI = true
+		requireAuth = false
 	}
-	if enableUI {
+	if len(uiport) > 0 {
 		core.LogInfo("options", "--uiport=%s", uiport)
+	}
+
+	enableUI := (opts["--disable-ui"] == nil || !opts["--disable-ui"].(bool))
+	if !enableUI {
+		core.LogInfo("options", "--disable-ui")
+	}
+	if value := opts["--disable-auth"]; value != nil && value.(bool) {
+		requireAuth = false
+		core.LogInfo("options", "--disable-auth")
+	}
+	if value := opts["--require-auth"]; value != nil && value.(bool) {
+		requireAuth = true
+		core.LogInfo("options", "--require-auth")
+	}
+	var authKey string
+	if value := opts["--authkey"]; value != nil {
+		authKey = value.(string)
+		core.LogInfo("options", "--authkey=%s", authKey)
+	} else if enableUI {
+		key := make([]byte, 32)
+		if _, err := rand.Read(key); err != nil {
+			core.Println("webserv", "Failed to generate an authentication key: %v", err)
+			os.Exit(1)
+		}
+		authKey = base64.RawURLEncoding.EncodeToString(key)
 	}
 
 	// Parse tags.
@@ -484,7 +567,6 @@ Options:
 	debug := opts["--debug"].(bool)
 	stest := opts["--stest"].(bool)
 	envs := map[string]string{}
-
 	retries := core.DefaultRetries()
 	if value := opts["--autoretry"]; value != nil {
 		if value, err := strconv.Atoi(value.(string)); err == nil {
@@ -525,14 +607,6 @@ Options:
 		overrides, limitLoadavg)
 	rt.MroCache.CacheMros(mroPaths)
 
-	// Print this here because the log makes more sense when this appears before
-	// the runloop messages start to appear.
-	if enableUI {
-		core.Println("Serving UI at http://%s:%s\n", hostname, uiport)
-	} else {
-		core.LogInfo("webserv", "UI disabled.")
-	}
-
 	//=========================================================================
 	// Invoke pipestance or Reattach if exists.
 	//=========================================================================
@@ -545,89 +619,128 @@ Options:
 		invocationSrc, invocationPath, psid, mroPaths, pipestancePath, mroVersion,
 		envs, checkSrc, readOnly, tags)
 
+	// Attempt to reattach to the pipestance.
+	alreadyExists := false
 	pipestance, err := factory.InvokePipeline()
 	if err != nil {
 		if _, ok := err.(*core.PipestanceExistsError); ok {
-			executingPreflight = false
-			// If it already exists, try to reattach to it.
-			if pipestance, err = factory.ReattachToPipestance(); err == nil {
-				martianVersion, mroVersion, _ = pipestance.GetVersions()
-				if !inspect {
-					err = pipestance.Reset()
-					if err == nil {
-						err = pipestance.RestartLocalJobs(jobMode)
-					}
-				}
-			}
+			alreadyExists = true
+		} else {
+			core.DieIf(err)
 		}
-		core.DieIf(err)
 	}
-	if executingPreflight {
-		core.Println("Running preflight checks (please wait)...")
-	}
+	pipestanceBox := pipestanceHolder{pipestance}
 
-	// Start writing (including cached entries) to log file.
-	core.LogTee(path.Join(pipestancePath, "_log"))
+	if !readOnly {
+		// Start writing (including cached entries) to log file.
+		core.LogTee(path.Join(pipestancePath, "_log"))
+	}
 
 	//=========================================================================
 	// Collect pipestance static info.
 	//=========================================================================
-	info := map[string]string{
-		"hostname":   hostname,
-		"username":   username,
-		"cwd":        cwd,
-		"binpath":    core.RelPath(os.Args[0]),
-		"cmdline":    strings.Join(os.Args, " "),
-		"pid":        strconv.Itoa(os.Getpid()),
-		"start":      pipestance.GetTimestamp(),
-		"version":    martianVersion,
-		"pname":      pipestance.GetPname(),
-		"psid":       psid,
-		"state":      string(pipestance.GetState()),
-		"jobmode":    jobMode,
-		"maxcores":   strconv.Itoa(rt.JobManager.GetMaxCores()),
-		"maxmemgb":   strconv.Itoa(rt.JobManager.GetMaxMemGB()),
-		"invokepath": invocationPath,
-		"invokesrc":  invocationSrc,
-		"mropath":    core.FormatMroPath(mroPaths),
-		"mroprofile": string(profileMode),
-		"mroport":    uiport,
-		"mroversion": mroVersion,
+	info := &PipestanceInfo{
+		Hostname:     hostname,
+		Username:     username,
+		Cwd:          cwd,
+		Binpath:      core.RelPath(os.Args[0]),
+		Cmdline:      strings.Join(os.Args, " "),
+		Pid:          os.Getpid(),
+		Start:        pipestance.GetTimestamp(),
+		Version:      martianVersion,
+		Pname:        pipestance.GetPname(),
+		PsId:         psid,
+		State:        pipestance.GetState(),
+		JobMode:      jobMode,
+		MaxCores:     rt.JobManager.GetMaxCores(),
+		MaxMemGB:     rt.JobManager.GetMaxMemGB(),
+		InvokePath:   invocationPath,
+		InvokeSource: invocationSrc,
+		MroPath:      core.FormatMroPath(mroPaths),
+		ProfileMode:  profileMode,
+		Port:         uiport,
+		MroVersion:   mroVersion,
 	}
 
 	//=========================================================================
 	// Register with mrv.
 	//=========================================================================
-	if mrvhost := os.Getenv("MRVHOST"); len(mrvhost) > 0 {
+	if mrvhost := os.Getenv("MRVHOST"); len(mrvhost) > 0 && enableUI {
 		u := url.URL{
 			Scheme: "http",
 			Host:   mrvhost,
 			Path:   "/register",
 		}
-		form := url.Values{}
-		for k, v := range info {
-			form.Add(k, v)
-		}
-		if res, err := http.PostForm(u.String(), form); err == nil {
-			if content, err := ioutil.ReadAll(res.Body); err == nil {
-				if res.StatusCode == 200 {
+		if res, err := http.PostForm(u.String(), info.AsForm()); err == nil {
+			if res.StatusCode == 200 {
+				if content, err := ioutil.ReadAll(res.Body); err == nil {
 					uiport = string(content)
+				} else {
+					core.LogError(err, "mrvcli", "Could not read response from mrv %s.", u.String())
 				}
 			} else {
-				core.LogError(err, "mrvcli", "Could not read response from mrv %s.", u.String())
+				core.LogError(err, "mrvcli", "HTTP request failed %v.", res.StatusCode)
 			}
 		} else {
 			core.LogError(err, "mrvcli", "HTTP request failed %s.", u.String())
 		}
 	}
 
-	pipestanceBox := pipestanceHolder{pipestance}
+	// Print this here because the log makes more sense when this appears before
+	// the runloop messages start to appear.
+	var listener net.Listener
+	if enableUI {
+		var err error
+		dieWithoutUi := true
+		if uiport == "" {
+			uiport == "0"
+			dieWithoutUi := false
+		}
+		if listener, err = net.Listen("tcp",
+			fmt.Sprintf("%s:%s", hostname, uiport)); err != nil {
+			core.Println("webserv", "Cannot open port %s: %v", uiport, err)
+			if dieWithoutUi {
+				os.Exit(1)
+			}
+		} else {
+			u := url.URL{
+				Scheme: "http",
+				Host:   listener.Addr().String(),
+			}
+			info.Port = u.Port()
+			if authKey != "" {
+				q := u.Query()
+				q.Set("auth", authKey)
+				u.RawQuery = q.Encode()
+			}
+			core.Println("Serving UI at %s\n", u.String())
+		}
+	} else {
+		core.LogInfo("webserv", "UI disabled.")
+	}
+
+	if alreadyExists {
+		// If it already exists, try to reattach to it.
+		var err error
+		if pipestance, err = factory.ReattachToPipestance(); err == nil {
+			martianVersion, mroVersion, _ = pipestance.GetVersions()
+			if !inspect {
+				err = pipestance.Reset()
+				if err == nil {
+					err = pipestance.RestartLocalJobs(jobMode)
+				}
+			}
+		}
+		core.DieIf(err)
+	} else if executingPreflight {
+		core.Println("Running preflight checks (please wait)...")
+	}
 
 	//=========================================================================
 	// Start web server.
 	//=========================================================================
-	if enableUI && len(uiport) > 0 {
-		go runWebServer(uiport, rt, &pipestanceBox, info)
+	if listener != nil {
+		go runWebServer(listener, rt, &pipestanceBox, info, authKey, requireAuth)
 	}
 
 	//=========================================================================

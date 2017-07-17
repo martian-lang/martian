@@ -195,14 +195,24 @@
   };
 
   app.controller('MartianGraphCtrl', function($scope, $compile, $http, $interval) {
-    var ref, selected, tab;
+    var auth, j, key, len, ref, ref1, ref2, selected, tab, v, val;
     $scope.pname = pname;
     $scope.psid = psid;
     $scope.admin = admin;
     $scope.adminstyle = adminstyle;
     $scope.release = release;
     $scope.urlprefix = adminstyle ? '/admin' : '/';
-    $http.get("/api/get-state/" + container + "/" + pname + "/" + psid).success(function(state) {
+    auth = '';
+    ref = window.location.search.substring(1).split("&");
+    for (j = 0, len = ref.length; j < len; j++) {
+      v = ref[j];
+      ref1 = v.split("="), key = ref1[0], val = ref1[1];
+      if (key === 'auth') {
+        auth = '?' + v;
+        break;
+      }
+    }
+    $http.get("/api/get-state/" + container + "/" + pname + "/" + psid + auth).success(function(state) {
       $scope.topnode = state.nodes[0];
       $scope.nodes = _.indexBy(state.nodes, 'fqname');
       $scope.info = state.info;
@@ -271,15 +281,15 @@
     }
     $scope.$watch('perf', function() {
       if ($scope.perf) {
-        return $http.get("/api/get-perf/" + container + "/" + pname + "/" + psid).success(function(state) {
+        return $http.get("/api/get-perf/" + container + "/" + pname + "/" + psid + auth).success(function(state) {
           $scope.pnodes = _.indexBy(state.nodes, 'fqname');
           return $scope.pnode = $scope.pnodes[$scope.topnode.fqname];
         });
       }
     });
-    ref = $scope.tabs;
-    for (tab in ref) {
-      selected = ref[tab];
+    ref2 = $scope.tabs;
+    for (tab in ref2) {
+      selected = ref2[tab];
       $scope.$watch('tabs.' + tab, function() {
         return $scope.getChart();
       });
@@ -300,10 +310,10 @@
       return humanize(node[name], units);
     };
     $scope.getActiveTab = function() {
-      var ref1;
-      ref1 = $scope.tabs;
-      for (tab in ref1) {
-        selected = ref1[tab];
+      var ref3;
+      ref3 = $scope.tabs;
+      for (tab in ref3) {
+        selected = ref3[tab];
         if (selected) {
           return tab;
         }
@@ -348,7 +358,7 @@
     };
     $scope.restart = function() {
       $scope.showRestart = false;
-      return $http.post("/api/restart/" + container + "/" + pname + "/" + psid).success(function(data) {
+      return $http.post("/api/restart/" + container + "/" + pname + "/" + psid + auth).success(function(data) {
         return $scope.stopRefresh = $interval(function() {
           return $scope.refresh();
         }, 3000);
@@ -366,7 +376,7 @@
       return $scope.expand[view][index][name] = true;
     };
     $scope.selectMetadata = function(view, index, name, path) {
-      return $http.post("/api/get-metadata/" + container + "/" + pname + "/" + psid, {
+      return $http.post("/api/get-metadata/" + container + "/" + pname + "/" + psid + auth, {
         path: path,
         name: name
       }, {
@@ -385,7 +395,7 @@
       return !found;
     };
     return $scope.refresh = function() {
-      return $http.get("/api/get-state/" + container + "/" + pname + "/" + psid).success(function(state) {
+      return $http.get("/api/get-state/" + container + "/" + pname + "/" + psid + auth).success(function(state) {
         $scope.nodes = _.indexBy(state.nodes, 'fqname');
         if ($scope.id) {
           $scope.node = $scope.nodes[$scope.id];
