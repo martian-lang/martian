@@ -620,11 +620,16 @@ Options:
 		envs, checkSrc, readOnly, tags)
 
 	// Attempt to reattach to the pipestance.
-	alreadyExists := false
+	reattaching := false
 	pipestance, err := factory.InvokePipeline()
 	if err != nil {
 		if _, ok := err.(*core.PipestanceExistsError); ok {
-			alreadyExists = true
+			if pipestance, err = factory.ReattachToPipestance(); err == nil {
+				martianVersion, mroVersion, _ = pipestance.GetVersions()
+				reattaching = true
+			} else {
+				core.DieIf(err)
+			}
 		} else {
 			core.DieIf(err)
 		}
@@ -719,19 +724,14 @@ Options:
 		core.LogInfo("webserv", "UI disabled.")
 	}
 
-	if alreadyExists {
+	if reattaching {
 		// If it already exists, try to reattach to it.
-		var err error
-		if pipestance, err = factory.ReattachToPipestance(); err == nil {
-			martianVersion, mroVersion, _ = pipestance.GetVersions()
-			if !inspect {
-				err = pipestance.Reset()
-				if err == nil {
-					err = pipestance.RestartLocalJobs(jobMode)
-				}
+		if !inspect {
+			if err = pipestance.Reset(); err == nil {
+				err = pipestance.RestartLocalJobs(jobMode)
 			}
+			core.DieIf(err)
 		}
-		core.DieIf(err)
 	} else if executingPreflight {
 		core.Println("Running preflight checks (please wait)...")
 	}
