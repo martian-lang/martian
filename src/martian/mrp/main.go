@@ -694,7 +694,7 @@ Options:
 		dieWithoutUi := true
 		if uiport == "" {
 			uiport = "0"
-			dieWithoutUi := false
+			dieWithoutUi = false
 		}
 		if listener, err = net.Listen("tcp",
 			fmt.Sprintf("%s:%s", hostname, uiport)); err != nil {
