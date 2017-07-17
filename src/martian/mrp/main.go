@@ -693,7 +693,7 @@ Options:
 		var err error
 		dieWithoutUi := true
 		if uiport == "" {
-			uiport == "0"
+			uiport = "0"
 			dieWithoutUi := false
 		}
 		if listener, err = net.Listen("tcp",
