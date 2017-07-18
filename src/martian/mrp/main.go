@@ -126,6 +126,7 @@ func runLoop(pipestanceBox *pipestanceHolder, stepSecs int, vdrMode string,
 					// Give time for web ui client to get last update.
 					core.Println("Waiting %d seconds for UI to do final refresh.", WAIT_SECS)
 					time.Sleep(time.Second * time.Duration(WAIT_SECS))
+					pipestance.ClearUiPort()
 				}
 				core.Println("Pipestance completed successfully!\n")
 				os.Exit(0)
@@ -191,6 +192,7 @@ func runLoop(pipestanceBox *pipestanceHolder, stepSecs int, vdrMode string,
 						core.Println("Waiting %d seconds for UI to do final refresh.", WAIT_SECS)
 						time.Sleep(time.Second * time.Duration(WAIT_SECS))
 						core.Println("Pipestance failed. Use --noexit option to keep UI running after failure.\n")
+						pipestance.ClearUiPort()
 					}
 					os.Exit(1)
 				}
@@ -719,6 +721,7 @@ Options:
 				u.RawQuery = q.Encode()
 			}
 			core.Println("Serving UI at %s\n", u.String())
+			pipestance.RecordUiPort(u.String())
 		}
 	} else {
 		core.LogInfo("webserv", "UI disabled.")

@@ -2266,7 +2266,8 @@ func (self *Stagestance) GetFatalError() (string, bool, string, string, Metadata
 // Pipestance
 //=============================================================================
 type Pipestance struct {
-	node *Node
+	node     *Node
+	metadata *Metadata
 
 	queueCheckLock   sync.Mutex
 	queueCheckActive bool
@@ -2325,6 +2326,7 @@ func (self *Pipestance) OnFinishHook() {
 func NewPipestance(parent Nodable, callStm *CallStm, callables *Callables) *Pipestance {
 	self := &Pipestance{}
 	self.node = NewNode(parent, "pipeline", callStm, callables)
+	self.metadata = NewMetadata(self.node.parent.getNode().fqname, self.GetPath())
 
 	// Build subcall tree.
 	pipeline, ok := callables.Table[self.node.name].(*Pipeline)
@@ -2847,10 +2849,9 @@ func (self *Pipestance) GetInvocation() interface{} {
 }
 
 func (self *Pipestance) VerifyJobMode() error {
-	metadata := NewMetadata(self.node.parent.getNode().fqname, self.GetPath())
-	metadata.loadCache()
-	if metadata.exists(JobModeFile) {
-		jobMode := metadata.readRaw(JobModeFile)
+	self.metadata.loadCache()
+	if self.metadata.exists(JobModeFile) {
+		jobMode := self.metadata.readRaw(JobModeFile)
 		if jobMode != self.node.rt.jobMode {
 			return &PipestanceJobModeError{self.GetPsid(), jobMode}
 		}
@@ -2859,35 +2860,31 @@ func (self *Pipestance) VerifyJobMode() error {
 }
 
 func (self *Pipestance) GetTimestamp() string {
-	metadata := NewMetadata(self.node.parent.getNode().fqname, self.GetPath())
-	data := metadata.readRaw(TimestampFile)
+	data := self.metadata.readRaw(TimestampFile)
 	return ParseTimestamp(data)
 }
 
 func (self *Pipestance) GetVersions() (string, string, error) {
-	metadata := NewMetadata(self.node.parent.getNode().fqname, self.GetPath())
-	data := metadata.readRaw(VersionsFile)
+	data := self.metadata.readRaw(VersionsFile)
 	return ParseVersions(data)
 }
 
 func (self *Pipestance) PostProcess() {
 	self.node.postProcess()
-	metadata := NewMetadata(self.node.parent.getNode().fqname, self.GetPath())
-	metadata.writeRaw(TimestampFile, metadata.readRaw(TimestampFile)+"\nend: "+Timestamp())
+	self.metadata.writeRaw(TimestampFile, self.metadata.readRaw(TimestampFile)+"\nend: "+Timestamp())
 	self.Immortalize()
 }
 
 func (self *Pipestance) Immortalize() {
-	metadata := NewMetadata(self.node.parent.getNode().fqname, self.GetPath())
-	metadata.loadCache()
-	if !metadata.exists(Perf) {
-		metadata.write(Perf, self.Serialize(Perf))
+	self.metadata.loadCache()
+	if !self.metadata.exists(Perf) {
+		self.metadata.write(Perf, self.Serialize(Perf))
 	}
-	if !metadata.exists(FinalState) {
-		metadata.write(FinalState, self.Serialize(FinalState))
+	if !self.metadata.exists(FinalState) {
+		self.metadata.write(FinalState, self.Serialize(FinalState))
 	}
-	if !metadata.exists(MetadataZip) {
-		zipPath := metadata.makePath(MetadataZip)
+	if !self.metadata.exists(MetadataZip) {
+		zipPath := self.metadata.makePath(MetadataZip)
 		if err := self.ZipMetadata(zipPath); err != nil {
 			LogError(err, "runtime", "Failed to create metadata zip file %s: %s",
 				zipPath, err.Error())
@@ -2903,25 +2900,30 @@ func (self *Pipestance) VDRKill() *VDRKillReport {
 		killReports = append(killReports, killReport)
 	}
 	killReport := mergeVDRKillReports(killReports)
-	metadata := NewMetadata(self.node.parent.getNode().fqname, self.GetPath())
-	metadata.write(VdrKill, killReport)
+	self.metadata.write(VdrKill, killReport)
 	return killReport
 }
 
+func (self *Pipestance) RecordUiPort(url string) error {
+	return self.metadata.writeRaw(UiPort, url)
+}
+
+func (self *Pipestance) ClearUiPort() error {
+	return self.metadata.remove(UiPort)
+}
+
 func (self *Pipestance) Lock() error {
-	metadata := NewMetadata(self.node.parent.getNode().fqname, self.GetPath())
-	metadata.loadCache()
-	if metadata.exists(Lock) {
+	self.metadata.loadCache()
+	if self.metadata.exists(Lock) {
 		return &PipestanceLockedError{self.node.parent.getNode().name, self.GetPath()}
 	}
 	RegisterSignalHandler(self)
-	metadata.writeTime(Lock)
+	self.metadata.writeTime(Lock)
 	return nil
 }
 
 func (self *Pipestance) unlock() {
-	metadata := NewMetadata(self.node.parent.getNode().fqname, self.GetPath())
-	metadata.remove(Lock)
+	self.metadata.remove(Lock)
 }
 
 func (self *Pipestance) Unlock() {
@@ -3121,17 +3123,16 @@ func (self *Runtime) InvokePipeline(src string, srcPath string, psid string,
 	}
 
 	// Write top-level metadata files.
-	metadata := NewMetadata("ID."+psid, pipestancePath)
-	metadata.writeRaw(InvocationFile, src)
-	metadata.writeRaw(JobModeFile, self.jobMode)
-	metadata.writeRaw(MroSourceFile, postsrc)
-	metadata.write(VersionsFile, &VersionInfo{
+	pipestance.metadata.writeRaw(InvocationFile, src)
+	pipestance.metadata.writeRaw(JobModeFile, self.jobMode)
+	pipestance.metadata.writeRaw(MroSourceFile, postsrc)
+	pipestance.metadata.write(VersionsFile, &VersionInfo{
 		Martian:   self.martianVersion,
 		Pipelines: mroVersion,
 	})
-	metadata.write(TagsFile, tags)
-	metadata.writeRaw(UuidFile, uuid.NewV4().String())
-	metadata.writeRaw(TimestampFile, "start: "+Timestamp())
+	pipestance.metadata.write(TagsFile, tags)
+	pipestance.metadata.writeRaw(UuidFile, uuid.NewV4().String())
+	pipestance.metadata.writeRaw(TimestampFile, "start: "+Timestamp())
 
 	return pipestance, nil
 }

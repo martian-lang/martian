@@ -52,6 +52,7 @@ const (
 	StdOut                          = "stdout"
 	TagsFile                        = "tags"
 	TimestampFile                   = "timestamp"
+	UiPort                          = "uiport"
 	UuidFile                        = "uuid"
 	VdrKill                         = "vdrkill"
 	VersionsFile                    = "versions"
@@ -350,13 +351,13 @@ func (self *Metadata) write(name MetadataFileName, object interface{}) error {
 func (self *Metadata) writeTime(name MetadataFileName) error {
 	return self.writeRaw(name, Timestamp())
 }
-func (self *Metadata) remove(name MetadataFileName) {
+func (self *Metadata) remove(name MetadataFileName) error {
 	self.uncache(name)
-	os.Remove(self.makePath(name))
+	return os.Remove(self.makePath(name))
 }
-func (self *Metadata) _removeNoLock(name MetadataFileName) {
+func (self *Metadata) _removeNoLock(name MetadataFileName) error {
 	self._uncacheNoLock(name)
-	os.Remove(self.makePath(name))
+	return os.Remove(self.makePath(name))
 }
 
 func (self *Metadata) clearReadCache() {
