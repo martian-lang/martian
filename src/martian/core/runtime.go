@@ -1689,12 +1689,12 @@ func (self *Node) checkHeartbeats() {
 	}
 }
 
-func (self *Node) kill() {
+func (self *Node) kill(message string) {
 	for _, metadata := range self.collectMetadatas() {
 		if state, _ := metadata.getState(); state == Failed {
 			continue
 		}
-		metadata.writeRaw(Errors, "Job was killed by Martian.")
+		metadata.writeRaw(Errors, message)
 	}
 }
 
@@ -2420,9 +2420,13 @@ func (self *Pipestance) GetState() MetadataState {
 }
 
 func (self *Pipestance) Kill() {
+	self.KillWithMessage("Job was killed by Martian.")
+}
+
+func (self *Pipestance) KillWithMessage(message string) {
 	nodes := self.node.getFrontierNodes()
 	for _, node := range nodes {
-		node.kill()
+		node.kill(message)
 	}
 }
 
@@ -2588,6 +2592,14 @@ func (self *Pipestance) IsErrorTransient() (bool, string) {
 }
 
 func (self *Pipestance) StepNodes() {
+	if err := CheckMinimalSpace(self.node.path); err != nil {
+		if _, ok := err.(*DiskSpaceError); ok {
+			PrintError(err, "runtime",
+				"Pipestance directory out of disk space.")
+			self.KillWithMessage(err.Error())
+			return
+		}
+	}
 	if err := self.node.rt.LocalJobManager.refreshLocalResources(
 		self.node.rt.jobMode == "local"); err != nil {
 		LogError(err, "runtime", "Error refreshing local resources: %s", err.Error())
@@ -3079,6 +3091,9 @@ func (self *Runtime) instantiatePipeline(src string, srcPath string, psid string
 	invocationData, _ := self.BuildCallData(src, srcPath, mroPaths)
 
 	// Instantiate the pipeline.
+	if err := CheckMinimalSpace(pipestancePath); err != nil {
+		return "", nil, err
+	}
 	pipestance := NewPipestance(NewTopNode(self, psid, pipestancePath, mroPaths, mroVersion, envs, invocationData),
 		ast.Call, ast.Callables)
 	if pipestance == nil {
