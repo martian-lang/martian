@@ -191,12 +191,13 @@ func (self *mrpWebServer) serveGraphPage(w http.ResponseWriter, req *http.Reques
 //=========================================================================
 
 func (self *mrpWebServer) handleApi(sm *http.ServeMux) {
-	sm.HandleFunc("/api/get-info", self.getInfo)
+	sm.HandleFunc("/api/get-info/", self.getInfo)
 	sm.HandleFunc("/api/get-state/", self.getState)
 	sm.HandleFunc("/api/get-perf/", self.getPerf)
 	sm.HandleFunc("/api/get-metadata/", self.getMetadata)
 	sm.HandleFunc("/api/restart/", self.restart)
 	sm.HandleFunc("/api/get-metadata-top/", self.getMetadataTop)
+	sm.HandleFunc("/api/kill", self.kill)
 }
 
 // Get pipestance state: nodes and fatal error (if any).
@@ -318,4 +319,12 @@ func (self *mrpWebServer) restart(w http.ResponseWriter, req *http.Request) {
 	if err := pipestance.Reset(); err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 	}
+}
+
+// Kill the pipestance.
+func (self *mrpWebServer) kill(w http.ResponseWriter, req *http.Request) {
+	if !self.verifyAuth(w, req) {
+		return
+	}
+	self.pipestanceBox.getPipestance().Kill()
 }

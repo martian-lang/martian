@@ -64,7 +64,7 @@ func LogTee(filename string) {
 			logInit()
 			f, err := os.OpenFile(filename, os.O_WRONLY|os.O_CREATE|os.O_APPEND, 0644)
 			if err != nil {
-				fmt.Println("ERROR: Could not open log file: %v", err)
+				fmt.Println("ERROR: Could not open log file: ", err)
 			} else {
 				LOGGER.fileWriter = io.Writer(f)
 				log(LOGGER.cache)
