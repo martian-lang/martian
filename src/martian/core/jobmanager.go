@@ -576,6 +576,7 @@ func (self *RemoteJobManager) sendJob(shellCmd string, argv []string, envs map[s
 		"THREADS":           fmt.Sprintf("%d", threads),
 		"STDOUT":            metadata.makePath("stdout"),
 		"STDERR":            metadata.makePath("stderr"),
+		"JOB_WORKDIR":       metadata.filesPath,
 		"CMD":               strings.Join(argv, " "),
 		"MEM_GB":            fmt.Sprintf("%d", memGB),
 		"MEM_MB":            fmt.Sprintf("%d", memGB*1024),

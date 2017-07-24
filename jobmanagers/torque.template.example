@@ -24,6 +24,6 @@
 #PBS -o __MRO_STDOUT__
 #PBS -e __MRO_STDERR__
 
-cd $PBS_O_WORKDIR
+cd __MRO_JOB_WORKDIR__
 
 __MRO_CMD__
