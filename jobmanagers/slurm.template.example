@@ -20,6 +20,8 @@
 #SBATCH -J __MRO_JOB_NAME__
 #SBATCH --export=ALL
 #SBATCH --nodes=1 --ntasks-per-node=__MRO_THREADS__
+#SBATCH --signal=2
+#SBATCH --no-requeue
 ### Alternatively: --ntasks=1 --cpus-per-task=__MRO_THREADS__
 ###   Consult with your cluster administrators to find the combination that
 ###   works best for single-node, multi-threaded applications on your system.

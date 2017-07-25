@@ -61,6 +61,7 @@
       },
       "slurm": {
           "cmd": "sbatch",
+          "args": [ "--parsable" ],
           "envs": [ ]
       },
       "pbspro": {
