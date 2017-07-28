@@ -73,6 +73,16 @@ func LogTee(filename string) {
 	}
 }
 
+func LogTeeWriter(writer io.Writer) {
+	if logInit() {
+		if LOGGER.fileWriter == nil {
+			logInit()
+			LOGGER.fileWriter = writer
+			log(LOGGER.cache)
+		}
+	}
+}
+
 func formatRaw(format string, v ...interface{}) string {
 	return fmt.Sprintf(format, v...)
 }

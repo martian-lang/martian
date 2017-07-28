@@ -43,6 +43,63 @@ type VersionInfo struct {
 	Pipelines string `json:"pipelines"`
 }
 
+type StageCodeType int
+
+const (
+	UnknownStageLang StageCodeType = iota
+	PythonStage
+	ExecStage
+	CompiledStage
+)
+
+func (self StageCodeType) String() string {
+	switch self {
+	case PythonStage:
+		return "Python"
+	case ExecStage:
+		return "Executable"
+	case CompiledStage:
+		return "Compiled"
+	default:
+		return ""
+	}
+}
+
+func (lang StageLanguage) Parse() (StageCodeType, error) {
+	switch lang {
+	case "py":
+		return PythonStage, nil
+	case "exec":
+		return ExecStage, nil
+	case "comp":
+		return CompiledStage, nil
+	default:
+		return UnknownStageLang, fmt.Errorf("Unknown language %v", lang)
+	}
+}
+
+func (self StageCodeType) MarshalJSON() ([]byte, error) {
+	return json.Marshal(self.String())
+}
+
+func (self *StageCodeType) UnmarshalJSON(b []byte) error {
+	var s string
+	if err := json.Unmarshal(b, &s); err != nil {
+		return err
+	}
+	switch s {
+	case "Python":
+		*self = PythonStage
+	case "Executable":
+		*self = ExecStage
+	case "Compiled":
+		*self = CompiledStage
+	default:
+		*self = UnknownStageLang
+	}
+	return nil
+}
+
 //=============================================================================
 // Binding
 //=============================================================================
@@ -351,11 +408,12 @@ func VerifyOnFinish(onfinish string) {
 type ProfileMode string
 
 const (
-	DisableProfile ProfileMode = "disable"
-	CpuProfile     ProfileMode = "cpu"
-	MemProfile     ProfileMode = "mem"
-	LineProfile    ProfileMode = "line"
-	PyflameProfile ProfileMode = "pyflame"
+	DisableProfile    ProfileMode = "disable"
+	CpuProfile        ProfileMode = "cpu"
+	MemProfile        ProfileMode = "mem"
+	LineProfile       ProfileMode = "line"
+	PyflameProfile    ProfileMode = "pyflame"
+	PerfRecordProfile ProfileMode = "perf"
 )
 
 var validProfileModes = []ProfileMode{
@@ -462,8 +520,8 @@ func (self *Chunk) step() {
 	}
 
 	// Write out input and ouput args for the chunk.
-	self.metadata.write(ArgsFile, resolvedBindings)
-	self.metadata.write(OutsFile, makeOutArgs(self.node.outparams, self.metadata.filesPath))
+	self.metadata.Write(ArgsFile, resolvedBindings)
+	self.metadata.Write(OutsFile, makeOutArgs(self.node.outparams, self.metadata.filesPath))
 
 	// Run the chunk.
 	self.fork.lastPrint = time.Now()
@@ -757,7 +815,7 @@ func (self *Fork) getChunk(index int) *Chunk {
 }
 
 func (self *Fork) skip() {
-	self.metadata.writeTime(CompleteFile)
+	self.metadata.WriteTime(CompleteFile)
 }
 
 func (self *Fork) writeInvocation() {
@@ -766,7 +824,7 @@ func (self *Fork) writeInvocation() {
 		sweepBindings := []string{}
 		incpaths := self.node.invocation.IncludePaths
 		invocation, _ := self.node.rt.BuildCallSource(incpaths, self.node.name, argBindings, sweepBindings, self.node.mroPaths)
-		self.metadata.writeRaw(InvocationFile, invocation)
+		self.metadata.WriteRaw(InvocationFile, invocation)
 	}
 }
 
@@ -796,7 +854,7 @@ func (self *Fork) step() {
 
 		if state == Ready {
 			self.writeInvocation()
-			self.split_metadata.write(ArgsFile, resolveBindings(self.node.argbindings, self.argPermute))
+			self.split_metadata.Write(ArgsFile, resolveBindings(self.node.argbindings, self.argPermute))
 			threads, memGB, special := self.node.setSplitJobReqs()
 			if self.node.split {
 				if !self.split_has_run {
@@ -805,8 +863,8 @@ func (self *Fork) step() {
 					self.node.runSplit(self.fqname, self.split_metadata, threads, memGB, special)
 				}
 			} else {
-				self.split_metadata.write(StageDefsFile, self.stageDefs)
-				self.split_metadata.writeTime(CompleteFile)
+				self.split_metadata.Write(StageDefsFile, self.stageDefs)
+				self.split_metadata.WriteTime(CompleteFile)
 			}
 		} else if state == Complete.Prefixed(SplitPrefix) {
 			// MARTIAN-395 We have observed a possible race condition where
@@ -819,7 +877,7 @@ func (self *Fork) step() {
 					if err != nil {
 						errstring = err.Error()
 					}
-					self.split_metadata.writeRaw(Errors,
+					self.split_metadata.WriteRaw(Errors,
 						fmt.Sprintf("The split method did not return a dictionary {'chunks': [{}], 'join': {}}.\nError: %s\nChunk count: %d", errstring, len(self.stageDefs.ChunkDefs)))
 				} else {
 					if len(self.chunks) == 0 {
@@ -840,41 +898,41 @@ func (self *Fork) step() {
 			for id, value := range self.stageDefs.JoinDef {
 				resolvedBindings[id] = value
 			}
-			self.join_metadata.write(ArgsFile, resolvedBindings)
-			self.join_metadata.write(ChunkDefsFile, self.stageDefs.ChunkDefs)
+			self.join_metadata.Write(ArgsFile, resolvedBindings)
+			self.join_metadata.Write(ChunkDefsFile, self.stageDefs.ChunkDefs)
 			if self.node.split {
 				chunkOuts := []interface{}{}
 				for _, chunk := range self.chunks {
 					outs := chunk.metadata.read(OutsFile)
 					chunkOuts = append(chunkOuts, outs)
 				}
-				self.join_metadata.write(ChunkOutsFile, chunkOuts)
-				self.join_metadata.write(OutsFile, makeOutArgs(self.node.outparams, self.metadata.filesPath))
+				self.join_metadata.Write(ChunkOutsFile, chunkOuts)
+				self.join_metadata.Write(OutsFile, makeOutArgs(self.node.outparams, self.metadata.filesPath))
 				if !self.join_has_run {
 					self.join_has_run = true
 					self.lastPrint = time.Now()
 					self.node.runJoin(self.fqname, self.join_metadata, threads, memGB, special)
 				}
 			} else {
-				self.join_metadata.write(OutsFile, self.chunks[0].metadata.read(OutsFile))
-				self.join_metadata.writeTime(CompleteFile)
+				self.join_metadata.Write(OutsFile, self.chunks[0].metadata.read(OutsFile))
+				self.join_metadata.WriteTime(CompleteFile)
 			}
 		} else if state == Complete.Prefixed(JoinPrefix) {
-			self.metadata.write(OutsFile, self.join_metadata.read(OutsFile))
+			self.metadata.Write(OutsFile, self.join_metadata.read(OutsFile))
 			if ok, msg := self.verifyOutput(); ok {
-				self.metadata.writeTime(CompleteFile)
+				self.metadata.WriteTime(CompleteFile)
 			} else {
-				self.metadata.writeRaw(Errors, msg)
+				self.metadata.WriteRaw(Errors, msg)
 			}
 		}
 
 	} else if self.node.kind == "pipeline" {
 		self.writeInvocation()
-		self.metadata.write(OutsFile, resolveBindings(self.node.retbindings, self.argPermute))
+		self.metadata.Write(OutsFile, resolveBindings(self.node.retbindings, self.argPermute))
 		if ok, msg := self.verifyOutput(); ok {
-			self.metadata.writeTime(CompleteFile)
+			self.metadata.WriteTime(CompleteFile)
 		} else {
-			self.metadata.writeRaw(Errors, msg)
+			self.metadata.WriteRaw(Errors, msg)
 		}
 	}
 }
@@ -968,7 +1026,7 @@ func (self *Fork) vdrKill() *VDRKillReport {
 	}
 	// update timestamp to mark actual kill time
 	killReport.Timestamp = Timestamp()
-	self.metadata.write(VdrKill, killReport)
+	self.metadata.Write(VdrKill, killReport)
 	return killReport
 }
 
@@ -1276,7 +1334,7 @@ type Node struct {
 	volatile           bool
 	local              bool
 	preflight          bool
-	stagecodeLang      string
+	stagecodeLang      StageCodeType
 	stagecodeCmd       string
 	journalPath        string
 	tmpPath            string
@@ -1297,7 +1355,7 @@ type NodeInfo struct {
 	SweepBindings []*BindingInfo `json:"sweepbindings"`
 	Forks         []*ForkInfo    `json:"forks"`
 	Edges         []interface{}  `json:"edges"`
-	StagecodeLang string         `json:"stagecodeLang"`
+	StagecodeLang StageCodeType  `json:"stagecodeLang"`
 	StagecodeCmd  string         `json:"stagecodeCmd"`
 	Error         interface{}    `json:"error"`
 }
@@ -1361,19 +1419,19 @@ func (self *Node) mkdirs() error {
 	if err := mkdirAll(self.path); err != nil {
 		msg := fmt.Sprintf("Could not create root directory for %s: %s", self.fqname, err.Error())
 		LogError(err, "runtime", msg)
-		self.metadata.writeRaw(Errors, msg)
+		self.metadata.WriteRaw(Errors, msg)
 		return err
 	}
 	if err := mkdir(self.journalPath); err != nil {
 		msg := fmt.Sprintf("Could not create directories for %s: %s", self.fqname, err.Error())
 		LogError(err, "runtime", msg)
-		self.metadata.writeRaw(Errors, msg)
+		self.metadata.WriteRaw(Errors, msg)
 		return err
 	}
 	if err := mkdir(self.tmpPath); err != nil {
 		msg := fmt.Sprintf("Could not create directories for %s: %s", self.fqname, err.Error())
 		LogError(err, "runtime", msg)
-		self.metadata.writeRaw(Errors, msg)
+		self.metadata.WriteRaw(Errors, msg)
 		return err
 	}
 
@@ -1694,7 +1752,7 @@ func (self *Node) kill(message string) {
 		if state, _ := metadata.getState(); state == Failed {
 			continue
 		}
-		metadata.writeRaw(Errors, message)
+		metadata.WriteRaw(Errors, message)
 	}
 }
 
@@ -1728,7 +1786,7 @@ func (self *Node) getFatalError() (string, bool, string, string, MetadataFileNam
 		if metadata.exists(Errors) {
 			errlog := metadata.readRaw(Errors)
 			summary := "<none>"
-			if self.stagecodeLang == "Python" {
+			if self.stagecodeLang == PythonStage {
 				errlines := strings.Split(errlog, "\n")
 				if len(errlines) >= 2 {
 					summary = errlines[len(errlines)-2]
@@ -1737,12 +1795,12 @@ func (self *Node) getFatalError() (string, bool, string, string, MetadataFileNam
 				}
 			}
 			errpaths := []string{
-				metadata.makePath(Errors),
-				metadata.makePath(StdOut),
-				metadata.makePath(StdErr),
+				metadata.MakePath(Errors),
+				metadata.MakePath(StdOut),
+				metadata.MakePath(StdErr),
 			}
 			if self.rt.enableStackVars {
-				errpaths = append(errpaths, metadata.makePath(Stackvars))
+				errpaths = append(errpaths, metadata.MakePath(Stackvars))
 			}
 			return metadata.fqname, self.preflight, summary, errlog, Errors, errpaths
 		}
@@ -1754,7 +1812,7 @@ func (self *Node) getFatalError() (string, bool, string, string, MetadataFileNam
 				summary = assertlines[len(assertlines)-1]
 			}
 			return metadata.fqname, self.preflight, summary, assertlog, Assert, []string{
-				metadata.makePath(Assert),
+				metadata.MakePath(Assert),
 			}
 		}
 	}
@@ -2170,14 +2228,15 @@ func (self *Node) runJob(shellName string, fqname string, metadata *Metadata,
 	envs := self.envs
 
 	switch self.stagecodeLang {
+	case PythonStage:
 	case "Python":
 		shellCmd = path.Join(self.rt.adaptersPath, "python", shellName+".py")
 		argv = append(stagecodeParts, metadata.path, metadata.filesPath, runFile)
-	case "Executable":
+	case ExecStage:
 		shellCmd = stagecodeParts[0]
 		argv = append(stagecodeParts[1:], shellName, metadata.path, metadata.filesPath, runFile)
 	default:
-		panic(fmt.Sprintf("Unknown stage code language: %s", self.stagecodeLang))
+		panic(fmt.Sprintf("Unknown stage code language: %v", self.stagecodeLang))
 	}
 
 	// Log the job run.
@@ -2197,8 +2256,8 @@ func (self *Node) runJob(shellName string, fqname string, metadata *Metadata,
 	}
 
 	EnterCriticalSection()
-	metadata.writeTime(QueuedLocally)
-	metadata.write(JobInfoFile, &JobInfo{
+	metadata.WriteTime(QueuedLocally)
+	metadata.Write(JobInfoFile, &JobInfo{
 		Name:        fqname,
 		Type:        jobMode,
 		Threads:     threads,
@@ -2222,11 +2281,6 @@ type Stagestance struct {
 }
 
 func NewStagestance(parent Nodable, callStm *CallStm, callables *Callables) *Stagestance {
-	langMap := map[string]string{
-		"py":   "Python",
-		"exec": "Executable",
-	}
-
 	self := &Stagestance{}
 	self.node = NewNode(parent, "stage", callStm, callables)
 	stage, ok := callables.Table[self.node.name].(*Stage)
@@ -2237,15 +2291,18 @@ func NewStagestance(parent Nodable, callStm *CallStm, callables *Callables) *Sta
 	stagecodePaths := append(self.node.mroPaths, strings.Split(os.Getenv("PATH"), ":")...)
 	stagecodePath, _ := SearchPaths(stage.Src.Path, stagecodePaths)
 	self.node.stagecodeCmd = strings.Join(append([]string{stagecodePath}, stage.Src.Args...), " ")
+	var err error
+	if self.node.stagecodeLang, err = stage.Src.Lang.Parse(); err != nil {
+		panic(fmt.Sprintf("Unsupported language: %v", stage.Src.Lang))
+	}
 	if self.node.rt.stest {
-		switch stage.Src.Lang {
-		case "py":
+		switch self.node.stagecodeLang {
+		case PythonStage:
 			self.node.stagecodeCmd = RelPath(path.Join("..", "adapters", "python", "tester"))
 		default:
-			panic(fmt.Sprintf("Unsupported stress test language: %s", stage.Src.Lang))
+			panic(fmt.Sprintf("Unsupported stress test language: %v", stage.Src.Lang))
 		}
 	}
-	self.node.stagecodeLang = langMap[stage.Src.Lang]
 	self.node.split = stage.Split
 	self.node.buildForks(self.node.argbindings)
 	return self
@@ -2883,20 +2940,20 @@ func (self *Pipestance) GetVersions() (string, string, error) {
 
 func (self *Pipestance) PostProcess() {
 	self.node.postProcess()
-	self.metadata.writeRaw(TimestampFile, self.metadata.readRaw(TimestampFile)+"\nend: "+Timestamp())
+	self.metadata.WriteRaw(TimestampFile, self.metadata.readRaw(TimestampFile)+"\nend: "+Timestamp())
 	self.Immortalize()
 }
 
 func (self *Pipestance) Immortalize() {
 	self.metadata.loadCache()
 	if !self.metadata.exists(Perf) {
-		self.metadata.write(Perf, self.Serialize(Perf))
+		self.metadata.Write(Perf, self.Serialize(Perf))
 	}
 	if !self.metadata.exists(FinalState) {
-		self.metadata.write(FinalState, self.Serialize(FinalState))
+		self.metadata.Write(FinalState, self.Serialize(FinalState))
 	}
 	if !self.metadata.exists(MetadataZip) {
-		zipPath := self.metadata.makePath(MetadataZip)
+		zipPath := self.metadata.MakePath(MetadataZip)
 		if err := self.ZipMetadata(zipPath); err != nil {
 			LogError(err, "runtime", "Failed to create metadata zip file %s: %s",
 				zipPath, err.Error())
@@ -2912,12 +2969,12 @@ func (self *Pipestance) VDRKill() *VDRKillReport {
 		killReports = append(killReports, killReport)
 	}
 	killReport := mergeVDRKillReports(killReports)
-	self.metadata.write(VdrKill, killReport)
+	self.metadata.Write(VdrKill, killReport)
 	return killReport
 }
 
 func (self *Pipestance) RecordUiPort(url string) error {
-	return self.metadata.writeRaw(UiPort, url)
+	return self.metadata.WriteRaw(UiPort, url)
 }
 
 func (self *Pipestance) ClearUiPort() error {
@@ -2930,7 +2987,7 @@ func (self *Pipestance) Lock() error {
 		return &PipestanceLockedError{self.node.parent.getNode().name, self.GetPath()}
 	}
 	RegisterSignalHandler(self)
-	self.metadata.writeTime(Lock)
+	self.metadata.WriteTime(Lock)
 	return nil
 }
 
@@ -2943,7 +3000,7 @@ func (self *Pipestance) Unlock() {
 	UnregisterSignalHandler(self)
 }
 
-func (self *Pipestance) handleSignal() {
+func (self *Pipestance) HandleSignal(sig os.Signal) {
 	self.unlock()
 }
 
@@ -3138,16 +3195,16 @@ func (self *Runtime) InvokePipeline(src string, srcPath string, psid string,
 	}
 
 	// Write top-level metadata files.
-	pipestance.metadata.writeRaw(InvocationFile, src)
-	pipestance.metadata.writeRaw(JobModeFile, self.jobMode)
-	pipestance.metadata.writeRaw(MroSourceFile, postsrc)
-	pipestance.metadata.write(VersionsFile, &VersionInfo{
+	pipestance.metadata.WriteRaw(InvocationFile, src)
+	pipestance.metadata.WriteRaw(JobModeFile, self.jobMode)
+	pipestance.metadata.WriteRaw(MroSourceFile, postsrc)
+	pipestance.metadata.Write(VersionsFile, &VersionInfo{
 		Martian:   self.martianVersion,
 		Pipelines: mroVersion,
 	})
-	pipestance.metadata.write(TagsFile, tags)
-	pipestance.metadata.writeRaw(UuidFile, uuid.NewV4().String())
-	pipestance.metadata.writeRaw(TimestampFile, "start: "+Timestamp())
+	pipestance.metadata.Write(TagsFile, tags)
+	pipestance.metadata.WriteRaw(UuidFile, uuid.NewV4().String())
+	pipestance.metadata.WriteRaw(TimestampFile, "start: "+Timestamp())
 
 	return pipestance, nil
 }
@@ -3279,7 +3336,7 @@ func (self *Runtime) GetMetadata(pipestancePath string, metadataPath string) (st
 
 		// Relative paths outside the pipestance directory will be ignored.
 		if !strings.Contains(relPath, "..") {
-			if data, err := ReadZip(metadata.makePath(MetadataZip), relPath); err == nil {
+			if data, err := ReadZip(metadata.MakePath(MetadataZip), relPath); err == nil {
 				return data, nil
 			}
 		}

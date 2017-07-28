@@ -284,8 +284,8 @@ func (self *LocalJobManager) Enqueue(shellCmd string, argv []string,
 		cmd.Dir = metadata.filesPath
 		cmd.Env = MergeEnv(envs)
 
-		stdoutPath := metadata.makePath("stdout")
-		stderrPath := metadata.makePath("stderr")
+		stdoutPath := metadata.MakePath("stdout")
+		stderrPath := metadata.MakePath("stderr")
 
 		threads, memGB = self.GetSystemReqs(threads, memGB)
 
@@ -297,7 +297,7 @@ func (self *LocalJobManager) Enqueue(shellCmd string, argv []string,
 			LogError(err, "jobmngr",
 				"%s requested %d threads, but the job manager was only configured to use %d.",
 				metadata.fqname, threads, self.maxCores)
-			metadata.writeRaw("errors", err.Error())
+			metadata.WriteRaw("errors", err.Error())
 			return
 		}
 		if self.debug {
@@ -313,7 +313,7 @@ func (self *LocalJobManager) Enqueue(shellCmd string, argv []string,
 			LogError(err, "jobmngr",
 				"%s requested %d GB of memory, but the job manager was only configured to use %d.",
 				metadata.fqname, memGB, self.maxMemGB)
-			metadata.writeRaw("errors", err.Error())
+			metadata.WriteRaw("errors", err.Error())
 			return
 		}
 		if self.debug {
@@ -372,7 +372,7 @@ func (self *LocalJobManager) Enqueue(shellCmd string, argv []string,
 				retries = maxRetries + 1
 			}
 			if retries > maxRetries {
-				metadata.writeRaw("errors", err.Error())
+				metadata.WriteRaw("errors", err.Error())
 			} else {
 				LogInfo("jobmngr", "Job failed: %s. Retrying job %s in %d seconds", err.Error(), fqname, waitTime)
 				self.Enqueue(shellCmd, argv, envs, metadata, threads, memGB, fqname, retries,
@@ -574,8 +574,8 @@ func (self *RemoteJobManager) sendJob(shellCmd string, argv []string, envs map[s
 	params := map[string]string{
 		"JOB_NAME":          fqname + "." + shellName,
 		"THREADS":           fmt.Sprintf("%d", threads),
-		"STDOUT":            metadata.makePath("stdout"),
-		"STDERR":            metadata.makePath("stderr"),
+		"STDOUT":            metadata.MakePath("stdout"),
+		"STDERR":            metadata.MakePath("stderr"),
 		"JOB_WORKDIR":       metadata.filesPath,
 		"CMD":               strings.Join(argv, " "),
 		"MEM_GB":            fmt.Sprintf("%d", memGB),
@@ -606,7 +606,7 @@ func (self *RemoteJobManager) sendJob(shellCmd string, argv []string, envs map[s
 	}
 	r := strings.NewReplacer(args...)
 	jobscript := r.Replace(template)
-	metadata.writeRaw("jobscript", jobscript)
+	metadata.WriteRaw("jobscript", jobscript)
 
 	cmd := exec.Command(self.config.jobCmd, self.config.jobCmdArgs...)
 	cmd.Dir = metadata.filesPath
@@ -616,13 +616,13 @@ func (self *RemoteJobManager) sendJob(shellCmd string, argv []string, envs map[s
 	defer ExitCriticalSection()
 	metadata.remove("queued_locally")
 	if output, err := cmd.CombinedOutput(); err != nil {
-		metadata.writeRaw("errors", "jobcmd error ("+err.Error()+"):\n"+string(output))
+		metadata.WriteRaw("errors", "jobcmd error ("+err.Error()+"):\n"+string(output))
 	} else {
 		trimmed := strings.TrimSpace(string(output))
 		// jobids should not have spaces in them.  This is the most general way to
 		// check that a string is actually a jobid.
 		if trimmed != "" && !strings.ContainsAny(trimmed, " \t\n\r") {
-			metadata.writeRaw("jobid", strings.TrimSpace(string(output)))
+			metadata.WriteRaw("jobid", strings.TrimSpace(string(output)))
 			metadata.cache("jobid")
 		}
 	}

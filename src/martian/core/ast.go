@@ -10,6 +10,8 @@ import (
 	"strings"
 )
 
+type StageLanguage string
+
 type (
 	AstNode struct {
 		Loc      int
@@ -109,7 +111,7 @@ type (
 
 	SrcParam struct {
 		Node AstNode
-		Lang string
+		Lang StageLanguage
 		Path string
 		Args []string
 	}

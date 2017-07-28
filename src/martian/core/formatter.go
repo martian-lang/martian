@@ -262,9 +262,9 @@ func (self *Stage) format() string {
 }
 
 func (self *SrcParam) format(modeWidth int, typeWidth int, idWidth int) string {
-	langPad := strings.Repeat(" ", typeWidth-len(self.Lang))
+	langPad := strings.Repeat(" ", typeWidth-len(string(self.Lang)))
 	modePad := strings.Repeat(" ", modeWidth-len("src"))
-	return fmt.Sprintf("%s%ssrc%s %s%s \"%s\",", self.Node.Comments, INDENT,
+	return fmt.Sprintf("%s%ssrc%s %v%s \"%s\",", self.Node.Comments, INDENT,
 		modePad, self.Lang, langPad, self.Path)
 }
 

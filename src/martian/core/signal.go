@@ -14,7 +14,7 @@ import (
 )
 
 type HandlerObject interface {
-	handleSignal()
+	HandleSignal(sig os.Signal)
 }
 
 type SignalHandler struct {
@@ -89,7 +89,7 @@ func SetupSignalHandlers() {
 			signalHandler.mutex.Lock()
 		}
 		for object := range signalHandler.objects {
-			object.handleSignal()
+			object.HandleSignal(sig)
 		}
 		os.Exit(1)
 	}()

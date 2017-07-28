@@ -116,6 +116,10 @@ type Metadata struct {
 	lastHeartbeat time.Time
 	mutex         sync.Mutex
 
+	// A prefix to attach when writing journal file name.
+	// Empty for chunks, or SplitPrefix or JoinPrefix.
+	journalPrefix string
+
 	// If non-zero the job was not found last time the job manager was queried,
 	// the chunk will be failed out if the state seems like it's still running
 	// after the job manager's grace period has elapsed.
@@ -135,6 +139,15 @@ func NewMetadata(fqname string, p string) *Metadata {
 		readCache: make(map[MetadataFileName]interface{}),
 		filesPath: path.Join(p, "files"),
 	}
+}
+
+func NewMetadataRunWithJournalPath(fqname string, p string, filesPath string, journalPath string, runType string) *Metadata {
+	self := NewMetadataWithJournalPath(fqname, p, journalPath)
+	self.filesPath = filesPath
+	if runType != "main" {
+		self.journalPrefix = runType + "_"
+	}
+	return self
 }
 
 func NewMetadataWithJournalPath(fqname string, p string, journalPath string) *Metadata {
@@ -160,13 +173,13 @@ func (self *Metadata) mkdirs() error {
 	if err := mkdir(self.path); err != nil {
 		msg := fmt.Sprintf("Could not create directories for %s: %s", self.fqname, err.Error())
 		LogError(err, "runtime", msg)
-		self.writeRaw("errors", msg)
+		self.WriteRaw("errors", msg)
 		return err
 	}
 	if err := mkdir(self.filesPath); err != nil {
 		msg := fmt.Sprintf("Could not create directories for %s: %s", self.fqname, err.Error())
 		LogError(err, "runtime", msg)
-		self.writeRaw("errors", msg)
+		self.WriteRaw("errors", msg)
 		return err
 	}
 	return nil
@@ -259,7 +272,7 @@ func (self *Metadata) loadCache() {
 	self.mutex.Unlock()
 }
 
-func (self *Metadata) makePath(name MetadataFileName) string {
+func (self *Metadata) MakePath(name MetadataFileName) string {
 	return path.Join(self.path, name.FileName())
 }
 
@@ -276,7 +289,7 @@ func (self *Metadata) exists(name MetadataFileName) bool {
 }
 
 func (self *Metadata) readRawSafe(name MetadataFileName) (string, error) {
-	bytes, err := ioutil.ReadFile(self.makePath(name))
+	bytes, err := ioutil.ReadFile(self.MakePath(name))
 	return string(bytes), err
 }
 
@@ -311,7 +324,7 @@ func (self *Metadata) read(name MetadataFileName) interface{} {
 	return v
 }
 
-func (self *Metadata) readInto(name MetadataFileName, target interface{}) error {
+func (self *Metadata) ReadInto(name MetadataFileName, target interface{}) error {
 	str, err := self.readRawSafe(name)
 	if err != nil {
 		return err
@@ -321,7 +334,7 @@ func (self *Metadata) readInto(name MetadataFileName, target interface{}) error 
 }
 
 func (self *Metadata) _writeRawNoLock(name MetadataFileName, text string) error {
-	err := ioutil.WriteFile(self.makePath(name), []byte(text), 0644)
+	err := ioutil.WriteFile(self.MakePath(name), []byte(text), 0644)
 	self._cacheNoLock(name)
 	if err != nil {
 		msg := fmt.Sprintf("Could not write %s for %s: %s", name, self.fqname, err.Error())
@@ -332,32 +345,62 @@ func (self *Metadata) _writeRawNoLock(name MetadataFileName, text string) error 
 	}
 	return err
 }
-func (self *Metadata) writeRaw(name MetadataFileName, text string) error {
-	err := ioutil.WriteFile(self.makePath(name), []byte(text), 0644)
+func (self *Metadata) WriteRaw(name MetadataFileName, text string) error {
+	err := ioutil.WriteFile(self.MakePath(name), []byte(text), 0644)
 	self.cache(name)
 	if err != nil {
 		msg := fmt.Sprintf("Could not write %s for %s: %s", name, self.fqname, err.Error())
 		LogError(err, "runtime", msg)
 		if name != Errors {
-			self.writeRaw(Errors, msg)
+			self.WriteRaw(Errors, msg)
 		}
 	}
 	return err
 }
-func (self *Metadata) write(name MetadataFileName, object interface{}) error {
+func (self *Metadata) Write(name MetadataFileName, object interface{}) error {
 	bytes, _ := json.MarshalIndent(object, "", "    ")
-	return self.writeRaw(name, string(bytes))
+	return self.WriteRaw(name, string(bytes))
 }
-func (self *Metadata) writeTime(name MetadataFileName) error {
-	return self.writeRaw(name, Timestamp())
+func (self *Metadata) WriteTime(name MetadataFileName) error {
+	return self.WriteRaw(name, Timestamp())
 }
+
+func (self *Metadata) WriteAtomic(name MetadataFileName, object interface{}) error {
+	bytes, err := json.MarshalIndent(object, "", "    ")
+	if err != nil {
+		return err
+	}
+	fname := self.MakePath(name)
+	tmpName := fname + ".tmp"
+	if err := ioutil.WriteFile(tmpName, bytes, 0644); err != nil {
+		return err
+	}
+	if err := os.Rename(tmpName, fname); err == nil || os.IsNotExist(err) {
+		return nil
+	} else {
+		return err
+	}
+}
+
+func (self *Metadata) UpdateJournal(name MetadataFileName) error {
+	fname := path.Join(self.journalPath, self.fqname+"."+self.journalPrefix+string(name))
+	if err := ioutil.WriteFile(fname+".tmp", []byte(Timestamp()), 0644); err != nil {
+		return err
+	}
+	if err := os.Rename(fname+".tmp", fname); err == nil || os.IsNotExist(err) {
+		return nil
+	} else {
+		return err
+	}
+}
+
 func (self *Metadata) remove(name MetadataFileName) error {
 	self.uncache(name)
-	return os.Remove(self.makePath(name))
+	return os.Remove(self.MakePath(name))
 }
 func (self *Metadata) _removeNoLock(name MetadataFileName) error {
 	self._uncacheNoLock(name)
-	return os.Remove(self.makePath(name))
+	return os.Remove(self.MakePath(name))
 }
 
 func (self *Metadata) clearReadCache() {
@@ -497,7 +540,7 @@ func (self *Metadata) restartLocal() error {
 		}
 	} else if state == Running {
 		var jobInfo *JobInfo
-		if err := self.readInto(JobInfoFile, jobInfo); err == nil &&
+		if err := self.ReadInto(JobInfoFile, jobInfo); err == nil &&
 			jobInfo.Pid != 0 {
 			if proc, err := os.FindProcess(jobInfo.Pid); err == nil && proc != nil {
 				// From man 2 kill: If sig is 0, then no signal is sent, but error
@@ -528,7 +571,7 @@ func (self *Metadata) checkHeartbeat() {
 			self.lastHeartbeat = time.Now()
 		}
 		if self.lastRefresh.Sub(self.lastHeartbeat) > time.Minute*heartbeatTimeout {
-			self.writeRaw("errors", fmt.Sprintf(
+			self.WriteRaw("errors", fmt.Sprintf(
 				"%s: No heartbeat detected for %d minutes. Assuming job has failed. This may be "+
 					"due to a user manually terminating the job, or the operating system or cluster "+
 					"terminating it due to resource or time limits.",
@@ -554,7 +597,7 @@ func (self *Metadata) serializeState() *MetadataInfo {
 func (self *Metadata) serializePerf(numThreads int) *PerfInfo {
 	if self.exists(CompleteFile) && self.exists(JobInfoFile) {
 		jobInfo := JobInfo{}
-		if err := self.readInto(JobInfoFile, &jobInfo); err == nil {
+		if err := self.ReadInto(JobInfoFile, &jobInfo); err == nil {
 			fpaths, _ := self.enumerateFiles()
 			return reduceJobInfo(&jobInfo, fpaths, numThreads)
 		}

@@ -57,6 +57,7 @@ var rules = []*rule{
 	newRule("go\\b", GO),
 	newRule("sh\\b", SH),
 	newRule("exec\\b", EXEC),
+	newRule("comp\\b", COMPILED),
 	newRule("map\\b", MAP),
 	newRule("int\\b", INT),
 	newRule("string\\b", STRING),

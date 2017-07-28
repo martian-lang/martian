@@ -65,7 +65,7 @@ func unquote(qs string) string {
 %token FILETYPE STAGE PIPELINE CALL LOCAL PREFLIGHT VOLATILE SWEEP SPLIT USING SELF RETURN
 %token IN OUT SRC
 %token <val> ID LITSTRING NUM_FLOAT NUM_INT DOT
-%token <val> PY GO SH EXEC
+%token <val> PY GO SH EXEC COMPILED
 %token <val> MAP INT STRING FLOAT PATH BOOL TRUE FALSE NULL DEFAULT
 
 %%
@@ -163,7 +163,7 @@ out_param
 src_stm
     : SRC src_lang LITSTRING COMMA
         {{ stagecodeParts := strings.Split(unquote($3), " ")
-	   $$ = &SrcParam{$<nodeGen>1(), $2, stagecodeParts[0], stagecodeParts[1:]} }}
+	   $$ = &SrcParam{$<nodeGen>1(), StageLanguage($2), stagecodeParts[0], stagecodeParts[1:]} }}
     ;
 
 help
