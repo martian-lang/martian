@@ -422,6 +422,7 @@ var validProfileModes = []ProfileMode{
 	MemProfile,
 	LineProfile,
 	PyflameProfile,
+	PerfRecordProfile,
 }
 
 func VerifyProfileMode(profileMode ProfileMode) {
@@ -2229,9 +2230,21 @@ func (self *Node) runJob(shellName string, fqname string, metadata *Metadata,
 
 	switch self.stagecodeLang {
 	case PythonStage:
-	case "Python":
-		shellCmd = path.Join(self.rt.adaptersPath, "python", shellName+".py")
-		argv = append(stagecodeParts, metadata.path, metadata.filesPath, runFile)
+		if len(stagecodeParts) != 1 {
+			panic(fmt.Sprintf("Invalid python stage module specification \"%s\"", self.stagecodeCmd))
+		}
+		shellCmd = self.rt.mrjob
+		argv = []string{
+			path.Join(self.rt.adaptersPath, "python", "martian_shell.py"),
+			stagecodeParts[0],
+			shellName,
+			metadata.path,
+			metadata.filesPath,
+			runFile,
+		}
+	case CompiledStage:
+		shellCmd = self.rt.mrjob
+		argv = append(stagecodeParts, shellName, metadata.path, metadata.filesPath, runFile)
 	case ExecStage:
 		shellCmd = stagecodeParts[0]
 		argv = append(stagecodeParts[1:], shellName, metadata.path, metadata.filesPath, runFile)
@@ -3045,6 +3058,7 @@ func NewTopNode(rt *Runtime, psid string, p string, mroPaths []string, mroVersio
 //=============================================================================
 type Runtime struct {
 	adaptersPath    string
+	mrjob           string
 	martianVersion  string
 	vdrMode         string
 	jobMode         string
@@ -3074,6 +3088,7 @@ func NewRuntimeWithCores(jobMode string, vdrMode string, profileMode ProfileMode
 
 	self := &Runtime{}
 	self.adaptersPath = RelPath(path.Join("..", "adapters"))
+	self.mrjob = RelPath("mrjob")
 	self.martianVersion = martianVersion
 	self.jobMode = jobMode
 	self.vdrMode = vdrMode

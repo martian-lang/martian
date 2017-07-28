@@ -8,8 +8,10 @@ go:
     - 1.x
 
 cache:
+  pip: true
   directories:
   - "$HOME/.nvm"
+  - "$HOME/.local"
 before_cache:
 - rm -f $HOME/.npm/anonymous-cli-metrics.json
 
@@ -17,6 +19,7 @@ sudo: false
 before_script:
 - nvm install node
 - npm install -g gulp
+- pip install --user pylint
 
 script:
     - make all
@@ -28,3 +31,5 @@ script:
     - test/martian_test.py test/fork_test/retry_test.json
     - test/martian_test.py test/fork_test/autoretry_pass.json
     - test/martian_test.py test/fork_test/autoretry_fail.json
+    - pylint adapters/python/martian_shell.py
+    - pylint adapters/python/martian.py

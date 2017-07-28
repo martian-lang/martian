@@ -19,7 +19,7 @@ sys.path.append(os.path.dirname(code_path))
 try:
     stage_code = __import__(os.path.basename(code_path))
 except Exception as e:
-    sys.stdout.write(json.dumps({ 'error': traceback.format_exc() }))
+    sys.stdout.write(json.dumps({'error': traceback.format_exc()}))
     exit(1)
 
 # Push output to STDOUT.
@@ -33,7 +33,7 @@ try:
     out_params.extend(stage_code.out_params)
 except:
     pass
-sys.stdout.write(json.dumps({ 
+sys.stdout.write(json.dumps({
     'exports': dir(stage_code),
     'in_params': in_params,
     'out_params': out_params
