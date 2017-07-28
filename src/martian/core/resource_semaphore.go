@@ -104,12 +104,21 @@ func (self *ResourceSemaphore) runJobs() {
 	self.waiters = nil
 }
 
-// Get the current amount of resources in use
+// Get the current amount of resources in use.  This includes both reserved
+// resources and resources for which their usage is unaccounted for.
 func (self *ResourceSemaphore) InUse() int64 {
 	self.mu.Lock()
 	used := self.maxSize - self.curSize + self.reserved
 	self.mu.Unlock()
 	return used
+}
+
+// Get the current amount of explicitly reserved resources.
+func (self *ResourceSemaphore) Reserved() int64 {
+	self.mu.Lock()
+	res := self.reserved
+	self.mu.Unlock()
+	return res
 }
 
 // Get the number of items waiting on the semaphore.
@@ -126,15 +135,44 @@ func (self *ResourceSemaphore) QueueLength() int {
 // or some other process on the system is using memory.
 func (self *ResourceSemaphore) UpdateActual(n int64) int64 {
 	self.mu.Lock()
-	// TODO: it would be better to use the total resource usage of owned
-	// martian jobs here instead of the reservation.  That can be tricky to
-	// compute, however.
 	actualSize := n + self.reserved
 	oldSize := self.curSize
 	if actualSize > self.maxSize {
 		self.curSize = self.maxSize
 	} else {
 		self.curSize = actualSize
+	}
+	// There may have been jobs blocked on the actual availability.
+	if oldSize < self.curSize {
+		self.runJobs()
+	}
+	self.mu.Unlock()
+	return actualSize - self.maxSize
+}
+
+// Set the current actual availability based on the current free amount and the
+// amount of the reserved usage which is actually in use.  This handles the
+// case where, for example, 30 of 32 GB of memory are reserved, but only 16GB
+// has actually been committed so far, so 16GB appears to be free.
+func (self *ResourceSemaphore) UpdateFreeUsed(free, usedReservation int64) int64 {
+	actualSize := free + usedReservation
+	self.mu.Lock()
+	oldSize := self.curSize
+	if usedReservation <= self.reserved {
+		if actualSize > self.maxSize {
+			self.curSize = self.maxSize
+		} else {
+			self.curSize = actualSize
+		}
+	} else {
+		// We're using more than we think we're using.  Adjust
+		// the usage cap appropriately.
+		adjust := usedReservation - self.reserved
+		if actualSize > self.maxSize-adjust {
+			self.curSize = self.maxSize - adjust
+		} else {
+			self.curSize = actualSize - adjust
+		}
 	}
 	// There may have been jobs blocked on the actual availability.
 	if oldSize < self.curSize {

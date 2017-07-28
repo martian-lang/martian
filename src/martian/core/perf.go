@@ -16,6 +16,7 @@ type JobInfo struct {
 	Cwd           string            `json:"cwd,omitempty"`
 	PythonInfo    *PythonInfo       `json:"python,omitempty"`
 	RusageInfo    *RusageInfo       `json:"rusage,omitempty"`
+	MemoryUsage   *ObservedMemory   `json:"used_bytes,omitempty"`
 	WallClockInfo *WallClockInfo    `json:"wallclock,omitempty"`
 	Threads       int               `json:"threads,omitempty"`
 	MemGB         int               `json:"memGB,omitempty"`
@@ -53,6 +54,77 @@ type Rusage struct {
 	SignalsRcvd  int     `json:"ru_nsignals"`
 }
 
+// Current observed memory usage.
+type ObservedMemory struct {
+	Rss    int64 `json:"rss"`
+	Shared int64 `json:"shared"`
+	Vmem   int64 `json:"vmem"`
+	Text   int64 `json:"text"`
+	Stack  int64 `json:"stack"`
+}
+
+// Increase this value to max(this,other).
+func (self *ObservedMemory) IncreaseTo(other ObservedMemory) {
+	if other.Rss > self.Rss {
+		self.Rss = other.Rss
+	}
+	if other.Vmem > self.Vmem {
+		self.Vmem = other.Vmem
+	}
+	if other.Shared > self.Shared {
+		self.Shared = other.Shared
+	}
+	if other.Text > self.Text {
+		self.Text = other.Text
+	}
+	if other.Stack > self.Stack {
+		self.Stack = other.Stack
+	}
+}
+
+// Add other to this.
+func (self *ObservedMemory) Add(other ObservedMemory) {
+	self.Rss += other.Rss
+	self.Vmem += other.Vmem
+	self.Shared += other.Shared
+	self.Text += other.Text
+	self.Stack += other.Stack
+}
+
+// Increase this value to the max RSS reported by getrusage, if it
+// is higher.
+func (self *ObservedMemory) IncreaseRusage(other *RusageInfo) {
+	if other == nil {
+		return
+	}
+	if other.Self != nil {
+		oRss := int64(other.Self.MaxRss) * 1024
+		if oRss > self.Rss {
+			self.Rss = oRss
+		}
+	}
+	if other.Children != nil {
+		oRss := int64(other.Children.MaxRss) * 1024
+		if oRss > self.Rss {
+			self.Rss = oRss
+		}
+	}
+}
+
+func (self *ObservedMemory) IsZero() bool {
+	return self.Rss == 0 && self.Vmem == 0 &&
+		self.Shared == 0 && self.Text == 0 &&
+		self.Stack == 0
+}
+
+func (self *ObservedMemory) RssKb() int {
+	return int((self.Rss + 512) / 1024)
+}
+
+func (self *ObservedMemory) VmemKb() int {
+	return int((self.Vmem + 512) / 1024)
+}
+
 type WallClockInfo struct {
 	Start    string  `json:"start"`
 	End      string  `json:"end,omitempty"`
@@ -65,6 +137,7 @@ type PerfInfo struct {
 	Duration        float64   `json:"duration"`
 	CoreHours       float64   `json:"core_hours"`
 	MaxRss          int       `json:"maxrss"`
+	MaxVmem         int       `json:"maxvmem"`
 	InBlocks        int       `json:"in_blocks"`
 	OutBlocks       int       `json:"out_blocks"`
 	TotalBlocks     int       `json:"total_blocks"`
@@ -134,7 +207,7 @@ type NodePerfInfo struct {
 }
 
 func reduceJobInfo(jobInfo *JobInfo, outputPaths []string, numThreads int) *PerfInfo {
-	perfInfo := &PerfInfo{}
+	perfInfo := PerfInfo{}
 	timeLayout := "2006-01-02 15:04:05"
 
 	perfInfo.NumJobs = 1
@@ -162,12 +235,18 @@ func reduceJobInfo(jobInfo *JobInfo, outputPaths []string, numThreads int) *Perf
 			perfInfo.TotalBlocksRate = float64(perfInfo.TotalBlocks) / perfInfo.Duration
 		}
 	}
+	if jobInfo.MemoryUsage != nil {
+		if perfInfo.MaxRss < jobInfo.MemoryUsage.RssKb() {
+			perfInfo.MaxRss = jobInfo.MemoryUsage.RssKb()
+		}
+		perfInfo.MaxVmem = jobInfo.MemoryUsage.VmemKb()
+	}
 
 	perfInfo.OutputFiles, perfInfo.OutputBytes = GetDirectorySize(outputPaths)
 	perfInfo.TotalFiles = perfInfo.OutputFiles
 	perfInfo.TotalBytes = perfInfo.OutputBytes
 
-	return perfInfo
+	return &perfInfo
 }
 
 func ComputeStats(perfInfos []*PerfInfo, outputPaths []string, vdrKillReport *VDRKillReport) *PerfInfo {
@@ -185,6 +264,7 @@ func ComputeStats(perfInfos []*PerfInfo, outputPaths []string, vdrKillReport *VD
 		aggPerfInfo.Duration += perfInfo.Duration
 		aggPerfInfo.CoreHours += perfInfo.CoreHours
 		aggPerfInfo.MaxRss = max(aggPerfInfo.MaxRss, perfInfo.MaxRss)
+		aggPerfInfo.MaxVmem = max(aggPerfInfo.MaxVmem, perfInfo.MaxVmem)
 		aggPerfInfo.OutBlocks += perfInfo.OutBlocks
 		aggPerfInfo.InBlocks += perfInfo.InBlocks
 		aggPerfInfo.TotalBlocks += perfInfo.TotalBlocks

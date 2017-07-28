@@ -211,12 +211,22 @@ func (self *LocalJobManager) refreshLocalResources(localMode bool) error {
 	if err := sysMem.Get(); err != nil {
 		return err
 	}
-	memDiff := self.memMBSem.UpdateActual(int64(sysMem.ActualFree+(1024*1024-1)) /
-		(1024 * 1024))
+	usedMem, err := GetProcessTreeMemory(os.Getpid())
+	if err != nil {
+		LogError(err, "jobmngr", "Error getting process tree memory usage.")
+	}
+	memDiff := self.memMBSem.UpdateFreeUsed(
+		(int64(sysMem.ActualFree)+(1024*1024-1))/(1024*1024),
+		(usedMem.Rss+(1024*1024-1))/(1024*1024))
 	if memDiff < -int64(self.maxMemGB)*1024/8 &&
 		memDiff/128 < self.lastMemDiff &&
 		(localMode || sysMem.ActualFree < 2*1024*1024*1024) {
 		LogInfo("jobmngr", "%.1fGB less memory than expected was free", float64(-memDiff)/1024)
+		if usedMem.Rss > self.memMBSem.Reserved()*1024*1024 {
+			LogInfo("jobmngr",
+				"MRP and its child processes are using %.1fGB of rss.  %.1fGB are reserved.",
+				float64(usedMem.Rss)/(1024*1024*1024), self.memMBSem.Reserved()/1024)
+		}
 	}
 	self.lastMemDiff = memDiff / 128
 	if self.limitLoad {
