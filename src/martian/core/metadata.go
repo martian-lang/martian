@@ -553,10 +553,10 @@ func (self *Metadata) serializeState() *MetadataInfo {
 
 func (self *Metadata) serializePerf(numThreads int) *PerfInfo {
 	if self.exists(CompleteFile) && self.exists(JobInfoFile) {
-		var jobInfo *JobInfo
-		if err := self.readInto(JobInfoFile, jobInfo); err == nil {
+		jobInfo := JobInfo{}
+		if err := self.readInto(JobInfoFile, &jobInfo); err == nil {
 			fpaths, _ := self.enumerateFiles()
-			return reduceJobInfo(jobInfo, fpaths, numThreads)
+			return reduceJobInfo(&jobInfo, fpaths, numThreads)
 		}
 	}
 	return nil
