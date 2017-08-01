@@ -140,7 +140,7 @@ Options:
 	// Compute profiling mode.
 	profileMode := core.DisableProfile
 	if value := opts["--profile"]; value != nil {
-		profileMode = value.(core.ProfileMode)
+		profileMode = core.ProfileMode(value.(string))
 	}
 	core.LogInfo("options", "--profile=%s", profileMode)
 	core.VerifyProfileMode(profileMode)
