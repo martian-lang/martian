@@ -18,6 +18,7 @@ import (
 	"os/user"
 	"path"
 	"path/filepath"
+	"runtime"
 	"strconv"
 	"strings"
 	"time"
@@ -347,6 +348,7 @@ Options:
 	martianVersion := core.GetVersion()
 	opts, _ := docopt.Parse(doc, nil, true, martianVersion, false)
 	core.Println("Martian Runtime - %s", martianVersion)
+	core.LogInfo("build  ", "Built with Go version %s", runtime.Version())
 	core.LogInfo("cmdline", strings.Join(os.Args, " "))
 	core.LogInfo("pid    ", strconv.Itoa(os.Getpid()))
 
