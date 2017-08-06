@@ -2710,7 +2710,9 @@ func (self *Pipestance) Serialize(name MetadataFileName) interface{} {
 	if name == Perf {
 		LogInfo("perform", "Serializing pipestance performance data.")
 		if len(ser) > 0 {
-			self.ComputeDiskUsage(ser[0].(*NodePerfInfo))
+			overallPerf := ser[0].(*NodePerfInfo)
+			self.ComputeDiskUsage(overallPerf)
+			overallPerf.HighMem = &self.node.rt.LocalJobManager.(*LocalJobManager).highMem
 		}
 	}
 	return ser

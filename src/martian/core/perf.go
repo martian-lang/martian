@@ -204,6 +204,7 @@ type NodePerfInfo struct {
 	Forks     []*ForkPerfInfo  `json:"forks"`
 	MaxBytes  int64            `json:"maxbytes"`
 	BytesHist []*NodeByteStamp `json:"bytehist"`
+	HighMem   *ObservedMemory  `json:"highmem,omitempty"`
 }
 
 func reduceJobInfo(jobInfo *JobInfo, outputPaths []string, numThreads int) *PerfInfo {

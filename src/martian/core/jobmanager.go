@@ -155,6 +155,7 @@ type LocalJobManager struct {
 	queue       []*exec.Cmd
 	debug       bool
 	limitLoad   bool
+	highMem     ObservedMemory
 }
 
 func NewLocalJobManager(userMaxCores int, userMaxMemGB int,
@@ -215,6 +216,7 @@ func (self *LocalJobManager) refreshLocalResources(localMode bool) error {
 	if err != nil {
 		LogError(err, "jobmngr", "Error getting process tree memory usage.")
 	}
+	self.highMem.IncreaseTo(usedMem)
 	memDiff := self.memMBSem.UpdateFreeUsed(
 		(int64(sysMem.ActualFree)+(1024*1024-1))/(1024*1024),
 		(usedMem.Rss+(1024*1024-1))/(1024*1024))
