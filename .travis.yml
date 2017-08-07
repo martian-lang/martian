@@ -33,3 +33,4 @@ script:
     - test/martian_test.py test/fork_test/autoretry_fail.json
     - pylint adapters/python/martian_shell.py
     - pylint adapters/python/martian.py
+    - go tool vet $(ls -d src/martian/*)
