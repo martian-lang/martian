@@ -192,10 +192,15 @@ func (self *mrpWebServer) serveGraphPage(w http.ResponseWriter, req *http.Reques
 
 func (self *mrpWebServer) handleApi(sm *http.ServeMux) {
 	sm.HandleFunc("/api/get-info/", self.getInfo)
+	sm.HandleFunc("/api/get-info", self.getInfo)
 	sm.HandleFunc("/api/get-state/", self.getState)
+	sm.HandleFunc("/api/get-state", self.getState)
 	sm.HandleFunc("/api/get-perf/", self.getPerf)
+	sm.HandleFunc("/api/get-perf", self.getPerf)
 	sm.HandleFunc("/api/get-metadata/", self.getMetadata)
+	sm.HandleFunc("/api/get-metadata", self.getMetadata)
 	sm.HandleFunc("/api/restart/", self.restart)
+	sm.HandleFunc("/api/restart", self.restart)
 	sm.HandleFunc("/api/get-metadata-top/", self.getMetadataTop)
 	sm.HandleFunc("/api/kill", self.kill)
 }
