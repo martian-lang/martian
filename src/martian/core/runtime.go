@@ -1328,7 +1328,7 @@ type Node struct {
 	prenodes           map[string]Nodable
 	directPrenodes     []Nodable
 	postnodes          map[string]Nodable
-	frontierNodes      map[string]Nodable
+	frontierNodes      *threadSafeNodeMap
 	forks              []*Fork
 	split              bool
 	state              MetadataState
@@ -1565,19 +1565,15 @@ func (self *Node) findBoundNode(id string, outputId string, mode string,
 }
 
 func (self *Node) addFrontierNode(node Nodable) {
-	self.frontierNodes[node.getNode().fqname] = node
+	self.frontierNodes.Add(node.getNode().fqname, node)
 }
 
 func (self *Node) removeFrontierNode(node Nodable) {
-	delete(self.frontierNodes, node.getNode().fqname)
+	self.frontierNodes.Remove(node.getNode().fqname)
 }
 
 func (self *Node) getFrontierNodes() []*Node {
-	frontierNodes := []*Node{}
-	for _, node := range self.frontierNodes {
-		frontierNodes = append(frontierNodes, node.getNode())
-	}
-	return frontierNodes
+	return self.frontierNodes.GetNodes()
 }
 
 func (self *Node) allNodes() []*Node {
@@ -3019,6 +3015,34 @@ func (self *Pipestance) HandleSignal(sig os.Signal) {
 	self.unlock()
 }
 
+// Map of nodes protected by a lock.
+type threadSafeNodeMap struct {
+	nodes map[string]Nodable
+	lock  sync.Mutex
+}
+
+func (self *threadSafeNodeMap) Add(key string, value Nodable) {
+	self.lock.Lock()
+	defer self.lock.Unlock()
+	self.nodes[key] = value
+}
+
+func (self *threadSafeNodeMap) Remove(key string) {
+	self.lock.Lock()
+	defer self.lock.Unlock()
+	delete(self.nodes, key)
+}
+
+func (self *threadSafeNodeMap) GetNodes() []*Node {
+	self.lock.Lock()
+	defer self.lock.Unlock()
+	nodes := make([]*Node, 0, len(self.nodes))
+	for _, node := range self.nodes {
+		nodes = append(nodes, node.getNode())
+	}
+	return nodes
+}
+
 //=============================================================================
 // TopNode
 //=============================================================================
@@ -3032,7 +3056,7 @@ func NewTopNode(rt *Runtime, psid string, p string, mroPaths []string, mroVersio
 	envs map[string]string, j *InvocationData) *TopNode {
 	self := &TopNode{}
 	self.node = &Node{}
-	self.node.frontierNodes = map[string]Nodable{}
+	self.node.frontierNodes = &threadSafeNodeMap{nodes: make(map[string]Nodable)}
 	self.node.path = p
 	self.node.mroPaths = mroPaths
 	self.node.mroVersion = mroVersion
