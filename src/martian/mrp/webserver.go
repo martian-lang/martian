@@ -331,5 +331,10 @@ func (self *mrpWebServer) kill(w http.ResponseWriter, req *http.Request) {
 	if !self.verifyAuth(w, req) {
 		return
 	}
-	self.pipestanceBox.getPipestance().Kill()
+	go func() {
+		self.pipestanceBox.getPipestance().KillWithMessage(
+			"Pipstance was killed by API call from " + req.RemoteAddr)
+		time.Sleep(6 * time.Second) // Make sure UI has a chance to refresh.
+		core.Suicide()
+	}()
 }

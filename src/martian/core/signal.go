@@ -20,8 +20,9 @@ type HandlerObject interface {
 type SignalHandler struct {
 	count   int
 	exit    bool
-	mutex   *sync.Mutex
+	mutex   sync.Mutex
 	block   chan int
+	sigchan chan os.Signal
 	objects map[HandlerObject]bool
 }
 
@@ -57,26 +58,41 @@ func UnregisterSignalHandler(object HandlerObject) {
 }
 
 func newSignalHandler() *SignalHandler {
-	self := &SignalHandler{}
-	self.mutex = &sync.Mutex{}
-	self.block = make(chan int)
-	self.objects = map[HandlerObject]bool{}
-	return self
+	return &SignalHandler{
+		block:   make(chan int),
+		objects: make(map[HandlerObject]bool),
+		sigchan: make(chan os.Signal, 6),
+	}
+}
+
+// Notify this handler of signals.
+func (self *SignalHandler) Notify() {
+	signal.Notify(self.sigchan, os.Interrupt)
+	signal.Notify(self.sigchan, syscall.SIGHUP)
+	signal.Notify(self.sigchan, syscall.SIGTERM)
+	signal.Notify(self.sigchan, syscall.SIGUSR1)
+	signal.Notify(self.sigchan, syscall.SIGUSR2)
+}
+
+// Kill this process cleanly.
+func Suicide() {
+	Println("Killing self.")
+	if signalHandler == nil {
+		os.Exit(0)
+	}
+	signalHandler.sigchan <- syscall.Signal(-1)
 }
 
 func SetupSignalHandlers() {
-	// Handle CTRL-C and kill.
-	sigchan := make(chan os.Signal, 4)
-	signal.Notify(sigchan, os.Interrupt)
-	signal.Notify(sigchan, syscall.SIGHUP)
-	signal.Notify(sigchan, syscall.SIGTERM)
-	signal.Notify(sigchan, syscall.SIGUSR1)
-	signal.Notify(sigchan, syscall.SIGUSR2)
-
 	signalHandler = newSignalHandler()
+	signalHandler.Notify()
+	sigchan := signalHandler.sigchan
+
 	go func() {
 		sig := <-sigchan
-		Println("Caught signal %v", sig)
+		if sig != syscall.Signal(-1) {
+			Println("Caught signal %v", sig)
+		}
 
 		// Set exit flag
 		signalHandler.mutex.Lock()
