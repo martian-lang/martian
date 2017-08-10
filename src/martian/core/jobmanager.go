@@ -204,6 +204,7 @@ func NewLocalJobManager(userMaxCores int, userMaxMemGB int,
 	self.coreSem = NewResourceSemaphore(int64(self.maxCores), "threads")
 	self.memMBSem = NewResourceSemaphore(int64(self.maxMemGB)*1024, "MB of memory")
 	self.queue = []*exec.Cmd{}
+	RegisterSignalHandler(self)
 	return self
 }
 
@@ -243,6 +244,14 @@ func (self *LocalJobManager) refreshLocalResources(localMode bool) error {
 		}
 	}
 	return nil
+}
+
+func (self *LocalJobManager) HandleSignal(sig os.Signal) {
+	if self.highMem.Rss > 0 {
+		if ser, err := json.MarshalIndent(self.highMem, "", "  "); err == nil {
+			LogInfo("jobmngr", "Highest memory usage observed: %s", string(ser))
+		}
+	}
 }
 
 func (self *LocalJobManager) GetSystemReqs(threads int, memGB int) (int, int) {
