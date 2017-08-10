@@ -12,7 +12,7 @@ GO_FLAGS=-ldflags "-X martian/core.__VERSION__='$(VERSION)' -X martian/core.__RE
 
 export GOPATH=$(shell pwd)
 
-.PHONY: $(GOBINS) grammar web $(GOTESTS)
+.PHONY: $(GOBINS) grammar web $(GOTESTS) bin/sum_squares
 
 #
 # Targets for development builds.
@@ -24,6 +24,9 @@ bin/goyacc: src/vendor/golang.org/x/tools/cmd/goyacc/yacc.go
 
 src/martian/core/grammar.go: bin/goyacc src/martian/core/grammar.y
 	bin/goyacc -p "mm" -o src/martian/core/grammar.go src/martian/core/grammar.y && rm y.output
+
+bin/sum_squares: test/split_test_go/stages/sum_squares/sum_squares.go
+	go build -o $@ $<
 
 grammar: src/martian/core/grammar.go
 
@@ -39,7 +42,7 @@ mrt:
 $(GOTESTS): test-%:
 	go test -v martian/$*
 
-test: $(GOTESTS)
+test: $(GOTESTS) bin/sum_squares
 
 clean:
 	rm -rf $(GOPATH)/bin

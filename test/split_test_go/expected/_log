@@ -1,0 +1,44 @@
+Martian Runtime - '078d9cd-dirty'
+2017-07-12 17:30:01 [cmdline] mrp pipeline.mro pipeline_test
+2017-07-12 17:30:01 [pid    ] 27972
+2017-07-12 17:30:01 [environ] LESS_TERMCAP_mb=[01;31m HOSTNAME=bespin1.fuzzplex.com LESS_TERMCAP_md=[01;38;5;208m NODE=/mnt/home/adam/node/bin/node LESS_TERMCAP_me=[0m SHELL=/bin/bash TERM=xterm HISTSIZE=1000 SSH_CLIENT=10.111.20.89 59642 22 EC2_AMITOOL_HOME=/opt/aws/amitools/ec2 HYDRA_ROOT=/mnt/hydra/hydra/spool PYTHON_INSTALL_LAYOUT=amzn LESS_TERMCAP_ue=[0m SSH_TTY=/dev/pts/3 KITTENS=yes USER=adam.azarchs LS_COLORS=rs=0:di=01;34:ln=01;36:mh=00:pi=40;33:so=01;35:do=01;35:bd=40;33;01:cd=40;33;01:or=40;31;01:mi=01;05;37;41:su=37;41:sg=30;43:ca=30;41:tw=30;42:ow=34;42:st=37;44:ex=01;32:*.tar=01;31:*.tgz=01;31:*.arc=01;31:*.arj=01;31:*.taz=01;31:*.lha=01;31:*.lz4=01;31:*.lzh=01;31:*.lzma=01;31:*.tlz=01;31:*.txz=01;31:*.tzo=01;31:*.t7z=01;31:*.zip=01;31:*.z=01;31:*.Z=01;31:*.dz=01;31:*.gz=01;31:*.lrz=01;31:*.lz=01;31:*.lzo=01;31:*.xz=01;31:*.bz2=01;31:*.bz=01;31:*.tbz=01;31:*.tbz2=01;31:*.tz=01;31:*.deb=01;31:*.rpm=01;31:*.jar=01;31:*.war=01;31:*.ear=01;31:*.sar=01;31:*.rar=01;31:*.alz=01;31:*.ace=01;31:*.zoo=01;31:*.cpio=01;31:*.7z=01;31:*.rz=01;31:*.cab=01;31:*.jpg=01;35:*.jpeg=01;35:*.gif=01;35:*.bmp=01;35:*.pbm=01;35:*.pgm=01;35:*.ppm=01;35:*.tga=01;35:*.xbm=01;35:*.xpm=01;35:*.tif=01;35:*.tiff=01;35:*.png=01;35:*.svg=01;35:*.svgz=01;35:*.mng=01;35:*.pcx=01;35:*.mov=01;35:*.mpg=01;35:*.mpeg=01;35:*.m2v=01;35:*.mkv=01;35:*.webm=01;35:*.ogm=01;35:*.mp4=01;35:*.m4v=01;35:*.mp4v=01;35:*.vob=01;35:*.qt=01;35:*.nuv=01;35:*.wmv=01;35:*.asf=01;35:*.rm=01;35:*.rmvb=01;35:*.flc=01;35:*.avi=01;35:*.fli=01;35:*.flv=01;35:*.gl=01;35:*.dl=01;35:*.xcf=01;35:*.xwd=01;35:*.yuv=01;35:*.cgm=01;35:*.emf=01;35:*.axv=01;35:*.anx=01;35:*.ogv=01;35:*.ogx=01;35:*.aac=01;36:*.au=01;36:*.flac=01;36:*.mid=01;36:*.midi=01;36:*.mka=01;36:*.mp3=01;36:*.mpc=01;36:*.ogg=01;36:*.ra=01;36:*.wav=01;36:*.axa=01;36:*.oga=01;36:*.spx=01;36:*.xspf=01;36: EC2_HOME=/opt/aws/apitools/ec2 LESS_TERMCAP_us=[04;38;5;111m PATH=../../bin:/mnt/home/adam/devenv/toolchain/go1.8.1/bin:/mnt/hydra/hydra/bin:/usr/local/bin:/bin:/usr/bin:/usr/local/sbin:/usr/sbin:/sbin:/opt/aws/bin:/mnt/home/adam/.local/bin:/mnt/home/adam/node/bin MAIL=/var/spool/mail/adam.azarchs PWD=martian/test/split_test JAVA_HOME=/usr/lib/jvm/java EDITOR=vim AWS_CLOUDWATCH_HOME=/opt/aws/apitools/mon LANG=en_US.UTF-8 HISTCONTROL=ignoredups HOME=/mnt/home/adam SHLVL=2 GOROOT=/mnt/home/adam/devenv/toolchain/go1.8.1 AWS_PATH=/opt/aws AWS_AUTO_SCALING_HOME=/opt/aws/apitools/as LOGNAME=adam.azarchs CVS_RSH=ssh SSH_CONNECTION=10.111.20.89 59642 10.113.15.180 22 AWS_ELB_HOME=/opt/aws/apitools/elb LESSOPEN=||/usr/bin/lesspipe.sh %!s(MISSING) LESS_TERMCAP_se=[0m _=../../bin/mrp
+2017-07-12 17:30:01 [environ] MROPATH=martian/test/split_test
+2017-07-12 17:30:01 [version] MRO Version=2ff8789-dirty
+2017-07-12 17:30:01 [options] --jobmode=local
+2017-07-12 17:30:01 [options] --maxjobs=-1
+2017-07-12 17:30:01 [options] --jobinterval=-1
+2017-07-12 17:30:01 [options] --vdrmode=post
+2017-07-12 17:30:01 [options] --profile=disable
+2017-07-12 17:30:01 [options] --stackvars=false
+2017-07-12 17:30:01 [options] --zip=false
+2017-07-12 17:30:01 [options] --limit-loadavg=false
+2017-07-12 17:30:01 [options] --noexit=false
+2017-07-12 17:30:01 [options] --nopreflight=false
+2017-07-12 17:30:01 [jobmngr] Job config = martian/jobmanagers/config.json
+2017-07-12 17:30:01 [jobmngr] Using 64 logical cores available on system.
+2017-07-12 17:30:01 [jobmngr] Using 226 GB, 90% of system memory.
+2017-07-12 17:30:01 [webserv] UI disabled.
+Running preflight checks (please wait)...
+2017-07-12 17:30:01 [runtime] (ready)           ID.pipeline_test.SUM_SQUARE_PIPELINE.SUM_SQUARES
+2017-07-12 17:30:01 [runtime] (run:local)       ID.pipeline_test.SUM_SQUARE_PIPELINE.SUM_SQUARES.fork0.split
+2017-07-12 17:30:04 [runtime] (split_complete)  ID.pipeline_test.SUM_SQUARE_PIPELINE.SUM_SQUARES
+2017-07-12 17:30:04 [runtime] (run:local)       ID.pipeline_test.SUM_SQUARE_PIPELINE.SUM_SQUARES.fork0.chnk0.main
+2017-07-12 17:30:04 [runtime] (run:local)       ID.pipeline_test.SUM_SQUARE_PIPELINE.SUM_SQUARES.fork0.chnk1.main
+2017-07-12 17:30:04 [runtime] (run:local)       ID.pipeline_test.SUM_SQUARE_PIPELINE.SUM_SQUARES.fork0.chnk2.main
+2017-07-12 17:30:07 [runtime] (chunks_complete) ID.pipeline_test.SUM_SQUARE_PIPELINE.SUM_SQUARES
+2017-07-12 17:30:07 [runtime] (run:local)       ID.pipeline_test.SUM_SQUARE_PIPELINE.SUM_SQUARES.fork0.join
+2017-07-12 17:30:10 [runtime] (join_complete)   ID.pipeline_test.SUM_SQUARE_PIPELINE.SUM_SQUARES
+2017-07-12 17:30:16 [runtime] (ready)           ID.pipeline_test.SUM_SQUARE_PIPELINE.REPORT
+2017-07-12 17:30:19 [runtime] (split_complete)  ID.pipeline_test.SUM_SQUARE_PIPELINE.REPORT
+2017-07-12 17:30:19 [runtime] (run:local)       ID.pipeline_test.SUM_SQUARE_PIPELINE.REPORT.fork0.chnk0.main
+2017-07-12 17:30:22 [progres] (ID.pipeline_test.SUM_SQUARE_PIPELINE.REPORT.fork0.chnk0) 1.000000^2+2.000000^2+3.000000^2 = 14.000000
+2017-07-12 17:30:22 [runtime] (chunks_complete) ID.pipeline_test.SUM_SQUARE_PIPELINE.REPORT
+2017-07-12 17:30:25 [runtime] (join_complete)   ID.pipeline_test.SUM_SQUARE_PIPELINE.REPORT
+2017-07-12 17:30:28 [runtime] VDR killed 0 files, 0B.
+
+Outputs:
+- sum: 14
+
+2017-07-12 17:30:28 [perform] Serializing pipestance performance data.
+Pipestance completed successfully!
+
