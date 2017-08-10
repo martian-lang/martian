@@ -507,6 +507,7 @@ class StageWrapper(object):
 
 def _main(argv):
     """Parse command line and run."""
+    stage = None
     try:
         # Initialize Martian with command line args.
         stage = martian.initialize(argv)
@@ -520,7 +521,10 @@ def _main(argv):
     # pylint: disable=broad-except
     except Exception:
         # If stage code threw an error, package it up as JSON.
-        stage.fail()
+        if stage:
+            stage.fail()
+        else:
+            raise
 
 if __name__ == '__main__':
     _main(sys.argv)
