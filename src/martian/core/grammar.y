@@ -189,6 +189,7 @@ type
 src_lang
     : PY
     | EXEC
+    | COMPILED
     //| GO
     //| SH
     ;
