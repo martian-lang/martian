@@ -1746,7 +1746,7 @@ func (self *Node) checkHeartbeats() {
 
 func (self *Node) kill(message string) {
 	for _, metadata := range self.collectMetadatas() {
-		if state, _ := metadata.getState(); state == Failed {
+		if state, _ := metadata.getState(); state == Failed || state == Complete {
 			continue
 		}
 		metadata.WriteRaw(Errors, message)
