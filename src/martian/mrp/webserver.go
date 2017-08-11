@@ -321,8 +321,10 @@ func (self *mrpWebServer) restart(w http.ResponseWriter, req *http.Request) {
 	if !self.verifyAuth(w, req) {
 		return
 	}
-	pipestance := self.pipestanceBox.getPipestance()
-	if err := pipestance.Reset(); err != nil {
+	if st := self.pipestanceBox.getPipestance().GetState(); st != core.Failed {
+		http.Error(w, "Only failed pipestances can be restarted.", http.StatusBadRequest)
+	}
+	if err := self.pipestanceBox.reset(); err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 	}
 }

@@ -78,7 +78,7 @@ func (self *SignalHandler) Notify() {
 func Suicide() {
 	Println("Killing self.")
 	if signalHandler == nil {
-		os.Exit(0)
+		os.Exit(1)
 	}
 	signalHandler.sigchan <- syscall.Signal(-1)
 }

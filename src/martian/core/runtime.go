@@ -1931,10 +1931,10 @@ func (self *Node) parseRunFilename(fqname string) (string, int, int, string) {
 	return "", -1, -1, ""
 }
 
-func (self *Node) refreshState() {
+func (self *Node) refreshState(readOnly bool) {
 	startTime := time.Now().Add(-self.rt.JobManager.queueCheckGrace())
 	files, _ := filepath.Glob(path.Join(self.journalPath, "*"))
-	updatedForks := make(map[*Fork]bool)
+	updatedForks := make(map[*Fork]struct{})
 	for _, file := range files {
 		filename := path.Base(file)
 		if strings.HasSuffix(filename, ".tmp") {
@@ -1951,10 +1951,12 @@ func (self *Node) refreshState() {
 				} else {
 					fork.updateState(state)
 				}
-				updatedForks[fork] = true
+				updatedForks[fork] = struct{}{}
 			}
 		}
-		os.Remove(file)
+		if !readOnly {
+			os.Remove(file)
+		}
 	}
 	if self.rt.JobManager.hasQueueCheck() {
 		for _, node := range self.getFrontierNodes() {
@@ -2321,7 +2323,7 @@ func (self *Stagestance) getNode() *Node          { return self.node }
 func (self *Stagestance) GetState() MetadataState { return self.getNode().getState() }
 func (self *Stagestance) Step()                   { self.getNode().step() }
 func (self *Stagestance) CheckHeartbeats()        { self.getNode().checkHeartbeats() }
-func (self *Stagestance) RefreshState()           { self.getNode().refreshState() }
+func (self *Stagestance) RefreshState()           { self.getNode().refreshState(false) }
 func (self *Stagestance) LoadMetadata()           { self.getNode().loadMetadata() }
 func (self *Stagestance) PostProcess()            { self.getNode().postProcess() }
 func (self *Stagestance) GetFatalError() (string, bool, string, string, MetadataFileName, []string) {
@@ -2444,7 +2446,8 @@ func (self *Pipestance) getNode() *Node    { return self.node }
 func (self *Pipestance) GetPname() string  { return self.node.name }
 func (self *Pipestance) GetPsid() string   { return self.node.parent.getNode().name }
 func (self *Pipestance) GetFQName() string { return self.node.fqname }
-func (self *Pipestance) RefreshState()     { self.node.refreshState() }
+func (self *Pipestance) RefreshState()     { self.node.refreshState(self.readOnly()) }
+func (self *Pipestance) readOnly() bool    { return !self.metadata.exists(Lock) }
 
 func (self *Pipestance) LoadMetadata() {
 	// We used to make this concurrent but ended up with too many
@@ -2454,7 +2457,7 @@ func (self *Pipestance) LoadMetadata() {
 	}
 	for _, node := range self.node.allNodes() {
 		node.state = node.getState()
-		if node.state == Running {
+		if node.state == Running && !self.readOnly() {
 			node.mkdirs()
 		}
 	}
@@ -2490,6 +2493,9 @@ func (self *Pipestance) Kill() {
 }
 
 func (self *Pipestance) KillWithMessage(message string) {
+	if self.readOnly() {
+		return
+	}
 	nodes := self.node.getFrontierNodes()
 	for _, node := range nodes {
 		node.kill(message)
@@ -2497,6 +2503,9 @@ func (self *Pipestance) KillWithMessage(message string) {
 }
 
 func (self *Pipestance) RestartRunningNodes(jobMode string) error {
+	if self.readOnly() {
+		return &RuntimeError{"Pipestance is in read only mode."}
+	}
 	self.LoadMetadata()
 	nodes := self.node.getFrontierNodes()
 	localNodes := []*Node{}
@@ -2524,6 +2533,9 @@ func (self *Pipestance) RestartRunningNodes(jobMode string) error {
 // This is nessessary for when e.g. mrp is restarted in local mode after ctrl-C
 // kills it and all of its child processes.
 func (self *Pipestance) RestartLocalJobs(jobMode string) error {
+	if self.readOnly() {
+		return &RuntimeError{"Pipestance is in read only mode."}
+	}
 	for _, node := range self.node.getFrontierNodes() {
 		if node.state == Running {
 			if err := node.restartLocallyQueuedJobs(); err != nil {
@@ -2541,6 +2553,9 @@ func (self *Pipestance) RestartLocalJobs(jobMode string) error {
 }
 
 func (self *Pipestance) CheckHeartbeats() {
+	if self.readOnly() {
+		return
+	}
 	self.queryQueue()
 
 	nodes := self.node.getFrontierNodes()
@@ -2607,9 +2622,11 @@ func (self *Pipestance) queryQueue() {
 				"Some jobs thought to be queued were unknown to the job manager.  Raw output:\n%s\n",
 				raw)
 		}
-		for id, m := range needsQuery {
-			if m != nil {
-				m.failNotRunning(id)
+		if !self.readOnly() {
+			for id, m := range needsQuery {
+				if m != nil {
+					m.failNotRunning(id)
+				}
 			}
 		}
 		self.queueCheckLock.Lock()
@@ -2658,6 +2675,9 @@ func (self *Pipestance) IsErrorTransient() (bool, string) {
 }
 
 func (self *Pipestance) StepNodes() {
+	if self.readOnly() {
+		return
+	}
 	if err := CheckMinimalSpace(self.node.path); err != nil {
 		if _, ok := err.(*DiskSpaceError); ok {
 			PrintError(err, "runtime",
@@ -2681,6 +2701,9 @@ func (self *Pipestance) StepNodes() {
 }
 
 func (self *Pipestance) Reset() error {
+	if self.readOnly() {
+		return &RuntimeError{"Pipestance is in read only mode."}
+	}
 	for _, node := range self.node.allNodes() {
 		if node.state == Failed {
 			if err := node.reset(); err != nil {
@@ -2955,7 +2978,10 @@ func (self *Pipestance) PostProcess() {
 	self.Immortalize()
 }
 
-func (self *Pipestance) Immortalize() {
+func (self *Pipestance) Immortalize() error {
+	if self.readOnly() {
+		return &RuntimeError{"Pipestance is in read only mode."}
+	}
 	self.metadata.loadCache()
 	if !self.metadata.exists(Perf) {
 		self.metadata.Write(Perf, self.Serialize(Perf))
@@ -2969,8 +2995,10 @@ func (self *Pipestance) Immortalize() {
 			LogError(err, "runtime", "Failed to create metadata zip file %s: %s",
 				zipPath, err.Error())
 			os.Remove(zipPath)
+			return err
 		}
 	}
+	return nil
 }
 
 func (self *Pipestance) VDRKill() *VDRKillReport {

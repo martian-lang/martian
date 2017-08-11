@@ -21,6 +21,7 @@ import (
 	"runtime"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/dustin/go-humanize"
@@ -31,14 +32,34 @@ import (
 // object between the runloop and the UI.
 type pipestanceHolder struct {
 	pipestance *core.Pipestance
+	factory    core.PipestanceFactory
+	lock       sync.Mutex
 }
 
 func (self *pipestanceHolder) getPipestance() *core.Pipestance {
+	self.lock.Lock()
+	defer self.lock.Unlock()
 	return self.pipestance
 }
 
 func (self *pipestanceHolder) setPipestance(newPipe *core.Pipestance) {
 	self.pipestance = newPipe
+}
+
+func (self *pipestanceHolder) reset() error {
+	self.lock.Lock()
+	defer self.lock.Unlock()
+	ps, err := self.factory.ReattachToPipestance()
+	if err == nil {
+		err = ps.Reset()
+		if err != nil {
+			ps.Unlock()
+			return err
+		}
+		ps.LoadMetadata()
+		self.setPipestance(ps)
+	}
+	return err
 }
 
 type PipestanceInfo struct {
@@ -93,7 +114,7 @@ func (self *PipestanceInfo) AsForm() url.Values {
 // Pipestance runner.
 //=============================================================================
 func runLoop(pipestanceBox *pipestanceHolder, stepSecs int, vdrMode string,
-	noExit bool, enableUI bool, retries int, factory core.PipestanceFactory) {
+	noExit bool, enableUI bool, retries int) {
 	showedFailed := false
 	showedComplete := false
 	WAIT_SECS := 6
@@ -113,8 +134,8 @@ func runLoop(pipestanceBox *pipestanceHolder, stepSecs int, vdrMode string,
 				core.LogInfo("runtime", "VDR killed %d files, %s.",
 					killReport.Count, humanize.Bytes(killReport.Size))
 			}
-			pipestance.Unlock()
 			pipestance.PostProcess()
+			pipestance.Unlock()
 			if !showedComplete {
 				pipestance.OnFinishHook()
 				showedComplete = true
@@ -145,13 +166,7 @@ func runLoop(pipestanceBox *pipestanceHolder, stepSecs int, vdrMode string,
 					core.LogInfo("runtime", "Transient error detected.  Log content:\n\n%s\n", transient_log)
 				}
 				core.LogInfo("runtime", "Attempting retry.")
-				ps, err := factory.ReattachToPipestance()
-				if err == nil {
-					pipestance = ps
-					err = pipestance.Reset()
-					pipestance.LoadMetadata()
-					pipestanceBox.setPipestance(pipestance)
-				} else {
+				if err := pipestanceBox.reset(); err != nil {
 					core.LogInfo("runtime", "Retry failed:\n%v\n", err)
 					// Let the next loop around actually handle the failure.
 				}
@@ -638,7 +653,10 @@ Options:
 			core.DieIf(err)
 		}
 	}
-	pipestanceBox := pipestanceHolder{pipestance}
+	pipestanceBox := pipestanceHolder{
+		pipestance: pipestance,
+		factory:    factory,
+	}
 
 	if !readOnly {
 		// Start writing (including cached entries) to log file.
@@ -751,7 +769,7 @@ Options:
 	//=========================================================================
 	// Start run loop.
 	//=========================================================================
-	go runLoop(&pipestanceBox, stepSecs, vdrMode, noExit, enableUI, retries, factory)
+	go runLoop(&pipestanceBox, stepSecs, vdrMode, noExit, enableUI, retries)
 
 	// Let daemons take over.
 	done := make(chan bool)

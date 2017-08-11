@@ -9,6 +9,7 @@ import (
 	"fmt"
 	"os"
 	"strings"
+	"time"
 )
 
 //
@@ -177,11 +178,18 @@ func (self *ParseError) Error() string {
 	return fmt.Sprintf("MRO ParseError: unexpected token '%s' at %s:%d.", self.token, self.fname, self.loc)
 }
 
+// End the process if err is not nil.  Because this method waits up to one
+// minute for critical sections to end, it should not be called from inside
+// a critical section.
 func DieIf(err error) {
 	if err != nil {
 		fmt.Println()
 		fmt.Println(err.Error())
 		fmt.Println()
+		Suicide()
+		// We don't want to return, but if someone ran this from inside a
+		// critical section that's also bad.
+		time.Sleep(time.Minute)
 		os.Exit(1)
 	}
 }
