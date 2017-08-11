@@ -508,6 +508,8 @@ Options:
 	if value := opts["--uiport"]; value != nil {
 		uiport = value.(string)
 		requireAuth = false
+	} else if os.Getenv("MRVHOST") != "" {
+		requireAuth = false
 	}
 	if len(uiport) > 0 {
 		core.LogInfo("options", "--uiport=%s", uiport)
