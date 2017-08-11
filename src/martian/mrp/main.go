@@ -726,7 +726,7 @@ Options:
 			dieWithoutUi = false
 		}
 		if listener, err = net.Listen("tcp",
-			fmt.Sprintf("%s:%s", hostname, uiport)); err != nil {
+			fmt.Sprintf(":%s", uiport)); err != nil {
 			core.Println("webserv", "Cannot open port %s: %v", uiport, err)
 			if dieWithoutUi {
 				os.Exit(1)
@@ -737,6 +737,7 @@ Options:
 				Host:   listener.Addr().String(),
 			}
 			info.Port = u.Port()
+			u.Host = fmt.Sprintf("%s:%s", hostname, info.Port)
 			if authKey != "" {
 				q := u.Query()
 				q.Set("auth", authKey)
