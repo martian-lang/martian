@@ -213,7 +213,7 @@ func (self *LocalJobManager) refreshLocalResources(localMode bool) error {
 	if err := sysMem.Get(); err != nil {
 		return err
 	}
-	usedMem, err := GetProcessTreeMemory(os.Getpid())
+	usedMem, err := GetProcessTreeMemory(os.Getpid(), false)
 	if err != nil {
 		LogError(err, "jobmngr", "Error getting process tree memory usage.")
 	}
@@ -268,14 +268,32 @@ func (self *LocalJobManager) GetSystemReqs(threads int, memGB int) (int, int) {
 	}
 
 	// Sanity check and cap to self.maxMemGB.
-	if memGB < 1 {
+	if memGB == 0 {
 		memGB = self.jobSettings.MemGBPerJob
 	}
+	if memGB < 0 {
+		avail := int(self.memMBSem.CurrentSize() / 1024)
+		if avail < 1 || avail < -memGB {
+			memGB = -memGB
+		} else {
+			if self.debug {
+				LogInfo("jobmngr", "Adaptive request for at least %d GB being given %d.",
+					-memGB, avail)
+			}
+			memGB = avail
+		}
+	}
+	// TODO: Stop allowing stages to ask for more than the max.  Require
+	// stages which can adapt to the available memory to ask for a negative
+	// amount as a sentinel.
 	if memGB > self.maxMemGB {
 		if self.debug {
 			LogInfo("jobmngr", "Need %d GB but settling for %d.", memGB,
 				self.maxMemGB)
 		}
+		LogInfo(
+			"jobmngr", "Job asked for %d GB but is being given %d.  This behavior is deprecated - jobs which can adapt their memory usage should ask for -%d.",
+			memGB, self.maxMemGB, memGB)
 		memGB = self.maxMemGB
 	}
 

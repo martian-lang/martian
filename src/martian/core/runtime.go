@@ -2121,8 +2121,8 @@ func (self *Node) serializePerf() *NodePerfInfo {
 // Job Runners
 //=============================================================================
 func (self *Node) getJobReqs(jobDef map[string]interface{}, stageType string) (int, int, string) {
-	threads := -1
-	memGB := -1
+	threads := 0
+	memGB := 0
 	special := ""
 
 	// Get values passed from the stage code

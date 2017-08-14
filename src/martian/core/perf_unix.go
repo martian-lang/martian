@@ -51,10 +51,15 @@ func GetRusage() *RusageInfo {
 
 // Gets the total memory usage for the given process and all of its
 // children.  Only errors getting the first process's memory, or the
-// set of children for that process, are reported.
-func GetProcessTreeMemory(pid int) (mem ObservedMemory, err error) {
-	if mem, err = GetRunningMemory(pid); err != nil {
-		return mem, err
+// set of children for that process, are reported.  includeParent specifies
+// whether the top-level pid is included in the total.
+func GetProcessTreeMemory(pid int, includeParent bool) (mem ObservedMemory, err error) {
+	if includeParent {
+		if mem, err = GetRunningMemory(pid); err != nil {
+			return mem, err
+		}
+	} else {
+		mem = ObservedMemory{}
 	}
 	if threads, err := Readdirnames(fmt.Sprintf("/proc/%d/task", pid)); err != nil {
 		return mem, err
@@ -63,7 +68,7 @@ func GetProcessTreeMemory(pid int) (mem ObservedMemory, err error) {
 			if childrenBytes, err := ioutil.ReadFile(fmt.Sprintf("/proc/%d/task/%s/children", pid, tid)); err == nil {
 				for _, child := range strings.Fields(string(childrenBytes)) {
 					if childPid, err := strconv.Atoi(child); err != nil {
-						cmem, _ := GetProcessTreeMemory(childPid)
+						cmem, _ := GetProcessTreeMemory(childPid, true)
 						mem.Add(cmem)
 					}
 				}

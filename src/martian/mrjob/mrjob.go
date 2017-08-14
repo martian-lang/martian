@@ -363,7 +363,7 @@ func (self *runner) getChildMemGB() float64 {
 	if proc == nil {
 		return 0
 	}
-	mem, _ := core.GetProcessTreeMemory(proc.Pid)
+	mem, _ := core.GetProcessTreeMemory(proc.Pid, true)
 	mem.IncreaseRusage(core.GetRusage())
 	self.highMem.IncreaseTo(mem)
 	return float64(mem.Rss) / (1024 * 1024 * 1024)

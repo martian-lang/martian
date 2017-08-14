@@ -121,6 +121,23 @@ func (self *ResourceSemaphore) Reserved() int64 {
 	return res
 }
 
+// Get the current amount of available resources.
+func (self *ResourceSemaphore) Available() int64 {
+	self.mu.Lock()
+	res := self.curSize - self.reserved
+	self.mu.Unlock()
+	return res
+}
+
+// Get the current amount of resources which are reservable (including those
+// already reserved).
+func (self *ResourceSemaphore) CurrentSize() int64 {
+	self.mu.Lock()
+	res := self.curSize
+	self.mu.Unlock()
+	return res
+}
+
 // Get the number of items waiting on the semaphore.
 func (self *ResourceSemaphore) QueueLength() int {
 	self.mu.Lock()
