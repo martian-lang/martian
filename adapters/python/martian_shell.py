@@ -409,9 +409,10 @@ class StageWrapper(object):
 
     def fail(self):
         """Write an errors file with the most recent exception and quit."""
+        error_message = traceback.format_exc()
         if self.jobinfo.stackvars_flag:
             self.metadata.write_raw('stackvars', self.stacktrace())
-        self.metadata.write_errors(traceback.format_exc())
+        self.metadata.write_errors(error_message)
         self.done()
 
     def complete(self):
