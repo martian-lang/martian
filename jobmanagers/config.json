@@ -1,7 +1,13 @@
 {
   "settings": {
     "threads_per_job": 1,
-    "memGB_per_job": 6
+    "memGB_per_job": 6,
+    "thread_envs": [
+        "GOMAXPROCS",
+        "MKL_NUM_THREADS",
+        "NUMEXPR_NUM_THREADS",
+        "OMP_NUM_THREADS"
+    ]
   },
   "jobmodes": {
       "sge": {

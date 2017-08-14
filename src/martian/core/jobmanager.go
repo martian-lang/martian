@@ -15,6 +15,7 @@ import (
 	"os/exec"
 	"path"
 	"runtime"
+	"strconv"
 	"strings"
 	"syscall"
 	"time"
@@ -45,6 +46,7 @@ type JobManager interface {
 	GetSystemReqs(int, int) (int, int)
 	GetMaxCores() int
 	GetMaxMemGB() int
+	GetSettings() *JobManagerSettings
 }
 
 type LocalJobManager struct {
@@ -108,6 +110,10 @@ func NewLocalJobManager(userMaxCores int, userMaxMemGB int,
 	self.queue = []*exec.Cmd{}
 	RegisterSignalHandler(self)
 	return self
+}
+
+func (self *LocalJobManager) GetSettings() *JobManagerSettings {
+	return self.jobSettings
 }
 
 func (self *LocalJobManager) refreshLocalResources(localMode bool) error {
@@ -223,7 +229,16 @@ func (self *LocalJobManager) Enqueue(shellCmd string, argv []string,
 		// Exec the shell directly.
 		cmd := exec.Command(shellCmd, argv...)
 		cmd.Dir = metadata.filesPath
-		cmd.Env = MergeEnv(envs)
+		if self.maxCores < runtime.NumCPU() {
+			// If, and only if, the user specified a core limit less than the
+			// detected core count, make sure jobs actually don't use more
+			// threads than they're supposed to.
+			cmd.Env = MergeEnv(threadEnvs(self, threads, envs))
+		} else {
+			// In this case it's ok if we oversubscribe a bit since we're
+			// (probably) not sharing the machine.
+			cmd.Env = MergeEnv(envs)
+		}
 
 		stdoutPath := metadata.MakePath("stdout")
 		stderrPath := metadata.MakePath("stderr")
@@ -411,6 +426,10 @@ func (self *RemoteJobManager) GetMaxMemGB() int {
 	return 0
 }
 
+func (self *RemoteJobManager) GetSettings() *JobManagerSettings {
+	return self.config.jobSettings
+}
+
 func (self *RemoteJobManager) GetSystemReqs(threads int, memGB int) (int, int) {
 	// Sanity check the thread count.
 	if threads < 1 {
@@ -472,6 +491,20 @@ func (self *RemoteJobManager) execJob(shellCmd string, argv []string,
 	}()
 }
 
+// Set environment variables which control thread count.  Do not override
+// envs from above.
+func threadEnvs(self JobManager, threads int, envs map[string]string) map[string]string {
+	thr := strconv.Itoa(threads)
+	newEnvs := make(map[string]string)
+	for _, env := range self.GetSettings().ThreadEnvs {
+		newEnvs[env] = thr
+	}
+	for key, value := range envs {
+		newEnvs[key] = value
+	}
+	return newEnvs
+}
+
 func (self *RemoteJobManager) sendJob(shellCmd string, argv []string, envs map[string]string,
 	metadata *Metadata, threads int, memGB int, special string, fqname string, shellName string) {
 
@@ -509,8 +542,11 @@ func (self *RemoteJobManager) sendJob(shellCmd string, argv []string, envs map[s
 		}
 	}
 
-	argv = append([]string{shellCmd}, argv...)
-	argv = append(FormatEnv(envs), argv...)
+	argv = append(
+		FormatEnv(threadEnvs(self, threads, envs)),
+		append([]string{shellCmd},
+			argv...)...,
+	)
 	params := map[string]string{
 		"JOB_NAME":          fqname + "." + shellName,
 		"THREADS":           fmt.Sprintf("%d", threads),
@@ -612,8 +648,9 @@ type JobModeJson struct {
 }
 
 type JobManagerSettings struct {
-	ThreadsPerJob int `json:"threads_per_job"`
-	MemGBPerJob   int `json:"memGB_per_job"`
+	ThreadsPerJob int      `json:"threads_per_job"`
+	MemGBPerJob   int      `json:"memGB_per_job"`
+	ThreadEnvs    []string `json:"thread_envs"`
 }
 
 type JobManagerJson struct {

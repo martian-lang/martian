@@ -12,7 +12,7 @@ GO_FLAGS=-ldflags "-X martian/core.__VERSION__='$(VERSION)' -X martian/core.__RE
 
 export GOPATH=$(shell pwd)
 
-.PHONY: $(GOBINS) grammar web $(GOTESTS) bin/sum_squares
+.PHONY: $(GOBINS) grammar web $(GOTESTS) bin/sum_squares longtests
 
 #
 # Targets for development builds.
@@ -43,6 +43,15 @@ $(GOTESTS): test-%:
 	go test -v martian/$*
 
 test: $(GOTESTS) bin/sum_squares
+
+longtests: bin/sum_squares mrp mrjob
+	test/martian_test.py test/split_test/split_test.json
+	test/martian_test.py test/split_test_go/split_test.json
+	test/martian_test.py test/fork_test/fork_test.json
+	test/martian_test.py test/fork_test/fail1_test.json
+	test/martian_test.py test/fork_test/retry_test.json
+	test/martian_test.py test/fork_test/autoretry_pass.json
+	test/martian_test.py test/fork_test/autoretry_fail.json
 
 clean:
 	rm -rf $(GOPATH)/bin
