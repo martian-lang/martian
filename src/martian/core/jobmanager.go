@@ -19,7 +19,6 @@ import (
 	"runtime"
 	"strconv"
 	"strings"
-	"sync"
 	"syscall"
 	"time"
 )
@@ -86,39 +85,6 @@ func GetCPUInfo() (int, int, int, int) {
 	} else {
 		return 0, 0, 0, 0
 	}
-}
-
-//
-// Semaphore implementation
-//
-type Semaphore struct {
-	counter chan bool
-	pmutex  *sync.Mutex
-	vmutex  *sync.Mutex
-}
-
-func NewSemaphore(capacity int) *Semaphore {
-	return &Semaphore{
-		make(chan bool, capacity),
-		&sync.Mutex{},
-		&sync.Mutex{},
-	}
-}
-
-func (self *Semaphore) P(n int) {
-	self.pmutex.Lock()
-	for i := 0; i < n; i++ {
-		self.counter <- true
-	}
-	self.pmutex.Unlock()
-}
-
-func (self *Semaphore) V(n int) {
-	self.vmutex.Lock()
-	for i := 0; i < n; i++ {
-		<-self.counter
-	}
-	self.vmutex.Unlock()
 }
 
 //
@@ -455,7 +421,7 @@ type RemoteJobManager struct {
 	memGBPerCore         int
 	maxJobs              int
 	jobFreqMillis        int
-	jobSem               *Semaphore
+	jobSem               *ResourceSemaphore
 	limiter              *time.Ticker
 	debug                bool
 }
@@ -485,10 +451,7 @@ func NewRemoteJobManager(jobMode string, memGBPerCore int, maxJobs int, jobFreqM
 	}
 
 	if self.maxJobs > 0 {
-		self.jobSem = NewSemaphore(self.maxJobs)
-	} else {
-		// dummy value to keep struct OK
-		self.jobSem = NewSemaphore(0)
+		self.jobSem = NewResourceSemaphore(int64(self.maxJobs), "jobs")
 	}
 	if self.jobFreqMillis > 0 {
 		self.limiter = time.NewTicker(time.Millisecond * time.Duration(self.jobFreqMillis))
@@ -553,14 +516,16 @@ func (self *RemoteJobManager) execJob(shellCmd string, argv []string,
 		}
 		// if we want to try to put a more precise cap on cluster execution load,
 		// might be preferable to request num threads here instead of a slot per job
-		self.jobSem.P(1)
+		if err := self.jobSem.Acquire(1); err != nil {
+			panic(err)
+		}
 		if self.debug {
 			LogInfo("jobmngr", "Job sent: %s", fqname)
 		}
 		self.sendJob(shellCmd, argv, envs, metadata, threads, memGB, special, fqname, shellName)
 		for {
 			if state, _ := metadata.getState(); state == Complete || state == Failed {
-				self.jobSem.V(1)
+				self.jobSem.Release(1)
 				if self.debug {
 					LogInfo("jobmngr", "Job finished: %s (%s)", fqname, state)
 				}
