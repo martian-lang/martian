@@ -291,9 +291,7 @@ func (self *LocalJobManager) Enqueue(shellCmd string, argv []string,
 			}
 			defer stdoutFile.Close()
 		}
-		cmd.SysProcAttr = &syscall.SysProcAttr{
-			Pdeathsig: syscall.SIGTERM,
-		}
+		cmd.SysProcAttr = Pdeathsig(&syscall.SysProcAttr{}, syscall.SIGTERM)
 		if stderrFile, err := os.Create(stderrPath); err == nil {
 			stderrFile.WriteString("[stderr]\n")
 			cmd.Stderr = stderrFile

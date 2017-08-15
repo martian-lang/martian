@@ -197,10 +197,8 @@ func (self *runner) StartJob(args []string) error {
 		cmd.ExtraFiles = []*os.File{self.log, writer}
 		defer writer.Close()
 	}
-	cmd.SysProcAttr = &syscall.SysProcAttr{
-		// We really don't want the child outliving the parent.
-		Pdeathsig: syscall.SIGKILL,
-	}
+	// We really don't want the child outliving the parent.
+	cmd.SysProcAttr = core.Pdeathsig(&syscall.SysProcAttr{}, syscall.SIGKILL)
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
 	if err := func() error {
@@ -259,9 +257,7 @@ func (self *runner) startProfile() error {
 	default:
 		return nil
 	}
-	cmd.SysProcAttr = &syscall.SysProcAttr{
-		Pdeathsig: syscall.SIGINT,
-	}
+	cmd.SysProcAttr = core.Pdeathsig(&syscall.SysProcAttr{}, syscall.SIGINT)
 	cmd.Stdout = os.Stderr
 	cmd.Stderr = os.Stderr
 	if err := cmd.Start(); err != nil {
