@@ -42,6 +42,41 @@ mrt:
 $(GOTESTS): test-%:
 	go test -v martian/$*
 
+
+WEB_FILES=web/martian/client/graph.js \
+		  web/martian/res/css/bootstrap.min.css \
+		  web/martian/res/css/main.css \
+		  web/martian/res/fonts/glyphicons-halflings-regular.eot \
+		  web/martian/res/fonts/glyphicons-halflings-regular.svg \
+		  web/martian/res/fonts/glyphicons-halflings-regular.ttf \
+		  web/martian/res/fonts/glyphicons-halflings-regular.woff \
+		  web/martian/res/js/ZeroClipboard.min.js \
+		  web/martian/res/js/angular-sanitize.min.js \
+		  web/martian/res/js/angular.min.js \
+		  web/martian/res/js/d3.v3.min.js \
+		  web/martian/res/js/dagre-d3.min.js \
+		  web/martian/res/js/lodash.min.js \
+		  web/martian/res/js/moment.min.js \
+		  web/martian/res/js/ng-csv.min.js \
+		  web/martian/res/js/ng-google-chart.js \
+		  web/martian/res/js/ngClip.js \
+		  web/martian/res/js/ui-bootstrap-tpls-0.10.0.min.js \
+		  web/martian/templates/graph.html
+
+$(WEB_FILES): web
+
+ADAPTERS=$(wildcard adapters/python/*.py) $(wildcard adapters/python/*/*.py)
+JOBMANAGERS=$(wildcard jobmanagers/*.py) \
+			$(wildcard jobmanagers/*.json) \
+			$(wildcard jobmanagers/*.template.example)
+
+PRODUCT_NAME:=martian-$(VERSION)-$(shell uname -is | tr "A-Z " "a-z-")
+
+$(PRODUCT_NAME).tar.%: $(addprefix bin/, $(GOBINS)) $(ADAPTERS) $(JOBMANAGERS) $(WEB_FILES)
+	tar --owner=0 --group=0 --transform "s/^./$(PRODUCT_NAME)/" -caf $@ $(addprefix ./, $^)
+
+tarball: $(PRODUCT_NAME).tar.gz
+
 test: $(GOTESTS) bin/sum_squares
 
 longtests: bin/sum_squares mrp mrjob

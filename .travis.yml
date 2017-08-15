@@ -36,3 +36,15 @@ script:
     - pylint adapters/python/martian.py
     - pylint test/martian_test.py
     - go tool vet $(ls -d src/martian/*)
+    - make tarball
+
+deploy:
+  skip_cleanup: true
+  provider: releases
+  api_key:
+    secure: k2s4sdqth0jHXDt5Ml+uN710ava+t9l/gC66WnoVmm50lvK3e4EBI+KRibbisz9O4U+lctLfVc5YhlaRY+dSPKC8VBkCzjnu0NBRhDQ2MV3n/cbOPJRivUDzhwxFqebg7zZFGmxRWd5O0MsWB7SOCs/                              ovyKst0QrU6RDItvxLkvDiKnEdQBrmWq8VFP9CMxecDZE19HF1jo2h9D1iFsayerJ8UZAfqu8m2vcUQYdmAhoo22f3BR15oFkihthJOgbE4ebQZx4XPf48Q5oGQZ62T61RdRQBoAO/lnbxo2DLZMkSC64qjxyY1lNAaBPFc/QAAC/                    gExdiFzK9sn6HpN2WkUIZRCnfD8Y47BdNYWYe/QYudelXkx8/TG0duhhnAKj+xamO+bp0PQCYT6fXG9HCL06r/JsZafW2uneV1lDJeodDrj1+KrMw8YCJxT8AF+mmqRFW4vN6DW4f0v8HpyAKT3EpRuqX6SnKU/dfNC/                             20ovl6SbAHJahAFcxBaZx0yJKXkHAcizA9noFjJtzhT+lh3ZkcAXU+H/8T/FbG5emxhKeWD4ghDI+DGqhZl5OXbpOiscm4oWQkX80707Jy7vMkUok/qEbGmfQaNe+vTUEflvfrmlurzFkhulnG7jT6zrCILv6E9Ldhc1/                            zSlLzpDZ8PtfusGJTOmlIgPwCaz3Kw=
+  file_glob: true
+  file: martian-$TRAVIS_TAG-*.tar.gz
+  on:
+    repo: martian-lang/martian
+    tags: true
