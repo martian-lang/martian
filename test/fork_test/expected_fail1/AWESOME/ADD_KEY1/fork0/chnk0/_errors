@@ -1,5 +1,5 @@
 Traceback (most recent call last):
-  File "/Users/testuser/martian/adapters/python/martian_shell.py", line 516, in _main
+  File "/Users/testuser/martian/adapters/python/martian_shell.py", line 517, in _main
     stage.main()
   File "/Users/testuser/martian/adapters/python/martian_shell.py", line 489, in main
     self._run(lambda: self._module.main(args, outs))
