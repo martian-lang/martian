@@ -1,7 +1,7 @@
 martian
 =======
 
-[![Build Status](https://travis-ci.org/martian-lang/martian.svg?token=TWBUTnxCC9pxRstyypDo&branch=master)](https://travis-ci.org/martian-lang/martian)
+[![Build Status](https://travis-ci.org/martian-lang/martian.svg?branch=master)](https://travis-ci.org/martian-lang/martian)
 
 How to Clone Me
 ---------------
