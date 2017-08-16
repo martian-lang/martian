@@ -10,7 +10,7 @@
 [![Build Status](https://travis-ci.org/martian-lang/martian.svg?branch=master)](https://travis-ci.org/martian-lang/martian)
 
 ## Getting Started
-Please see the [Martian Documentation](http://martian-org).
+Please see the [Martian Documentation](http://martian-lang.org).
 
 This repo includes vendored third-party code as submodules, so it must be git cloned recursively:
 
