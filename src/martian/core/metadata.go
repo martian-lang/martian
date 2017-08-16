@@ -272,7 +272,13 @@ func (self *Metadata) loadCache() {
 	self.mutex.Unlock()
 }
 
-func (self *Metadata) MakePath(name MetadataFileName) string {
+// Get the absolute path to the named file in the stage's files path.
+func (self *Metadata) FilePath(name string) string {
+	return path.Join(self.filesPath, name)
+}
+
+// Get the absolute path to the given metadata file.
+func (self *Metadata) MetadataFilePath(name MetadataFileName) string {
 	return path.Join(self.path, name.FileName())
 }
 
@@ -289,7 +295,7 @@ func (self *Metadata) exists(name MetadataFileName) bool {
 }
 
 func (self *Metadata) readRawSafe(name MetadataFileName) (string, error) {
-	bytes, err := ioutil.ReadFile(self.MakePath(name))
+	bytes, err := ioutil.ReadFile(self.MetadataFilePath(name))
 	return string(bytes), err
 }
 
@@ -334,7 +340,7 @@ func (self *Metadata) ReadInto(name MetadataFileName, target interface{}) error 
 }
 
 func (self *Metadata) _writeRawNoLock(name MetadataFileName, text string) error {
-	err := ioutil.WriteFile(self.MakePath(name), []byte(text), 0644)
+	err := ioutil.WriteFile(self.MetadataFilePath(name), []byte(text), 0644)
 	self._cacheNoLock(name)
 	if err != nil {
 		msg := fmt.Sprintf("Could not write %s for %s: %s", name, self.fqname, err.Error())
@@ -346,7 +352,7 @@ func (self *Metadata) _writeRawNoLock(name MetadataFileName, text string) error 
 	return err
 }
 func (self *Metadata) WriteRaw(name MetadataFileName, text string) error {
-	err := ioutil.WriteFile(self.MakePath(name), []byte(text), 0644)
+	err := ioutil.WriteFile(self.MetadataFilePath(name), []byte(text), 0644)
 	self.cache(name)
 	if err != nil {
 		msg := fmt.Sprintf("Could not write %s for %s: %s", name, self.fqname, err.Error())
@@ -370,7 +376,7 @@ func (self *Metadata) WriteAtomic(name MetadataFileName, object interface{}) err
 	if err != nil {
 		return err
 	}
-	fname := self.MakePath(name)
+	fname := self.MetadataFilePath(name)
 	tmpName := fname + ".tmp"
 	if err := ioutil.WriteFile(tmpName, bytes, 0644); err != nil {
 		return err
@@ -396,11 +402,11 @@ func (self *Metadata) UpdateJournal(name MetadataFileName) error {
 
 func (self *Metadata) remove(name MetadataFileName) error {
 	self.uncache(name)
-	return os.Remove(self.MakePath(name))
+	return os.Remove(self.MetadataFilePath(name))
 }
 func (self *Metadata) _removeNoLock(name MetadataFileName) error {
 	self._uncacheNoLock(name)
-	return os.Remove(self.MakePath(name))
+	return os.Remove(self.MetadataFilePath(name))
 }
 
 func (self *Metadata) clearReadCache() {

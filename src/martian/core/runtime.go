@@ -1792,12 +1792,12 @@ func (self *Node) getFatalError() (string, bool, string, string, MetadataFileNam
 				}
 			}
 			errpaths := []string{
-				metadata.MakePath(Errors),
-				metadata.MakePath(StdOut),
-				metadata.MakePath(StdErr),
+				metadata.MetadataFilePath(Errors),
+				metadata.MetadataFilePath(StdOut),
+				metadata.MetadataFilePath(StdErr),
 			}
 			if self.rt.enableStackVars {
-				errpaths = append(errpaths, metadata.MakePath(Stackvars))
+				errpaths = append(errpaths, metadata.MetadataFilePath(Stackvars))
 			}
 			return metadata.fqname, self.preflight, summary, errlog, Errors, errpaths
 		}
@@ -1809,7 +1809,7 @@ func (self *Node) getFatalError() (string, bool, string, string, MetadataFileNam
 				summary = assertlines[len(assertlines)-1]
 			}
 			return metadata.fqname, self.preflight, summary, assertlog, Assert, []string{
-				metadata.MakePath(Assert),
+				metadata.MetadataFilePath(Assert),
 			}
 		}
 	}
@@ -2990,7 +2990,7 @@ func (self *Pipestance) Immortalize() error {
 		self.metadata.Write(FinalState, self.Serialize(FinalState))
 	}
 	if !self.metadata.exists(MetadataZip) {
-		zipPath := self.metadata.MakePath(MetadataZip)
+		zipPath := self.metadata.MetadataFilePath(MetadataZip)
 		if err := self.ZipMetadata(zipPath); err != nil {
 			LogError(err, "runtime", "Failed to create metadata zip file %s: %s",
 				zipPath, err.Error())
@@ -3405,7 +3405,7 @@ func (self *Runtime) GetMetadata(pipestancePath string, metadataPath string) (st
 
 		// Relative paths outside the pipestance directory will be ignored.
 		if !strings.Contains(relPath, "..") {
-			if data, err := ReadZip(metadata.MakePath(MetadataZip), relPath); err == nil {
+			if data, err := ReadZip(metadata.MetadataFilePath(MetadataZip), relPath); err == nil {
 				return data, nil
 			}
 		}

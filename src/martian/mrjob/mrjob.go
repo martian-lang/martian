@@ -49,7 +49,7 @@ func main() {
 		start:    time.Now(),
 	}
 	core.RegisterSignalHandler(&run)
-	if log, err := os.OpenFile(run.metadata.MakePath(core.LogFile),
+	if log, err := os.OpenFile(run.metadata.MetadataFilePath(core.LogFile),
 		os.O_WRONLY|os.O_CREATE|os.O_APPEND, 0644); err != nil {
 		run.Fail(err, "Can't open log file.")
 	} else {
@@ -227,8 +227,8 @@ func (self *runner) startProfile() error {
 		}
 		cmd = exec.Command("pyflame",
 			"-s", "-1",
-			"-o", self.metadata.MakePath(journaledFiles[0]),
-			"-H", self.metadata.MakePath(journaledFiles[1]),
+			"-o", self.metadata.MetadataFilePath(journaledFiles[0]),
+			"-H", self.metadata.MetadataFilePath(journaledFiles[1]),
 			strconv.Itoa(self.job.Process.Pid),
 		)
 	case core.PerfRecordProfile:
@@ -249,7 +249,7 @@ func (self *runner) startProfile() error {
 		// settings will produce about 26MB per thread/process.
 		cmd = exec.Command("perf",
 			"record", "-g", "-F", freq,
-			"-o", self.metadata.MakePath(journaledFiles[0]),
+			"-o", self.metadata.MetadataFilePath(journaledFiles[0]),
 			"-e", events,
 			"-p", strconv.Itoa(self.job.Process.Pid),
 			"sleep", duration,

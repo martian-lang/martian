@@ -240,8 +240,8 @@ func (self *LocalJobManager) Enqueue(shellCmd string, argv []string,
 			cmd.Env = MergeEnv(envs)
 		}
 
-		stdoutPath := metadata.MakePath("stdout")
-		stderrPath := metadata.MakePath("stderr")
+		stdoutPath := metadata.MetadataFilePath("stdout")
+		stderrPath := metadata.MetadataFilePath("stderr")
 
 		threads, memGB = self.GetSystemReqs(threads, memGB)
 
@@ -548,8 +548,8 @@ func (self *RemoteJobManager) sendJob(shellCmd string, argv []string, envs map[s
 	params := map[string]string{
 		"JOB_NAME":          fqname + "." + shellName,
 		"THREADS":           fmt.Sprintf("%d", threads),
-		"STDOUT":            metadata.MakePath("stdout"),
-		"STDERR":            metadata.MakePath("stderr"),
+		"STDOUT":            metadata.MetadataFilePath("stdout"),
+		"STDERR":            metadata.MetadataFilePath("stderr"),
 		"JOB_WORKDIR":       metadata.filesPath,
 		"CMD":               strings.Join(argv, " "),
 		"MEM_GB":            fmt.Sprintf("%d", memGB),

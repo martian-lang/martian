@@ -52,21 +52,14 @@ type SplitFunc func(metadata *core.Metadata) (*core.StageDefs, error)
 // with metadata.ReadInto().
 type MainFunc func(metadata *core.Metadata) (interface{}, error)
 
-func parseCommandLine() (*core.Metadata, string) {
-	if len(os.Args) < 5 {
-		panic("Insufficient arguments.\n" +
-			"Expected: <exe> [exe args...] <split|main|join> " +
-			"<metadata_path> <files_path> <journal_prefix>")
+// Write stage progress information.  This information will be bubbled
+// up to the mrp log, unless it is overwritten by a more recent update
+// first.
+func UpdateProgress(metadata *core.Metadata, message string) error {
+	if err := metadata.WriteRaw(core.ProgressFile, message); err != nil {
+		return err
 	}
-	args := os.Args[len(os.Args)-4:]
-	runType := args[0]
-	metadataPath := args[1]
-	filesPath := args[2]
-	fqname := path.Base(args[3])
-	journalPath := path.Dir(args[3])
-	return core.NewMetadataRunWithJournalPath(
-			fqname, metadataPath, filesPath, journalPath, runType),
-		runType
+	return metadata.UpdateJournal(core.ProgressFile)
 }
 
 // Parses the command line and stage inputs, runs the appropriate given stage
@@ -97,6 +90,23 @@ func RunStage(split SplitFunc, main MainFunc, join MainFunc) {
 		fmt.Fprintf(errorFile, "ASSERT:Invalid run type %s", runType)
 		return
 	}
+}
+
+func parseCommandLine() (*core.Metadata, string) {
+	if len(os.Args) < 5 {
+		panic("Insufficient arguments.\n" +
+			"Expected: <exe> [exe args...] <split|main|join> " +
+			"<metadata_path> <files_path> <journal_prefix>")
+	}
+	args := os.Args[len(os.Args)-4:]
+	runType := args[0]
+	metadataPath := args[1]
+	filesPath := args[2]
+	fqname := path.Base(args[3])
+	journalPath := path.Dir(args[3])
+	return core.NewMetadataRunWithJournalPath(
+			fqname, metadataPath, filesPath, journalPath, runType),
+		runType
 }
 
 func runSplit(split SplitFunc, metadata *core.Metadata, errorFile *os.File) {
