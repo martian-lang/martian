@@ -11,6 +11,7 @@ import (
 	"fmt"
 	"github.com/cloudfoundry/gosigar"
 	"io/ioutil"
+	"martian/util"
 	"os"
 	"os/exec"
 	"path"
@@ -23,6 +24,14 @@ import (
 
 const maxRetries = 5
 const retryExitCode = 513
+
+func max(a, b int) int {
+	if a > b {
+		return a
+	} else {
+		return b
+	}
+}
 
 //
 // Job managers
@@ -74,21 +83,21 @@ func NewLocalJobManager(userMaxCores int, userMaxMemGB int,
 	if userMaxCores > 0 {
 		// If user specified --localcores, use that value for Max usable cores.
 		self.maxCores = userMaxCores
-		LogInfo("jobmngr", "Using %d core%s, per --localcores option.",
-			self.maxCores, Pluralize(self.maxCores))
+		util.LogInfo("jobmngr", "Using %d core%s, per --localcores option.",
+			self.maxCores, util.Pluralize(self.maxCores))
 	} else {
 		// Otherwise, set Max usable cores to total number of cores reported
 		// by the system.
 		self.maxCores = runtime.NumCPU()
-		LogInfo("jobmngr", "Using %d logical core%s available on system.",
-			self.maxCores, Pluralize(self.maxCores))
+		util.LogInfo("jobmngr", "Using %d logical core%s available on system.",
+			self.maxCores, util.Pluralize(self.maxCores))
 	}
 
 	// Set Max GB of memory usable at one time.
 	if userMaxMemGB > 0 {
 		// If user specified --localmem, use that value for Max usable GB.
 		self.maxMemGB = userMaxMemGB
-		LogInfo("jobmngr", "Using %d GB, per --localmem option.", self.maxMemGB)
+		util.LogInfo("jobmngr", "Using %d GB, per --localmem option.", self.maxMemGB)
 	} else {
 		// Otherwise, set Max usable GB to MAXMEM_FRACTION * GB of total
 		// memory reported by the system.
@@ -101,14 +110,14 @@ func NewLocalJobManager(userMaxCores int, userMaxMemGB int,
 			sysMemGB = 1
 		}
 		self.maxMemGB = sysMemGB
-		LogInfo("jobmngr", "Using %d GB, %d%% of system memory.", self.maxMemGB,
+		util.LogInfo("jobmngr", "Using %d GB, %d%% of system memory.", self.maxMemGB,
 			int(MAXMEM_FRACTION*100))
 	}
 
 	self.coreSem = NewResourceSemaphore(int64(self.maxCores), "threads")
 	self.memMBSem = NewResourceSemaphore(int64(self.maxMemGB)*1024, "MB of memory")
 	self.queue = []*exec.Cmd{}
-	RegisterSignalHandler(self)
+	util.RegisterSignalHandler(self)
 	return self
 }
 
@@ -123,7 +132,7 @@ func (self *LocalJobManager) refreshLocalResources(localMode bool) error {
 	}
 	usedMem, err := GetProcessTreeMemory(os.Getpid(), false)
 	if err != nil {
-		LogError(err, "jobmngr", "Error getting process tree memory usage.")
+		util.LogError(err, "jobmngr", "Error getting process tree memory usage.")
 	}
 	self.highMem.IncreaseTo(usedMem)
 	memDiff := self.memMBSem.UpdateFreeUsed(
@@ -132,9 +141,9 @@ func (self *LocalJobManager) refreshLocalResources(localMode bool) error {
 	if memDiff < -int64(self.maxMemGB)*1024/8 &&
 		memDiff/128 < self.lastMemDiff &&
 		(localMode || sysMem.ActualFree < 2*1024*1024*1024) {
-		LogInfo("jobmngr", "%.1fGB less memory than expected was free", float64(-memDiff)/1024)
+		util.LogInfo("jobmngr", "%.1fGB less memory than expected was free", float64(-memDiff)/1024)
 		if usedMem.Rss > self.memMBSem.Reserved()*1024*1024 {
-			LogInfo("jobmngr",
+			util.LogInfo("jobmngr",
 				"MRP and its child processes are using %.1fGB of rss.  %.1fGB are reserved.",
 				float64(usedMem.Rss)/(1024*1024*1024), self.memMBSem.Reserved()/1024)
 		}
@@ -148,7 +157,7 @@ func (self *LocalJobManager) refreshLocalResources(localMode bool) error {
 		if diff := self.coreSem.UpdateActual(int64(
 			float64(runtime.NumCPU()) - load.One + 0.9)); diff < -int64(self.maxCores)/4 &&
 			localMode {
-			LogInfo("jobmngr", "%d fewer core%s than expected were free.", -diff, Pluralize(int(-diff)))
+			util.LogInfo("jobmngr", "%d fewer core%s than expected were free.", -diff, util.Pluralize(int(-diff)))
 		}
 	}
 	return nil
@@ -157,7 +166,7 @@ func (self *LocalJobManager) refreshLocalResources(localMode bool) error {
 func (self *LocalJobManager) HandleSignal(sig os.Signal) {
 	if self.highMem.Rss > 0 {
 		if ser, err := json.MarshalIndent(self.highMem, "", "  "); err == nil {
-			LogInfo("jobmngr", "Highest memory usage observed: %s", string(ser))
+			util.LogInfo("jobmngr", "Highest memory usage observed: %s", string(ser))
 		}
 	}
 }
@@ -169,8 +178,8 @@ func (self *LocalJobManager) GetSystemReqs(threads int, memGB int) (int, int) {
 	}
 	if threads > self.maxCores {
 		if self.debug {
-			LogInfo("jobmngr", "Need %d core%s but settling for %d.", threads,
-				Pluralize(threads), self.maxCores)
+			util.LogInfo("jobmngr", "Need %d core%s but settling for %d.", threads,
+				util.Pluralize(threads), self.maxCores)
 		}
 		threads = self.maxCores
 	}
@@ -185,7 +194,7 @@ func (self *LocalJobManager) GetSystemReqs(threads int, memGB int) (int, int) {
 			memGB = -memGB
 		} else {
 			if self.debug {
-				LogInfo("jobmngr", "Adaptive request for at least %d GB being given %d.",
+				util.LogInfo("jobmngr", "Adaptive request for at least %d GB being given %d.",
 					-memGB, avail)
 			}
 			memGB = avail
@@ -196,10 +205,10 @@ func (self *LocalJobManager) GetSystemReqs(threads int, memGB int) (int, int) {
 	// amount as a sentinel.
 	if memGB > self.maxMemGB {
 		if self.debug {
-			LogInfo("jobmngr", "Need %d GB but settling for %d.", memGB,
+			util.LogInfo("jobmngr", "Need %d GB but settling for %d.", memGB,
 				self.maxMemGB)
 		}
-		LogInfo(
+		util.LogInfo(
 			"jobmngr", "Job asked for %d GB but is being given %d.  This behavior is deprecated - jobs which can adapt their memory usage should ask for -%d.",
 			memGB, self.maxMemGB, memGB)
 		memGB = self.maxMemGB
@@ -233,11 +242,11 @@ func (self *LocalJobManager) Enqueue(shellCmd string, argv []string,
 			// If, and only if, the user specified a core limit less than the
 			// detected core count, make sure jobs actually don't use more
 			// threads than they're supposed to.
-			cmd.Env = MergeEnv(threadEnvs(self, threads, envs))
+			cmd.Env = util.MergeEnv(threadEnvs(self, threads, envs))
 		} else {
 			// In this case it's ok if we oversubscribe a bit since we're
 			// (probably) not sharing the machine.
-			cmd.Env = MergeEnv(envs)
+			cmd.Env = util.MergeEnv(envs)
 		}
 
 		stdoutPath := metadata.MetadataFilePath("stdout")
@@ -247,37 +256,37 @@ func (self *LocalJobManager) Enqueue(shellCmd string, argv []string,
 
 		// Acquire cores.
 		if self.debug {
-			LogInfo("jobmngr", "Waiting for %d core%s", threads, Pluralize(threads))
+			util.LogInfo("jobmngr", "Waiting for %d core%s", threads, util.Pluralize(threads))
 		}
 		if err := self.coreSem.Acquire(int64(threads)); err != nil {
-			LogError(err, "jobmngr",
+			util.LogError(err, "jobmngr",
 				"%s requested %d threads, but the job manager was only configured to use %d.",
 				metadata.fqname, threads, self.maxCores)
 			metadata.WriteRaw("errors", err.Error())
 			return
 		}
 		if self.debug {
-			LogInfo("jobmngr", "Acquired %d core%s (%d/%d in use)", threads,
-				Pluralize(threads), self.coreSem.InUse(), self.maxCores)
+			util.LogInfo("jobmngr", "Acquired %d core%s (%d/%d in use)", threads,
+				util.Pluralize(threads), self.coreSem.InUse(), self.maxCores)
 		}
 
 		// Acquire memory.
 		if self.debug {
-			LogInfo("jobmngr", "Waiting for %d GB", memGB)
+			util.LogInfo("jobmngr", "Waiting for %d GB", memGB)
 		}
 		if err := self.memMBSem.Acquire(int64(memGB) * 1024); err != nil {
-			LogError(err, "jobmngr",
+			util.LogError(err, "jobmngr",
 				"%s requested %d GB of memory, but the job manager was only configured to use %d.",
 				metadata.fqname, memGB, self.maxMemGB)
 			metadata.WriteRaw("errors", err.Error())
 			return
 		}
 		if self.debug {
-			LogInfo("jobmngr", "Acquired %d GB (%.1f/%d in use)", memGB,
+			util.LogInfo("jobmngr", "Acquired %d GB (%.1f/%d in use)", memGB,
 				float64(self.memMBSem.InUse())/1024, self.maxMemGB)
 		}
 		if self.debug {
-			LogInfo("jobmngr", "%d goroutines", runtime.NumGoroutine())
+			util.LogInfo("jobmngr", "%d goroutines", runtime.NumGoroutine())
 		}
 
 		// Set up _stdout and _stderr for the job.
@@ -300,8 +309,8 @@ func (self *LocalJobManager) Enqueue(shellCmd string, argv []string,
 
 		// Run the command and wait for completion.
 		err := func(metadata *Metadata, cmd *exec.Cmd) error {
-			EnterCriticalSection()
-			defer ExitCriticalSection()
+			util.EnterCriticalSection()
+			defer util.ExitCriticalSection()
 			err := cmd.Start()
 			if err == nil {
 				metadata.remove("queued_locally")
@@ -328,7 +337,7 @@ func (self *LocalJobManager) Enqueue(shellCmd string, argv []string,
 			if retries > maxRetries {
 				metadata.WriteRaw("errors", err.Error())
 			} else {
-				LogInfo("jobmngr", "Job failed: %s. Retrying job %s in %d seconds", err.Error(), fqname, waitTime)
+				util.LogInfo("jobmngr", "Job failed: %s. Retrying job %s in %d seconds", err.Error(), fqname, waitTime)
 				self.Enqueue(shellCmd, argv, envs, metadata, threads, memGB, fqname, retries,
 					waitTime, localpreflight)
 			}
@@ -337,13 +346,13 @@ func (self *LocalJobManager) Enqueue(shellCmd string, argv []string,
 		// Release cores.
 		self.coreSem.Release(int64(threads))
 		if self.debug {
-			LogInfo("jobmngr", "Released %d core%s (%d/%d in use)", threads,
-				Pluralize(threads), self.coreSem.InUse(), self.maxCores)
+			util.LogInfo("jobmngr", "Released %d core%s (%d/%d in use)", threads,
+				util.Pluralize(threads), self.coreSem.InUse(), self.maxCores)
 		}
 		// Release memory.
 		self.memMBSem.Release(int64(memGB) * 1024)
 		if self.debug {
-			LogInfo("jobmngr", "Released %d GB (%.1f/%d in use)", memGB,
+			util.LogInfo("jobmngr", "Released %d GB (%.1f/%d in use)", memGB,
 				float64(self.memMBSem.InUse())/1024, self.maxMemGB)
 		}
 	}()
@@ -392,9 +401,9 @@ func NewRemoteJobManager(jobMode string, memGBPerCore int, maxJobs int, jobFreqM
 			parts := strings.Split(mapping, ":")
 			if len(parts) == 2 {
 				self.jobResourcesMappings[parts[0]] = parts[1]
-				LogInfo("jobmngr", "Mapping %s to %s", parts[0], parts[1])
+				util.LogInfo("jobmngr", "Mapping %s to %s", parts[0], parts[1])
 			} else {
-				LogInfo("jobmngr", "Could not parse mapping: %s", mapping)
+				util.LogInfo("jobmngr", "Could not parse mapping: %s", mapping)
 			}
 		}
 	}
@@ -465,7 +474,7 @@ func (self *RemoteJobManager) execJob(shellCmd string, argv []string,
 	// grab job when ready, block until job state changes to a finalized state
 	go func() {
 		if self.debug {
-			LogInfo("jobmngr", "Waiting for job: %s", fqname)
+			util.LogInfo("jobmngr", "Waiting for job: %s", fqname)
 		}
 		// if we want to try to put a more precise cap on cluster execution load,
 		// might be preferable to request num threads here instead of a slot per job
@@ -473,14 +482,14 @@ func (self *RemoteJobManager) execJob(shellCmd string, argv []string,
 			panic(err)
 		}
 		if self.debug {
-			LogInfo("jobmngr", "Job sent: %s", fqname)
+			util.LogInfo("jobmngr", "Job sent: %s", fqname)
 		}
 		self.sendJob(shellCmd, argv, envs, metadata, threads, memGB, special, fqname, shellName)
 		for {
 			if state, _ := metadata.getState(); state == Complete || state == Failed {
 				self.jobSem.Release(1)
 				if self.debug {
-					LogInfo("jobmngr", "Job finished: %s (%s)", fqname, state)
+					util.LogInfo("jobmngr", "Job finished: %s (%s)", fqname, state)
 				}
 				break
 			}
@@ -509,7 +518,7 @@ func (self *RemoteJobManager) sendJob(shellCmd string, argv []string, envs map[s
 	if self.jobFreqMillis > 0 {
 		<-(self.limiter.C)
 		if self.debug {
-			LogInfo("jobmngr", "Job rate-limit released: %s", fqname)
+			util.LogInfo("jobmngr", "Job rate-limit released: %s", fqname)
 		}
 	}
 	threads, memGB = self.GetSystemReqs(threads, memGB)
@@ -541,7 +550,7 @@ func (self *RemoteJobManager) sendJob(shellCmd string, argv []string, envs map[s
 	}
 
 	argv = append(
-		FormatEnv(threadEnvs(self, threads, envs)),
+		util.FormatEnv(threadEnvs(self, threads, envs)),
 		append([]string{shellCmd},
 			argv...)...,
 	)
@@ -586,8 +595,8 @@ func (self *RemoteJobManager) sendJob(shellCmd string, argv []string, envs map[s
 	cmd.Dir = metadata.filesPath
 	cmd.Stdin = strings.NewReader(jobscript)
 
-	EnterCriticalSection()
-	defer ExitCriticalSection()
+	util.EnterCriticalSection()
+	defer util.ExitCriticalSection()
 	metadata.remove("queued_locally")
 	if output, err := cmd.CombinedOutput(); err != nil {
 		metadata.WriteRaw("errors", "jobcmd error ("+err.Error()+"):\n"+string(output))
@@ -606,7 +615,7 @@ func (self *RemoteJobManager) checkQueue(ids []string) ([]string, string) {
 	if self.config.queueQueryCmd == "" {
 		return ids, ""
 	}
-	jobPath := RelPath(path.Join("..", "jobmanagers"))
+	jobPath := util.RelPath(path.Join("..", "jobmanagers"))
 	cmd := exec.Command(path.Join(jobPath, self.config.queueQueryCmd))
 	cmd.Dir = jobPath
 	cmd.Stdin = strings.NewReader(strings.Join(ids, "\n"))
@@ -668,36 +677,36 @@ type jobManagerConfig struct {
 }
 
 func verifyJobManager(jobMode string, memGBPerCore int) jobManagerConfig {
-	jobPath := RelPath(path.Join("..", "jobmanagers"))
+	jobPath := util.RelPath(path.Join("..", "jobmanagers"))
 
 	// Check for existence of job manager JSON file
 	jobJsonFile := path.Join(jobPath, "config.json")
 	if _, err := os.Stat(jobJsonFile); os.IsNotExist(err) {
-		PrintInfo("jobmngr", "Job manager config file %s does not exist.", jobJsonFile)
+		util.PrintInfo("jobmngr", "Job manager config file %s does not exist.", jobJsonFile)
 		os.Exit(1)
 	}
-	LogInfo("jobmngr", "Job config = %s", jobJsonFile)
+	util.LogInfo("jobmngr", "Job config = %s", jobJsonFile)
 	bytes, _ := ioutil.ReadFile(jobJsonFile)
 
 	// Parse job manager JSON file
 	var jobJson *JobManagerJson
 	if err := json.Unmarshal(bytes, &jobJson); err != nil {
-		PrintInfo("jobmngr", "Job manager config file %s does not contain valid JSON.", jobJsonFile)
+		util.PrintInfo("jobmngr", "Job manager config file %s does not contain valid JSON.", jobJsonFile)
 		os.Exit(1)
 	}
 
 	// Validate settings fields
 	jobSettings := jobJson.JobSettings
 	if jobSettings == nil {
-		PrintInfo("jobmngr", "Job manager config file %s should contain 'settings' field.", jobJsonFile)
+		util.PrintInfo("jobmngr", "Job manager config file %s should contain 'settings' field.", jobJsonFile)
 		os.Exit(1)
 	}
 	if jobSettings.ThreadsPerJob <= 0 {
-		PrintInfo("jobmngr", "Job manager config %s contains invalid default threads per job.", jobJsonFile)
+		util.PrintInfo("jobmngr", "Job manager config %s contains invalid default threads per job.", jobJsonFile)
 		os.Exit(1)
 	}
 	if jobSettings.MemGBPerJob <= 0 {
-		PrintInfo("jobmngr", "Job manager config %s contains invalid default memory (GB) per job.", jobJsonFile)
+		util.PrintInfo("jobmngr", "Job manager config %s contains invalid default memory (GB) per job.", jobJsonFile)
 		os.Exit(1)
 	}
 
@@ -721,7 +730,7 @@ func verifyJobManager(jobMode string, memGBPerCore int) jobManagerConfig {
 
 		jobModeJson, ok = jobJson.JobModes[jobMode]
 		if !strings.HasSuffix(jobTemplateFile, ".template") || !ok {
-			PrintInfo("jobmngr", "Job manager template file %s must be named <name_of_job_manager>.template.", jobTemplateFile)
+			util.PrintInfo("jobmngr", "Job manager template file %s must be named <name_of_job_manager>.template.", jobTemplateFile)
 			os.Exit(1)
 		}
 		jobErrorMsg = fmt.Sprintf("Job manager template file %s does not exist.", jobTemplateFile)
@@ -729,20 +738,20 @@ func verifyJobManager(jobMode string, memGBPerCore int) jobManagerConfig {
 
 	jobCmd := jobModeJson.Cmd
 	if len(jobModeJson.Args) == 0 {
-		LogInfo("jobmngr", "Job submit command = %s", jobCmd)
+		util.LogInfo("jobmngr", "Job submit command = %s", jobCmd)
 	} else {
-		LogInfo("jobmngr", "Job submit comand = %s %s", jobCmd, strings.Join(jobModeJson.Args, " "))
+		util.LogInfo("jobmngr", "Job submit comand = %s %s", jobCmd, strings.Join(jobModeJson.Args, " "))
 	}
 
 	jobResourcesOpt := jobModeJson.ResourcesOpt
-	LogInfo("jobmngr", "Job submit resources option = %s", jobResourcesOpt)
+	util.LogInfo("jobmngr", "Job submit resources option = %s", jobResourcesOpt)
 
 	// Check for existence of job manager template file
 	if _, err := os.Stat(jobTemplateFile); os.IsNotExist(err) {
-		PrintInfo("jobmngr", jobErrorMsg)
+		util.PrintInfo("jobmngr", jobErrorMsg)
 		os.Exit(1)
 	}
-	LogInfo("jobmngr", "Job template = %s", jobTemplateFile)
+	util.LogInfo("jobmngr", "Job template = %s", jobTemplateFile)
 	bytes, _ = ioutil.ReadFile(jobTemplateFile)
 	jobTemplate := string(bytes)
 
@@ -754,13 +763,13 @@ func verifyJobManager(jobMode string, memGBPerCore int) jobManagerConfig {
 
 	// Check if memory reservations or mempercore are enabled
 	if !strings.Contains(jobTemplate, "__MRO_MEM_GB") && !strings.Contains(jobTemplate, "__MRO_MEM_MB") && memGBPerCore <= 0 {
-		Println("\nCLUSTER MODE WARNING:\n   Memory reservations are not enabled in your job template.\n   To avoid memory over-subscription, we highly recommend that you enable\n   memory reservations on your cluster, or use the --mempercore option.\nPlease consult the documentation for details.\n")
+		util.Println("\nCLUSTER MODE WARNING:\n   Memory reservations are not enabled in your job template.\n   To avoid memory over-subscription, we highly recommend that you enable\n   memory reservations on your cluster, or use the --mempercore option.\nPlease consult the documentation for details.\n")
 	}
 
 	// Verify job command exists
 	incPaths := strings.Split(os.Getenv("PATH"), ":")
-	if _, found := SearchPaths(jobCmd, incPaths); !found {
-		Println("Job command '%s' not found in (%s)",
+	if _, found := util.SearchPaths(jobCmd, incPaths); !found {
+		util.Println("Job command '%s' not found in (%s)",
 			jobCmd, strings.Join(incPaths, ", "))
 		os.Exit(1)
 	}
@@ -770,7 +779,7 @@ func verifyJobManager(jobMode string, memGBPerCore int) jobManagerConfig {
 	for _, entry := range jobModeJson.JobEnvs {
 		envs = append(envs, []string{entry.Name, entry.Description})
 	}
-	EnvRequire(envs, true)
+	util.EnvRequire(envs, true)
 
 	var queueGrace time.Duration
 	if jobModeJson.QueueQuery != "" {

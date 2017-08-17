@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"io/ioutil"
+	"martian/util"
 	"os"
 )
 
@@ -101,7 +102,7 @@ func linkDirectories(cur *Node, oldRoot *Node, nodemap map[*Node]*Node) {
 		 * get recomputed.
 		 */
 		if !cur.blacklistedFromMRT && oldNode != nil {
-			Println("Link (stage) %v(%v) to %v(%v)", cur.name, cur.path, oldNode.name, oldNode.path)
+			util.Println("Link (stage) %v(%v) to %v(%v)", cur.name, cur.path, oldNode.name, oldNode.path)
 			err := os.Symlink(oldNode.path, cur.path)
 			if err != nil {
 				panic(err)
@@ -110,7 +111,7 @@ func linkDirectories(cur *Node, oldRoot *Node, nodemap map[*Node]*Node) {
 	} else if cur.kind == "pipeline" {
 		/* Try to link an entire pipeline */
 		if !cur.blacklistedFromMRT && oldNode != nil {
-			Println("Link (pipeline) %v(%v) to %v(%v)", cur.name, cur.path, oldNode.name, oldNode.path)
+			util.Println("Link (pipeline) %v(%v) to %v(%v)", cur.name, cur.path, oldNode.name, oldNode.path)
 			err := os.Symlink(oldNode.path, cur.path)
 			if err != nil {
 				panic(err)
@@ -223,7 +224,7 @@ func VDRTaint(root *Node, nodemap map[*Node]*Node) {
 func (n *Node) VDRMurdered() bool {
 
 	if len(n.forks) == 0 {
-		Println("NO FORKS: %v", n.fqname)
+		util.Println("NO FORKS: %v", n.fqname)
 	}
 	for _, f := range n.forks {
 		f.metadata.loadCache()
@@ -235,7 +236,7 @@ func (n *Node) VDRMurdered() bool {
 			 * has been intentionally deleted and treat it like it is
 			 * VDR'ed.
 			 */
-			Println("Stage %v has no _complete record; treating as VDR'ed.", n.name)
+			util.Println("Stage %v has no _complete record; treating as VDR'ed.", n.name)
 			return true
 		}
 
@@ -247,11 +248,11 @@ func (n *Node) VDRMurdered() bool {
 			killcount := m["count"].(float64)
 
 			if killcount > 0 {
-				Println("VDR DETECTED: %v", n.name)
+				util.Println("VDR DETECTED: %v", n.name)
 				return true
 			}
 		} else {
-			Println("%v Has no VDR record", n.name)
+			util.Println("%v Has no VDR record", n.name)
 		}
 	}
 	return false
@@ -263,7 +264,7 @@ func (n *Node) VDRMurdered() bool {
 func ScanTree(root *Node) {
 
 	if root.blacklistedFromMRT {
-		Println("Invalidated: %v", root.name)
+		util.Println("Invalidated: %v", root.name)
 	}
 
 	for _, s := range root.subnodes {
@@ -283,7 +284,7 @@ func ScanTree(root *Node) {
  * After this runs, the new directory can be mrp'ed to run the new pipestance.
  */
 func MRTBuildPipeline(newinfo *PipestanceSetup, oldinfo *PipestanceSetup, invalidate []string) {
-	SetupSignalHandlers()
+	util.SetupSignalHandlers()
 
 	/*
 	 * Build runtime objects. We never actually use these but the interfaces
@@ -302,7 +303,7 @@ func MRTBuildPipeline(newinfo *PipestanceSetup, oldinfo *PipestanceSetup, invali
 
 	/* Setup the new pipestance */
 	newcall, err := ioutil.ReadFile(newinfo.Srcpath)
-	DieIf(err)
+	util.DieIf(err)
 
 	psnew, err := rtnew.InvokePipeline(string(newcall),
 		newinfo.Srcpath,
@@ -313,11 +314,11 @@ func MRTBuildPipeline(newinfo *PipestanceSetup, oldinfo *PipestanceSetup, invali
 		newinfo.Envs,
 		[]string{})
 
-	DieIf(err)
+	util.DieIf(err)
 
 	/* Attach to the old pipestance */
 	oldcall, err := ioutil.ReadFile(oldinfo.Srcpath)
-	DieIf(err)
+	util.DieIf(err)
 
 	psold, err := rtold.ReattachToPipestanceWithMroSrc(oldinfo.Psid,
 		oldinfo.PipestancePath,
@@ -329,7 +330,7 @@ func MRTBuildPipeline(newinfo *PipestanceSetup, oldinfo *PipestanceSetup, invali
 		true)
 
 	if err != nil {
-		Println("COULD NOT ATTACH TO PIPESTANCE: %v", err)
+		util.Println("COULD NOT ATTACH TO PIPESTANCE: %v", err)
 		panic(err)
 	}
 

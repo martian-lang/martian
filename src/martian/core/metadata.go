@@ -9,6 +9,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
+	"martian/util"
 	"os"
 	"path"
 	"path/filepath"
@@ -170,15 +171,15 @@ func (self *Metadata) FilesPath() string {
 }
 
 func (self *Metadata) mkdirs() error {
-	if err := mkdir(self.path); err != nil {
+	if err := util.Mkdir(self.path); err != nil {
 		msg := fmt.Sprintf("Could not create directories for %s: %s", self.fqname, err.Error())
-		LogError(err, "runtime", msg)
+		util.LogError(err, "runtime", msg)
 		self.WriteRaw("errors", msg)
 		return err
 	}
-	if err := mkdir(self.filesPath); err != nil {
+	if err := util.Mkdir(self.filesPath); err != nil {
 		msg := fmt.Sprintf("Could not create directories for %s: %s", self.fqname, err.Error())
-		LogError(err, "runtime", msg)
+		util.LogError(err, "runtime", msg)
 		self.WriteRaw("errors", msg)
 		return err
 	}
@@ -344,7 +345,7 @@ func (self *Metadata) _writeRawNoLock(name MetadataFileName, text string) error 
 	self._cacheNoLock(name)
 	if err != nil {
 		msg := fmt.Sprintf("Could not write %s for %s: %s", name, self.fqname, err.Error())
-		LogError(err, "runtime", msg)
+		util.LogError(err, "runtime", msg)
 		if name != Errors {
 			self._writeRawNoLock(Errors, msg)
 		}
@@ -356,7 +357,7 @@ func (self *Metadata) WriteRaw(name MetadataFileName, text string) error {
 	self.cache(name)
 	if err != nil {
 		msg := fmt.Sprintf("Could not write %s for %s: %s", name, self.fqname, err.Error())
-		LogError(err, "runtime", msg)
+		util.LogError(err, "runtime", msg)
 		if name != Errors {
 			self.WriteRaw(Errors, msg)
 		}
@@ -368,7 +369,7 @@ func (self *Metadata) Write(name MetadataFileName, object interface{}) error {
 	return self.WriteRaw(name, string(bytes))
 }
 func (self *Metadata) WriteTime(name MetadataFileName) error {
-	return self.WriteRaw(name, Timestamp())
+	return self.WriteRaw(name, util.Timestamp())
 }
 
 func (self *Metadata) WriteAtomic(name MetadataFileName, object interface{}) error {
@@ -390,7 +391,7 @@ func (self *Metadata) WriteAtomic(name MetadataFileName, object interface{}) err
 
 func (self *Metadata) UpdateJournal(name MetadataFileName) error {
 	fname := path.Join(self.journalPath, self.fqname+"."+self.journalPrefix+string(name))
-	if err := ioutil.WriteFile(fname+".tmp", []byte(Timestamp()), 0644); err != nil {
+	if err := ioutil.WriteFile(fname+".tmp", []byte(util.Timestamp()), 0644); err != nil {
 		return err
 	}
 	if err := os.Rename(fname+".tmp", fname); err == nil || os.IsNotExist(err) {
@@ -438,7 +439,7 @@ func (self *Metadata) endRefresh(lastRefresh time.Time) {
 			self._writeRawNoLock(Errors, fmt.Sprintf(
 				"According to the job manager, the job for %s was not queued "+
 					"or running, since at least %s.",
-				self.fqname, notRunningSince.Format(TIMEFMT)))
+				self.fqname, notRunningSince.Format(util.TIMEFMT)))
 		}
 	}
 	self.mutex.Unlock()
@@ -485,7 +486,7 @@ func (self *Metadata) checkedReset() error {
 		}
 		self.mutex.Unlock()
 		if err := self.uncheckedReset(); err == nil {
-			PrintInfo("runtime", "(reset-partial)   %s", self.fqname)
+			util.PrintInfo("runtime", "(reset-partial)   %s", self.fqname)
 		} else {
 			return err
 		}
@@ -505,7 +506,7 @@ func (self *Metadata) uncheckedReset() error {
 		}
 	}
 	if err := self.removeAll(); err != nil {
-		PrintInfo("runtime", "Cannot reset the stage because some folder contents could not be deleted.\n\nPlease resolve this error in order to continue running the pipeline: %v", err)
+		util.PrintInfo("runtime", "Cannot reset the stage because some folder contents could not be deleted.\n\nPlease resolve this error in order to continue running the pipeline: %v", err)
 		return err
 	}
 	return self.mkdirs()
@@ -516,7 +517,7 @@ func (self *Metadata) uncheckedReset() error {
 func (self *Metadata) restartQueuedLocal() error {
 	if self.exists(QueuedLocally) {
 		if err := self.uncheckedReset(); err == nil {
-			PrintInfo("runtime", "(reset-running)   %s", self.fqname)
+			util.PrintInfo("runtime", "(reset-running)   %s", self.fqname)
 			return nil
 		} else {
 			return err
@@ -540,7 +541,7 @@ func (self *Metadata) restartLocal() error {
 	}
 	if state == Queued {
 		if err := self.uncheckedReset(); err == nil {
-			PrintInfo("runtime", "(reset-queued)    %s", self.fqname)
+			util.PrintInfo("runtime", "(reset-queued)    %s", self.fqname)
 		} else {
 			return err
 		}
@@ -557,12 +558,12 @@ func (self *Metadata) restartLocal() error {
 				// can assume means the PID was reused.
 				if err := proc.Signal(syscall.Signal(0)); err != nil {
 					if err := self.uncheckedReset(); err == nil {
-						PrintInfo("runtime", "(reset-running)   %s", self.fqname)
+						util.PrintInfo("runtime", "(reset-running)   %s", self.fqname)
 					} else {
 						return err
 					}
 				} else {
-					PrintInfo("runtime", "Possibly running  %s", self.fqname)
+					util.PrintInfo("runtime", "Possibly running  %s", self.fqname)
 				}
 			}
 		}
@@ -581,7 +582,7 @@ func (self *Metadata) checkHeartbeat() {
 				"%s: No heartbeat detected for %d minutes. Assuming job has failed. This may be "+
 					"due to a user manually terminating the job, or the operating system or cluster "+
 					"terminating it due to resource or time limits.",
-				Timestamp(), heartbeatTimeout))
+				util.Timestamp(), heartbeatTimeout))
 		}
 	}
 }

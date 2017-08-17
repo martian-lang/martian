@@ -27,11 +27,30 @@ package core
 
 import (
 	"encoding/json"
-	"errors"
 	"fmt"
 	"io/ioutil"
+	"martian/util"
 	"reflect"
 )
+
+/*
+ * Compute a "partially" Qualified stage name. This is a fully qualified name
+ * (ID.pipestance.pipe.pipe.pipe.....stage) with the initial ID and pipestance
+ * trimmed off. This allows for comparisons between different pipestances with
+ * the same (or similar) shapes.
+ */
+func partiallyQualifiedName(n string) string {
+	count := 0
+	for i := 0; i < len(n); i++ {
+		if n[i] == '.' {
+			count++
+		}
+		if count == 2 {
+			return n[i+1:]
+		}
+	}
+	return ""
+}
 
 type StageOverride map[string]interface{}
 
@@ -93,17 +112,17 @@ func ReadOverrides(path string) (*PipestanceOverrides, error) {
 
 			/* Can't refer to an unspecified override key */
 			if !ok {
-				return nil, errors.New(fmt.Sprintf("%v is not a legal override", override_key))
+				return nil, fmt.Errorf("%v is not a legal override", override_key)
 			}
 
 			/* Overrides have to match to expected type */
 			if reflect.ValueOf(data).Kind() != val_kind {
-				return nil, errors.New(fmt.Sprintf("%v (%v) is the wrong type. Expected type is %v", override_key, data, val_kind))
+				return nil, fmt.Errorf("%v (%v) is the wrong type. Expected type is %v", override_key, data, val_kind)
 			}
 		}
 	}
 
-	Println("Loaded %v overrides from %v", len(pse.overridesbystage), path)
+	util.Println("Loaded %v overrides from %v", len(pse.overridesbystage), path)
 	return pse, nil
 }
 
@@ -139,7 +158,7 @@ func (self *PipestanceOverrides) GetOverride(node *Node, what string, def interf
 				/* If we found a node that exists *AND* it actually defines val,
 				 * use it. Otherwise, backtrack another level and try again.
 				 */
-				LogInfo("override", "At [%v:%v] replace %v with %v",
+				util.LogInfo("override", "At [%v:%v] replace %v with %v",
 					what, cur.fqname, def, val)
 				return val
 			}

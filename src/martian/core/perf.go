@@ -5,33 +5,9 @@
 package core
 
 import (
+	"martian/util"
 	"time"
 )
-
-type JobInfo struct {
-	Name          string            `json:"name"`
-	Pid           int               `json:"pid,omitempty"`
-	Host          string            `json:"host,omitempty"`
-	Type          string            `json:"type,omitempty"`
-	Cwd           string            `json:"cwd,omitempty"`
-	PythonInfo    *PythonInfo       `json:"python,omitempty"`
-	RusageInfo    *RusageInfo       `json:"rusage,omitempty"`
-	MemoryUsage   *ObservedMemory   `json:"used_bytes,omitempty"`
-	WallClockInfo *WallClockInfo    `json:"wallclock,omitempty"`
-	Threads       int               `json:"threads,omitempty"`
-	MemGB         int               `json:"memGB,omitempty"`
-	ProfileMode   ProfileMode       `json:"profile_mode,omitempty"`
-	Stackvars     string            `json:"stackvars_flag,omitempty"`
-	Monitor       string            `json:"monitor_flag,omitempty"`
-	Invocation    *InvocationData   `json:"invocation,omitempty"`
-	Version       *VersionInfo      `json:"version,omitempty"`
-	ClusterEnv    map[string]string `json:"sge,omitempty"`
-}
-
-type PythonInfo struct {
-	BinPath string `json:"binpath"`
-	Version string `json:"version"`
-}
 
 type RusageInfo struct {
 	Self     *Rusage `json:"self,omitempty"`
@@ -123,12 +99,6 @@ func (self *ObservedMemory) RssKb() int {
 
 func (self *ObservedMemory) VmemKb() int {
 	return int((self.Vmem + 512) / 1024)
-}
-
-type WallClockInfo struct {
-	Start    string  `json:"start"`
-	End      string  `json:"end,omitempty"`
-	Duration float64 `json:"duration_seconds,omitempty"`
 }
 
 type PerfInfo struct {
@@ -243,7 +213,7 @@ func reduceJobInfo(jobInfo *JobInfo, outputPaths []string, numThreads int) *Perf
 		perfInfo.MaxVmem = jobInfo.MemoryUsage.VmemKb()
 	}
 
-	perfInfo.OutputFiles, perfInfo.OutputBytes = GetDirectorySize(outputPaths)
+	perfInfo.OutputFiles, perfInfo.OutputBytes = util.GetDirectorySize(outputPaths)
 	perfInfo.TotalFiles = perfInfo.OutputFiles
 	perfInfo.TotalBytes = perfInfo.OutputBytes
 
@@ -290,7 +260,7 @@ func ComputeStats(perfInfos []*PerfInfo, outputPaths []string, vdrKillReport *VD
 		aggPerfInfo.VdrBytes = vdrKillReport.Size
 	}
 	aggPerfInfo.WallTime = aggPerfInfo.End.Sub(aggPerfInfo.Start).Seconds()
-	outputFiles, outputBytes := GetDirectorySize(outputPaths)
+	outputFiles, outputBytes := util.GetDirectorySize(outputPaths)
 	aggPerfInfo.OutputFiles += outputFiles
 	aggPerfInfo.OutputBytes += outputBytes
 	aggPerfInfo.TotalFiles = aggPerfInfo.OutputFiles + aggPerfInfo.VdrFiles

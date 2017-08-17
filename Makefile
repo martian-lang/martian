@@ -5,10 +5,12 @@
 #
 
 GOBINS=mrc mrf mrg mrp mrs mrt_helper mrstat mrjob
-GOTESTS=$(addprefix test-, $(GOBINS) core)
+GOLIBTESTS=$(addprefix test-, core util syntax adapter)
+GOBINTESTS=$(addprefix test-, $(GOBINS))
+GOTESTS=$(GOLIBTESTS) $(GOBINTESTS)
 VERSION=$(shell git describe --tags --always --dirty)
 RELEASE=false
-GO_FLAGS=-ldflags "-X martian/core.__VERSION__='$(VERSION)' -X martian/core.__RELEASE__='$(RELEASE)'"
+GO_FLAGS=-ldflags "-X martian/util.__VERSION__='$(VERSION)' -X martian/util.__RELEASE__='$(RELEASE)'"
 
 export GOPATH=$(shell pwd)
 
@@ -22,16 +24,16 @@ all: grammar $(GOBINS) web test
 bin/goyacc: src/vendor/golang.org/x/tools/cmd/goyacc/yacc.go
 	go install vendor/golang.org/x/tools/cmd/goyacc
 
-src/martian/core/grammar.go: bin/goyacc src/martian/core/grammar.y
-	bin/goyacc -p "mm" -o src/martian/core/grammar.go src/martian/core/grammar.y && rm y.output
+src/martian/syntax/grammar.go: bin/goyacc src/martian/syntax/grammar.y
+	bin/goyacc -p "mm" -o src/martian/syntax/grammar.go src/martian/syntax/grammar.y && rm y.output
 
 bin/sum_squares: test/split_test_go/stages/sum_squares/sum_squares.go
 	go build -o $@ $<
 
-grammar: src/martian/core/grammar.go
+grammar: src/martian/syntax/grammar.go
 
 $(GOBINS):
-	go install $(GO_FLAGS) martian/$@
+	go install $(GO_FLAGS) martian/cmd/$@
 
 web:
 	(cd web/martian && npm install && gulp)
@@ -39,8 +41,11 @@ web:
 mrt:
 	cp scripts/mrt bin/mrt
 
-$(GOTESTS): test-%:
+$(GOLIBTESTS): test-%:
 	go test -v martian/$*
+
+$(GOBINTESTS): test-%:
+	go test -v martian/cmd/$*
 
 
 WEB_FILES=web/martian/client/graph.js \

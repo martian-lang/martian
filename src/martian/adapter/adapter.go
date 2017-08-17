@@ -18,6 +18,7 @@ package adapter
 import (
 	"fmt"
 	"martian/core"
+	"martian/util"
 	"os"
 	"path"
 	"runtime"
@@ -66,7 +67,7 @@ func UpdateProgress(metadata *core.Metadata, message string) error {
 // code, and saves the outputs.  split and join may be nil if the stage does
 // not split.
 func RunStage(split SplitFunc, main MainFunc, join MainFunc) {
-	core.LogTeeWriter(os.NewFile(3, "martian://log"))
+	util.LogTeeWriter(os.NewFile(3, "martian://log"))
 	errorFile := os.NewFile(4, "martian://errors")
 	// Capture panic stacks into the _errors file and exit when this method is complete.
 	defer func() {
@@ -119,7 +120,7 @@ func runSplit(split SplitFunc, metadata *core.Metadata, errorFile *os.File) {
 			fmt.Fprintf(errorFile, "Error writing stage defs: %v", err)
 		} else {
 			if err := metadata.UpdateJournal(core.StageDefsFile); err != nil {
-				core.LogError(err, "adapter", "Error writing journal")
+				util.LogError(err, "adapter", "Error writing journal")
 			}
 		}
 	}
@@ -133,7 +134,7 @@ func runMain(main MainFunc, metadata *core.Metadata, errorFile *os.File) {
 			fmt.Fprintf(errorFile, "Error writing outs: %v", err)
 		} else {
 			if err := metadata.UpdateJournal(core.OutsFile); err != nil {
-				core.LogError(err, "adapter", "Error writing journal")
+				util.LogError(err, "adapter", "Error writing journal")
 			}
 		}
 	}

@@ -9,6 +9,7 @@ package core
 import (
 	"fmt"
 	"io/ioutil"
+	"martian/util"
 	"strconv"
 	"strings"
 	"syscall"
@@ -61,7 +62,7 @@ func GetProcessTreeMemory(pid int, includeParent bool) (mem ObservedMemory, err 
 	} else {
 		mem = ObservedMemory{}
 	}
-	if threads, err := Readdirnames(fmt.Sprintf("/proc/%d/task", pid)); err != nil {
+	if threads, err := util.Readdirnames(fmt.Sprintf("/proc/%d/task", pid)); err != nil {
 		return mem, err
 	} else {
 		for _, tid := range threads {

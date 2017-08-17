@@ -7,23 +7,7 @@ package core
 
 import (
 	"fmt"
-	"os"
-	"strings"
-	"time"
 )
-
-//
-// Martian Errors
-//
-
-// MartianError
-type MartianError struct {
-	Msg string
-}
-
-func (self *MartianError) Error() string {
-	return self.Msg
-}
 
 // RuntimeError
 type RuntimeError struct {
@@ -135,61 +119,4 @@ type PipestanceWipeError struct {
 
 func (self *PipestanceWipeError) Error() string {
 	return fmt.Sprintf("RuntimeError: pipestance '%s' cannot be wiped.", self.Psid)
-}
-
-// ZipError
-type ZipError struct {
-	ZipPath  string
-	FilePath string
-}
-
-func (self *ZipError) Error() string {
-	return fmt.Sprintf("ZipError: %s does not exist in %s", self.FilePath, self.ZipPath)
-}
-
-// PreprocessError
-type PreprocessError struct {
-	files []string
-}
-
-func (self *PreprocessError) Error() string {
-	return fmt.Sprintf("@include file not found: %s", strings.Join(self.files, ", "))
-}
-
-// AstError
-type AstError struct {
-	global *Ast
-	Node   *AstNode
-	Msg    string
-}
-
-func (self *AstError) Error() string {
-	return fmt.Sprintf("MRO %s at %s:%d.", self.Msg, self.Node.Fname, self.Node.Loc)
-}
-
-// ParseError
-type ParseError struct {
-	token string
-	fname string
-	loc   int
-}
-
-func (self *ParseError) Error() string {
-	return fmt.Sprintf("MRO ParseError: unexpected token '%s' at %s:%d.", self.token, self.fname, self.loc)
-}
-
-// End the process if err is not nil.  Because this method waits up to one
-// minute for critical sections to end, it should not be called from inside
-// a critical section.
-func DieIf(err error) {
-	if err != nil {
-		fmt.Println()
-		fmt.Println(err.Error())
-		fmt.Println()
-		Suicide()
-		// We don't want to return, but if someone ran this from inside a
-		// critical section that's also bad.
-		time.Sleep(time.Minute)
-		os.Exit(1)
-	}
 }

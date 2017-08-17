@@ -9,6 +9,7 @@ package core
 
 import (
 	"fmt"
+	"martian/util"
 	"sync"
 )
 
@@ -64,7 +65,7 @@ func (self *ResourceSemaphore) Acquire(n int64) error {
 	}
 
 	if len(self.waiters) == 0 {
-		LogInfo("jobmngr", "Attempted to reserve %d %s, but only %d were available.",
+		util.LogInfo("jobmngr", "Attempted to reserve %d %s, but only %d were available.",
 			n, self.Name, self.curSize-self.reserved)
 	}
 
@@ -93,7 +94,7 @@ func (self *ResourceSemaphore) Release(n int64) {
 func (self *ResourceSemaphore) runJobs() {
 	for i, waiter := range self.waiters {
 		if self.curSize-self.reserved < waiter.amount {
-			LogInfo("jobmngr", "Attempted to reserve %d %s, but only %d were available.",
+			util.LogInfo("jobmngr", "Attempted to reserve %d %s, but only %d were available.",
 				waiter.amount, self.Name, self.curSize-self.reserved)
 			self.waiters = self.waiters[i:]
 			return

@@ -9,11 +9,12 @@ package core
 import (
 	_ "encoding/json"
 	_ "fmt"
+	"martian/util"
 	_ "testing"
 )
 
 func MockRuntime() *Runtime {
-	ENABLE_LOGGING = false // Disable core.LogInfo calls in Runtime
+	util.ENABLE_LOGGING = false // Disable core.LogInfo calls in Runtime
 	return NewRuntime("local", "disable", "disable", "")
 }
 
