@@ -506,12 +506,19 @@ class StageWrapper(object):
 # Executable shell.                             #
 #################################################
 
+def _initialize(argv):
+    """Initialize global values from the given command line."""
+    # pylint: disable=protected-access
+    martian._INSTANCE = StageWrapper(argv)
+    # pylint: disable=protected-access
+    return martian._INSTANCE
+
 def _main(argv):
     """Parse command line and run."""
     stage = None
     try:
         # Initialize Martian with command line args.
-        stage = martian.initialize(argv)
+        stage = _initialize(argv)
 
         # Run the stage code.
         stage.main()

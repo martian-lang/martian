@@ -18,8 +18,6 @@ import resource
 import subprocess
 import sys
 
-import martian_shell as mr_shell
-
 # Singleton instance object.
 if not '_INSTANCE' in globals():
     _INSTANCE = None
@@ -243,16 +241,10 @@ def alarm(message):
 
 def test_initialize(path):
     """Initialize with a fake test metadata."""
+    import martian_shell as mr_shell
+
     # pylint: disable=global-statement
     global _INSTANCE
     _INSTANCE = mr_shell.StageWrapper(
         [None, None, 'main', path, path, ''], True)
-    return _INSTANCE
-
-
-def initialize(argv):
-    """Initialize global values from the given command line."""
-    # pylint: disable=global-statement
-    global _INSTANCE
-    _INSTANCE = mr_shell.StageWrapper(argv)
     return _INSTANCE
