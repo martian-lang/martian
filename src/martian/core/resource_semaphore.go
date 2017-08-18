@@ -64,8 +64,8 @@ func (self *ResourceSemaphore) Acquire(n int64) error {
 			n, self.Name, self.maxSize)
 	}
 
-	if len(self.waiters) == 0 {
-		util.LogInfo("jobmngr", "Attempted to reserve %d %s, but only %d were available.",
+	if len(self.waiters) == 0 && self.curSize-self.reserved > 0 {
+		util.LogInfo("jobmngr", "Need %d %s to start the next job (%d available).  Waiting for some to complete.",
 			n, self.Name, self.curSize-self.reserved)
 	}
 
@@ -93,8 +93,8 @@ func (self *ResourceSemaphore) Release(n int64) {
 
 func (self *ResourceSemaphore) runJobs() {
 	for i, waiter := range self.waiters {
-		if self.curSize-self.reserved < waiter.amount {
-			util.LogInfo("jobmngr", "Attempted to reserve %d %s, but only %d were available.",
+		if self.curSize-self.reserved < waiter.amount && self.curSize-self.reserved > 0 {
+			util.LogInfo("jobmngr", "Need %d %s to start the next job (%d available).  Waiting for some to complete.",
 				waiter.amount, self.Name, self.curSize-self.reserved)
 			self.waiters = self.waiters[i:]
 			return
