@@ -6,10 +6,10 @@
 package syntax
 
 import (
+	"bytes"
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
-	"regexp"
 	"strings"
 )
 
@@ -22,6 +22,44 @@ func max(a, b int) int {
 	} else {
 		return b
 	}
+}
+
+type printer struct {
+	buf      bytes.Buffer
+	comments []*commentBlock
+}
+
+func (self *printer) printComments(loc int, prefix string) {
+	for len(self.comments) > 0 && self.comments[0].Loc <= loc {
+		self.buf.WriteString(prefix)
+		self.buf.WriteString(self.comments[0].Value)
+		self.buf.WriteString(NEWLINE)
+		self.comments = self.comments[1:]
+	}
+}
+
+func (self *printer) WriteString(s string) {
+	self.buf.WriteString(s)
+}
+
+func (self *printer) Write(b []byte) (int, error) {
+	return self.buf.Write(b)
+}
+
+func (self *printer) Printf(format string, args ...interface{}) {
+	fmt.Fprintf(&self.buf, format, args...)
+}
+
+func (self *printer) DumpComments() {
+	for _, comment := range self.comments {
+		self.buf.WriteString(comment.Value)
+		self.buf.WriteString(NEWLINE)
+	}
+	self.comments = nil
+}
+
+func (self *printer) String() string {
+	return self.buf.String()
 }
 
 //
@@ -64,32 +102,39 @@ func (self *RefExp) format(prefix string) string {
 //
 // Binding
 //
-func (self *BindStm) format(prefix string, idWidth int) string {
-	idPad := strings.Repeat(" ", idWidth-len(self.Id))
+func (self *BindStm) format(printer *printer, prefix string, idWidth int) {
+	printer.printComments(self.getNode().Loc, prefix+INDENT)
+	printer.printComments(self.Exp.getNode().Loc, prefix+INDENT)
+	idPad := ""
+	if len(self.Id) < idWidth {
+		idPad = strings.Repeat(" ", idWidth-len(self.Id))
+	}
 	fmtExp := self.Exp.format(prefix + INDENT)
 	if self.Sweep {
 		fmtExp = fmt.Sprintf("sweep(%s)", strings.Trim(fmtExp, "[]"))
 	}
-	return fmt.Sprintf("%s%s%s%s%s = %s,", self.Exp.getNode().Comments,
-		prefix, INDENT, self.Id, idPad, fmtExp)
+	printer.Printf("%s%s%s%s = %s,\n", prefix, INDENT,
+		self.Id, idPad, fmtExp)
 }
 
-func (self *BindStms) format(prefix string) string {
+func (self *BindStms) format(printer *printer, prefix string) {
+	printer.printComments(self.getNode().Loc, prefix)
 	idWidth := 0
 	for _, bindstm := range self.List {
-		idWidth = max(idWidth, len(bindstm.Id))
+		if len(bindstm.Id) < 30 {
+			idWidth = max(idWidth, len(bindstm.Id))
+		}
 	}
-	fsrc := ""
 	for _, bindstm := range self.List {
-		fsrc += bindstm.format(prefix, idWidth)
+		bindstm.format(printer, prefix, idWidth)
 	}
-	return fsrc
 }
 
 //
 // Parameter
 //
-func paramFormat(param Param, modeWidth int, typeWidth int, idWidth int, helpWidth int) string {
+func paramFormat(printer *printer, param Param, modeWidth int, typeWidth int, idWidth int, helpWidth int) {
+	printer.printComments(param.getNode().Loc, INDENT)
 	id := param.GetId()
 	if id == "default" {
 		id = ""
@@ -97,41 +142,46 @@ func paramFormat(param Param, modeWidth int, typeWidth int, idWidth int, helpWid
 
 	// Generate column alignment paddings.
 	modePad := strings.Repeat(" ", modeWidth-len(param.getMode()))
-	typePad := strings.Repeat(" ", typeWidth-len(param.GetTname()))
-	idPad := strings.Repeat(" ", idWidth-len(id))
-	helpPad := strings.Repeat(" ", helpWidth-len(param.GetHelp()))
+	typePad := strings.Repeat(" ", typeWidth-len(param.GetTname())-2*param.GetArrayDim())
+	idPad := ""
+	if idWidth > len(id) {
+		idPad = strings.Repeat(" ", idWidth-len(id))
+	}
+	helpPad := ""
+	if helpWidth > len(param.GetHelp()) {
+		helpPad = strings.Repeat(" ", helpWidth-len(param.GetHelp()))
+	}
 
 	// Common columns up to type name.
-	fsrc := fmt.Sprintf("%s%s%s%s %s", param.getNode().Comments, INDENT,
+	printer.Printf("%s%s%s %s", INDENT,
 		param.getMode(), modePad, param.GetTname())
 
 	// If type is annotated as array, add brackets and shrink padding.
 	for i := 0; i < param.GetArrayDim(); i++ {
-		fsrc += "[]"
-		typePad = typePad[2:]
+		printer.WriteString("[]")
 	}
 
 	// Add id if not default.
 	if id != "" {
-		fsrc += fmt.Sprintf("%s %s", typePad, id)
+		printer.Printf("%s %s", typePad, id)
 	}
 
 	// Add help string if it exists.
 	if len(param.GetHelp()) > 0 {
 		if id == "" {
-			fsrc += fmt.Sprintf("%s ", typePad)
+			printer.Printf("%s ", typePad)
 		}
-		fsrc += fmt.Sprintf("%s  \"%s\"", idPad, param.GetHelp())
+		printer.Printf("%s  \"%s\"", idPad, param.GetHelp())
 	}
 
 	// Add outname string if it exists.
 	if len(param.GetOutName()) > 0 {
 		if param.GetHelp() == "" {
-			fsrc += fmt.Sprintf("%s ", helpPad)
+			printer.Printf("%s  ", idPad)
 		}
-		fsrc += fmt.Sprintf("%s  \"%s\"", helpPad, param.GetOutName())
+		printer.Printf("%s  \"%s\"", helpPad, param.GetOutName())
 	}
-	return fsrc + ","
+	printer.WriteString(",\n")
 }
 
 func (self *Params) getWidths() (int, int, int, int) {
@@ -142,13 +192,17 @@ func (self *Params) getWidths() (int, int, int, int) {
 	for _, param := range self.List {
 		modeWidth = max(modeWidth, len(param.getMode()))
 		typeWidth = max(typeWidth, len(param.GetTname())+2*param.GetArrayDim())
-		idWidth = max(idWidth, len(param.GetId()))
-		helpWidth = max(helpWidth, len(param.GetHelp()))
+		if len(param.GetId()) < 35 {
+			idWidth = max(idWidth, len(param.GetId()))
+		}
+		if len(param.GetHelp()) < 25 {
+			helpWidth = max(helpWidth, len(param.GetHelp()))
+		}
 	}
 	return modeWidth, typeWidth, idWidth, helpWidth
 }
 
-func measureParamsWidths(paramsList []*Params) (int, int, int, int) {
+func measureParamsWidths(paramsList ...*Params) (int, int, int, int) {
 	modeWidth := 0
 	typeWidth := 0
 	idWidth := 0
@@ -163,163 +217,147 @@ func measureParamsWidths(paramsList []*Params) (int, int, int, int) {
 	return modeWidth, typeWidth, idWidth, helpWidth
 }
 
-func (self *Params) format(modeWidth int, typeWidth int, idWidth int, helpWidth int) string {
-	fsrc := ""
+func (self *Params) format(printer *printer, modeWidth int, typeWidth int, idWidth int, helpWidth int) {
 	for _, param := range self.List {
-		fsrc += paramFormat(param, modeWidth, typeWidth, idWidth, helpWidth)
+		paramFormat(printer, param, modeWidth, typeWidth, idWidth, helpWidth)
 	}
-	return fsrc
 }
 
 //
 // Pipeline, Call, Return
 //
-func (self *Pipeline) format() string {
-	modeWidth, typeWidth, idWidth, helpWidth := measureParamsWidths([]*Params{
+func (self *Pipeline) format(printer *printer) {
+	printer.printComments(self.Node.Loc, "")
+
+	modeWidth, typeWidth, idWidth, helpWidth := measureParamsWidths(
 		self.InParams, self.OutParams,
-	})
+	)
 
-	// Steal the first param's comment.
-	fsrc := ""
-	if len(self.InParams.List) > 0 {
-		fsrc += self.InParams.List[0].getNode().Comments
-		self.InParams.List[0].getNode().Comments = NEWLINE
-	}
-
-	fsrc += NEWLINE
-	fsrc += fmt.Sprintf("pipeline %s(", self.Id)
-	fsrc += self.InParams.format(modeWidth, typeWidth, idWidth, helpWidth)
-	fsrc += self.OutParams.format(modeWidth, typeWidth, idWidth, helpWidth)
-	fsrc += self.Node.Comments
-	fsrc += ")"
-	fsrc += NEWLINE
-	fsrc += "{"
+	printer.Printf("pipeline %s(\n", self.Id)
+	self.InParams.format(printer, modeWidth, typeWidth, idWidth, helpWidth)
+	self.OutParams.format(printer, modeWidth, typeWidth, idWidth, helpWidth)
+	printer.WriteString(")\n{")
 	for _, callstm := range self.Calls {
-		fsrc += callstm.format(INDENT)
+		printer.WriteString(NEWLINE)
+		callstm.format(printer, INDENT)
 	}
-	fsrc += self.Ret.format()
-	fsrc += "}"
-	return fsrc
+	printer.WriteString(NEWLINE)
+	self.Ret.format(printer)
+	printer.WriteString("}\n")
 }
 
-func (self *CallStm) format(prefix string) string {
-	fsrc := self.Bindings.Node.Comments
-	self.Bindings.Node.Comments = ""
-	if len(self.Bindings.List) > 0 {
-		self.Bindings.List[0].Exp.getNode().Comments = strings.TrimSpace(
-			self.Bindings.List[0].Exp.getNode().Comments)
-	}
-	volatile := ""
-	local := ""
-	preflight := ""
+func (self *CallStm) format(printer *printer, prefix string) {
+	printer.printComments(self.Node.Loc, prefix)
+	printer.WriteString(prefix)
+	printer.WriteString("call ")
 	if self.Modifiers.Local {
-		local = "local "
+		printer.WriteString("local ")
 	}
 	if self.Modifiers.Preflight {
-		preflight = "preflight "
+		printer.WriteString("preflight ")
 	}
 	if self.Modifiers.Volatile {
-		volatile = "volatile "
+		printer.WriteString("volatile ")
 	}
-	fsrc += fmt.Sprintf("%scall %s%s%s%s(%s", prefix, local, preflight, volatile, self.Id, NEWLINE)
-	fsrc += self.Bindings.format(prefix)
-	fsrc += self.Node.Comments
-	fsrc += fmt.Sprintf("%s)", prefix)
-	fsrc += NEWLINE
-	return fsrc
+	printer.WriteString(self.Id)
+	printer.WriteString("(\n")
+	self.Bindings.format(printer, prefix)
+	printer.WriteString(prefix)
+	printer.WriteString(")\n")
 }
 
-func (self *ReturnStm) format() string {
-	fsrc := self.Node.Comments
-	fsrc += fmt.Sprintf("%sreturn (", INDENT)
-	fsrc += self.Bindings.format(INDENT)
-	fsrc += NEWLINE
-	fsrc += fmt.Sprintf("%s)", INDENT)
-	fsrc += self.Node.Comments
-	return fsrc
+func (self *ReturnStm) format(printer *printer) {
+	printer.printComments(self.Node.Loc, INDENT)
+	printer.WriteString(INDENT)
+	printer.WriteString("return (\n")
+	self.Bindings.format(printer, INDENT)
+	printer.WriteString(INDENT)
+	printer.WriteString(")\n")
 }
 
 //
 // Stage
 //
-func (self *Stage) format() string {
-	modeWidth, typeWidth, idWidth, helpWidth := measureParamsWidths([]*Params{
+func (self *Stage) format(printer *printer) {
+	printer.printComments(self.Node.Loc, "")
+
+	modeWidth, typeWidth, idWidth, helpWidth := measureParamsWidths(
 		self.InParams, self.OutParams, self.SplitParams,
-	})
+	)
 	modeWidth = max(modeWidth, len("src"))
 
-	// Steal comment from first in param.
-	fsrc := ""
-	if len(self.InParams.List) > 0 {
-		fsrc += self.InParams.List[0].getNode().Comments
-		self.InParams.List[0].getNode().Comments = NEWLINE
+	printer.Printf("stage %s(\n", self.Id)
+	self.InParams.format(printer, modeWidth, typeWidth, idWidth, helpWidth)
+	self.OutParams.format(printer, modeWidth, typeWidth, idWidth, helpWidth)
+	self.Src.format(printer, modeWidth, typeWidth, idWidth)
+	if idWidth > 30 || helpWidth > 20 {
+		_, _, idWidth, helpWidth = measureParamsWidths(self.SplitParams)
 	}
-
-	fsrc += fmt.Sprintf("stage %s(", self.Id)
-	fsrc += self.InParams.format(modeWidth, typeWidth, idWidth, helpWidth)
-	fsrc += self.OutParams.format(modeWidth, typeWidth, idWidth, helpWidth)
-	fsrc += self.Src.format(modeWidth, typeWidth, idWidth)
-	fsrc += self.Node.Comments
-	fsrc += ")"
 	if self.Split {
-		fsrc += " split using ("
-		fsrc += self.SplitParams.format(modeWidth, typeWidth, idWidth, helpWidth)
-		fsrc += NEWLINE + ")"
+		printer.WriteString(") split using (\n")
+		self.SplitParams.format(printer, modeWidth, typeWidth, idWidth, helpWidth)
 	}
-	return fsrc
+	printer.WriteString(")\n")
 }
 
-func (self *SrcParam) format(modeWidth int, typeWidth int, idWidth int) string {
+func (self *SrcParam) format(printer *printer, modeWidth int, typeWidth int, idWidth int) {
+	printer.printComments(self.Node.Loc, INDENT)
 	langPad := strings.Repeat(" ", typeWidth-len(string(self.Lang)))
 	modePad := strings.Repeat(" ", modeWidth-len("src"))
-	return fmt.Sprintf("%s%ssrc%s %v%s \"%s\",", self.Node.Comments, INDENT,
+	printer.Printf("%ssrc%s %v%s \"%s\",\n", INDENT,
 		modePad, self.Lang, langPad, self.Path)
 }
 
 //
 // Callable
 //
-func (self *Callables) format() string {
-	fsrc := ""
+func (self *Callables) format(printer *printer) {
 	for _, callable := range self.List {
-		fsrc += callable.format()
-		fsrc += NEWLINE
+		printer.WriteString(NEWLINE)
+		callable.format(printer)
 	}
-	return fsrc
 }
 
 //
 // Filetype
 //
-func (self *UserType) format() string {
-	fsrc := self.Node.Comments
-	fsrc += fmt.Sprintf("filetype %s;", self.Id)
-	return fsrc
+func (self *UserType) format(printer *printer) {
+	printer.printComments(self.Node.Loc, "")
+	printer.Printf("filetype %s;\n", self.Id)
 }
 
 //
 // AST
 //
 func (self *Ast) format() string {
-	fsrc := ""
+	printer := printer{comments: self.comments}
+	for _, directive := range self.preprocess {
+		printer.printComments(directive.Node.Loc, "")
+		printer.WriteString(directive.Value)
+		printer.WriteString(NEWLINE)
+	}
+	if len(self.preprocess) > 0 && len(self.UserTypes) > 0 {
+		printer.WriteString(NEWLINE)
+	}
 
 	// filetype declarations.
 	for _, filetype := range self.UserTypes {
-		fsrc += filetype.format()
-	}
-	if len(self.UserTypes) > 0 {
-		fsrc += NEWLINE
+		filetype.format(&printer)
 	}
 
 	// callables.
-	fsrc += self.Callables.format()
+	self.Callables.format(&printer)
 
 	// call.
 	if self.Call != nil {
-		fsrc += self.Call.format("")
+		if len(self.Callables.List) > 0 {
+			printer.WriteString(NEWLINE)
+		}
+		self.Call.format(&printer, "")
 	}
 
-	return fsrc
+	printer.DumpComments()
+	return printer.String()
 }
 
 //
@@ -331,12 +369,10 @@ func FormatFile(filename string) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	src := string(data)
+	return Format(string(data), filename)
+}
 
-	// Comment out @include lines since we're not preprocessing.
-	re := regexp.MustCompile("@include\\s+\"")
-	src = re.ReplaceAllString(src, "#@include \"")
-
+func Format(src, filename string) (string, error) {
 	// Parse and generate the AST.
 	global, mmli := yaccParse(src, []FileLoc{})
 	if mmli != nil { // mmli is an mmLexInfo struct
@@ -344,11 +380,7 @@ func FormatFile(filename string) (string, error) {
 	}
 
 	// Format the source.
-	fmtsrc := global.format()
-
-	// Uncomment the @include lines.
-	fmtsrc = strings.Replace(fmtsrc, "#@include \"", "@include \"", -1)
-	return fmtsrc, nil
+	return global.format(), nil
 }
 
 func JsonDumpAsts(asts []*Ast) string {

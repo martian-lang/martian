@@ -24,8 +24,9 @@ func newRule(pattern string, tokid int) *rule {
 
 var rules = []*rule{
 	// Order matters.
-	newRule("\\s+", SKIP),   // whitespace
-	newRule("#.*\\n", SKIP), // Python-style comments
+	newRule("\\s+", SKIP),      // whitespace
+	newRule("#.*\\n", COMMENT), // Python-style comments
+	newRule(`(?m:^@include\s+"[^\"]+")`, PREPROCESS_DIRECTIVE),
 	newRule("=", EQUALS),
 	newRule("\\(", LPAREN),
 	newRule("\\)", RPAREN),
@@ -76,18 +77,13 @@ var rules = []*rule{
 }
 
 type mmLexInfo struct {
-	src    string // All the data we're scanning
-	pos    int    // Position of the scan head
-	loc    int    // Keep track of the line number
-	token  string // Cache the last token for error messaging
-	global *Ast
-	locmap []FileLoc
-}
-
-func nodeGen(lval *mmSymType) func() AstNode {
-	return func() AstNode {
-		return NewAstNode(lval)
-	}
+	src      string // All the data we're scanning
+	pos      int    // Position of the scan head
+	loc      int    // Keep track of the line number
+	token    string // Cache the last token for error messaging
+	global   *Ast
+	locmap   []FileLoc
+	comments []*commentBlock
 }
 
 func (self *mmLexInfo) Lex(lval *mmSymType) int {
@@ -116,7 +112,13 @@ func (self *mmLexInfo) Lex(lval *mmSymType) int {
 		// If whitespace or comment, advance line count by counting newlines.
 		if r.tokid == SKIP {
 			self.loc += strings.Count(val, "\n")
-			lval.comments += val
+			continue
+		} else if r.tokid == COMMENT {
+			self.comments = append(self.comments, &commentBlock{
+				self.loc,
+				strings.TrimSpace(val),
+			})
+			self.loc++
 			continue
 		}
 
@@ -129,7 +131,6 @@ func (self *mmLexInfo) Lex(lval *mmSymType) int {
 		// give NewAstNode access to locmap to calculate file-local locations
 		lval.locmap = self.locmap
 		lval.global = self.global
-		lval.nodeGen = nodeGen(lval)
 
 		return r.tokid
 	}
@@ -148,5 +149,6 @@ func yaccParse(src string, locmap []FileLoc) (*Ast, *mmLexInfo) {
 	if mmParse(&lexinfo) != 0 {
 		return nil, &lexinfo // return lex on error to provide loc and token info
 	}
+	lexinfo.global.comments = lexinfo.comments
 	return lexinfo.global, nil // success
 }

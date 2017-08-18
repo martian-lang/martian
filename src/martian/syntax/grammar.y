@@ -22,7 +22,6 @@ func unquote(qs string) string {
     arr       int
     loc       int
     val       string
-    comments  string
     modifiers *Modifiers
     dec       Dec
     decs      []Dec
@@ -38,9 +37,10 @@ func unquote(qs string) string {
     binding   *BindStm
     bindings  *BindStms
     retstm    *ReturnStm
-    nodeGen   func() AstNode
+    pre_dir   []*preprocessorDirective
 }
 
+%type <pre_dir>   preprocess_directives
 %type <val>       id_list type help type src_lang type outname
 %type <modifiers> modifiers
 %type <arr>       arr_list
@@ -59,7 +59,7 @@ func unquote(qs string) string {
 %type <bindings>  bind_stm_list
 %type <retstm>    return_stm
 
-%token SKIP INVALID
+%token SKIP COMMENT INVALID
 %token SEMICOLON COLON COMMA EQUALS
 %token LBRACKET RBRACKET LPAREN RPAREN LBRACE RBRACE
 %token FILETYPE STAGE PIPELINE CALL LOCAL PREFLIGHT VOLATILE SWEEP SPLIT USING SELF RETURN
@@ -67,10 +67,29 @@ func unquote(qs string) string {
 %token <val> ID LITSTRING NUM_FLOAT NUM_INT DOT
 %token <val> PY GO SH EXEC COMPILED
 %token <val> MAP INT STRING FLOAT PATH BOOL TRUE FALSE NULL DEFAULT
+%token <val> PREPROCESS_DIRECTIVE
 
 %%
 file
-    : dec_list
+    : preprocess_directives dec_list
+        {{
+            global := NewAst($2, nil)
+            global.preprocess = $1
+            mmlex.(*mmLexInfo).global = global
+        }}
+    | preprocess_directives dec_list call_stm
+        {{
+            global := NewAst($2, $3)
+            global.preprocess = $1
+            mmlex.(*mmLexInfo).global = global
+        }}
+    | preprocess_directives call_stm
+        {{
+            global := NewAst([]Dec{}, $2)
+            global.preprocess = $1
+            mmlex.(*mmLexInfo).global = global
+        }}
+    | dec_list
         {{
             global := NewAst($1, nil)
             mmlex.(*mmLexInfo).global = global
@@ -87,6 +106,18 @@ file
         }}
     ;
 
+preprocess_directives
+    : preprocess_directives PREPROCESS_DIRECTIVE
+        {{ $$ = append($1, &preprocessorDirective{NewAstNode($<loc>2, $<locmap>2), $2}) }}
+    | PREPROCESS_DIRECTIVE
+        {{ $$ = []*preprocessorDirective{
+              &preprocessorDirective{
+                  Node: NewAstNode($<loc>1, $<locmap>1),
+                  Value: $1,
+              },
+           }
+        }}
+
 dec_list
     : dec_list dec
         {{ $$ = append($1, $2) }}
@@ -96,13 +127,13 @@ dec_list
 
 dec
     : FILETYPE id_list SEMICOLON
-        {{ $$ = &UserType{$<nodeGen>1(), $2} }}
+        {{ $$ = &UserType{NewAstNode($<loc>2, $<locmap>2), $2} }}
     | STAGE ID LPAREN in_param_list out_param_list src_stm RPAREN
-        {{ $$ = &Stage{$<nodeGen>1(), $2, $4, $5, $6, &Params{[]Param{}, map[string]Param{}}, false} }}
+        {{ $$ = &Stage{NewAstNode($<loc>2, $<locmap>2), $2, $4, $5, $6, &Params{[]Param{}, map[string]Param{}}, false} }}
     | STAGE ID LPAREN in_param_list out_param_list src_stm RPAREN split_param_list
-        {{ $$ = &Stage{$<nodeGen>1(), $2, $4, $5, $6, $8, true} }}
+        {{ $$ = &Stage{NewAstNode($<loc>2, $<locmap>2), $2, $4, $5, $6, $8, true} }}
     | PIPELINE ID LPAREN in_param_list out_param_list RPAREN LBRACE call_stm_list return_stm RBRACE
-        {{ $$ = &Pipeline{$<nodeGen>1(), $2, $4, $5, $8, &Callables{[]Callable{}, map[string]Callable{}}, $9} }}
+        {{ $$ = &Pipeline{NewAstNode($<loc>2, $<locmap>2), $2, $4, $5, $8, &Callables{[]Callable{}, map[string]Callable{}}, $9} }}
     ;
 
 id_list
@@ -130,9 +161,9 @@ in_param_list
 
 in_param
     : IN type arr_list ID help COMMA
-        {{ $$ = &InParam{$<nodeGen>1(), $2, $3, $4, unquote($5), false } }}
+        {{ $$ = &InParam{NewAstNode($<loc>1, $<locmap>1), $2, $3, $4, unquote($5), false } }}
     | IN type arr_list ID COMMA
-        {{ $$ = &InParam{$<nodeGen>1(), $2, $3, $4, "", false } }}
+        {{ $$ = &InParam{NewAstNode($<loc>1, $<locmap>1), $2, $3, $4, "", false } }}
     ;
 
 out_param_list
@@ -147,23 +178,23 @@ out_param_list
 
 out_param
     : OUT type arr_list COMMA
-        {{ $$ = &OutParam{$<nodeGen>1(), $2, $3, "default", "", "", false } }}
+        {{ $$ = &OutParam{NewAstNode($<loc>1, $<locmap>1), $2, $3, "default", "", "", false } }}
     | OUT type arr_list help COMMA
-        {{ $$ = &OutParam{$<nodeGen>1(), $2, $3, "default", unquote($4), "", false } }}
+        {{ $$ = &OutParam{NewAstNode($<loc>1, $<locmap>1), $2, $3, "default", unquote($4), "", false } }}
     | OUT type arr_list help outname COMMA
-        {{ $$ = &OutParam{$<nodeGen>1(), $2, $3, "default", unquote($4), unquote($5), false } }}
+        {{ $$ = &OutParam{NewAstNode($<loc>1, $<locmap>1), $2, $3, "default", unquote($4), unquote($5), false } }}
     | OUT type arr_list ID COMMA
-        {{ $$ = &OutParam{$<nodeGen>1(), $2, $3, $4, "", "", false } }}
+        {{ $$ = &OutParam{NewAstNode($<loc>1, $<locmap>1), $2, $3, $4, "", "", false } }}
     | OUT type arr_list ID help COMMA
-        {{ $$ = &OutParam{$<nodeGen>1(), $2, $3, $4, unquote($5), "", false } }}
+        {{ $$ = &OutParam{NewAstNode($<loc>1, $<locmap>1), $2, $3, $4, unquote($5), "", false } }}
     | OUT type arr_list ID help outname COMMA
-        {{ $$ = &OutParam{$<nodeGen>1(), $2, $3, $4, unquote($5), unquote($6), false } }}
+        {{ $$ = &OutParam{NewAstNode($<loc>1, $<locmap>1), $2, $3, $4, unquote($5), unquote($6), false } }}
     ;
 
 src_stm
     : SRC src_lang LITSTRING COMMA
         {{ stagecodeParts := strings.Split(unquote($3), " ")
-	   $$ = &SrcParam{$<nodeGen>1(), StageLanguage($2), stagecodeParts[0], stagecodeParts[1:]} }}
+	   $$ = &SrcParam{NewAstNode($<loc>1, $<locmap>1), StageLanguage($2), stagecodeParts[0], stagecodeParts[1:]} }}
     ;
 
 help
@@ -201,7 +232,7 @@ split_param_list
 
 return_stm
     : RETURN LPAREN bind_stm_list RPAREN
-        {{ $$ = &ReturnStm{$<nodeGen>1(), $3} }}
+        {{ $$ = &ReturnStm{NewAstNode($<loc>1, $<locmap>1), $3} }}
     ;
 
 call_stm_list
@@ -213,7 +244,7 @@ call_stm_list
 
 call_stm
     : CALL modifiers ID LPAREN bind_stm_list RPAREN
-        {{ $$ = &CallStm{$<nodeGen>1(), $2, $3, $5} }}
+        {{ $$ = &CallStm{NewAstNode($<loc>1, $<locmap>1), $2, $3, $5} }}
     ;
 
 modifiers
@@ -229,7 +260,7 @@ modifiers
 
 bind_stm_list
     :
-        {{ $$ = &BindStms{$<nodeGen>0(), []*BindStm{}, map[string]*BindStm{}} }}
+        {{ $$ = &BindStms{NewAstNode($<loc>0, $<locmap>0), []*BindStm{}, map[string]*BindStm{}} }}
     | bind_stm_list bind_stm
         {{
             $1.List = append($1.List, $2)
@@ -239,9 +270,9 @@ bind_stm_list
 
 bind_stm
     : ID EQUALS exp COMMA
-        {{ $$ = &BindStm{$<nodeGen>1(), $1, $3, false, ""} }}
+        {{ $$ = &BindStm{NewAstNode($<loc>1, $<locmap>1), $1, $3, false, ""} }}
     | ID EQUALS SWEEP LPAREN exp_list RPAREN COMMA
-        {{ $$ = &BindStm{$<nodeGen>1(), $1, &ValExp{Node:$<nodeGen>1(), Kind: "array", Value: $5}, true, ""} }}
+        {{ $$ = &BindStm{NewAstNode($<loc>1, $<locmap>1), $1, &ValExp{Node:NewAstNode($<loc>1, $<locmap>1), Kind: "array", Value: $5}, true, ""} }}
     ;
 
 exp_list
@@ -263,41 +294,41 @@ kvpair_list
 
 exp
     : LBRACKET exp_list RBRACKET
-        {{ $$ = &ValExp{Node:$<nodeGen>1(), Kind: "array", Value: $2} }}
+        {{ $$ = &ValExp{Node:NewAstNode($<loc>1, $<locmap>1), Kind: "array", Value: $2} }}
     | LBRACKET RBRACKET
-        {{ $$ = &ValExp{Node:$<nodeGen>1(), Kind: "array", Value: []Exp{}} }}
+        {{ $$ = &ValExp{Node:NewAstNode($<loc>1, $<locmap>1), Kind: "array", Value: []Exp{}} }}
     | LBRACE RBRACE
-        {{ $$ = &ValExp{Node:$<nodeGen>1(), Kind: "map", Value: map[string]interface{}{}} }}
+        {{ $$ = &ValExp{Node:NewAstNode($<loc>1, $<locmap>1), Kind: "map", Value: map[string]interface{}{}} }}
     | LBRACE kvpair_list RBRACE
-        {{ $$ = &ValExp{Node:$<nodeGen>1(), Kind: "map", Value: $2} }}
+        {{ $$ = &ValExp{Node:NewAstNode($<loc>1, $<locmap>1), Kind: "map", Value: $2} }}
     | NUM_FLOAT
         {{  // Lexer guarantees parseable float strings.
             f, _ := strconv.ParseFloat($1, 64)
-            $$ = &ValExp{Node:$<nodeGen>1(), Kind: "float", Value: f }
+            $$ = &ValExp{Node:NewAstNode($<loc>1, $<locmap>1), Kind: "float", Value: f }
         }}
     | NUM_INT
         {{  // Lexer guarantees parseable int strings.
             i, _ := strconv.ParseInt($1, 0, 64)
-            $$ = &ValExp{Node:$<nodeGen>1(), Kind: "int", Value: i }
+            $$ = &ValExp{Node:NewAstNode($<loc>1, $<locmap>1), Kind: "int", Value: i }
         }}
     | LITSTRING
-        {{ $$ = &ValExp{Node:$<nodeGen>1(), Kind: "string", Value: unquote($1)} }}
+        {{ $$ = &ValExp{Node:NewAstNode($<loc>1, $<locmap>1), Kind: "string", Value: unquote($1)} }}
     | TRUE
-        {{ $$ = &ValExp{Node:$<nodeGen>1(), Kind: "bool", Value: true} }}
+        {{ $$ = &ValExp{Node:NewAstNode($<loc>1, $<locmap>1), Kind: "bool", Value: true} }}
     | FALSE
-        {{ $$ = &ValExp{Node:$<nodeGen>1(), Kind: "bool", Value: false} }}
+        {{ $$ = &ValExp{Node:NewAstNode($<loc>1, $<locmap>1), Kind: "bool", Value: false} }}
     | NULL
-        {{ $$ = &ValExp{Node:$<nodeGen>1(), Kind: "null", Value: nil} }}
+        {{ $$ = &ValExp{Node:NewAstNode($<loc>1, $<locmap>1), Kind: "null", Value: nil} }}
     | ref_exp
         {{ $$ = $1 }}
     ;
 
 ref_exp
     : ID DOT ID
-        {{ $$ = &RefExp{$<nodeGen>1(), "call", $1, $3} }}
+        {{ $$ = &RefExp{NewAstNode($<loc>1, $<locmap>1), "call", $1, $3} }}
     | ID
-        {{ $$ = &RefExp{$<nodeGen>1(), "call", $1, "default"} }}
+        {{ $$ = &RefExp{NewAstNode($<loc>1, $<locmap>1), "call", $1, "default"} }}
     | SELF DOT ID
-        {{ $$ = &RefExp{$<nodeGen>1(), "self", $3, ""} }}
+        {{ $$ = &RefExp{NewAstNode($<loc>1, $<locmap>1), "self", $3, ""} }}
     ;
 %%

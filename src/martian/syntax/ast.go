@@ -5,18 +5,12 @@
 //
 package syntax
 
-import (
-	"regexp"
-	"strings"
-)
-
 type StageLanguage string
 
 type (
 	AstNode struct {
-		Loc      int
-		Fname    string
-		Comments string `json:"-"`
+		Loc   int
+		Fname string
 	}
 
 	AstNodable interface {
@@ -45,7 +39,7 @@ type (
 		GetId() string
 		GetInParams() *Params
 		GetOutParams() *Params
-		format() string
+		format(printer *printer)
 	}
 
 	Stage struct {
@@ -170,6 +164,20 @@ type (
 		OutputId string
 	}
 
+	// Preprocessor variables aren't, strictly speaking, part of the
+	// AST.  They're stripped before parsing, except when formatting code.
+	preprocessorDirective struct {
+		Node  AstNode
+		Value string
+	}
+
+	// Comments are also not, strictly speaking, part of the AST, but for
+	// formatting code we need to keep track of them.
+	commentBlock struct {
+		Loc   int
+		Value string
+	}
+
 	Ast struct {
 		UserTypes     []*UserType
 		UserTypeTable map[string]*UserType
@@ -179,6 +187,8 @@ type (
 		Callables     *Callables
 		Call          *CallStm
 		Errors        []error
+		preprocess    []*preprocessorDirective
+		comments      []*commentBlock
 	}
 )
 
@@ -208,24 +218,8 @@ func NewAst(decs []Dec, call *CallStm) *Ast {
 	return self
 }
 
-func NewAstNode(lval *mmSymType) AstNode {
+func NewAstNode(loc int, locmap []FileLoc) AstNode {
 	// Process the accumulated comments/whitespace.
-
-	// Compress consecutive newlines into one.
-	re := regexp.MustCompile("\n{2,}")
-	comments := re.ReplaceAllString(lval.comments, "\n")
-
-	// Remove whitespace at either end.
-	comments = strings.TrimSpace(comments)
-
-	// Add newline to the end.
-	comments += "\n"
-
-	// Reset lexer's comment/whitespace accumulator.
-	lval.comments = ""
-
-	locmap := lval.locmap
-	loc := lval.loc
 
 	if len(locmap) > 0 {
 		// If there's no newline at the end of the source and the error is in the
@@ -234,10 +228,10 @@ func NewAstNode(lval *mmSymType) AstNode {
 		if loc >= len(locmap) {
 			loc = len(locmap) - 1
 		}
-		return AstNode{locmap[loc].loc, locmap[loc].fname, comments}
+		return AstNode{locmap[loc].loc, locmap[loc].fname}
 	} else {
 		// locmap will be empty when yaccParse is called from mrf
-		return AstNode{1, "", comments}
+		return AstNode{loc, ""}
 	}
 }
 
