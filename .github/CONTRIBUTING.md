@@ -1,27 +1,25 @@
 # Contributions
 
-Martian was until recently developed exclusively by
-[10x Genomics](https://www.10xgenomics.com/).  While the source was always
-intended to be available to users, now it's easily accessible, and we can
-welcome contributions from the community!
+Martian was originally created at
+[10x Genomics](https://www.10xgenomics.com/). We are excited to
+now invite the community to contribute to its development!
 
 ## Contributor License Agreement
 Martian is released under the [MIT License](../LICENSE).  By contributing to
 the project, including but not limited to through issues and pull requests,
 you are agreeing to release any intellectual property contained in those
 contributions under the same terms.  We cannot accept contributions which
-would impose other licensing terms on the project.
+impose other licensing terms on the project.
 
-## Supported platforms
-Martian is primarily a `x86_64` Linux product.  32-bit architectures are not
-useful for the kinds of bioinformatics pipelines Martian was designed to run.
+## Supported Platforms
+Martian is intended to run primarily on `x86_64` Linux platforms. We target
+support for running on the most recent patch versions of CentOS 5.2 or
+greater and Ubuntu 10 or greater.
+
 We'd like if it built on OSX and ideally Windows, and if at least some of the
 tools worked on those platforms.
 
-For Linux, we support running on the most recent patch versions of CentOS 5.2
-and Ubuntu 10, and hopefully anything newer than that.
-
-Most of martian is written in [Go](https://golang.org/).  Go's
+Martian is written primarily in [Go](https://golang.org/).  Go's
 [release policy](https://golang.org/doc/devel/release.html#policy) specifies
 that only the most recent point revision is supported.  We do not expect
 to be able to build with unsupported versions of Go.
@@ -29,15 +27,13 @@ to be able to build with unsupported versions of Go.
 The Martian Python adapter is written for Python 2.7.  We have not tested with
 Python 3.x, but fixes are welcome.
 
-The web front end is built using [Node](https://nodejs.org/) 6, which is the
-most recent LTS version.  Any fixes for newer versions are welcome, so long as
-they are backwards compatible.
+The web user interface is built using [Node](https://nodejs.org/) 6, which is
+the most recent LTS version.  Any fixes for newer versions are welcome,
+so long as they are backwards compatible.
 
-## Release policy
+## Release Policy
 For the open source Martian repository, only the most recent (non-`rc`)
-release is supported.  10x provides support for Martian versions which
-were shipped with their pipeline tarballs, but while those were based on
-the same code, bugs in previous releases will not be considered.
+release is supported.  
 
 Development happens on the master branch, and the intent is for the master
 branch to always be in a "releasable" state.  Features will not be back-ported
@@ -49,9 +45,9 @@ would be to create a new release off of master.
 If you are running a released 10X Genomics pipeline, such as
 longranger or cellranger, with a released version of Martian (packaged
 in the release tarballs under `martian-cs/<version>/`), please contact
-[10X support](https://www.10xgenomics.com/) for assistance.  If you are
-running a released version of a pipeline with a version of Martian you
-built yourself, please do not.
+[10X support](https://support.10xgenomics.com/) for assistance.  Running
+a pipeline with a version of Martian you built yourself is not supported
+by 10x Genomics.
 
 Before submitting a bug, check to make sure it is not a duplicate of an
 existing issue.  Also, check the
@@ -66,13 +62,13 @@ that if possible (keeping in mind that GitHub issues are public.  Make sure you
 are not uploading anything you don't want the world to see!).
 
 Local mode and cluster mode with SGE are expected to work in most
-configurations.  Other cluster types are less well tested.  We'd love to hear
-more!
+configurations. Other cluster managers are less well tested, but we would love
+to see contributions to improve support for them.
 
 For issues with documentation, please file them in the
 [documentation](https://github.com/martian-lang/martian-docs) repository.
 
-## Patch acceptance process
+## Patch Acceptance Process
 We use normal GitHub pull requests for patches.  Before sending a pull request,
 please do the following:
 
@@ -103,12 +99,13 @@ so it might take a week or so.
 reviewer.  Depending on how long this takes, it may be necessary to
 periodically merge changes from master into the pull request branch.
 
-## Patch priorities
+## Patch Priorities
 Martian is under active development internally, so many things you might want
 are already planned!  See the [roadmap](http://martian-lang.org/roadmap) for
 our current plans.  That said, we have limited resources, and your favorite
 feature request might not be something we can prioritize.  Pull requests are
 especially welcome for the following:
+
 * Cluster mode improvements, particularly on non-SGE clusters.  We have an
 SGE cluster, but we do not yet have a Slurm or LSF cluster to test on.  Those
 cluster managers are increasing in popularity, so we'd love to see improvements
