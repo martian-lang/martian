@@ -76,7 +76,7 @@ func (self *SignalHandler) Notify() {
 
 // Kill this process cleanly.
 func Suicide() {
-	Println("Killing self.")
+	Println("Shutting down.")
 	if signalHandler == nil {
 		os.Exit(1)
 	}
