@@ -553,6 +553,15 @@ func (self *Fork) step() {
 			self.metadata.Write(OutsFile, self.join_metadata.read(OutsFile))
 			if ok, msg := self.verifyOutput(); ok {
 				self.metadata.WriteTime(CompleteFile)
+				// Print alerts
+				if alarms := self.getAlarms(); len(alarms) > 0 {
+					self.lastPrint = time.Now()
+					if len(self.node.forks) > 1 {
+						util.Print("Alerts for %s.fork%d:\n%s\n", self.node.fqname, self.index, alarms)
+					} else {
+						util.Print("Alerts for %s:\n%s\n", self.node.fqname, alarms)
+					}
+				}
 			} else {
 				self.metadata.WriteRaw(Errors, msg)
 			}
