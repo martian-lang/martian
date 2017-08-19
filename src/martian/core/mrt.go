@@ -2,6 +2,10 @@
 
 package core
 
+// Support methods for mrt.  Unfortunately, at least for now they need to be in
+// the core package because they do strange and unnatural things to pipestance
+// private internals.
+
 import (
 	"errors"
 	"fmt"

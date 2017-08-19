@@ -1,9 +1,8 @@
-//
 // Copyright (c) 2014 10X Genomics, Inc. All rights reserved.
-//
-// Martian job managers for local and remote (SGE, LSF, etc) modes.
-//
+
 package core
+
+// Martian job managers for local and remote (SGE, LSF, etc) modes.
 
 import (
 	"bytes"

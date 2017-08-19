@@ -1,10 +1,10 @@
-//
 // Copyright (c) 2014 10X Genomics, Inc. All rights reserved.
+
+package core
+
 //
 // Martian runtime storage tracking and recovery.
 //
-
-package core
 
 import (
 	"martian/util"
@@ -15,7 +15,7 @@ import (
 )
 
 //
-// VDR
+// Volatile Disk Recovery
 //
 type VDRKillReport struct {
 	Count     uint     `json:"count"`

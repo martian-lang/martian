@@ -1,9 +1,8 @@
-//
 // Copyright (c) 2014 10X Genomics, Inc. All rights reserved.
-//
-// Martian runtime. This is where the action happens.
-//
+
 package core
+
+// Martian runtime. This is where the action happens.
 
 import (
 	"encoding/json"

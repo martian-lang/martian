@@ -1,9 +1,10 @@
-//
 // Copyright (c) 2014 10X Genomics, Inc. All rights reserved.
+
+package core
+
 //
 // Martian error types.
 //
-package core
 
 import (
 	"fmt"

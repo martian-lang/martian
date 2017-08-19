@@ -1,10 +1,8 @@
-//
 // Copyright (c) 2014 10X Genomics, Inc. All rights reserved.
-//
-// Martian runtime. This is where the action happens.
-//
 
 package core
+
+// Shared job information structures.
 
 type JobInfo struct {
 	Name          string            `json:"name"`

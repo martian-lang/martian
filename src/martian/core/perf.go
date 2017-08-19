@@ -1,8 +1,12 @@
+// Copyright (c) 2017 10X Genomics, Inc. All rights reserved.
+
+package core
+
+// Data structures for managing stage performance information.
 // Functions:
 // - Reduce jobinfo to important metrics
 // - Compute aggregational stats multiple jobinfos
 // - Get arguments and compute file sizes (if they exist)
-package core
 
 import (
 	"martian/util"

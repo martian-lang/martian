@@ -1,9 +1,8 @@
-//
 // Copyright (c) 2014 10X Genomics, Inc. All rights reserved.
-//
-// Code to figure out physical core count.
-//
+
 package core
+
+// Code to figure out physical core count.
 
 import (
 	"bufio"

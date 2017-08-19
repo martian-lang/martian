@@ -1,11 +1,10 @@
-//
 // Copyright (c) 2017 10X Genomics, Inc. All rights reserved.
-//
+
+package core
+
 // A semaphore for reserving resources against a starting value, as well as
 // instantaneous queries of the actual availability (in case reservations
 // get exceeded).
-//
-package core
 
 import (
 	"fmt"

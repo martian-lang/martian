@@ -1,9 +1,10 @@
-//
 // Copyright (c) 2017 10X Genomics, Inc. All rights reserved.
+
+package core
+
 //
 // File system query utility.
 //
-package core
 
 import (
 	"fmt"

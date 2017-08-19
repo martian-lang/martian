@@ -1,10 +1,8 @@
-//
 // Copyright (c) 2014 10X Genomics, Inc. All rights reserved.
-//
-// Platform-specific code for launching processes.
-//
 
 package core
+
+// Linux-specific code for launching processes.
 
 import (
 	"syscall"

@@ -1,11 +1,10 @@
-//
 // Copyright (c) 2014 10X Genomics, Inc. All rights reserved.
-//
-// Platform-specific code for launching processes.
-//
 // +build !linux
 
 package core
+
+// Platform-specific code for launching processes.  This file is
+// a stub to allow non-linux systems to build with reduced functionality.
 
 import (
 	"syscall"
