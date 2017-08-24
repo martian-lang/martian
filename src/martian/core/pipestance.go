@@ -613,7 +613,7 @@ func (self *Pipestance) PostProcess() {
 //
 // Unless force is true, this is only permitted for locked pipestances.
 func (self *Pipestance) Immortalize(force bool) error {
-	if force || self.readOnly() {
+	if !force && self.readOnly() {
 		return &RuntimeError{"Pipestance is in read only mode."}
 	}
 	self.metadata.loadCache()
