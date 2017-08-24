@@ -605,11 +605,15 @@ func (self *Pipestance) GetVersions() (string, string, error) {
 func (self *Pipestance) PostProcess() {
 	self.node.postProcess()
 	self.metadata.WriteRaw(TimestampFile, self.metadata.readRaw(TimestampFile)+"\nend: "+util.Timestamp())
-	self.Immortalize()
+	self.Immortalize(false)
 }
 
-func (self *Pipestance) Immortalize() error {
-	if self.readOnly() {
+// Generate the final state file for the pipestance and zip the content up
+// for posterity.
+//
+// Unless force is true, this is only permitted for locked pipestances.
+func (self *Pipestance) Immortalize(force bool) error {
+	if force || self.readOnly() {
 		return &RuntimeError{"Pipestance is in read only mode."}
 	}
 	self.metadata.loadCache()
