@@ -68,7 +68,9 @@ func newSignalHandler() *SignalHandler {
 // Notify this handler of signals.
 func (self *SignalHandler) Notify() {
 	signal.Notify(self.sigchan, os.Interrupt)
-	signal.Notify(self.sigchan, syscall.SIGHUP)
+	if !SignalIsIgnored(syscall.SIGHUP) {
+		signal.Notify(self.sigchan, syscall.SIGHUP)
+	}
 	signal.Notify(self.sigchan, syscall.SIGTERM)
 	signal.Notify(self.sigchan, syscall.SIGUSR1)
 	signal.Notify(self.sigchan, syscall.SIGUSR2)
