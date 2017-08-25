@@ -738,7 +738,7 @@ Options:
 				Host:   listener.Addr().String(),
 			}
 			info.Port = u.Port()
-			u.Host = fmt.Sprintf("%s:%s", hostname, info.Port)
+			u.Host = net.JoinHostPort(hostname, info.Port)
 			if authKey != "" {
 				q := u.Query()
 				q.Set("auth", authKey)
