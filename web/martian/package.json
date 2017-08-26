@@ -10,7 +10,9 @@
   "license": "",
   "devDependencies": {
     "gulp": "^3.8.7",
+    "gulp-clean-css": "^3.7.0",
     "gulp-coffee": "^2.1.1",
-    "gulp-jade": "^0.7.0"
+    "gulp-pug": "^3.3.0",
+    "gulp-zopfli": "^1.0.0"
   }
 }

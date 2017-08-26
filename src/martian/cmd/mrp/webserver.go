@@ -7,6 +7,7 @@ package main
 
 import (
 	"bytes"
+	"compress/gzip"
 	"encoding/json"
 	"fmt"
 	"html/template"
@@ -86,6 +87,7 @@ type mrpWebServer struct {
 	webRoot       string
 	info          *PipestanceInfo
 	graphPage     []byte
+	startTime     time.Time
 	mutex         sync.Mutex
 }
 
@@ -143,11 +145,15 @@ func (self *mrpWebServer) verifyAuth(w http.ResponseWriter, req *http.Request) b
 //=========================================================================
 
 func (self *mrpWebServer) handleStatic(sm *http.ServeMux) {
-	sm.Handle("/graph.js", http.FileServer(http.Dir(path.Join(self.webRoot, "client"))))
-	res := http.FileServer(http.Dir(path.Join(self.webRoot, "res")))
-	sm.Handle("/css/", res)
+	res := http.FileServer(http.Dir(path.Join(self.webRoot, "serve")))
+	contentGzip := func(w http.ResponseWriter, req *http.Request) {
+		w.Header().Set("Content-Encoding", "gzip")
+		res.ServeHTTP(w, req)
+	}
+	sm.HandleFunc("/graph.js", contentGzip)
+	sm.HandleFunc("/css/", contentGzip)
+	sm.HandleFunc("/js/", contentGzip)
 	sm.Handle("/fonts/", res)
-	sm.Handle("/js/", res)
 }
 
 func (self *mrpWebServer) graphTemplate() (*template.Template, error) {
@@ -158,7 +164,6 @@ func (self *mrpWebServer) graphTemplate() (*template.Template, error) {
 
 func (self *mrpWebServer) makeGraphPage() {
 	pipestance := self.pipestanceBox.getPipestance()
-	var buff bytes.Buffer
 	if tmpl, err := self.graphTemplate(); err != nil {
 		util.Println("Error starting web server: %v", err)
 	} else {
@@ -174,17 +179,26 @@ func (self *mrpWebServer) makeGraphPage() {
 		if self.authKey != "" && self.readAuth {
 			graphParams.Auth = "?auth=" + self.authKey
 		}
-		if err := tmpl.Execute(&buff, &graphParams); err != nil {
-			util.Println("Error starting web server: %v", err)
+		var buff bytes.Buffer
+		zipper, _ := gzip.NewWriterLevel(&buff, gzip.BestCompression)
+		if err := tmpl.Execute(zipper, &graphParams); err != nil {
+			util.PrintError(err, "webserv", "Error starting web server.")
 		} else {
-			self.graphPage = buff.Bytes()
+			if err := zipper.Close(); err != nil {
+				util.PrintError(err, "webserv", "Error starting web server.")
+			} else {
+				self.startTime = time.Now()
+				self.graphPage = buff.Bytes()
+			}
 		}
 	}
 }
 
 func (self *mrpWebServer) serveGraphPage(w http.ResponseWriter, req *http.Request) {
 	if !self.readAuth || self.verifyAuth(w, req) {
-		w.Write(self.graphPage)
+		w.Header().Set("Content-Encoding", "gzip")
+		http.ServeContent(w, req, "graph.html", self.startTime,
+			bytes.NewReader(self.graphPage))
 	}
 }
 
