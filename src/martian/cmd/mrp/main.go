@@ -535,7 +535,7 @@ Options:
 	} else if enableUI {
 		key := make([]byte, 32)
 		if _, err := rand.Read(key); err != nil {
-			util.Println("webserv", "Failed to generate an authentication key: %v", err)
+			util.PrintError(err, "webserv", "Failed to generate an authentication key.")
 			os.Exit(1)
 		}
 		authKey = base64.RawURLEncoding.EncodeToString(key)
@@ -556,7 +556,7 @@ Options:
 		var err error
 		overrides, err = core.ReadOverrides(v.(string))
 		if err != nil {
-			util.Println("Failed to parse overrides file: %v", err)
+			util.PrintError(err, "startup", "Failed to parse overrides file")
 			os.Exit(1)
 
 		}
@@ -728,7 +728,7 @@ Options:
 		}
 		if listener, err = net.Listen("tcp",
 			fmt.Sprintf(":%s", uiport)); err != nil {
-			util.Println("webserv", "Cannot open port %s: %v", uiport, err)
+			util.PrintError(err, "webserv", "Cannot open port %s", uiport)
 			if dieWithoutUi {
 				os.Exit(1)
 			}
