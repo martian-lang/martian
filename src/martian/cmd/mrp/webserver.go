@@ -12,6 +12,7 @@ import (
 	"fmt"
 	"html/template"
 	"io/ioutil"
+	"martian/api"
 	"martian/core"
 	"martian/util"
 	"net"
@@ -26,21 +27,6 @@ import (
 //=============================================================================
 // Page and form structs.
 //=============================================================================
-type GraphPage struct {
-	InstanceName string
-	Container    string
-	Pname        string
-	Psid         string
-	Admin        bool
-	AdminStyle   bool
-	Release      bool
-	Auth         string
-}
-
-type MetadataForm struct {
-	Path string `json:"path"`
-	Name string `json:"name"`
-}
 
 func getSerialization(rt *core.Runtime, pipestance *core.Pipestance, name core.MetadataFileName) interface{} {
 	if ser, ok := rt.GetSerialization(pipestance.GetPath(), name); ok {
@@ -53,7 +39,7 @@ func runWebServer(
 	listener net.Listener,
 	rt *core.Runtime,
 	pipestanceBox *pipestanceHolder,
-	info *PipestanceInfo,
+	info *api.PipestanceInfo,
 	authKey string,
 	requireAuth bool) {
 	server := &mrpWebServer{
@@ -85,7 +71,7 @@ type mrpWebServer struct {
 	rt            *core.Runtime
 	pipestanceBox *pipestanceHolder
 	webRoot       string
-	info          *PipestanceInfo
+	info          *api.PipestanceInfo
 	graphPage     []byte
 	startTime     time.Time
 	mutex         sync.Mutex
@@ -167,7 +153,7 @@ func (self *mrpWebServer) makeGraphPage() {
 	if tmpl, err := self.graphTemplate(); err != nil {
 		util.Println("Error starting web server: %v", err)
 	} else {
-		graphParams := GraphPage{
+		graphParams := api.GraphPage{
 			InstanceName: "Martian Pipeline Runner",
 			Container:    "runner",
 			Pname:        pipestance.GetPname(),
@@ -207,18 +193,18 @@ func (self *mrpWebServer) serveGraphPage(w http.ResponseWriter, req *http.Reques
 //=========================================================================
 
 func (self *mrpWebServer) handleApi(sm *http.ServeMux) {
-	sm.HandleFunc("/api/get-info/", self.getInfo)
-	sm.HandleFunc("/api/get-info", self.getInfo)
-	sm.HandleFunc("/api/get-state/", self.getState)
-	sm.HandleFunc("/api/get-state", self.getState)
-	sm.HandleFunc("/api/get-perf/", self.getPerf)
-	sm.HandleFunc("/api/get-perf", self.getPerf)
-	sm.HandleFunc("/api/get-metadata/", self.getMetadata)
-	sm.HandleFunc("/api/get-metadata", self.getMetadata)
-	sm.HandleFunc("/api/restart/", self.restart)
-	sm.HandleFunc("/api/restart", self.restart)
-	sm.HandleFunc("/api/get-metadata-top/", self.getMetadataTop)
-	sm.HandleFunc("/api/kill", self.kill)
+	sm.HandleFunc(api.QueryGetInfo, self.getInfo)
+	sm.HandleFunc(api.QueryGetInfo+"/", self.getInfo)
+	sm.HandleFunc(api.QueryGetState, self.getState)
+	sm.HandleFunc(api.QueryGetState+"/", self.getState)
+	sm.HandleFunc(api.QueryGetPerf, self.getPerf)
+	sm.HandleFunc(api.QueryGetPerf+"/", self.getPerf)
+	sm.HandleFunc(api.QueryGetMetadata, self.getMetadata)
+	sm.HandleFunc(api.QueryGetMetadata+"/", self.getMetadata)
+	sm.HandleFunc(api.QueryRestart, self.restart)
+	sm.HandleFunc(api.QueryRestart+"/", self.restart)
+	sm.HandleFunc(api.QueryGetMetadataTop, self.getMetadataTop)
+	sm.HandleFunc(api.QueryKill, self.kill)
 }
 
 // Get pipestance state: nodes and fatal error (if any).
@@ -247,7 +233,7 @@ func (self *mrpWebServer) getState(w http.ResponseWriter, req *http.Request) {
 	pipestance := self.pipestanceBox.getPipestance()
 	state := map[string]interface{}{}
 	st := pipestance.GetState()
-	state["nodes"] = getSerialization(self.rt, pipestance, "finalstate")
+	state["nodes"] = getSerialization(self.rt, pipestance, core.FinalState)
 	state["info"] = self.info
 	self.mutex.Lock()
 	self.info.State = st
@@ -267,7 +253,7 @@ func (self *mrpWebServer) getPerf(w http.ResponseWriter, req *http.Request) {
 	}
 	pipestance := self.pipestanceBox.getPipestance()
 	state := map[string]interface{}{}
-	state["nodes"] = getSerialization(self.rt, pipestance, "perf")
+	state["nodes"] = getSerialization(self.rt, pipestance, core.Perf)
 	bytes, err := json.Marshal(state)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
@@ -285,7 +271,7 @@ func (self *mrpWebServer) getMetadata(w http.ResponseWriter, req *http.Request) 
 		http.Error(w, "Request body is required.", http.StatusBadRequest)
 		return
 	} else {
-		form := MetadataForm{}
+		form := api.MetadataForm{}
 		if err := json.Unmarshal(body, &form); err != nil {
 			http.Error(w, err.Error(), http.StatusBadRequest)
 			return
@@ -316,7 +302,7 @@ func (self *mrpWebServer) getMetadataTop(w http.ResponseWriter, req *http.Reques
 		return
 	}
 	p := path.Clean(strings.TrimLeft(strings.TrimPrefix(
-		req.URL.Path, "/api/get-metadata-top"), "/"))
+		req.URL.Path, api.QueryGetMetadataTop), "/"))
 	if strings.HasPrefix(p, "..") {
 		http.Error(w, "'..' not allowed in path.", http.StatusBadRequest)
 		return

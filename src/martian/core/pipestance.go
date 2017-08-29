@@ -73,6 +73,8 @@ type Pipestance struct {
 	node     *Node
 	metadata *Metadata
 
+	// Cache for self.node.allNodes()
+	allNodesCache    []*Node
 	queueCheckLock   sync.Mutex
 	queueCheckActive bool
 	lastQueueCheck   time.Time
@@ -185,13 +187,20 @@ func (self *Pipestance) GetFQName() string { return self.node.fqname }
 func (self *Pipestance) RefreshState()     { self.node.refreshState(self.readOnly()) }
 func (self *Pipestance) readOnly() bool    { return !self.metadata.exists(Lock) }
 
+func (self *Pipestance) allNodes() []*Node {
+	if self.allNodesCache == nil {
+		self.allNodesCache = self.node.allNodes()
+	}
+	return self.allNodesCache
+}
+
 func (self *Pipestance) LoadMetadata() {
 	// We used to make this concurrent but ended up with too many
 	// goroutines (Pranav's 96-sample run).
-	for _, node := range self.node.allNodes() {
+	for _, node := range self.allNodes() {
 		node.loadMetadata()
 	}
-	for _, node := range self.node.allNodes() {
+	for _, node := range self.allNodes() {
 		node.state = node.getState()
 		if node.state == Running && !self.readOnly() {
 			node.mkdirs()
@@ -212,7 +221,7 @@ func (self *Pipestance) GetState() MetadataState {
 		}
 	}
 	every := true
-	for _, node := range self.node.allNodes() {
+	for _, node := range self.allNodes() {
 		if node.state != Complete {
 			every = false
 			break
@@ -426,7 +435,7 @@ func (self *Pipestance) StepNodes() {
 	for _, node := range self.node.getFrontierNodes() {
 		node.step()
 	}
-	for _, node := range self.node.allNodes() {
+	for _, node := range self.allNodes() {
 		for _, m := range node.collectMetadatas() {
 			m.clearReadCache()
 		}
@@ -437,7 +446,7 @@ func (self *Pipestance) Reset() error {
 	if self.readOnly() {
 		return &RuntimeError{"Pipestance is in read only mode."}
 	}
-	for _, node := range self.node.allNodes() {
+	for _, node := range self.allNodes() {
 		if node.state == Failed {
 			if err := node.reset(); err != nil {
 				return err
@@ -447,27 +456,39 @@ func (self *Pipestance) Reset() error {
 	return nil
 }
 
-func (self *Pipestance) Serialize(name MetadataFileName) interface{} {
-	ser := []interface{}{}
-	for _, node := range self.node.allNodes() {
-		switch name {
-		case FinalState:
-			ser = append(ser, node.serializeState())
-		case Perf:
-			ser = append(ser, node.serializePerf())
-		default:
-			panic(fmt.Sprintf("Unsupported serialization type: %v", name))
-		}
-	}
-	if name == Perf {
-		util.LogInfo("perform", "Serializing pipestance performance data.")
-		if len(ser) > 0 {
-			overallPerf := ser[0].(*NodePerfInfo)
-			self.ComputeDiskUsage(overallPerf)
-			overallPerf.HighMem = &self.node.rt.LocalJobManager.(*LocalJobManager).highMem
-		}
+func (self *Pipestance) SerializeState() []*NodeInfo {
+	nodes := self.allNodes()
+	ser := make([]*NodeInfo, 0, len(nodes))
+	for _, node := range nodes {
+		ser = append(ser, node.serializeState())
 	}
 	return ser
+}
+
+func (self *Pipestance) SerializePerf() []*NodePerfInfo {
+	nodes := self.allNodes()
+	ser := make([]*NodePerfInfo, 0, len(nodes))
+	for _, node := range nodes {
+		ser = append(ser, node.serializePerf())
+	}
+	util.LogInfo("perform", "Serializing pipestance performance data.")
+	if len(ser) > 0 {
+		overallPerf := ser[0]
+		self.ComputeDiskUsage(overallPerf)
+		overallPerf.HighMem = &self.node.rt.LocalJobManager.(*LocalJobManager).highMem
+	}
+	return ser
+}
+
+func (self *Pipestance) Serialize(name MetadataFileName) interface{} {
+	switch name {
+	case FinalState:
+		return self.SerializeState()
+	case Perf:
+		return self.SerializePerf()
+	default:
+		panic(fmt.Sprintf("Unsupported serialization type: %v", name))
+	}
 }
 
 func forkDependentName(fqname string, forkIndex int) string {
@@ -478,7 +499,7 @@ func (self *Pipestance) ComputeDiskUsage(nodePerf *NodePerfInfo) *NodePerfInfo {
 	storageEvents := []*StorageEvent{}
 	forksVisited := make(map[string]*ForkStorageEvent)
 
-	for _, node := range self.node.allNodes() {
+	for _, node := range self.allNodes() {
 		nodePerf := node.serializePerf()
 		for forkIdx, fork := range nodePerf.Forks {
 			if fork.ForkStats != nil {
@@ -542,7 +563,7 @@ func (self *Pipestance) ZipMetadata(zipPath string) error {
 		return nil
 	}
 
-	nodes := self.node.allNodes()
+	nodes := self.allNodes()
 	metadatas := []*Metadata{}
 	filePaths := []string{}
 	for _, node := range nodes {

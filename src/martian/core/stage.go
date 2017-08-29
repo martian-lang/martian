@@ -203,6 +203,7 @@ type Fork struct {
 	stageDefs      *StageDefs
 	perfCache      *ForkPerfCache
 	lastPrint      time.Time
+	metadatasCache []*Metadata // cache for collectMetadata
 }
 
 type ForkInfo struct {
@@ -258,6 +259,7 @@ func NewFork(nodable Nodable, index int, argPermute map[string]interface{}) *For
 
 func (self *Fork) reset() {
 	self.chunks = []*Chunk{}
+	self.metadatasCache = nil
 	self.split_has_run = false
 	self.join_has_run = false
 	self.split_metadata.notRunningSince = time.Time{}
@@ -315,9 +317,13 @@ func (self *Fork) restartLocalJobs() error {
 }
 
 func (self *Fork) collectMetadatas() []*Metadata {
-	metadatas := []*Metadata{self.metadata, self.split_metadata, self.join_metadata}
-	for _, chunk := range self.chunks {
-		metadatas = append(metadatas, chunk.metadata)
+	metadatas := self.metadatasCache
+	if metadatas == nil {
+		metadatas = []*Metadata{self.metadata, self.split_metadata, self.join_metadata}
+		for _, chunk := range self.chunks {
+			metadatas = append(metadatas, chunk.metadata)
+		}
+		self.metadatasCache = metadatas
 	}
 	return metadatas
 }
@@ -518,6 +524,7 @@ func (self *Fork) step() {
 							self.chunks = append(self.chunks, chunk)
 							chunk.mkdirs()
 						}
+						self.metadatasCache = nil
 					}
 					for _, chunk := range self.chunks {
 						chunk.step()

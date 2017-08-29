@@ -36,11 +36,12 @@
     maxX = 0.0;
     maxY = 0.0;
     d3.selectAll("g.node").each(function(id) {
-      var coords, xCoord, yCoord;
-      d3.select(this).classed(g.node(id).type, true);
-      d3.select(this).attr('ng-click', "selectNode('" + id + "')");
-      d3.select(this).attr('ng-class', "[node.fqname=='" + id + "'?'seled':'',nodes['" + id + "'].state]");
-      coords = d3.select(this).attr('transform').substr(10).split(',');
+      var coords, element, xCoord, yCoord;
+      element = d3.select(this);
+      element.classed(g.node(id).type, true);
+      element.attr('ng-click', "selectNode('" + id + "')");
+      element.attr('ng-class', "[node.fqname=='" + id + "'?'seled':'',nodes['" + id + "'].state]");
+      coords = element.attr('transform').substr(10).split(',');
       xCoord = parseFloat(coords[0]);
       yCoord = parseFloat(coords[1]);
       if (xCoord > maxX) {
@@ -56,18 +57,10 @@
     }
     scale = 750.0 / maxX;
     maxY += 100;
-    d3.selectAll("svg").each(function(id) {
-      return d3.select(this).attr('width', '750px').attr('height', maxY.toString() + "px");
-    });
-    d3.selectAll("g#top").each(function(id) {
-      return d3.select(this).attr('transform', 'translate(5,5) scale(' + scale + ')');
-    });
-    d3.selectAll("g.node.stage rect").each(function(id) {
-      return d3.select(this).attr('rx', 20).attr('ry', 20);
-    });
-    d3.selectAll("g.node.pipeline rect").each(function(id) {
-      return d3.select(this).attr('rx', 0).attr('ry', 0);
-    });
+    d3.selectAll("svg").attr('width', '750px').attr('height', maxY.toString() + "px");
+    d3.selectAll("g#top").attr('transform', 'translate(5,5) scale(' + scale + ')');
+    d3.selectAll("g.node.stage rect").attr('rx', 20).attr('ry', 20);
+    d3.selectAll("g.node.pipeline rect").attr('rx', 0).attr('ry', 0);
     return $compile(angular.element(document.querySelector('#top')).contents())($scope);
   };
 
@@ -372,11 +365,9 @@
         return $scope.stopRefresh = $interval(function() {
           return $scope.refresh();
         }, 3000);
-      }).error(function() {
+      }).error(function(data, error) {
         $scope.showRestart = true;
-        console.log('Server responded with an error for /api/restart, so stopping auto-refresh.');
-        $interval.cancel($scope.stopRefresh);
-        return alert('mrp is no longer running.\n\nPlease run mrp again with the --noexit option to continue running the pipeline.');
+        return alert("Restart failed: error " + status + " (" + data + ").  mrp may no longer be running.\n\nPlease run mrp again with the --noexit option to continue running the pipeline.");
       });
     };
     $scope.expandString = function(view, index, name) {
@@ -412,8 +403,8 @@
         }
         $scope.info = state.info;
         return $scope.showRestart = true;
-      }).error(function() {
-        console.log('Server responded with an error for /api/get-state, so stopping auto-refresh.');
+      }).error(function(data, status) {
+        console.log("Server responded with error " + status + ": " + data + " for /api/get-state, so stopping auto-refresh.");
         return $interval.cancel($scope.stopRefresh);
       });
     };

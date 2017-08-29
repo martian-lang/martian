@@ -1,8 +1,8 @@
 //
 // Copyright (c) 2014 10X Genomics, Inc. All rights reserved.
 //
+
 // Martian pipeline runner.
-//
 package main
 
 import (
@@ -10,6 +10,7 @@ import (
 	"encoding/base64"
 	"fmt"
 	"io/ioutil"
+	"martian/api"
 	"martian/core"
 	"martian/util"
 	"net"
@@ -61,54 +62,6 @@ func (self *pipestanceHolder) reset() error {
 		self.setPipestance(ps)
 	}
 	return err
-}
-
-type PipestanceInfo struct {
-	Hostname     string             `json:"hostname"`
-	Username     string             `json:"username"`
-	Cwd          string             `json:"cwd"`
-	Binpath      string             `json:"binpath"`
-	Cmdline      string             `json:"cmdline"`
-	Pid          int                `json:"pid"`
-	Start        string             `json:"start"`
-	Version      string             `json:"version"`
-	Pname        string             `json:"pname"`
-	PsId         string             `json:"psid"`
-	State        core.MetadataState `json:"state"`
-	JobMode      string             `json:"jobmode"`
-	MaxCores     int                `json:"maxcores"`
-	MaxMemGB     int                `json:"maxmemgb"`
-	InvokePath   string             `json:"invokepath"`
-	InvokeSource string             `json:"invokesrc"`
-	MroPath      string             `json:"mropath"`
-	ProfileMode  core.ProfileMode   `json:"mroprofile"`
-	Port         string             `json:"mroport"`
-	MroVersion   string             `json:"mroversion"`
-}
-
-func (self *PipestanceInfo) AsForm() url.Values {
-	form := url.Values{}
-	form.Add("hostname", self.Hostname)
-	form.Add("username", self.Username)
-	form.Add("cwd", self.Cwd)
-	form.Add("binpath", self.Binpath)
-	form.Add("cmdline", self.Cmdline)
-	form.Add("pid", strconv.Itoa(self.Pid))
-	form.Add("start", self.Start)
-	form.Add("version", self.Version)
-	form.Add("pname", self.Pname)
-	form.Add("psid", self.PsId)
-	form.Add("state", string(self.State))
-	form.Add("jobmode", self.JobMode)
-	form.Add("maxcores", strconv.Itoa(self.MaxCores))
-	form.Add("maxmemgb", strconv.Itoa(self.MaxMemGB))
-	form.Add("invokepath", self.InvokePath)
-	form.Add("invokesrc", self.InvokeSource)
-	form.Add("mropath", self.MroPath)
-	form.Add("mroprofile", string(self.ProfileMode))
-	form.Add("mroport", self.Port)
-	form.Add("mroversion", self.MroVersion)
-	return form
 }
 
 //=============================================================================
@@ -669,7 +622,7 @@ Options:
 	//=========================================================================
 	// Collect pipestance static info.
 	//=========================================================================
-	info := &PipestanceInfo{
+	info := &api.PipestanceInfo{
 		Hostname:     hostname,
 		Username:     username,
 		Cwd:          cwd,
@@ -699,7 +652,7 @@ Options:
 		u := url.URL{
 			Scheme: "http",
 			Host:   mrvhost,
-			Path:   "/register",
+			Path:   api.QueryRegisterMrv,
 		}
 		if res, err := http.PostForm(u.String(), info.AsForm()); err == nil {
 			if res.StatusCode == 200 {
