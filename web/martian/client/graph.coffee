@@ -21,18 +21,27 @@ renderGraph = ($scope, $compile) ->
             g.addEdge(null, edge.from, edge.to, {})
     (new dagreD3.Renderer()).zoom(false).run(g, d3.select("g"));
     maxX = 0.0
+    maxY = 0.0
     d3.selectAll("g.node").each((id) ->
         d3.select(this).classed(g.node(id).type, true)
         d3.select(this).attr('ng-click', "selectNode('#{id}')")
         d3.select(this).attr('ng-class', "[node.fqname=='#{id}'?'seled':'',nodes['#{id}'].state]")
-        xCoord = parseFloat(d3.select(this).attr('transform').substr(10).split(',')[0])
+        coords = d3.select(this).attr('transform').substr(10).split(',')
+        xCoord = parseFloat(coords[0])
+        yCoord = parseFloat(coords[1])
         if xCoord > maxX
             maxX = xCoord
+        if yCoord > maxY
+            maxY = yCoord
     )
     maxX += 100
     if maxX < 750.0
         maxX = 750.0
     scale = 750.0 / maxX
+    maxY += 100
+    d3.selectAll("svg").each((id) -> 
+        d3.select(this).attr('width', '750px').attr('height', maxY.toString() + "px")
+    )
     d3.selectAll("g#top").each((id) ->
         d3.select(this).attr('transform', 'translate(5,5) scale('+scale+')')
     )
