@@ -61,19 +61,25 @@ func newSignalHandler() *SignalHandler {
 	return &SignalHandler{
 		block:   make(chan int),
 		objects: make(map[HandlerObject]bool),
-		sigchan: make(chan os.Signal, 6),
+		sigchan: make(chan os.Signal, len(HANDLED_SIGNALS)+1),
 	}
+}
+
+var HANDLED_SIGNALS = [...]os.Signal{
+	os.Interrupt,
+	syscall.SIGHUP,
+	syscall.SIGTERM,
+	syscall.SIGUSR1,
+	syscall.SIGUSR2,
 }
 
 // Notify this handler of signals.
 func (self *SignalHandler) Notify() {
-	signal.Notify(self.sigchan, os.Interrupt)
-	if !SignalIsIgnored(syscall.SIGHUP) {
-		signal.Notify(self.sigchan, syscall.SIGHUP)
+	for _, sig := range HANDLED_SIGNALS {
+		if sig != syscall.SIGHUP || !SignalIsIgnored(syscall.SIGHUP) {
+			signal.Notify(self.sigchan, sig)
+		}
 	}
-	signal.Notify(self.sigchan, syscall.SIGTERM)
-	signal.Notify(self.sigchan, syscall.SIGUSR1)
-	signal.Notify(self.sigchan, syscall.SIGUSR2)
 }
 
 // Kill this process cleanly.
