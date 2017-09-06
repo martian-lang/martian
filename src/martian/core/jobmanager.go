@@ -236,7 +236,7 @@ func (self *LocalJobManager) Enqueue(shellCmd string, argv []string,
 	go func() {
 		// Exec the shell directly.
 		cmd := exec.Command(shellCmd, argv...)
-		cmd.Dir = metadata.filesPath
+		cmd.Dir = metadata.curFilesPath
 		if self.maxCores < runtime.NumCPU() {
 			// If, and only if, the user specified a core limit less than the
 			// detected core count, make sure jobs actually don't use more
@@ -558,7 +558,7 @@ func (self *RemoteJobManager) sendJob(shellCmd string, argv []string, envs map[s
 		"THREADS":           fmt.Sprintf("%d", threads),
 		"STDOUT":            metadata.MetadataFilePath("stdout"),
 		"STDERR":            metadata.MetadataFilePath("stderr"),
-		"JOB_WORKDIR":       metadata.filesPath,
+		"JOB_WORKDIR":       metadata.curFilesPath,
 		"CMD":               strings.Join(argv, " "),
 		"MEM_GB":            fmt.Sprintf("%d", memGB),
 		"MEM_MB":            fmt.Sprintf("%d", memGB*1024),
@@ -591,7 +591,7 @@ func (self *RemoteJobManager) sendJob(shellCmd string, argv []string, envs map[s
 	metadata.WriteRaw("jobscript", jobscript)
 
 	cmd := exec.Command(self.config.jobCmd, self.config.jobCmdArgs...)
-	cmd.Dir = metadata.filesPath
+	cmd.Dir = metadata.curFilesPath
 	cmd.Stdin = strings.NewReader(jobscript)
 
 	util.EnterCriticalSection()
@@ -605,7 +605,7 @@ func (self *RemoteJobManager) sendJob(shellCmd string, argv []string, envs map[s
 		// check that a string is actually a jobid.
 		if trimmed != "" && !strings.ContainsAny(trimmed, " \t\n\r") {
 			metadata.WriteRaw("jobid", strings.TrimSpace(string(output)))
-			metadata.cache("jobid")
+			metadata.cache("jobid", metadata.uniquifier)
 		}
 	}
 }

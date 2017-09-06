@@ -618,19 +618,25 @@ func (self *Node) step() {
 	}
 }
 
-func (self *Node) parseRunFilename(fqname string) (string, int, int, string) {
-	r := regexp.MustCompile("(.*)\\.fork(\\d+)\\.chnk(\\d+)\\.(.*)$")
-	if match := r.FindStringSubmatch(fqname); match != nil {
+// Regular expression to convert a fully qualified name for a chunk into the
+// component parts of the pipeline path.  The parts are:
+// 1. The fully qualified stage name.
+// 2. The fork index.
+// 3. The chunk index, if any.
+// 4. The job uniquifier, if any.
+// 5. The metadata file name.
+var jobJournalRe = regexp.MustCompile(`(.*)\.fork(\d+)(?:\.chnk(\d+))?(?:\.u([a-f0-9]{10}))?\.(.*)$`)
+
+func (self *Node) parseRunFilename(fqname string) (string, int, int, string, string) {
+	if match := jobJournalRe.FindStringSubmatch(fqname); match != nil {
 		forkIndex, _ := strconv.Atoi(match[2])
-		chunkIndex, _ := strconv.Atoi(match[3])
-		return match[1], forkIndex, chunkIndex, match[4]
+		chunkIndex := -1
+		if match[3] != "" {
+			chunkIndex, _ = strconv.Atoi(match[3])
+		}
+		return match[1], forkIndex, chunkIndex, match[4], match[5]
 	}
-	r = regexp.MustCompile("(.*)\\.fork(\\d+)\\.(.*)$")
-	if match := r.FindStringSubmatch(fqname); match != nil {
-		forkIndex, _ := strconv.Atoi(match[2])
-		return match[1], forkIndex, -1, match[3]
-	}
-	return "", -1, -1, ""
+	return "", -1, -1, "", ""
 }
 
 func (self *Node) refreshState(readOnly bool) {
@@ -643,15 +649,15 @@ func (self *Node) refreshState(readOnly bool) {
 			continue
 		}
 
-		fqname, forkIndex, chunkIndex, state := self.parseRunFilename(filename)
+		fqname, forkIndex, chunkIndex, uniquifier, state := self.parseRunFilename(filename)
 		if node := self.find(fqname); node != nil {
 			if fork := node.getFork(forkIndex); fork != nil {
 				if chunkIndex >= 0 {
 					if chunk := fork.getChunk(chunkIndex); chunk != nil {
-						chunk.updateState(MetadataFileName(state))
+						chunk.updateState(MetadataFileName(state), uniquifier)
 					}
 				} else {
-					fork.updateState(state)
+					fork.updateState(state, uniquifier)
 				}
 				updatedForks[fork] = struct{}{}
 			}
@@ -838,6 +844,9 @@ func (self *Node) runJob(shellName string, fqname string, metadata *Metadata,
 	var argv []string
 	stagecodeParts := strings.Split(self.stagecodeCmd, " ")
 	runFile := path.Join(self.journalPath, fqname)
+	if metadata.uniquifier != "" {
+		runFile += ".u" + metadata.uniquifier
+	}
 	version := &VersionInfo{
 		Martian:   self.rt.martianVersion,
 		Pipelines: self.mroVersion,
@@ -855,15 +864,15 @@ func (self *Node) runJob(shellName string, fqname string, metadata *Metadata,
 			stagecodeParts[0],
 			shellName,
 			metadata.path,
-			metadata.filesPath,
+			metadata.curFilesPath,
 			runFile,
 		}
 	case syntax.CompiledStage:
 		shellCmd = self.rt.mrjob
-		argv = append(stagecodeParts, shellName, metadata.path, metadata.filesPath, runFile)
+		argv = append(stagecodeParts, shellName, metadata.path, metadata.curFilesPath, runFile)
 	case syntax.ExecStage:
 		shellCmd = stagecodeParts[0]
-		argv = append(stagecodeParts[1:], shellName, metadata.path, metadata.filesPath, runFile)
+		argv = append(stagecodeParts[1:], shellName, metadata.path, metadata.curFilesPath, runFile)
 	default:
 		panic(fmt.Sprintf("Unknown stage code language: %v", self.stagecodeLang))
 	}

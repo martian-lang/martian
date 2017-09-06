@@ -61,22 +61,76 @@ def expand_glob(root, pattern):
                 yield os.path.relpath(os.path.join(cur, name), root)
 
 
-def check_exists(output, expect, filename):
+_UNIQUIFIER_REGEX = re.compile(
+    '(.*%s[a-z]+[0-9]*)-u[0-9a-z]+(%s.+)' % (os.path.sep, os.path.sep))
+
+
+def deuniquify(value):
+    """Remove absolute paths and timestamps."""
+    def uniquerepl(match):
+        """Just take the matched group."""
+        return '%s%s' % (match.group(1), match.group(2))
+    return _UNIQUIFIER_REGEX.sub(uniquerepl, value)
+
+
+_FILES_SEP = '%sfiles%s' % (os.path.sep, os.path.sep)
+
+
+def _parent_files(value):
+    """Convert file names like .../chnk0/files/foo to .../files/foo."""
+    if not _FILES_SEP in value:
+        return value
+    if not os.path.basename(value) or not os.path.dirname(value):
+        return value
+    return os.path.join(
+        os.path.dirname(os.path.dirname(os.path.dirname(value))),
+        'files',
+        os.path.basename(value))
+
+
+def report_missing(item_type, output, expect, filename, reverse=False):
+    """Print a message indicating a missing file."""
+    if reverse:
+        sys.stderr.write('Extra %s %s\n'
+                         % (item_type, os.path.join(expect, filename)))
+    else:
+        sys.stderr.write('Missing %s %s\n'
+                         % (item_type, os.path.join(output, filename)))
+
+
+def check_exists_file(output, expect, filename, reverse=False):
+    """Checks if a file exists in the output directory."""
+    if reverse:
+        filename = deuniquify(filename)
+    if not os.path.isfile(os.path.join(output, filename)):
+        if reverse:
+            parent_filename = _parent_files(filename)
+            if os.path.isfile(os.path.join(expect, parent_filename)):
+                if not os.path.isfile(os.path.join(output, parent_filename)):
+                    report_missing('file', output, expect,
+                                   parent_filename, reverse)
+                    return False
+            else:
+                report_missing('file', output, expect, filename, reverse)
+                return False
+        else:
+            report_missing('file', output, expect, filename, reverse)
+            return False
+    return True
+
+
+def check_exists(output, expect, filename, reverse=False):
     """Checks that a given file, directory, or link in the expected directory
     also exists in the output directory."""
     if os.path.basename(filename).startswith('.nfs'):
         return True  # These are temporary files created by nfs.
     if os.path.isdir(os.path.join(expect, filename)):
         return True  # git does not preserve empty directories
-    elif os.path.isfile(os.path.join(expect, filename)):
-        if not os.path.isfile(os.path.join(output, filename)):
-            sys.stderr.write('Missing file %s\n'
-                             % os.path.join(output, filename))
-            return False
+    if os.path.isfile(os.path.join(expect, filename)):
+        return check_exists_file(output, expect, filename, reverse)
     elif os.path.islink(os.path.join(expect, filename)):
         if not os.path.islink(os.path.join(output, filename)):
-            sys.stderr.write('Missing link %s\n'
-                             % os.path.join(output, filename))
+            report_missing('link', output, expect, filename, reverse)
             return False
     else:
         raise Exception('No file %s'
@@ -298,7 +352,8 @@ def check_result(output_dir, expectation_dir, config):
                     output_dir, expectation_dir, fname) and result_ok
             for fname in expand_glob(output_dir, pat):
                 result_ok = check_exists(
-                    expectation_dir, output_dir, fname) and result_ok
+                    expectation_dir, output_dir, fname,
+                    reverse=True) and result_ok
     if 'contents_match' in config:
         for pat in config['contents_match']:
             for fname in expand_glob(expectation_dir, pat):

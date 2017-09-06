@@ -6,12 +6,11 @@
 package util
 
 import (
-	"archive/zip"
 	"bytes"
 	"encoding/json"
 	"fmt"
 	"html/template"
-	"io"
+	"math"
 	"os"
 	"path"
 	"path/filepath"
@@ -149,6 +148,26 @@ func Pluralize(n int) string {
 	return "s"
 }
 
+// Gets the number of digits required to display a given integer in base 10.
+// Optimizes for the common cases.
+func WidthForInt(max int) int {
+	if max < 0 {
+		return 1 + WidthForInt(-max)
+	} else if max < 10 {
+		return 1
+	} else if max < 100 {
+		return 2
+	} else if max < 1000 {
+		return 3
+	} else if max < 10000 {
+		return 4
+	} else if max < 100000 {
+		return 5
+	} else {
+		return 1 + int(math.Log10(float64(max)))
+	}
+}
+
 func GetFilenameWithSuffix(dir string, fname string) string {
 	suffix := 0
 	names, err := Readdirnames(dir)
@@ -272,101 +291,6 @@ func ParseMroFlags(opts map[string]interface{}, doc string, martianOptions []str
 			opts[id] = defval
 		}
 	}
-}
-
-func ReadZip(zipPath string, filePath string) (string, error) {
-	zr, err := zip.OpenReader(zipPath)
-	if err != nil {
-		return "", err
-	}
-	defer zr.Close()
-
-	for _, f := range zr.File {
-		if f.Name == filePath {
-			in, err := f.Open()
-			if err != nil {
-				return "", err
-			}
-			defer in.Close()
-
-			buf := new(bytes.Buffer)
-			if _, err := io.Copy(buf, in); err != nil {
-				return "", err
-			}
-			return buf.String(), nil
-		}
-	}
-
-	return "", &ZipError{zipPath, filePath}
-}
-
-func Unzip(zipPath string) error {
-	zr, err := zip.OpenReader(zipPath)
-	if err != nil {
-		return err
-	}
-	defer zr.Close()
-
-	for _, f := range zr.File {
-		filePath := path.Join(path.Dir(zipPath), f.Name)
-		MkdirAll(path.Dir(filePath))
-
-		in, err := f.Open()
-		if err != nil {
-			return err
-		}
-
-		out, err := os.Create(filePath)
-		if err != nil {
-			return err
-		}
-
-		if _, err := io.Copy(out, in); err != nil {
-			return err
-		}
-
-		in.Close()
-		out.Close()
-	}
-
-	return nil
-}
-
-func CreateZip(zipPath string, filePaths []string) error {
-	f, err := os.Create(zipPath)
-	if err != nil {
-		return err
-	}
-	defer f.Close()
-
-	zw := zip.NewWriter(f)
-	for _, filePath := range filePaths {
-		info, err := os.Stat(filePath)
-		if err != nil {
-			return err
-		}
-		if info.IsDir() {
-			continue
-		}
-
-		relPath, _ := filepath.Rel(path.Dir(zipPath), filePath)
-		out, err := zw.Create(relPath)
-		if err != nil {
-			return err
-		}
-
-		in, err := os.Open(filePath)
-		if err != nil {
-			return err
-		}
-
-		if _, err := io.Copy(out, in); err != nil {
-			return err
-		}
-
-		in.Close()
-	}
-	return zw.Close()
 }
 
 func Readdirnames(readPath string) (names []string, err error) {

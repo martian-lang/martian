@@ -102,19 +102,29 @@ func (self MetadataState) IsQueued() bool {
 	return strings.HasSuffix(string(self), string(Queued))
 }
 
+func makeUniquifier() string {
+	// Take the low 16 bits worth of the pid, and the low 24 bits
+	// (~6 months) of the unix time.
+	trimmedTime := uint32(time.Now().Unix()) & ((^uint32(0)) >> 8)
+	return fmt.Sprintf("%04x%06x", uint16(os.Getpid()), trimmedTime)
+}
+
 //=============================================================================
 // Metadata
 //=============================================================================
 type Metadata struct {
 	fqname        string
 	path          string
+	finalPath     string
 	contents      map[MetadataFileName]bool
 	readCache     map[MetadataFileName]interface{}
-	filesPath     string
+	curFilesPath  string
+	finalFilePath string
 	journalPath   string
 	lastRefresh   time.Time
 	lastHeartbeat time.Time
 	mutex         sync.Mutex
+	uniquifier    string
 
 	// A prefix to attach when writing journal file name.
 	// Empty for chunks, or SplitPrefix or JoinPrefix.
@@ -133,17 +143,20 @@ type MetadataInfo struct {
 
 func NewMetadata(fqname string, p string) *Metadata {
 	return &Metadata{
-		fqname:    fqname,
-		path:      p,
-		contents:  make(map[MetadataFileName]bool),
-		readCache: make(map[MetadataFileName]interface{}),
-		filesPath: path.Join(p, "files"),
+		fqname:        fqname,
+		path:          p,
+		finalPath:     p,
+		contents:      make(map[MetadataFileName]bool),
+		readCache:     make(map[MetadataFileName]interface{}),
+		curFilesPath:  path.Join(p, "files"),
+		finalFilePath: path.Join(p, "files"),
 	}
 }
 
 func NewMetadataRunWithJournalPath(fqname string, p string, filesPath string, journalPath string, runType string) *Metadata {
 	self := NewMetadataWithJournalPath(fqname, p, journalPath)
-	self.filesPath = filesPath
+	self.curFilesPath = filesPath
+	self.finalFilePath = filesPath
 	if runType != "main" {
 		self.journalPrefix = runType + "_"
 	}
@@ -161,32 +174,118 @@ func (self *Metadata) glob() []string {
 	return paths
 }
 
+// Gets the locations of the symlinks pointing to uniquified directories.
+func (self *Metadata) symlinks() []string {
+	var symlinks []string
+	if self.path != self.finalPath {
+		if info, err := os.Lstat(self.finalPath); err == nil && info.Mode()&os.ModeSymlink != 0 {
+			symlinks = []string{self.finalPath}
+		}
+		if self.finalFilePath != path.Join(self.finalPath, "files") {
+			if info, err := os.Lstat(self.finalFilePath); err == nil && info.Mode()&os.ModeSymlink != 0 {
+				symlinks = append(symlinks, self.finalFilePath)
+			}
+		}
+	}
+	return symlinks
+}
+
 func (self *Metadata) enumerateFiles() ([]string, error) {
-	return filepath.Glob(path.Join(self.filesPath, "*"))
+	return filepath.Glob(path.Join(self.curFilesPath, "*"))
 }
 
 func (self *Metadata) FilesPath() string {
-	return self.filesPath
+	return self.curFilesPath
 }
 
 func (self *Metadata) mkdirs() error {
 	if err := util.Mkdir(self.path); err != nil {
 		msg := fmt.Sprintf("Could not create directories for %s: %s", self.fqname, err.Error())
 		util.LogError(err, "runtime", msg)
-		self.WriteRaw("errors", msg)
+		self.WriteRaw(Errors, msg)
 		return err
 	}
-	if err := util.Mkdir(self.filesPath); err != nil {
+	if err := util.Mkdir(self.curFilesPath); err != nil {
 		msg := fmt.Sprintf("Could not create directories for %s: %s", self.fqname, err.Error())
 		util.LogError(err, "runtime", msg)
-		self.WriteRaw("errors", msg)
+		self.WriteRaw(Errors, msg)
 		return err
+	}
+	return nil
+}
+
+func (self *Metadata) uniquify() error {
+	self.mutex.Lock()
+	defer self.mutex.Unlock()
+	if self.uniquifier == "" {
+		self.uniquifier = makeUniquifier()
+	}
+	p := self.finalPath + "-u" + self.uniquifier
+	if err := util.Mkdir(p); err != nil {
+		msg := fmt.Sprintf("Could not create directories for %s: %s", self.fqname, err.Error())
+		util.LogError(err, "runtime", msg)
+		self._writeRawNoLock(Errors, msg)
+		return err
+	}
+	self.path = p
+	filesPath := path.Join(p, "files")
+	if err := util.Mkdir(filesPath); err != nil {
+		msg := fmt.Sprintf("Could not create file directory for %s: %s", self.fqname, err.Error())
+		util.LogError(err, "runtime", msg)
+		self._writeRawNoLock(Errors, msg)
+		os.Remove(p)
+		return err
+	}
+	self.curFilesPath = filesPath
+	if self.discoverUniquifier() != self.uniquifier {
+		if relPath, err := filepath.Rel(filepath.Dir(self.finalPath), p); err != nil {
+			msg := fmt.Sprintf("Could not compute relative path for %s to %s", self.finalPath, p)
+			util.LogError(err, "runtime", msg)
+			self._writeRawNoLock(Errors, msg)
+			os.RemoveAll(p)
+			return err
+
+		} else {
+			if err := os.Symlink(relPath, self.finalPath); err != nil {
+				msg := fmt.Sprintf("Could not create symlink for %s: %s", self.fqname, err.Error())
+				util.LogError(err, "runtime", msg)
+				self._writeRawNoLock(Errors, msg)
+				os.RemoveAll(p)
+				return err
+			}
+		}
+		if self.finalFilePath != path.Join(self.finalPath, "files") {
+			if err := os.Remove(self.finalFilePath); err != nil && !os.IsNotExist(err) {
+				msg := fmt.Sprintf("Could not remove existing directory for %s: %s", self.fqname, err.Error())
+				util.LogError(err, "runtime", msg)
+				self._writeRawNoLock(Errors, msg)
+				os.RemoveAll(p)
+				return err
+			}
+			if relPath, err := filepath.Rel(filepath.Dir(self.finalFilePath), filesPath); err != nil {
+				msg := fmt.Sprintf("Could not compute relative path for %s to %s", self.finalFilePath, filesPath)
+				util.LogError(err, "runtime", msg)
+				self._writeRawNoLock(Errors, msg)
+				os.RemoveAll(p)
+				return err
+
+			} else {
+				if err := os.Symlink(relPath, self.finalFilePath); err != nil {
+					msg := fmt.Sprintf("Could not create files symlink for %s: %s", self.fqname, err.Error())
+					util.LogError(err, "runtime", msg)
+					self._writeRawNoLock(Errors, msg)
+					os.RemoveAll(p)
+					return err
+				}
+			}
+		}
 	}
 	return nil
 }
 
 func (self *Metadata) removeAll() error {
 	self.mutex.Lock()
+	defer self.mutex.Unlock()
 	if len(self.contents) > 0 {
 		self.contents = make(map[MetadataFileName]bool)
 	}
@@ -195,11 +294,21 @@ func (self *Metadata) removeAll() error {
 	}
 	self.notRunningSince = time.Time{}
 	self.lastRefresh = time.Time{}
-	self.mutex.Unlock()
+	if err := os.RemoveAll(self.curFilesPath); err != nil {
+		return err
+	}
 	if err := os.RemoveAll(self.path); err != nil {
 		return err
 	}
-	return os.RemoveAll(self.filesPath)
+	// Remove final directories iff they're symlinks or empty.  If a
+	// successful run wrote to it then we don't want to delete it.
+	if self.finalFilePath != self.curFilesPath {
+		os.Remove(self.finalFilePath)
+	}
+	if self.finalPath != self.path {
+		os.Remove(self.finalPath)
+	}
+	return nil
 }
 
 // Must be called within a lock.
@@ -238,9 +347,15 @@ func (self *Metadata) _cacheNoLock(name MetadataFileName) {
 	delete(self.readCache, name)
 }
 
-func (self *Metadata) cache(name MetadataFileName) {
+func (self *Metadata) cache(name MetadataFileName, uniquifier string) {
 	self.mutex.Lock()
-	self._cacheNoLock(name)
+	if self.uniquifier == uniquifier {
+		self._cacheNoLock(name)
+	} else if self.uniquifier != "" {
+		util.LogInfo("runtime",
+			"There appears to be more than one instance of %s running (Saw ID '%s', expected '%s').",
+			self.fqname, uniquifier, self.uniquifier)
+	}
 	self.mutex.Unlock()
 }
 
@@ -255,7 +370,30 @@ func (self *Metadata) uncache(name MetadataFileName) {
 	self.mutex.Unlock()
 }
 
+// Attempt to determine if this metadata object was already
+// uniquified and reset paths appropriately.
+func (self *Metadata) discoverUniquify() {
+	self.uniquifier = self.discoverUniquifier()
+	if self.uniquifier != "" {
+		self.path = self.finalPath + "-u" + self.uniquifier
+		self.curFilesPath = path.Join(self.path, "files")
+	}
+}
+
+// Returns the uniquifier for this pipestance, if any, by
+// examining the symlink from finalPath.
+func (self *Metadata) discoverUniquifier() string {
+	if rel, err := os.Readlink(self.finalPath); err == nil {
+		dest := path.Join(path.Dir(self.finalPath), rel)
+		if strings.HasPrefix(dest, self.finalPath+"-u") {
+			return dest[len(self.finalPath)+2:]
+		}
+	}
+	return ""
+}
+
 func (self *Metadata) loadCache() {
+	self.discoverUniquify()
 	paths := self.glob()
 	self.mutex.Lock()
 	if len(self.contents) > 0 {
@@ -274,7 +412,7 @@ func (self *Metadata) loadCache() {
 
 // Get the absolute path to the named file in the stage's files path.
 func (self *Metadata) FilePath(name string) string {
-	return path.Join(self.filesPath, name)
+	return path.Join(self.curFilesPath, name)
 }
 
 // Get the absolute path to the given metadata file.
@@ -353,7 +491,7 @@ func (self *Metadata) _writeRawNoLock(name MetadataFileName, text string) error 
 }
 func (self *Metadata) WriteRaw(name MetadataFileName, text string) error {
 	err := ioutil.WriteFile(self.MetadataFilePath(name), []byte(text), 0644)
-	self.cache(name)
+	self.cache(name, self.uniquifier)
 	if err != nil {
 		msg := fmt.Sprintf("Could not write %s for %s: %s", name, self.fqname, err.Error())
 		util.LogError(err, "runtime", msg)
@@ -498,7 +636,11 @@ func (self *Metadata) checkedReset() error {
 func (self *Metadata) uncheckedReset() error {
 	// Remove all related files from journal directory.
 	if len(self.journalPath) > 0 {
-		if files, err := filepath.Glob(path.Join(self.journalPath, self.fqname+"*")); err == nil {
+		journalPrefix := path.Join(self.journalPath, self.fqname)
+		if self.uniquifier != "" {
+			journalPrefix += ".u" + self.uniquifier
+		}
+		if files, err := filepath.Glob(journalPrefix + "*"); err == nil {
 			for _, file := range files {
 				os.Remove(file)
 			}
@@ -508,7 +650,12 @@ func (self *Metadata) uncheckedReset() error {
 		util.PrintInfo("runtime", "Cannot reset the stage because some folder contents could not be deleted.\n\nPlease resolve this error in order to continue running the pipeline: %v", err)
 		return err
 	}
-	return self.mkdirs()
+	if self.uniquifier == "" {
+		return self.mkdirs()
+	} else {
+		self.uniquifier = ""
+		return self.uniquify()
+	}
 }
 
 // Resets the metadata if the state was queued, but the job manager had not yet
@@ -595,7 +742,7 @@ func (self *Metadata) serializeState() *MetadataInfo {
 	self.mutex.Unlock()
 	sort.Strings(names)
 	return &MetadataInfo{
-		Path:  self.path,
+		Path:  self.finalPath,
 		Names: names,
 	}
 }

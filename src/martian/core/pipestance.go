@@ -571,6 +571,7 @@ func (self *Pipestance) ZipMetadata(zipPath string) error {
 	}
 	for _, metadata := range metadatas {
 		filePaths = append(filePaths, metadata.glob()...)
+		filePaths = append(filePaths, metadata.symlinks()...)
 	}
 
 	util.EnterCriticalSection()
@@ -578,6 +579,7 @@ func (self *Pipestance) ZipMetadata(zipPath string) error {
 
 	// Create zip with all metadata.
 	if err := util.CreateZip(zipPath, filePaths); err != nil {
+		util.LogError(err, "runtime", "Failed to zip metadata")
 		return err
 	}
 

@@ -94,26 +94,32 @@ type ChunkInfo struct {
 	Metadata *MetadataInfo          `json:"metadata"`
 }
 
-func NewChunk(nodable Nodable, fork *Fork, index int, chunkDef map[string]interface{}) *Chunk {
+func NewChunk(nodable Nodable, fork *Fork, index int,
+	chunkDef map[string]interface{}, chunkIndexWidth int) *Chunk {
 	self := &Chunk{}
 	self.node = nodable.getNode()
 	self.fork = fork
 	self.index = index
 	self.chunkDef = chunkDef
-	self.path = path.Join(fork.path, fmt.Sprintf("chnk%d", index))
-	self.fqname = fork.fqname + fmt.Sprintf(".chnk%d", index)
+	self.path = path.Join(fork.path, fmt.Sprintf("chnk%0*d", chunkIndexWidth, index))
+	self.fqname = fork.fqname + fmt.Sprintf(".chnk%0*d", chunkIndexWidth, index)
 	self.metadata = NewMetadataWithJournalPath(self.fqname, self.path, self.node.journalPath)
+	self.metadata.discoverUniquify()
 	self.hasBeenRun = false
 	if !self.node.split {
 		// If we're not splitting, just set the sole chunk's filesPath
 		// to the filesPath of the parent fork, to save a pseudo-join copy.
-		self.metadata.filesPath = self.fork.metadata.filesPath
+		self.metadata.finalFilePath = self.fork.metadata.finalFilePath
 	}
 	return self
 }
 
 func (self *Chunk) mkdirs() error {
-	return self.metadata.mkdirs()
+	if state := self.getState(); state != Complete {
+		return self.metadata.uniquify()
+	} else {
+		return self.metadata.mkdirs()
+	}
 }
 
 func (self *Chunk) getState() MetadataState {
@@ -124,8 +130,8 @@ func (self *Chunk) getState() MetadataState {
 	}
 }
 
-func (self *Chunk) updateState(state MetadataFileName) {
-	self.metadata.cache(state)
+func (self *Chunk) updateState(state MetadataFileName, uniquifier string) {
+	self.metadata.cache(state, uniquifier)
 	if state == ProgressFile {
 		self.fork.lastPrint = time.Now()
 		if msg, err := self.metadata.readRawSafe(state); err == nil {
@@ -158,7 +164,7 @@ func (self *Chunk) step() {
 
 	// Write out input and ouput args for the chunk.
 	self.metadata.Write(ArgsFile, resolvedBindings)
-	self.metadata.Write(OutsFile, makeOutArgs(self.node.outparams, self.metadata.filesPath))
+	self.metadata.Write(OutsFile, makeOutArgs(self.node.outparams, self.metadata.curFilesPath))
 
 	// Run the chunk.
 	self.fork.lastPrint = time.Now()
@@ -236,7 +242,10 @@ func NewFork(nodable Nodable, index int, argPermute map[string]interface{}) *For
 	self.fqname = self.node.fqname + fmt.Sprintf(".fork%d", index)
 	self.metadata = NewMetadata(self.fqname, self.path)
 	self.split_metadata = NewMetadata(self.fqname+".split", path.Join(self.path, "split"))
+	self.split_metadata.discoverUniquify()
 	self.join_metadata = NewMetadata(self.fqname+".join", path.Join(self.path, "join"))
+	self.join_metadata.finalFilePath = self.metadata.finalFilePath
+	self.join_metadata.discoverUniquify()
 	self.argPermute = argPermute
 	self.split_has_run = false
 	self.join_has_run = false
@@ -249,8 +258,9 @@ func NewFork(nodable Nodable, index int, argPermute map[string]interface{}) *For
 	self.stageDefs.ChunkDefs = append(self.stageDefs.ChunkDefs, map[string]interface{}{})
 
 	if err := json.Unmarshal([]byte(self.split_metadata.readRaw(StageDefsFile)), &self.stageDefs); err == nil {
+		width := util.WidthForInt(len(self.stageDefs.ChunkDefs))
 		for i, chunkDef := range self.stageDefs.ChunkDefs {
-			chunk := NewChunk(self.node, self, i, chunkDef)
+			chunk := NewChunk(self.node, self, i, chunkDef, width)
 			self.chunks = append(self.chunks, chunk)
 		}
 	}
@@ -343,8 +353,18 @@ func (self *Fork) removeMetadata() {
 
 func (self *Fork) mkdirs() {
 	self.metadata.mkdirs()
-	self.split_metadata.mkdirs()
-	self.join_metadata.mkdirs()
+	if state, ok := self.split_metadata.getState(); self.node.split &&
+		(!ok || state != Complete) {
+		self.split_metadata.uniquify()
+	} else {
+		self.split_metadata.mkdirs()
+	}
+	if state, ok := self.join_metadata.getState(); self.node.split &&
+		(!ok || state != Complete) {
+		self.join_metadata.uniquify()
+	} else {
+		self.join_metadata.mkdirs()
+	}
 
 	for _, chunk := range self.chunks {
 		chunk.mkdirs()
@@ -432,7 +452,7 @@ func (self *Fork) getState() MetadataState {
 	return Ready
 }
 
-func (self *Fork) updateState(state string) {
+func (self *Fork) updateState(state, uniquifier string) {
 	if state == string(ProgressFile) {
 		self.lastPrint = time.Now()
 		if msg, err := self.metadata.readRawSafe(MetadataFileName(state)); err == nil {
@@ -442,11 +462,15 @@ func (self *Fork) updateState(state string) {
 		}
 	}
 	if strings.HasPrefix(state, SplitPrefix) {
-		self.split_metadata.cache(MetadataFileName(strings.TrimPrefix(state, SplitPrefix)))
+		self.split_metadata.cache(
+			MetadataFileName(strings.TrimPrefix(state, SplitPrefix)),
+			uniquifier)
 	} else if strings.HasPrefix(state, JoinPrefix) {
-		self.join_metadata.cache(MetadataFileName(strings.TrimPrefix(state, JoinPrefix)))
+		self.join_metadata.cache(
+			MetadataFileName(strings.TrimPrefix(state, JoinPrefix)),
+			uniquifier)
 	} else {
-		self.metadata.cache(MetadataFileName(state))
+		self.metadata.cache(MetadataFileName(state), uniquifier)
 	}
 }
 
@@ -519,8 +543,9 @@ func (self *Fork) step() {
 						fmt.Sprintf("The split method did not return a dictionary {'chunks': [{}], 'join': {}}.\nError: %s\nChunk count: %d", errstring, len(self.stageDefs.ChunkDefs)))
 				} else {
 					if len(self.chunks) == 0 {
+						width := util.WidthForInt(len(self.stageDefs.ChunkDefs))
 						for i, chunkDef := range self.stageDefs.ChunkDefs {
-							chunk := NewChunk(self.node, self, i, chunkDef)
+							chunk := NewChunk(self.node, self, i, chunkDef, width)
 							self.chunks = append(self.chunks, chunk)
 							chunk.mkdirs()
 						}
@@ -546,7 +571,7 @@ func (self *Fork) step() {
 					chunkOuts = append(chunkOuts, outs)
 				}
 				self.join_metadata.Write(ChunkOutsFile, chunkOuts)
-				self.join_metadata.Write(OutsFile, makeOutArgs(self.node.outparams, self.metadata.filesPath))
+				self.join_metadata.Write(OutsFile, makeOutArgs(self.node.outparams, self.join_metadata.curFilesPath))
 				if !self.join_has_run {
 					self.join_has_run = true
 					self.lastPrint = time.Now()
