@@ -81,7 +81,6 @@ type Chunk struct {
 	fork       *Fork
 	index      int
 	chunkDef   map[string]interface{}
-	path       string
 	fqname     string
 	metadata   *Metadata
 	hasBeenRun bool
@@ -101,10 +100,25 @@ func NewChunk(nodable Nodable, fork *Fork, index int,
 	self.fork = fork
 	self.index = index
 	self.chunkDef = chunkDef
-	self.path = path.Join(fork.path, fmt.Sprintf("chnk%0*d", chunkIndexWidth, index))
+	chunkPath := path.Join(fork.path, fmt.Sprintf("chnk%0*d", chunkIndexWidth, index))
 	self.fqname = fork.fqname + fmt.Sprintf(".chnk%0*d", chunkIndexWidth, index)
-	self.metadata = NewMetadataWithJournalPath(self.fqname, self.path, self.node.journalPath)
+	self.metadata = NewMetadataWithJournalPath(self.fqname, chunkPath, self.node.journalPath)
 	self.metadata.discoverUniquify()
+	// HACK: Sometimes we need to load older pipestances with newer martian
+	// versions.  Because of this, we may sometimes encounter chunks which
+	// used the older, non-padded chunk ID.  On the brighter side, these
+	// were all created pre-uniquification so there's nothing to worry about
+	// with symlinks.
+	if self.metadata.uniquifier == "" {
+		legacyPath := path.Join(fork.path, fmt.Sprintf("chnk%d", index))
+		if legacyPath != chunkPath {
+			if info, err := os.Stat(legacyPath); err != nil && info != nil {
+				if info.IsDir() {
+					self.metadata = NewMetadataWithJournalPath(self.fqname, chunkPath, self.node.journalPath)
+				}
+			}
+		}
+	}
 	self.hasBeenRun = false
 	if !self.node.split {
 		// If we're not splitting, just set the sole chunk's filesPath
