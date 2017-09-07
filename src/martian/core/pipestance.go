@@ -565,12 +565,15 @@ func (self *Pipestance) ZipMetadata(zipPath string) error {
 
 	nodes := self.allNodes()
 	metadatas := []*Metadata{}
-	filePaths := []string{}
 	for _, node := range nodes {
 		metadatas = append(metadatas, node.collectMetadatas()...)
 	}
+	filePaths := make([]string, 0, 7*len(metadatas))
+	removePaths := make([]string, 0, len(metadatas))
 	for _, metadata := range metadatas {
-		filePaths = append(filePaths, metadata.glob()...)
+		files := metadata.glob()
+		filePaths = append(filePaths, files...)
+		removePaths = append(removePaths, files...)
 		filePaths = append(filePaths, metadata.symlinks()...)
 	}
 
@@ -584,7 +587,7 @@ func (self *Pipestance) ZipMetadata(zipPath string) error {
 	}
 
 	// Remove all metadata files.
-	for _, filePath := range filePaths {
+	for _, filePath := range removePaths {
 		os.Remove(filePath)
 	}
 

@@ -13,24 +13,40 @@ import (
 	"os"
 	"path"
 	"path/filepath"
+	"strings"
 )
+
+func readSymlinkInZip(f *zip.File) (string, error) {
+	if reader, err := f.Open(); err != nil {
+		return "", err
+	} else {
+		defer reader.Close()
+		if symbytes, err := ioutil.ReadAll(reader); err != nil {
+			return "", err
+		} else {
+			return string(symbytes), nil
+		}
+	}
+}
 
 // Find a file in the zip.  Follows symlinks.
 func findFileInZip(zr *zip.ReadCloser, filePath string) *zip.File {
 	for _, f := range zr.File {
-		if f.Name == filePath {
+		if f.Mode()&os.ModeSymlink != 0 && strings.HasPrefix(filePath, f.Name+string(os.PathSeparator)) {
+			if linkPath, err := readSymlinkInZip(f); err != nil {
+				return nil
+			} else {
+				return findFileInZip(zr, path.Clean(
+					path.Join(path.Dir(f.Name), linkPath,
+						strings.TrimPrefix(filePath, f.Name+string(os.PathSeparator)))))
+			}
+		} else if f.Name == filePath {
 			if f.Mode()&os.ModeSymlink != 0 {
-				if reader, err := f.Open(); err != nil {
-					if symbytes, err := ioutil.ReadAll(reader); err != nil {
-						reader.Close()
-						return findFileInZip(zr, path.Clean(
-							path.Join(path.Dir(filePath), string(symbytes))))
-					} else {
-						reader.Close()
-						return f
-					}
-				} else {
+				if linkPath, err := readSymlinkInZip(f); err != nil {
 					return f
+				} else {
+					return findFileInZip(zr, path.Clean(
+						path.Join(path.Dir(filePath), linkPath)))
 				}
 			} else {
 				return f
