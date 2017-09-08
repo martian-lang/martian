@@ -493,6 +493,32 @@ func (self *MroCache) GetCallable(mroPaths []string, name string) (syntax.Callab
 	return nil, &RuntimeError{fmt.Sprintf("'%s' is not a declared pipeline or stage", name)}
 }
 
+func GetCallable(mroPaths []string, name string) (syntax.Callable, error) {
+	for _, mroPath := range mroPaths {
+		if fpaths, err := filepath.Glob(mroPath + "/[^_]*.mro"); err == nil {
+			for _, fpath := range fpaths {
+				if data, err := ioutil.ReadFile(fpath); err == nil {
+					if _, _, ast, err := syntax.ParseSource(
+						string(data), fpath, mroPaths, true); err == nil {
+						for _, callable := range ast.Callables.Table {
+							if callable.GetId() == name {
+								return callable, nil
+							}
+						}
+					} else {
+						return nil, err
+					}
+				} else {
+					return nil, err
+				}
+			}
+		} else {
+			return nil, err
+		}
+	}
+	return nil, &RuntimeError{fmt.Sprintf("'%s' is not a declared pipeline or stage", name)}
+}
+
 func buildVal(param syntax.Param, val interface{}) string {
 	indent := "    "
 	if data, err := json.MarshalIndent(val, "", indent); err == nil {
@@ -513,7 +539,14 @@ func (self *Runtime) BuildCallSource(incpaths []string, name string, args map[st
 		util.LogInfo("package", "Could not get callable: %s", name)
 		return "", err
 	}
+	return BuildCallSource(incpaths, name, args, sweepargs, callable)
+}
 
+func BuildCallSource(incpaths []string,
+	name string,
+	args map[string]interface{},
+	sweepargs []string,
+	callable syntax.Callable) (string, error) {
 	// Build @include statements.
 	includes := []string{}
 	for _, incpath := range incpaths {

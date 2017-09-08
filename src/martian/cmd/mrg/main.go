@@ -40,10 +40,6 @@ Options:
 		mroPaths = util.ParseMroPath(value)
 	}
 
-	// Setup runtime with MRO path.
-	rt := core.NewRuntime("local", "disable", "disable", martianVersion)
-	rt.MroCache.CacheMros(mroPaths)
-
 	// Read and parse JSON from stdin.
 	dec := json.NewDecoder(os.Stdin)
 	dec.UseNumber()
@@ -58,6 +54,10 @@ Options:
 			fmt.Println("No pipeline or stage specified.")
 			os.Exit(1)
 		}
+		callable, err := core.GetCallable(mroPaths, name)
+		if err != nil {
+			fmt.Printf("Could not find %s: %v\n", name, err)
+		}
 
 		args, ok := input["args"].(map[string]interface{})
 		if !ok {
@@ -70,7 +70,9 @@ Options:
 			sweepargs = util.ArrayToString(sweeplist)
 		}
 
-		src, bldErr := rt.BuildCallSource(incpaths, name, args, sweepargs, mroPaths)
+		src, bldErr := core.BuildCallSource(
+			incpaths, name, args, sweepargs,
+			callable)
 
 		if bldErr == nil {
 			fmt.Print(src)
