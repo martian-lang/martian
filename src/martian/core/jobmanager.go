@@ -443,6 +443,11 @@ func (self *RemoteJobManager) GetSystemReqs(threads int, memGB int) (int, int) {
 	}
 
 	// Sanity check memory requirements.
+	if memGB < 0 {
+		// Negative request is a sentinel value requesting as much as possible.
+		// For remote jobs, at least for now, give reserve the minimum usable.
+		memGB = -memGB
+	}
 	if memGB < 1 {
 		memGB = self.config.jobSettings.MemGBPerJob
 	}
