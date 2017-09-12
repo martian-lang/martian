@@ -72,6 +72,7 @@ func (self *Stagestance) GetFatalError() (string, bool, string, string, Metadata
 type Pipestance struct {
 	node     *Node
 	metadata *Metadata
+	uuid     string
 
 	// Cache for self.node.allNodes()
 	allNodesCache    []*Node
@@ -667,6 +668,23 @@ func (self *Pipestance) RecordUiPort(url string) error {
 
 func (self *Pipestance) ClearUiPort() error {
 	return self.metadata.remove(UiPort)
+}
+
+func (self *Pipestance) GetUuid() (string, error) {
+	if self.uuid != "" {
+		return self.uuid, nil
+	} else {
+		return self.metadata.readRawSafe(UuidFile)
+	}
+}
+
+func (self *Pipestance) SetUuid(uuid string) error {
+	if err := self.metadata.WriteRaw(UuidFile, uuid); err == nil {
+		self.uuid = uuid
+		return nil
+	} else {
+		return err
+	}
 }
 
 func (self *Pipestance) Lock() error {

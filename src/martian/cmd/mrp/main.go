@@ -33,9 +33,13 @@ import (
 // We need to be able to recreate pipestances and share the new pipestance
 // object between the runloop and the UI.
 type pipestanceHolder struct {
-	pipestance *core.Pipestance
-	factory    core.PipestanceFactory
-	lock       sync.Mutex
+	pipestance   *core.Pipestance
+	factory      core.PipestanceFactory
+	info         *api.PipestanceInfo
+	authKey      string
+	enableUI     bool
+	lastRegister time.Time
+	lock         sync.Mutex
 }
 
 func (self *pipestanceHolder) getPipestance() *core.Pipestance {
@@ -64,6 +68,39 @@ func (self *pipestanceHolder) reset() error {
 	return err
 }
 
+func (self *pipestanceHolder) UpdateState(state core.MetadataState) {
+	oldState := self.info.State
+	self.info.State = state
+	if oldState != state || time.Since(self.lastRegister) > 10*time.Minute {
+		self.Register()
+	}
+}
+
+func (self *pipestanceHolder) Register() {
+	if !self.enableUI {
+		return
+	}
+	if enterpriseHost := os.Getenv("MARTIAN_ENTERPRISE"); enterpriseHost != "" {
+		u := url.URL{
+			Scheme: "http",
+			Host:   enterpriseHost,
+			Path:   api.QueryRegisterEnterprise,
+		}
+		form := self.info.AsForm()
+		form.Set("authkey", self.authKey)
+		self.lastRegister = time.Now()
+		go func() {
+			if res, err := http.PostForm(u.String(), form); err == nil {
+				if res.StatusCode >= http.StatusBadRequest {
+					util.LogError(err, "mrentr", "Registration failed with %s.", res.Status)
+				}
+			} else {
+				util.LogError(err, "mrentr", "Registration to %v failed", u)
+			}
+		}()
+	}
+}
+
 //=============================================================================
 // Pipestance runner.
 //=============================================================================
@@ -80,6 +117,7 @@ func runLoop(pipestanceBox *pipestanceHolder, stepSecs int, vdrMode string,
 
 		// Check for completion states.
 		state := pipestance.GetState()
+		pipestanceBox.UpdateState(state)
 		if state == "complete" {
 			if vdrMode == "disable" {
 				util.LogInfo("runtime", "VDR disabled. No files killed.")
@@ -619,10 +657,12 @@ Options:
 		util.LogTee(path.Join(pipestancePath, "_log"))
 	}
 
+	uuid, _ := pipestance.GetUuid()
+
 	//=========================================================================
 	// Collect pipestance static info.
 	//=========================================================================
-	info := &api.PipestanceInfo{
+	pipestanceBox.info = &api.PipestanceInfo{
 		Hostname:     hostname,
 		Username:     username,
 		Cwd:          cwd,
@@ -643,6 +683,7 @@ Options:
 		ProfileMode:  profileMode,
 		Port:         uiport,
 		MroVersion:   mroVersion,
+		Uuid:         uuid,
 	}
 
 	//=========================================================================
@@ -654,7 +695,11 @@ Options:
 			Host:   mrvhost,
 			Path:   api.QueryRegisterMrv,
 		}
-		if res, err := http.PostForm(u.String(), info.AsForm()); err == nil {
+		form := pipestanceBox.info.AsForm()
+		if authKey != "" {
+			form.Set("authkey", authKey)
+		}
+		if res, err := http.PostForm(u.String(), form); err == nil {
 			if res.StatusCode == 200 {
 				if content, err := ioutil.ReadAll(res.Body); err == nil {
 					uiport = string(content)
@@ -690,8 +735,8 @@ Options:
 				Scheme: "http",
 				Host:   listener.Addr().String(),
 			}
-			info.Port = u.Port()
-			u.Host = net.JoinHostPort(hostname, info.Port)
+			pipestanceBox.info.Port = u.Port()
+			u.Host = net.JoinHostPort(hostname, pipestanceBox.info.Port)
 			if authKey != "" {
 				q := u.Query()
 				q.Set("auth", authKey)
@@ -699,6 +744,8 @@ Options:
 			}
 			util.Println("Serving UI at %s\n", u.String())
 			pipestance.RecordUiPort(u.String())
+			pipestanceBox.authKey = authKey
+			pipestanceBox.enableUI = true
 		}
 	} else {
 		util.LogInfo("webserv", "UI disabled.")
@@ -720,7 +767,7 @@ Options:
 	// Start web server.
 	//=========================================================================
 	if listener != nil {
-		go runWebServer(listener, rt, &pipestanceBox, info, authKey, requireAuth)
+		go runWebServer(listener, rt, &pipestanceBox, requireAuth)
 	}
 
 	//=========================================================================

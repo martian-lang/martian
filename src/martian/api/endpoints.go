@@ -29,4 +29,7 @@ const (
 
 	// Register an instance of mrp with an mrv host.
 	QueryRegisterMrv = "/register"
+
+	// Register (or re-register) an instance of mrp with an Enterprise host.
+	QueryRegisterEnterprise = "/api/register"
 )

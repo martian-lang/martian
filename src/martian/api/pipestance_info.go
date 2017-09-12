@@ -50,6 +50,7 @@ type PipestanceInfo struct {
 	ProfileMode  core.ProfileMode   `json:"mroprofile"`
 	Port         string             `json:"mroport"`
 	MroVersion   string             `json:"mroversion"`
+	Uuid         string             `json:"uuid"`
 }
 
 // Convert url form fields to a PipestanceInfo.
@@ -72,6 +73,7 @@ func ParsePipestanceInfoForm(form url.Values) (PipestanceInfo, error) {
 		ProfileMode:  core.ProfileMode(form.Get("mroprofile")),
 		Port:         form.Get("mroport"),
 		MroVersion:   form.Get("mroversion"),
+		Uuid:         form.Get("uuid"),
 	}
 	var err, lastErr error
 	if info.Pid, err = strconv.Atoi(form.Get("pid")); err != nil {
@@ -109,5 +111,6 @@ func (self *PipestanceInfo) AsForm() url.Values {
 	form.Add("mroprofile", string(self.ProfileMode))
 	form.Add("mroport", self.Port)
 	form.Add("mroversion", self.MroVersion)
+	form.Add("uuid", self.Uuid)
 	return form
 }

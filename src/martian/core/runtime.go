@@ -293,7 +293,7 @@ func (self *Runtime) InvokePipeline(src string, srcPath string, psid string,
 		Pipelines: mroVersion,
 	})
 	pipestance.metadata.Write(TagsFile, tags)
-	pipestance.metadata.WriteRaw(UuidFile, uuid.NewV4().String())
+	pipestance.SetUuid(uuid.NewV4().String())
 	pipestance.metadata.WriteRaw(TimestampFile, "start: "+util.Timestamp())
 
 	return pipestance, nil

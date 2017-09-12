@@ -39,16 +39,12 @@ func runWebServer(
 	listener net.Listener,
 	rt *core.Runtime,
 	pipestanceBox *pipestanceHolder,
-	info *api.PipestanceInfo,
-	authKey string,
 	requireAuth bool) {
 	server := &mrpWebServer{
 		listener:      listener,
 		webRoot:       findWebRoot(),
 		rt:            rt,
 		pipestanceBox: pipestanceBox,
-		info:          info,
-		authKey:       authKey,
 		readAuth:      requireAuth,
 	}
 	server.Start()
@@ -61,9 +57,6 @@ func findWebRoot() string {
 type mrpWebServer struct {
 	listener net.Listener
 
-	// The authentication token expected in the URL.
-	authKey string
-
 	// True if authentication is required for read-only commands.
 	// Authentication is always required for write commands.
 	readAuth bool
@@ -71,7 +64,6 @@ type mrpWebServer struct {
 	rt            *core.Runtime
 	pipestanceBox *pipestanceHolder
 	webRoot       string
-	info          *api.PipestanceInfo
 	graphPage     []byte
 	startTime     time.Time
 	mutex         sync.Mutex
@@ -107,14 +99,14 @@ func (self *mrpWebServer) verifyAuth(w http.ResponseWriter, req *http.Request) b
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return false
 	}
-	if self.authKey == "" {
+	if self.pipestanceBox.authKey == "" {
 		return true
 	}
 	key := req.FormValue("auth")
 	// No early abort on the check here, to prevent timing attacks.
 	// (not that this is serious security anyway...)
-	authKey := []byte(self.authKey)
-	pass := len(self.authKey) == len(key)
+	authKey := []byte(self.pipestanceBox.authKey)
+	pass := len(self.pipestanceBox.authKey) == len(key)
 	for i, c := range []byte(key) {
 		if i >= len(authKey) || authKey[i] != c {
 			pass = false
@@ -162,8 +154,8 @@ func (self *mrpWebServer) makeGraphPage() {
 			AdminStyle:   false,
 			Release:      util.IsRelease(),
 		}
-		if self.authKey != "" && self.readAuth {
-			graphParams.Auth = "?auth=" + self.authKey
+		if self.pipestanceBox.authKey != "" && self.readAuth {
+			graphParams.Auth = "?auth=" + self.pipestanceBox.authKey
 		}
 		var buff bytes.Buffer
 		zipper, _ := gzip.NewWriterLevel(&buff, gzip.BestCompression)
@@ -215,8 +207,8 @@ func (self *mrpWebServer) getInfo(w http.ResponseWriter, req *http.Request) {
 	pipestance := self.pipestanceBox.getPipestance()
 	st := pipestance.GetState()
 	self.mutex.Lock()
-	self.info.State = st
-	bytes, err := json.Marshal(self.info)
+	self.pipestanceBox.info.State = st
+	bytes, err := json.Marshal(self.pipestanceBox.info)
 	self.mutex.Unlock()
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
@@ -234,9 +226,9 @@ func (self *mrpWebServer) getState(w http.ResponseWriter, req *http.Request) {
 	state := map[string]interface{}{}
 	st := pipestance.GetState()
 	state["nodes"] = getSerialization(self.rt, pipestance, core.FinalState)
-	state["info"] = self.info
+	state["info"] = self.pipestanceBox.info
 	self.mutex.Lock()
-	self.info.State = st
+	self.pipestanceBox.info.State = st
 	bytes, err := json.Marshal(state)
 	self.mutex.Unlock()
 	if err != nil {
