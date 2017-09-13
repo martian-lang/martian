@@ -548,13 +548,16 @@ func (self *Fork) step() {
 			// written yet or is corrupted. Check that stage_defs exists
 			// before attempting to read and unmarshal it.
 			if self.split_metadata.exists(StageDefsFile) {
-				if err := json.Unmarshal([]byte(self.split_metadata.readRaw(StageDefsFile)), &self.stageDefs); err != nil || len(self.stageDefs.ChunkDefs) == 0 {
+				if err := json.Unmarshal([]byte(self.split_metadata.readRaw(StageDefsFile)), &self.stageDefs); err != nil {
 					errstring := "none"
 					if err != nil {
 						errstring = err.Error()
 					}
 					self.split_metadata.WriteRaw(Errors,
 						fmt.Sprintf("The split method did not return a dictionary {'chunks': [{}], 'join': {}}.\nError: %s\nChunk count: %d", errstring, len(self.stageDefs.ChunkDefs)))
+				} else if len(self.stageDefs.ChunkDefs) == 0 {
+					// Skip the chunk phase.
+					state = Complete.Prefixed(ChunksPrefix)
 				} else {
 					if len(self.chunks) == 0 {
 						width := util.WidthForInt(len(self.stageDefs.ChunkDefs))
@@ -570,7 +573,8 @@ func (self *Fork) step() {
 					}
 				}
 			}
-		} else if state == Complete.Prefixed(ChunksPrefix) {
+		}
+		if state == Complete.Prefixed(ChunksPrefix) {
 			threads, memGB, special := self.node.setJoinJobReqs(self.stageDefs.JoinDef)
 			resolvedBindings := resolveBindings(self.node.argbindings, self.argPermute)
 			for id, value := range self.stageDefs.JoinDef {
