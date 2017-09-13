@@ -112,7 +112,7 @@ func NewChunk(nodable Nodable, fork *Fork, index int,
 	if self.metadata.uniquifier == "" {
 		legacyPath := path.Join(fork.path, fmt.Sprintf("chnk%d", index))
 		if legacyPath != chunkPath {
-			if info, err := os.Stat(legacyPath); err != nil && info != nil {
+			if info, err := os.Stat(legacyPath); err == nil && info != nil {
 				if info.IsDir() {
 					self.metadata = NewMetadataWithJournalPath(self.fqname, legacyPath, self.node.journalPath)
 				}
