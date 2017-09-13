@@ -256,10 +256,12 @@ func NewFork(nodable Nodable, index int, argPermute map[string]interface{}) *For
 	self.fqname = self.node.fqname + fmt.Sprintf(".fork%d", index)
 	self.metadata = NewMetadata(self.fqname, self.path)
 	self.split_metadata = NewMetadata(self.fqname+".split", path.Join(self.path, "split"))
-	self.split_metadata.discoverUniquify()
 	self.join_metadata = NewMetadata(self.fqname+".join", path.Join(self.path, "join"))
-	self.join_metadata.finalFilePath = self.metadata.finalFilePath
-	self.join_metadata.discoverUniquify()
+	if self.node.split {
+		self.split_metadata.discoverUniquify()
+		self.join_metadata.finalFilePath = self.metadata.finalFilePath
+		self.join_metadata.discoverUniquify()
+	}
 	self.argPermute = argPermute
 	self.split_has_run = false
 	self.join_has_run = false
