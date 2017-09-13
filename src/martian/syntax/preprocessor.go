@@ -46,12 +46,19 @@ func preprocess(src string, fname string, incPaths []string) (string, []string, 
 	offsets := re.FindAllStringIndex(src, -1)
 	fileNotFoundError := &PreprocessError{[]string{}}
 	ifnames := []string{}
+	foundNames := make(map[string]struct{})
 	processedSrc := re.ReplaceAllStringFunc(src, func(match string) string {
 		// Get name of file to be included.
 		ifname := re.FindStringSubmatch(match)[1]
 		if ifname == fname {
 			fileNotFoundError.files = append(fileNotFoundError.files, "Cannot include self.")
 			return ""
+		}
+
+		if _, ok := foundNames[ifname]; ok {
+			return ""
+		} else {
+			foundNames[ifname] = struct{}{}
 		}
 
 		// Add name of file to include files list.
