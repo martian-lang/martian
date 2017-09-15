@@ -53,6 +53,33 @@ type PipestanceInfo struct {
 	Uuid         string             `json:"uuid"`
 }
 
+// Gets a shallow copy of this object with the InvokeSource omitted.
+func (self *PipestanceInfo) StripMro() *PipestanceInfo {
+	return &PipestanceInfo{
+		Hostname:   self.Hostname,
+		Username:   self.Username,
+		Cwd:        self.Cwd,
+		Binpath:    self.Binpath,
+		Cmdline:    self.Cmdline,
+		Pid:        self.Pid,
+		Start:      self.Start,
+		Version:    self.Version,
+		Pname:      self.Pname,
+		PsId:       self.PsId,
+		State:      self.State,
+		JobMode:    self.JobMode,
+		MaxCores:   self.MaxCores,
+		MaxMemGB:   self.MaxMemGB,
+		InvokePath: self.InvokePath,
+		// omitted source
+		MroPath:     self.MroPath,
+		ProfileMode: self.ProfileMode,
+		Port:        self.Port,
+		MroVersion:  self.MroVersion,
+		Uuid:        self.Uuid,
+	}
+}
+
 // Convert url form fields to a PipestanceInfo.
 func ParsePipestanceInfoForm(form url.Values) (PipestanceInfo, error) {
 	info := PipestanceInfo{
