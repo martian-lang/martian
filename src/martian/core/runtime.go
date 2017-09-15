@@ -293,7 +293,12 @@ func (self *Runtime) InvokePipeline(src string, srcPath string, psid string,
 		Pipelines: mroVersion,
 	})
 	pipestance.metadata.Write(TagsFile, tags)
-	pipestance.SetUuid(uuid.NewV4().String())
+	if uid := os.Getenv("MRO_FORCE_UUID"); uid == "" {
+		pipestance.SetUuid(uuid.NewV4().String())
+	} else {
+		util.LogInfo("runtime", "UUID forced to %s by environment", uid)
+		pipestance.SetUuid(uid)
+	}
 	pipestance.metadata.WriteRaw(TimestampFile, "start: "+util.Timestamp())
 
 	return pipestance, nil
