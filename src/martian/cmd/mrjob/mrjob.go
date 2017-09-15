@@ -21,6 +21,9 @@ import (
 	"time"
 )
 
+const HeartbeatInterval = time.Minute * 2
+const MemorySampleInterval = time.Second * 30
+
 type runner struct {
 	job         *exec.Cmd
 	log         *os.File
@@ -353,33 +356,54 @@ func sigToErr(err error) error {
 // Wait for the process to complete or, if monitoring is enabled, for it to
 // exceed its memory quota.
 func (self *runner) WaitLoop() {
-	wait := make(chan error)
+	wait := make(chan error, 1)
+	done := make(chan struct{}, 1)
 	go func() {
 		errorBytes := readBytes(8100, self.errorReader)
 		if len(errorBytes) > 0 {
+			// If the job has finished, we want to wait on it so it isn't
+			// a zombie while we do our cleanup, and also so that its rusage
+			// gets reported.  However, if it doesn't die we don't want to
+			// block our own exit.  Under most circumstances the process will
+			// have already terminated by the time we get here.
+			go func() {
+				self.job.Wait()
+				done <- struct{}{}
+			}()
 			wait <- &stageReturnedError{message: string(errorBytes)}
 		} else {
+			done <- struct{}{}
 			wait <- sigToErr(self.job.Wait())
 		}
 	}()
 	// Make sure we record at least one memory high-water mark, even
 	// for short stages.
 	self.getChildMemGB()
+	lastHeartbeat := time.Now()
 	err := func() error {
 		defer self.errorReader.Close()
-		timer := time.NewTimer(time.Second * 120)
+		timer := time.NewTimer(MemorySampleInterval)
 		for {
 			select {
 			case err := <-wait:
 				return err
 			case <-timer.C:
-				if err := self.monitor(); err != nil {
+				if err := self.monitor(&lastHeartbeat); err != nil {
 					return err
 				}
-				timer.Reset(time.Second * 120)
+				timer.Reset(MemorySampleInterval)
 			}
 		}
 	}()
+	{
+		// Wait up to 5 seconds for the job to finish, to ensure we get rusage.
+		timer := time.NewTimer(time.Second * 5)
+		select {
+		case <-timer.C:
+			self.job.Process.Signal(syscall.SIGKILL)
+		case <-done:
+		}
+	}
 	util.EnterCriticalSection()
 	defer util.ExitCriticalSection()
 	if err != nil {
@@ -400,15 +424,19 @@ func (self *runner) getChildMemGB() float64 {
 	return float64(mem.Rss) / (1024 * 1024 * 1024)
 }
 
-func (self *runner) monitor() error {
+func (self *runner) monitor(lastHeartbeat *time.Time) error {
 	if self.jobInfo.Monitor == "monitor" {
 		if mem := self.getChildMemGB(); mem > float64(self.jobInfo.MemGB) {
 			self.job.Process.Kill()
 			return fmt.Errorf("Stage exceeded its memory quota (using %.1f, allowed %dG)", mem, self.jobInfo.MemGB)
 		}
 	}
-	if err := self.metadata.UpdateJournal(core.Heartbeat); err != nil {
-		util.PrintError(err, "monitor", "Could not write heartbeat.")
+	if time.Since(*lastHeartbeat) > HeartbeatInterval {
+		if err := self.metadata.UpdateJournal(core.Heartbeat); err != nil {
+			util.PrintError(err, "monitor", "Could not write heartbeat.")
+		} else {
+			*lastHeartbeat = time.Now()
+		}
 	}
 	return nil
 }
