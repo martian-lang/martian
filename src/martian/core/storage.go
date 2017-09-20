@@ -108,19 +108,22 @@ func (self *Fork) vdrKill() *VDRKillReport {
 }
 
 /* Is self or any of its ancestors symlinked? */
-func (self *Node) vdrCheckSymlink() bool {
+func (self *Node) vdrCheckSymlink() (string, error) {
 
 	/* Nope! Got all the way to the top.
 	 * (We don't care of the top-level directory is a symlink)
 	 */
 	if self.parent == nil {
-		return false
+		return "", nil
 	}
 	statinfo, err := os.Lstat(self.path)
 
+	if err != nil {
+		return "", err
+	}
 	/* Yep! Found a symlink */
-	if err != nil || (statinfo.Mode()&os.ModeSymlink) != 0 {
-		return true
+	if (statinfo.Mode() & os.ModeSymlink) != 0 {
+		return self.path, nil
 	}
 
 	return self.parent.getNode().vdrCheckSymlink()
@@ -131,8 +134,11 @@ func (self *Node) vdrKill() (*VDRKillReport, bool) {
 	/*
 	 * Refuse to VDR a node if it, or any of its ancestors are symlinked.
 	 */
-	if self.vdrCheckSymlink() {
-		util.LogInfo("runtime", "Refuse to VDR across a symlink: %v", self.fqname)
+	if symlink, err := self.vdrCheckSymlink(); symlink != "" {
+		util.LogInfo("runtime", "Refuse to VDR across a symlink %s: %v", symlink, self.fqname)
+		return &VDRKillReport{}, true
+	} else if err != nil {
+		util.LogError(err, "runtime", "Error reading node directory: %v", self.fqname)
 		return &VDRKillReport{}, true
 	}
 
