@@ -84,7 +84,7 @@ func (self *SignalHandler) Notify() {
 
 // Kill this process cleanly.
 func Suicide() {
-	Println("Shutting down.")
+	Println("%s Shutting down.", Timestamp())
 	if signalHandler == nil {
 		os.Exit(1)
 	}
@@ -99,7 +99,7 @@ func SetupSignalHandlers() {
 	go func() {
 		sig := <-sigchan
 		if sig != syscall.Signal(-1) {
-			Println("Caught signal %v", sig)
+			Println("%s Caught signal %v", Timestamp(), sig)
 		}
 
 		// Set exit flag
