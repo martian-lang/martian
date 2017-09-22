@@ -425,10 +425,15 @@ func (self *runner) getChildMemGB() float64 {
 }
 
 func (self *runner) monitor(lastHeartbeat *time.Time) error {
-	if self.jobInfo.Monitor == "monitor" {
-		if mem := self.getChildMemGB(); mem > float64(self.jobInfo.MemGB) {
+	if mem := self.getChildMemGB(); mem > float64(self.jobInfo.MemGB) {
+		if self.jobInfo.Monitor == "monitor" {
 			self.job.Process.Kill()
-			return fmt.Errorf("Stage exceeded its memory quota (using %.1f, allowed %dG)", mem, self.jobInfo.MemGB)
+			return fmt.Errorf("Stage exceeded its memory quota (using %.1f, allowed %dG)",
+				mem, self.jobInfo.MemGB)
+		} else {
+			util.LogInfo("monitor",
+				"Stage exceeded its memory quota (using %.1f, allowed %dG)",
+				mem, self.jobInfo.MemGB)
 		}
 	}
 	if time.Since(*lastHeartbeat) > HeartbeatInterval {
