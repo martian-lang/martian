@@ -573,6 +573,7 @@ func (self *RemoteJobManager) sendJob(shellCmd string, argv []string, envs map[s
 		"MEM_MB_PER_THREAD": fmt.Sprintf("%d", memGBPerThread*1024),
 		"MEM_KB_PER_THREAD": fmt.Sprintf("%d", memGBPerThread*1024*1024),
 		"MEM_B_PER_THREAD":  fmt.Sprintf("%d", memGBPerThread*1024*1024*1024),
+		"ACCOUNT":           os.Getenv("MRO_ACCOUNT"),
 		"RESOURCES":         mappedJobResourcesOpt,
 	}
 
