@@ -261,7 +261,7 @@ func (self *LocalJobManager) Enqueue(shellCmd string, argv []string,
 			util.LogError(err, "jobmngr",
 				"%s requested %d threads, but the job manager was only configured to use %d.",
 				metadata.fqname, threads, self.maxCores)
-			metadata.WriteRaw("errors", err.Error())
+			metadata.WriteRaw(Errors, err.Error())
 			return
 		}
 		if self.debug {
@@ -277,7 +277,8 @@ func (self *LocalJobManager) Enqueue(shellCmd string, argv []string,
 			util.LogError(err, "jobmngr",
 				"%s requested %d GB of memory, but the job manager was only configured to use %d.",
 				metadata.fqname, memGB, self.maxMemGB)
-			metadata.WriteRaw("errors", err.Error())
+			self.coreSem.Release(int64(threads))
+			metadata.WriteRaw(Errors, err.Error())
 			return
 		}
 		if self.debug {
@@ -334,7 +335,12 @@ func (self *LocalJobManager) Enqueue(shellCmd string, argv []string,
 				retries = maxRetries + 1
 			}
 			if retries > maxRetries {
-				metadata.WriteRaw("errors", err.Error())
+				if _, err2 := metadata.readRawSafe(Errors); os.IsNotExist(err2) {
+					// Only write _errors if the job didn't write one before
+					// failing.  Because this is local mode, we don't need to
+					// worry about nfs data races.
+					metadata.WriteRaw(Errors, err.Error())
+				}
 			} else {
 				util.LogInfo("jobmngr", "Job failed: %s. Retrying job %s in %d seconds", err.Error(), fqname, waitTime)
 				self.Enqueue(shellCmd, argv, envs, metadata, threads, memGB, fqname, retries,
@@ -604,7 +610,7 @@ func (self *RemoteJobManager) sendJob(shellCmd string, argv []string, envs map[s
 	defer util.ExitCriticalSection()
 	metadata.remove("queued_locally")
 	if output, err := cmd.CombinedOutput(); err != nil {
-		metadata.WriteRaw("errors", "jobcmd error ("+err.Error()+"):\n"+string(output))
+		metadata.WriteRaw(Errors, "jobcmd error ("+err.Error()+"):\n"+string(output))
 	} else {
 		trimmed := strings.TrimSpace(string(output))
 		// jobids should not have spaces in them.  This is the most general way to

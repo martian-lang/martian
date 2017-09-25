@@ -2,6 +2,7 @@
   "default_retries": 2,
   "retry_on": [
     "^signal: ",
+    "^(?:[0-9-]+ [0-9:]+ )?Caught signal ",
     "resource temporarily unavailable",
     "No heartbeat detected for",
     "^error: .Errno 12. Cannot allocate memory",
