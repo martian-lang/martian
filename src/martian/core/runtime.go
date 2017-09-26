@@ -414,6 +414,11 @@ func (self *Runtime) InvokeStage(src string, srcPath string, ssid string,
 	return stagestance, nil
 }
 
+func (self *Runtime) GetSerializationInto(pipestancePath string, name MetadataFileName, target interface{}) error {
+	metadata := NewMetadata("", pipestancePath)
+	return metadata.ReadInto(name, target)
+}
+
 func (self *Runtime) GetSerialization(pipestancePath string, name MetadataFileName) (interface{}, bool) {
 	metadata := NewMetadata("", pipestancePath)
 	metadata.loadCache()

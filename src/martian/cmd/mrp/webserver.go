@@ -24,15 +24,20 @@ import (
 	"time"
 )
 
-//=============================================================================
-// Page and form structs.
-//=============================================================================
-
-func getSerialization(rt *core.Runtime, pipestance *core.Pipestance, name core.MetadataFileName) interface{} {
-	if ser, ok := rt.GetSerialization(pipestance.GetPath(), name); ok {
-		return ser
+func getFinalState(rt *core.Runtime, pipestance *core.Pipestance) []*core.NodeInfo {
+	var target []*core.NodeInfo
+	if err := rt.GetSerializationInto(pipestance.GetPath(), core.FinalState, &target); err == nil {
+		return target
 	}
-	return pipestance.Serialize(name)
+	return pipestance.SerializeState()
+}
+
+func getPerf(rt *core.Runtime, pipestance *core.Pipestance) []*core.NodePerfInfo {
+	var target []*core.NodePerfInfo
+	if err := rt.GetSerializationInto(pipestance.GetPath(), core.Perf, &target); err == nil {
+		return target
+	}
+	return pipestance.SerializePerf()
 }
 
 func runWebServer(
@@ -223,19 +228,26 @@ func (self *mrpWebServer) getState(w http.ResponseWriter, req *http.Request) {
 		return
 	}
 	pipestance := self.pipestanceBox.getPipestance()
-	state := map[string]interface{}{}
+	state := api.PipestanceState{
+		Nodes: getFinalState(self.rt, pipestance),
+		Info:  self.pipestanceBox.info,
+	}
 	st := pipestance.GetState()
-	state["nodes"] = getSerialization(self.rt, pipestance, core.FinalState)
-	state["info"] = self.pipestanceBox.info
 	self.mutex.Lock()
 	self.pipestanceBox.info.State = st
-	bytes, err := json.Marshal(state)
+	bytes, err := json.Marshal(&state)
 	self.mutex.Unlock()
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
-	w.Write(bytes)
+
+	w.Header().Set("Content-Encoding", "gzip")
+	zipper, _ := gzip.NewWriterLevel(w, gzip.BestSpeed)
+	zipper.Write(bytes)
+	if err := zipper.Close(); err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+	}
 }
 
 // Get pipestance performance data: disable API endpoint for release
@@ -244,14 +256,21 @@ func (self *mrpWebServer) getPerf(w http.ResponseWriter, req *http.Request) {
 		return
 	}
 	pipestance := self.pipestanceBox.getPipestance()
-	state := map[string]interface{}{}
-	state["nodes"] = getSerialization(self.rt, pipestance, core.Perf)
-	bytes, err := json.Marshal(state)
+	state := api.PerfInfo{
+		Nodes: getPerf(self.rt, pipestance),
+	}
+	bytes, err := json.Marshal(&state)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
-	w.Write(bytes)
+
+	w.Header().Set("Content-Encoding", "gzip")
+	zipper, _ := gzip.NewWriterLevel(w, gzip.BestSpeed)
+	zipper.Write(bytes)
+	if err := zipper.Close(); err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+	}
 }
 
 // Get metadata file contents.

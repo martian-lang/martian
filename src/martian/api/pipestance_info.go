@@ -53,6 +53,18 @@ type PipestanceInfo struct {
 	Uuid         string             `json:"uuid"`
 }
 
+// The full state information for a pipestance, including the status of every
+// node in the pipeline graph.
+type PipestanceState struct {
+	Nodes []*core.NodeInfo `json:"nodes"`
+	Info  *PipestanceInfo  `json:"info"`
+}
+
+// All of the performance information for a pipestance.
+type PerfInfo struct {
+	Nodes []*core.NodePerfInfo `json:"nodes"`
+}
+
 // Gets a shallow copy of this object with the InvokeSource omitted.
 func (self *PipestanceInfo) StripMro() *PipestanceInfo {
 	return &PipestanceInfo{
