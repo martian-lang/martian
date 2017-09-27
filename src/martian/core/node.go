@@ -666,11 +666,9 @@ func (self *Node) refreshState(readOnly bool) {
 			os.Remove(file)
 		}
 	}
-	if self.rt.JobManager.hasQueueCheck() {
-		for _, node := range self.getFrontierNodes() {
-			for _, meta := range node.collectMetadatas() {
-				meta.endRefresh(startTime)
-			}
+	for _, node := range self.getFrontierNodes() {
+		for _, meta := range node.collectMetadatas() {
+			meta.endRefresh(startTime)
 		}
 	}
 	for fork, _ := range updatedForks {
