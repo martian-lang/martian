@@ -574,6 +574,23 @@ func (self *Fork) step() {
 						chunk.step()
 					}
 				}
+			} else {
+				// If the stage "succeeded" without writing _stage_defs,
+				// don't wait forever for the file to show up. Normal
+				// heartbeat checks only happen when "running" but this
+				// replicates much of the logic of metadata.checkHeartbeat()
+				if self.split_metadata.lastHeartbeat.IsZero() ||
+					self.split_metadata.exists(Heartbeat) {
+					self.split_metadata.uncache(Heartbeat)
+					self.split_metadata.lastHeartbeat = time.Now()
+				}
+				if time.Since(self.split_metadata.lastHeartbeat) >
+					time.Minute*heartbeatTimeout {
+					// Pretend we do see it, so it will try to read next time
+					// around.  If it succeeds, that means we missed a journal
+					// update.  If it doesn't, the split will be errored out.
+					self.split_metadata.cache(StageDefsFile, self.split_metadata.uniquifier)
+				}
 			}
 		}
 		if state == Complete.Prefixed(ChunksPrefix) {
