@@ -170,18 +170,48 @@ func (self *runner) Fail(err error, message string) {
 		util.PrintError(writeError, "monitor", "Could not write errors file.")
 	}
 	if jErr := self.metadata.UpdateJournal(target); jErr != nil {
-		util.PrintError(jErr, "monitor", "Could not update error journal file.")
+		util.PrintError(jErr, "monitor", "Could not update %v journal file.", target)
 	}
 	os.Exit(0)
 }
 
+func totalCpu(ru *core.RusageInfo) float64 {
+	if ru == nil {
+		return 0
+	}
+	var total float64
+	if ru.Self != nil {
+		total += ru.Self.UserTime + ru.Self.SystemTime
+	}
+	if ru.Children != nil {
+		total += ru.Children.UserTime + ru.Children.SystemTime
+	}
+	return total
+}
+
 func (self *runner) Complete() {
 	self.done()
-	if writeError := self.metadata.WriteTime(core.CompleteFile); writeError != nil {
-		util.PrintError(writeError, "monitor", "Could not write complete file.")
+	target := core.CompleteFile
+	if self.jobInfo.Monitor == "monitor" &&
+		time.Since(self.start) > time.Minute*15 {
+		if threads := totalCpu(self.jobInfo.RusageInfo) /
+			time.Since(self.start).Seconds(); threads > 1.5*float64(self.jobInfo.Threads) {
+			target = core.Errors
+			if writeError := self.metadata.WriteRaw(target, fmt.Sprintf(
+				"Stage exceeded its threads quota (using %.1f, allowed %d)",
+				threads,
+				self.jobInfo.Threads)); writeError != nil {
+				util.PrintError(writeError, "monitor", "Could not write errors file.")
+			}
+		}
 	}
-	if jErr := self.metadata.UpdateJournal(core.CompleteFile); jErr != nil {
-		util.PrintError(jErr, "monitor", "Could not update complete journal file.")
+	if target == core.CompleteFile {
+		if writeError := self.metadata.WriteTime(core.CompleteFile); writeError != nil {
+			util.PrintError(writeError, "monitor", "Could not write complete file.")
+		}
+	}
+	if jErr := self.metadata.UpdateJournal(target); jErr != nil {
+		util.PrintError(jErr, "monitor", "Could not update %v journal file.", target)
 	}
 	os.Exit(0)
 }
