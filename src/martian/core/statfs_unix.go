@@ -43,12 +43,14 @@ func CheckMinimalSpace(path string) error {
 	if err != nil {
 		return err
 	}
-	if bytes < PIPESTANCE_MIN_DISK {
+	// Allow zero, as if we haven't already failed to write a file it's
+	// likely that the filesystem is just lying to us.
+	if bytes < PIPESTANCE_MIN_DISK && bytes != 0 {
 		return &DiskSpaceError{bytes, inodes, fmt.Sprintf(
 			"%s has only %dkB remaining space available.",
 			path, bytes/1024)}
 	}
-	if inodes < PIPESTANCE_MIN_INODES {
+	if inodes < PIPESTANCE_MIN_INODES && inodes != 0 {
 		return &DiskSpaceError{bytes, inodes, fmt.Sprintf(
 			"%s has only %d free inodes remaining.",
 			path, inodes)}
