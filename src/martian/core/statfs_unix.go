@@ -8,6 +8,7 @@ package core
 
 import (
 	"fmt"
+	"os"
 	"syscall"
 )
 
@@ -38,7 +39,14 @@ func (self *DiskSpaceError) Error() string {
 	return self.Message
 }
 
+var disableDiskSpaceCheck = (os.Getenv("MRO_DISK_SPACE_CHECK") == "disable")
+
+// Returns an error if the current available space on the disk drive is
+// very low.
 func CheckMinimalSpace(path string) error {
+	if disableDiskSpaceCheck {
+		return nil
+	}
 	bytes, inodes, err := GetAvailableSpace(path)
 	if err != nil {
 		return err
@@ -47,12 +55,14 @@ func CheckMinimalSpace(path string) error {
 	// likely that the filesystem is just lying to us.
 	if bytes < PIPESTANCE_MIN_DISK && bytes != 0 {
 		return &DiskSpaceError{bytes, inodes, fmt.Sprintf(
-			"%s has only %dkB remaining space available.",
+			"%s has only %dkB remaining space available.\n"+
+				"To ignore this error, set MRO_DISK_SPACE_CHECK=disable in your environment.",
 			path, bytes/1024)}
 	}
 	if inodes < PIPESTANCE_MIN_INODES && inodes != 0 {
 		return &DiskSpaceError{bytes, inodes, fmt.Sprintf(
-			"%s has only %d free inodes remaining.",
+			"%s has only %d free inodes remaining.\n"+
+				"To ignore this error, set MRO_DISK_SPACE_CHECK=disable in your environment.",
 			path, inodes)}
 	}
 	return nil

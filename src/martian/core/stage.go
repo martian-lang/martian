@@ -73,6 +73,10 @@ type StageDefs struct {
 	JoinDef   map[string]interface{}   `json:"join"`
 }
 
+// Escape hatch for this feature in case of weird nfs servers which don't
+// work for whatever reason.
+var disableUniquification = (os.Getenv("MRO_UNIQUIFIED_DIRECTORIES") == "disable")
+
 //=============================================================================
 // Chunk
 //=============================================================================
@@ -124,12 +128,16 @@ func NewChunk(nodable Nodable, fork *Fork, index int,
 		// If we're not splitting, just set the sole chunk's filesPath
 		// to the filesPath of the parent fork, to save a pseudo-join copy.
 		self.metadata.finalFilePath = self.fork.metadata.finalFilePath
+		if disableUniquification {
+			self.metadata.curFilesPath = self.metadata.finalFilePath
+		}
 	}
 	return self
 }
 
 func (self *Chunk) mkdirs() error {
-	if state := self.getState(); state != Complete {
+	if state := self.getState(); !disableUniquification &&
+		state != Complete {
 		return self.metadata.uniquify()
 	} else {
 		return self.metadata.mkdirs()
@@ -369,13 +377,15 @@ func (self *Fork) removeMetadata() {
 
 func (self *Fork) mkdirs() {
 	self.metadata.mkdirs()
-	if state, ok := self.split_metadata.getState(); self.node.split &&
+	if state, ok := self.split_metadata.getState(); !disableUniquification &&
+		self.node.split &&
 		(!ok || state != Complete) {
 		self.split_metadata.uniquify()
 	} else {
 		self.split_metadata.mkdirs()
 	}
-	if state, ok := self.join_metadata.getState(); self.node.split &&
+	if state, ok := self.join_metadata.getState(); !disableUniquification &&
+		self.node.split &&
 		(!ok || state != Complete) {
 		self.join_metadata.uniquify()
 	} else {

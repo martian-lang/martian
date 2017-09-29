@@ -267,6 +267,8 @@ var loggedEnvPrefixes = map[string]bool{
 	"LS":      true, // LSF
 	"LSB":     true, // LSF
 	"LSF":     true, // LSF
+	"MRO":     true, // Martian
+	"MARTIAN": true,
 	"MYSYS2":  true, // Anaconda
 	"PBS":     true, // PBS
 	"PD":      true,

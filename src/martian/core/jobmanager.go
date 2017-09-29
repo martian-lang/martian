@@ -92,6 +92,8 @@ func NewLocalJobManager(userMaxCores int, userMaxMemGB int,
 			self.maxCores, util.Pluralize(self.maxCores))
 	}
 
+	sysMem := sigar.Mem{}
+	sysMem.Get()
 	// Set Max GB of memory usable at one time.
 	if userMaxMemGB > 0 {
 		// If user specified --localmem, use that value for Max usable GB.
@@ -101,8 +103,6 @@ func NewLocalJobManager(userMaxCores int, userMaxMemGB int,
 		// Otherwise, set Max usable GB to MAXMEM_FRACTION * GB of total
 		// memory reported by the system.
 		MAXMEM_FRACTION := 0.9
-		sysMem := sigar.Mem{}
-		sysMem.Get()
 		sysMemGB := int(float64(sysMem.Total) * MAXMEM_FRACTION / 1073741824)
 		// Set floor to 1GB.
 		if sysMemGB < 1 {
@@ -111,6 +111,12 @@ func NewLocalJobManager(userMaxCores int, userMaxMemGB int,
 		self.maxMemGB = sysMemGB
 		util.LogInfo("jobmngr", "Using %d GB, %d%% of system memory.", self.maxMemGB,
 			int(MAXMEM_FRACTION*100))
+	}
+
+	if uint64(self.maxMemGB*1024) > (sysMem.ActualFree+(1024*1024-1))/(1024*1024) {
+		util.PrintInfo("jobmngr",
+			"WARNING: configured to use %dGB of local memory, but only %.1fGB is currently available.",
+			self.maxMemGB, float64(sysMem.ActualFree+(1024*1024-1))/(1024*1024*1024))
 	}
 
 	self.coreSem = NewResourceSemaphore(int64(self.maxCores), "threads")
