@@ -1,8 +1,22 @@
 //
 // Copyright (c) 2014 10X Genomics, Inc. All rights reserved.
-//
-// Martian pipeline runner.
-//
+
+/*
+Martian status query tool
+
+This tool is used to query or modify running instances of mrp.  Given the
+path to a pipestance root directory, it attempts to discover the tcp endpoint
+exposed by the mrp instance running in that directory.
+
+The default action is to query the pipestance and return basic information
+about its state.
+
+The --stop option allows users to terminate the pipestance.  For running
+pipestances, this forces the pipestance into a failed state, and mrp to
+terminate.  For completed mrp instances launched with the --noexit option,
+it causes mrp to terminate.
+
+*/
 package main
 
 import (
