@@ -65,7 +65,10 @@ the responsibility of the monitor process.
 
 The monitor process, `mrjob`, is maintained with martian.  Maintainers of
 language adapters do not need to understand its contracts unless they are also
-planning to maintain the monitor itself.
+planning to maintain the monitor itself.  Note that, unlike the API between
+`mrjob` and the adapter child process, `mrjob` is tightly coupled to the `mrp`
+version it was built with, and there should be no assumptions about the stability
+of the interface between them.
 
 The job monitor process has several duties.  If monitoring is enabled in the
 `jobinfo` file, the monitor will periodically inspect the process for its
