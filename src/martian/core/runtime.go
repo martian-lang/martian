@@ -177,7 +177,9 @@ func NewRuntimeWithCores(jobMode string, vdrMode string, profileMode ProfileMode
 	self.onFinishExec = onFinishExec
 
 	self.MroCache = NewMroCache()
-	self.LocalJobManager = NewLocalJobManager(reqCores, reqMem, debug, limitLoadavg)
+	self.LocalJobManager = NewLocalJobManager(reqCores, reqMem, debug,
+		limitLoadavg,
+		self.jobMode != "local")
 	if self.jobMode == "local" {
 		self.JobManager = self.LocalJobManager
 	} else {

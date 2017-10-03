@@ -71,7 +71,7 @@ type LocalJobManager struct {
 }
 
 func NewLocalJobManager(userMaxCores int, userMaxMemGB int,
-	debug bool, limitLoadavg bool) *LocalJobManager {
+	debug bool, limitLoadavg bool, clusterMode bool) *LocalJobManager {
 	self := &LocalJobManager{
 		debug:     debug,
 		limitLoad: limitLoadavg,
@@ -85,11 +85,15 @@ func NewLocalJobManager(userMaxCores int, userMaxMemGB int,
 		util.LogInfo("jobmngr", "Using %d core%s, per --localcores option.",
 			self.maxCores, util.Pluralize(self.maxCores))
 	} else {
-		// Otherwise, set Max usable cores to total number of cores reported
-		// by the system.
-		self.maxCores = runtime.NumCPU()
-		util.LogInfo("jobmngr", "Using %d logical core%s available on system.",
-			self.maxCores, util.Pluralize(self.maxCores))
+		if clusterMode {
+			self.maxCores = self.jobSettings.ThreadsPerJob
+		} else {
+			// Otherwise, set Max usable cores to total number of cores reported
+			// by the system.
+			self.maxCores = runtime.NumCPU()
+			util.LogInfo("jobmngr", "Using %d logical core%s available on system.",
+				self.maxCores, util.Pluralize(self.maxCores))
+		}
 	}
 
 	sysMem := sigar.Mem{}
@@ -103,7 +107,12 @@ func NewLocalJobManager(userMaxCores int, userMaxMemGB int,
 		// Otherwise, set Max usable GB to MAXMEM_FRACTION * GB of total
 		// memory reported by the system.
 		MAXMEM_FRACTION := 0.9
-		sysMemGB := int(float64(sysMem.Total) * MAXMEM_FRACTION / 1073741824)
+		var sysMemGB int
+		if clusterMode {
+			sysMemGB = self.jobSettings.MemGBPerJob
+		} else {
+			sysMemGB = int(float64(sysMem.Total) * MAXMEM_FRACTION / 1073741824)
+		}
 		// Set floor to 1GB.
 		if sysMemGB < 1 {
 			sysMemGB = 1
