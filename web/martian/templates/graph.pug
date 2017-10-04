@@ -72,11 +72,11 @@ html(ng-app="app" ng-controller="MartianGraphCtrl")
                 tr
                     td Logging
                     td 
-                        a(href="/api/get-metadata-top/{{info.container}}/{{info.pname}}/{{info.psid}}/filelist[[.Auth]]") filelist
+                        a(href="/api/get-metadata-top/[[.Container]]/[[.Pname]]/[[.Psid]]/filelist[[.Auth]]") filelist
                         | &nbsp;&nbsp;
-                        a(href="/api/get-metadata-top/{{info.container}}/{{info.pname}}/{{info.psid}}/log[[.Auth]]") log
+                        a(href="/api/get-metadata-top/[[.Container]]/[[.Pname]]/[[.Psid]]/log[[.Auth]]") log
                         | &nbsp;&nbsp;
-                        a(href="/api/get-metadata-top/{{info.container}}/{{info.pname}}/{{info.psid}}/sitecheck[[.Auth]]") sitecheck
+                        a(href="/api/get-metadata-top/[[.Container]]/[[.Pname]]/[[.Psid]]/sitecheck[[.Auth]]") sitecheck
             h5 Paths
             table.table(style="margin-bottom: 0px")
                 tr
