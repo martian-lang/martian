@@ -891,20 +891,22 @@ func (self *Node) runJob(shellName string, fqname string, metadata *Metadata,
 		util.PrintInfo("runtime", msg)
 	}
 
-	util.EnterCriticalSection()
-	defer util.ExitCriticalSection()
-	metadata.WriteTime(QueuedLocally)
-	metadata.Write(JobInfoFile, &JobInfo{
-		Name:        fqname,
-		Type:        jobMode,
-		Threads:     threads,
-		MemGB:       memGB,
-		ProfileMode: self.rt.profileMode,
-		Stackvars:   stackVars,
-		Monitor:     monitor,
-		Invocation:  self.invocation,
-		Version:     version,
-	})
+	func() {
+		util.EnterCriticalSection()
+		defer util.ExitCriticalSection()
+		metadata.WriteTime(QueuedLocally)
+		metadata.Write(JobInfoFile, &JobInfo{
+			Name:        fqname,
+			Type:        jobMode,
+			Threads:     threads,
+			MemGB:       memGB,
+			ProfileMode: self.rt.profileMode,
+			Stackvars:   stackVars,
+			Monitor:     monitor,
+			Invocation:  self.invocation,
+			Version:     version,
+		})
+	}()
 	jobManager.execJob(shellCmd, argv, envs, metadata, threads, memGB, special, fqname,
 		shellName, self.preflight && self.local)
 }
