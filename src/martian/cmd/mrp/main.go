@@ -92,10 +92,10 @@ func (self *pipestanceHolder) Register() {
 		go func() {
 			if res, err := http.PostForm(u.String(), form); err == nil {
 				if res.StatusCode >= http.StatusBadRequest {
-					util.LogError(err, "mrentr", "Registration failed with %s.", res.Status)
+					util.LogError(err, "mrenter", "Registration failed with %s.", res.Status)
 				}
 			} else {
-				util.LogError(err, "mrentr", "Registration to %v failed", u)
+				util.LogError(err, "mrenter", "Registration to %s failed", u.Host)
 			}
 		}()
 	}
