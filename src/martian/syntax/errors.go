@@ -27,16 +27,25 @@ type AstError struct {
 }
 
 func (self *AstError) Error() string {
-	return fmt.Sprintf("MRO %s at %s:%d.", self.Msg, self.Node.Fname, self.Node.Loc)
+	line := fmt.Sprintf("MRO %s at %s:%d.", self.Msg, self.Node.Fname, self.Node.Loc)
+	for _, inc := range self.Node.IncludeStack {
+		line += fmt.Sprintf("\n\tincluded from %s", inc)
+	}
+	return line
 }
 
 // ParseError
 type ParseError struct {
-	token string
-	fname string
-	loc   int
+	token        string
+	fname        string
+	loc          int
+	includeStack []string
 }
 
 func (self *ParseError) Error() string {
-	return fmt.Sprintf("MRO ParseError: unexpected token '%s' at %s:%d.", self.token, self.fname, self.loc)
+	line := fmt.Sprintf("MRO ParseError: unexpected token '%s' at %s:%d.", self.token, self.fname, self.loc)
+	for _, inc := range self.includeStack {
+		line += fmt.Sprintf("\n\tincluded from %s", inc)
+	}
+	return line
 }

@@ -9,8 +9,9 @@ type StageLanguage string
 
 type (
 	AstNode struct {
-		Loc   int
-		Fname string
+		Loc          int
+		Fname        string
+		IncludeStack []string
 	}
 
 	AstNodable interface {
@@ -39,6 +40,7 @@ type (
 		GetId() string
 		GetInParams() *Params
 		GetOutParams() *Params
+		Type() string
 		format(printer *printer)
 	}
 
@@ -228,10 +230,10 @@ func NewAstNode(loc int, locmap []FileLoc) AstNode {
 		if loc >= len(locmap) {
 			loc = len(locmap) - 1
 		}
-		return AstNode{locmap[loc].loc, locmap[loc].fname}
+		return AstNode{locmap[loc].loc, locmap[loc].fname, locmap[loc].includedFrom}
 	} else {
 		// locmap will be empty when yaccParse is called from mrf
-		return AstNode{loc, ""}
+		return AstNode{loc, "", nil}
 	}
 }
 
@@ -251,11 +253,13 @@ func (s *Stage) GetId() string         { return s.Id }
 func (s *Stage) getNode() *AstNode     { return &s.Node }
 func (s *Stage) GetInParams() *Params  { return s.InParams }
 func (s *Stage) GetOutParams() *Params { return s.OutParams }
+func (s *Stage) Type() string          { return "stage" }
 
 func (s *Pipeline) GetId() string         { return s.Id }
 func (s *Pipeline) getNode() *AstNode     { return &s.Node }
 func (s *Pipeline) GetInParams() *Params  { return s.InParams }
 func (s *Pipeline) GetOutParams() *Params { return s.OutParams }
+func (s *Pipeline) Type() string          { return "pipeline" }
 
 func (s *CallStm) getNode() *AstNode { return &s.Node }
 

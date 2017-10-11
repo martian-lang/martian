@@ -14,7 +14,7 @@ import (
 
 func TestFormatValueExpression(t *testing.T) {
 	ve := ValExp{
-		Node:  AstNode{0, ""},
+		Node:  AstNode{0, "", nil},
 		Kind:  "float",
 		Value: 0,
 	}

@@ -24,8 +24,18 @@ func (global *Ast) err(nodable AstNodable, msg string, v ...interface{}) error {
 func (callables *Callables) check(global *Ast) error {
 	for _, callable := range callables.List {
 		// Check for duplicates
-		if _, ok := callables.Table[callable.GetId()]; ok {
-			return global.err(callable, "DuplicateNameError: stage or pipeline '%s' was already declared when encountered again", callable.GetId())
+		if existing, ok := callables.Table[callable.GetId()]; ok {
+			msg := fmt.Sprintf(
+				"DuplicateNameError: %s '%s' was already declared when encountered again",
+				callable.Type(), callable.GetId())
+			if node := existing.getNode(); node != nil && node.Fname != "" {
+				msg += fmt.Sprintf(".\n  Previous declaration at %s:%d\n",
+					node.Fname, node.Loc)
+				for _, inc := range node.IncludeStack {
+					msg += fmt.Sprintf("\t  included from %s\n", inc)
+				}
+			}
+			return global.err(callable, msg)
 		}
 		callables.Table[callable.GetId()] = callable
 	}
@@ -374,7 +384,7 @@ func ParseSource(src string, srcPath string, incPaths []string, checkSrc bool) (
 	stagecodePaths := append(incPaths, strings.Split(os.Getenv("PATH"), ":")...)
 
 	// Preprocess: generate new source and a locmap.
-	postsrc, ifnames, locmap, err := preprocess(src, filepath.Base(srcPath), incPaths)
+	postsrc, ifnames, locmap, err := preprocess(src, filepath.Base(srcPath), make(map[string]struct{}), incPaths)
 	if err != nil {
 		return "", nil, nil, err
 	}
@@ -389,7 +399,10 @@ func ParseSource(src string, srcPath string, incPaths []string, checkSrc bool) (
 		if perr.loc >= len(locmap) {
 			perr.loc = len(locmap) - 1
 		}
-		return "", nil, nil, &ParseError{perr.token, locmap[perr.loc].fname, locmap[perr.loc].loc}
+		return "", nil, nil, &ParseError{perr.token,
+			locmap[perr.loc].fname,
+			locmap[perr.loc].loc,
+			locmap[perr.loc].includedFrom}
 	}
 
 	// Run semantic checks.

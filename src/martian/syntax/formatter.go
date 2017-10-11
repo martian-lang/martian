@@ -376,7 +376,7 @@ func Format(src, filename string) (string, error) {
 	// Parse and generate the AST.
 	global, mmli := yaccParse(src, []FileLoc{})
 	if mmli != nil { // mmli is an mmLexInfo struct
-		return "", &ParseError{mmli.token, filename, mmli.loc}
+		return "", &ParseError{mmli.token, filename, mmli.loc, nil}
 	}
 
 	// Format the source.

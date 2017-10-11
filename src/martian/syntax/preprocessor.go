@@ -6,6 +6,7 @@
 package syntax
 
 import (
+	"fmt"
 	"io/ioutil"
 	"martian/util"
 	"regexp"
@@ -16,8 +17,9 @@ import (
 // Preprocessor
 //
 type FileLoc struct {
-	fname string
-	loc   int
+	fname        string
+	loc          int
+	includedFrom []string
 }
 
 func lineCount(src string) int {
@@ -32,12 +34,12 @@ func lineNumOfOffset(src string, offset int) int {
 /*
  * Inject contents of included files, recursively.
  */
-func preprocess(src string, fname string, incPaths []string) (string, []string, []FileLoc, *PreprocessError) {
+func preprocess(src string, fname string, foundNames map[string]struct{}, incPaths []string) (string, []string, []FileLoc, *PreprocessError) {
 	// Locmap tracks original filenames and line numbers and captures
 	// the source insertion mechanics.
 	locmap := make([]FileLoc, lineCount(src))
 	for i := range locmap {
-		locmap[i] = FileLoc{fname, i}
+		locmap[i] = FileLoc{fname, i, nil}
 	}
 	insertOffset := 0
 
@@ -46,12 +48,15 @@ func preprocess(src string, fname string, incPaths []string) (string, []string, 
 	offsets := re.FindAllStringIndex(src, -1)
 	fileNotFoundError := &PreprocessError{[]string{}}
 	ifnames := []string{}
-	foundNames := make(map[string]struct{})
+
+	// Keep a copy of the original location map, for when we need to record where
+	// we included from.
+	origLocmap := append(make([]FileLoc, 0, len(locmap)), locmap...)
 	processedSrc := re.ReplaceAllStringFunc(src, func(match string) string {
 		// Get name of file to be included.
 		ifname := re.FindStringSubmatch(match)[1]
 		if ifname == fname {
-			fileNotFoundError.files = append(fileNotFoundError.files, "Cannot include self.")
+			fileNotFoundError.files = append(fileNotFoundError.files, fname+" includes itself.")
 			return ""
 		}
 
@@ -78,10 +83,14 @@ func preprocess(src string, fname string, incPaths []string) (string, []string, 
 
 		// Determine line number of src to insert included source.
 		includeLine := lineNumOfOffset(src, offsets[0][0]) + insertOffset
+		// Included lines add this to their included from stack.
+		includedFrom := fmt.Sprintf("%s:%d",
+			origLocmap[includeLine-insertOffset].fname,
+			origLocmap[includeLine-insertOffset].loc+1)
 		offsets = offsets[1:] // shift()
 
 		// Recursively preprocess the included source.
-		processedIncludeSrc, _, processedIncludeLocmap, err := preprocess(includeSrc, ifname, incPaths)
+		processedIncludeSrc, _, processedIncludeLocmap, err := preprocess(includeSrc, ifname, foundNames, incPaths)
 		if err != nil {
 			fileNotFoundError.files = append(fileNotFoundError.files, err.files...)
 		}
@@ -92,7 +101,15 @@ func preprocess(src string, fname string, incPaths []string) (string, []string, 
 		insertOffset += processedIncludeLineCount - 1 // because we're replacing 1 line with many
 
 		// Mirror the actual source insertion in the locmap.
-		locmap = append(locmap[:includeLine], append(processedIncludeLocmap, locmap[includeLine+1:]...)...)
+		newLocMap := locmap[:includeLine]
+		for _, loc := range processedIncludeLocmap {
+			newLocMap = append(newLocMap, FileLoc{
+				fname:        loc.fname,
+				loc:          loc.loc,
+				includedFrom: append(loc.includedFrom, includedFrom),
+			})
+		}
+		locmap = append(newLocMap, locmap[includeLine+1:]...)
 
 		return processedIncludeSrc
 	})
