@@ -314,9 +314,9 @@ Options:
     --jobmode=MODE      Job manager to use. Valid options:
                             local (default), sge, lsf, or a .template file
     --localcores=NUM    Set max cores the pipeline may request at one time.
-                            Only applies when --jobmode=local.
+                            Only applies to local jobs.
     --localmem=NUM      Set max GB the pipeline may request at one time.
-                            Only applies when --jobmode=local.
+                            Only applies to local jobs.
     --mempercore=NUM    Specify min GB per core on your cluster.
                             Only applies in cluster jobmodes.
     --maxjobs=NUM       Set max jobs submitted to cluster at one time.
@@ -324,7 +324,7 @@ Options:
     --jobinterval=NUM   Set delay between submitting jobs to cluster, in ms.
                             Only applies in cluster jobmodes.
     --limit-loadavg     Avoid scheduling jobs when the system loadavg is high.
-                            Only applies when --jobmode=local.
+                            Only applies to local jobs.
 
     --vdrmode=MODE      Enables Volatile Data Removal. Valid options:
                             post (default), rolling, or disable
