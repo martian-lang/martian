@@ -239,26 +239,28 @@ class _Metadata(object):
     def log(self, level, message):
         """Write a log line to the log file."""
         self._logfile.write('%s [%s] %s\n' %
-                            (self.make_timestamp_now(), level, message))
+                            (self.make_timestamp_now(),
+                             level,
+                             message.encode('utf-8')))
         self._logfile.flush()
 
     def alarm(self, message):
         """Append to the alarms file."""
-        self._append(message, 'alarm')
+        self._append(message.encode('utf-8'), 'alarm')
 
     def progress(self, message):
         """Report a progress update."""
-        self.write_raw_atomic('progress', message, True)
+        self.write_raw_atomic('progress', message.encode('utf-8'), True)
 
     @staticmethod
     def write_errors(message):
         """Write to the errors file."""
         with os.fdopen(4, 'w') as error_out:
-            error_out.write(message)
+            error_out.write(message.encode('utf-8'))
 
     def write_assert(self, message):
         """Write to the assert file."""
-        self.write_errors('ASSERT:' + message)
+        self.write_errors('ASSERT:' + message.encode('utf-8'))
 
     def update_journal(self, name, force=False):
         """Write a journal entry notifying the parent mrp process of changes to
