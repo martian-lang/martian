@@ -12,11 +12,19 @@ import (
 
 // PreprocessError
 type PreprocessError struct {
-	files []string
+	files    []string
+	messages []string
 }
 
 func (self *PreprocessError) Error() string {
-	return fmt.Sprintf("@include file not found: %s", strings.Join(self.files, ", "))
+	msg := strings.Join(self.messages, "\n")
+	if len(self.files) > 0 {
+		if len(self.messages) > 0 {
+			msg += "\n"
+		}
+		msg += fmt.Sprintf("@include file not found: %s", strings.Join(self.files, ", "))
+	}
+	return msg
 }
 
 // AstError

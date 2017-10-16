@@ -31,10 +31,32 @@ func lineNumOfOffset(src string, offset int) int {
 	return strings.Count(src[0:offset], "\n")
 }
 
+var includeRe = regexp.MustCompile("(?mi:^\\s*@include\\s+\"([^\\\"]+)\")")
+
 /*
  * Inject contents of included files, recursively.
  */
-func preprocess(src string, fname string, foundNames map[string]struct{}, incPaths []string) (string, []string, []FileLoc, *PreprocessError) {
+func preprocess(src string,
+	fname string,
+	foundNames map[string]struct{},
+	stack []string,
+	incPaths []string) (string, []string, []FileLoc, *PreprocessError) {
+
+	for i, inc := range stack {
+		if inc == fname {
+			if i == len(stack)-1 {
+				return "", nil, nil, &PreprocessError{nil, []string{fname + " includes itself."}}
+			}
+			msg := fmt.Sprintf("@include cycle detected: %s->", inc)
+			for _, f := range stack[i+1:] {
+				msg += f + "->"
+			}
+			msg += fname
+			return "", nil, nil, &PreprocessError{nil, []string{msg}}
+		}
+	}
+	stack = append(stack, fname)
+
 	// Locmap tracks original filenames and line numbers and captures
 	// the source insertion mechanics.
 	locmap := make([]FileLoc, lineCount(src))
@@ -44,19 +66,18 @@ func preprocess(src string, fname string, foundNames map[string]struct{}, incPat
 	insertOffset := 0
 
 	// Replace all @include statements with contents of files they refer to.
-	re := regexp.MustCompile("@include\\s+\"([^\\\"]+)\"")
-	offsets := re.FindAllStringIndex(src, -1)
-	fileNotFoundError := &PreprocessError{[]string{}}
+	offsets := includeRe.FindAllStringIndex(src, -1)
+	fileNotFoundError := &PreprocessError{}
 	ifnames := []string{}
 
 	// Keep a copy of the original location map, for when we need to record where
 	// we included from.
 	origLocmap := append(make([]FileLoc, 0, len(locmap)), locmap...)
-	processedSrc := re.ReplaceAllStringFunc(src, func(match string) string {
+	processedSrc := includeRe.ReplaceAllStringFunc(src, func(match string) string {
 		// Get name of file to be included.
-		ifname := re.FindStringSubmatch(match)[1]
+		ifname := includeRe.FindStringSubmatch(match)[1]
 		if ifname == fname {
-			fileNotFoundError.files = append(fileNotFoundError.files, fname+" includes itself.")
+			fileNotFoundError.messages = append(fileNotFoundError.messages, fname+" includes itself.")
 			return ""
 		}
 
@@ -90,9 +111,10 @@ func preprocess(src string, fname string, foundNames map[string]struct{}, incPat
 		offsets = offsets[1:] // shift()
 
 		// Recursively preprocess the included source.
-		processedIncludeSrc, _, processedIncludeLocmap, err := preprocess(includeSrc, ifname, foundNames, incPaths)
+		processedIncludeSrc, _, processedIncludeLocmap, err := preprocess(includeSrc, ifname, foundNames, stack, incPaths)
 		if err != nil {
 			fileNotFoundError.files = append(fileNotFoundError.files, err.files...)
+			fileNotFoundError.messages = append(fileNotFoundError.messages, err.messages...)
 		}
 		processedIncludeLineCount := lineCount(processedIncludeSrc)
 
@@ -113,7 +135,7 @@ func preprocess(src string, fname string, foundNames map[string]struct{}, incPat
 
 		return processedIncludeSrc
 	})
-	if len(fileNotFoundError.files) > 0 {
+	if len(fileNotFoundError.files) > 0 || len(fileNotFoundError.messages) > 0 {
 		return processedSrc, ifnames, locmap, fileNotFoundError
 	}
 	return processedSrc, ifnames, locmap, nil

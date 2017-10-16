@@ -1,5 +1,4 @@
 # A super-simple test pipeline with splits.
-# A super-simple test pipeline with splits.
 
 # Computes the sum of each value in a separate chunk, and
 # sums the squares in the join phase.
@@ -16,28 +15,4 @@ stage REPORT(
     in  float[] values,
     in  float   sum,
     src py      "stages/report",
-)
-
-
-# Runs the stage.
-pipeline SUM_SQUARE_PIPELINE(
-    in  float[] values,
-    out float   sum,
-)
-{
-    call SUM_SQUARES(
-        values = self.values,
-    )
-    call REPORT(
-        values = self.values,
-        sum    = SUM_SQUARES.sum,
-    )
-    return (
-        sum = SUM_SQUARES.sum,
-    )
-}
-
-# Calls the pipelines, sweeping over two forks.
-call SUM_SQUARE_PIPELINE(
-    values = [1.0, 2.0, 3.0],
 )

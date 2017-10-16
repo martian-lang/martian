@@ -384,7 +384,7 @@ func ParseSource(src string, srcPath string, incPaths []string, checkSrc bool) (
 	stagecodePaths := append(incPaths, strings.Split(os.Getenv("PATH"), ":")...)
 
 	// Preprocess: generate new source and a locmap.
-	postsrc, ifnames, locmap, err := preprocess(src, filepath.Base(srcPath), make(map[string]struct{}), incPaths)
+	postsrc, ifnames, locmap, err := preprocess(src, filepath.Base(srcPath), make(map[string]struct{}), nil, incPaths)
 	if err != nil {
 		return "", nil, nil, err
 	}
