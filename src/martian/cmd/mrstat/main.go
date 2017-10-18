@@ -43,10 +43,11 @@ func main() {
 
 Usage:
     mrstat <pipestance_name> [options]
-	mrstat -h | --help | --version
+    mrstat -h | --help | --version
 
 Options:
-    --stop      Job manager to use. Valid options:
+    --stop      Cause the mrp process to shut down.
+                If the pipestance is running, this will cause it to fail.
 
     -h --help   Show this message.
     --version   Show version.`
