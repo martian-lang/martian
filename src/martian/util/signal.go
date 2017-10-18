@@ -10,7 +10,6 @@ import (
 	"os/signal"
 	"sync"
 	"syscall"
-	"time"
 )
 
 type HandlerObject interface {
@@ -18,31 +17,21 @@ type HandlerObject interface {
 }
 
 type SignalHandler struct {
-	count   int
-	exit    bool
-	mutex   sync.Mutex
-	block   chan int
-	sigchan chan os.Signal
-	objects map[HandlerObject]bool
+	criticalSection sync.RWMutex
+	mutex           sync.Mutex
+	block           chan int
+	sigchan         chan os.Signal
+	objects         map[HandlerObject]bool
 }
 
 var signalHandler *SignalHandler = nil
 
 func EnterCriticalSection() {
-	signalHandler.mutex.Lock()
-	if signalHandler.exit {
-		// Block other goroutines from entering critical section if exit flag has been set
-		signalHandler.mutex.Unlock()
-		<-signalHandler.block
-	}
-	signalHandler.count += 1
-	signalHandler.mutex.Unlock()
+	signalHandler.criticalSection.RLock()
 }
 
 func ExitCriticalSection() {
-	signalHandler.mutex.Lock()
-	signalHandler.count -= 1
-	signalHandler.mutex.Unlock()
+	signalHandler.criticalSection.RUnlock()
 }
 
 func RegisterSignalHandler(object HandlerObject) {
@@ -102,16 +91,8 @@ func SetupSignalHandlers() {
 			Println("%s Caught signal %v", Timestamp(), sig)
 		}
 
-		// Set exit flag
-		signalHandler.mutex.Lock()
-		signalHandler.exit = true
+		signalHandler.criticalSection.Lock()
 
-		// Make sure all goroutines have left critical sections
-		for signalHandler.count > 0 {
-			signalHandler.mutex.Unlock()
-			time.Sleep(time.Millisecond)
-			signalHandler.mutex.Lock()
-		}
 		for object := range signalHandler.objects {
 			object.HandleSignal(sig)
 		}
