@@ -238,6 +238,9 @@ class _Metadata(object):
 
     def log(self, level, message):
         """Write a log line to the log file."""
+        if not isinstance(message, basestring):
+            # If not a basestring (str or unicode), convert to string here
+            message = str(message)
         self._logfile.write('%s [%s] %s\n' %
                             (self.make_timestamp_now(),
                              level,
