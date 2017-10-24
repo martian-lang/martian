@@ -1,8 +1,9 @@
 //
-// Copyright (c) 2014 10X Genomics, Inc. All rights reserved.
+// Copyright (c) 2017 10X Genomics, Inc. All rights reserved.
 //
 // mrp webserver.
 //
+
 package main
 
 import (
@@ -90,6 +91,7 @@ func (self *mrpWebServer) Start() {
 			self.serveGraphPage(w, req)
 		}
 	})
+	self.handleDebug(sm)
 
 	if err := http.Serve(self.listener, sm); err != nil {
 		fmt.Println(err.Error())
