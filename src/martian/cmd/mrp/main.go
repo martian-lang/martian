@@ -33,13 +33,16 @@ import (
 // We need to be able to recreate pipestances and share the new pipestance
 // object between the runloop and the UI.
 type pipestanceHolder struct {
-	pipestance   *core.Pipestance
-	factory      core.PipestanceFactory
-	info         *api.PipestanceInfo
-	authKey      string
-	enableUI     bool
-	lastRegister time.Time
-	lock         sync.Mutex
+	pipestance       *core.Pipestance
+	factory          core.PipestanceFactory
+	info             *api.PipestanceInfo
+	maxRetries       int
+	remainingRetries int
+	authKey          string
+	enableUI         bool
+	lastRegister     time.Time
+	cleanupLock      sync.Mutex
+	lock             sync.Mutex
 }
 
 func (self *pipestanceHolder) getPipestance() *core.Pipestance {
@@ -52,7 +55,28 @@ func (self *pipestanceHolder) setPipestance(newPipe *core.Pipestance) {
 	self.pipestance = newPipe
 }
 
+// Decrements the retry count if it is positive, or returns false.
+func (self *pipestanceHolder) consumeRetry() bool {
+	self.lock.Lock()
+	defer self.lock.Unlock()
+	if self.remainingRetries <= 0 {
+		return false
+	} else {
+		self.remainingRetries--
+		return true
+	}
+}
+
+// Restart the pipestance and set remaining retries back to maximum.
 func (self *pipestanceHolder) reset() error {
+	self.lock.Lock()
+	self.remainingRetries = self.maxRetries
+	self.lock.Unlock()
+	return self.restart()
+}
+
+// Restart the pipestance.
+func (self *pipestanceHolder) restart() error {
 	self.lock.Lock()
 	defer self.lock.Unlock()
 	ps, err := self.factory.ReattachToPipestance()
@@ -101,14 +125,14 @@ func (self *pipestanceHolder) Register() {
 	}
 }
 
+const WAIT_SECS = 6
+
 //=============================================================================
 // Pipestance runner.
 //=============================================================================
 func runLoop(pipestanceBox *pipestanceHolder, stepSecs int, vdrMode string,
-	noExit bool, enableUI bool, retries int) {
+	noExit bool) {
 	showedFailed := false
-	showedComplete := false
-	WAIT_SECS := 6
 	pipestanceBox.getPipestance().LoadMetadata()
 
 	for {
@@ -119,91 +143,13 @@ func runLoop(pipestanceBox *pipestanceHolder, stepSecs int, vdrMode string,
 		state := pipestance.GetState()
 		pipestanceBox.UpdateState(state)
 		if state == "complete" {
-			if vdrMode == "disable" {
-				util.LogInfo("runtime", "VDR disabled. No files killed.")
-			} else {
-				killReport := pipestance.VDRKill()
-				util.LogInfo("runtime", "VDR killed %d files, %s.",
-					killReport.Count, humanize.Bytes(killReport.Size))
-			}
-			pipestance.PostProcess()
-			pipestance.Unlock()
-			if !showedComplete {
-				pipestance.OnFinishHook()
-				showedComplete = true
-			}
-			if noExit {
-				util.Println("Pipestance completed successfully, staying alive because --noexit given.\n")
-				break
-			} else {
-				if enableUI {
-					// Give time for web ui client to get last update.
-					util.Println("Waiting %d seconds for UI to do final refresh.", WAIT_SECS)
-					time.Sleep(time.Second * time.Duration(WAIT_SECS))
-					pipestance.ClearUiPort()
-				}
-				util.Println("Pipestance completed successfully!\n")
-				os.Exit(0)
-			}
+			cleanupCompleted(pipestance, pipestanceBox, vdrMode, noExit)
+			return
 		} else if state == "failed" {
-			canRetry := false
-			var transient_log string
-			if retries > 0 {
-				canRetry, transient_log = pipestance.IsErrorTransient()
-			}
-			if canRetry {
+			if !attemptRetry(pipestance, pipestanceBox) {
 				pipestance.Unlock()
-				retries--
-				if transient_log != "" {
-					util.LogInfo("runtime", "Transient error detected.  Log content:\n\n%s\n", transient_log)
-				}
-				util.LogInfo("runtime", "Attempting retry.")
-				if err := pipestanceBox.reset(); err != nil {
-					util.LogInfo("runtime", "Retry failed:\n%v\n", err)
-					// Let the next loop around actually handle the failure.
-				}
-			} else {
-				pipestance.Unlock()
-				if !showedFailed {
-					pipestance.OnFinishHook()
-					if _, preflight, _, log, kind, errPaths := pipestance.GetFatalError(); kind == "assert" {
-						// Print preflight check failures.
-						util.Println("\n[%s] %s\n", "error", log)
-						if preflight {
-							os.Exit(2)
-						} else {
-							os.Exit(1)
-						}
-					} else if len(errPaths) > 0 {
-						// Build relative path to _errors file
-						errPath, _ := filepath.Rel(filepath.Dir(pipestance.GetPath()), errPaths[0])
-
-						if log != "" {
-							util.Println("\n[%s] Pipestance failed. Error log at:\n%s\n\nLog message:\n%s\n",
-								"error", errPath, log)
-						} else {
-							// Print path to _errors metadata file in failed stage.
-							util.Println("\n[%s] Pipestance failed. Please see log at:\n%s\n", "error", errPath)
-						}
-					}
-				}
-				if noExit {
-					// If pipestance failed but we're staying alive, only print this once
-					// as long as we stay failed.
-					if !showedFailed {
-						showedFailed = true
-						util.Println("Pipestance failed, staying alive because --noexit given.\n")
-					}
-				} else {
-					if enableUI {
-						// Give time for web ui client to get last update.
-						util.Println("Waiting %d seconds for UI to do final refresh.", WAIT_SECS)
-						time.Sleep(time.Second * time.Duration(WAIT_SECS))
-						util.Println("Pipestance failed. Use --noexit option to keep UI running after failure.\n")
-						pipestance.ClearUiPort()
-					}
-					os.Exit(1)
-				}
+				cleanupFailed(pipestance, pipestanceBox, showedFailed, noExit)
+				showedFailed = true
 			}
 		} else {
 			// If we went from failed to something else, allow the failure message to
@@ -219,6 +165,100 @@ func runLoop(pipestanceBox *pipestanceHolder, stepSecs int, vdrMode string,
 
 		// Wait for a bit.
 		time.Sleep(time.Second * time.Duration(stepSecs))
+	}
+}
+
+func attemptRetry(pipestance *core.Pipestance, pipestanceBox *pipestanceHolder) bool {
+	canRetry := false
+	var transient_log string
+	if pipestanceBox.consumeRetry() {
+		canRetry, transient_log = pipestance.IsErrorTransient()
+	}
+	if canRetry {
+		pipestance.Unlock()
+		if transient_log != "" {
+			util.LogInfo("runtime", "Transient error detected.  Log content:\n\n%s\n", transient_log)
+		}
+		util.LogInfo("runtime", "Attempting retry.")
+		if err := pipestanceBox.restart(); err != nil {
+			util.LogInfo("runtime", "Retry failed:\n%v\n", err)
+			// Let the next loop around actually handle the failure.
+		}
+	}
+	return canRetry
+}
+
+func cleanupCompleted(pipestance *core.Pipestance, pipestanceBox *pipestanceHolder,
+	vdrMode string, noExit bool) {
+	pipestanceBox.cleanupLock.Lock()
+	defer pipestanceBox.cleanupLock.Unlock()
+	if vdrMode == "disable" {
+		util.LogInfo("runtime", "VDR disabled. No files killed.")
+	} else {
+		killReport := pipestance.VDRKill()
+		util.LogInfo("runtime", "VDR killed %d files, %s.",
+			killReport.Count, humanize.Bytes(killReport.Size))
+	}
+	pipestance.PostProcess()
+	pipestance.Unlock()
+	pipestance.OnFinishHook()
+	if noExit {
+		util.Println("Pipestance completed successfully, staying alive because --noexit given.\n")
+	} else {
+		if pipestanceBox.enableUI {
+			// Give time for web ui client to get last update.
+			util.Println("Waiting %d seconds for UI to do final refresh.", WAIT_SECS)
+			time.Sleep(time.Second * time.Duration(WAIT_SECS))
+			pipestance.ClearUiPort()
+		}
+		util.Println("Pipestance completed successfully!\n")
+		os.Exit(0)
+	}
+}
+
+func cleanupFailed(pipestance *core.Pipestance, pipestanceBox *pipestanceHolder,
+	showedFailed bool, noExit bool) {
+	pipestanceBox.cleanupLock.Lock()
+	defer pipestanceBox.cleanupLock.Unlock()
+	if !showedFailed {
+		pipestance.OnFinishHook()
+		if _, preflight, _, log, kind, errPaths := pipestance.GetFatalError(); kind == "assert" {
+			// Print preflight check failures.
+			util.Println("\n[%s] %s\n", "error", log)
+			pipestance.ClearUiPort()
+			if preflight {
+				os.Exit(3)
+			} else {
+				os.Exit(1)
+			}
+		} else if len(errPaths) > 0 {
+			// Build relative path to _errors file
+			errPath, _ := filepath.Rel(filepath.Dir(pipestance.GetPath()), errPaths[0])
+
+			if log != "" {
+				util.Println("\n[%s] Pipestance failed. Error log at:\n%s\n\nLog message:\n%s\n",
+					"error", errPath, log)
+			} else {
+				// Print path to _errors metadata file in failed stage.
+				util.Println("\n[%s] Pipestance failed. Please see log at:\n%s\n", "error", errPath)
+			}
+		}
+	}
+	if noExit {
+		// If pipestance failed but we're staying alive, only print this once
+		// as long as we stay failed.
+		if !showedFailed {
+			util.Println("Pipestance failed, staying alive because --noexit given.\n")
+		}
+	} else {
+		if pipestanceBox.enableUI {
+			// Give time for web ui client to get last update.
+			util.Println("Waiting %d seconds for UI to do final refresh.", WAIT_SECS)
+			time.Sleep(time.Second * time.Duration(WAIT_SECS))
+			util.Println("Pipestance failed. Use --noexit option to keep UI running after failure.\n")
+			pipestance.ClearUiPort()
+		}
+		os.Exit(1)
 	}
 }
 
@@ -650,8 +690,10 @@ Options:
 		}
 	}
 	pipestanceBox := pipestanceHolder{
-		pipestance: pipestance,
-		factory:    factory,
+		pipestance:       pipestance,
+		factory:          factory,
+		maxRetries:       retries,
+		remainingRetries: retries,
 	}
 
 	if !readOnly {
@@ -775,7 +817,7 @@ Options:
 	//=========================================================================
 	// Start run loop.
 	//=========================================================================
-	go runLoop(&pipestanceBox, stepSecs, vdrMode, noExit, enableUI, retries)
+	go runLoop(&pipestanceBox, stepSecs, vdrMode, noExit)
 
 	// Let daemons take over.
 	done := make(chan bool)

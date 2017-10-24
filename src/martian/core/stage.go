@@ -291,6 +291,20 @@ func NewFork(nodable Nodable, index int, argPermute map[string]interface{}) *For
 	return self
 }
 
+func (self *Fork) kill(message string) {
+	if state, _ := self.split_metadata.getState(); state == Queued || state == Running {
+		self.split_metadata.WriteRaw(Errors, message)
+	}
+	if state, _ := self.join_metadata.getState(); state == Queued || state == Running {
+		self.join_metadata.WriteRaw(Errors, message)
+	}
+	for _, chunk := range self.chunks {
+		if state := chunk.getState(); state == Queued || state == Running {
+			chunk.metadata.WriteRaw(Errors, message)
+		}
+	}
+}
+
 func (self *Fork) reset() {
 	self.chunks = []*Chunk{}
 	self.metadatasCache = nil

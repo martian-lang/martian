@@ -22,7 +22,9 @@ package main
 import (
 	"encoding/json"
 	"fmt"
+	"io"
 	"io/ioutil"
+	"martian/api"
 	"martian/core"
 	"martian/util"
 	"net/http"
@@ -48,6 +50,8 @@ Usage:
 Options:
     --stop      Cause the mrp process to shut down.
                 If the pipestance is running, this will cause it to fail.
+    --restart   If mrp was launched with --noexit, and the pipeline failed,
+                attempt to retry the run.
 
     -h --help   Show this message.
     --version   Show version.`
@@ -55,6 +59,7 @@ Options:
 	opts, _ := docopt.Parse(doc, nil, true, martianVersion, false)
 
 	stop := (opts["--stop"] != nil && opts["--stop"].(bool))
+	restart := (opts["--restart"] != nil && opts["--restart"].(bool))
 
 	psid := opts["<pipestance_name>"].(string)
 
@@ -65,33 +70,39 @@ Options:
 				fmt.Fprintln(os.Stderr, psid,
 					"is not a pipestance directory.")
 			} else {
-				fmt.Fprintln(os.Stderr, "Either ", psid,
-					"is not currently running, or its monitoring UI port is disabled.")
+				fmt.Fprintln(os.Stderr, "Either", psid,
+					"is not currently running,")
+				fmt.Fprintln(os.Stderr, "or its monitoring UI port is disabled.")
 			}
 		} else {
 			fmt.Fprintln(os.Stderr, "Cannot read", psid, ":", err)
 		}
 		os.Exit(3)
 	} else if mrpUrl, err = url.Parse(string(urlBytes)); err != nil {
-		fmt.Fprintln(os.Stderr, "Cannot parse url", string(urlBytes), "-", err)
+		fmt.Fprintln(os.Stderr, "Cannot parse url", string(urlBytes))
+		fmt.Fprintln(os.Stderr, err)
 		os.Exit(4)
 	}
 	if stop {
 		sendStop(psid, mrpUrl)
+	} else if restart {
+		sendRestart(psid, mrpUrl)
 	} else {
 		status(psid, mrpUrl)
 	}
 }
 
 func sendStop(psid string, mrpUrl *url.URL) {
-	mrpUrl.Path = "api/kill"
+	mrpUrl.Path = api.QueryKill
 	fmt.Println("Sending stop command to", psid)
 	if resp, err := http.PostForm(mrpUrl.String(), mrpUrl.Query()); err != nil {
-		fmt.Fprintln(os.Stderr, "Cannot connect to", mrpUrl, "-", err)
+		fmt.Fprintln(os.Stderr, "Cannot connect to", mrpUrl)
+		fmt.Fprintln(os.Stderr, err)
 		os.Exit(5)
 	} else {
 		if resp.StatusCode != http.StatusOK {
-			fmt.Fprintln(os.Stderr, "Response from mrp server:", resp.Status)
+			fmt.Fprintln(os.Stderr, "Response:", resp.Status)
+			io.Copy(os.Stderr, resp.Body)
 			resp.Body.Close()
 			os.Exit(6)
 		} else {
@@ -102,17 +113,40 @@ func sendStop(psid string, mrpUrl *url.URL) {
 	os.Exit(0)
 }
 
+func sendRestart(psid string, mrpUrl *url.URL) {
+	mrpUrl.Path = api.QueryRestart
+	fmt.Println("Sending restart command to", psid)
+	if resp, err := http.PostForm(mrpUrl.String(), mrpUrl.Query()); err != nil {
+		fmt.Fprintln(os.Stderr, "Cannot connect to", mrpUrl)
+		fmt.Fprintln(os.Stderr, err)
+		os.Exit(5)
+	} else {
+		if resp.StatusCode != http.StatusOK {
+			fmt.Fprintln(os.Stderr, "Response:", resp.Status)
+			io.Copy(os.Stderr, resp.Body)
+			resp.Body.Close()
+			os.Exit(6)
+		} else {
+			fmt.Println("Restart request for", psid, "accepted")
+		}
+		resp.Body.Close()
+	}
+	os.Exit(0)
+}
+
 func status(psid string, mrpUrl *url.URL) {
-	mrpUrl.Path = "/api/get-info/" + psid
+	mrpUrl.Path = api.QueryGetInfo + "/" + psid
 	if resp, err := http.Get(mrpUrl.String()); err != nil {
-		fmt.Fprintln(os.Stderr, "Cannot connect to", mrpUrl, "-", err)
+		fmt.Fprintln(os.Stderr, "Cannot connect to", mrpUrl)
+		fmt.Fprintln(os.Stderr, err)
 		os.Exit(5)
 	} else if resp.StatusCode != http.StatusOK {
-		fmt.Fprintln(os.Stderr, "Response from mrp server:", resp.Status)
+		fmt.Fprintln(os.Stderr, "Response:", resp.Status)
+		io.Copy(os.Stderr, resp.Body)
 		resp.Body.Close()
 		os.Exit(6)
 	} else if bytes, err := ioutil.ReadAll(resp.Body); err != nil {
-		fmt.Fprintln(os.Stderr, "Response from mrp server:", resp.Status)
+		fmt.Fprintln(os.Stderr, "Error reading response:", err)
 		resp.Body.Close()
 		os.Exit(7)
 	} else {

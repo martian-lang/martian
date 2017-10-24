@@ -335,8 +335,11 @@ func (self *mrpWebServer) restart(w http.ResponseWriter, req *http.Request) {
 	if !self.verifyAuth(w, req) {
 		return
 	}
+	self.pipestanceBox.cleanupLock.Lock()
+	defer self.pipestanceBox.cleanupLock.Unlock()
 	if st := self.pipestanceBox.getPipestance().GetState(); st != core.Failed {
 		http.Error(w, "Only failed pipestances can be restarted.", http.StatusBadRequest)
+		return
 	}
 	if err := self.pipestanceBox.reset(); err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
@@ -348,7 +351,10 @@ func (self *mrpWebServer) kill(w http.ResponseWriter, req *http.Request) {
 	if !self.verifyAuth(w, req) {
 		return
 	}
+	util.LogInfo("webserv", "Got API shutdown request.")
 	go func() {
+		self.pipestanceBox.cleanupLock.Lock()
+		defer self.pipestanceBox.cleanupLock.Unlock()
 		self.pipestanceBox.getPipestance().KillWithMessage(
 			"Pipstance was killed by API call from " + req.RemoteAddr)
 		time.Sleep(6 * time.Second) // Make sure UI has a chance to refresh.
