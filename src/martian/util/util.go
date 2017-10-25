@@ -3,6 +3,11 @@
 //
 // Martian miscellaneous utilities.
 //
+
+// Packae util includes various utility methods.
+//
+// These utilities are frequently Martian-specific but do not depend on
+// Martian runtime infrastructure.
 package util
 
 import (

@@ -4,6 +4,7 @@
 //
 // MRO grammar.
 //
+
 package syntax
 
 import (

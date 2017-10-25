@@ -26,10 +26,12 @@ import (
 //=============================================================================
 // Node
 //=============================================================================
+
 type Nodable interface {
 	getNode() *Node
 }
 
+// Represents a node in the pipeline graph.
 type Node struct {
 	parent             Nodable
 	rt                 *Runtime
@@ -66,11 +68,13 @@ type Node struct {
 	blacklistedFromMRT bool // Don't used cached data when MRT'ing
 }
 
+// Represents an edge in the pipeline graph.
 type EdgeInfo struct {
 	From string `json:"from"`
 	To   string `json:"to"`
 }
 
+// Encapsulates information about a node failure.
 type NodeErrorInfo struct {
 	FQname  string `json:"fqname"`
 	Path    string `json:"path"`

@@ -15,6 +15,8 @@ import (
 //=============================================================================
 // Profile mode
 //=============================================================================
+
+// Defines available profiling modes for stage code.
 type ProfileMode string
 
 const (

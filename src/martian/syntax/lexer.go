@@ -3,6 +3,7 @@
 //
 // Martian lexical scanner. Simple regexp-based implementation.
 //
+
 package syntax
 
 import (

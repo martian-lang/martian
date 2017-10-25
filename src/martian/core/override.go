@@ -58,10 +58,8 @@ type PipestanceOverrides struct {
 	overridesbystage map[string]StageOverride
 }
 
-/*
- * What are the expected types for elements in a stageoverride map. Note that
- * all JSON numeric types look like Float64s when we stick them in an interface.
- */
+// Specifies the expected types for elements in a stageoverride map. Note that
+// all JSON numeric types look like Float64s when we stick them in an interface.
 var LegalOverrideTypes map[string]reflect.Kind = map[string]reflect.Kind{
 	"force_volatile": reflect.Bool,
 	"join.threads":   reflect.Float64,
@@ -72,9 +70,7 @@ var LegalOverrideTypes map[string]reflect.Kind = map[string]reflect.Kind{
 	"split.mem_gb":   reflect.Float64,
 }
 
-/*
- * Read the overrides file and produce a pipestance overrides object.
- */
+// Read the overrides file and produce a pipestance overrides object.
 func ReadOverrides(path string) (*PipestanceOverrides, error) {
 
 	pse := new(PipestanceOverrides)
@@ -135,12 +131,13 @@ func getParent(node *Node) *Node {
 	}
 }
 
-/*
- * Compute the value to use for a stage option when that value might be overrided.
- * |node| is the Node object for the stage
- * |what| is the name of the override we're considering
- * |def|  is the default value to use if the value is not overridded
- */
+// Compute the value to use for a stage option when that value might be overrided.
+//
+// |node| is the Node object for the stage
+//
+// |what| is the name of the override we're considering
+//
+// |def|  is the default value to use if the value is not overridded
 func (self *PipestanceOverrides) GetOverride(node *Node, what string, def interface{}) interface{} {
 
 	var so StageOverride

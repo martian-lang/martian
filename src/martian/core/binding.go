@@ -11,6 +11,9 @@ import (
 //=============================================================================
 // Binding
 //=============================================================================
+
+// Holds information about the value of an input arguemnt, either hard-coded
+// into the MRO or bound to the output of another node.
 type Binding struct {
 	node        *Node
 	id          string
@@ -26,6 +29,7 @@ type Binding struct {
 	value       interface{}
 }
 
+// An exportable version of Binding.
 type BindingInfo struct {
 	Id          string      `json:"id"`
 	Type        string      `json:"type"`

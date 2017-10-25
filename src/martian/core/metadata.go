@@ -112,6 +112,10 @@ func makeUniquifier() string {
 //=============================================================================
 // Metadata
 //=============================================================================
+
+// Manages interatction with the filesystem-based "database" of Martian
+// metadata for a pipeline node (pipeline, subpipeline, fork, stage, split,
+// chunk, join).
 type Metadata struct {
 	fqname        string
 	path          string
@@ -136,8 +140,12 @@ type Metadata struct {
 	notRunningSince time.Time
 }
 
+// Basic exportable information from a metadata object.
 type MetadataInfo struct {
-	Path  string   `json:"path"`
+	// The filesystem path containing the metadata files.
+	Path string `json:"path"`
+
+	// The metadata file names which exist for this object.
 	Names []string `json:"names"`
 }
 
@@ -194,6 +202,7 @@ func (self *Metadata) enumerateFiles() ([]string, error) {
 	return filepath.Glob(path.Join(self.curFilesPath, "*"))
 }
 
+// The path containing output files for this node.
 func (self *Metadata) FilesPath() string {
 	return self.curFilesPath
 }
@@ -468,6 +477,8 @@ func (self *Metadata) read(name MetadataFileName) interface{} {
 	return v
 }
 
+// Reads the content of the given metadata file and deserializes it into
+// the given object.
 func (self *Metadata) ReadInto(name MetadataFileName, target interface{}) error {
 	str, err := self.readRawSafe(name)
 	if err != nil {
@@ -489,6 +500,8 @@ func (self *Metadata) _writeRawNoLock(name MetadataFileName, text string) error 
 	}
 	return err
 }
+
+// Writes the given raw data into the given metadata file.
 func (self *Metadata) WriteRaw(name MetadataFileName, text string) error {
 	err := ioutil.WriteFile(self.MetadataFilePath(name), []byte(text), 0644)
 	self.cache(name, self.uniquifier)
@@ -501,14 +514,22 @@ func (self *Metadata) WriteRaw(name MetadataFileName, text string) error {
 	}
 	return err
 }
+
+// Serializes the given object and writes it to the given metadata file.
 func (self *Metadata) Write(name MetadataFileName, object interface{}) error {
 	bytes, _ := json.MarshalIndent(object, "", "    ")
 	return self.WriteRaw(name, string(bytes))
 }
+
+// Writes the current timestamp into the given metadata file.  Generally used
+// for sentinel files.
 func (self *Metadata) WriteTime(name MetadataFileName) error {
 	return self.WriteRaw(name, util.Timestamp())
 }
 
+// Serializes the given object and writes it to the given metadata file in a
+// way that ensures the file is updated atomically and will never be observed
+// in a partially-written form.
 func (self *Metadata) WriteAtomic(name MetadataFileName, object interface{}) error {
 	bytes, err := json.MarshalIndent(object, "", "    ")
 	if err != nil {
@@ -526,6 +547,14 @@ func (self *Metadata) WriteAtomic(name MetadataFileName, object interface{}) err
 	}
 }
 
+// Writes a journal file corresponding to the given metadata file.  This is
+// used to notify the runtime of the existence of a new or updated file.
+//
+// The journal is a performance optimization to prevent the runtime from
+// needing to constantly scan the entire database for changes.  Instead, it
+// only scans the journal.  This means that when a metadata file is created
+// or modified (except by the runtime itself), the change won't be "noticed"
+// until the journal is updated.
 func (self *Metadata) UpdateJournal(name MetadataFileName) error {
 	fname := path.Join(self.journalPath, self.fqname+"."+self.journalPrefix+string(name))
 	if err := ioutil.WriteFile(fname+".tmp", []byte(util.Timestamp()), 0644); err != nil {

@@ -1,8 +1,17 @@
 //
 // Copyright (c) 2014 10X Genomics, Inc. All rights reserved.
 //
-// Martian command-line formatter. Enforces the one true style.
+
+// Martian command-line code formatter for MRO files.
 //
+// Most of the time, it is invoked with a command line such as
+//
+//	mrf *.mrp --rewrite
+//
+// mrf is an opinionated code formatter, meaning its style output is not
+// configurable.  This is a deliberate choice.  By preventing users from
+// making different style choices, pointless whitespace-only diffs should
+// be prevented and arguments about style can be avoided.
 package main
 
 import (

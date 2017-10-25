@@ -3,6 +3,7 @@
 //
 // MRO canonical formatting. Inspired by gofmt.
 //
+
 package syntax
 
 import (
@@ -13,8 +14,10 @@ import (
 	"strings"
 )
 
-var INDENT string = "    "
-var NEWLINE string = "\n"
+const (
+	INDENT  string = "    "
+	NEWLINE string = "\n"
+)
 
 func max(a, b int) int {
 	if a > b {

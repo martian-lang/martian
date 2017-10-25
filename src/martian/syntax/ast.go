@@ -3,6 +3,11 @@
 //
 // MRO abstract syntax tree.
 //
+
+// Package syntax defines the the MRO pipeline declaration language.
+//
+// This includes the grammar and AST definition, as well as the parsers,
+// preprocessors, and formatters for it.
 package syntax
 
 type StageLanguage string

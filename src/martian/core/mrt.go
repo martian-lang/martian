@@ -14,10 +14,8 @@ import (
 	"os"
 )
 
-/*
- * PipestanceSetup defines the parameters we need to start a pipestance.
- * It encapsulates the argument to InvokePipelineand friends.
- */
+// PipestanceSetup defines the parameters we need to start a pipestance.
+// It encapsulates the argument to InvokePipelineand friends.
 type PipestanceSetup struct {
 	Srcpath        string            // Path to the mro invocation file
 	Psid           string            // pipestance ID
@@ -28,11 +26,9 @@ type PipestanceSetup struct {
 	JobMode        string            // jobmode to use
 }
 
-/*
- * This takes two pipestances and creates a map that associates nodes in
- * one pipestance with the nodes in the other. Nodes are associated if
- * they have the same name.
- */
+// This takes two pipestances and creates a map that associates nodes in
+// one pipestance with the nodes in the other. Nodes are associated if
+// they have the same name.
 func MapTwoPipestances(newp *Pipestance, oldp *Pipestance) map[*Node]*Node {
 
 	/* Actually do the mapping. */
@@ -53,10 +49,8 @@ func MapTwoPipestances(newp *Pipestance, oldp *Pipestance) map[*Node]*Node {
 	return m
 }
 
-/*
- * Helper function used by MapTwoPipestances that does the recursive enumeration
- * and mapping.
- */
+// Helper function used by MapTwoPipestances that does the recursive enumeration
+// and mapping.
 func mapR(curnode *Node, oldRoot *Node, m map[*Node]*Node) {
 	if curnode != nil {
 		var oldNode *Node
@@ -77,11 +71,9 @@ func mapR(curnode *Node, oldRoot *Node, m map[*Node]*Node) {
 	}
 }
 
-/*
- * Find a node by a name. |name| may be a "partially" qualified pipestance name
- * (see partiallyQualifiedName()) or just a stage name.  If it is a stage name,
- * and that name occurs multiple times in the pipeline, we will panic().
- */
+// Find a node by a name. |name| may be a "partially" qualified pipestance name
+// (see partiallyQualifiedName()) or just a stage name.  If it is a stage name,
+// and that name occurs multiple times in the pipeline, we will panic().
 func (n *Node) FindNodeByName(name string, out **Node) {
 	if name == partiallyQualifiedName(n.fqname) || name == n.name {
 		if *out != nil {
@@ -95,10 +87,9 @@ func (n *Node) FindNodeByName(name string, out **Node) {
 	}
 }
 
-/* This builds a set of symlinks from one pipestance to another. All of the non-blacklisted
- * stages (and sub-pipelines) that have a corresponding node will be linked.  We try to
- * link entire sub-pipelines when possible.
- */
+// This builds a set of symlinks from one pipestance to another. All of the non-blacklisted
+// stages (and sub-pipelines) that have a corresponding node will be linked.  We try to
+// link entire sub-pipelines when possible.
 func linkDirectories(cur *Node, oldRoot *Node, nodemap map[*Node]*Node) {
 	oldNode := nodemap[cur]
 	if cur.kind == "stage" {
@@ -133,11 +124,9 @@ func linkDirectories(cur *Node, oldRoot *Node, nodemap map[*Node]*Node) {
 	}
 }
 
-/*
- * This marks a set of nodes as well as any nodes dependent on them as blacklisted.
- * A node is dependent another node if it uses data that it provides (is in postnodes) or
- * if it is a parent of that node.
- */
+// This marks a set of nodes as well as any nodes dependent on them as blacklisted.
+// A node is dependent another node if it uses data that it provides (is in postnodes) or
+// if it is a parent of that node.
 func (self *Pipestance) BlacklistMRTNodes(namesToBlacklist []string, nodemap map[*Node]*Node) error {
 	for _, s := range namesToBlacklist {
 		var start *Node
@@ -150,9 +139,7 @@ func (self *Pipestance) BlacklistMRTNodes(namesToBlacklist []string, nodemap map
 	return nil
 }
 
-/*
- * Recursively blacklist nodes.
- */
+// Recursively blacklist nodes.
 func TaintNode(root *Node, nodemap map[*Node]*Node) {
 	if root.blacklistedFromMRT == false {
 		root.blacklistedFromMRT = true
@@ -174,9 +161,7 @@ func TaintNode(root *Node, nodemap map[*Node]*Node) {
 	}
 }
 
-/*
- * blacklist dependencies that have been VDR'ed.
- */
+// blacklist dependencies that have been VDR'ed.
 func VDRTaint(root *Node, nodemap map[*Node]*Node) {
 
 	for _, s := range root.prenodes {
@@ -222,9 +207,7 @@ func VDRTaint(root *Node, nodemap map[*Node]*Node) {
 	}
 }
 
-/*
- * Return true if the data inside a node was VDR'ed.
- */
+// Return true if the data inside a node was VDR'ed.
 func (n *Node) VDRMurdered() bool {
 
 	if len(n.forks) == 0 {
@@ -262,9 +245,7 @@ func (n *Node) VDRMurdered() bool {
 	return false
 }
 
-/*
- * Iterate over the entire tree and print the names of the nodes that have been blacklisted
- */
+// Iterate over the entire tree and print the names of the nodes that have been blacklisted
 func ScanTree(root *Node) {
 
 	if root.blacklistedFromMRT {
@@ -276,17 +257,16 @@ func ScanTree(root *Node) {
 	}
 }
 
-/*
- * This is the main entry point for "mrt".
- * newinfo corresponds to a new (non-existing) pipestance and oldinfo to an existing
- * pipestance.  Invalidate lists stages in the new pipestance that have code differences.
- *
- * We create a new pipestance directory and link every stage/pipeline from oldinfo
- * that we can. We explicitly don't link anything in |invalidate| or that derives from
- * anything in invalidate.
- *
- * After this runs, the new directory can be mrp'ed to run the new pipestance.
- */
+// This is the main entry point for "mrt".
+//
+// newinfo corresponds to a new (non-existing) pipestance and oldinfo to an existing
+// pipestance.  Invalidate lists stages in the new pipestance that have code differences.
+//
+// We create a new pipestance directory and link every stage/pipeline from oldinfo
+// that we can. We explicitly don't link anything in |invalidate| or that derives from
+// anything in invalidate.
+//
+// After this runs, the new directory can be mrp'ed to run the new pipestance.
 func MRTBuildPipeline(newinfo *PipestanceSetup, oldinfo *PipestanceSetup, invalidate []string) {
 	util.SetupSignalHandlers()
 

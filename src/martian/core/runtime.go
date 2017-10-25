@@ -131,6 +131,9 @@ func DefaultRetries() int {
 //=============================================================================
 // Runtime
 //=============================================================================
+
+// Collects configuration and state required to initialize and run pipestances
+// and stagestances.
 type Runtime struct {
 	adaptersPath    string
 	mrjob           string

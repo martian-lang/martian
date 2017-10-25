@@ -80,6 +80,8 @@ var disableUniquification = (os.Getenv("MRO_UNIQUIFIED_DIRECTORIES") == "disable
 //=============================================================================
 // Chunk
 //=============================================================================
+
+// Represents the state of a stage chunk (the "main" method).
 type Chunk struct {
 	node       *Node
 	fork       *Fork
@@ -90,6 +92,7 @@ type Chunk struct {
 	hasBeenRun bool
 }
 
+// Exportable information about a Chunk object.
 type ChunkInfo struct {
 	Index    int                    `json:"index"`
 	ChunkDef map[string]interface{} `json:"chunkDef"`
@@ -214,6 +217,10 @@ func (self *Chunk) serializePerf() *ChunkPerfInfo {
 //=============================================================================
 // Fork
 //=============================================================================
+
+// Represents a fork of a stage or pipeline.  When sweaping over multiple
+// possible values for an input parameter, there will be more than one fork for
+// a given pipeline or stage.
 type Fork struct {
 	node           *Node
 	index          int
@@ -234,6 +241,7 @@ type Fork struct {
 	metadatasCache []*Metadata // cache for collectMetadata
 }
 
+// Exportable information from a Fork object.
 type ForkInfo struct {
 	Index         int                    `json:"index"`
 	ArgPermute    map[string]interface{} `json:"argPermute"`

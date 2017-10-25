@@ -1,18 +1,41 @@
 //
 // Copyright (c) 2017 10X Genomics, Inc. All rights reserved.
 //
-// Martian golang job adapter.
+
+// Package adapter provides a golang-native Martian job adapter and utilities.
 //
-// This package defines utility methods useful for stage code written in Go.
+// A stage executable should should look something like
 //
-// A stage's main() function should not need to do anything besides call
-// RunStage(split, chunk, join).  One executable handles all 3 phases.
+// 	package main
+//
+// 	import (
+// 		"martian/adapter"
+// 		"martian/core"
+// 	)
+//
+// 	func main() {
+// 		adapter.RunStage(split, chunk, join)
+// 	}
+//
+// 	func split(metadata *core.Metadata) (*core.StageDefs, error) {
+// 		...
+// 	}
+//
+// 	func chunk(metadata *core.Metadata) (interface{}, error) {
+// 		...
+// 	}
+//
+// 	func join(metadata *core.Metadata) (interface{}, error) {
+// 		...
+// 	}
+//
+// One executable handles all 3 phases.  Stages which do not split may pass
+// nil for the split and join arguments to RunStage.
 //
 // Stage code should NEVER directly write to the log, errors, or assert files
 // through the metadata object, but should instead return an error.  For an
 // assertion error, use the StageAssertion method.  For logging, use
-// core.LogInfo and friends.
-
+// util.LogInfo and friends.
 package adapter
 
 import (
@@ -66,6 +89,8 @@ func UpdateProgress(metadata *core.Metadata, message string) error {
 // Parses the command line and stage inputs, runs the appropriate given stage
 // code, and saves the outputs.  split and join may be nil if the stage does
 // not split.
+//
+// This should be the main entry point for all stage executables.
 func RunStage(split SplitFunc, main MainFunc, join MainFunc) {
 	util.LogTeeWriter(os.NewFile(3, "martian://log"))
 	errorFile := os.NewFile(4, "martian://errors")

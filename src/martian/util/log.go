@@ -3,6 +3,7 @@
 //
 // Martian logging.
 //
+
 package util
 
 import (
@@ -58,6 +59,7 @@ func print(msg string) {
 	}
 }
 
+// Sets up the logging methods to log to the given file.
 func LogTee(filename string) {
 	if logInit() {
 		if LOGGER.fileWriter == nil {
@@ -73,6 +75,7 @@ func LogTee(filename string) {
 	}
 }
 
+// Sets up the logging methods to log to the given writer.
 func LogTeeWriter(writer io.Writer) {
 	if logInit() {
 		if LOGGER.fileWriter == nil {
@@ -95,18 +98,29 @@ func formatError(err error, component string, format string, v ...interface{}) s
 	return fmt.Sprintf("%s [%s] %s\n          %s\n", Timestamp(), component, fmt.Sprintf(format, v...), err.Error())
 }
 
+// Logs the given string to the current log stream.  If one has not been
+// initialized with LogTee or LogTeeWriter, the content is buffered until
+// one of those methods is called.
 func Log(format string, v ...interface{}) {
 	log(formatRaw(format, v...))
 }
 
+// Logs a line in the form "<timestamp> [component] <message>".  Component
+// is intended to indicate the source of the message and should be a consistent
+// length.  By convention, this length is 7 characters.
 func LogInfo(component string, format string, v ...interface{}) {
 	log(formatInfo(component, format, v...))
 }
 
+// Logs a line in the form "<timestamp> [component] <message>" followed by
+// a line with err.Error().  Component is intended to indicate the source of
+// the message and should be a consistent length.  By convention, this length
+// is 7 characters.
 func LogError(err error, component string, format string, v ...interface{}) {
 	log(formatError(err, component, format, v...))
 }
 
+// Like Log, but also prints to standard output.
 func Print(format string, v ...interface{}) {
 	print(formatRaw(format, v...))
 }
@@ -115,14 +129,17 @@ func Println(format string, v ...interface{}) {
 	print(formatRaw(format, v...) + "\n")
 }
 
+// Like LogInfo but also prints to standard output.
 func PrintInfo(component string, format string, v ...interface{}) {
 	print(formatInfo(component, format, v...))
 }
 
+// Like LogError but also prints to standard output.
 func PrintError(err error, component string, format string, v ...interface{}) {
 	print(formatError(err, component, format, v...))
 }
 
+// Surrounds the given string with ANSI color control characters.
 func Colorize(s string, c int) string {
 	return fmt.Sprintf("\033[%dm%s\033[0m", c, s)
 }

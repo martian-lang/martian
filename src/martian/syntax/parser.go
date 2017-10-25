@@ -3,6 +3,7 @@
 //
 // MRO semantic checking.
 //
+
 package syntax
 
 import (

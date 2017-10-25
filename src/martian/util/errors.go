@@ -3,6 +3,7 @@
 //
 // Martian error types.
 //
+
 package util
 
 import (

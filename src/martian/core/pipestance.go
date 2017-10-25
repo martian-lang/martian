@@ -23,6 +23,9 @@ import (
 //=============================================================================
 // Stagestance
 //=============================================================================
+
+// Similar to a pipestance, except for a single stage.  Intended for use
+// during testing and development of pipelines, e.g. with `mrs`.
 type Stagestance struct {
 	node *Node
 }
@@ -69,6 +72,9 @@ func (self *Stagestance) GetFatalError() (string, bool, string, string, Metadata
 //=============================================================================
 // Pipestance
 //=============================================================================
+
+// Encapsulates information about an instance of a running (or failed, or
+// completed) pipeline.
 type Pipestance struct {
 	node     *Node
 	metadata *Metadata
@@ -741,6 +747,8 @@ func (self *threadSafeNodeMap) GetNodes() []*Node {
 //=============================================================================
 // TopNode
 //=============================================================================
+
+// The top-level node for a pipestance.
 type TopNode struct {
 	node *Node
 }
@@ -778,6 +786,8 @@ func NewTopNode(rt *Runtime, psid string, p string, mroPaths []string, mroVersio
 // Factory
 //=============================================================================
 
+// Encapsulates the information needed to instantiate a pipestance, either by
+// creating one or reattaching to an existing one.
 type PipestanceFactory interface {
 	ReattachToPipestance() (*Pipestance, error)
 	InvokePipeline() (*Pipestance, error)
