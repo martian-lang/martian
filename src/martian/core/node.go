@@ -66,6 +66,18 @@ type Node struct {
 	blacklistedFromMRT bool // Don't used cached data when MRT'ing
 }
 
+type EdgeInfo struct {
+	From string `json:"from"`
+	To   string `json:"to"`
+}
+
+type NodeErrorInfo struct {
+	FQname  string `json:"fqname"`
+	Path    string `json:"path"`
+	Summary string `json:"summary,omitempty"`
+	Log     string `json:"log,omitempty"`
+}
+
 type NodeInfo struct {
 	Name          string               `json:"name"`
 	Fqname        string               `json:"fqname"`
@@ -75,10 +87,10 @@ type NodeInfo struct {
 	Metadata      *MetadataInfo        `json:"metadata"`
 	SweepBindings []*BindingInfo       `json:"sweepbindings"`
 	Forks         []*ForkInfo          `json:"forks"`
-	Edges         []interface{}        `json:"edges"`
+	Edges         []EdgeInfo           `json:"edges"`
 	StagecodeLang syntax.StageCodeType `json:"stagecodeLang"`
 	StagecodeCmd  string               `json:"stagecodeCmd"`
-	Error         interface{}          `json:"error"`
+	Error         *NodeErrorInfo       `json:"error,omitempty"`
 }
 
 func (self *Node) getNode() *Node { return self }
@@ -122,9 +134,18 @@ func NewNode(parent Nodable, kind string, callStm *syntax.CallStm, callables *sy
 	for _, binding := range self.argbindingList {
 		if binding.mode == "reference" && binding.boundNode != nil {
 			prenode := binding.boundNode
-			self.prenodes[prenode.getNode().fqname] = prenode
-			self.directPrenodes = append(self.directPrenodes, binding.parentNode)
-
+			prename := prenode.getNode().fqname
+			// prenodes may get added later by setPrenode, however right now
+			// only prenodes induced directly by bindings are in the list.
+			// These are tracked separately for display in the UI.
+			if existing, ok := self.prenodes[prename]; !ok {
+				self.prenodes[prename] = prenode
+				self.directPrenodes = append(self.directPrenodes, binding.parentNode)
+			} else if existing != prenode {
+				util.LogInfo("runtime",
+					"WARNING: multiple prenodes with the same fqname %s for %s",
+					prename, self.fqname)
+			}
 			prenode.getNode().postnodes[self.fqname] = self
 		}
 	}
@@ -685,25 +706,25 @@ func (self *Node) serializeState() *NodeInfo {
 	for _, fork := range self.forks {
 		forks = append(forks, fork.serializeState())
 	}
-	edges := []interface{}{}
+	edges := make([]EdgeInfo, 0, len(self.directPrenodes))
 	for _, prenode := range self.directPrenodes {
-		edges = append(edges, map[string]string{
-			"from": prenode.getNode().fqname,
-			"to":   self.fqname,
+		edges = append(edges, EdgeInfo{
+			From: prenode.getNode().fqname,
+			To:   self.fqname,
 		})
 	}
-	var err interface{} = nil
+	var err *NodeErrorInfo
 	if self.state == Failed {
 		fqname, _, summary, log, _, errpaths := self.getFatalError()
 		errpath := ""
 		if len(errpaths) > 0 {
 			errpath = errpaths[0]
 		}
-		err = map[string]string{
-			"fqname":  fqname,
-			"path":    errpath,
-			"summary": summary,
-			"log":     log,
+		err = &NodeErrorInfo{
+			FQname:  fqname,
+			Path:    errpath,
+			Summary: summary,
+			Log:     log,
 		}
 	}
 	return &NodeInfo{
