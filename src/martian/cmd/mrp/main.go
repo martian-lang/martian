@@ -657,9 +657,9 @@ Options:
 	// Configure Martian runtime.
 	//=========================================================================
 	rt := core.NewRuntimeWithCores(jobMode, vdrMode, profileMode, martianVersion,
-		reqCores, reqMem, reqMemPerCore, maxJobs, jobFreqMillis, "", fullStageReset,
-		stackVars, zip, skipPreflight, enableMonitor, debug, stest, onfinish,
-		overrides, limitLoadavg)
+		reqCores, reqMem, reqMemPerCore, maxJobs, jobFreqMillis, jobResources,
+		fullStageReset, stackVars, zip, skipPreflight, enableMonitor, debug, stest,
+		onfinish, overrides, limitLoadavg)
 	rt.MroCache.CacheMros(mroPaths)
 
 	//=========================================================================
