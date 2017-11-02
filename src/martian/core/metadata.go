@@ -471,7 +471,7 @@ func (self *Metadata) read(name MetadataFileName) interface{} {
 	}
 	str, err := self.readRawSafe(name)
 	json.Unmarshal([]byte(str), &v)
-	if err != nil {
+	if err == nil {
 		self.saveToCache(name, v)
 	}
 	return v
