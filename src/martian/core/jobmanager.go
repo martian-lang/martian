@@ -187,8 +187,10 @@ func (self *LocalJobManager) HandleSignal(sig os.Signal) {
 
 func (self *LocalJobManager) GetSystemReqs(threads int, memGB int) (int, int) {
 	// Sanity check and cap to self.maxCores.
-	if threads < 1 {
+	if threads == 0 {
 		threads = self.jobSettings.ThreadsPerJob
+	} else if threads < 0 {
+		threads = self.maxCores
 	}
 	if threads > self.maxCores {
 		if self.debug {
@@ -459,8 +461,10 @@ func (self *RemoteJobManager) GetSettings() *JobManagerSettings {
 
 func (self *RemoteJobManager) GetSystemReqs(threads int, memGB int) (int, int) {
 	// Sanity check the thread count.
-	if threads < 1 {
+	if threads == 0 {
 		threads = self.config.jobSettings.ThreadsPerJob
+	} else if threads < 0 {
+		threads = -threads
 	}
 
 	// Sanity check memory requirements.
