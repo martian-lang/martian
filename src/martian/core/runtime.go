@@ -132,6 +132,38 @@ func DefaultRetries() int {
 // Runtime
 //=============================================================================
 
+// Configuration required to initialize a Runtime object.
+type RuntimeOptions struct {
+	// The runtime mode (required): either "local" or a named mode from
+	// jobmanagers/config.json
+	JobMode string
+
+	// The volatile disk recovery mode (required): either "post",
+	// "rolling", or "disable".
+	VdrMode string
+
+	// The profiling mode (required): "disable" or one of the available
+	// constants.
+	ProfileMode     ProfileMode
+	MartianVersion  string
+	LocalMem        int
+	LocalCores      int
+	MemPerCore      int
+	MaxJobs         int
+	JobFreqMillis   int
+	ResourceSpecial string
+	FullStageReset  bool
+	StackVars       bool
+	Zip             bool
+	SkipPreflight   bool
+	Monitor         bool
+	Debug           bool
+	StressTest      bool
+	OnFinishHandler string
+	Overrides       *PipestanceOverrides
+	LimitLoadavg    bool
+}
+
 // Collects configuration and state required to initialize and run pipestances
 // and stagestances.
 type Runtime struct {
@@ -154,48 +186,84 @@ type Runtime struct {
 	overrides       *PipestanceOverrides
 }
 
+// Deprecated: use RuntimeConfig.NewRuntime() instead
 func NewRuntime(jobMode string, vdrMode string, profileMode ProfileMode, martianVersion string) *Runtime {
 	return NewRuntimeWithCores(jobMode, vdrMode, profileMode, martianVersion,
 		-1, -1, -1, -1, -1, "", false, false, false, false, false, false, false, "", nil, false)
 }
 
+// Deprecated: use RuntimeConfig.NewRuntime() instead
 func NewRuntimeWithCores(jobMode string, vdrMode string, profileMode ProfileMode, martianVersion string,
 	reqCores int, reqMem int, reqMemPerCore int, maxJobs int, jobFreqMillis int, jobQueues string,
 	fullStageReset bool, enableStackVars bool, enableZip bool, skipPreflight bool, enableMonitor bool,
 	debug bool, stest bool, onFinishExec string, overrides *PipestanceOverrides, limitLoadavg bool) *Runtime {
+	c := RuntimeOptions{
+		JobMode:         jobMode,
+		VdrMode:         vdrMode,
+		ProfileMode:     profileMode,
+		MartianVersion:  martianVersion,
+		LocalMem:        reqMem,
+		LocalCores:      reqCores,
+		MemPerCore:      reqMemPerCore,
+		MaxJobs:         maxJobs,
+		JobFreqMillis:   jobFreqMillis,
+		ResourceSpecial: jobQueues,
+		FullStageReset:  fullStageReset,
+		StackVars:       enableStackVars,
+		Zip:             enableZip,
+		SkipPreflight:   skipPreflight,
+		Monitor:         enableMonitor,
+		Debug:           debug,
+		StressTest:      stest,
+		OnFinishHandler: onFinishExec,
+		Overrides:       overrides,
+		LimitLoadavg:    limitLoadavg,
+	}
+	return c.NewRuntime()
+}
 
+func DefaultRuntimeOptions() RuntimeOptions {
+	return RuntimeOptions{
+		MartianVersion: util.GetVersion(),
+		ProfileMode:    DisableProfile,
+		JobMode:        "local",
+		VdrMode:        "post",
+	}
+}
+
+func (c *RuntimeOptions) NewRuntime() *Runtime {
 	self := &Runtime{}
 	self.adaptersPath = util.RelPath(path.Join("..", "adapters"))
 	self.mrjob = util.RelPath("mrjob")
-	self.martianVersion = martianVersion
-	self.jobMode = jobMode
-	self.vdrMode = vdrMode
-	self.profileMode = profileMode
-	self.fullStageReset = fullStageReset
-	self.enableStackVars = enableStackVars
-	self.enableZip = enableZip
-	self.skipPreflight = skipPreflight
-	self.enableMonitor = enableMonitor
-	self.stest = stest
-	self.onFinishExec = onFinishExec
+	self.martianVersion = c.MartianVersion
+	self.jobMode = c.JobMode
+	self.vdrMode = c.VdrMode
+	self.profileMode = c.ProfileMode
+	self.fullStageReset = c.FullStageReset
+	self.enableStackVars = c.StackVars
+	self.enableZip = c.Zip
+	self.skipPreflight = c.SkipPreflight
+	self.enableMonitor = c.Monitor
+	self.stest = c.StressTest
+	self.onFinishExec = c.OnFinishHandler
 
 	self.MroCache = NewMroCache()
-	self.LocalJobManager = NewLocalJobManager(reqCores, reqMem, debug,
-		limitLoadavg,
+	self.LocalJobManager = NewLocalJobManager(c.LocalCores, c.LocalMem, c.Debug,
+		c.LimitLoadavg,
 		self.jobMode != "local")
 	if self.jobMode == "local" {
 		self.JobManager = self.LocalJobManager
 	} else {
-		self.JobManager = NewRemoteJobManager(self.jobMode, reqMemPerCore, maxJobs,
-			jobFreqMillis, jobQueues, debug)
+		self.JobManager = NewRemoteJobManager(self.jobMode, c.MemPerCore, c.MaxJobs,
+			c.JobFreqMillis, c.ResourceSpecial, c.Debug)
 	}
 	VerifyVDRMode(self.vdrMode)
 	VerifyProfileMode(self.profileMode)
 
-	if overrides == nil {
+	if c.Overrides == nil {
 		self.overrides, _ = ReadOverrides("")
 	} else {
-		self.overrides = overrides
+		self.overrides = c.Overrides
 	}
 
 	return self

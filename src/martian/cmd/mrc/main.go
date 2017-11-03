@@ -47,7 +47,7 @@ Options:
 	checkSrcPath := true
 
 	// Setup runtime with MRO path.
-	rt := core.NewRuntime("local", "disable", "disable", martianVersion)
+	rt := core.DefaultRuntimeOptions().NewRuntime()
 
 	count := 0
 	if opts["--all"].(bool) {

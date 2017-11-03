@@ -394,9 +394,9 @@ Options:
 
     -h --help           Show this message.
     --version           Show version.`
-	martianVersion := util.GetVersion()
-	opts, _ := docopt.Parse(doc, nil, true, martianVersion, false)
-	util.Println("Martian Runtime - %s", martianVersion)
+	config := core.DefaultRuntimeOptions()
+	opts, _ := docopt.Parse(doc, nil, true, config.MartianVersion, false)
+	util.Println("Martian Runtime - %s", config.MartianVersion)
 	util.LogInfo("build  ", "Built with Go version %s", runtime.Version())
 	util.LogInfo("cmdline", strings.Join(os.Args, " "))
 	util.LogInfo("pid    ", strconv.Itoa(os.Getpid()))
@@ -416,33 +416,30 @@ Options:
 	}
 
 	// Requested cores and memory.
-	reqCores := -1
 	if value := opts["--localcores"]; value != nil {
 		if value, err := strconv.Atoi(value.(string)); err == nil {
-			reqCores = value
-			util.LogInfo("options", "--localcores=%d", reqCores)
+			config.LocalCores = value
+			util.LogInfo("options", "--localcores=%d", config.LocalCores)
 		} else {
 			util.PrintError(err, "options",
 				"Could not parse --localcores value \"%s\"", opts["--localcores"].(string))
 			os.Exit(1)
 		}
 	}
-	reqMem := -1
 	if value := opts["--localmem"]; value != nil {
 		if value, err := strconv.Atoi(value.(string)); err == nil {
-			reqMem = value
-			util.LogInfo("options", "--localmem=%d", reqMem)
+			config.LocalMem = value
+			util.LogInfo("options", "--localmem=%d", config.LocalMem)
 		} else {
 			util.PrintError(err, "options",
 				"Could not parse --localmem value \"%s\"", opts["--localmem"].(string))
 			os.Exit(1)
 		}
 	}
-	reqMemPerCore := -1
 	if value := opts["--mempercore"]; value != nil {
 		if value, err := strconv.Atoi(value.(string)); err == nil {
-			reqMemPerCore = value
-			util.LogInfo("options", "--mempercore=%d", reqMemPerCore)
+			config.MemPerCore = value
+			util.LogInfo("options", "--mempercore=%d", config.MemPerCore)
 		} else {
 			util.PrintError(err, "options",
 				"Could not parse --mempercore value \"%s\"", opts["--mempercore"].(string))
@@ -451,17 +448,15 @@ Options:
 	}
 
 	// Special to resources mappings
-	jobResources := ""
 	if value := os.Getenv("MRO_JOBRESOURCES"); len(value) > 0 {
-		jobResources = value
-		util.LogInfo("options", "MRO_JOBRESOURCES=%s", jobResources)
+		config.ResourceSpecial = value
+		util.LogInfo("options", "MRO_JOBRESOURCES=%s", config.ResourceSpecial)
 	}
 
 	// Flag for full stage reset, default is chunk-granular
-	fullStageReset := false
 	if value := os.Getenv("MRO_FULLSTAGERESET"); len(value) > 0 {
-		fullStageReset = true
-		util.LogInfo("options", "MRO_FULLSTAGERESET=%v", fullStageReset)
+		config.FullStageReset = true
+		util.LogInfo("options", "MRO_FULLSTAGERESET=true")
 	}
 
 	// Compute MRO path.
@@ -476,65 +471,59 @@ Options:
 	util.LogInfo("version", "MRO Version=%s", mroVersion)
 
 	// Compute job manager.
-	jobMode := "local"
 	if value := opts["--jobmode"]; value != nil {
-		jobMode = value.(string)
+		config.JobMode = value.(string)
 	}
-	util.LogInfo("options", "--jobmode=%s", jobMode)
+	util.LogInfo("options", "--jobmode=%s", config.JobMode)
 
 	// Max parallel jobs.
-	maxJobs := -1
-	if jobMode != "local" {
-		maxJobs = 64
+	if config.JobMode != "local" {
+		config.MaxJobs = 64
 	}
 	if value := opts["--maxjobs"]; value != nil {
 		if value, err := strconv.Atoi(value.(string)); err == nil {
-			maxJobs = value
+			config.MaxJobs = value
 		} else {
 			util.PrintError(err, "options", "Could not parse --maxjobs value \"%s\"", opts["--maxjobs"].(string))
 			os.Exit(1)
 		}
 	}
-	util.LogInfo("options", "--maxjobs=%d", maxJobs)
+	util.LogInfo("options", "--maxjobs=%d", config.MaxJobs)
 
 	// frequency (in milliseconds) that jobs will be sent to the queue
 	// (this is a minimum bound, as it may take longer to emit jobs)
-	jobFreqMillis := -1
-	if jobMode != "local" {
-		jobFreqMillis = 100
+	if config.JobMode != "local" {
+		config.JobFreqMillis = 100
 	}
 	if value := opts["--jobinterval"]; value != nil {
 		if value, err := strconv.Atoi(value.(string)); err == nil {
-			jobFreqMillis = value
+			config.JobFreqMillis = value
 		} else {
 			util.PrintError(err, "options", "Could not parse --jobinterval value \"%s\"", opts["--jobinterval"].(string))
 			os.Exit(1)
 		}
 	}
-	util.LogInfo("options", "--jobinterval=%d", jobFreqMillis)
+	util.LogInfo("options", "--jobinterval=%d", config.JobFreqMillis)
 
 	// Compute vdrMode.
-	vdrMode := "post"
 	if value := opts["--vdrmode"]; value != nil {
-		vdrMode = value.(string)
+		config.VdrMode = value.(string)
 	}
-	util.LogInfo("options", "--vdrmode=%s", vdrMode)
-	core.VerifyVDRMode(vdrMode)
+	util.LogInfo("options", "--vdrmode=%s", config.VdrMode)
+	core.VerifyVDRMode(config.VdrMode)
 
 	// Compute onfinish
-	onfinish := ""
 	if value := opts["--onfinish"]; value != nil {
-		onfinish = value.(string)
-		core.VerifyOnFinish(onfinish)
+		config.OnFinishHandler = value.(string)
+		core.VerifyOnFinish(config.OnFinishHandler)
 	}
 
 	// Compute profiling mode.
-	profileMode := core.DisableProfile
 	if value := opts["--profile"]; value != nil {
-		profileMode = core.ProfileMode(value.(string))
+		config.ProfileMode = core.ProfileMode(value.(string))
 	}
-	util.LogInfo("options", "--profile=%s", profileMode)
-	core.VerifyProfileMode(profileMode)
+	util.LogInfo("options", "--profile=%s", config.ProfileMode)
+	core.VerifyProfileMode(config.ProfileMode)
 
 	// Compute UI port.
 	requireAuth := true
@@ -584,10 +573,9 @@ Options:
 	}
 
 	// Parse supplied overrides file.
-	var overrides *core.PipestanceOverrides
 	if v := opts["--overrides"]; v != nil {
 		var err error
-		overrides, err = core.ReadOverrides(v.(string))
+		config.Overrides, err = core.ReadOverrides(v.(string))
 		if err != nil {
 			util.PrintError(err, "startup", "Failed to parse overrides file")
 			os.Exit(1)
@@ -596,20 +584,20 @@ Options:
 	}
 
 	// Compute stackVars flag.
-	stackVars := opts["--stackvars"].(bool)
-	util.LogInfo("options", "--stackvars=%v", stackVars)
+	config.StackVars = opts["--stackvars"].(bool)
+	util.LogInfo("options", "--stackvars=%v", config.StackVars)
 
-	zip := opts["--zip"].(bool)
-	util.LogInfo("options", "--zip=%v", zip)
+	config.Zip = opts["--zip"].(bool)
+	util.LogInfo("options", "--zip=%v", config.Zip)
 
-	limitLoadavg := opts["--limit-loadavg"].(bool)
-	util.LogInfo("options", "--limit-loadavg=%v", limitLoadavg)
+	config.LimitLoadavg = opts["--limit-loadavg"].(bool)
+	util.LogInfo("options", "--limit-loadavg=%v", config.LimitLoadavg)
 
 	noExit := opts["--noexit"].(bool)
 	util.LogInfo("options", "--noexit=%v", noExit)
 
-	skipPreflight := opts["--nopreflight"].(bool)
-	util.LogInfo("options", "--nopreflight=%v", skipPreflight)
+	config.SkipPreflight = opts["--nopreflight"].(bool)
+	util.LogInfo("options", "--nopreflight=%v", config.SkipPreflight)
 
 	psid := opts["<pipestance_name>"].(string)
 	invocationPath := opts["<call.mro>"].(string)
@@ -617,10 +605,10 @@ Options:
 	stepSecs := 3
 	checkSrc := true
 	readOnly := false
-	enableMonitor := opts["--monitor"].(bool)
+	config.Monitor = opts["--monitor"].(bool)
 	inspect := opts["--inspect"].(bool)
-	debug := opts["--debug"].(bool)
-	stest := opts["--stest"].(bool)
+	config.Debug = opts["--debug"].(bool)
+	config.StressTest = opts["--stest"].(bool)
 	envs := map[string]string{}
 	retries := core.DefaultRetries()
 	if value := opts["--autoretry"]; value != nil {
@@ -633,7 +621,7 @@ Options:
 			os.Exit(1)
 		}
 	}
-	if retries > 0 && fullStageReset {
+	if retries > 0 && config.FullStageReset {
 		retries = 0
 		util.Println(
 			"\nWARNING: ignoring autoretry when MRO_FULLSTAGERESET is set.\n")
@@ -656,10 +644,7 @@ Options:
 	//=========================================================================
 	// Configure Martian runtime.
 	//=========================================================================
-	rt := core.NewRuntimeWithCores(jobMode, vdrMode, profileMode, martianVersion,
-		reqCores, reqMem, reqMemPerCore, maxJobs, jobFreqMillis, jobResources,
-		fullStageReset, stackVars, zip, skipPreflight, enableMonitor, debug, stest,
-		onfinish, overrides, limitLoadavg)
+	rt := config.NewRuntime()
 	rt.MroCache.CacheMros(mroPaths)
 
 	//=========================================================================
@@ -668,7 +653,7 @@ Options:
 	data, err := ioutil.ReadFile(invocationPath)
 	util.DieIf(err)
 	invocationSrc := string(data)
-	executingPreflight := !skipPreflight
+	executingPreflight := !config.SkipPreflight
 
 	factory := core.NewRuntimePipestanceFactory(rt,
 		invocationSrc, invocationPath, psid, mroPaths, pipestancePath, mroVersion,
@@ -680,7 +665,7 @@ Options:
 	if err != nil {
 		if _, ok := err.(*core.PipestanceExistsError); ok {
 			if pipestance, err = factory.ReattachToPipestance(); err == nil {
-				martianVersion, mroVersion, _ = pipestance.GetVersions()
+				config.MartianVersion, mroVersion, _ = pipestance.GetVersions()
 				reattaching = true
 			} else {
 				util.DieIf(err)
@@ -714,17 +699,17 @@ Options:
 		Cmdline:      strings.Join(os.Args, " "),
 		Pid:          os.Getpid(),
 		Start:        pipestance.GetTimestamp(),
-		Version:      martianVersion,
+		Version:      config.MartianVersion,
 		Pname:        pipestance.GetPname(),
 		PsId:         psid,
 		State:        pipestance.GetState(),
-		JobMode:      jobMode,
+		JobMode:      config.JobMode,
 		MaxCores:     rt.JobManager.GetMaxCores(),
 		MaxMemGB:     rt.JobManager.GetMaxMemGB(),
 		InvokePath:   invocationPath,
 		InvokeSource: invocationSrc,
 		MroPath:      util.FormatMroPath(mroPaths),
-		ProfileMode:  profileMode,
+		ProfileMode:  config.ProfileMode,
 		Port:         uiport,
 		MroVersion:   mroVersion,
 		Uuid:         uuid,
@@ -799,7 +784,7 @@ Options:
 		// If it already exists, try to reattach to it.
 		if !inspect {
 			if err = pipestance.Reset(); err == nil {
-				err = pipestance.RestartLocalJobs(jobMode)
+				err = pipestance.RestartLocalJobs(config.JobMode)
 			}
 			util.DieIf(err)
 		}
@@ -817,7 +802,7 @@ Options:
 	//=========================================================================
 	// Start run loop.
 	//=========================================================================
-	go runLoop(&pipestanceBox, stepSecs, vdrMode, noExit)
+	go runLoop(&pipestanceBox, stepSecs, config.VdrMode, noExit)
 
 	// Let daemons take over.
 	done := make(chan bool)

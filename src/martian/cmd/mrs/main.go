@@ -54,9 +54,9 @@ Options:
 
     -h --help           Show this message.
     --version           Show version.`
-	martianVersion := util.GetVersion()
-	opts, _ := docopt.Parse(doc, nil, true, martianVersion, false)
-	util.Println("Martian Single-Stage Runtime - %s", martianVersion)
+	config := core.DefaultRuntimeOptions()
+	opts, _ := docopt.Parse(doc, nil, true, config.MartianVersion, false)
+	util.Println("Martian Single-Stage Runtime - %s", config.MartianVersion)
 	util.LogInfo("cmdline", strings.Join(os.Args, " "))
 
 	martianFlags := ""
@@ -67,58 +67,51 @@ Options:
 	}
 
 	// Requested cores and memory.
-	reqCores := -1
 	if value := opts["--localcores"]; value != nil {
 		if value, err := strconv.Atoi(value.(string)); err == nil {
-			reqCores = value
-			util.LogInfo("options", "--localcores=%d", reqCores)
+			config.LocalCores = value
+			util.LogInfo("options", "--localcores=%d", config.LocalCores)
 		}
 	}
-	reqMem := -1
 	if value := opts["--localmem"]; value != nil {
 		if value, err := strconv.Atoi(value.(string)); err == nil {
-			reqMem = value
-			util.LogInfo("options", "--localmem=%d", reqMem)
+			config.LocalMem = value
+			util.LogInfo("options", "--localmem=%d", config.LocalMem)
 		}
 	}
-	reqMemPerCore := -1
 	if value := opts["--mempercore"]; value != nil {
 		if value, err := strconv.Atoi(value.(string)); err == nil {
-			reqMemPerCore = value
-			util.LogInfo("options", "--mempercore=%d", reqMemPerCore)
+			config.MemPerCore = value
+			util.LogInfo("options", "--mempercore=%d", config.MemPerCore)
 		}
 	}
 
 	// Max parallel jobs.
-	maxJobs := -1
 	if value := opts["--maxjobs"]; value != nil {
 		if value, err := strconv.Atoi(value.(string)); err == nil {
-			maxJobs = value
-			util.LogInfo("options", "--maxjobs=%d", maxJobs)
+			config.MaxJobs = value
+			util.LogInfo("options", "--maxjobs=%d", config.MaxJobs)
 		}
 	}
 	// frequency (in milliseconds) that jobs will be sent to the queue
 	// (this is a minimum bound, as it may take longer to emit jobs)
-	jobFreqMillis := -1
 	if value := opts["--jobinterval"]; value != nil {
 		if value, err := strconv.Atoi(value.(string)); err == nil {
-			jobFreqMillis = value
-			util.LogInfo("options", "--jobinterval=%d", jobFreqMillis)
+			config.JobFreqMillis = value
+			util.LogInfo("options", "--jobinterval=%d", config.JobFreqMillis)
 		}
 	}
 
 	// Flag for full stage reset, default is chunk-granular
-	fullStageReset := false
 	if value := os.Getenv("MRO_FULLSTAGERESET"); len(value) > 0 {
-		fullStageReset = true
-		util.LogInfo("options", "MRO_FULLSTAGERESET=%v", fullStageReset)
+		config.FullStageReset = true
+		util.LogInfo("options", "MRO_FULLSTAGERESET=true")
 	}
 
 	// Special to resources mappings
-	jobResources := ""
 	if value := os.Getenv("MRO_JOBRESOURCES"); len(value) > 0 {
-		jobResources = value
-		util.LogInfo("options", "MRO_JOBRESOURCES=%s", jobResources)
+		config.ResourceSpecial = value
+		util.LogInfo("options", "MRO_JOBRESOURCES=%s", config.ResourceSpecial)
 	}
 
 	// Compute MRO path.
@@ -132,34 +125,32 @@ Options:
 	util.LogInfo("version", "MRO Version=%s", mroVersion)
 
 	// Compute job manager.
-	jobMode := "local"
 	if value := opts["--jobmode"]; value != nil {
-		jobMode = value.(string)
+		config.JobMode = value.(string)
 	}
-	util.LogInfo("options", "--jobmode=%s", jobMode)
+	util.LogInfo("options", "--jobmode=%s", config.JobMode)
 
 	// Compute profiling mode.
-	profileMode := core.DisableProfile
 	if value := opts["--profile"]; value != nil {
-		profileMode = core.ProfileMode(value.(string))
+		config.ProfileMode = core.ProfileMode(value.(string))
 	}
-	util.LogInfo("options", "--profile=%s", profileMode)
-	core.VerifyProfileMode(profileMode)
+	util.LogInfo("options", "--profile=%s", config.ProfileMode)
+	core.VerifyProfileMode(config.ProfileMode)
 
 	// Compute stackvars flag.
-	stackVars := opts["--stackvars"].(bool)
-	util.LogInfo("options", "--stackvars=%v", stackVars)
+	config.StackVars = opts["--stackvars"].(bool)
+	util.LogInfo("options", "--stackvars=%v", config.StackVars)
 
 	// Setup invocation-specific values.
 	invocationPath := opts["<call.mro>"].(string)
 	ssid := opts["<stagestance_name>"].(string)
 	stagestancePath := path.Join(cwd, ssid)
 	stepSecs := 1
-	vdrMode := "disable"
-	zip := false
-	skipPreflight := false
-	enableMonitor := opts["--monitor"].(bool)
-	debug := opts["--debug"].(bool)
+	config.VdrMode = "disable"
+	config.Zip = false
+	config.SkipPreflight = false
+	config.Monitor = opts["--monitor"].(bool)
+	config.Debug = opts["--debug"].(bool)
 	envs := map[string]string{}
 
 	// Validate psid.
@@ -168,10 +159,7 @@ Options:
 	//=========================================================================
 	// Configure Martian runtime.
 	//=========================================================================
-	rt := core.NewRuntimeWithCores(jobMode, vdrMode, profileMode, martianVersion,
-		reqCores, reqMem, reqMemPerCore, maxJobs, jobFreqMillis, jobResources,
-		fullStageReset, stackVars, zip, skipPreflight, enableMonitor,
-		debug, false, "", nil, false)
+	rt := config.NewRuntime()
 	rt.MroCache.CacheMros(mroPaths)
 
 	// Invoke stagestance.
