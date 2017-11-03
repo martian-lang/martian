@@ -47,7 +47,8 @@ Options:
 	checkSrcPath := true
 
 	// Setup runtime with MRO path.
-	rt := core.DefaultRuntimeOptions().NewRuntime()
+	cfg := core.DefaultRuntimeOptions()
+	rt := cfg.NewRuntime()
 
 	count := 0
 	if opts["--all"].(bool) {
