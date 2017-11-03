@@ -5,6 +5,7 @@ package core
 // Martian runtime. This is where the action happens.
 
 import (
+	"bytes"
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
@@ -470,7 +471,9 @@ func (self *Metadata) read(name MetadataFileName) interface{} {
 		return v
 	}
 	str, err := self.readRawSafe(name)
-	json.Unmarshal([]byte(str), &v)
+	dec := json.NewDecoder(bytes.NewReader([]byte(str)))
+	dec.UseNumber()
+	dec.Decode(&v)
 	if err == nil {
 		self.saveToCache(name, v)
 	}

@@ -764,37 +764,39 @@ func (self *Node) serializePerf() *NodePerfInfo {
 //=============================================================================
 // Job Runners
 //=============================================================================
-func (self *Node) getJobReqs(jobDef map[string]interface{}, stageType string) (int, int, string) {
+func (self *Node) getJobReqs(jobDef *JobResources, stageType string) (int, int, string) {
 	threads := 0
 	memGB := 0
 	special := ""
 
 	// Get values passed from the stage code
 	if jobDef != nil {
-		if v, ok := jobDef["__threads"].(float64); ok {
-			threads = int(v)
-		}
-		if v, ok := jobDef["__mem_gb"].(float64); ok {
-			memGB = int(v)
-		}
-		if v, ok := jobDef["__special"].(string); ok {
-			special = string(v)
-		}
+		threads = jobDef.Threads
+		memGB = jobDef.MemGB
+		special = jobDef.Special
 	}
 
 	// Override with job manager caps specified from commandline
-	overrideThreads := self.rt.overrides.GetOverride(self, fmt.Sprintf("%s.threads", stageType), float64(threads))
+	overrideThreads := self.rt.overrides.GetOverride(self,
+		fmt.Sprintf("%s.threads", stageType),
+		float64(threads))
 	if overrideThreadsNum, ok := overrideThreads.(float64); ok {
 		threads = int(overrideThreadsNum)
 	} else {
-		util.PrintInfo("runtime", "Invalid value for %s %s.threads: %v", self.fqname, stageType, overrideThreads)
+		util.PrintInfo("runtime",
+			"Invalid value for %s %s.threads: %v",
+			self.fqname, stageType, overrideThreads)
 	}
 
-	overrideMem := self.rt.overrides.GetOverride(self, fmt.Sprintf("%s.mem_gb", stageType), float64(memGB))
+	overrideMem := self.rt.overrides.GetOverride(self,
+		fmt.Sprintf("%s.mem_gb", stageType),
+		float64(memGB))
 	if overrideMemFloat, ok := overrideMem.(float64); ok {
 		memGB = int(overrideMemFloat)
 	} else {
-		util.PrintInfo("runtime", "Invalid value for %s %s.mem_gb: %v", self.fqname, stageType, overrideMem)
+		util.PrintInfo("runtime",
+			"Invalid value for %s %s.mem_gb: %v",
+			self.fqname, stageType, overrideMem)
 	}
 
 	if self.local {
@@ -807,14 +809,14 @@ func (self *Node) getJobReqs(jobDef map[string]interface{}, stageType string) (i
 	return threads, memGB, special
 }
 
-func (self *Node) setJobReqs(jobDef map[string]interface{}, stageType string) (int, int, string) {
+func (self *Node) setJobReqs(jobDef *JobResources, stageType string) (int, int, string) {
 	// Get values and possibly modify them
 	threads, memGB, special := self.getJobReqs(jobDef, stageType)
 
 	// Write modified values back
 	if jobDef != nil {
-		jobDef["__threads"] = float64(threads)
-		jobDef["__mem_gb"] = float64(memGB)
+		jobDef.Threads = threads
+		jobDef.MemGB = memGB
 	}
 
 	return threads, memGB, special
@@ -824,15 +826,16 @@ func (self *Node) setSplitJobReqs() (int, int, string) {
 	return self.setJobReqs(nil, STAGE_TYPE_SPLIT)
 }
 
-func (self *Node) setChunkJobReqs(jobDef map[string]interface{}) (int, int, string) {
+func (self *Node) setChunkJobReqs(jobDef *JobResources) (int, int, string) {
 	return self.setJobReqs(jobDef, STAGE_TYPE_CHUNK)
 }
 
-func (self *Node) setJoinJobReqs(jobDef map[string]interface{}) (int, int, string) {
+func (self *Node) setJoinJobReqs(jobDef *JobResources) (int, int, string) {
 	return self.setJobReqs(jobDef, STAGE_TYPE_JOIN)
 }
 
-func (self *Node) runSplit(fqname string, metadata *Metadata, threads int, memGB int, special string) {
+func (self *Node) runSplit(fqname string, metadata *Metadata) {
+	threads, memGB, special := self.setSplitJobReqs()
 	self.runJob("split", fqname, metadata, threads, memGB, special)
 }
 

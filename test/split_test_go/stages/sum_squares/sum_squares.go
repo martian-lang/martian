@@ -1,6 +1,7 @@
 package main
 
 import (
+	"fmt"
 	"martian/adapter"
 	"martian/core"
 )
@@ -15,9 +16,7 @@ stage SUM_SQUARES(
 `
 
 type argsType struct {
-	Values  []float64 `json:"values"`
-	Threads int       `json:"__threads"`
-	MemGB   int       `json:"__mem_gb"`
+	Values []float64 `json:"values"`
 }
 
 type outsType struct {
@@ -25,9 +24,13 @@ type outsType struct {
 }
 
 type chunkArgsType struct {
-	Value   float64 `json:"value"`
-	Threads int     `json:"__threads"`
-	MemGB   int     `json:"__mem_gb"`
+	*core.JobResources `json:",omitempty"`
+	Value              float64 `json:"value"`
+}
+
+type joinArgsType struct {
+	core.JobResources
+	argsType
 }
 
 // Make a chunk for each value.
@@ -37,17 +40,21 @@ func split(metadata *core.Metadata) (*core.StageDefs, error) {
 		return nil, err
 	}
 	sd := &core.StageDefs{
-		ChunkDefs: make([]map[string]interface{}, 0, len(args.Values)),
-		JoinDef: map[string]interface{}{
-			"__threads": 1,
-			"__mem_gb":  1,
+		ChunkDefs: make([]*core.ChunkDef, 0, len(args.Values)),
+		JoinDef: &core.JobResources{
+			Threads: 1,
+			MemGB:   1,
 		},
 	}
 	for _, val := range args.Values {
-		sd.ChunkDefs = append(sd.ChunkDefs, map[string]interface{}{
-			"value":     val,
-			"__threads": 1,
-			"__mem_gb":  1,
+		sd.ChunkDefs = append(sd.ChunkDefs, &core.ChunkDef{
+			Args: core.MakeArgumentMap(&chunkArgsType{
+				Value: val,
+			}),
+			Resources: &core.JobResources{
+				Threads: 1,
+				MemGB:   1,
+			},
 		})
 	}
 	return sd, nil
@@ -56,6 +63,12 @@ func split(metadata *core.Metadata) (*core.StageDefs, error) {
 func chunk(metadata *core.Metadata) (interface{}, error) {
 	var args chunkArgsType
 	if err := metadata.ReadInto(core.ArgsFile, &args); err != nil {
+		return nil, err
+	} else if err := metadata.WriteRaw(core.ProgressFile, fmt.Sprintf(
+		"Running with %d threads and %dGB of memory.",
+		args.Threads, args.MemGB)); err != nil {
+		return nil, err
+	} else if err := metadata.UpdateJournal(core.ProgressFile); err != nil {
 		return nil, err
 	}
 	return &outsType{Sum: args.Value * args.Value}, nil

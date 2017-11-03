@@ -33,44 +33,9 @@ func makeOutArgs(outParams *syntax.Params, filesPath string) map[string]interfac
 	return args
 }
 
-func dynamicCast(val interface{}, typename string, arrayDim int) bool {
-	ret := true
-	if arrayDim > 0 {
-		arr, ok := val.([]interface{})
-		if !ok {
-			return false
-		}
-		for _, v := range arr {
-			ret = ret && dynamicCast(v, typename, arrayDim-1)
-		}
-	} else {
-		switch typename {
-		case "path":
-			fallthrough
-		case "file":
-			fallthrough
-		case "string":
-			_, ret = val.(string)
-		case "float":
-			_, ret = val.(float64)
-		case "int":
-			var num float64
-			num, ret = val.(float64)
-			if ret {
-				ret = num == math.Trunc(num)
-			}
-		case "bool":
-			_, ret = val.(bool)
-		case "map":
-			_, ret = val.(map[string]interface{})
-		}
-	}
-	return ret
-}
-
 type StageDefs struct {
-	ChunkDefs []map[string]interface{} `json:"chunks"`
-	JoinDef   map[string]interface{}   `json:"join"`
+	ChunkDefs []*ChunkDef   `json:"chunks"`
+	JoinDef   *JobResources `json:"join,omitempty"`
 }
 
 // Escape hatch for this feature in case of weird nfs servers which don't
@@ -86,7 +51,7 @@ type Chunk struct {
 	node       *Node
 	fork       *Fork
 	index      int
-	chunkDef   map[string]interface{}
+	chunkDef   *ChunkDef
 	fqname     string
 	metadata   *Metadata
 	hasBeenRun bool
@@ -94,14 +59,14 @@ type Chunk struct {
 
 // Exportable information about a Chunk object.
 type ChunkInfo struct {
-	Index    int                    `json:"index"`
-	ChunkDef map[string]interface{} `json:"chunkDef"`
-	State    MetadataState          `json:"state"`
-	Metadata *MetadataInfo          `json:"metadata"`
+	Index    int           `json:"index"`
+	ChunkDef *ChunkDef     `json:"chunkDef"`
+	State    MetadataState `json:"state"`
+	Metadata *MetadataInfo `json:"metadata"`
 }
 
 func NewChunk(nodable Nodable, fork *Fork, index int,
-	chunkDef map[string]interface{}, chunkIndexWidth int) *Chunk {
+	chunkDef *ChunkDef, chunkIndexWidth int) *Chunk {
 	self := &Chunk{}
 	self.node = nodable.getNode()
 	self.fork = fork
@@ -179,13 +144,14 @@ func (self *Chunk) step() {
 		self.hasBeenRun = true
 	}
 
-	threads, memGB, special := self.node.setChunkJobReqs(self.chunkDef)
+	if self.chunkDef.Resources == nil {
+		self.chunkDef.Resources = &JobResources{}
+	}
+	threads, memGB, special := self.node.setChunkJobReqs(self.chunkDef.Resources)
 
 	// Resolve input argument bindings and merge in the chunk defs.
-	resolvedBindings := resolveBindings(self.node.argbindings, self.fork.argPermute)
-	for id, value := range self.chunkDef {
-		resolvedBindings[id] = value
-	}
+	resolvedBindings := self.chunkDef.Merge(
+		resolveBindings(self.node.argbindings, self.fork.argPermute))
 
 	// Write out input and ouput args for the chunk.
 	self.metadata.Write(ArgsFile, resolvedBindings)
@@ -206,7 +172,7 @@ func (self *Chunk) serializeState() *ChunkInfo {
 }
 
 func (self *Chunk) serializePerf() *ChunkPerfInfo {
-	numThreads, _, _ := self.node.getJobReqs(self.chunkDef, STAGE_TYPE_CHUNK)
+	numThreads, _, _ := self.node.getJobReqs(self.chunkDef.Resources, STAGE_TYPE_CHUNK)
 	stats := self.metadata.serializePerf(numThreads)
 	return &ChunkPerfInfo{
 		Index:      self.index,
@@ -245,7 +211,7 @@ type Fork struct {
 type ForkInfo struct {
 	Index         int                    `json:"index"`
 	ArgPermute    map[string]interface{} `json:"argPermute"`
-	JoinDef       map[string]interface{} `json:"joinDef"`
+	JoinDef       *JobResources          `json:"joinDef"`
 	State         MetadataState          `json:"state"`
 	Metadata      *MetadataInfo          `json:"metadata"`
 	SplitMetadata *MetadataInfo          `json:"split_metadata"`
@@ -286,8 +252,7 @@ func NewFork(nodable Nodable, index int, argPermute map[string]interface{}) *For
 	self.lastPrint = time.Now()
 
 	// By default, initialize stage defs with one empty chunk.
-	self.stageDefs = &StageDefs{ChunkDefs: []map[string]interface{}{}, JoinDef: map[string]interface{}{}}
-	self.stageDefs.ChunkDefs = append(self.stageDefs.ChunkDefs, map[string]interface{}{})
+	self.stageDefs = &StageDefs{ChunkDefs: []*ChunkDef{&ChunkDef{}}}
 
 	if err := json.Unmarshal([]byte(self.split_metadata.readRaw(StageDefsFile)), &self.stageDefs); err == nil {
 		width := util.WidthForInt(len(self.stageDefs.ChunkDefs))
@@ -419,33 +384,19 @@ func (self *Fork) mkdirs() {
 	}
 }
 
-func (self *Fork) verifyOutput() (bool, string) {
+func (self *Fork) verifyOutput(outs interface{}) (bool, string) {
 	outparams := self.node.outparams
-	msg := ""
-	ret := true
 	if len(outparams.List) > 0 {
-		outputs, ok := self.metadata.read(OutsFile).(map[string]interface{})
+		outsMap, ok := outs.(map[string]interface{})
 		if !ok {
-			msg += fmt.Sprintf("Fork outs were not a map\n")
+			return false, "Fork outs were not a map."
 		}
-		for _, param := range outparams.Table {
-			val, ok := outputs[param.GetId()]
-			if !ok {
-				msg += fmt.Sprintf("Fork did not return parameter '%s'\n", param.GetId())
-				ret = false
-				continue
-			}
-			if val == nil {
-				// Allow for null output parameters
-				continue
-			}
-			if !dynamicCast(val, param.GetTname(), param.GetArrayDim()) {
-				msg += fmt.Sprintf("Fork returned %s parameter '%s' with incorrect type\n", param.GetTname(), param.GetId())
-				ret = false
-			}
+		outputs := ArgumentMap(outsMap)
+		if err := outputs.Validate(outparams); err != nil {
+			return false, err.Error()
 		}
 	}
-	return ret, msg
+	return true, ""
 }
 
 func (self *Fork) getState() MetadataState {
@@ -565,12 +516,11 @@ func (self *Fork) step() {
 		if state == Ready {
 			self.writeInvocation()
 			self.split_metadata.Write(ArgsFile, resolveBindings(self.node.argbindings, self.argPermute))
-			threads, memGB, special := self.node.setSplitJobReqs()
 			if self.node.split {
 				if !self.split_has_run {
 					self.split_has_run = true
 					self.lastPrint = time.Now()
-					self.node.runSplit(self.fqname, self.split_metadata, threads, memGB, special)
+					self.node.runSplit(self.fqname, self.split_metadata)
 				}
 			} else {
 				self.split_metadata.Write(StageDefsFile, self.stageDefs)
@@ -626,12 +576,15 @@ func (self *Fork) step() {
 			}
 		}
 		if state == Complete.Prefixed(ChunksPrefix) {
-			threads, memGB, special := self.node.setJoinJobReqs(self.stageDefs.JoinDef)
-			resolvedBindings := resolveBindings(self.node.argbindings, self.argPermute)
-			for id, value := range self.stageDefs.JoinDef {
-				resolvedBindings[id] = value
+			if self.stageDefs.JoinDef == nil {
+				self.stageDefs.JoinDef = &JobResources{}
 			}
-			self.join_metadata.Write(ArgsFile, resolvedBindings)
+			threads, memGB, special := self.node.setJoinJobReqs(self.stageDefs.JoinDef)
+			resolvedBindings := ChunkDef{
+				Resources: self.stageDefs.JoinDef,
+				Args:      MakeArgumentMap(resolveBindings(self.node.argbindings, self.argPermute)),
+			}
+			self.join_metadata.Write(ArgsFile, &resolvedBindings)
 			self.join_metadata.Write(ChunkDefsFile, self.stageDefs.ChunkDefs)
 			if self.node.split {
 				chunkOuts := []interface{}{}
@@ -651,8 +604,9 @@ func (self *Fork) step() {
 				self.join_metadata.WriteTime(CompleteFile)
 			}
 		} else if state == Complete.Prefixed(JoinPrefix) {
-			self.metadata.Write(OutsFile, self.join_metadata.read(OutsFile))
-			if ok, msg := self.verifyOutput(); ok {
+			joinOut := self.join_metadata.read(OutsFile)
+			self.metadata.Write(OutsFile, joinOut)
+			if ok, msg := self.verifyOutput(joinOut); ok {
 				self.metadata.WriteTime(CompleteFile)
 				// Print alerts
 				if alarms := self.getAlarms(); len(alarms) > 0 {
@@ -670,8 +624,9 @@ func (self *Fork) step() {
 
 	} else if self.node.kind == "pipeline" {
 		self.writeInvocation()
-		self.metadata.Write(OutsFile, resolveBindings(self.node.retbindings, self.argPermute))
-		if ok, msg := self.verifyOutput(); ok {
+		outs := resolveBindings(self.node.retbindings, self.argPermute)
+		self.metadata.Write(OutsFile, outs)
+		if ok, msg := self.verifyOutput(outs); ok {
 			self.metadata.WriteTime(CompleteFile)
 		} else {
 			self.metadata.WriteRaw(Errors, msg)
