@@ -308,7 +308,7 @@ func (self *Runtime) instantiatePipeline(src string, srcPath string, psid string
 		return "", nil, &RuntimeError{fmt.Sprintf("'%s' is not a declared pipeline", ast.Call.Id)}
 	}
 
-	invocationData, _ := self.BuildCallData(src, srcPath, mroPaths)
+	invocationData, _ := BuildCallData(src, srcPath, mroPaths)
 
 	// Instantiate the pipeline.
 	if err := CheckMinimalSpace(pipestancePath); err != nil {
@@ -473,7 +473,7 @@ func (self *Runtime) InvokeStage(src string, srcPath string, ssid string,
 		return nil, &RuntimeError{fmt.Sprintf("'%s' is not a declared stage", ast.Call.Id)}
 	}
 
-	invocationData, _ := self.BuildCallData(src, srcPath, mroPaths)
+	invocationData, _ := BuildCallData(src, srcPath, mroPaths)
 
 	// Instantiate stagestance.
 	stagestance := NewStagestance(NewTopNode(self, "", stagestancePath, mroPaths, mroVersion, envs, invocationData),
@@ -654,7 +654,7 @@ func BuildCallSource(incpaths []string,
 		name, strings.Join(lines, "\n")), nil
 }
 
-func (self *Runtime) BuildCallData(src string, srcPath string, mroPaths []string) (*InvocationData, error) {
+func BuildCallData(src string, srcPath string, mroPaths []string) (*InvocationData, error) {
 	_, incpaths, ast, err := syntax.ParseSource(src, srcPath, mroPaths, false)
 	if err != nil {
 		return nil, err
