@@ -70,7 +70,7 @@ var rules = []*rule{
 	newRule("false\\b", FALSE),
 	newRule("null\\b", NULL),
 	newRule("default\\b", DEFAULT),
-	newRule("[a-zA-Z_][a-zA-z0-9_]*\\b", ID),
+	newRule("_?[a-zA-Z][a-zA-z0-9_]*\\b", ID),
 	newRule("-?[0-9]+\\.[0-9]+\\b", NUM_FLOAT),                   // support exponential
 	newRule("-?[0-9]+(\\.[0-9]+)?[eE][-+]?[0-9]+\\b", NUM_FLOAT), // support exponential
 	newRule("-?[0-9]+\\b", NUM_INT),
