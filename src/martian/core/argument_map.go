@@ -91,10 +91,13 @@ func checkType(val interface{}, typename string, arrayDim int) bool {
 		case "map":
 			_, ret := val.(map[string]interface{})
 			return ret
-		default:
-			// "path", "file", "string" types
+		case "path", "file", "string":
 			_, ret := val.(string)
 			return ret
+		default:
+			// User defined file types.  For backwards compatiblity we need
+			// to accept everything here.
+			return true
 		}
 	}
 }
