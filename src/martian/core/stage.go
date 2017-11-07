@@ -33,11 +33,6 @@ func makeOutArgs(outParams *syntax.Params, filesPath string) map[string]interfac
 	return args
 }
 
-type StageDefs struct {
-	ChunkDefs []*ChunkDef   `json:"chunks"`
-	JoinDef   *JobResources `json:"join,omitempty"`
-}
-
 // Escape hatch for this feature in case of weird nfs servers which don't
 // work for whatever reason.
 var disableUniquification = (os.Getenv("MRO_UNIQUIFIED_DIRECTORIES") == "disable")
