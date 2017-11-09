@@ -387,7 +387,7 @@ func (self *Fork) verifyOutput(outs interface{}) (bool, string) {
 			return false, "Fork outs were not a map."
 		}
 		outputs := ArgumentMap(outsMap)
-		if err := outputs.Validate(outparams); err != nil {
+		if err := outputs.Validate(outparams, false); err != nil {
 			return false, err.Error()
 		}
 	}

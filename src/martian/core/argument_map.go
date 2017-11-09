@@ -11,6 +11,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"martian/syntax"
+	"martian/util"
 	"reflect"
 	"strings"
 	"unicode"
@@ -105,25 +106,42 @@ func checkType(val interface{}, typename string, arrayDim int) bool {
 // Validate that all of the arguments are of the correct type, that all of the
 // expected arguments exist, and that they are all either null or have the
 // correct type.
-func (self ArgumentMap) Validate(expected *syntax.Params) error {
+func (self ArgumentMap) Validate(expected *syntax.Params, isInput bool) error {
 	var result bytes.Buffer
 	for _, param := range expected.Table {
 		if val, ok := self[param.GetId()]; !ok {
-			fmt.Fprintf(&result, "Missing parameter '%s'\n", param.GetId())
+			if isInput {
+				fmt.Fprintf(&result, "Missing input parameter '%s'\n", param.GetId())
+			} else {
+				fmt.Fprintf(&result, "Missing output value '%s'\n", param.GetId())
+			}
 			continue
 		} else if val == nil {
 			// Allow for null output parameters
 			continue
 		} else if !checkType(val, param.GetTname(), param.GetArrayDim()) {
-			fmt.Fprintf(&result,
-				"%s parameter '%s' with incorrect type %v\n",
-				param.GetTname(), param.GetId(),
-				reflect.TypeOf(val))
+			if isInput {
+				fmt.Fprintf(&result,
+					"Expected %s input parameter '%s' has incorrect type %v\n",
+					param.GetTname(), param.GetId(),
+					reflect.TypeOf(val))
+			} else {
+				fmt.Fprintf(&result,
+					"Expected %s output value '%s' has incorrect type %v\n",
+					param.GetTname(), param.GetId(),
+					reflect.TypeOf(val))
+			}
 		}
 	}
 	for key := range self {
 		if _, ok := expected.Table[key]; !ok {
-			fmt.Fprintf(&result, "Unexpected parameter '%s'\n", key)
+			if isInput {
+				fmt.Fprintf(&result, "Unexpected parameter '%s'\n", key)
+			} else {
+				util.LogInfo("runtime",
+					"WARNING: Unexpected output value '%s' ignored.",
+					key)
+			}
 		}
 	}
 	if result.Len() == 0 {

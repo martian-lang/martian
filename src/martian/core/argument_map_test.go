@@ -44,7 +44,7 @@ func TestArgumentMapValidate(t *testing.T) {
 		Table: ptable,
 		List:  plist,
 	}
-	if err := def.Args.Validate(&params); err == nil {
+	if err := def.Args.Validate(&params, true); err == nil {
 		t.Errorf("Expected error from extra param, got none.")
 	} else if strings.TrimSpace(err.Error()) != "Unexpected parameter 'bath'" {
 		t.Errorf(
@@ -53,23 +53,27 @@ func TestArgumentMapValidate(t *testing.T) {
 				"\", got \"%v\"",
 			err)
 	}
+	if err := def.Args.Validate(&params, false); err != nil {
+		t.Errorf("Expected pass (with warning) from extra out param, got %v.",
+			err)
+	}
 	bath := &syntax.InParam{
 		Id:    "bath",
 		Tname: "string",
 	}
 	params.Table[bath.Id] = bath
 	params.List = append(params.List, bath)
-	if err := def.Args.Validate(&params); err != nil {
+	if err := def.Args.Validate(&params, true); err != nil {
 		t.Errorf("Validation error: expected success, got %v", err)
 	}
 	params.Table["bar"].(*syntax.InParam).Tname = "int"
-	if err := def.Args.Validate(&params); err == nil {
+	if err := def.Args.Validate(&params, true); err == nil {
 		t.Errorf("Expected error from float, got none.")
 	} else if strings.TrimSpace(err.Error()) !=
-		"int parameter 'bar' with incorrect type json.Number" {
+		"Expected int input parameter 'bar' has incorrect type json.Number" {
 		t.Errorf(
 			"Validation error: expected \""+
-				"int parameter 'bar' with incorrect type json.Number"+
+				"Expected int input parameter 'bar' has incorrect type json.Number"+
 				"\", got \"%v\"",
 			err)
 	}
@@ -80,12 +84,12 @@ func TestArgumentMapValidate(t *testing.T) {
 	}
 	params.Table[missing.Id] = missing
 	params.List = append(params.List, missing)
-	if err := def.Args.Validate(&params); err == nil {
+	if err := def.Args.Validate(&params, true); err == nil {
 		t.Errorf("Expected error from missing parameter, got none.")
-	} else if strings.TrimSpace(err.Error()) != "Missing parameter 'miss'" {
+	} else if strings.TrimSpace(err.Error()) != "Missing input parameter 'miss'" {
 		t.Errorf(
 			"Validation error: expected \""+
-				"Missing parameter 'miss'"+
+				"Missing input parameter 'miss'"+
 				"\", got \"%v\"",
 			err)
 	}
