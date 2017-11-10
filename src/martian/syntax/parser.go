@@ -67,25 +67,35 @@ func (exp *ValExp) resolveType(global *Ast, callable Callable) ([]string, int, e
 	switch exp.getKind() {
 
 	// Handle scalar types.
-	case "int", "float", "bool", "path", "map", "null":
-		return []string{exp.getKind()}, 0, nil
+	case KindInt, KindFloat, KindBool, KindMap, KindNull, "path":
+		return []string{string(exp.getKind())}, 0, nil
 
 	// Handle strings (which could be files too).
-	case "string":
-		for userType := range global.UserTypeTable {
-			if strings.HasSuffix(exp.Value.(string), userType) {
-				return []string{"string", userType}, 0, nil
-			}
-		}
+	case KindString:
 		return []string{"string"}, 0, nil
 
 	// Array: [ 1, 2 ]
-	case "array":
-		for _, subexp := range exp.Value.([]Exp) {
-			arrayKind, arrayDim, err := subexp.resolveType(global, callable)
-			return arrayKind, arrayDim + 1, err
+	case KindArray:
+		subexps := exp.Value.([]Exp)
+		if len(subexps) == 0 {
+			return []string{"null"}, 1, nil
 		}
-		return []string{"null"}, 1, nil
+		arrayTypes := make([]string, 0, len(subexps))
+		commonArrayDim := -1
+		for _, subexp := range subexps {
+			arrayKind, arrayDim, err := subexp.resolveType(global, callable)
+			if err != nil {
+				return arrayTypes, arrayDim + 1, err
+			}
+			arrayTypes = append(arrayTypes, arrayKind...)
+			if commonArrayDim == -1 {
+				commonArrayDim = arrayDim
+			} else if commonArrayDim != arrayDim {
+				return arrayTypes, commonArrayDim, global.err(exp,
+					"Inconsistent array dimensions %d vs %d", commonArrayDim, arrayDim)
+			}
+		}
+		return arrayTypes, commonArrayDim + 1, nil
 	// File: look for matching t in user/file type table
 	case "file":
 		for userType := range global.UserTypeTable {
@@ -105,7 +115,7 @@ func (exp *RefExp) resolveType(global *Ast, callable Callable) ([]string, int, e
 	switch exp.getKind() {
 
 	// Param: self.myparam
-	case "self":
+	case KindSelf:
 		param, ok := callable.GetInParams().Table[exp.Id]
 		if !ok {
 			return []string{""}, 0, global.err(exp, "ScopeNameError: '%s' is not an input parameter of pipeline '%s'", exp.Id, callable.GetId())
@@ -113,7 +123,7 @@ func (exp *RefExp) resolveType(global *Ast, callable Callable) ([]string, int, e
 		return []string{param.GetTname()}, param.GetArrayDim(), nil
 
 	// Call: STAGE.myoutparam or STAGE
-	case "call":
+	case KindCall:
 		// Check referenced callable is acutally called in this scope.
 		pipeline, ok := callable.(*Pipeline)
 		if !ok {
@@ -135,11 +145,22 @@ func (exp *RefExp) resolveType(global *Ast, callable Callable) ([]string, int, e
 	return []string{"unknown"}, 0, nil
 }
 
-func checkTypeMatch(paramType string, valueType string) bool {
+func (global *Ast) isUserType(t string) bool {
+	_, ok := global.UserTypeTable[t]
+	return ok
+}
+
+func (global *Ast) checkTypeMatch(paramType string, valueType string) bool {
 	return (valueType == "null" ||
 		paramType == valueType ||
 		(paramType == "path" && valueType == "string") ||
-		(paramType == "float" && valueType == "int"))
+		(paramType == "file" && valueType == "string") ||
+		(paramType == "float" && valueType == "int") ||
+		// Allow implicit cast between string and user file type
+		(global.isUserType(paramType) &&
+			(valueType == "string" || valueType == "file")) ||
+		(global.isUserType(valueType) &&
+			(paramType == "string" || paramType == "file")))
 }
 
 func (bindings *BindStms) check(global *Ast, callable Callable, params *Params) error {
@@ -186,14 +207,10 @@ func (bindings *BindStms) check(global *Ast, callable Callable, params *Params) 
 			}
 		}
 
-		anymatch := false
-		lastType := ""
 		for _, valueType := range valueTypes {
-			anymatch = anymatch || checkTypeMatch(param.GetTname(), valueType)
-			lastType = valueType
-		}
-		if !anymatch {
-			return global.err(binding, "TypeMismatchError: expected type '%s' for '%s' but got '%s' instead", param.GetTname(), param.GetId(), lastType)
+			if !global.checkTypeMatch(param.GetTname(), valueType) {
+				return global.err(binding, "TypeMismatchError: expected type '%s' for '%s' but got '%s' instead", param.GetTname(), param.GetId(), valueType)
+			}
 		}
 		binding.Tname = param.GetTname()
 	}

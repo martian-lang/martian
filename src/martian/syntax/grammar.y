@@ -272,8 +272,10 @@ bind_stm_list
 bind_stm
     : ID EQUALS exp COMMA
         {{ $$ = &BindStm{NewAstNode($<loc>1, $<locmap>1), $1, $3, false, ""} }}
+    | ID EQUALS SWEEP LPAREN exp_list COMMA RPAREN COMMA
+        {{ $$ = &BindStm{NewAstNode($<loc>1, $<locmap>1), $1, &ValExp{Node:NewAstNode($<loc>1, $<locmap>1), Kind: KindArray, Value: $5}, true, ""} }}
     | ID EQUALS SWEEP LPAREN exp_list RPAREN COMMA
-        {{ $$ = &BindStm{NewAstNode($<loc>1, $<locmap>1), $1, &ValExp{Node:NewAstNode($<loc>1, $<locmap>1), Kind: "array", Value: $5}, true, ""} }}
+        {{ $$ = &BindStm{NewAstNode($<loc>1, $<locmap>1), $1, &ValExp{Node:NewAstNode($<loc>1, $<locmap>1), Kind: KindArray, Value: $5}, true, ""} }}
     ;
 
 exp_list
@@ -295,41 +297,45 @@ kvpair_list
 
 exp
     : LBRACKET exp_list RBRACKET
-        {{ $$ = &ValExp{Node:NewAstNode($<loc>1, $<locmap>1), Kind: "array", Value: $2} }}
+        {{ $$ = &ValExp{Node:NewAstNode($<loc>1, $<locmap>1), Kind: KindArray, Value: $2} }}
+    | LBRACKET exp_list COMMA RBRACKET
+        {{ $$ = &ValExp{Node:NewAstNode($<loc>1, $<locmap>1), Kind: KindArray, Value: $2} }}
     | LBRACKET RBRACKET
-        {{ $$ = &ValExp{Node:NewAstNode($<loc>1, $<locmap>1), Kind: "array", Value: []Exp{}} }}
+        {{ $$ = &ValExp{Node:NewAstNode($<loc>1, $<locmap>1), Kind: KindArray, Value: []Exp{}} }}
     | LBRACE RBRACE
-        {{ $$ = &ValExp{Node:NewAstNode($<loc>1, $<locmap>1), Kind: "map", Value: map[string]interface{}{}} }}
+        {{ $$ = &ValExp{Node:NewAstNode($<loc>1, $<locmap>1), Kind: KindMap, Value: map[string]interface{}{}} }}
     | LBRACE kvpair_list RBRACE
-        {{ $$ = &ValExp{Node:NewAstNode($<loc>1, $<locmap>1), Kind: "map", Value: $2} }}
+        {{ $$ = &ValExp{Node:NewAstNode($<loc>1, $<locmap>1), Kind: KindMap, Value: $2} }}
+    | LBRACE kvpair_list COMMA RBRACE
+        {{ $$ = &ValExp{Node:NewAstNode($<loc>1, $<locmap>1), Kind: KindMap, Value: $2} }}
     | NUM_FLOAT
         {{  // Lexer guarantees parseable float strings.
             f, _ := strconv.ParseFloat($1, 64)
-            $$ = &ValExp{Node:NewAstNode($<loc>1, $<locmap>1), Kind: "float", Value: f }
+            $$ = &ValExp{Node:NewAstNode($<loc>1, $<locmap>1), Kind: KindFloat, Value: f }
         }}
     | NUM_INT
         {{  // Lexer guarantees parseable int strings.
             i, _ := strconv.ParseInt($1, 0, 64)
-            $$ = &ValExp{Node:NewAstNode($<loc>1, $<locmap>1), Kind: "int", Value: i }
+            $$ = &ValExp{Node:NewAstNode($<loc>1, $<locmap>1), Kind: KindInt, Value: i }
         }}
     | LITSTRING
-        {{ $$ = &ValExp{Node:NewAstNode($<loc>1, $<locmap>1), Kind: "string", Value: unquote($1)} }}
+        {{ $$ = &ValExp{Node:NewAstNode($<loc>1, $<locmap>1), Kind: KindString, Value: unquote($1)} }}
     | TRUE
-        {{ $$ = &ValExp{Node:NewAstNode($<loc>1, $<locmap>1), Kind: "bool", Value: true} }}
+        {{ $$ = &ValExp{Node:NewAstNode($<loc>1, $<locmap>1), Kind: KindBool, Value: true} }}
     | FALSE
-        {{ $$ = &ValExp{Node:NewAstNode($<loc>1, $<locmap>1), Kind: "bool", Value: false} }}
+        {{ $$ = &ValExp{Node:NewAstNode($<loc>1, $<locmap>1), Kind: KindBool, Value: false} }}
     | NULL
-        {{ $$ = &ValExp{Node:NewAstNode($<loc>1, $<locmap>1), Kind: "null", Value: nil} }}
+        {{ $$ = &ValExp{Node:NewAstNode($<loc>1, $<locmap>1), Kind: KindNull, Value: nil} }}
     | ref_exp
         {{ $$ = $1 }}
     ;
 
 ref_exp
     : ID DOT ID
-        {{ $$ = &RefExp{NewAstNode($<loc>1, $<locmap>1), "call", $1, $3} }}
+        {{ $$ = &RefExp{NewAstNode($<loc>1, $<locmap>1), KindCall, $1, $3} }}
     | ID
-        {{ $$ = &RefExp{NewAstNode($<loc>1, $<locmap>1), "call", $1, "default"} }}
+        {{ $$ = &RefExp{NewAstNode($<loc>1, $<locmap>1), KindCall, $1, "default"} }}
     | SELF DOT ID
-        {{ $$ = &RefExp{NewAstNode($<loc>1, $<locmap>1), "self", $3, ""} }}
+        {{ $$ = &RefExp{NewAstNode($<loc>1, $<locmap>1), KindSelf, $3, ""} }}
     ;
 %%

@@ -1,0 +1,681 @@
+[
+    {
+        "name": "AWESOME",
+        "fqname": "ID.pipeline_test.AWESOME",
+        "type": "pipeline",
+        "path": "/user/test/files_test/pipeline_test/AWESOME",
+        "state": "complete",
+        "metadata": {
+            "path": "/user/test/files_test/pipeline_test/AWESOME",
+            "names": []
+        },
+        "sweepbindings": [],
+        "forks": [
+            {
+                "index": 0,
+                "argPermute": {},
+                "joinDef": null,
+                "state": "complete",
+                "metadata": {
+                    "path": "/user/test/files_test/pipeline_test/AWESOME/fork0",
+                    "names": [
+                        "complete",
+                        "invocation",
+                        "outs",
+                        "vdrkill"
+                    ]
+                },
+                "split_metadata": {
+                    "path": "/user/test/files_test/pipeline_test/AWESOME/fork0/split",
+                    "names": []
+                },
+                "join_metadata": {
+                    "path": "/user/test/files_test/pipeline_test/AWESOME/fork0/join",
+                    "names": []
+                },
+                "chunks": [],
+                "bindings": {
+                    "Argument": [
+                        {
+                            "id": "key1",
+                            "type": "string",
+                            "valexp": "",
+                            "mode": "value",
+                            "output": "",
+                            "sweep": false,
+                            "sweepRootId": "key1",
+                            "node": "AWESOME",
+                            "matchedFork": 0,
+                            "value": "1",
+                            "waiting": false
+                        },
+                        {
+                            "id": "value1",
+                            "type": "string",
+                            "valexp": "",
+                            "mode": "value",
+                            "output": "",
+                            "sweep": false,
+                            "sweepRootId": "value1",
+                            "node": "AWESOME",
+                            "matchedFork": 0,
+                            "value": "one",
+                            "waiting": false
+                        },
+                        {
+                            "id": "key2",
+                            "type": "string",
+                            "valexp": "",
+                            "mode": "value",
+                            "output": "",
+                            "sweep": false,
+                            "sweepRootId": "key2",
+                            "node": "AWESOME",
+                            "matchedFork": 0,
+                            "value": "2",
+                            "waiting": false
+                        },
+                        {
+                            "id": "value2",
+                            "type": "string",
+                            "valexp": "",
+                            "mode": "value",
+                            "output": "",
+                            "sweep": false,
+                            "sweepRootId": "value2",
+                            "node": "AWESOME",
+                            "matchedFork": 0,
+                            "value": "two",
+                            "waiting": false
+                        }
+                    ],
+                    "Return": [
+                        {
+                            "id": "outfile",
+                            "type": "json",
+                            "valexp": "MERGE_JSON.result",
+                            "mode": "reference",
+                            "output": "result",
+                            "sweep": false,
+                            "sweepRootId": "outfile",
+                            "node": "MERGE_JSON",
+                            "matchedFork": 0,
+                            "value": "/user/test/files_test/pipeline_test/AWESOME/MERGE_JSON/fork0/files/result.json",
+                            "waiting": false
+                        }
+                    ]
+                }
+            }
+        ],
+        "edges": [],
+        "stagecodeLang": "",
+        "stagecodeCmd": ""
+    },
+    {
+        "name": "ADD_KEY1",
+        "fqname": "ID.pipeline_test.AWESOME.ADD_KEY1",
+        "type": "stage",
+        "path": "/user/test/files_test/pipeline_test/AWESOME/ADD_KEY1",
+        "state": "complete",
+        "metadata": {
+            "path": "/user/test/files_test/pipeline_test/AWESOME/ADD_KEY1",
+            "names": []
+        },
+        "sweepbindings": [],
+        "forks": [
+            {
+                "index": 0,
+                "argPermute": {},
+                "joinDef": {
+                    "__threads": 1,
+                    "__mem_gb": 6
+                },
+                "state": "complete",
+                "metadata": {
+                    "path": "/user/test/files_test/pipeline_test/AWESOME/ADD_KEY1/fork0",
+                    "names": [
+                        "complete",
+                        "invocation",
+                        "outs",
+                        "vdrkill"
+                    ]
+                },
+                "split_metadata": {
+                    "path": "/user/test/files_test/pipeline_test/AWESOME/ADD_KEY1/fork0/split",
+                    "names": [
+                        "args",
+                        "complete",
+                        "stage_defs"
+                    ]
+                },
+                "join_metadata": {
+                    "path": "/user/test/files_test/pipeline_test/AWESOME/ADD_KEY1/fork0/join",
+                    "names": [
+                        "args",
+                        "chunk_defs",
+                        "complete",
+                        "outs"
+                    ]
+                },
+                "chunks": [
+                    {
+                        "index": 0,
+                        "chunkDef": {
+                            "__mem_gb": 6,
+                            "__threads": 1
+                        },
+                        "state": "complete",
+                        "metadata": {
+                            "path": "/user/test/files_test/pipeline_test/AWESOME/ADD_KEY1/fork0/chnk0",
+                            "names": [
+                                "args",
+                                "complete",
+                                "jobinfo",
+                                "log",
+                                "outs",
+                                "stderr",
+                                "stdout"
+                            ]
+                        }
+                    }
+                ],
+                "bindings": {
+                    "Argument": [
+                        {
+                            "id": "key",
+                            "type": "string",
+                            "valexp": "self.key1",
+                            "mode": "value",
+                            "output": "",
+                            "sweep": false,
+                            "sweepRootId": "key1",
+                            "node": "AWESOME",
+                            "matchedFork": 0,
+                            "value": "1",
+                            "waiting": false
+                        },
+                        {
+                            "id": "value",
+                            "type": "string",
+                            "valexp": "self.value1",
+                            "mode": "value",
+                            "output": "",
+                            "sweep": false,
+                            "sweepRootId": "value1",
+                            "node": "AWESOME",
+                            "matchedFork": 0,
+                            "value": "one",
+                            "waiting": false
+                        },
+                        {
+                            "id": "start",
+                            "type": "json",
+                            "valexp": "",
+                            "mode": "value",
+                            "output": "",
+                            "sweep": false,
+                            "sweepRootId": "start",
+                            "node": "ADD_KEY1",
+                            "matchedFork": 0,
+                            "value": null,
+                            "waiting": false
+                        }
+                    ],
+                    "Return": []
+                }
+            }
+        ],
+        "edges": [],
+        "stagecodeLang": "Python",
+        "stagecodeCmd": "/user/test/files_test/stages/add_key"
+    },
+    {
+        "name": "ADD_KEY2",
+        "fqname": "ID.pipeline_test.AWESOME.ADD_KEY2",
+        "type": "stage",
+        "path": "/user/test/files_test/pipeline_test/AWESOME/ADD_KEY2",
+        "state": "complete",
+        "metadata": {
+            "path": "/user/test/files_test/pipeline_test/AWESOME/ADD_KEY2",
+            "names": []
+        },
+        "sweepbindings": [],
+        "forks": [
+            {
+                "index": 0,
+                "argPermute": {},
+                "joinDef": {
+                    "__threads": 1,
+                    "__mem_gb": 6
+                },
+                "state": "complete",
+                "metadata": {
+                    "path": "/user/test/files_test/pipeline_test/AWESOME/ADD_KEY2/fork0",
+                    "names": [
+                        "complete",
+                        "invocation",
+                        "outs",
+                        "vdrkill"
+                    ]
+                },
+                "split_metadata": {
+                    "path": "/user/test/files_test/pipeline_test/AWESOME/ADD_KEY2/fork0/split",
+                    "names": [
+                        "args",
+                        "complete",
+                        "stage_defs"
+                    ]
+                },
+                "join_metadata": {
+                    "path": "/user/test/files_test/pipeline_test/AWESOME/ADD_KEY2/fork0/join",
+                    "names": [
+                        "args",
+                        "chunk_defs",
+                        "complete",
+                        "outs"
+                    ]
+                },
+                "chunks": [
+                    {
+                        "index": 0,
+                        "chunkDef": {
+                            "__mem_gb": 6,
+                            "__threads": 1
+                        },
+                        "state": "complete",
+                        "metadata": {
+                            "path": "/user/test/files_test/pipeline_test/AWESOME/ADD_KEY2/fork0/chnk0",
+                            "names": [
+                                "args",
+                                "complete",
+                                "jobinfo",
+                                "log",
+                                "outs",
+                                "stderr",
+                                "stdout"
+                            ]
+                        }
+                    }
+                ],
+                "bindings": {
+                    "Argument": [
+                        {
+                            "id": "start",
+                            "type": "json",
+                            "valexp": "ADD_KEY1.result",
+                            "mode": "reference",
+                            "output": "result",
+                            "sweep": false,
+                            "sweepRootId": "start",
+                            "node": "ADD_KEY1",
+                            "matchedFork": 0,
+                            "value": "/user/test/files_test/pipeline_test/AWESOME/ADD_KEY1/fork0/files/result.json",
+                            "waiting": false
+                        },
+                        {
+                            "id": "key",
+                            "type": "string",
+                            "valexp": "self.key2",
+                            "mode": "value",
+                            "output": "",
+                            "sweep": false,
+                            "sweepRootId": "key2",
+                            "node": "AWESOME",
+                            "matchedFork": 0,
+                            "value": "2",
+                            "waiting": false
+                        },
+                        {
+                            "id": "value",
+                            "type": "string",
+                            "valexp": "self.value2",
+                            "mode": "value",
+                            "output": "",
+                            "sweep": false,
+                            "sweepRootId": "value2",
+                            "node": "AWESOME",
+                            "matchedFork": 0,
+                            "value": "two",
+                            "waiting": false
+                        }
+                    ],
+                    "Return": []
+                }
+            }
+        ],
+        "edges": [],
+        "stagecodeLang": "Python",
+        "stagecodeCmd": "/user/test/files_test/stages/add_key"
+    },
+    {
+        "name": "ADD_KEY3",
+        "fqname": "ID.pipeline_test.AWESOME.ADD_KEY3",
+        "type": "stage",
+        "path": "/user/test/files_test/pipeline_test/AWESOME/ADD_KEY3",
+        "state": "complete",
+        "metadata": {
+            "path": "/user/test/files_test/pipeline_test/AWESOME/ADD_KEY3",
+            "names": []
+        },
+        "sweepbindings": [],
+        "forks": [
+            {
+                "index": 0,
+                "argPermute": {},
+                "joinDef": {
+                    "__threads": 1,
+                    "__mem_gb": 6
+                },
+                "state": "complete",
+                "metadata": {
+                    "path": "/user/test/files_test/pipeline_test/AWESOME/ADD_KEY3/fork0",
+                    "names": [
+                        "complete",
+                        "invocation",
+                        "outs",
+                        "vdrkill"
+                    ]
+                },
+                "split_metadata": {
+                    "path": "/user/test/files_test/pipeline_test/AWESOME/ADD_KEY3/fork0/split",
+                    "names": [
+                        "args",
+                        "complete",
+                        "stage_defs"
+                    ]
+                },
+                "join_metadata": {
+                    "path": "/user/test/files_test/pipeline_test/AWESOME/ADD_KEY3/fork0/join",
+                    "names": [
+                        "args",
+                        "chunk_defs",
+                        "complete",
+                        "outs"
+                    ]
+                },
+                "chunks": [
+                    {
+                        "index": 0,
+                        "chunkDef": {
+                            "__mem_gb": 6,
+                            "__threads": 1
+                        },
+                        "state": "complete",
+                        "metadata": {
+                            "path": "/user/test/files_test/pipeline_test/AWESOME/ADD_KEY3/fork0/chnk0",
+                            "names": [
+                                "args",
+                                "complete",
+                                "jobinfo",
+                                "log",
+                                "outs",
+                                "stderr",
+                                "stdout"
+                            ]
+                        }
+                    }
+                ],
+                "bindings": {
+                    "Argument": [
+                        {
+                            "id": "key",
+                            "type": "string",
+                            "valexp": "",
+                            "mode": "value",
+                            "output": "",
+                            "sweep": false,
+                            "sweepRootId": "key",
+                            "node": "ADD_KEY3",
+                            "matchedFork": 0,
+                            "value": "3",
+                            "waiting": false
+                        },
+                        {
+                            "id": "value",
+                            "type": "string",
+                            "valexp": "",
+                            "mode": "value",
+                            "output": "",
+                            "sweep": false,
+                            "sweepRootId": "value",
+                            "node": "ADD_KEY3",
+                            "matchedFork": 0,
+                            "value": "three",
+                            "waiting": false
+                        },
+                        {
+                            "id": "start",
+                            "type": "json",
+                            "valexp": "ADD_KEY2.result",
+                            "mode": "reference",
+                            "output": "result",
+                            "sweep": false,
+                            "sweepRootId": "start",
+                            "node": "ADD_KEY2",
+                            "matchedFork": 0,
+                            "value": "/user/test/files_test/pipeline_test/AWESOME/ADD_KEY2/fork0/files/result.json",
+                            "waiting": false
+                        }
+                    ],
+                    "Return": []
+                }
+            }
+        ],
+        "edges": [],
+        "stagecodeLang": "Python",
+        "stagecodeCmd": "/user/test/files_test/stages/add_key"
+    },
+    {
+        "name": "ADD_KEY4",
+        "fqname": "ID.pipeline_test.AWESOME.ADD_KEY4",
+        "type": "stage",
+        "path": "/user/test/files_test/pipeline_test/AWESOME/ADD_KEY4",
+        "state": "complete",
+        "metadata": {
+            "path": "/user/test/files_test/pipeline_test/AWESOME/ADD_KEY4",
+            "names": []
+        },
+        "sweepbindings": [],
+        "forks": [
+            {
+                "index": 0,
+                "argPermute": {},
+                "joinDef": {
+                    "__threads": 1,
+                    "__mem_gb": 6
+                },
+                "state": "complete",
+                "metadata": {
+                    "path": "/user/test/files_test/pipeline_test/AWESOME/ADD_KEY4/fork0",
+                    "names": [
+                        "complete",
+                        "invocation",
+                        "outs",
+                        "vdrkill"
+                    ]
+                },
+                "split_metadata": {
+                    "path": "/user/test/files_test/pipeline_test/AWESOME/ADD_KEY4/fork0/split",
+                    "names": [
+                        "args",
+                        "complete",
+                        "stage_defs"
+                    ]
+                },
+                "join_metadata": {
+                    "path": "/user/test/files_test/pipeline_test/AWESOME/ADD_KEY4/fork0/join",
+                    "names": [
+                        "args",
+                        "chunk_defs",
+                        "complete",
+                        "outs"
+                    ]
+                },
+                "chunks": [
+                    {
+                        "index": 0,
+                        "chunkDef": {
+                            "__mem_gb": 6,
+                            "__threads": 1
+                        },
+                        "state": "complete",
+                        "metadata": {
+                            "path": "/user/test/files_test/pipeline_test/AWESOME/ADD_KEY4/fork0/chnk0",
+                            "names": [
+                                "args",
+                                "complete",
+                                "jobinfo",
+                                "log",
+                                "outs",
+                                "stderr",
+                                "stdout"
+                            ]
+                        }
+                    }
+                ],
+                "bindings": {
+                    "Argument": [
+                        {
+                            "id": "key",
+                            "type": "string",
+                            "valexp": "",
+                            "mode": "value",
+                            "output": "",
+                            "sweep": false,
+                            "sweepRootId": "key",
+                            "node": "ADD_KEY4",
+                            "matchedFork": 0,
+                            "value": "4",
+                            "waiting": false
+                        },
+                        {
+                            "id": "value",
+                            "type": "string",
+                            "valexp": "",
+                            "mode": "value",
+                            "output": "",
+                            "sweep": false,
+                            "sweepRootId": "value",
+                            "node": "ADD_KEY4",
+                            "matchedFork": 0,
+                            "value": "four",
+                            "waiting": false
+                        },
+                        {
+                            "id": "start",
+                            "type": "json",
+                            "valexp": "ADD_KEY2.result",
+                            "mode": "reference",
+                            "output": "result",
+                            "sweep": false,
+                            "sweepRootId": "start",
+                            "node": "ADD_KEY2",
+                            "matchedFork": 0,
+                            "value": "/user/test/files_test/pipeline_test/AWESOME/ADD_KEY2/fork0/files/result.json",
+                            "waiting": false
+                        }
+                    ],
+                    "Return": []
+                }
+            }
+        ],
+        "edges": [],
+        "stagecodeLang": "Python",
+        "stagecodeCmd": "/user/test/files_test/stages/add_key"
+    },
+    {
+        "name": "MERGE_JSON",
+        "fqname": "ID.pipeline_test.AWESOME.MERGE_JSON",
+        "type": "stage",
+        "path": "/user/test/files_test/pipeline_test/AWESOME/MERGE_JSON",
+        "state": "complete",
+        "metadata": {
+            "path": "/user/test/files_test/pipeline_test/AWESOME/MERGE_JSON",
+            "names": []
+        },
+        "sweepbindings": [],
+        "forks": [
+            {
+                "index": 0,
+                "argPermute": {},
+                "joinDef": {
+                    "__threads": 1,
+                    "__mem_gb": 6
+                },
+                "state": "complete",
+                "metadata": {
+                    "path": "/user/test/files_test/pipeline_test/AWESOME/MERGE_JSON/fork0",
+                    "names": [
+                        "complete",
+                        "invocation",
+                        "outs",
+                        "vdrkill"
+                    ]
+                },
+                "split_metadata": {
+                    "path": "/user/test/files_test/pipeline_test/AWESOME/MERGE_JSON/fork0/split",
+                    "names": [
+                        "args",
+                        "complete",
+                        "stage_defs"
+                    ]
+                },
+                "join_metadata": {
+                    "path": "/user/test/files_test/pipeline_test/AWESOME/MERGE_JSON/fork0/join",
+                    "names": [
+                        "args",
+                        "chunk_defs",
+                        "complete",
+                        "outs"
+                    ]
+                },
+                "chunks": [
+                    {
+                        "index": 0,
+                        "chunkDef": {
+                            "__mem_gb": 6,
+                            "__threads": 1
+                        },
+                        "state": "complete",
+                        "metadata": {
+                            "path": "/user/test/files_test/pipeline_test/AWESOME/MERGE_JSON/fork0/chnk0",
+                            "names": [
+                                "args",
+                                "complete",
+                                "jobinfo",
+                                "log",
+                                "outs",
+                                "stderr",
+                                "stdout"
+                            ]
+                        }
+                    }
+                ],
+                "bindings": {
+                    "Argument": [
+                        {
+                            "id": "inputs",
+                            "type": "json",
+                            "valexp": "",
+                            "mode": "array",
+                            "output": "",
+                            "sweep": false,
+                            "sweepRootId": "inputs",
+                            "node": "MERGE_JSON",
+                            "matchedFork": 0,
+                            "value": [
+                                "/user/test/files_test/pipeline_test/AWESOME/ADD_KEY3/fork0/files/result.json",
+                                "/user/test/files_test/pipeline_test/AWESOME/ADD_KEY4/fork0/files/result.json"
+                            ],
+                            "waiting": false
+                        }
+                    ],
+                    "Return": []
+                }
+            }
+        ],
+        "edges": [],
+        "stagecodeLang": "Python",
+        "stagecodeCmd": "/user/test/files_test/stages/merge_json"
+    }
+]

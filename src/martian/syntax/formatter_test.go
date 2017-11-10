@@ -177,9 +177,40 @@ pipeline AWESOME(
         start    = ADD_KEY2.result,
     )
 
+    call ADD_KEY5(
+        key   = "5",
+        value = ["five"],
+    )
+
+    call ADD_KEY6(
+        key   = "6",
+        value = [
+            "six",
+            "seven"
+        ],
+    )
+
     call MERGE_JSON(
         json1 = ADD_KEY3.result,
         json2 = ADD_KEY4.result,
+    )
+
+    call MERGE_JSON2(
+        input = [ADD_KEY3.result],
+    )
+
+    call MERGE_JSON3(
+        input = [
+            ADD_KEY3.result,
+            ADD_KEY4.result
+        ],
+    )
+
+    call MERGE_JSON4(
+        input = [
+            "four",
+            ADD_KEY4.result
+        ],
     )
 
     return (

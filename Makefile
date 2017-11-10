@@ -74,6 +74,7 @@ test: test-all govet bin/sum_squares
 longtests: bin/sum_squares mrp mrjob
 	test/martian_test.py test/split_test/split_test.json
 	test/martian_test.py test/split_test_go/split_test.json
+	test/martian_test.py test/files_test/files_test.json
 	test/martian_test.py test/fork_test/fork_test.json
 	test/martian_test.py test/fork_test/fail1_test.json
 	test/martian_test.py test/fork_test/retry_test.json

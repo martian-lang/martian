@@ -44,17 +44,10 @@ type BindingInfo struct {
 	Waiting     bool        `json:"waiting"`
 }
 
-func newBinding(node *Node, bindStm *syntax.BindStm, returnBinding bool) *Binding {
-	self := &Binding{}
-	self.node = node
-	self.id = bindStm.Id
-	self.tname = bindStm.Tname
-	self.sweep = bindStm.Sweep
-	self.sweepRootId = bindStm.Id
-	self.waiting = false
-	switch valueExp := bindStm.Exp.(type) {
+func (self *Binding) preBind(exp syntax.Exp, sweep, returnBinding bool) {
+	switch valueExp := exp.(type) {
 	case *syntax.RefExp:
-		if valueExp.Kind == "self" {
+		if valueExp.Kind == syntax.KindSelf {
 			var parentBinding *Binding
 			if returnBinding {
 				parentBinding = self.node.argbindings[valueExp.Id]
@@ -73,9 +66,8 @@ func newBinding(node *Node, bindStm *syntax.BindStm, returnBinding bool) *Bindin
 				self.output = parentBinding.output
 				self.value = parentBinding.value
 			}
-			self.id = bindStm.Id
 			self.valexp = "self." + valueExp.Id
-		} else if valueExp.Kind == "call" {
+		} else if valueExp.Kind == syntax.KindCall {
 			if returnBinding {
 				self.parentNode = self.node.subnodes[valueExp.Id]
 				self.boundNode, self.output, self.mode, self.value = self.node.findBoundNode(
@@ -92,11 +84,49 @@ func newBinding(node *Node, bindStm *syntax.BindStm, returnBinding bool) *Bindin
 			}
 		}
 	case *syntax.ValExp:
+		if !sweep && valueExp.Kind == syntax.KindArray {
+			subexps := valueExp.Value.([]syntax.Exp)
+			valueBindings := make([]*Binding, 0, len(subexps))
+			useValue := true
+			for _, innerExp := range subexps {
+				b := &Binding{
+					node:        self.node,
+					id:          self.id,
+					sweepRootId: self.sweepRootId,
+				}
+				b.preBind(innerExp, false, returnBinding)
+				// If all of the expressions are value bindings then we can
+				// just use a direct value binding and ignore the array.
+				// Otherwise we'll need to recurse when resolving.
+				if b.mode != "value" {
+					useValue = false
+				}
+				valueBindings = append(valueBindings, b)
+			}
+			if !useValue {
+				self.mode = "array"
+				self.parentNode = self.node
+				self.boundNode = self.node
+				self.value = valueBindings
+				return
+			}
+		}
 		self.mode = "value"
-		self.parentNode = node
-		self.boundNode = node
-		self.value = bindStm.Exp.ToInterface()
+		self.parentNode = self.node
+		self.boundNode = self.node
+		self.value = valueExp.ToInterface()
 	}
+}
+
+func newBinding(node *Node, bindStm *syntax.BindStm, returnBinding bool) *Binding {
+	self := &Binding{}
+	self.node = node
+	self.id = bindStm.Id
+	self.tname = bindStm.Tname
+	self.sweep = bindStm.Sweep
+	self.sweepRootId = bindStm.Id
+	self.waiting = false
+	self.preBind(bindStm.Exp, bindStm.Sweep, returnBinding)
 	return self
 }
 
@@ -124,6 +154,18 @@ func (self *Binding) resolve(argPermute map[string]interface{}) interface{} {
 		} else {
 			return self.value
 		}
+	} else if self.mode == "array" {
+		innerBinds := self.value.([]*Binding)
+		result := make([]interface{}, 0, len(innerBinds))
+		for _, binding := range innerBinds {
+			if r := binding.resolve(argPermute); binding.waiting {
+				self.waiting = true
+				return nil
+			} else {
+				result = append(result, r)
+			}
+		}
+		return result
 	}
 	if argPermute == nil {
 		return nil

@@ -149,10 +149,12 @@ type (
 		Bindings *BindStms
 	}
 
+	ExpKind string
+
 	Exp interface {
 		getExp()
 		getNode() *AstNode
-		getKind() string
+		getKind() ExpKind
 		resolveType(*Ast, Callable) ([]string, int, error)
 		format(prefix string) string
 		ToInterface() interface{}
@@ -160,13 +162,13 @@ type (
 
 	ValExp struct {
 		Node  AstNode
-		Kind  string
+		Kind  ExpKind
 		Value interface{}
 	}
 
 	RefExp struct {
 		Node     AstNode
-		Kind     string
+		Kind     ExpKind
 		Id       string
 		OutputId string
 	}
@@ -197,6 +199,18 @@ type (
 		preprocess    []*preprocessorDirective
 		comments      []*commentBlock
 	}
+)
+
+const (
+	KindArray  ExpKind = "array"
+	KindMap            = "map"
+	KindFloat          = "float"
+	KindInt            = "int"
+	KindString         = "string"
+	KindBool           = "bool"
+	KindNull           = "null"
+	KindSelf           = "self" // reference
+	KindCall           = "call" // reference
 )
 
 func NewAst(decs []Dec, call *CallStm) *Ast {
@@ -293,7 +307,7 @@ func (s *BindStm) getNode() *AstNode   { return &s.Node }
 func (s *BindStms) getNode() *AstNode  { return &s.Node }
 
 func (s *ValExp) getNode() *AstNode { return &s.Node }
-func (s *ValExp) getKind() string   { return s.Kind }
+func (s *ValExp) getKind() ExpKind  { return s.Kind }
 
 func (s *RefExp) getNode() *AstNode { return &s.Node }
-func (s *RefExp) getKind() string   { return s.Kind }
+func (s *RefExp) getKind() ExpKind  { return s.Kind }

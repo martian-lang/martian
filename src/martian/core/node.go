@@ -135,27 +135,52 @@ func NewNode(parent Nodable, kind string, callStm *syntax.CallStm, callables *sy
 		self.argbindings[id] = binding
 		self.argbindingList = append(self.argbindingList, binding)
 	}
-	for _, binding := range self.argbindingList {
-		if binding.mode == "reference" && binding.boundNode != nil {
-			prenode := binding.boundNode
-			prename := prenode.getNode().fqname
-			// prenodes may get added later by setPrenode, however right now
-			// only prenodes induced directly by bindings are in the list.
-			// These are tracked separately for display in the UI.
-			if existing, ok := self.prenodes[prename]; !ok {
-				self.prenodes[prename] = prenode
-				self.directPrenodes = append(self.directPrenodes, binding.parentNode)
-			} else if existing != prenode {
-				util.LogInfo("runtime",
-					"WARNING: multiple prenodes with the same fqname %s for %s",
-					prename, self.fqname)
-			}
-			prenode.getNode().postnodes[self.fqname] = self
-		}
+	prenodes, directPrenodes := recurseBoundNodes(self.argbindingList)
+	for key, prenode := range prenodes {
+		self.prenodes[key] = prenode
+		prenode.getNode().postnodes[self.fqname] = self
+	}
+	for _, parent := range directPrenodes {
+		self.directPrenodes = append(self.directPrenodes, parent)
 	}
 	// Do not set state = getState here, or else nodes will wrongly report
 	// complete before the first refreshMetadata call
 	return self
+}
+
+// Get the set of distinct precurser nodes and direct precurser nodes based on
+// the given binding set.
+func recurseBoundNodes(bindingList []*Binding) (prenodes map[string]Nodable, parents []Nodable) {
+	found := make(map[string]Nodable)
+	allParents := make(map[Nodable]struct{})
+	parentList := make([]Nodable, 0, len(bindingList))
+	addPrenode := func(prenode Nodable) {
+		prename := prenode.getNode().fqname
+		if existing, ok := found[prename]; !ok {
+			found[prename] = prenode
+		} else if existing != prenode {
+			util.LogInfo("runtime",
+				"WARNING: multiple prenodes with the same fqname %s",
+				prename)
+		}
+	}
+	for _, binding := range bindingList {
+		if binding.mode == "reference" && binding.boundNode != nil {
+			addPrenode(binding.boundNode)
+		} else if binding.mode == "array" {
+			prenodes, parents := recurseBoundNodes(binding.value.([]*Binding))
+			for _, prenode := range prenodes {
+				addPrenode(prenode)
+			}
+			for _, parent := range parents {
+				if _, ok := allParents[parent]; !ok {
+					allParents[parent] = struct{}{}
+					parentList = append(parentList, parent)
+				}
+			}
+		}
+	}
+	return found, parentList
 }
 
 //

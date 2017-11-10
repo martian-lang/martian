@@ -166,14 +166,13 @@ func NewPipestance(parent Nodable, callStm *syntax.CallStm, callables *syntax.Ca
 		binding := NewReturnBinding(self.node, bindStm)
 		self.node.retbindings[id] = binding
 		self.node.retbindingList = append(self.node.retbindingList, binding)
-		if binding.mode == "reference" && binding.boundNode != nil {
-			prenode := binding.boundNode
-			self.node.prenodes[prenode.getNode().fqname] = prenode
-			self.node.directPrenodes = append(self.node.directPrenodes, binding.parentNode)
-
-			prenode.getNode().postnodes[self.node.fqname] = self.node
-		}
 	}
+	prenodes, parents := recurseBoundNodes(self.node.retbindingList)
+	for _, prenode := range prenodes {
+		self.node.prenodes[prenode.getNode().fqname] = prenode
+		prenode.getNode().postnodes[self.node.fqname] = self.node
+	}
+	self.node.directPrenodes = append(self.node.directPrenodes, parents...)
 	// Add preflight dependencies if preflight stages exist.
 	for _, preflightNode := range preflightNodes {
 		for _, subnode := range self.node.subnodes {

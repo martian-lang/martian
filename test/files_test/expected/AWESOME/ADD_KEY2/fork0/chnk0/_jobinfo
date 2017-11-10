@@ -1,0 +1,75 @@
+{
+    "name": "ID.pipeline_test.AWESOME.ADD_KEY2.fork0.chnk0",
+    "pid": 9140,
+    "host": "bespin1.fuzzplex.com",
+    "type": "local",
+    "cwd": "/user/test/files_test/pipeline_test/AWESOME/ADD_KEY2/fork0/files",
+    "python": {
+        "binpath": "/usr/bin/python",
+        "version": "2.7.12 (default, Sep  1 2016, 22:14:00) \n[GCC 4.8.3 20140911 (Red Hat 4.8.3-9)]"
+    },
+    "rusage": {
+        "self": {
+            "ru_maxrss": 12060,
+            "ru_ixrss": 0,
+            "ru_idrss": 0,
+            "ru_minflt": 592,
+            "ru_majflt": 0,
+            "ru_nswap": 0,
+            "ru_utime": 0.008,
+            "ru_stime": 0,
+            "ru_inblock": 8,
+            "ru_oublock": 48,
+            "ru_msgsnd": 0,
+            "ru_msgrcv": 0,
+            "ru_nsignals": 0
+        },
+        "children": {
+            "ru_maxrss": 12288,
+            "ru_ixrss": 0,
+            "ru_idrss": 0,
+            "ru_minflt": 2952,
+            "ru_majflt": 0,
+            "ru_nswap": 0,
+            "ru_utime": 0.024,
+            "ru_stime": 0.012,
+            "ru_inblock": 8,
+            "ru_oublock": 40,
+            "ru_msgsnd": 0,
+            "ru_msgrcv": 0,
+            "ru_nsignals": 0
+        }
+    },
+    "used_bytes": {
+        "rss": 12349440,
+        "shared": 0,
+        "vmem": 327680,
+        "text": 24576,
+        "stack": 155648
+    },
+    "wallclock": {
+        "start": "2017-11-08 15:57:15",
+        "end": "2017-11-08 15:57:15",
+        "duration_seconds": 0.782580372
+    },
+    "threads": 1,
+    "memGB": 6,
+    "profile_mode": "disable",
+    "stackvars_flag": "disable",
+    "monitor_flag": "disable",
+    "invocation": {
+        "call": "AWESOME",
+        "args": {
+            "key1": "1",
+            "key2": "2",
+            "value1": "one",
+            "value2": "two"
+        },
+        "sweepargs": [],
+        "incpaths": []
+    },
+    "version": {
+        "martian": "'v2.3.0-rc3-30-gb7f4aa66-dirty'",
+        "pipelines": "v2.3.0-rc3-30-gb7f4aa66-dirty"
+    }
+}

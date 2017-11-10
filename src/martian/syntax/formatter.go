@@ -81,14 +81,43 @@ func (self *ValExp) format(prefix string) string {
 	if self.Kind == "string" {
 		return fmt.Sprintf("\"%s\"", self.Value)
 	}
-	if self.Kind == "map" || self.Kind == "array" {
+	if self.Kind == "map" {
 		bytes, err := json.MarshalIndent(self.ToInterface(), prefix, INDENT)
 		if err != nil {
 			panic(err)
 		}
 		return string(bytes)
 	}
+	if self.Kind == "array" {
+		return self.formatArray(prefix)
+	}
 	return fmt.Sprintf("%v", self.Value)
+}
+
+func (self *ValExp) formatArray(prefix string) string {
+	values := self.Value.([]Exp)
+	if len(values) == 0 {
+		return "[]"
+	} else if len(values) == 1 {
+		// Place single-element arrays on a single line.
+		return fmt.Sprintf("[%s]",
+			values[0].format(prefix))
+	} else {
+		var buf bytes.Buffer
+		buf.WriteString("[\n")
+		vindent := prefix + INDENT
+		for i, val := range values {
+			if i > 0 {
+				buf.WriteString(",\n")
+			}
+			buf.WriteString(vindent)
+			buf.WriteString(val.format(vindent))
+		}
+		buf.WriteRune('\n')
+		buf.WriteString(prefix)
+		buf.WriteRune(']')
+		return buf.String()
+	}
 }
 
 func (self *RefExp) format(prefix string) string {

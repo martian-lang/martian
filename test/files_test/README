@@ -1,0 +1,10 @@
+Tests for a pipeline with files.  The pipeline looks like
+      ADD_KEY1
+         |
+      ADD_KEY2
+      /      \
+ADD_KEY3    ADD_KEY4
+      \      /
+     MERGE_JSON
+
+fork_test.json tests normal operation
