@@ -27,7 +27,6 @@ script:
 - pylint adapters/python/martian_shell.py
 - pylint adapters/python/martian.py
 - pylint test/martian_test.py
-- GOPATH=$PWD go tool vet src/martian
 - make tarball
 deploy:
   skip_cleanup: true

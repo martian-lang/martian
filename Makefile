@@ -7,14 +7,14 @@
 GOBINS=mrc mrf mrg mrp mrs mrt_helper mrstat mrjob
 GOLIBTESTS=$(addprefix test-, core util syntax adapter)
 GOBINTESTS=$(addprefix test-, $(GOBINS))
-GOTESTS=$(GOLIBTESTS) $(GOBINTESTS)
+GOTESTS=$(GOLIBTESTS) $(GOBINTESTS) test-all
 VERSION=$(shell git describe --tags --always --dirty)
 RELEASE=false
 GO_FLAGS=-ldflags "-X martian/util.__VERSION__='$(VERSION)' -X martian/util.__RELEASE__='$(RELEASE)'"
 
 export GOPATH=$(shell pwd)
 
-.PHONY: $(GOBINS) grammar web $(GOTESTS) bin/sum_squares longtests
+.PHONY: $(GOBINS) grammar web $(GOTESTS) govet bin/sum_squares longtests
 
 #
 # Targets for development builds.
@@ -47,7 +47,6 @@ $(GOLIBTESTS): test-%:
 $(GOBINTESTS): test-%:
 	go test -v martian/cmd/$*
 
-
 WEB_FILES=web/martian/serve web/martian/templates/graph.html
 
 $(WEB_FILES): web
@@ -64,7 +63,13 @@ $(PRODUCT_NAME).tar.%: $(addprefix bin/, $(GOBINS)) $(ADAPTERS) $(JOBMANAGERS) $
 
 tarball: $(PRODUCT_NAME).tar.gz
 
-test: $(GOTESTS) bin/sum_squares
+test-all:
+	go test -v martian/...
+
+govet:
+	go tool vet src/martian
+
+test: test-all govet bin/sum_squares
 
 longtests: bin/sum_squares mrp mrjob
 	test/martian_test.py test/split_test/split_test.json
