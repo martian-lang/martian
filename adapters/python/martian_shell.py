@@ -212,8 +212,8 @@ class _Metadata(object):
             os.rename(fname_tmp, fname)
         except OSError as err:
             if err.errno == errno.ENOENT:
-                martian.log_warn(
-                    'Ignoring error moving temp-file %s' % err)
+                self.log('warn',
+                         'Ignoring error moving temp-file %s' % err)
             else:
                 raise
         self.update_journal(name, force)
@@ -277,8 +277,8 @@ class _Metadata(object):
                 os.rename(tmp_run_file, run_file)
             except OSError as err:
                 if err.errno == errno.ENOENT:
-                    martian.log_warn(
-                        'Ignoring error moving temp-file %s' % err)
+                    self.log('warn',
+                             'Ignoring error moving temp-file %s' % err)
                 else:
                     raise
             self.cache.add(name)
