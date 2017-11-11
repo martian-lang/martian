@@ -140,9 +140,7 @@ func NewNode(parent Nodable, kind string, callStm *syntax.CallStm, callables *sy
 		self.prenodes[key] = prenode
 		prenode.getNode().postnodes[self.fqname] = self
 	}
-	for _, parent := range directPrenodes {
-		self.directPrenodes = append(self.directPrenodes, parent)
-	}
+	self.directPrenodes = append(self.directPrenodes, directPrenodes...)
 	// Do not set state = getState here, or else nodes will wrongly report
 	// complete before the first refreshMetadata call
 	return self
@@ -167,6 +165,11 @@ func recurseBoundNodes(bindingList []*Binding) (prenodes map[string]Nodable, par
 	for _, binding := range bindingList {
 		if binding.mode == "reference" && binding.boundNode != nil {
 			addPrenode(binding.boundNode)
+			parent := binding.parentNode
+			if _, ok := allParents[parent]; !ok {
+				allParents[parent] = struct{}{}
+				parentList = append(parentList, parent)
+			}
 		} else if binding.mode == "array" {
 			prenodes, parents := recurseBoundNodes(binding.value.([]*Binding))
 			for _, prenode := range prenodes {
