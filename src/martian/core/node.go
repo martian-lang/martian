@@ -630,7 +630,7 @@ func (self *Node) isErrorTransient() (bool, string) {
 	return true, ""
 }
 
-func (self *Node) step() {
+func (self *Node) step() bool {
 	if self.state == Running {
 		for _, fork := range self.forks {
 			if self.preflight && self.rt.skipPreflight {
@@ -666,6 +666,7 @@ func (self *Node) step() {
 	case "waiting":
 		self.removeFrontierNode(self)
 	}
+	return self.state != previousState
 }
 
 // Regular expression to convert a fully qualified name for a chunk into the

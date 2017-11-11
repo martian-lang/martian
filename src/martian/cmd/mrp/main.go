@@ -142,6 +142,7 @@ func runLoop(pipestanceBox *pipestanceHolder, stepSecs int, vdrMode string,
 		// Check for completion states.
 		state := pipestance.GetState()
 		pipestanceBox.UpdateState(state)
+		hadProgress := false
 		if state == "complete" {
 			cleanupCompleted(pipestance, pipestanceBox, vdrMode, noExit)
 			return
@@ -160,11 +161,13 @@ func runLoop(pipestanceBox *pipestanceHolder, stepSecs int, vdrMode string,
 			pipestance.CheckHeartbeats()
 
 			// Step all nodes.
-			pipestance.StepNodes()
+			hadProgress = pipestance.StepNodes()
 		}
 
-		// Wait for a bit.
-		time.Sleep(time.Second * time.Duration(stepSecs))
+		if !hadProgress {
+			// Wait for a bit.
+			time.Sleep(time.Second * time.Duration(stepSecs))
+		}
 	}
 }
 

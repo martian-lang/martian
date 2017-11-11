@@ -422,30 +422,34 @@ func (self *Pipestance) IsErrorTransient() (bool, string) {
 	return true, firstLog
 }
 
-func (self *Pipestance) StepNodes() {
+// Process state updates for nodes.  Returns true if there was a change in
+// state which would make it productive to call StepNodes again immediately.
+func (self *Pipestance) StepNodes() bool {
 	if self.readOnly() {
-		return
+		return false
 	}
 	if err := CheckMinimalSpace(self.node.path); err != nil {
 		if _, ok := err.(*DiskSpaceError); ok {
 			util.PrintError(err, "runtime",
 				"Pipestance directory out of disk space.")
 			self.KillWithMessage(err.Error())
-			return
+			return false
 		}
 	}
 	if err := self.node.rt.LocalJobManager.refreshLocalResources(
 		self.node.rt.jobMode == "local"); err != nil {
 		util.LogError(err, "runtime", "Error refreshing local resources: %s", err.Error())
 	}
+	hadProgress := false
 	for _, node := range self.node.getFrontierNodes() {
-		node.step()
+		hadProgress = node.step() || hadProgress
 	}
 	for _, node := range self.allNodes() {
 		for _, m := range node.collectMetadatas() {
 			m.clearReadCache()
 		}
 	}
+	return hadProgress
 }
 
 func (self *Pipestance) Reset() error {

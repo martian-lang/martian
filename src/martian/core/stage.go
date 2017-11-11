@@ -520,8 +520,10 @@ func (self *Fork) step() {
 			} else {
 				self.split_metadata.Write(StageDefsFile, self.stageDefs)
 				self.split_metadata.WriteTime(CompleteFile)
+				state = Complete.Prefixed(SplitPrefix)
 			}
-		} else if state == Complete.Prefixed(SplitPrefix) {
+		}
+		if state == Complete.Prefixed(SplitPrefix) {
 			// MARTIAN-395 We have observed a possible race condition where
 			// split_complete could be detected but _stage_defs is not
 			// written yet or is corrupted. Check that stage_defs exists
@@ -597,8 +599,10 @@ func (self *Fork) step() {
 			} else {
 				self.join_metadata.Write(OutsFile, self.chunks[0].metadata.read(OutsFile))
 				self.join_metadata.WriteTime(CompleteFile)
+				state = Complete.Prefixed(JoinPrefix)
 			}
-		} else if state == Complete.Prefixed(JoinPrefix) {
+		}
+		if state == Complete.Prefixed(JoinPrefix) {
 			joinOut := self.join_metadata.read(OutsFile)
 			self.metadata.Write(OutsFile, joinOut)
 			if ok, msg := self.verifyOutput(joinOut); ok {
