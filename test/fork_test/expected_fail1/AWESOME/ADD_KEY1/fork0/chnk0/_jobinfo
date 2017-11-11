@@ -1,13 +1,13 @@
 {
     "stackvars_flag": "disable", 
-    "name": "ID.pipeline_test.AWESOME.ADD_KEY1.fork0.chnk0", 
+    "name": "ID.pipeline_fail.AWESOME.ADD_KEY1.fork0.chnk0",
     "python": {
         "binpath": "/usr/bin/python", 
         "version": "2.7.10 (default, Oct 23 2015, 19:19:21) \n[GCC 4.2.1 Compatible Apple LLVM 7.0.0 (clang-700.0.59.5)]"
     }, 
     "monitor_flag": "disable", 
     "pid": 27168, 
-    "cwd": "/Users/testuser/repos/martian/test/fail_test/pipeline_test/AWESOME/ADD_KEY1/fork0/files", 
+    "cwd": "/Users/testuser/repos/martian/test/fail_test/pipeline_fail/AWESOME/ADD_KEY1/fork0/files",
     "wallclock": {
         "start": "2016-09-22 16:59:26", 
         "end": "2016-09-22 16:59:26", 

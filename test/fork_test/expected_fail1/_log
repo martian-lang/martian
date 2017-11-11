@@ -1,5 +1,5 @@
 Martian Runtime - <version not embedded>
-2016-09-22 16:59:22 [cmdline] mrp pipeline.mro pipeline_test
+2016-09-22 16:59:22 [cmdline] mrp pipeline.mro pipeline_fail
 2016-09-22 16:59:22 [environ] MROPATH=/Users/testuser/repos/martian/test/fail_test
 2016-09-22 16:59:22 [version] MRO Version=2.1.0-7-gefe5541
 2016-09-22 16:59:22 [options] --jobmode=local
@@ -14,11 +14,11 @@ Martian Runtime - <version not embedded>
 2016-09-22 16:59:22 [jobmngr] Using 8 GB, 100% of system memory.
 2016-09-22 16:59:22 [webserv] UI disabled.
 Running preflight checks (please wait)...
-2016-09-22 16:59:22 [runtime] (ready)           ID.pipeline_test.AWESOME.ADD_KEY1
-2016-09-22 16:59:25 [runtime] (split_complete)  ID.pipeline_test.AWESOME.ADD_KEY1
-2016-09-22 16:59:25 [runtime] (run:local)       ID.pipeline_test.AWESOME.ADD_KEY1.fork0.chnk0.main
-2016-09-22 16:59:28 [runtime] (failed)          ID.pipeline_test.AWESOME.ADD_KEY1
+2016-09-22 16:59:22 [runtime] (ready)           ID.pipeline_fail.AWESOME.ADD_KEY1
+2016-09-22 16:59:25 [runtime] (split_complete)  ID.pipeline_fail.AWESOME.ADD_KEY1
+2016-09-22 16:59:25 [runtime] (run:local)       ID.pipeline_fail.AWESOME.ADD_KEY1.fork0.chnk0.main
+2016-09-22 16:59:28 [runtime] (failed)          ID.pipeline_fail.AWESOME.ADD_KEY1
 
 [error] Pipestance failed. Please see log at:
-pipeline_test/AWESOME/ADD_KEY1/fork0/chnk0/_errors
+pipeline_fail/AWESOME/ADD_KEY1/fork0/chnk0/_errors
 

@@ -71,15 +71,29 @@ govet:
 
 test: test-all govet bin/sum_squares
 
-longtests: bin/sum_squares mrp mrjob
+test/split_test/pipeline_test: mrp mrjob $(ADAPTERS)
 	test/martian_test.py test/split_test/split_test.json
+
+test/split_test_go/pipeline_test: mrp mrjob $(ADAPTERS) bin/sum_squares
 	test/martian_test.py test/split_test_go/split_test.json
+
+test/files_test/pipeline_test: mrp mrjob $(ADAPTERS)
 	test/martian_test.py test/files_test/files_test.json
-	test/martian_test.py test/fork_test/fork_test.json
+
+test/fork_test/pipeline_fail: mrp mrjob $(ADAPTERS)
 	test/martian_test.py test/fork_test/fail1_test.json
+	test/martian_test.py test/fork_test/autoretry_fail.json
+
+test/fork_test/pipeline_test: mrp mrjob $(ADAPTERS)
+	test/martian_test.py test/fork_test/fork_test.json
 	test/martian_test.py test/fork_test/retry_test.json
 	test/martian_test.py test/fork_test/autoretry_pass.json
-	test/martian_test.py test/fork_test/autoretry_fail.json
+
+longtests: test/split_test/pipeline_test \
+           test/split_test_go/pipeline_test \
+           test/files_test/pipeline_test \
+           test/fork_test/pipeline_test \
+           test/fork_test/pipeline_fail
 
 clean:
 	rm -rf $(GOPATH)/bin
