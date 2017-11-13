@@ -43,7 +43,6 @@ var disableUniquification = (os.Getenv("MRO_UNIQUIFIED_DIRECTORIES") == "disable
 
 // Represents the state of a stage chunk (the "main" method).
 type Chunk struct {
-	node       *Node
 	fork       *Fork
 	index      int
 	chunkDef   *ChunkDef
@@ -60,16 +59,15 @@ type ChunkInfo struct {
 	Metadata *MetadataInfo `json:"metadata"`
 }
 
-func NewChunk(nodable Nodable, fork *Fork, index int,
+func NewChunk(fork *Fork, index int,
 	chunkDef *ChunkDef, chunkIndexWidth int) *Chunk {
 	self := &Chunk{}
-	self.node = nodable.getNode()
 	self.fork = fork
 	self.index = index
 	self.chunkDef = chunkDef
 	chunkPath := path.Join(fork.path, fmt.Sprintf("chnk%0*d", chunkIndexWidth, index))
 	self.fqname = fork.fqname + fmt.Sprintf(".chnk%0*d", chunkIndexWidth, index)
-	self.metadata = NewMetadataWithJournalPath(self.fqname, chunkPath, self.node.journalPath)
+	self.metadata = NewMetadataWithJournalPath(self.fqname, chunkPath, self.fork.node.journalPath)
 	self.metadata.discoverUniquify()
 	// HACK: Sometimes we need to load older pipestances with newer martian
 	// versions.  Because of this, we may sometimes encounter chunks which
@@ -81,13 +79,13 @@ func NewChunk(nodable Nodable, fork *Fork, index int,
 		if legacyPath != chunkPath {
 			if info, err := os.Stat(legacyPath); err == nil && info != nil {
 				if info.IsDir() {
-					self.metadata = NewMetadataWithJournalPath(self.fqname, legacyPath, self.node.journalPath)
+					self.metadata = NewMetadataWithJournalPath(self.fqname, legacyPath, self.fork.node.journalPath)
 				}
 			}
 		}
 	}
 	self.hasBeenRun = false
-	if !self.node.split {
+	if !self.fork.node.split {
 		// If we're not splitting, just set the sole chunk's filesPath
 		// to the filesPath of the parent fork, to save a pseudo-join copy.
 		self.metadata.finalFilePath = self.fork.metadata.finalFilePath
@@ -127,7 +125,7 @@ func (self *Chunk) updateState(state MetadataFileName, uniquifier string) {
 	}
 }
 
-func (self *Chunk) step() {
+func (self *Chunk) step(bindings map[string]interface{}) {
 	if self.getState() != Ready {
 		return
 	}
@@ -142,19 +140,18 @@ func (self *Chunk) step() {
 	if self.chunkDef.Resources == nil {
 		self.chunkDef.Resources = &JobResources{}
 	}
-	threads, memGB, special := self.node.setChunkJobReqs(self.chunkDef.Resources)
+	threads, memGB, special := self.fork.node.setChunkJobReqs(self.chunkDef.Resources)
 
 	// Resolve input argument bindings and merge in the chunk defs.
-	resolvedBindings := self.chunkDef.Merge(
-		resolveBindings(self.node.argbindings, self.fork.argPermute))
+	resolvedBindings := self.chunkDef.Merge(bindings)
 
 	// Write out input and ouput args for the chunk.
 	self.metadata.Write(ArgsFile, resolvedBindings)
-	self.metadata.Write(OutsFile, makeOutArgs(self.node.outparams, self.metadata.curFilesPath))
+	self.metadata.Write(OutsFile, makeOutArgs(self.fork.node.outparams, self.metadata.curFilesPath))
 
 	// Run the chunk.
 	self.fork.lastPrint = time.Now()
-	self.node.runChunk(self.fqname, self.metadata, threads, memGB, special)
+	self.fork.node.runChunk(self.fqname, self.metadata, threads, memGB, special)
 }
 
 func (self *Chunk) serializeState() *ChunkInfo {
@@ -167,7 +164,7 @@ func (self *Chunk) serializeState() *ChunkInfo {
 }
 
 func (self *Chunk) serializePerf() *ChunkPerfInfo {
-	numThreads, _, _ := self.node.getJobReqs(self.chunkDef.Resources, STAGE_TYPE_CHUNK)
+	numThreads, _, _ := self.fork.node.getJobReqs(self.chunkDef.Resources, STAGE_TYPE_CHUNK)
 	stats := self.metadata.serializePerf(numThreads)
 	return &ChunkPerfInfo{
 		Index:      self.index,
@@ -252,7 +249,7 @@ func NewFork(nodable Nodable, index int, argPermute map[string]interface{}) *For
 	if err := json.Unmarshal([]byte(self.split_metadata.readRaw(StageDefsFile)), &self.stageDefs); err == nil {
 		width := util.WidthForInt(len(self.stageDefs.ChunkDefs))
 		for i, chunkDef := range self.stageDefs.ChunkDefs {
-			chunk := NewChunk(self.node, self, i, chunkDef, width)
+			chunk := NewChunk(self, i, chunkDef, width)
 			self.chunks = append(self.chunks, chunk)
 		}
 	}
@@ -406,33 +403,27 @@ func (self *Fork) getState() MetadataState {
 		}
 	}
 	if len(self.chunks) > 0 {
-		// If any chunks have failed, we're failed.
+		// If any chunks have failed, the state is failed.
+		// If all have completed, the state is chunks_complete.
+		// If all are queued, running, or complete, the state is chunks_running.
+		complete := true
+		running := true
 		for _, chunk := range self.chunks {
-			if chunk.getState() == Failed {
+			switch chunk.getState() {
+			case Failed:
 				return Failed
+			case Complete:
+			case Queued, Running:
+				complete = false
+			default:
+				complete = false
+				running = false
 			}
 		}
-		// If every chunk is complete, we're complete.
-		every := true
-		for _, chunk := range self.chunks {
-			if chunk.getState() != Complete {
-				every = false
-				break
-			}
-		}
-		if every {
+		if complete {
 			return Complete.Prefixed(ChunksPrefix)
 		}
-		// If every chunk is queued, running, or complete, we're complete.
-		every = true
-		runningStates := map[MetadataState]bool{Queued: true, Running: true, Complete: true}
-		for _, chunk := range self.chunks {
-			if _, ok := runningStates[chunk.getState()]; !ok {
-				every = false
-				break
-			}
-		}
-		if every {
+		if running {
 			return Running.Prefixed(ChunksPrefix)
 		}
 	}
@@ -508,9 +499,17 @@ func (self *Fork) step() {
 			}
 		}
 
+		// Lazy-evaluate bindings, only once per step.
+		var bindings map[string]interface{}
+		getBindings := func() map[string]interface{} {
+			if bindings == nil {
+				bindings = resolveBindings(self.node.argbindings, self.argPermute)
+			}
+			return bindings
+		}
 		if state == Ready {
 			self.writeInvocation()
-			self.split_metadata.Write(ArgsFile, resolveBindings(self.node.argbindings, self.argPermute))
+			self.split_metadata.Write(ArgsFile, getBindings())
 			if self.node.split {
 				if !self.split_has_run {
 					self.split_has_run = true
@@ -543,14 +542,16 @@ func (self *Fork) step() {
 					if len(self.chunks) == 0 {
 						width := util.WidthForInt(len(self.stageDefs.ChunkDefs))
 						for i, chunkDef := range self.stageDefs.ChunkDefs {
-							chunk := NewChunk(self.node, self, i, chunkDef, width)
+							chunk := NewChunk(self, i, chunkDef, width)
 							self.chunks = append(self.chunks, chunk)
 							chunk.mkdirs()
 						}
 						self.metadatasCache = nil
-					}
-					for _, chunk := range self.chunks {
-						chunk.step()
+					} else {
+						bindings := getBindings()
+						for _, chunk := range self.chunks {
+							chunk.step(bindings)
+						}
 					}
 				}
 			} else {
@@ -579,7 +580,7 @@ func (self *Fork) step() {
 			threads, memGB, special := self.node.setJoinJobReqs(self.stageDefs.JoinDef)
 			resolvedBindings := ChunkDef{
 				Resources: self.stageDefs.JoinDef,
-				Args:      MakeArgumentMap(resolveBindings(self.node.argbindings, self.argPermute)),
+				Args:      MakeArgumentMap(getBindings()),
 			}
 			self.join_metadata.Write(ArgsFile, &resolvedBindings)
 			self.join_metadata.Write(ChunkDefsFile, self.stageDefs.ChunkDefs)
