@@ -30,12 +30,10 @@ func (self *JobResources) updateFromArgs(args ArgumentMap) error {
 				return int(i), nil
 			} else if f, err := n.Float64(); err != nil {
 				return 0, err
-			} else if f != float64(int(f)) {
-				return int(f), fmt.Errorf("%f is not an integer", f)
 			} else {
 				util.PrintInfo("runtime",
-					"WARNING: value %v for %s was not of integer type",
-					n, key)
+					"WARNING: value %v for %s was not of integer type.  Rounding to %d",
+					n, key, int(f))
 				return int(f), nil
 			}
 		case float64:

@@ -80,7 +80,7 @@ test/split_test_go/pipeline_test: mrp mrjob $(ADAPTERS) bin/sum_squares
 test/files_test/pipeline_test: mrp mrjob $(ADAPTERS)
 	test/martian_test.py test/files_test/files_test.json
 
-test/fork_test/pipeline_fail: mrp mrjob $(ADAPTERS)
+test/fork_test/pipeline_fail: test/fork_test/pipeline_test
 	test/martian_test.py test/fork_test/fail1_test.json
 	test/martian_test.py test/fork_test/autoretry_fail.json
 
