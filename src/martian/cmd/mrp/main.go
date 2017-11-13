@@ -691,6 +691,50 @@ Options:
 
 	uuid, _ := pipestance.GetUuid()
 
+	// Attempt to open the UI port.  If the port was not automatically
+	// assigned, fail mrp if it cannot be opened.  Otherwise, log a message
+	// and continue.
+	var listener net.Listener
+	if enableUI {
+		var err error
+		dieWithoutUi := true
+		if uiport == "" {
+			uiport = "0"
+			dieWithoutUi = false
+		}
+		if listener, err = net.Listen("tcp",
+			fmt.Sprintf(":%s", uiport)); err != nil {
+			util.PrintError(err, "webserv", "Cannot open port %s", uiport)
+			if dieWithoutUi {
+				os.Exit(1)
+			} else {
+				util.PrintError(err, "webserv", "UI disabled")
+				enableUI = false
+				listener = nil
+			}
+		} else {
+			u := url.URL{
+				Scheme: "http",
+				Host:   listener.Addr().String(),
+			}
+			uiport = u.Port()
+			u.Host = net.JoinHostPort(hostname, uiport)
+			if authKey != "" {
+				q := u.Query()
+				q.Set("auth", authKey)
+				u.RawQuery = q.Encode()
+			}
+			// Print this here because the log makes more sense when this appears before
+			// the runloop messages start to appear.
+			util.Println("Serving UI at %s\n", u.String())
+			pipestance.RecordUiPort(u.String())
+			pipestanceBox.authKey = authKey
+			pipestanceBox.enableUI = true
+		}
+	} else {
+		util.LogInfo("webserv", "UI disabled.")
+	}
+
 	//=========================================================================
 	// Collect pipestance static info.
 	//=========================================================================
@@ -716,71 +760,6 @@ Options:
 		Port:         uiport,
 		MroVersion:   mroVersion,
 		Uuid:         uuid,
-	}
-
-	//=========================================================================
-	// Register with mrv.
-	//=========================================================================
-	if mrvhost := os.Getenv("MRVHOST"); len(mrvhost) > 0 && enableUI {
-		u := url.URL{
-			Scheme: "http",
-			Host:   mrvhost,
-			Path:   api.QueryRegisterMrv,
-		}
-		form := pipestanceBox.info.AsForm()
-		if authKey != "" {
-			form.Set("authkey", authKey)
-		}
-		if res, err := http.PostForm(u.String(), form); err == nil {
-			if res.StatusCode == 200 {
-				if content, err := ioutil.ReadAll(res.Body); err == nil {
-					uiport = string(content)
-				} else {
-					util.LogError(err, "mrvcli", "Could not read response from mrv %s.", u.String())
-				}
-			} else {
-				util.LogError(err, "mrvcli", "HTTP request failed %v.", res.StatusCode)
-			}
-		} else {
-			util.LogError(err, "mrvcli", "HTTP request failed %s.", u.String())
-		}
-	}
-
-	// Print this here because the log makes more sense when this appears before
-	// the runloop messages start to appear.
-	var listener net.Listener
-	if enableUI {
-		var err error
-		dieWithoutUi := true
-		if uiport == "" {
-			uiport = "0"
-			dieWithoutUi = false
-		}
-		if listener, err = net.Listen("tcp",
-			fmt.Sprintf(":%s", uiport)); err != nil {
-			util.PrintError(err, "webserv", "Cannot open port %s", uiport)
-			if dieWithoutUi {
-				os.Exit(1)
-			}
-		} else {
-			u := url.URL{
-				Scheme: "http",
-				Host:   listener.Addr().String(),
-			}
-			pipestanceBox.info.Port = u.Port()
-			u.Host = net.JoinHostPort(hostname, pipestanceBox.info.Port)
-			if authKey != "" {
-				q := u.Query()
-				q.Set("auth", authKey)
-				u.RawQuery = q.Encode()
-			}
-			util.Println("Serving UI at %s\n", u.String())
-			pipestance.RecordUiPort(u.String())
-			pipestanceBox.authKey = authKey
-			pipestanceBox.enableUI = true
-		}
-	} else {
-		util.LogInfo("webserv", "UI disabled.")
 	}
 
 	if reattaching {
