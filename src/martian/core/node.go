@@ -37,6 +37,7 @@ type Node struct {
 	rt                 *Runtime
 	kind               string
 	name               string
+	callableId         string
 	fqname             string
 	path               string
 	metadata           *Metadata
@@ -106,6 +107,7 @@ func NewNode(parent Nodable, kind string, callStm *syntax.CallStm, callables *sy
 	self.rt = parent.getNode().rt
 	self.kind = kind
 	self.name = callStm.Id
+	self.callableId = callStm.DecId
 	self.fqname = parent.getNode().fqname + "." + self.name
 	self.path = path.Join(parent.getNode().path, self.name)
 	self.journalPath = parent.getNode().journalPath
@@ -119,7 +121,7 @@ func NewNode(parent Nodable, kind string, callStm *syntax.CallStm, callables *sy
 	self.local = callStm.Modifiers.Local
 	self.preflight = callStm.Modifiers.Preflight
 
-	self.outparams = callables.Table[self.name].GetOutParams()
+	self.outparams = callables.Table[callStm.DecId].GetOutParams()
 	self.argbindings = map[string]*Binding{}
 	self.argbindingList = []*Binding{}
 	self.retbindings = map[string]*Binding{}

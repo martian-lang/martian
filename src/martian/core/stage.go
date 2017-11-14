@@ -489,7 +489,10 @@ func (self *Fork) writeInvocation() {
 		argBindings := resolveBindings(self.node.argbindings, self.argPermute)
 		sweepBindings := []string{}
 		incpaths := self.node.invocation.IncludePaths
-		invocation, _ := self.node.rt.BuildCallSource(incpaths, self.node.name, argBindings, sweepBindings, self.node.mroPaths)
+		invocation, _ := self.node.rt.BuildCallSource(incpaths,
+			self.node.callableId,
+			argBindings, sweepBindings,
+			self.node.mroPaths)
 		self.metadata.WriteRaw(InvocationFile, invocation)
 	}
 }

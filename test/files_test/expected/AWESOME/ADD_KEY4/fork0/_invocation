@@ -1,6 +1,6 @@
 
 
-call ADD_KEY4(
+call ADD_KEY(
     key = "4",
     value = "four",
     start = "/user/test/files_test/pipeline_test/AWESOME/ADD_KEY2/fork0/files/result.json",

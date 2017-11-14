@@ -1,6 +1,6 @@
 
 
-call ADD_KEY1(
+call ADD_KEY(
     key = "1",
     value = "one",
     start = null,

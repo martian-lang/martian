@@ -291,7 +291,11 @@ func (self *CallStm) format(printer *printer, prefix string) {
 	if self.Modifiers.Volatile {
 		printer.WriteString("volatile ")
 	}
-	printer.WriteString(self.Id)
+	printer.WriteString(self.DecId)
+	if self.Id != self.DecId {
+		printer.WriteString(" as ")
+		printer.WriteString(self.Id)
+	}
 	printer.WriteString("(\n")
 	self.Bindings.format(printer, prefix)
 	printer.WriteString(prefix)

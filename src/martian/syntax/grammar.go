@@ -74,27 +74,28 @@ const RETURN = 57370
 const IN = 57371
 const OUT = 57372
 const SRC = 57373
-const ID = 57374
-const LITSTRING = 57375
-const NUM_FLOAT = 57376
-const NUM_INT = 57377
-const DOT = 57378
-const PY = 57379
-const GO = 57380
-const SH = 57381
-const EXEC = 57382
-const COMPILED = 57383
-const MAP = 57384
-const INT = 57385
-const STRING = 57386
-const FLOAT = 57387
-const PATH = 57388
-const BOOL = 57389
-const TRUE = 57390
-const FALSE = 57391
-const NULL = 57392
-const DEFAULT = 57393
-const PREPROCESS_DIRECTIVE = 57394
+const AS = 57374
+const ID = 57375
+const LITSTRING = 57376
+const NUM_FLOAT = 57377
+const NUM_INT = 57378
+const DOT = 57379
+const PY = 57380
+const GO = 57381
+const SH = 57382
+const EXEC = 57383
+const COMPILED = 57384
+const MAP = 57385
+const INT = 57386
+const STRING = 57387
+const FLOAT = 57388
+const PATH = 57389
+const BOOL = 57390
+const TRUE = 57391
+const FALSE = 57392
+const NULL = 57393
+const DEFAULT = 57394
+const PREPROCESS_DIRECTIVE = 57395
 
 var mmToknames = [...]string{
 	"$end",
@@ -128,6 +129,7 @@ var mmToknames = [...]string{
 	"IN",
 	"OUT",
 	"SRC",
+	"AS",
 	"ID",
 	"LITSTRING",
 	"NUM_FLOAT",
@@ -156,7 +158,7 @@ const mmEofCode = 1
 const mmErrCode = 2
 const mmInitialStackSize = 16
 
-//line src/martian/syntax/grammar.y:341
+//line src/martian/syntax/grammar.y:343
 
 //line yacctab:1
 var mmExca = [...]int{
@@ -167,55 +169,55 @@ var mmExca = [...]int{
 
 const mmPrivate = 57344
 
-const mmLast = 204
+const mmLast = 210
 
 var mmAct = [...]int{
 
-	89, 117, 34, 32, 98, 4, 87, 94, 12, 14,
-	62, 46, 93, 27, 79, 66, 114, 21, 136, 67,
-	8, 9, 10, 7, 66, 127, 58, 133, 67, 59,
-	60, 76, 129, 33, 119, 26, 75, 70, 68, 69,
-	76, 8, 9, 10, 7, 75, 70, 68, 69, 128,
-	90, 118, 71, 72, 73, 13, 64, 61, 100, 116,
-	81, 71, 72, 73, 27, 113, 103, 92, 97, 84,
-	81, 35, 80, 23, 24, 25, 5, 141, 66, 88,
-	39, 82, 67, 118, 22, 45, 44, 102, 31, 105,
-	100, 99, 100, 107, 76, 41, 20, 19, 41, 75,
-	70, 68, 69, 18, 120, 38, 139, 66, 54, 126,
-	7, 67, 37, 130, 95, 71, 72, 73, 106, 131,
-	65, 37, 134, 76, 45, 126, 135, 78, 75, 70,
-	68, 69, 66, 7, 122, 63, 67, 101, 56, 143,
-	8, 9, 10, 7, 71, 72, 73, 18, 76, 123,
-	115, 86, 30, 75, 70, 68, 69, 52, 47, 48,
-	50, 49, 51, 124, 108, 110, 29, 109, 125, 71,
-	72, 73, 111, 28, 6, 55, 142, 140, 15, 137,
-	132, 121, 96, 85, 53, 138, 15, 112, 3, 1,
-	104, 11, 40, 17, 83, 91, 74, 42, 77, 43,
-	36, 16, 57, 2,
+	94, 122, 35, 33, 103, 4, 92, 99, 12, 14,
+	66, 98, 70, 27, 37, 141, 71, 21, 84, 119,
+	8, 9, 10, 7, 26, 49, 118, 36, 80, 8,
+	9, 10, 7, 34, 79, 74, 72, 73, 62, 70,
+	132, 63, 64, 71, 70, 93, 138, 59, 71, 40,
+	75, 76, 77, 146, 27, 80, 13, 32, 86, 68,
+	80, 79, 74, 72, 73, 5, 79, 74, 72, 73,
+	124, 123, 43, 89, 65, 18, 85, 75, 76, 77,
+	87, 134, 75, 76, 77, 55, 50, 51, 53, 52,
+	54, 102, 107, 86, 110, 105, 20, 70, 112, 133,
+	19, 71, 18, 121, 81, 23, 24, 25, 108, 125,
+	69, 48, 47, 80, 131, 104, 105, 22, 135, 79,
+	74, 72, 73, 43, 136, 70, 41, 139, 123, 71,
+	131, 140, 30, 105, 95, 75, 76, 77, 57, 39,
+	144, 80, 100, 7, 148, 43, 83, 79, 74, 72,
+	73, 31, 97, 7, 48, 39, 8, 9, 10, 7,
+	115, 111, 127, 75, 76, 77, 129, 116, 67, 60,
+	106, 130, 128, 120, 113, 91, 44, 114, 6, 29,
+	28, 58, 15, 147, 145, 142, 137, 126, 101, 90,
+	15, 56, 143, 117, 3, 1, 109, 11, 42, 88,
+	17, 96, 78, 45, 82, 46, 38, 16, 61, 2,
 }
 var mmPact = [...]int{
 
-	24, -1000, 3, 123, -1000, -1000, -1000, -1000, 71, 65,
-	64, 123, -1000, -1000, -1000, -1000, 52, 28, -1000, 160,
-	153, -1000, 139, -1000, -1000, -1000, -1000, 56, -1000, -1000,
-	-1000, -1000, 83, 83, 66, 55, -1000, 115, 94, -1000,
-	-1000, 165, 124, -1000, -11, 115, -1000, -1000, -1000, -1000,
-	-1000, -1000, -1000, -23, 120, 96, 102, -19, -1000, -1000,
-	-1000, -1000, 49, 113, 174, 138, 67, 34, -1000, -1000,
-	-1000, -1000, -1000, -1000, -1000, -24, -29, -1000, 88, 173,
-	59, 125, 57, 90, -1000, -1000, 121, 155, -1000, -1000,
-	-1000, 156, 179, 33, -16, 137, -1000, -1000, 50, 25,
-	-1000, -1000, 172, -1000, 118, -1000, 136, 154, 13, -1000,
-	16, -1000, 121, -1000, -1000, -1000, -1000, 171, -1000, -1000,
-	18, -1000, -1000, -1000, 4, 170, -1000, -1000, 177, -1000,
-	-1000, 92, -1000, -1000, 168, 63, 167, -1000, 121, -1000,
-	-1000, -1000, -1000, -1000,
+	12, -1000, 3, 139, -1000, -1000, -1000, -1000, 69, 67,
+	63, 139, -1000, -1000, -1000, -1000, 84, 17, -1000, 167,
+	166, -1000, 119, -1000, -1000, -1000, -1000, 24, -1000, -1000,
+	-1000, -6, -1000, 110, 110, 112, 163, 81, -1000, 42,
+	124, -1000, -1000, 171, -1000, 155, -1000, 0, 42, -1000,
+	-1000, -1000, -1000, -1000, -1000, -1000, -24, 153, 86, 90,
+	121, -16, -1000, -1000, -1000, -1000, 47, 123, 180, 162,
+	33, 118, -1000, -1000, -1000, -1000, -1000, -1000, -1000, -26,
+	-30, -1000, -1000, 116, 179, 82, 158, 99, 133, -1000,
+	-1000, 114, 165, -1000, -1000, -1000, 151, 185, -7, -14,
+	160, -1000, -1000, 94, 61, -1000, -1000, 178, -1000, 146,
+	-1000, 159, 157, 28, -1000, 65, -1000, 114, -1000, -1000,
+	-1000, -1000, 177, -1000, -1000, 37, -1000, -1000, -1000, 1,
+	176, -1000, -1000, 184, -1000, -1000, 126, -1000, -1000, 175,
+	39, 174, -1000, 114, -1000, -1000, -1000, -1000, -1000,
 }
 var mmPgo = [...]int{
 
-	0, 203, 184, 11, 4, 202, 1, 201, 10, 174,
-	188, 200, 199, 3, 71, 198, 197, 0, 196, 6,
-	195, 5, 194, 192, 2, 190, 189,
+	0, 209, 191, 25, 4, 208, 1, 207, 10, 178,
+	194, 206, 205, 3, 14, 204, 203, 0, 202, 6,
+	201, 5, 199, 198, 2, 196, 195,
 }
 var mmR1 = [...]int{
 
@@ -223,10 +225,10 @@ var mmR1 = [...]int{
 	10, 9, 9, 9, 9, 2, 2, 8, 8, 13,
 	13, 11, 11, 14, 14, 12, 12, 12, 12, 12,
 	12, 16, 4, 6, 3, 3, 3, 3, 3, 3,
-	3, 5, 5, 5, 15, 25, 22, 22, 21, 7,
-	7, 7, 7, 24, 24, 23, 23, 23, 19, 19,
-	20, 20, 17, 17, 17, 17, 17, 17, 17, 17,
-	17, 17, 17, 17, 17, 18, 18, 18,
+	3, 5, 5, 5, 15, 25, 22, 22, 21, 21,
+	7, 7, 7, 7, 24, 24, 23, 23, 23, 19,
+	19, 20, 20, 17, 17, 17, 17, 17, 17, 17,
+	17, 17, 17, 17, 17, 17, 18, 18, 18,
 }
 var mmR2 = [...]int{
 
@@ -234,46 +236,46 @@ var mmR2 = [...]int{
 	1, 3, 7, 8, 10, 3, 1, 0, 3, 0,
 	2, 6, 5, 0, 2, 4, 5, 6, 5, 6,
 	7, 4, 1, 1, 1, 1, 1, 1, 1, 1,
-	1, 1, 1, 1, 5, 4, 2, 1, 6, 0,
-	2, 2, 2, 0, 2, 4, 8, 7, 3, 1,
-	5, 3, 3, 4, 2, 2, 3, 4, 1, 1,
-	1, 1, 1, 1, 1, 3, 1, 3,
+	1, 1, 1, 1, 5, 4, 2, 1, 6, 8,
+	0, 2, 2, 2, 0, 2, 4, 8, 7, 3,
+	1, 5, 3, 3, 4, 2, 2, 3, 4, 1,
+	1, 1, 1, 1, 1, 1, 3, 1, 3,
 }
 var mmChk = [...]int{
 
-	-1000, -26, -1, -10, -21, 52, -9, 20, 17, 18,
-	19, -10, -21, 52, -21, -9, -7, -2, 32, 32,
-	32, -21, 32, 21, 22, 23, 7, 36, 13, 13,
-	13, 32, -13, -13, -24, -14, -11, 29, -14, 14,
-	-23, 32, -16, -12, 31, 30, -3, 43, 44, 46,
-	45, 47, 42, -2, 14, 10, 14, -5, 37, 40,
-	41, -3, -8, 15, -17, 24, 11, 15, 34, 35,
-	33, 48, 49, 50, -18, 32, 27, -15, 25, 33,
-	-8, 11, 32, -22, -21, 9, 13, -19, 12, -17,
-	16, -20, 33, 36, 36, 26, 9, 9, -4, 32,
-	33, 12, -4, 9, -25, -21, 28, -19, 9, 12,
-	9, 16, 8, 32, 32, 13, 9, -6, 33, 9,
-	-4, 9, 16, 13, 9, 14, -17, 12, 33, 16,
-	-17, -13, 9, 9, -6, -24, 14, 9, 8, 14,
-	9, 14, 9, -17,
+	-1000, -26, -1, -10, -21, 53, -9, 20, 17, 18,
+	19, -10, -21, 53, -21, -9, -7, -2, 33, 33,
+	33, -21, 33, 21, 22, 23, 7, 37, 13, 13,
+	13, 32, 33, -13, -13, -24, 33, -14, -11, 29,
+	-14, 14, -23, 33, 13, -16, -12, 31, 30, -3,
+	44, 45, 47, 46, 48, 43, -2, 14, 10, -24,
+	14, -5, 38, 41, 42, -3, -8, 15, -17, 24,
+	11, 15, 35, 36, 34, 49, 50, 51, -18, 33,
+	27, 14, -15, 25, 34, -8, 11, 33, -22, -21,
+	9, 13, -19, 12, -17, 16, -20, 34, 37, 37,
+	26, 9, 9, -4, 33, 34, 12, -4, 9, -25,
+	-21, 28, -19, 9, 12, 9, 16, 8, 33, 33,
+	13, 9, -6, 34, 9, -4, 9, 16, 13, 9,
+	14, -17, 12, 34, 16, -17, -13, 9, 9, -6,
+	-24, 14, 9, 8, 14, 9, 14, 9, -17,
 }
 var mmDef = [...]int{
 
-	0, -2, 0, 4, 6, 8, 10, 49, 0, 0,
+	0, -2, 0, 4, 6, 8, 10, 50, 0, 0,
 	0, 1, 3, 7, 5, 9, 0, 0, 16, 0,
-	0, 2, 0, 50, 51, 52, 11, 0, 19, 19,
-	53, 15, 23, 23, 0, 0, 20, 0, 0, 48,
-	54, 0, 0, 24, 0, 0, 17, 34, 35, 36,
-	37, 38, 39, 40, 0, 0, 12, 0, 41, 42,
-	43, 17, 0, 0, 0, 0, 0, 0, 68, 69,
-	70, 71, 72, 73, 74, 76, 0, 13, 0, 0,
-	0, 0, 0, 0, 47, 55, 0, 0, 64, 59,
-	65, 0, 0, 0, 0, 0, 31, 25, 0, 0,
-	32, 18, 0, 22, 0, 46, 0, 0, 0, 62,
-	0, 66, 0, 75, 77, 19, 26, 0, 33, 28,
-	0, 21, 14, 53, 0, 0, 58, 63, 0, 67,
-	61, 0, 27, 29, 0, 0, 0, 57, 0, 44,
-	30, 45, 56, 60,
+	0, 2, 0, 51, 52, 53, 11, 0, 19, 19,
+	54, 0, 15, 23, 23, 0, 0, 0, 20, 0,
+	0, 48, 55, 0, 54, 0, 24, 0, 0, 17,
+	34, 35, 36, 37, 38, 39, 40, 0, 0, 0,
+	12, 0, 41, 42, 43, 17, 0, 0, 0, 0,
+	0, 0, 69, 70, 71, 72, 73, 74, 75, 77,
+	0, 49, 13, 0, 0, 0, 0, 0, 0, 47,
+	56, 0, 0, 65, 60, 66, 0, 0, 0, 0,
+	0, 31, 25, 0, 0, 32, 18, 0, 22, 0,
+	46, 0, 0, 0, 63, 0, 67, 0, 76, 78,
+	19, 26, 0, 33, 28, 0, 21, 14, 54, 0,
+	0, 59, 64, 0, 68, 62, 0, 27, 29, 0,
+	0, 0, 58, 0, 44, 30, 45, 57, 61,
 }
 var mmTok1 = [...]int{
 
@@ -286,7 +288,7 @@ var mmTok2 = [...]int{
 	22, 23, 24, 25, 26, 27, 28, 29, 30, 31,
 	32, 33, 34, 35, 36, 37, 38, 39, 40, 41,
 	42, 43, 44, 45, 46, 47, 48, 49, 50, 51,
-	52,
+	52, 53,
 }
 var mmTok3 = [...]int{
 	0,
@@ -939,23 +941,23 @@ mmdefault:
 		//line src/martian/syntax/grammar.y:248
 		{
 			{
-				mmVAL.call = &CallStm{NewAstNode(mmDollar[1].loc, mmDollar[1].locmap), mmDollar[2].modifiers, mmDollar[3].val, mmDollar[5].bindings}
+				mmVAL.call = &CallStm{NewAstNode(mmDollar[1].loc, mmDollar[1].locmap), mmDollar[2].modifiers, mmDollar[3].val, mmDollar[3].val, mmDollar[5].bindings}
 			}
 		}
 	case 49:
-		mmDollar = mmS[mmpt-0 : mmpt+1]
-		//line src/martian/syntax/grammar.y:253
+		mmDollar = mmS[mmpt-8 : mmpt+1]
+		//line src/martian/syntax/grammar.y:250
 		{
 			{
-				mmVAL.modifiers = &Modifiers{false, false, false}
+				mmVAL.call = &CallStm{NewAstNode(mmDollar[1].loc, mmDollar[1].locmap), mmDollar[2].modifiers, mmDollar[5].val, mmDollar[3].val, mmDollar[7].bindings}
 			}
 		}
 	case 50:
-		mmDollar = mmS[mmpt-2 : mmpt+1]
+		mmDollar = mmS[mmpt-0 : mmpt+1]
 		//line src/martian/syntax/grammar.y:255
 		{
 			{
-				mmVAL.modifiers.Local = true
+				mmVAL.modifiers = &Modifiers{false, false, false}
 			}
 		}
 	case 51:
@@ -963,7 +965,7 @@ mmdefault:
 		//line src/martian/syntax/grammar.y:257
 		{
 			{
-				mmVAL.modifiers.Preflight = true
+				mmVAL.modifiers.Local = true
 			}
 		}
 	case 52:
@@ -971,44 +973,44 @@ mmdefault:
 		//line src/martian/syntax/grammar.y:259
 		{
 			{
-				mmVAL.modifiers.Volatile = true
+				mmVAL.modifiers.Preflight = true
 			}
 		}
 	case 53:
+		mmDollar = mmS[mmpt-2 : mmpt+1]
+		//line src/martian/syntax/grammar.y:261
+		{
+			{
+				mmVAL.modifiers.Volatile = true
+			}
+		}
+	case 54:
 		mmDollar = mmS[mmpt-0 : mmpt+1]
-		//line src/martian/syntax/grammar.y:264
+		//line src/martian/syntax/grammar.y:266
 		{
 			{
 				mmVAL.bindings = &BindStms{NewAstNode(mmDollar[0].loc, mmDollar[0].locmap), []*BindStm{}, map[string]*BindStm{}}
 			}
 		}
-	case 54:
+	case 55:
 		mmDollar = mmS[mmpt-2 : mmpt+1]
-		//line src/martian/syntax/grammar.y:266
+		//line src/martian/syntax/grammar.y:268
 		{
 			{
 				mmDollar[1].bindings.List = append(mmDollar[1].bindings.List, mmDollar[2].binding)
 				mmVAL.bindings = mmDollar[1].bindings
 			}
 		}
-	case 55:
+	case 56:
 		mmDollar = mmS[mmpt-4 : mmpt+1]
-		//line src/martian/syntax/grammar.y:274
+		//line src/martian/syntax/grammar.y:276
 		{
 			{
 				mmVAL.binding = &BindStm{NewAstNode(mmDollar[1].loc, mmDollar[1].locmap), mmDollar[1].val, mmDollar[3].exp, false, ""}
 			}
 		}
-	case 56:
-		mmDollar = mmS[mmpt-8 : mmpt+1]
-		//line src/martian/syntax/grammar.y:276
-		{
-			{
-				mmVAL.binding = &BindStm{NewAstNode(mmDollar[1].loc, mmDollar[1].locmap), mmDollar[1].val, &ValExp{Node: NewAstNode(mmDollar[1].loc, mmDollar[1].locmap), Kind: KindArray, Value: mmDollar[5].exps}, true, ""}
-			}
-		}
 	case 57:
-		mmDollar = mmS[mmpt-7 : mmpt+1]
+		mmDollar = mmS[mmpt-8 : mmpt+1]
 		//line src/martian/syntax/grammar.y:278
 		{
 			{
@@ -1016,48 +1018,48 @@ mmdefault:
 			}
 		}
 	case 58:
+		mmDollar = mmS[mmpt-7 : mmpt+1]
+		//line src/martian/syntax/grammar.y:280
+		{
+			{
+				mmVAL.binding = &BindStm{NewAstNode(mmDollar[1].loc, mmDollar[1].locmap), mmDollar[1].val, &ValExp{Node: NewAstNode(mmDollar[1].loc, mmDollar[1].locmap), Kind: KindArray, Value: mmDollar[5].exps}, true, ""}
+			}
+		}
+	case 59:
 		mmDollar = mmS[mmpt-3 : mmpt+1]
-		//line src/martian/syntax/grammar.y:283
+		//line src/martian/syntax/grammar.y:285
 		{
 			{
 				mmVAL.exps = append(mmDollar[1].exps, mmDollar[3].exp)
 			}
 		}
-	case 59:
+	case 60:
 		mmDollar = mmS[mmpt-1 : mmpt+1]
-		//line src/martian/syntax/grammar.y:285
+		//line src/martian/syntax/grammar.y:287
 		{
 			{
 				mmVAL.exps = []Exp{mmDollar[1].exp}
 			}
 		}
-	case 60:
+	case 61:
 		mmDollar = mmS[mmpt-5 : mmpt+1]
-		//line src/martian/syntax/grammar.y:290
+		//line src/martian/syntax/grammar.y:292
 		{
 			{
 				mmDollar[1].kvpairs[unquote(mmDollar[3].val)] = mmDollar[5].exp
 				mmVAL.kvpairs = mmDollar[1].kvpairs
 			}
 		}
-	case 61:
+	case 62:
 		mmDollar = mmS[mmpt-3 : mmpt+1]
-		//line src/martian/syntax/grammar.y:295
+		//line src/martian/syntax/grammar.y:297
 		{
 			{
 				mmVAL.kvpairs = map[string]Exp{unquote(mmDollar[1].val): mmDollar[3].exp}
 			}
 		}
-	case 62:
-		mmDollar = mmS[mmpt-3 : mmpt+1]
-		//line src/martian/syntax/grammar.y:300
-		{
-			{
-				mmVAL.exp = &ValExp{Node: NewAstNode(mmDollar[1].loc, mmDollar[1].locmap), Kind: KindArray, Value: mmDollar[2].exps}
-			}
-		}
 	case 63:
-		mmDollar = mmS[mmpt-4 : mmpt+1]
+		mmDollar = mmS[mmpt-3 : mmpt+1]
 		//line src/martian/syntax/grammar.y:302
 		{
 			{
@@ -1065,11 +1067,11 @@ mmdefault:
 			}
 		}
 	case 64:
-		mmDollar = mmS[mmpt-2 : mmpt+1]
+		mmDollar = mmS[mmpt-4 : mmpt+1]
 		//line src/martian/syntax/grammar.y:304
 		{
 			{
-				mmVAL.exp = &ValExp{Node: NewAstNode(mmDollar[1].loc, mmDollar[1].locmap), Kind: KindArray, Value: []Exp{}}
+				mmVAL.exp = &ValExp{Node: NewAstNode(mmDollar[1].loc, mmDollar[1].locmap), Kind: KindArray, Value: mmDollar[2].exps}
 			}
 		}
 	case 65:
@@ -1077,19 +1079,19 @@ mmdefault:
 		//line src/martian/syntax/grammar.y:306
 		{
 			{
-				mmVAL.exp = &ValExp{Node: NewAstNode(mmDollar[1].loc, mmDollar[1].locmap), Kind: KindMap, Value: map[string]interface{}{}}
+				mmVAL.exp = &ValExp{Node: NewAstNode(mmDollar[1].loc, mmDollar[1].locmap), Kind: KindArray, Value: []Exp{}}
 			}
 		}
 	case 66:
-		mmDollar = mmS[mmpt-3 : mmpt+1]
+		mmDollar = mmS[mmpt-2 : mmpt+1]
 		//line src/martian/syntax/grammar.y:308
 		{
 			{
-				mmVAL.exp = &ValExp{Node: NewAstNode(mmDollar[1].loc, mmDollar[1].locmap), Kind: KindMap, Value: mmDollar[2].kvpairs}
+				mmVAL.exp = &ValExp{Node: NewAstNode(mmDollar[1].loc, mmDollar[1].locmap), Kind: KindMap, Value: map[string]interface{}{}}
 			}
 		}
 	case 67:
-		mmDollar = mmS[mmpt-4 : mmpt+1]
+		mmDollar = mmS[mmpt-3 : mmpt+1]
 		//line src/martian/syntax/grammar.y:310
 		{
 			{
@@ -1097,29 +1099,29 @@ mmdefault:
 			}
 		}
 	case 68:
-		mmDollar = mmS[mmpt-1 : mmpt+1]
+		mmDollar = mmS[mmpt-4 : mmpt+1]
 		//line src/martian/syntax/grammar.y:312
+		{
+			{
+				mmVAL.exp = &ValExp{Node: NewAstNode(mmDollar[1].loc, mmDollar[1].locmap), Kind: KindMap, Value: mmDollar[2].kvpairs}
+			}
+		}
+	case 69:
+		mmDollar = mmS[mmpt-1 : mmpt+1]
+		//line src/martian/syntax/grammar.y:314
 		{
 			{ // Lexer guarantees parseable float strings.
 				f, _ := strconv.ParseFloat(mmDollar[1].val, 64)
 				mmVAL.exp = &ValExp{Node: NewAstNode(mmDollar[1].loc, mmDollar[1].locmap), Kind: KindFloat, Value: f}
 			}
 		}
-	case 69:
+	case 70:
 		mmDollar = mmS[mmpt-1 : mmpt+1]
-		//line src/martian/syntax/grammar.y:317
+		//line src/martian/syntax/grammar.y:319
 		{
 			{ // Lexer guarantees parseable int strings.
 				i, _ := strconv.ParseInt(mmDollar[1].val, 0, 64)
 				mmVAL.exp = &ValExp{Node: NewAstNode(mmDollar[1].loc, mmDollar[1].locmap), Kind: KindInt, Value: i}
-			}
-		}
-	case 70:
-		mmDollar = mmS[mmpt-1 : mmpt+1]
-		//line src/martian/syntax/grammar.y:322
-		{
-			{
-				mmVAL.exp = &ValExp{Node: NewAstNode(mmDollar[1].loc, mmDollar[1].locmap), Kind: KindString, Value: unquote(mmDollar[1].val)}
 			}
 		}
 	case 71:
@@ -1127,7 +1129,7 @@ mmdefault:
 		//line src/martian/syntax/grammar.y:324
 		{
 			{
-				mmVAL.exp = &ValExp{Node: NewAstNode(mmDollar[1].loc, mmDollar[1].locmap), Kind: KindBool, Value: true}
+				mmVAL.exp = &ValExp{Node: NewAstNode(mmDollar[1].loc, mmDollar[1].locmap), Kind: KindString, Value: unquote(mmDollar[1].val)}
 			}
 		}
 	case 72:
@@ -1135,7 +1137,7 @@ mmdefault:
 		//line src/martian/syntax/grammar.y:326
 		{
 			{
-				mmVAL.exp = &ValExp{Node: NewAstNode(mmDollar[1].loc, mmDollar[1].locmap), Kind: KindBool, Value: false}
+				mmVAL.exp = &ValExp{Node: NewAstNode(mmDollar[1].loc, mmDollar[1].locmap), Kind: KindBool, Value: true}
 			}
 		}
 	case 73:
@@ -1143,7 +1145,7 @@ mmdefault:
 		//line src/martian/syntax/grammar.y:328
 		{
 			{
-				mmVAL.exp = &ValExp{Node: NewAstNode(mmDollar[1].loc, mmDollar[1].locmap), Kind: KindNull, Value: nil}
+				mmVAL.exp = &ValExp{Node: NewAstNode(mmDollar[1].loc, mmDollar[1].locmap), Kind: KindBool, Value: false}
 			}
 		}
 	case 74:
@@ -1151,28 +1153,36 @@ mmdefault:
 		//line src/martian/syntax/grammar.y:330
 		{
 			{
-				mmVAL.exp = mmDollar[1].exp
+				mmVAL.exp = &ValExp{Node: NewAstNode(mmDollar[1].loc, mmDollar[1].locmap), Kind: KindNull, Value: nil}
 			}
 		}
 	case 75:
+		mmDollar = mmS[mmpt-1 : mmpt+1]
+		//line src/martian/syntax/grammar.y:332
+		{
+			{
+				mmVAL.exp = mmDollar[1].exp
+			}
+		}
+	case 76:
 		mmDollar = mmS[mmpt-3 : mmpt+1]
-		//line src/martian/syntax/grammar.y:335
+		//line src/martian/syntax/grammar.y:337
 		{
 			{
 				mmVAL.exp = &RefExp{NewAstNode(mmDollar[1].loc, mmDollar[1].locmap), KindCall, mmDollar[1].val, mmDollar[3].val}
 			}
 		}
-	case 76:
+	case 77:
 		mmDollar = mmS[mmpt-1 : mmpt+1]
-		//line src/martian/syntax/grammar.y:337
+		//line src/martian/syntax/grammar.y:339
 		{
 			{
 				mmVAL.exp = &RefExp{NewAstNode(mmDollar[1].loc, mmDollar[1].locmap), KindCall, mmDollar[1].val, "default"}
 			}
 		}
-	case 77:
+	case 78:
 		mmDollar = mmS[mmpt-3 : mmpt+1]
-		//line src/martian/syntax/grammar.y:339
+		//line src/martian/syntax/grammar.y:341
 		{
 			{
 				mmVAL.exp = &RefExp{NewAstNode(mmDollar[1].loc, mmDollar[1].locmap), KindSelf, mmDollar[3].val, ""}

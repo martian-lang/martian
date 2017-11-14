@@ -33,7 +33,7 @@ type Stagestance struct {
 func NewStagestance(parent Nodable, callStm *syntax.CallStm, callables *syntax.Callables) *Stagestance {
 	self := &Stagestance{}
 	self.node = NewNode(parent, "stage", callStm, callables)
-	stage, ok := callables.Table[self.node.name].(*syntax.Stage)
+	stage, ok := callables.Table[callStm.DecId].(*syntax.Stage)
 	if !ok {
 		return nil
 	}
@@ -142,13 +142,13 @@ func NewPipestance(parent Nodable, callStm *syntax.CallStm, callables *syntax.Ca
 	self.metadata = NewMetadata(self.node.parent.getNode().fqname, self.GetPath())
 
 	// Build subcall tree.
-	pipeline, ok := callables.Table[self.node.name].(*syntax.Pipeline)
+	pipeline, ok := callables.Table[callStm.DecId].(*syntax.Pipeline)
 	if !ok {
 		return nil
 	}
 	preflightNodes := []Nodable{}
 	for _, subcallStm := range pipeline.Calls {
-		callable := callables.Table[subcallStm.Id]
+		callable := callables.Table[subcallStm.DecId]
 		switch callable.(type) {
 		case *syntax.Stage:
 			self.node.subnodes[subcallStm.Id] = NewStagestance(self.node, subcallStm, callables)

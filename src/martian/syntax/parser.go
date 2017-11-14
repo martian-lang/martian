@@ -224,8 +224,8 @@ func (bindings *BindStms) check(global *Ast, callable Callable, params *Params) 
 	return nil
 }
 
-func (global *Ast) check(stagecodePaths []string, checkSrcPath bool) error {
-	// Build type table, starting with builtins. Duplicates allowed.
+// Build type table, starting with builtins. Duplicates allowed.
+func (global *Ast) checkTypes() error {
 	builtinTypes := []*BuiltinType{
 		{"string"},
 		{"int"},
@@ -242,13 +242,11 @@ func (global *Ast) check(stagecodePaths []string, checkSrcPath bool) error {
 		global.TypeTable[userType.Id] = userType
 		global.UserTypeTable[userType.Id] = userType
 	}
+	return nil
+}
 
-	// Check for duplicate names amongst callables.
-	if err := global.Callables.check(global); err != nil {
-		return err
-	}
-
-	// Check stage declarations.
+// Check stage declarations.
+func (global *Ast) checkStages(stagecodePaths []string, checkSrcPath bool) error {
 	for _, stage := range global.Stages {
 		// Check in parameters.
 		if err := stage.InParams.check(global); err != nil {
@@ -277,8 +275,11 @@ func (global *Ast) check(stagecodePaths []string, checkSrcPath bool) error {
 			}
 		}
 	}
+	return nil
+}
 
-	// Check pipeline declarations.
+// Check pipeline declarations.
+func (global *Ast) checkPipelineDecs() error {
 	for _, pipeline := range global.Pipelines {
 		// Check in parameters.
 		if err := pipeline.InParams.check(global); err != nil {
@@ -297,7 +298,7 @@ func (global *Ast) check(stagecodePaths []string, checkSrcPath bool) error {
 				return global.err(call, "DuplicateCallError: '%s' was already called when encountered again", call.Id)
 			}
 			// Check we're calling something declared.
-			callable, ok := global.Callables.Table[call.Id]
+			callable, ok := global.Callables.Table[call.DecId]
 			if !ok {
 				return global.err(call, "ScopeNameError: '%s' is not defined in this scope", call.Id)
 			}
@@ -340,11 +341,14 @@ func (global *Ast) check(stagecodePaths []string, checkSrcPath bool) error {
 			}
 		}
 	}
+	return nil
+}
 
+// Check all pipeline input params are bound in a call statement.
+func (global *Ast) checkPipelineArgs() error {
 	// Doing these in a separate loop gives the user better incremental
 	// error messages while writing a long pipeline declaration.
 	for _, pipeline := range global.Pipelines {
-		// Check all pipeline input params are bound in a call statement.
 		boundParamIds := map[string]bool{}
 		for _, call := range pipeline.Calls {
 			for _, binding := range call.Bindings.List {
@@ -376,8 +380,11 @@ func (global *Ast) check(stagecodePaths []string, checkSrcPath bool) error {
 			return err
 		}
 	}
+	return nil
+}
 
-	// If call statement present, check the call and its bindings.
+// If call statement present, check the call and its bindings.
+func (global *Ast) checkCall() error {
 	if global.Call != nil {
 		callable, ok := global.Callables.Table[global.Call.Id]
 		if !ok {
@@ -387,6 +394,35 @@ func (global *Ast) check(stagecodePaths []string, checkSrcPath bool) error {
 			return err
 		}
 	}
+	return nil
+}
+
+func (global *Ast) check(stagecodePaths []string, checkSrcPath bool) error {
+	if err := global.checkTypes(); err != nil {
+		return err
+	}
+
+	// Check for duplicate names amongst callables.
+	if err := global.Callables.check(global); err != nil {
+		return err
+	}
+
+	if err := global.checkStages(stagecodePaths, checkSrcPath); err != nil {
+		return err
+	}
+
+	if err := global.checkPipelineDecs(); err != nil {
+		return err
+	}
+
+	if err := global.checkPipelineArgs(); err != nil {
+		return err
+	}
+
+	if err := global.checkCall(); err != nil {
+		return err
+	}
+
 	return nil
 }
 

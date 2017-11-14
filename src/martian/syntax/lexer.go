@@ -55,6 +55,7 @@ var rules = []*rule{
 	newRule("in\\b", IN),
 	newRule("out\\b", OUT),
 	newRule("src\\b", SRC),
+	newRule("as\\b", AS),
 	newRule("py\\b", PY),
 	newRule("go\\b", GO),
 	newRule("sh\\b", SH),

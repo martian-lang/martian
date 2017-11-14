@@ -4,7 +4,7 @@
 filetype json;
 
 # Adds a key to the json in a file.
-stage ADD_KEY1(
+stage ADD_KEY(
     # The key to add
     in  string key,
     # The value to add for this key.
@@ -14,33 +14,6 @@ stage ADD_KEY1(
     # The output file.
     out json   result,
     # The source file.
-    src py     "stages/add_key",
-)
-
-# Adds a key to the json in a file.
-stage ADD_KEY2(
-    in  string key,
-    in  string value,
-    in  json   start,
-    out json   result,
-    src py     "stages/add_key",
-)
-
-# Adds a key to the json in a file.
-stage ADD_KEY3(
-    in  string key,
-    in  string value,
-    in  json   start,
-    out json   result,
-    src py     "stages/add_key",
-)
-
-# Adds a key to the json in a file.
-stage ADD_KEY4(
-    in  string key,
-    in  string value,
-    in  json   start,
-    out json   result,
     src py     "stages/add_key",
 )
 
@@ -60,25 +33,25 @@ pipeline AWESOME(
     out json   outfile,
 )
 {
-    call ADD_KEY1(
+    call ADD_KEY as ADD_KEY1(
         key   = self.key1,
         value = self.value1,
         start = null,
     )
 
-    call ADD_KEY2(
+    call ADD_KEY as ADD_KEY2(
         key   = self.key2,
         value = self.value2,
         start = ADD_KEY1.result,
     )
 
-    call ADD_KEY3(
+    call ADD_KEY as ADD_KEY3(
         key   = "3",
         value = "three",
         start = ADD_KEY2.result,
     )
 
-    call ADD_KEY4(
+    call ADD_KEY as ADD_KEY4(
         key   = "4",
         value = "four",
         start = ADD_KEY2.result,

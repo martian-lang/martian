@@ -64,7 +64,7 @@ func unquote(qs string) string {
 %token SEMICOLON COLON COMMA EQUALS
 %token LBRACKET RBRACKET LPAREN RPAREN LBRACE RBRACE
 %token FILETYPE STAGE PIPELINE CALL LOCAL PREFLIGHT VOLATILE SWEEP SPLIT USING SELF RETURN
-%token IN OUT SRC
+%token IN OUT SRC AS
 %token <val> ID LITSTRING NUM_FLOAT NUM_INT DOT
 %token <val> PY GO SH EXEC COMPILED
 %token <val> MAP INT STRING FLOAT PATH BOOL TRUE FALSE NULL DEFAULT
@@ -245,7 +245,9 @@ call_stm_list
 
 call_stm
     : CALL modifiers ID LPAREN bind_stm_list RPAREN
-        {{ $$ = &CallStm{NewAstNode($<loc>1, $<locmap>1), $2, $3, $5} }}
+        {{ $$ = &CallStm{NewAstNode($<loc>1, $<locmap>1), $2, $3, $3, $5} }}
+    | CALL modifiers ID AS ID LPAREN bind_stm_list RPAREN
+        {{ $$ = &CallStm{NewAstNode($<loc>1, $<locmap>1), $2, $5, $3, $7} }}
     ;
 
 modifiers

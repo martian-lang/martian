@@ -141,6 +141,7 @@ type (
 		Node      AstNode
 		Modifiers *Modifiers
 		Id        string
+		DecId     string
 		Bindings  *BindStms
 	}
 

@@ -119,16 +119,6 @@ stage ADD_KEY3(
     src py     "stages/add_key",
 )
 
-# Adds a fourth key to the json in a file.
-stage ADD_KEY4(
-    in  string key,
-    in  string value,
-    in  json   start,
-    in  string failfile,
-    out json   result,
-    src py     "stages/add_key",
-)
-
 # Takes two files containing json dictionaries and merges them.
 stage MERGE_JSON(
     in  json json1,
@@ -167,7 +157,7 @@ pipeline AWESOME(
         start    = ADD_KEY2.result,
     )
 
-    call ADD_KEY4(
+    call ADD_KEY1 as ADD_KEY4(
         key      = "4",
         value    = sweep(
             "four",
