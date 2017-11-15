@@ -107,19 +107,32 @@ func NewLocalJobManager(userMaxCores int, userMaxMemGB int,
 		// Otherwise, set Max usable GB to MAXMEM_FRACTION * GB of total
 		// memory reported by the system.
 		MAXMEM_FRACTION := 0.9
-		var sysMemGB int
 		if clusterMode {
-			sysMemGB = self.jobSettings.MemGBPerJob
+			sysMemGB := int((sysMem.ActualFree + (1024*1024 - 1)) / (1024 * 1024 * 1024))
+			if self.jobSettings.MemGBPerJob < sysMemGB {
+				sysMemGB = self.jobSettings.MemGBPerJob
+			}
+			if sysMemGB < 1 {
+				sysMemGB = 1
+			}
+			self.maxMemGB = sysMemGB
+			if sysMemGB < self.jobSettings.MemGBPerJob {
+				util.PrintInfo("jobmngr",
+					"WARNING: Using %d GB for local jobs.  Recommended free memory is %d GB",
+					self.maxMemGB, self.jobSettings.MemGBPerJob)
+			} else {
+				util.LogInfo("jobmngr", "Using %d GB for local jobs.", self.maxMemGB)
+			}
 		} else {
-			sysMemGB = int(float64(sysMem.Total) * MAXMEM_FRACTION / 1073741824)
+			sysMemGB := int(float64(sysMem.Total) * MAXMEM_FRACTION / 1073741824)
+			// Set floor to 1GB.
+			if sysMemGB < 1 {
+				sysMemGB = 1
+			}
+			self.maxMemGB = sysMemGB
+			util.LogInfo("jobmngr", "Using %d GB, %d%% of system memory.", self.maxMemGB,
+				int(MAXMEM_FRACTION*100))
 		}
-		// Set floor to 1GB.
-		if sysMemGB < 1 {
-			sysMemGB = 1
-		}
-		self.maxMemGB = sysMemGB
-		util.LogInfo("jobmngr", "Using %d GB, %d%% of system memory.", self.maxMemGB,
-			int(MAXMEM_FRACTION*100))
 	}
 
 	if uint64(self.maxMemGB*1024) > (sysMem.ActualFree+(1024*1024-1))/(1024*1024) {
