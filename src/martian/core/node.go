@@ -372,11 +372,12 @@ func (self *Node) getFrontierNodes() []*Node {
 }
 
 func (self *Node) allNodes() []*Node {
-	all := []*Node{self}
+	all := make([]*Node, 1, 1+len(self.subnodes))
+	all[0] = self
 
 	// Enumerate and sort the keys in subnodes first.
 	// This ensures a stable chirality for the dag UI.
-	ids := []string{}
+	ids := make([]string, 0, len(self.subnodes))
 	for id := range self.subnodes {
 		ids = append(ids, id)
 	}

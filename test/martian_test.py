@@ -328,9 +328,18 @@ def compare_content(output, expect, filename):
             sys.stderr.write('File should not exist: %s\n'
                              % os.path.join(output, filename))
             return False
+    elif not os.path.isfile(os.path.join(output, filename)):
+        sys.stderr.write('Missing file %s\n'
+                         % os.path.join(output, filename))
+        return False
     else:
         if not compare_file_content(output, expect, filename):
-            sys.stderr.write('File content mismatch: %s\n' % filename)
+            sys.stderr.write(
+                'File content mismatch: %s\n'
+                'Expected content: %s\n'
+                'Actual content: %s' % (filename,
+                                        os.path.join(expect, filename),
+                                        os.path.join(output, filename)))
             return False
     return True
 

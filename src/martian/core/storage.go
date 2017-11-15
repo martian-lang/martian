@@ -139,22 +139,27 @@ func (self *Node) vdrKill() (*VDRKillReport, bool) {
 		return &VDRKillReport{}, true
 	} else if err != nil {
 		util.LogError(err, "runtime", "Error reading node directory: %v", self.fqname)
-		return &VDRKillReport{}, true
+		return &VDRKillReport{}, false
 	}
 
-	killReports := []*VDRKillReport{}
-	ok := true
 	for _, node := range self.postnodes {
 		if node.getNode().state != Complete {
-			ok = false
+			return &VDRKillReport{}, false
+		}
+		if _, ok := node.(*TopNode); ok {
+			// This is a top-level node
+			return &VDRKillReport{}, false
+		} else if _, ok := node.getNode().parent.(*TopNode); ok {
+			// This is a top-level pipestance or stagestance.
+			// Don't VDR if the top-level outputs depend on this.
+			return &VDRKillReport{}, false
 		}
 	}
-	if ok {
-		for _, fork := range self.forks {
-			killReports = append(killReports, fork.vdrKill())
-		}
+	killReports := make([]*VDRKillReport, 0, len(self.forks))
+	for _, fork := range self.forks {
+		killReports = append(killReports, fork.vdrKill())
 	}
-	return mergeVDRKillReports(killReports), ok
+	return mergeVDRKillReports(killReports), true
 }
 
 type StorageEvent struct {
