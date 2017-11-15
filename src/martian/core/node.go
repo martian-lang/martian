@@ -68,6 +68,12 @@ type Node struct {
 	envs               map[string]string
 	invocation         *InvocationData
 	blacklistedFromMRT bool // Don't used cached data when MRT'ing
+
+	// Post-nodes which depend on at least one output of a type that
+	// might contain a filename - specifically: user-defined file types,
+	// strings, maps, or arrays of any of those.  Not counted are
+	// int, float, or bool outputs or arrays of those.
+	filePostNodes map[string]Nodable
 }
 
 // Represents an edge in the pipeline graph.
@@ -139,21 +145,45 @@ func NewNode(parent Nodable, kind string, callStm *syntax.CallStm, callables *sy
 		self.argbindings[id] = binding
 		self.argbindingList = append(self.argbindingList, binding)
 	}
-	prenodes, directPrenodes := recurseBoundNodes(self.argbindingList)
-	for key, prenode := range prenodes {
-		self.prenodes[key] = prenode
-		prenode.getNode().postnodes[self.fqname] = self
-	}
-	self.directPrenodes = append(self.directPrenodes, directPrenodes...)
+	self.attachBindings(self.argbindingList)
+
 	// Do not set state = getState here, or else nodes will wrongly report
 	// complete before the first refreshMetadata call
 	return self
 }
 
+func (self *Node) attachBindings(bindingList []*Binding) {
+	prenodes, directPrenodes, fileParents := recurseBoundNodes(bindingList)
+	for key, prenode := range prenodes {
+		self.prenodes[key] = prenode
+		prenode.getNode().postnodes[self.fqname] = self
+	}
+	self.directPrenodes = append(self.directPrenodes, directPrenodes...)
+	for prenode := range fileParents {
+		if prenode.getNode().filePostNodes == nil {
+			prenode.getNode().filePostNodes = map[string]Nodable{
+				self.fqname: self,
+			}
+		} else {
+			prenode.getNode().filePostNodes[self.fqname] = self
+		}
+	}
+}
+
+// Returns true if tname is a type which might contain a file name.
+// Any string, map, user-defined file type, or array thereof might
+// contain a file name, so to be safe all of those are considered.
+func maybeFileType(tname string) bool {
+	return tname != "int" && tname != "float" && tname != "bool"
+}
+
 // Get the set of distinct precurser nodes and direct precurser nodes based on
 // the given binding set.
-func recurseBoundNodes(bindingList []*Binding) (prenodes map[string]Nodable, parents []Nodable) {
+func recurseBoundNodes(bindingList []*Binding) (prenodes map[string]Nodable,
+	parents []Nodable,
+	fileParents map[Nodable]struct{}) {
 	found := make(map[string]Nodable)
+	fileParents = make(map[Nodable]struct{})
 	allParents := make(map[Nodable]struct{})
 	parentList := make([]Nodable, 0, len(bindingList))
 	addPrenode := func(prenode Nodable) {
@@ -174,8 +204,11 @@ func recurseBoundNodes(bindingList []*Binding) (prenodes map[string]Nodable, par
 				allParents[parent] = struct{}{}
 				parentList = append(parentList, parent)
 			}
+			if maybeFileType(binding.tname) {
+				fileParents[binding.boundNode] = struct{}{}
+			}
 		} else if binding.mode == "array" {
-			prenodes, parents := recurseBoundNodes(binding.value.([]*Binding))
+			prenodes, parents, fparents := recurseBoundNodes(binding.value.([]*Binding))
 			for _, prenode := range prenodes {
 				addPrenode(prenode)
 			}
@@ -185,9 +218,12 @@ func recurseBoundNodes(bindingList []*Binding) (prenodes map[string]Nodable, par
 					parentList = append(parentList, parent)
 				}
 			}
+			for key, val := range fparents {
+				fileParents[key] = val
+			}
 		}
 	}
-	return found, parentList
+	return found, parentList, fileParents
 }
 
 //
