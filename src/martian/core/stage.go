@@ -384,8 +384,22 @@ func (self *Fork) verifyOutput(outs interface{}) (bool, string) {
 			return false, "Fork outs were not a map."
 		}
 		outputs := ArgumentMap(outsMap)
-		if err := outputs.Validate(outparams, false); err != nil {
-			return false, err.Error()
+		if err, alarms := outputs.Validate(outparams, false); err != nil {
+			return false, err.Error() + alarms
+		} else if alarms != "" {
+			switch syntax.GetEnforcementLevel() {
+			case syntax.EnforceError:
+				return false, alarms
+			case syntax.EnforceAlarm:
+				return true, alarms
+			case syntax.EnforceLog:
+				util.PrintInfo("runtime",
+					"(outputs)         %s: WARNING: invalid output\n%s",
+					self.fqname, alarms)
+				fallthrough
+			default:
+				return true, ""
+			}
 		}
 	}
 	return true, ""
@@ -607,6 +621,9 @@ func (self *Fork) step() {
 			joinOut := self.join_metadata.read(OutsFile)
 			self.metadata.Write(OutsFile, joinOut)
 			if ok, msg := self.verifyOutput(joinOut); ok {
+				if msg != "" {
+					self.metadata.AppendAlarm(msg)
+				}
 				self.metadata.WriteTime(CompleteFile)
 				// Print alerts
 				if alarms := self.getAlarms(); len(alarms) > 0 {
@@ -627,6 +644,9 @@ func (self *Fork) step() {
 		outs := resolveBindings(self.node.retbindings, self.argPermute)
 		self.metadata.Write(OutsFile, outs)
 		if ok, msg := self.verifyOutput(outs); ok {
+			if msg != "" {
+				self.metadata.AppendAlarm(msg)
+			}
 			self.metadata.WriteTime(CompleteFile)
 		} else {
 			self.metadata.WriteRaw(Errors, msg)

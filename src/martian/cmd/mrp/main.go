@@ -12,6 +12,7 @@ import (
 	"io/ioutil"
 	"martian/api"
 	"martian/core"
+	"martian/syntax"
 	"martian/util"
 	"net"
 	"net/http"
@@ -373,6 +374,9 @@ Options:
                             post (default), rolling, or disable
 
     --nopreflight       Skips preflight stages.
+    --strict=MODE       Determines how mrp reports cases where it needs to fall
+                        back on backwards compatibility for mro checks. Allowed
+                        values: disable (default), log, alarm, or error.
     --uiport=NUM        Serve UI at http://<hostname>:NUM
     --disable-ui        Do not serve the UI.
     --disable-auth      Do not require authentication for reading the web UI.
@@ -416,6 +420,12 @@ Options:
 		martianOptions := strings.Split(martianFlags, " ")
 		util.ParseMroFlags(opts, doc, martianOptions, []string{"call.mro", "pipestance"})
 		util.LogInfo("environ", "MROFLAGS=%s", martianFlags)
+	}
+
+	if value := opts["--strict"]; value != nil {
+		level := syntax.ParseEnforcementLevel(value.(string))
+		syntax.SetEnforcementLevel(level)
+		util.LogInfo("options", "--strict=%s", level.String())
 	}
 
 	// Requested cores and memory.

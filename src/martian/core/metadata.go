@@ -518,6 +518,35 @@ func (self *Metadata) WriteRaw(name MetadataFileName, text string) error {
 	return err
 }
 
+func (self *Metadata) appendRaw(name MetadataFileName, text string) error {
+	self.cache(name, self.uniquifier)
+	if f, err := os.OpenFile(self.MetadataFilePath(name),
+		os.O_WRONLY|os.O_CREATE|os.O_APPEND, 0644); err != nil {
+		return err
+	} else if _, err := f.Write([]byte(text)); err != nil {
+		f.Close()
+		return err
+	} else {
+		return f.Close()
+	}
+}
+
+// Add text to the Alarm file for this node.
+func (self *Metadata) AppendAlarm(text string) error {
+	if err := self.appendRaw(AlarmFile, text); err != nil {
+		msg := fmt.Sprintf("Could not write alarm for %s: %s",
+			self.fqname, err.Error())
+		util.LogError(err, "runtime", msg)
+		self.WriteRaw(Errors, msg)
+		return err
+	}
+	if self.journalPrefix != "" {
+		return self.UpdateJournal(AlarmFile)
+	} else {
+		return nil
+	}
+}
+
 // Serializes the given object and writes it to the given metadata file.
 func (self *Metadata) Write(name MetadataFileName, object interface{}) error {
 	bytes, _ := json.MarshalIndent(object, "", "    ")

@@ -11,7 +11,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"martian/syntax"
-	"martian/util"
 	"reflect"
 	"strings"
 	"unicode"
@@ -41,14 +40,16 @@ func (self *ArgumentMap) UnmarshalJSON(b []byte) error {
 }
 
 // Returns true if the given value has the correct mro type.
-func checkType(val interface{}, typename string, arrayDim int) bool {
+// Non-fatal errors are written to alarms.
+func checkType(val interface{}, typename string, arrayDim int,
+	alarms *bytes.Buffer) bool {
 	if arrayDim > 0 {
 		arr, ok := val.([]interface{})
 		if !ok {
 			return false
 		}
 		for _, v := range arr {
-			if !checkType(v, typename, arrayDim-1) {
+			if !checkType(v, typename, arrayDim-1, alarms) {
 				return false
 			}
 		}
@@ -98,16 +99,25 @@ func checkType(val interface{}, typename string, arrayDim int) bool {
 		default:
 			// User defined file types.  For backwards compatiblity we need
 			// to accept everything here.
+			_, ret := val.(string)
+			if !ret {
+				fmt.Fprintf(alarms,
+					"Expected type %s but found %v instead.\n",
+					typename, reflect.TypeOf(val))
+			}
 			return true
 		}
 	}
 }
 
-// Validate that all of the arguments are of the correct type, that all of the
-// expected arguments exist, and that they are all either null or have the
-// correct type.
-func (self ArgumentMap) Validate(expected *syntax.Params, isInput bool) error {
-	var result bytes.Buffer
+// Validate that all of the arguments in the map are declared parameters, and
+// that all declared parameters are set in the arguments to a value of the
+// correct type, or null.
+//
+// Hard errors are returned as the first parameter.  "soft" error messages
+// are returned in the second.
+func (self ArgumentMap) Validate(expected *syntax.Params, isInput bool) (error, string) {
+	var result, alarms bytes.Buffer
 	for _, param := range expected.Table {
 		if val, ok := self[param.GetId()]; !ok {
 			if isInput {
@@ -119,7 +129,7 @@ func (self ArgumentMap) Validate(expected *syntax.Params, isInput bool) error {
 		} else if val == nil {
 			// Allow for null output parameters
 			continue
-		} else if !checkType(val, param.GetTname(), param.GetArrayDim()) {
+		} else if !checkType(val, param.GetTname(), param.GetArrayDim(), &alarms) {
 			if isInput {
 				fmt.Fprintf(&result,
 					"Expected %s input parameter '%s' has incorrect type %v\n",
@@ -138,16 +148,14 @@ func (self ArgumentMap) Validate(expected *syntax.Params, isInput bool) error {
 			if isInput {
 				fmt.Fprintf(&result, "Unexpected parameter '%s'\n", key)
 			} else {
-				util.LogInfo("runtime",
-					"WARNING: Unexpected output value '%s' ignored.",
-					key)
+				fmt.Fprintf(&alarms, "Unexpected output '%s'\n", key)
 			}
 		}
 	}
 	if result.Len() == 0 {
-		return nil
+		return nil, alarms.String()
 	} else {
-		return fmt.Errorf(result.String())
+		return fmt.Errorf(result.String()), alarms.String()
 	}
 }
 

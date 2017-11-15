@@ -9,6 +9,7 @@ package core
 import (
 	"encoding/json"
 	"fmt"
+	"martian/syntax"
 	"martian/util"
 )
 
@@ -28,12 +29,20 @@ func (self *JobResources) updateFromArgs(args ArgumentMap) error {
 		case json.Number:
 			if i, err := n.Int64(); err == nil {
 				return int(i), nil
+			} else if level := syntax.GetEnforcementLevel(); level == syntax.EnforceError {
+				return int(i), err
 			} else if f, err := n.Float64(); err != nil {
 				return 0, err
 			} else {
-				util.PrintInfo("runtime",
-					"WARNING: value %v for %s was not of integer type.  Rounding to %d",
-					n, key, int(f))
+				if level == syntax.EnforceLog {
+					util.LogInfo("runtime",
+						"WARNING: value %v for %s was not of integer type",
+						n, key)
+				} else if level == syntax.EnforceAlarm {
+					util.PrintInfo("runtime",
+						"WARNING: value %v for %s was not of integer type",
+						n, key)
+				}
 				return int(f), nil
 			}
 		case float64:

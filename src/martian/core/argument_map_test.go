@@ -44,7 +44,7 @@ func TestArgumentMapValidate(t *testing.T) {
 		Table: ptable,
 		List:  plist,
 	}
-	if err := def.Args.Validate(&params, true); err == nil {
+	if err, msg := def.Args.Validate(&params, true); err == nil {
 		t.Errorf("Expected error from extra param, got none.")
 	} else if strings.TrimSpace(err.Error()) != "Unexpected parameter 'bath'" {
 		t.Errorf(
@@ -52,10 +52,19 @@ func TestArgumentMapValidate(t *testing.T) {
 				"Unexpected parameter 'bath'"+
 				"\", got \"%v\"",
 			err)
+	} else if msg != "" {
+		t.Errorf("Didn't expect a soft error message, got %s", msg)
 	}
-	if err := def.Args.Validate(&params, false); err != nil {
-		t.Errorf("Expected pass (with warning) from extra out param, got %v.",
+
+	if err, alarms := def.Args.Validate(&params, false); err != nil {
+		t.Errorf("Expected pass from extra out param, got %v.",
 			err)
+	} else if strings.TrimSpace(alarms) != "Unexpected output 'bath'" {
+		t.Errorf(
+			"Validation error: expected \""+
+				"Unexpected output 'bath'"+
+				"\", got \"%s\"",
+			alarms)
 	}
 	bath := &syntax.InParam{
 		Id:    "bath",
@@ -63,11 +72,13 @@ func TestArgumentMapValidate(t *testing.T) {
 	}
 	params.Table[bath.Id] = bath
 	params.List = append(params.List, bath)
-	if err := def.Args.Validate(&params, true); err != nil {
+	if err, msg := def.Args.Validate(&params, true); err != nil {
 		t.Errorf("Validation error: expected success, got %v", err)
+	} else if msg != "" {
+		t.Errorf("Didn't expect a soft error message, got %s", msg)
 	}
 	params.Table["bar"].(*syntax.InParam).Tname = "int"
-	if err := def.Args.Validate(&params, true); err == nil {
+	if err, msg := def.Args.Validate(&params, true); err == nil {
 		t.Errorf("Expected error from float, got none.")
 	} else if strings.TrimSpace(err.Error()) !=
 		"Expected int input parameter 'bar' has incorrect type json.Number" {
@@ -76,6 +87,8 @@ func TestArgumentMapValidate(t *testing.T) {
 				"Expected int input parameter 'bar' has incorrect type json.Number"+
 				"\", got \"%v\"",
 			err)
+	} else if msg != "" {
+		t.Errorf("Didn't expect a soft error message, got %s", msg)
 	}
 	params.Table["bar"].(*syntax.InParam).Tname = "float"
 	missing := &syntax.InParam{
@@ -84,7 +97,7 @@ func TestArgumentMapValidate(t *testing.T) {
 	}
 	params.Table[missing.Id] = missing
 	params.List = append(params.List, missing)
-	if err := def.Args.Validate(&params, true); err == nil {
+	if err, msg := def.Args.Validate(&params, true); err == nil {
 		t.Errorf("Expected error from missing parameter, got none.")
 	} else if strings.TrimSpace(err.Error()) != "Missing input parameter 'miss'" {
 		t.Errorf(
@@ -92,6 +105,8 @@ func TestArgumentMapValidate(t *testing.T) {
 				"Missing input parameter 'miss'"+
 				"\", got \"%v\"",
 			err)
+	} else if msg != "" {
+		t.Errorf("Didn't expect a soft error message, got %s", msg)
 	}
 }
 

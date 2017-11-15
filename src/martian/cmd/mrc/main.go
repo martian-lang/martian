@@ -13,6 +13,7 @@ import (
 	"os"
 	"path"
 	"path/filepath"
+	"regexp"
 
 	"github.com/martian-lang/docopt.go"
 )
@@ -30,6 +31,7 @@ Usage:
 Options:
     --all           Compile all files in $MROPATH.
     --json          Output abstract syntax tree as JSON.
+    --strict        Strict syntax validation
 
     -h --help       Show this message.
     --version       Show version.`
@@ -45,6 +47,17 @@ Options:
 		mroPaths = util.ParseMroPath(value)
 	}
 	checkSrcPath := true
+
+	// Setup strictness
+	syntax.SetEnforcementLevel(syntax.EnforceLog)
+	if opts["--strict"].(bool) {
+		syntax.SetEnforcementLevel(syntax.EnforceError)
+	} else if flags := os.Getenv("MROFLAGS"); flags != "" {
+		re := regexp.MustCompile(`-strict=(alarm|error)`)
+		if match := re.FindStringSubmatch(flags); len(match) > 1 {
+			syntax.SetEnforcementLevel(syntax.ParseEnforcementLevel(match[1]))
+		}
+	}
 
 	// Setup runtime with MRO path.
 	cfg := core.DefaultRuntimeOptions()
