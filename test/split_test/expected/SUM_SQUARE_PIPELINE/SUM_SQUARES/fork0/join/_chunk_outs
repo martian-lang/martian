@@ -1,11 +1,14 @@
 [
     {
-        "sum": 1
+        "square": 1,
+        "sum": null
     },
     {
-        "sum": 4
+        "square": 4,
+        "sum": null
     },
     {
-        "sum": 9
+        "square": 9,
+        "sum": null
     }
 ]

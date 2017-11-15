@@ -54,6 +54,9 @@ func NewStagestance(parent Nodable, callStm *syntax.CallStm, callables *syntax.C
 		}
 	}
 	self.node.split = stage.Split
+	if stage.Split {
+		self.node.chunkOuts = stage.ChunkOuts
+	}
 	self.node.buildForks(self.node.argbindings)
 	return self
 }

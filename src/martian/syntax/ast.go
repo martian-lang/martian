@@ -49,14 +49,20 @@ type (
 		format(printer *printer)
 	}
 
+	paramsTuple struct {
+		Ins  *Params
+		Outs *Params
+	}
+
 	Stage struct {
-		Node        AstNode
-		Id          string
-		InParams    *Params
-		OutParams   *Params
-		Src         *SrcParam
-		SplitParams *Params
-		Split       bool
+		Node      AstNode
+		Id        string
+		InParams  *Params
+		OutParams *Params
+		Src       *SrcParam
+		ChunkIns  *Params
+		ChunkOuts *Params
+		Split     bool
 	}
 
 	Pipeline struct {

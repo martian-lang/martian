@@ -8,6 +8,7 @@ stage SUM_SQUARES(
     src py      "stages/sum_squares",
 ) split using (
     in  float   value,
+    out float   square,
 )
 
 # Prints the output to the user, but only if the pipestance doesn't finish.

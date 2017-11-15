@@ -119,6 +119,15 @@ stage ADD_KEY3(
     src py     "stages/add_key",
 )
 
+stage SUM_SQUARES(
+    in  float[] values,
+    out float   sum,
+    src comp    "bin/sum_squares",
+) split using (
+    in  float   value,
+    out float   square,
+)
+
 # Takes two files containing json dictionaries and merges them.
 stage MERGE_JSON(
     in  json json1,

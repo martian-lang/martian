@@ -34,6 +34,7 @@ type mmSymType struct {
 	inparam   *InParam
 	outparam  *OutParam
 	params    *Params
+	par_tuple paramsTuple
 	src       *SrcParam
 	exp       Exp
 	exps      []Exp
@@ -158,7 +159,7 @@ const mmEofCode = 1
 const mmErrCode = 2
 const mmInitialStackSize = 16
 
-//line src/martian/syntax/grammar.y:343
+//line src/martian/syntax/grammar.y:363
 
 //line yacctab:1
 var mmExca = [...]int{
@@ -169,55 +170,56 @@ var mmExca = [...]int{
 
 const mmPrivate = 57344
 
-const mmLast = 210
+const mmLast = 211
 
 var mmAct = [...]int{
 
-	94, 122, 35, 33, 103, 4, 92, 99, 12, 14,
-	66, 98, 70, 27, 37, 141, 71, 21, 84, 119,
-	8, 9, 10, 7, 26, 49, 118, 36, 80, 8,
-	9, 10, 7, 34, 79, 74, 72, 73, 62, 70,
-	132, 63, 64, 71, 70, 93, 138, 59, 71, 40,
-	75, 76, 77, 146, 27, 80, 13, 32, 86, 68,
-	80, 79, 74, 72, 73, 5, 79, 74, 72, 73,
-	124, 123, 43, 89, 65, 18, 85, 75, 76, 77,
-	87, 134, 75, 76, 77, 55, 50, 51, 53, 52,
-	54, 102, 107, 86, 110, 105, 20, 70, 112, 133,
-	19, 71, 18, 121, 81, 23, 24, 25, 108, 125,
-	69, 48, 47, 80, 131, 104, 105, 22, 135, 79,
-	74, 72, 73, 43, 136, 70, 41, 139, 123, 71,
-	131, 140, 30, 105, 95, 75, 76, 77, 57, 39,
-	144, 80, 100, 7, 148, 43, 83, 79, 74, 72,
-	73, 31, 97, 7, 48, 39, 8, 9, 10, 7,
-	115, 111, 127, 75, 76, 77, 129, 116, 67, 60,
-	106, 130, 128, 120, 113, 91, 44, 114, 6, 29,
-	28, 58, 15, 147, 145, 142, 137, 126, 101, 90,
-	15, 56, 143, 117, 3, 1, 109, 11, 42, 88,
-	17, 96, 78, 45, 82, 46, 38, 16, 61, 2,
+	94, 37, 35, 122, 33, 103, 4, 92, 99, 12,
+	14, 66, 49, 98, 27, 84, 70, 134, 21, 141,
+	71, 8, 9, 10, 7, 62, 70, 132, 63, 64,
+	71, 119, 80, 138, 34, 133, 40, 39, 79, 74,
+	72, 73, 80, 8, 9, 10, 7, 59, 79, 74,
+	72, 73, 26, 124, 75, 76, 77, 13, 123, 68,
+	102, 65, 86, 95, 75, 76, 77, 70, 93, 121,
+	118, 71, 108, 36, 89, 32, 20, 85, 105, 5,
+	86, 97, 27, 80, 104, 105, 23, 24, 25, 79,
+	74, 72, 73, 107, 123, 110, 100, 105, 22, 112,
+	146, 81, 87, 41, 30, 75, 76, 77, 19, 18,
+	125, 70, 48, 47, 131, 71, 149, 83, 135, 43,
+	43, 7, 43, 31, 69, 136, 57, 80, 67, 139,
+	131, 140, 48, 79, 74, 72, 73, 70, 144, 7,
+	127, 71, 48, 129, 148, 115, 60, 111, 130, 75,
+	76, 77, 116, 80, 18, 8, 9, 10, 7, 79,
+	74, 72, 73, 128, 55, 50, 51, 53, 52, 54,
+	120, 113, 91, 44, 114, 75, 76, 77, 29, 28,
+	6, 106, 58, 147, 15, 145, 142, 137, 126, 101,
+	90, 56, 15, 143, 117, 3, 1, 109, 11, 42,
+	17, 88, 96, 78, 45, 82, 46, 38, 16, 61,
+	2,
 }
 var mmPact = [...]int{
 
-	12, -1000, 3, 139, -1000, -1000, -1000, -1000, 69, 67,
-	63, 139, -1000, -1000, -1000, -1000, 84, 17, -1000, 167,
-	166, -1000, 119, -1000, -1000, -1000, -1000, 24, -1000, -1000,
-	-1000, -6, -1000, 110, 110, 112, 163, 81, -1000, 42,
-	124, -1000, -1000, 171, -1000, 155, -1000, 0, 42, -1000,
-	-1000, -1000, -1000, -1000, -1000, -1000, -24, 153, 86, 90,
-	121, -16, -1000, -1000, -1000, -1000, 47, 123, 180, 162,
-	33, 118, -1000, -1000, -1000, -1000, -1000, -1000, -1000, -26,
-	-30, -1000, -1000, 116, 179, 82, 158, 99, 133, -1000,
-	-1000, 114, 165, -1000, -1000, -1000, 151, 185, -7, -14,
-	160, -1000, -1000, 94, 61, -1000, -1000, 178, -1000, 146,
-	-1000, 159, 157, 28, -1000, 65, -1000, 114, -1000, -1000,
-	-1000, -1000, 177, -1000, -1000, 37, -1000, -1000, -1000, 1,
-	176, -1000, -1000, 184, -1000, -1000, 126, -1000, -1000, 175,
-	39, 174, -1000, 114, -1000, -1000, -1000, -1000, -1000,
+	26, -1000, 4, 138, -1000, -1000, -1000, -1000, 76, 75,
+	43, 138, -1000, -1000, -1000, -1000, 65, 45, -1000, 166,
+	165, -1000, 91, -1000, -1000, -1000, -1000, 42, -1000, -1000,
+	-1000, 40, -1000, 8, 8, 89, 160, 82, -1000, 121,
+	112, -1000, -1000, 172, -1000, 132, -1000, -13, 121, -1000,
+	-1000, -1000, -1000, -1000, -1000, -1000, -23, 113, 100, 87,
+	92, -19, -1000, -1000, -1000, -1000, 69, 101, 181, 159,
+	56, 47, -1000, -1000, -1000, -1000, -1000, -1000, -1000, -24,
+	-29, -1000, -1000, 70, 180, 51, 169, 63, 119, -1000,
+	-1000, 126, 162, -1000, -1000, -1000, 136, 186, 37, -2,
+	157, -1000, -1000, 60, 44, -1000, -1000, 179, -1000, 124,
+	-1000, 150, 134, 15, -1000, 1, -1000, 126, -1000, -1000,
+	-1000, -1000, 178, -1000, -1000, 24, -1000, -1000, -1000, 5,
+	177, -1000, -1000, 185, -1000, -1000, 8, -1000, -1000, 176,
+	86, 174, -1000, 126, 102, -1000, -1000, -1000, -1000, -1000,
 }
 var mmPgo = [...]int{
 
-	0, 209, 191, 25, 4, 208, 1, 207, 10, 178,
-	194, 206, 205, 3, 14, 204, 203, 0, 202, 6,
-	201, 5, 199, 198, 2, 196, 195,
+	0, 210, 191, 12, 5, 209, 3, 208, 11, 180,
+	195, 207, 206, 4, 1, 205, 204, 0, 203, 7,
+	202, 6, 201, 199, 2, 197, 196,
 }
 var mmR1 = [...]int{
 
@@ -236,7 +238,7 @@ var mmR2 = [...]int{
 	1, 3, 7, 8, 10, 3, 1, 0, 3, 0,
 	2, 6, 5, 0, 2, 4, 5, 6, 5, 6,
 	7, 4, 1, 1, 1, 1, 1, 1, 1, 1,
-	1, 1, 1, 1, 5, 4, 2, 1, 6, 8,
+	1, 1, 1, 1, 6, 4, 2, 1, 6, 8,
 	0, 2, 2, 2, 0, 2, 4, 8, 7, 3,
 	1, 5, 3, 3, 4, 2, 2, 3, 4, 1,
 	1, 1, 1, 1, 1, 1, 3, 1, 3,
@@ -257,7 +259,7 @@ var mmChk = [...]int{
 	-21, 28, -19, 9, 12, 9, 16, 8, 33, 33,
 	13, 9, -6, 34, 9, -4, 9, 16, 13, 9,
 	14, -17, 12, 34, 16, -17, -13, 9, 9, -6,
-	-24, 14, 9, 8, 14, 9, 14, 9, -17,
+	-24, 14, 9, 8, -14, 9, 14, 9, -17, 14,
 }
 var mmDef = [...]int{
 
@@ -274,8 +276,8 @@ var mmDef = [...]int{
 	0, 31, 25, 0, 0, 32, 18, 0, 22, 0,
 	46, 0, 0, 0, 63, 0, 67, 0, 76, 78,
 	19, 26, 0, 33, 28, 0, 21, 14, 54, 0,
-	0, 59, 64, 0, 68, 62, 0, 27, 29, 0,
-	0, 0, 58, 0, 44, 30, 45, 57, 61,
+	0, 59, 64, 0, 68, 62, 23, 27, 29, 0,
+	0, 0, 58, 0, 0, 30, 45, 57, 61, 44,
 }
 var mmTok1 = [...]int{
 
@@ -633,7 +635,7 @@ mmdefault:
 
 	case 1:
 		mmDollar = mmS[mmpt-2 : mmpt+1]
-		//line src/martian/syntax/grammar.y:76
+		//line src/martian/syntax/grammar.y:78
 		{
 			{
 				global := NewAst(mmDollar[2].decs, nil)
@@ -643,7 +645,7 @@ mmdefault:
 		}
 	case 2:
 		mmDollar = mmS[mmpt-3 : mmpt+1]
-		//line src/martian/syntax/grammar.y:82
+		//line src/martian/syntax/grammar.y:84
 		{
 			{
 				global := NewAst(mmDollar[2].decs, mmDollar[3].call)
@@ -653,7 +655,7 @@ mmdefault:
 		}
 	case 3:
 		mmDollar = mmS[mmpt-2 : mmpt+1]
-		//line src/martian/syntax/grammar.y:88
+		//line src/martian/syntax/grammar.y:90
 		{
 			{
 				global := NewAst([]Dec{}, mmDollar[2].call)
@@ -663,7 +665,7 @@ mmdefault:
 		}
 	case 4:
 		mmDollar = mmS[mmpt-1 : mmpt+1]
-		//line src/martian/syntax/grammar.y:94
+		//line src/martian/syntax/grammar.y:96
 		{
 			{
 				global := NewAst(mmDollar[1].decs, nil)
@@ -672,7 +674,7 @@ mmdefault:
 		}
 	case 5:
 		mmDollar = mmS[mmpt-2 : mmpt+1]
-		//line src/martian/syntax/grammar.y:99
+		//line src/martian/syntax/grammar.y:101
 		{
 			{
 				global := NewAst(mmDollar[1].decs, mmDollar[2].call)
@@ -681,7 +683,7 @@ mmdefault:
 		}
 	case 6:
 		mmDollar = mmS[mmpt-1 : mmpt+1]
-		//line src/martian/syntax/grammar.y:104
+		//line src/martian/syntax/grammar.y:106
 		{
 			{
 				global := NewAst([]Dec{}, mmDollar[1].call)
@@ -690,7 +692,7 @@ mmdefault:
 		}
 	case 7:
 		mmDollar = mmS[mmpt-2 : mmpt+1]
-		//line src/martian/syntax/grammar.y:112
+		//line src/martian/syntax/grammar.y:114
 		{
 			{
 				mmVAL.pre_dir = append(mmDollar[1].pre_dir, &preprocessorDirective{NewAstNode(mmDollar[2].loc, mmDollar[2].locmap), mmDollar[2].val})
@@ -698,7 +700,7 @@ mmdefault:
 		}
 	case 8:
 		mmDollar = mmS[mmpt-1 : mmpt+1]
-		//line src/martian/syntax/grammar.y:114
+		//line src/martian/syntax/grammar.y:116
 		{
 			{
 				mmVAL.pre_dir = []*preprocessorDirective{
@@ -711,7 +713,7 @@ mmdefault:
 		}
 	case 9:
 		mmDollar = mmS[mmpt-2 : mmpt+1]
-		//line src/martian/syntax/grammar.y:124
+		//line src/martian/syntax/grammar.y:126
 		{
 			{
 				mmVAL.decs = append(mmDollar[1].decs, mmDollar[2].dec)
@@ -719,7 +721,7 @@ mmdefault:
 		}
 	case 10:
 		mmDollar = mmS[mmpt-1 : mmpt+1]
-		//line src/martian/syntax/grammar.y:126
+		//line src/martian/syntax/grammar.y:128
 		{
 			{
 				mmVAL.decs = []Dec{mmDollar[1].dec}
@@ -727,7 +729,7 @@ mmdefault:
 		}
 	case 11:
 		mmDollar = mmS[mmpt-3 : mmpt+1]
-		//line src/martian/syntax/grammar.y:131
+		//line src/martian/syntax/grammar.y:133
 		{
 			{
 				mmVAL.dec = &UserType{NewAstNode(mmDollar[2].loc, mmDollar[2].locmap), mmDollar[2].val}
@@ -735,23 +737,41 @@ mmdefault:
 		}
 	case 12:
 		mmDollar = mmS[mmpt-7 : mmpt+1]
-		//line src/martian/syntax/grammar.y:133
+		//line src/martian/syntax/grammar.y:135
 		{
 			{
-				mmVAL.dec = &Stage{NewAstNode(mmDollar[2].loc, mmDollar[2].locmap), mmDollar[2].val, mmDollar[4].params, mmDollar[5].params, mmDollar[6].src, &Params{[]Param{}, map[string]Param{}}, false}
+				mmVAL.dec = &Stage{
+					Node:      NewAstNode(mmDollar[2].loc, mmDollar[2].locmap),
+					Id:        mmDollar[2].val,
+					InParams:  mmDollar[4].params,
+					OutParams: mmDollar[5].params,
+					Src:       mmDollar[6].src,
+					ChunkIns:  &Params{[]Param{}, map[string]Param{}},
+					ChunkOuts: &Params{[]Param{}, map[string]Param{}},
+					Split:     false,
+				}
 			}
 		}
 	case 13:
 		mmDollar = mmS[mmpt-8 : mmpt+1]
-		//line src/martian/syntax/grammar.y:135
+		//line src/martian/syntax/grammar.y:146
 		{
 			{
-				mmVAL.dec = &Stage{NewAstNode(mmDollar[2].loc, mmDollar[2].locmap), mmDollar[2].val, mmDollar[4].params, mmDollar[5].params, mmDollar[6].src, mmDollar[8].params, true}
+				mmVAL.dec = &Stage{
+					Node:      NewAstNode(mmDollar[2].loc, mmDollar[2].locmap),
+					Id:        mmDollar[2].val,
+					InParams:  mmDollar[4].params,
+					OutParams: mmDollar[5].params,
+					Src:       mmDollar[6].src,
+					ChunkIns:  mmDollar[8].par_tuple.Ins,
+					ChunkOuts: mmDollar[8].par_tuple.Outs,
+					Split:     true,
+				}
 			}
 		}
 	case 14:
 		mmDollar = mmS[mmpt-10 : mmpt+1]
-		//line src/martian/syntax/grammar.y:137
+		//line src/martian/syntax/grammar.y:157
 		{
 			{
 				mmVAL.dec = &Pipeline{NewAstNode(mmDollar[2].loc, mmDollar[2].locmap), mmDollar[2].val, mmDollar[4].params, mmDollar[5].params, mmDollar[8].calls, &Callables{[]Callable{}, map[string]Callable{}}, mmDollar[9].retstm}
@@ -759,7 +779,7 @@ mmdefault:
 		}
 	case 15:
 		mmDollar = mmS[mmpt-3 : mmpt+1]
-		//line src/martian/syntax/grammar.y:142
+		//line src/martian/syntax/grammar.y:162
 		{
 			{
 				mmVAL.val = mmDollar[1].val + mmDollar[2].val + mmDollar[3].val
@@ -767,7 +787,7 @@ mmdefault:
 		}
 	case 17:
 		mmDollar = mmS[mmpt-0 : mmpt+1]
-		//line src/martian/syntax/grammar.y:148
+		//line src/martian/syntax/grammar.y:168
 		{
 			{
 				mmVAL.arr = 0
@@ -775,7 +795,7 @@ mmdefault:
 		}
 	case 18:
 		mmDollar = mmS[mmpt-3 : mmpt+1]
-		//line src/martian/syntax/grammar.y:150
+		//line src/martian/syntax/grammar.y:170
 		{
 			{
 				mmVAL.arr += 1
@@ -783,7 +803,7 @@ mmdefault:
 		}
 	case 19:
 		mmDollar = mmS[mmpt-0 : mmpt+1]
-		//line src/martian/syntax/grammar.y:155
+		//line src/martian/syntax/grammar.y:175
 		{
 			{
 				mmVAL.params = &Params{[]Param{}, map[string]Param{}}
@@ -791,7 +811,7 @@ mmdefault:
 		}
 	case 20:
 		mmDollar = mmS[mmpt-2 : mmpt+1]
-		//line src/martian/syntax/grammar.y:157
+		//line src/martian/syntax/grammar.y:177
 		{
 			{
 				mmDollar[1].params.List = append(mmDollar[1].params.List, mmDollar[2].inparam)
@@ -800,7 +820,7 @@ mmdefault:
 		}
 	case 21:
 		mmDollar = mmS[mmpt-6 : mmpt+1]
-		//line src/martian/syntax/grammar.y:165
+		//line src/martian/syntax/grammar.y:185
 		{
 			{
 				mmVAL.inparam = &InParam{NewAstNode(mmDollar[1].loc, mmDollar[1].locmap), mmDollar[2].val, mmDollar[3].arr, mmDollar[4].val, unquote(mmDollar[5].val), false}
@@ -808,7 +828,7 @@ mmdefault:
 		}
 	case 22:
 		mmDollar = mmS[mmpt-5 : mmpt+1]
-		//line src/martian/syntax/grammar.y:167
+		//line src/martian/syntax/grammar.y:187
 		{
 			{
 				mmVAL.inparam = &InParam{NewAstNode(mmDollar[1].loc, mmDollar[1].locmap), mmDollar[2].val, mmDollar[3].arr, mmDollar[4].val, "", false}
@@ -816,7 +836,7 @@ mmdefault:
 		}
 	case 23:
 		mmDollar = mmS[mmpt-0 : mmpt+1]
-		//line src/martian/syntax/grammar.y:172
+		//line src/martian/syntax/grammar.y:192
 		{
 			{
 				mmVAL.params = &Params{[]Param{}, map[string]Param{}}
@@ -824,7 +844,7 @@ mmdefault:
 		}
 	case 24:
 		mmDollar = mmS[mmpt-2 : mmpt+1]
-		//line src/martian/syntax/grammar.y:174
+		//line src/martian/syntax/grammar.y:194
 		{
 			{
 				mmDollar[1].params.List = append(mmDollar[1].params.List, mmDollar[2].outparam)
@@ -833,7 +853,7 @@ mmdefault:
 		}
 	case 25:
 		mmDollar = mmS[mmpt-4 : mmpt+1]
-		//line src/martian/syntax/grammar.y:182
+		//line src/martian/syntax/grammar.y:202
 		{
 			{
 				mmVAL.outparam = &OutParam{NewAstNode(mmDollar[1].loc, mmDollar[1].locmap), mmDollar[2].val, mmDollar[3].arr, "default", "", "", false}
@@ -841,7 +861,7 @@ mmdefault:
 		}
 	case 26:
 		mmDollar = mmS[mmpt-5 : mmpt+1]
-		//line src/martian/syntax/grammar.y:184
+		//line src/martian/syntax/grammar.y:204
 		{
 			{
 				mmVAL.outparam = &OutParam{NewAstNode(mmDollar[1].loc, mmDollar[1].locmap), mmDollar[2].val, mmDollar[3].arr, "default", unquote(mmDollar[4].val), "", false}
@@ -849,7 +869,7 @@ mmdefault:
 		}
 	case 27:
 		mmDollar = mmS[mmpt-6 : mmpt+1]
-		//line src/martian/syntax/grammar.y:186
+		//line src/martian/syntax/grammar.y:206
 		{
 			{
 				mmVAL.outparam = &OutParam{NewAstNode(mmDollar[1].loc, mmDollar[1].locmap), mmDollar[2].val, mmDollar[3].arr, "default", unquote(mmDollar[4].val), unquote(mmDollar[5].val), false}
@@ -857,7 +877,7 @@ mmdefault:
 		}
 	case 28:
 		mmDollar = mmS[mmpt-5 : mmpt+1]
-		//line src/martian/syntax/grammar.y:188
+		//line src/martian/syntax/grammar.y:208
 		{
 			{
 				mmVAL.outparam = &OutParam{NewAstNode(mmDollar[1].loc, mmDollar[1].locmap), mmDollar[2].val, mmDollar[3].arr, mmDollar[4].val, "", "", false}
@@ -865,7 +885,7 @@ mmdefault:
 		}
 	case 29:
 		mmDollar = mmS[mmpt-6 : mmpt+1]
-		//line src/martian/syntax/grammar.y:190
+		//line src/martian/syntax/grammar.y:210
 		{
 			{
 				mmVAL.outparam = &OutParam{NewAstNode(mmDollar[1].loc, mmDollar[1].locmap), mmDollar[2].val, mmDollar[3].arr, mmDollar[4].val, unquote(mmDollar[5].val), "", false}
@@ -873,7 +893,7 @@ mmdefault:
 		}
 	case 30:
 		mmDollar = mmS[mmpt-7 : mmpt+1]
-		//line src/martian/syntax/grammar.y:192
+		//line src/martian/syntax/grammar.y:212
 		{
 			{
 				mmVAL.outparam = &OutParam{NewAstNode(mmDollar[1].loc, mmDollar[1].locmap), mmDollar[2].val, mmDollar[3].arr, mmDollar[4].val, unquote(mmDollar[5].val), unquote(mmDollar[6].val), false}
@@ -881,7 +901,7 @@ mmdefault:
 		}
 	case 31:
 		mmDollar = mmS[mmpt-4 : mmpt+1]
-		//line src/martian/syntax/grammar.y:197
+		//line src/martian/syntax/grammar.y:217
 		{
 			{
 				stagecodeParts := strings.Split(unquote(mmDollar[3].val), " ")
@@ -890,7 +910,7 @@ mmdefault:
 		}
 	case 32:
 		mmDollar = mmS[mmpt-1 : mmpt+1]
-		//line src/martian/syntax/grammar.y:203
+		//line src/martian/syntax/grammar.y:223
 		{
 			{
 				mmVAL.val = mmDollar[1].val
@@ -898,23 +918,23 @@ mmdefault:
 		}
 	case 33:
 		mmDollar = mmS[mmpt-1 : mmpt+1]
-		//line src/martian/syntax/grammar.y:208
+		//line src/martian/syntax/grammar.y:228
 		{
 			{
 				mmVAL.val = mmDollar[1].val
 			}
 		}
 	case 44:
-		mmDollar = mmS[mmpt-5 : mmpt+1]
-		//line src/martian/syntax/grammar.y:231
+		mmDollar = mmS[mmpt-6 : mmpt+1]
+		//line src/martian/syntax/grammar.y:251
 		{
 			{
-				mmVAL.params = mmDollar[4].params
+				mmVAL.par_tuple = paramsTuple{mmDollar[4].params, mmDollar[5].params}
 			}
 		}
 	case 45:
 		mmDollar = mmS[mmpt-4 : mmpt+1]
-		//line src/martian/syntax/grammar.y:236
+		//line src/martian/syntax/grammar.y:256
 		{
 			{
 				mmVAL.retstm = &ReturnStm{NewAstNode(mmDollar[1].loc, mmDollar[1].locmap), mmDollar[3].bindings}
@@ -922,7 +942,7 @@ mmdefault:
 		}
 	case 46:
 		mmDollar = mmS[mmpt-2 : mmpt+1]
-		//line src/martian/syntax/grammar.y:241
+		//line src/martian/syntax/grammar.y:261
 		{
 			{
 				mmVAL.calls = append(mmDollar[1].calls, mmDollar[2].call)
@@ -930,7 +950,7 @@ mmdefault:
 		}
 	case 47:
 		mmDollar = mmS[mmpt-1 : mmpt+1]
-		//line src/martian/syntax/grammar.y:243
+		//line src/martian/syntax/grammar.y:263
 		{
 			{
 				mmVAL.calls = []*CallStm{mmDollar[1].call}
@@ -938,7 +958,7 @@ mmdefault:
 		}
 	case 48:
 		mmDollar = mmS[mmpt-6 : mmpt+1]
-		//line src/martian/syntax/grammar.y:248
+		//line src/martian/syntax/grammar.y:268
 		{
 			{
 				mmVAL.call = &CallStm{NewAstNode(mmDollar[1].loc, mmDollar[1].locmap), mmDollar[2].modifiers, mmDollar[3].val, mmDollar[3].val, mmDollar[5].bindings}
@@ -946,7 +966,7 @@ mmdefault:
 		}
 	case 49:
 		mmDollar = mmS[mmpt-8 : mmpt+1]
-		//line src/martian/syntax/grammar.y:250
+		//line src/martian/syntax/grammar.y:270
 		{
 			{
 				mmVAL.call = &CallStm{NewAstNode(mmDollar[1].loc, mmDollar[1].locmap), mmDollar[2].modifiers, mmDollar[5].val, mmDollar[3].val, mmDollar[7].bindings}
@@ -954,7 +974,7 @@ mmdefault:
 		}
 	case 50:
 		mmDollar = mmS[mmpt-0 : mmpt+1]
-		//line src/martian/syntax/grammar.y:255
+		//line src/martian/syntax/grammar.y:275
 		{
 			{
 				mmVAL.modifiers = &Modifiers{false, false, false}
@@ -962,7 +982,7 @@ mmdefault:
 		}
 	case 51:
 		mmDollar = mmS[mmpt-2 : mmpt+1]
-		//line src/martian/syntax/grammar.y:257
+		//line src/martian/syntax/grammar.y:277
 		{
 			{
 				mmVAL.modifiers.Local = true
@@ -970,7 +990,7 @@ mmdefault:
 		}
 	case 52:
 		mmDollar = mmS[mmpt-2 : mmpt+1]
-		//line src/martian/syntax/grammar.y:259
+		//line src/martian/syntax/grammar.y:279
 		{
 			{
 				mmVAL.modifiers.Preflight = true
@@ -978,7 +998,7 @@ mmdefault:
 		}
 	case 53:
 		mmDollar = mmS[mmpt-2 : mmpt+1]
-		//line src/martian/syntax/grammar.y:261
+		//line src/martian/syntax/grammar.y:281
 		{
 			{
 				mmVAL.modifiers.Volatile = true
@@ -986,7 +1006,7 @@ mmdefault:
 		}
 	case 54:
 		mmDollar = mmS[mmpt-0 : mmpt+1]
-		//line src/martian/syntax/grammar.y:266
+		//line src/martian/syntax/grammar.y:286
 		{
 			{
 				mmVAL.bindings = &BindStms{NewAstNode(mmDollar[0].loc, mmDollar[0].locmap), []*BindStm{}, map[string]*BindStm{}}
@@ -994,7 +1014,7 @@ mmdefault:
 		}
 	case 55:
 		mmDollar = mmS[mmpt-2 : mmpt+1]
-		//line src/martian/syntax/grammar.y:268
+		//line src/martian/syntax/grammar.y:288
 		{
 			{
 				mmDollar[1].bindings.List = append(mmDollar[1].bindings.List, mmDollar[2].binding)
@@ -1003,7 +1023,7 @@ mmdefault:
 		}
 	case 56:
 		mmDollar = mmS[mmpt-4 : mmpt+1]
-		//line src/martian/syntax/grammar.y:276
+		//line src/martian/syntax/grammar.y:296
 		{
 			{
 				mmVAL.binding = &BindStm{NewAstNode(mmDollar[1].loc, mmDollar[1].locmap), mmDollar[1].val, mmDollar[3].exp, false, ""}
@@ -1011,7 +1031,7 @@ mmdefault:
 		}
 	case 57:
 		mmDollar = mmS[mmpt-8 : mmpt+1]
-		//line src/martian/syntax/grammar.y:278
+		//line src/martian/syntax/grammar.y:298
 		{
 			{
 				mmVAL.binding = &BindStm{NewAstNode(mmDollar[1].loc, mmDollar[1].locmap), mmDollar[1].val, &ValExp{Node: NewAstNode(mmDollar[1].loc, mmDollar[1].locmap), Kind: KindArray, Value: mmDollar[5].exps}, true, ""}
@@ -1019,7 +1039,7 @@ mmdefault:
 		}
 	case 58:
 		mmDollar = mmS[mmpt-7 : mmpt+1]
-		//line src/martian/syntax/grammar.y:280
+		//line src/martian/syntax/grammar.y:300
 		{
 			{
 				mmVAL.binding = &BindStm{NewAstNode(mmDollar[1].loc, mmDollar[1].locmap), mmDollar[1].val, &ValExp{Node: NewAstNode(mmDollar[1].loc, mmDollar[1].locmap), Kind: KindArray, Value: mmDollar[5].exps}, true, ""}
@@ -1027,7 +1047,7 @@ mmdefault:
 		}
 	case 59:
 		mmDollar = mmS[mmpt-3 : mmpt+1]
-		//line src/martian/syntax/grammar.y:285
+		//line src/martian/syntax/grammar.y:305
 		{
 			{
 				mmVAL.exps = append(mmDollar[1].exps, mmDollar[3].exp)
@@ -1035,7 +1055,7 @@ mmdefault:
 		}
 	case 60:
 		mmDollar = mmS[mmpt-1 : mmpt+1]
-		//line src/martian/syntax/grammar.y:287
+		//line src/martian/syntax/grammar.y:307
 		{
 			{
 				mmVAL.exps = []Exp{mmDollar[1].exp}
@@ -1043,7 +1063,7 @@ mmdefault:
 		}
 	case 61:
 		mmDollar = mmS[mmpt-5 : mmpt+1]
-		//line src/martian/syntax/grammar.y:292
+		//line src/martian/syntax/grammar.y:312
 		{
 			{
 				mmDollar[1].kvpairs[unquote(mmDollar[3].val)] = mmDollar[5].exp
@@ -1052,7 +1072,7 @@ mmdefault:
 		}
 	case 62:
 		mmDollar = mmS[mmpt-3 : mmpt+1]
-		//line src/martian/syntax/grammar.y:297
+		//line src/martian/syntax/grammar.y:317
 		{
 			{
 				mmVAL.kvpairs = map[string]Exp{unquote(mmDollar[1].val): mmDollar[3].exp}
@@ -1060,7 +1080,7 @@ mmdefault:
 		}
 	case 63:
 		mmDollar = mmS[mmpt-3 : mmpt+1]
-		//line src/martian/syntax/grammar.y:302
+		//line src/martian/syntax/grammar.y:322
 		{
 			{
 				mmVAL.exp = &ValExp{Node: NewAstNode(mmDollar[1].loc, mmDollar[1].locmap), Kind: KindArray, Value: mmDollar[2].exps}
@@ -1068,7 +1088,7 @@ mmdefault:
 		}
 	case 64:
 		mmDollar = mmS[mmpt-4 : mmpt+1]
-		//line src/martian/syntax/grammar.y:304
+		//line src/martian/syntax/grammar.y:324
 		{
 			{
 				mmVAL.exp = &ValExp{Node: NewAstNode(mmDollar[1].loc, mmDollar[1].locmap), Kind: KindArray, Value: mmDollar[2].exps}
@@ -1076,7 +1096,7 @@ mmdefault:
 		}
 	case 65:
 		mmDollar = mmS[mmpt-2 : mmpt+1]
-		//line src/martian/syntax/grammar.y:306
+		//line src/martian/syntax/grammar.y:326
 		{
 			{
 				mmVAL.exp = &ValExp{Node: NewAstNode(mmDollar[1].loc, mmDollar[1].locmap), Kind: KindArray, Value: []Exp{}}
@@ -1084,7 +1104,7 @@ mmdefault:
 		}
 	case 66:
 		mmDollar = mmS[mmpt-2 : mmpt+1]
-		//line src/martian/syntax/grammar.y:308
+		//line src/martian/syntax/grammar.y:328
 		{
 			{
 				mmVAL.exp = &ValExp{Node: NewAstNode(mmDollar[1].loc, mmDollar[1].locmap), Kind: KindMap, Value: map[string]interface{}{}}
@@ -1092,7 +1112,7 @@ mmdefault:
 		}
 	case 67:
 		mmDollar = mmS[mmpt-3 : mmpt+1]
-		//line src/martian/syntax/grammar.y:310
+		//line src/martian/syntax/grammar.y:330
 		{
 			{
 				mmVAL.exp = &ValExp{Node: NewAstNode(mmDollar[1].loc, mmDollar[1].locmap), Kind: KindMap, Value: mmDollar[2].kvpairs}
@@ -1100,7 +1120,7 @@ mmdefault:
 		}
 	case 68:
 		mmDollar = mmS[mmpt-4 : mmpt+1]
-		//line src/martian/syntax/grammar.y:312
+		//line src/martian/syntax/grammar.y:332
 		{
 			{
 				mmVAL.exp = &ValExp{Node: NewAstNode(mmDollar[1].loc, mmDollar[1].locmap), Kind: KindMap, Value: mmDollar[2].kvpairs}
@@ -1108,7 +1128,7 @@ mmdefault:
 		}
 	case 69:
 		mmDollar = mmS[mmpt-1 : mmpt+1]
-		//line src/martian/syntax/grammar.y:314
+		//line src/martian/syntax/grammar.y:334
 		{
 			{ // Lexer guarantees parseable float strings.
 				f, _ := strconv.ParseFloat(mmDollar[1].val, 64)
@@ -1117,7 +1137,7 @@ mmdefault:
 		}
 	case 70:
 		mmDollar = mmS[mmpt-1 : mmpt+1]
-		//line src/martian/syntax/grammar.y:319
+		//line src/martian/syntax/grammar.y:339
 		{
 			{ // Lexer guarantees parseable int strings.
 				i, _ := strconv.ParseInt(mmDollar[1].val, 0, 64)
@@ -1126,7 +1146,7 @@ mmdefault:
 		}
 	case 71:
 		mmDollar = mmS[mmpt-1 : mmpt+1]
-		//line src/martian/syntax/grammar.y:324
+		//line src/martian/syntax/grammar.y:344
 		{
 			{
 				mmVAL.exp = &ValExp{Node: NewAstNode(mmDollar[1].loc, mmDollar[1].locmap), Kind: KindString, Value: unquote(mmDollar[1].val)}
@@ -1134,7 +1154,7 @@ mmdefault:
 		}
 	case 72:
 		mmDollar = mmS[mmpt-1 : mmpt+1]
-		//line src/martian/syntax/grammar.y:326
+		//line src/martian/syntax/grammar.y:346
 		{
 			{
 				mmVAL.exp = &ValExp{Node: NewAstNode(mmDollar[1].loc, mmDollar[1].locmap), Kind: KindBool, Value: true}
@@ -1142,7 +1162,7 @@ mmdefault:
 		}
 	case 73:
 		mmDollar = mmS[mmpt-1 : mmpt+1]
-		//line src/martian/syntax/grammar.y:328
+		//line src/martian/syntax/grammar.y:348
 		{
 			{
 				mmVAL.exp = &ValExp{Node: NewAstNode(mmDollar[1].loc, mmDollar[1].locmap), Kind: KindBool, Value: false}
@@ -1150,7 +1170,7 @@ mmdefault:
 		}
 	case 74:
 		mmDollar = mmS[mmpt-1 : mmpt+1]
-		//line src/martian/syntax/grammar.y:330
+		//line src/martian/syntax/grammar.y:350
 		{
 			{
 				mmVAL.exp = &ValExp{Node: NewAstNode(mmDollar[1].loc, mmDollar[1].locmap), Kind: KindNull, Value: nil}
@@ -1158,7 +1178,7 @@ mmdefault:
 		}
 	case 75:
 		mmDollar = mmS[mmpt-1 : mmpt+1]
-		//line src/martian/syntax/grammar.y:332
+		//line src/martian/syntax/grammar.y:352
 		{
 			{
 				mmVAL.exp = mmDollar[1].exp
@@ -1166,7 +1186,7 @@ mmdefault:
 		}
 	case 76:
 		mmDollar = mmS[mmpt-3 : mmpt+1]
-		//line src/martian/syntax/grammar.y:337
+		//line src/martian/syntax/grammar.y:357
 		{
 			{
 				mmVAL.exp = &RefExp{NewAstNode(mmDollar[1].loc, mmDollar[1].locmap), KindCall, mmDollar[1].val, mmDollar[3].val}
@@ -1174,7 +1194,7 @@ mmdefault:
 		}
 	case 77:
 		mmDollar = mmS[mmpt-1 : mmpt+1]
-		//line src/martian/syntax/grammar.y:339
+		//line src/martian/syntax/grammar.y:359
 		{
 			{
 				mmVAL.exp = &RefExp{NewAstNode(mmDollar[1].loc, mmDollar[1].locmap), KindCall, mmDollar[1].val, "default"}
@@ -1182,7 +1202,7 @@ mmdefault:
 		}
 	case 78:
 		mmDollar = mmS[mmpt-3 : mmpt+1]
-		//line src/martian/syntax/grammar.y:341
+		//line src/martian/syntax/grammar.y:361
 		{
 			{
 				mmVAL.exp = &RefExp{NewAstNode(mmDollar[1].loc, mmDollar[1].locmap), KindSelf, mmDollar[3].val, ""}

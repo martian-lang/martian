@@ -42,6 +42,7 @@ type Node struct {
 	path               string
 	metadata           *Metadata
 	outparams          *syntax.Params
+	chunkOuts          *syntax.Params
 	argbindings        map[string]*Binding
 	argbindingList     []*Binding // for stable ordering
 	retbindings        map[string]*Binding
@@ -121,7 +122,8 @@ func NewNode(parent Nodable, kind string, callStm *syntax.CallStm, callables *sy
 	self.local = callStm.Modifiers.Local
 	self.preflight = callStm.Modifiers.Preflight
 
-	self.outparams = callables.Table[callStm.DecId].GetOutParams()
+	callable := callables.Table[callStm.DecId]
+	self.outparams = callable.GetOutParams()
 	self.argbindings = map[string]*Binding{}
 	self.argbindingList = []*Binding{}
 	self.retbindings = map[string]*Binding{}

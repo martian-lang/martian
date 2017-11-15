@@ -269,9 +269,22 @@ func (global *Ast) checkStages(stagecodePaths []string, checkSrcPath bool) error
 			}
 		}
 		// Check split parameters.
-		if stage.SplitParams != nil {
-			if err := stage.SplitParams.check(global); err != nil {
+		if stage.ChunkIns != nil {
+			if err := stage.ChunkIns.check(global); err != nil {
 				return err
+			}
+		}
+		if stage.ChunkOuts != nil {
+			if err := stage.ChunkOuts.check(global); err != nil {
+				return err
+			}
+			// Check that chunk outs don't duplicate stage outs.
+			for _, param := range stage.ChunkOuts.List {
+				if _, ok := stage.OutParams.Table[param.GetId()]; ok {
+					return global.err(param,
+						"DuplicateNameError: parameter name '%s' of stage %s is used for both chunk and stage outs.",
+						param.GetId(), stage.Id)
+				}
 			}
 		}
 	}

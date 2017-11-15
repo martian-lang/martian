@@ -29,6 +29,7 @@ func unquote(qs string) string {
     inparam   *InParam
     outparam  *OutParam
     params    *Params
+    par_tuple paramsTuple
     src       *SrcParam
     exp       Exp
     exps      []Exp
@@ -49,7 +50,8 @@ func unquote(qs string) string {
 %type <decs>      dec_list
 %type <inparam>   in_param
 %type <outparam>  out_param
-%type <params>    in_param_list out_param_list split_param_list
+%type <params>    in_param_list out_param_list
+%type <par_tuple> split_param_list
 %type <src>       src_stm
 %type <exp>       exp ref_exp
 %type <exps>      exp_list
@@ -130,9 +132,27 @@ dec
     : FILETYPE id_list SEMICOLON
         {{ $$ = &UserType{NewAstNode($<loc>2, $<locmap>2), $2} }}
     | STAGE ID LPAREN in_param_list out_param_list src_stm RPAREN
-        {{ $$ = &Stage{NewAstNode($<loc>2, $<locmap>2), $2, $4, $5, $6, &Params{[]Param{}, map[string]Param{}}, false} }}
+        {{ $$ = &Stage{
+                Node: NewAstNode($<loc>2, $<locmap>2),
+                Id:  $2,
+                InParams: $4,
+                OutParams: $5,
+                Src: $6,
+                ChunkIns: &Params{[]Param{}, map[string]Param{}},
+                ChunkOuts: &Params{[]Param{}, map[string]Param{}},
+                Split: false,
+           } }}
     | STAGE ID LPAREN in_param_list out_param_list src_stm RPAREN split_param_list
-        {{ $$ = &Stage{NewAstNode($<loc>2, $<locmap>2), $2, $4, $5, $6, $8, true} }}
+        {{ $$ = &Stage{
+                Node: NewAstNode($<loc>2, $<locmap>2),
+                Id:  $2,
+                InParams: $4,
+                OutParams: $5,
+                Src: $6,
+                ChunkIns: $8.Ins,
+                ChunkOuts: $8.Outs,
+                Split: true,
+           } }}
     | PIPELINE ID LPAREN in_param_list out_param_list RPAREN LBRACE call_stm_list return_stm RBRACE
         {{ $$ = &Pipeline{NewAstNode($<loc>2, $<locmap>2), $2, $4, $5, $8, &Callables{[]Callable{}, map[string]Callable{}}, $9} }}
     ;
@@ -227,8 +247,8 @@ src_lang
     ;
 
 split_param_list
-    : SPLIT USING LPAREN in_param_list RPAREN
-        {{ $$ = $4 }}
+    : SPLIT USING LPAREN in_param_list out_param_list RPAREN
+        {{ $$ = paramsTuple{$4, $5} }}
     ;
 
 return_stm

@@ -4,6 +4,7 @@ stage SUM_SQUARES(
     out float   sum,
 ) split using (
     in  float   value,
+    out float   square,
 )
 """
 
@@ -13,8 +14,8 @@ def split(args):
                        for x in args.values]}
 
 def main(args, outs):
-    outs.sum = args.value**2
+    outs.square = args.value**2
 
 def join(args, outs, chunk_defs, chunk_outs):
     #pylint: disable=unused-argument
-    outs.sum = sum([out.sum for out in chunk_outs])
+    outs.sum = sum([out.square for out in chunk_outs])

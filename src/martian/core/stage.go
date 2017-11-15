@@ -147,7 +147,14 @@ func (self *Chunk) step(bindings map[string]interface{}) {
 
 	// Write out input and ouput args for the chunk.
 	self.metadata.Write(ArgsFile, resolvedBindings)
-	self.metadata.Write(OutsFile, makeOutArgs(self.fork.node.outparams, self.metadata.curFilesPath))
+	outs := makeOutArgs(self.fork.node.outparams, self.metadata.curFilesPath)
+	if self.fork.node.split {
+		for k, v := range makeOutArgs(self.fork.node.chunkOuts,
+			self.metadata.curFilesPath) {
+			outs[k] = v
+		}
+	}
+	self.metadata.Write(OutsFile, outs)
 
 	// Run the chunk.
 	self.fork.lastPrint = time.Now()

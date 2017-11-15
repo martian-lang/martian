@@ -318,7 +318,7 @@ func (self *Stage) format(printer *printer) {
 	printer.printComments(self.Node.Loc, "")
 
 	modeWidth, typeWidth, idWidth, helpWidth := measureParamsWidths(
-		self.InParams, self.OutParams, self.SplitParams,
+		self.InParams, self.OutParams, self.ChunkIns, self.ChunkOuts,
 	)
 	modeWidth = max(modeWidth, len("src"))
 
@@ -327,11 +327,13 @@ func (self *Stage) format(printer *printer) {
 	self.OutParams.format(printer, modeWidth, typeWidth, idWidth, helpWidth)
 	self.Src.format(printer, modeWidth, typeWidth, idWidth)
 	if idWidth > 30 || helpWidth > 20 {
-		_, _, idWidth, helpWidth = measureParamsWidths(self.SplitParams)
+		_, _, idWidth, helpWidth = measureParamsWidths(
+			self.ChunkIns, self.ChunkOuts)
 	}
 	if self.Split {
 		printer.WriteString(") split using (\n")
-		self.SplitParams.format(printer, modeWidth, typeWidth, idWidth, helpWidth)
+		self.ChunkIns.format(printer, modeWidth, typeWidth, idWidth, helpWidth)
+		self.ChunkOuts.format(printer, modeWidth, typeWidth, idWidth, helpWidth)
 	}
 	printer.WriteString(")\n")
 }
