@@ -335,6 +335,10 @@ func (self *mrpWebServer) restart(w http.ResponseWriter, req *http.Request) {
 	if !self.verifyAuth(w, req) {
 		return
 	}
+	if self.pipestanceBox.readOnly {
+		http.Error(w, "mrp is in read-only mode.", http.StatusBadRequest)
+		return
+	}
 	self.pipestanceBox.cleanupLock.Lock()
 	defer self.pipestanceBox.cleanupLock.Unlock()
 	if st := self.pipestanceBox.getPipestance().GetState(); st != core.Failed {
@@ -355,9 +359,11 @@ func (self *mrpWebServer) kill(w http.ResponseWriter, req *http.Request) {
 	go func() {
 		self.pipestanceBox.cleanupLock.Lock()
 		defer self.pipestanceBox.cleanupLock.Unlock()
-		self.pipestanceBox.getPipestance().KillWithMessage(
-			"Pipstance was killed by API call from " + req.RemoteAddr)
-		time.Sleep(6 * time.Second) // Make sure UI has a chance to refresh.
+		if !self.pipestanceBox.readOnly {
+			self.pipestanceBox.getPipestance().KillWithMessage(
+				"Pipstance was killed by API call from " + req.RemoteAddr)
+			time.Sleep(6 * time.Second) // Make sure UI has a chance to refresh.
+		}
 		util.Suicide()
 	}()
 }

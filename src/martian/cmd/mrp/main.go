@@ -44,6 +44,7 @@ type pipestanceHolder struct {
 	lastRegister     time.Time
 	cleanupLock      sync.Mutex
 	lock             sync.Mutex
+	readOnly         bool
 }
 
 func (self *pipestanceHolder) getPipestance() *core.Pipestance {
@@ -78,6 +79,9 @@ func (self *pipestanceHolder) reset() error {
 
 // Restart the pipestance.
 func (self *pipestanceHolder) restart() error {
+	if self.readOnly {
+		return fmt.Errorf("mrp instances started with --inspect cannot restart pipelines.")
+	}
 	self.lock.Lock()
 	defer self.lock.Unlock()
 	ps, err := self.factory.ReattachToPipestance()
@@ -173,6 +177,9 @@ func runLoop(pipestanceBox *pipestanceHolder, stepSecs int, vdrMode string,
 }
 
 func attemptRetry(pipestance *core.Pipestance, pipestanceBox *pipestanceHolder) bool {
+	if pipestanceBox.readOnly {
+		return false
+	}
 	canRetry := false
 	var transient_log string
 	if pipestanceBox.consumeRetry() {
@@ -194,6 +201,10 @@ func attemptRetry(pipestance *core.Pipestance, pipestanceBox *pipestanceHolder) 
 
 func cleanupCompleted(pipestance *core.Pipestance, pipestanceBox *pipestanceHolder,
 	vdrMode string, noExit bool) {
+	if pipestanceBox.readOnly {
+		util.Println("Pipestance completed successfully, staying alive because --inspect given.\n")
+		return
+	}
 	pipestanceBox.cleanupLock.Lock()
 	defer pipestanceBox.cleanupLock.Unlock()
 	if vdrMode == "disable" {
@@ -222,6 +233,12 @@ func cleanupCompleted(pipestance *core.Pipestance, pipestanceBox *pipestanceHold
 
 func cleanupFailed(pipestance *core.Pipestance, pipestanceBox *pipestanceHolder,
 	showedFailed bool, noExit bool) {
+	if pipestanceBox.readOnly {
+		if !showedFailed {
+			util.Println("Pipestance failed, staying alive because --inspect given.\n")
+		}
+		return
+	}
 	pipestanceBox.cleanupLock.Lock()
 	defer pipestanceBox.cleanupLock.Unlock()
 	if !showedFailed {
@@ -617,9 +634,8 @@ Options:
 	pipestancePath := path.Join(cwd, psid)
 	stepSecs := 3
 	checkSrc := true
-	readOnly := false
 	config.Monitor = opts["--monitor"].(bool)
-	inspect := opts["--inspect"].(bool)
+	readOnly := opts["--inspect"].(bool)
 	config.Debug = opts["--debug"].(bool)
 	config.StressTest = opts["--stest"].(bool)
 	envs := map[string]string{}
@@ -692,6 +708,7 @@ Options:
 		factory:          factory,
 		maxRetries:       retries,
 		remainingRetries: retries,
+		readOnly:         readOnly,
 	}
 
 	if !readOnly {
@@ -737,7 +754,9 @@ Options:
 			// Print this here because the log makes more sense when this appears before
 			// the runloop messages start to appear.
 			util.Println("Serving UI at %s\n", u.String())
-			pipestance.RecordUiPort(u.String())
+			if !readOnly {
+				pipestance.RecordUiPort(u.String())
+			}
 			pipestanceBox.authKey = authKey
 			pipestanceBox.enableUI = true
 		}
@@ -774,13 +793,13 @@ Options:
 
 	if reattaching {
 		// If it already exists, try to reattach to it.
-		if !inspect {
+		if !readOnly {
 			if err = pipestance.Reset(); err == nil {
 				err = pipestance.RestartLocalJobs(config.JobMode)
 			}
 			util.DieIf(err)
 		}
-	} else if executingPreflight {
+	} else if executingPreflight && !readOnly {
 		util.Println("Running preflight checks (please wait)...")
 	}
 
