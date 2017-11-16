@@ -385,6 +385,9 @@ func (self *Node) findBoundNode(id string, outputId string, mode string,
 	value interface{}) (Nodable, string, string, interface{}) {
 	if self.kind == "pipeline" {
 		subnode := self.subnodes[id]
+		if subnode == nil {
+			panic("Invalid subnode id " + id + " in " + self.fqname)
+		}
 		for _, binding := range subnode.getNode().retbindings {
 			if binding.id == outputId {
 				return binding.boundNode, binding.output, binding.mode, binding.value

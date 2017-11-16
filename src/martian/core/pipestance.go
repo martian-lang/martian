@@ -30,12 +30,12 @@ type Stagestance struct {
 	node *Node
 }
 
-func NewStagestance(parent Nodable, callStm *syntax.CallStm, callables *syntax.Callables) *Stagestance {
+func NewStagestance(parent Nodable, callStm *syntax.CallStm, callables *syntax.Callables) (*Stagestance, error) {
 	self := &Stagestance{}
 	self.node = NewNode(parent, "stage", callStm, callables)
 	stage, ok := callables.Table[callStm.DecId].(*syntax.Stage)
 	if !ok {
-		return nil
+		return nil, &RuntimeError{fmt.Sprintf("'%s' is not a declared stage", callStm.DecId)}
 	}
 
 	stagecodePaths := append(self.node.mroPaths, strings.Split(os.Getenv("PATH"), ":")...)
@@ -43,14 +43,14 @@ func NewStagestance(parent Nodable, callStm *syntax.CallStm, callables *syntax.C
 	self.node.stagecodeCmd = strings.Join(append([]string{stagecodePath}, stage.Src.Args...), " ")
 	var err error
 	if self.node.stagecodeLang, err = stage.Src.Lang.Parse(); err != nil {
-		panic(fmt.Sprintf("Unsupported language: %v", stage.Src.Lang))
+		return self, fmt.Errorf("Unsupported language in stage %s: %v", callStm.DecId, stage.Src.Lang)
 	}
 	if self.node.rt.stest {
 		switch self.node.stagecodeLang {
 		case syntax.PythonStage:
 			self.node.stagecodeCmd = util.RelPath(path.Join("..", "adapters", "python", "tester"))
 		default:
-			panic(fmt.Sprintf("Unsupported stress test language: %v", stage.Src.Lang))
+			return self, fmt.Errorf("Unsupported stress test language: %v", stage.Src.Lang)
 		}
 	}
 	self.node.split = stage.Split
@@ -58,7 +58,7 @@ func NewStagestance(parent Nodable, callStm *syntax.CallStm, callables *syntax.C
 		self.node.chunkOuts = stage.ChunkOuts
 	}
 	self.node.buildForks(self.node.argbindings)
-	return self
+	return self, nil
 }
 
 func (self *Stagestance) getNode() *Node          { return self.node }
@@ -139,7 +139,7 @@ func (self *Pipestance) OnFinishHook() {
 	}
 }
 
-func NewPipestance(parent Nodable, callStm *syntax.CallStm, callables *syntax.Callables) *Pipestance {
+func NewPipestance(parent Nodable, callStm *syntax.CallStm, callables *syntax.Callables) (*Pipestance, error) {
 	self := &Pipestance{}
 	self.node = NewNode(parent, "pipeline", callStm, callables)
 	self.metadata = NewMetadata(self.node.parent.getNode().fqname, self.GetPath())
@@ -147,16 +147,26 @@ func NewPipestance(parent Nodable, callStm *syntax.CallStm, callables *syntax.Ca
 	// Build subcall tree.
 	pipeline, ok := callables.Table[callStm.DecId].(*syntax.Pipeline)
 	if !ok {
-		return nil
+		return nil, &RuntimeError{fmt.Sprintf("'%s' is not a declared pipeline", callStm.DecId)}
 	}
 	preflightNodes := []Nodable{}
 	for _, subcallStm := range pipeline.Calls {
 		callable := callables.Table[subcallStm.DecId]
 		switch callable.(type) {
 		case *syntax.Stage:
-			self.node.subnodes[subcallStm.Id] = NewStagestance(self.node, subcallStm, callables)
+			if s, err := NewStagestance(self.node, subcallStm, callables); err != nil {
+				return nil, err
+			} else {
+				self.node.subnodes[subcallStm.Id] = s
+			}
 		case *syntax.Pipeline:
-			self.node.subnodes[subcallStm.Id] = NewPipestance(self.node, subcallStm, callables)
+			if p, err := NewPipestance(self.node, subcallStm, callables); err != nil {
+				return nil, err
+			} else {
+				self.node.subnodes[subcallStm.Id] = p
+			}
+		default:
+			return nil, fmt.Errorf("Unsupported callable type %v", callable)
 		}
 		if self.node.subnodes[subcallStm.Id].getNode().preflight {
 			preflightNodes = append(preflightNodes, self.node.subnodes[subcallStm.Id])
@@ -182,7 +192,7 @@ func NewPipestance(parent Nodable, callStm *syntax.CallStm, callables *syntax.Ca
 	}
 
 	self.node.buildForks(self.node.retbindings)
-	return self
+	return self, nil
 }
 
 func (self *Pipestance) getNode() *Node    { return self.node }

@@ -314,10 +314,10 @@ func (self *Runtime) instantiatePipeline(src string, srcPath string, psid string
 	if err := CheckMinimalSpace(pipestancePath); err != nil {
 		return "", nil, err
 	}
-	pipestance := NewPipestance(NewTopNode(self, psid, pipestancePath, mroPaths, mroVersion, envs, invocationData),
+	pipestance, err := NewPipestance(NewTopNode(self, psid, pipestancePath, mroPaths, mroVersion, envs, invocationData),
 		ast.Call, ast.Callables)
-	if pipestance == nil {
-		return "", nil, &RuntimeError{fmt.Sprintf("'%s' is not a declared pipeline", ast.Call.Id)}
+	if err != nil {
+		return "", nil, err
 	}
 
 	// Lock the pipestance if not in read-only mode.
@@ -476,10 +476,10 @@ func (self *Runtime) InvokeStage(src string, srcPath string, ssid string,
 	invocationData, _ := BuildCallData(src, srcPath, mroPaths)
 
 	// Instantiate stagestance.
-	stagestance := NewStagestance(NewTopNode(self, "", stagestancePath, mroPaths, mroVersion, envs, invocationData),
+	stagestance, err := NewStagestance(NewTopNode(self, "", stagestancePath, mroPaths, mroVersion, envs, invocationData),
 		ast.Call, ast.Callables)
-	if stagestance == nil {
-		return nil, &RuntimeError{fmt.Sprintf("'%s' is not a declared stage", ast.Call.Id)}
+	if err != nil {
+		return nil, err
 	}
 
 	stagestance.getNode().mkdirs()
