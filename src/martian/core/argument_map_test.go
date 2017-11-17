@@ -18,6 +18,7 @@ func TestArgumentMapValidate(t *testing.T) {
 		"foo": 12,
 		"bar": 1.2,
 		"baz": { "fooz": "bars" },
+		"bing": [1],
 		"bath": "soap"
 	}`), &def); err != nil {
 		t.Errorf("Unmarshal failure: %v", err)
@@ -34,6 +35,11 @@ func TestArgumentMapValidate(t *testing.T) {
 		&syntax.InParam{
 			Id:    "baz",
 			Tname: "map",
+		},
+		&syntax.InParam{
+			Id:       "bing",
+			Tname:    "int",
+			ArrayDim: 1,
 		},
 	}
 	ptable := make(map[string]syntax.Param, len(plist))

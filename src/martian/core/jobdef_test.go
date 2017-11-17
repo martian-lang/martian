@@ -101,3 +101,30 @@ func TestChunkDefUnmarshal(t *testing.T) {
 		t.Errorf("Incorrect foo: expected soap, got %v", def.Args["bath"])
 	}
 }
+
+func TestStageDefsUnmarshal(t *testing.T) {
+	var def StageDefs
+	if err := json.Unmarshal([]byte(`{
+		"chunks": [{
+			"__threads": 4,
+			"foo": "bar"
+		}],
+		"join": {
+			"__threads": 1
+		}
+	}`), &def); err != nil {
+		t.Errorf("Unmarshal failure: %v", err)
+	}
+	if err := json.Unmarshal([]byte(`{
+		"chunks": [{
+			"__threads": 4,
+			"foo": "bar"
+		}],
+		"join": {
+			"__threads": 1,
+			"foo": "bar"
+		}
+	}`), &def); err == nil {
+		t.Errorf("Unexpected unmarshal success.")
+	}
+}

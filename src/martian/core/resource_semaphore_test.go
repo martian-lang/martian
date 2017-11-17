@@ -27,11 +27,23 @@ func TestResourceSemaphoreSetActual(t *testing.T) {
 		if sem.InUse() != 10 {
 			t.Errorf("Expected 10 in use, got %d", sem.InUse())
 		}
+		if sem.Reserved() != 0 {
+			t.Errorf("Expected none in use, got %d", sem.InUse())
+		}
 		if err := sem.Acquire(10); err != nil {
 			t.Error(err)
 		}
+		if sem.Available() != 80 {
+			t.Errorf("Expected 80 available, got %d", sem.Available())
+		}
 		if diff := sem.UpdateActual(90); diff != 0 {
 			t.Errorf("Expected no diff, got %d", sem.InUse())
+		}
+		if sem.Available() != 90 {
+			t.Errorf("Expected 90 available, got %d", sem.Available())
+		}
+		if sem.CurrentSize() != 100 {
+			t.Errorf("Expected 100 size, got %d", sem.CurrentSize())
 		}
 		sem.Release(10)
 		if err := sem.Acquire(5); err != nil {

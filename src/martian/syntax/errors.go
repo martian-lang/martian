@@ -7,6 +7,7 @@
 package syntax
 
 import (
+	"bytes"
 	"fmt"
 	"strings"
 )
@@ -57,4 +58,45 @@ func (self *ParseError) Error() string {
 		line += fmt.Sprintf("\n\tincluded from %s", inc)
 	}
 	return line
+}
+
+type ErrorList []error
+
+func (self ErrorList) Error() string {
+	var buf bytes.Buffer
+	for i, err := range self {
+		if i != 0 {
+			buf.WriteRune('\n')
+		}
+		buf.WriteString(err.Error())
+	}
+	return buf.String()
+}
+
+// Collapse the error list down, and remove any nil errors.
+// Returns nil if the list is empty.
+func (self ErrorList) If() error {
+	if len(self) > 0 {
+		errs := make(ErrorList, 0, len(self))
+		for _, err := range self {
+			if err != nil {
+				if list, ok := err.(ErrorList); ok {
+					err = list.If()
+				}
+			}
+			if err != nil {
+				if list, ok := err.(ErrorList); ok {
+					errs = append(errs, list...)
+				} else {
+					errs = append(errs, err)
+				}
+			}
+		}
+		if len(errs) > 1 {
+			return errs
+		} else if len(errs) == 1 {
+			return errs[0]
+		}
+	}
+	return nil
 }

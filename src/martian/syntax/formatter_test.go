@@ -101,10 +101,10 @@ stage ADD_KEY1(
 
 # Adds a second key to the json in a file.
 stage ADD_KEY2(
-    in  string key,
-    in  string value,
+    in  string key       "The key to add",
+    in  string value     "The value to set the key to",
     in  json   start,
-    in  string failfile,
+    in  string failfile  "The file to check to force failure.",
     out json   result,
     src py     "stages/add_key",
 )
@@ -134,6 +134,11 @@ stage MERGE_JSON(
     in  json json2,
     out json result,
     src py   "stages/merge_json",
+)
+
+stage MAP_EXAMPLE(
+    in  map foo,
+    src py  "stages/merge_json",
 )
 
 # Adds some keys to some json files and then merges them.
@@ -176,6 +181,13 @@ pipeline AWESOME(
         start    = ADD_KEY2.result,
     )
 
+    call MAP_EXAMPLE(
+        foo = {
+            "bar": "baz",
+            "bing": null
+        },
+    )
+
     call ADD_KEY5(
         key   = "5",
         value = ["five"],
@@ -210,6 +222,10 @@ pipeline AWESOME(
             "four",
             ADD_KEY4.result
         ],
+    )
+
+    call MERGE_JSON5(
+        input = [],
     )
 
     return (
