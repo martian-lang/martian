@@ -57,6 +57,13 @@ func NewStagestance(parent Nodable, callStm *syntax.CallStm, callables *syntax.C
 	if stage.Split {
 		self.node.chunkOuts = stage.ChunkOuts
 	}
+	if stage.Resources != nil {
+		self.node.resources = &JobResources{
+			Threads: stage.Resources.Threads,
+			MemGB:   stage.Resources.MemGB,
+			Special: stage.Resources.Special,
+		}
+	}
 	self.node.buildForks(self.node.argbindings)
 	return self, nil
 }

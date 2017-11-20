@@ -337,9 +337,9 @@ def compare_content(output, expect, filename):
             sys.stderr.write(
                 'File content mismatch: %s\n'
                 'Expected content: %s\n'
-                'Actual content: %s' % (filename,
-                                        os.path.join(expect, filename),
-                                        os.path.join(output, filename)))
+                'Actual content: %s\n' % (filename,
+                                          os.path.join(expect, filename),
+                                          os.path.join(output, filename)))
             return False
     return True
 

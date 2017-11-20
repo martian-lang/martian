@@ -29,6 +29,7 @@ func unquote(qs string) string {
     inparam   *InParam
     outparam  *OutParam
     params    *Params
+    res       *Resources
     par_tuple paramsTuple
     src       *SrcParam
     exp       Exp
@@ -46,14 +47,14 @@ func unquote(qs string) string {
 %type <val>       id_list type help type src_lang type outname
 %type <modifiers> modifiers
 %type <arr>       arr_list
-%type <dec>       dec
+%type <dec>       dec stage
 %type <decs>      dec_list
 %type <inparam>   in_param
 %type <outparam>  out_param
 %type <params>    in_param_list out_param_list
 %type <par_tuple> split_param_list
 %type <src>       src_stm
-%type <exp>       exp ref_exp
+%type <exp>       exp ref_exp val_exp
 %type <exps>      exp_list
 %type <kvpairs>   kvpair_list
 %type <call>      call_stm
@@ -61,12 +62,14 @@ func unquote(qs string) string {
 %type <binding>   bind_stm
 %type <bindings>  bind_stm_list
 %type <retstm>    return_stm
+%type <res>       resources resource_list
 
 %token SKIP COMMENT INVALID
 %token SEMICOLON COLON COMMA EQUALS
 %token LBRACKET RBRACKET LPAREN RPAREN LBRACE RBRACE
 %token FILETYPE STAGE PIPELINE CALL LOCAL PREFLIGHT VOLATILE SWEEP SPLIT USING SELF RETURN
 %token IN OUT SRC AS
+%token THREADS MEM_GB SPECIAL
 %token <val> ID LITSTRING NUM_FLOAT NUM_INT DOT
 %token <val> PY GO SH EXEC COMPILED
 %token <val> MAP INT STRING FLOAT PATH BOOL TRUE FALSE NULL DEFAULT
@@ -131,18 +134,14 @@ dec_list
 dec
     : FILETYPE id_list SEMICOLON
         {{ $$ = &UserType{NewAstNode($<loc>2, $<locmap>2), $2} }}
-    | STAGE ID LPAREN in_param_list out_param_list src_stm RPAREN
-        {{ $$ = &Stage{
-                Node: NewAstNode($<loc>2, $<locmap>2),
-                Id:  $2,
-                InParams: $4,
-                OutParams: $5,
-                Src: $6,
-                ChunkIns: &Params{[]Param{}, map[string]Param{}},
-                ChunkOuts: &Params{[]Param{}, map[string]Param{}},
-                Split: false,
-           } }}
-    | STAGE ID LPAREN in_param_list out_param_list src_stm RPAREN split_param_list
+    | stage
+        {{ $$ = $1 }}
+    | PIPELINE ID LPAREN in_param_list out_param_list RPAREN LBRACE call_stm_list return_stm RBRACE
+        {{ $$ = &Pipeline{NewAstNode($<loc>2, $<locmap>2), $2, $4, $5, $8, &Callables{[]Callable{}, map[string]Callable{}}, $9} }}
+    ;
+
+stage
+    : STAGE ID LPAREN in_param_list out_param_list src_stm RPAREN split_param_list resources
         {{ $$ = &Stage{
                 Node: NewAstNode($<loc>2, $<locmap>2),
                 Id:  $2,
@@ -151,10 +150,47 @@ dec
                 Src: $6,
                 ChunkIns: $8.Ins,
                 ChunkOuts: $8.Outs,
-                Split: true,
+                Split: $8.Present,
+                Resources: $9,
            } }}
-    | PIPELINE ID LPAREN in_param_list out_param_list RPAREN LBRACE call_stm_list return_stm RBRACE
-        {{ $$ = &Pipeline{NewAstNode($<loc>2, $<locmap>2), $2, $4, $5, $8, &Callables{[]Callable{}, map[string]Callable{}}, $9} }}
+   ;
+
+resources
+    :
+        {{ $$ = nil }}
+    | USING LPAREN resource_list RPAREN
+        {{
+             $3.Node = NewAstNode($<loc>1, $<locmap>1)
+             $$ = $3
+         }}
+    ;
+
+resource_list
+    :
+        {{ $$ = &Resources{} }}
+    | resource_list THREADS EQUALS NUM_INT COMMA
+        {{
+            n := NewAstNode($<loc>2, $<locmap>2)
+            $1.ThreadNode = &n
+            i, _ := strconv.ParseInt($4, 0, 64)
+            $1.Threads = int(i)
+            $$ = $1
+        }}
+    | resource_list MEM_GB EQUALS NUM_INT COMMA
+        {{
+            n := NewAstNode($<loc>2, $<locmap>2)
+            $1.MemNode = &n
+            i, _ := strconv.ParseInt($4, 0, 64)
+            $1.MemGB = int(i)
+            $$ = $1
+        }}
+    | resource_list SPECIAL EQUALS LITSTRING COMMA
+        {{
+            n := NewAstNode($<loc>2, $<locmap>2)
+            $1.SpecialNode = &n
+            $1.Special = $4
+            $$ = $1
+        }}
     ;
 
 id_list
@@ -247,8 +283,18 @@ src_lang
     ;
 
 split_param_list
-    : SPLIT USING LPAREN in_param_list out_param_list RPAREN
-        {{ $$ = paramsTuple{$4, $5} }}
+    :
+        {{
+            $$ = paramsTuple{
+                false,
+                &Params{[]Param{}, map[string]Param{}},
+                &Params{[]Param{}, map[string]Param{}},
+            }
+        }}
+    | SPLIT USING LPAREN in_param_list out_param_list RPAREN
+        {{ $$ = paramsTuple{true, $4, $5} }}
+    | SPLIT LPAREN in_param_list out_param_list RPAREN
+        {{ $$ = paramsTuple{true, $3, $4} }}
     ;
 
 return_stm
@@ -318,6 +364,12 @@ kvpair_list
     ;
 
 exp
+    : val_exp
+        {{ $$ = $1 }}
+    | ref_exp
+        {{ $$ = $1 }}
+
+val_exp
     : LBRACKET exp_list RBRACKET
         {{ $$ = &ValExp{Node:NewAstNode($<loc>1, $<locmap>1), Kind: KindArray, Value: $2} }}
     | LBRACKET exp_list COMMA RBRACKET
@@ -348,8 +400,6 @@ exp
         {{ $$ = &ValExp{Node:NewAstNode($<loc>1, $<locmap>1), Kind: KindBool, Value: false} }}
     | NULL
         {{ $$ = &ValExp{Node:NewAstNode($<loc>1, $<locmap>1), Kind: KindNull, Value: nil} }}
-    | ref_exp
-        {{ $$ = $1 }}
     ;
 
 ref_exp

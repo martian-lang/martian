@@ -406,7 +406,8 @@ pipeline PIPE(
 }
 `)
 }
-func TestInvalidOutType(t *testing.T) {
+
+func TestInvalidInType(t *testing.T) {
 	testBadCompile(t, `
 stage SUM_SQUARES(
     in  badness[] values,
@@ -416,12 +417,67 @@ stage SUM_SQUARES(
 `)
 }
 
-func TestInvalidInType(t *testing.T) {
+func TestInvalidOutType(t *testing.T) {
 	testBadCompile(t, `
 stage SUM_SQUARES(
     in  float[] values,
     out badness sum,
     src py      "stages/sum_squares",
+)
+`)
+}
+
+func TestResources(t *testing.T) {
+	testGood(t, `
+stage SUM_SQUARES(
+    in  float[] values,
+    out float   sum,
+    src py      "stages/sum_squares",
+) using (
+    threads = 2,
+    mem_gb = 1,
+)
+`)
+}
+
+func TestBadMemGB(t *testing.T) {
+	testBadGrammar(t, `
+stage SUM_SQUARES(
+    in  float[] values,
+    out float   sum,
+    src py      "stages/sum_squares",
+) using (
+    threads = 2,
+    mem_gb = 1.5,
+)
+`)
+}
+
+func TestBadThreads(t *testing.T) {
+	testBadGrammar(t, `
+stage SUM_SQUARES(
+    in  float[] values,
+    out float   sum,
+    src py      "stages/sum_squares",
+) using (
+    threads = 2.2,
+    mem_gb = 1,
+)
+`)
+}
+
+func TestResourcesWithSplit(t *testing.T) {
+	testGood(t, `
+stage SUM_SQUARES(
+    in  float[] values,
+    out float   sum,
+    src py      "stages/sum_squares",
+) split (
+    in  int     foo,
+    out int     bar,
+) using (
+    threads = 2,
+    mem_gb = 1,
 )
 `)
 }

@@ -25,7 +25,7 @@
 		</dict>
 		<dict>
 			<key>match</key>
-			<string>([^\w]|^)(split using)([^\w]|$)</string>
+			<string>([^\w]|^)((split|using)+)([^\w]|$)</string>
 			<key>name</key>
 			<string>support.function</string>
 		</dict>

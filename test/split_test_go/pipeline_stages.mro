@@ -6,8 +6,10 @@ stage SUM_SQUARES(
     in  float[] values,
     out float   sum,
     src comp    "sum_squares",
-) split using (
+) split (
     in  float   value,
+) using (
+    mem_gb = 1,
 )
 
 # Prints the output to the user, but only if the pipestance doesn't finish.
@@ -15,4 +17,6 @@ stage REPORT(
     in  float[] values,
     in  float   sum,
     src py      "stages/report",
+) using (
+    mem_gb = 1,
 )

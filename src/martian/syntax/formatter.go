@@ -335,7 +335,38 @@ func (self *Stage) format(printer *printer) {
 		self.ChunkIns.format(printer, modeWidth, typeWidth, idWidth, helpWidth)
 		self.ChunkOuts.format(printer, modeWidth, typeWidth, idWidth, helpWidth)
 	}
+	if self.Resources != nil {
+		self.Resources.format(printer)
+	}
 	printer.WriteString(")\n")
+}
+
+func (self *Resources) format(printer *printer) {
+	printer.printComments(self.Node.Loc, INDENT)
+	printer.WriteString(") using (\n")
+	// Pad depending on which arguments are present.
+	// mem_gb  = x,
+	// special = y
+	// threads = y,
+	var memPad string
+	if self.SpecialNode != nil || self.ThreadNode != nil {
+		memPad = " "
+	}
+	if self.MemNode != nil {
+		printer.printComments(self.MemNode.Loc, INDENT)
+		printer.WriteString(INDENT)
+		printer.Printf("mem_gb%s = %d,\n", memPad, self.MemGB)
+	}
+	if self.SpecialNode != nil {
+		printer.printComments(self.SpecialNode.Loc, INDENT)
+		printer.WriteString(INDENT)
+		printer.Printf("special = \"%s\",\n", self.Special)
+	}
+	if self.ThreadNode != nil {
+		printer.printComments(self.ThreadNode.Loc, INDENT)
+		printer.WriteString(INDENT)
+		printer.Printf("threads = %d,\n", self.Threads)
+	}
 }
 
 func (self *SrcParam) format(printer *printer, modeWidth int, typeWidth int, idWidth int) {

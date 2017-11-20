@@ -139,6 +139,10 @@ stage MERGE_JSON(
 stage MAP_EXAMPLE(
     in  map foo,
     src py  "stages/merge_json",
+) using (
+    mem_gb  = 2,
+    # This stage always uses 4 threads!
+    threads = 4,
 )
 
 # Adds some keys to some json files and then merges them.

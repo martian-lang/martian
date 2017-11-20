@@ -43,6 +43,7 @@ type Node struct {
 	metadata           *Metadata
 	outparams          *syntax.Params
 	chunkOuts          *syntax.Params
+	resources          *JobResources
 	argbindings        map[string]*Binding
 	argbindingList     []*Binding // for stable ordering
 	retbindings        map[string]*Binding
@@ -842,11 +843,23 @@ func (self *Node) getJobReqs(jobDef *JobResources, stageType string) (int, int, 
 	memGB := 0
 	special := ""
 
+	if self.resources != nil {
+		threads = self.resources.Threads
+		memGB = self.resources.MemGB
+		special = self.resources.Special
+	}
+
 	// Get values passed from the stage code
 	if jobDef != nil {
-		threads = jobDef.Threads
-		memGB = jobDef.MemGB
-		special = jobDef.Special
+		if jobDef.Threads != 0 {
+			threads = jobDef.Threads
+		}
+		if jobDef.MemGB != 0 {
+			memGB = jobDef.MemGB
+		}
+		if jobDef.Special != "" {
+			special = jobDef.Special
+		}
 	}
 
 	// Override with job manager caps specified from commandline

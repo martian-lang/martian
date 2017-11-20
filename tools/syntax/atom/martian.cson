@@ -12,7 +12,7 @@ patterns: [
     name: "keyword.operator"
   }
   {
-    match: "([^\\w]|^)(split using)([^\\w]|$)"
+    match: "([^\\w]|^)((split|using)+)([^\\w]|$)"
     name: "support.function"
   }
   {

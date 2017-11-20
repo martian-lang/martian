@@ -49,9 +49,21 @@ type (
 		format(printer *printer)
 	}
 
+	Resources struct {
+		Node        AstNode
+		ThreadNode  *AstNode
+		MemNode     *AstNode
+		SpecialNode *AstNode
+
+		Threads int
+		MemGB   int
+		Special string
+	}
+
 	paramsTuple struct {
-		Ins  *Params
-		Outs *Params
+		Present bool
+		Ins     *Params
+		Outs    *Params
 	}
 
 	Stage struct {
@@ -63,6 +75,7 @@ type (
 		ChunkIns  *Params
 		ChunkOuts *Params
 		Split     bool
+		Resources *Resources
 	}
 
 	Pipeline struct {
