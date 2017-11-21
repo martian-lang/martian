@@ -1,5 +1,4 @@
 # A super-simple test pipeline with forks.
-
 # Files storing json.
 filetype json;
 
@@ -15,6 +14,8 @@ stage ADD_KEY(
     out json   result,
     # The source file.
     src py     "stages/add_key",
+) using (
+    mem_gb = 1,
 )
 
 # Takes two files containing json dictionaries and merges them.
@@ -22,6 +23,8 @@ stage MERGE_JSON(
     in  json[] inputs,
     out json   result,
     src py     "stages/merge_json",
+) using (
+    mem_gb = 1,
 )
 
 # Adds some keys to some json files and then merges them.
@@ -37,30 +40,38 @@ pipeline AWESOME(
         key   = self.key1,
         value = self.value1,
         start = null,
+    ) using (
+        volatile = true,
     )
 
     call ADD_KEY as ADD_KEY2(
         key   = self.key2,
         value = self.value2,
         start = ADD_KEY1.result,
+    ) using (
+        volatile = true,
     )
 
     call ADD_KEY as ADD_KEY3(
         key   = "3",
         value = "three",
         start = ADD_KEY2.result,
+    ) using (
+        volatile = true,
     )
 
     call ADD_KEY as ADD_KEY4(
         key   = "4",
         value = "four",
         start = ADD_KEY2.result,
+    ) using (
+        volatile = true,
     )
 
-    call MERGE_JSON(
+    call volatile MERGE_JSON(
         inputs = [
             ADD_KEY3.result,
-            ADD_KEY4.result,
+            ADD_KEY4.result
         ],
     )
 

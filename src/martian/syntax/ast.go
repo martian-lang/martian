@@ -154,6 +154,7 @@ type (
 		Local     bool
 		Preflight bool
 		Volatile  bool
+		Bindings  *BindStms
 	}
 
 	CallStm struct {

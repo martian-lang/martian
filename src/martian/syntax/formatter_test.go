@@ -154,7 +154,7 @@ pipeline AWESOME(
     out json   outfile,
 )
 {
-    call ADD_KEY1(
+    call local ADD_KEY1(
         key      = self.key1,
         value    = self.value1,
         failfile = "fail1",
@@ -190,9 +190,13 @@ pipeline AWESOME(
             "bar": "baz",
             "bing": null
         },
+    ) using (
+        local    = true,
+        # This shouldn't be volatile because reasons.
+        volatile = false,
     )
 
-    call ADD_KEY5(
+    call volatile ADD_KEY5(
         key   = "5",
         value = ["five"],
     )

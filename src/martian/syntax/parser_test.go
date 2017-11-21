@@ -772,3 +772,129 @@ pipeline SUM_SQUARES_PIPE(
 }
 `)
 }
+
+func TestVolatile(t *testing.T) {
+	if ast := testGood(t, `
+stage SQUARE(
+    in  int   value,
+    out float square,
+    src py    "stages/square",
+)
+
+pipeline SQ_PIPE(
+    out float square,
+)
+{
+    call volatile SQUARE(
+        value = 1,
+    )
+    return (
+        square = SQUARE.square,
+    )
+}
+`); ast != nil {
+		if mods := ast.Pipelines[0].Calls[0].Modifiers; mods == nil {
+			t.Errorf("Nil mods")
+		} else {
+			if mods.Bindings != nil {
+				t.Errorf("Expected non-bound volatile")
+			}
+			if !mods.Volatile {
+				t.Errorf("Expected volatile")
+			}
+		}
+	}
+}
+
+func TestPreflight(t *testing.T) {
+	if ast := testGood(t, `
+stage SQUARE(
+    in  int   value,
+    src py    "stages/square",
+)
+
+pipeline SQ_PIPE(
+)
+{
+    call preflight SQUARE(
+        value = 1,
+    )
+	return ()
+}
+`); ast != nil {
+		if mods := ast.Pipelines[0].Calls[0].Modifiers; mods == nil {
+			t.Errorf("Nil mods")
+		} else {
+			if mods.Bindings != nil {
+				t.Errorf("Expected non-bound volatile")
+			}
+			if mods.Volatile {
+				t.Errorf("Expected non volatile")
+			}
+		}
+	}
+}
+
+func TestVolatilePreflight(t *testing.T) {
+	if ast := testGood(t, `
+stage SQUARE(
+    in  int   value,
+    src py    "stages/square",
+)
+
+pipeline SQ_PIPE(
+)
+{
+    call preflight volatile SQUARE(
+        value = 1,
+    )
+	return ()
+}
+`); ast != nil {
+		if mods := ast.Pipelines[0].Calls[0].Modifiers; mods == nil {
+			t.Errorf("Nil mods")
+		} else {
+			if mods.Bindings != nil {
+				t.Errorf("Expected non-bound volatile")
+			}
+			if !mods.Volatile {
+				t.Errorf("Expected volatile")
+			}
+			if mods.Local {
+				t.Errorf("Expected non-local")
+			}
+		}
+	}
+}
+
+func TestVolatilePreflight2(t *testing.T) {
+	if ast := testGood(t, `
+stage SQUARE(
+    in  int   value,
+    src py    "stages/square",
+)
+
+pipeline SQ_PIPE(
+)
+{
+    call SQUARE(
+        value = 1,
+    ) using (
+		volatile  = true,
+		preflight = true,
+	)
+	return ()
+}
+`); ast != nil {
+		if mods := ast.Pipelines[0].Calls[0].Modifiers; mods == nil {
+			t.Errorf("Nil mods")
+		} else {
+			if !mods.Volatile {
+				t.Errorf("Expected volatile")
+			}
+			if mods.Local {
+				t.Errorf("Expected non-local")
+			}
+		}
+	}
+}

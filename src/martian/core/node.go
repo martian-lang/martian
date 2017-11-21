@@ -146,7 +146,13 @@ func NewNode(parent Nodable, kind string, callStm *syntax.CallStm, callables *sy
 		self.argbindings[id] = binding
 		self.argbindingList = append(self.argbindingList, binding)
 	}
-	self.attachBindings(self.argbindingList)
+	var modBindingList []*Binding
+	if callStm.Modifiers.Bindings != nil {
+		// currently, nothing.
+		// TODO: Eventually, we're going to have modifiers which make sense to
+		// make bindable.
+	}
+	self.attachBindings(append(self.argbindingList, modBindingList...))
 
 	// Do not set state = getState here, or else nodes will wrongly report
 	// complete before the first refreshMetadata call

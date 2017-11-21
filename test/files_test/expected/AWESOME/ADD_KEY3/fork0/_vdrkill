@@ -1,7 +1,9 @@
 {
-    "count": 0,
-    "size": 0,
-    "timestamp": "2017-11-08 15:58:00",
-    "paths": null,
+    "count": 1,
+    "size": 48,
+    "timestamp": "2017-11-21 19:10:14",
+    "paths": [
+        "/user/martian/test/files_test/pipeline_test/AWESOME/ADD_KEY3/fork0/files/result.json"
+    ],
     "errors": null
 }

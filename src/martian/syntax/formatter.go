@@ -11,6 +11,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
+	"sort"
 	"strings"
 )
 
@@ -282,14 +283,16 @@ func (self *CallStm) format(printer *printer, prefix string) {
 	printer.printComments(self.Node.Loc, prefix)
 	printer.WriteString(prefix)
 	printer.WriteString("call ")
-	if self.Modifiers.Local {
-		printer.WriteString("local ")
-	}
-	if self.Modifiers.Preflight {
-		printer.WriteString("preflight ")
-	}
-	if self.Modifiers.Volatile {
-		printer.WriteString("volatile ")
+	if self.Modifiers.Bindings == nil {
+		if self.Modifiers.Local {
+			printer.WriteString("local ")
+		}
+		if self.Modifiers.Preflight {
+			printer.WriteString("preflight ")
+		}
+		if self.Modifiers.Volatile {
+			printer.WriteString("volatile ")
+		}
 	}
 	printer.WriteString(self.DecId)
 	if self.Id != self.DecId {
@@ -299,6 +302,52 @@ func (self *CallStm) format(printer *printer, prefix string) {
 	printer.WriteString("(\n")
 	self.Bindings.format(printer, prefix)
 	printer.WriteString(prefix)
+	if self.Modifiers.Bindings != nil && len(self.Modifiers.Bindings.List) > 0 {
+		printer.WriteString(") using (\n")
+		// Convert unbound-form mods to bound form.
+		// Because we remove elements from the binding table if they're
+		// static, we can't just use the table to see if they're needed.
+		var foundMods Modifiers
+		for _, binding := range self.Modifiers.Bindings.List {
+			switch binding.Id {
+			case "local":
+				foundMods.Local = true
+			case "preflight":
+				foundMods.Preflight = true
+			case "volatile":
+				foundMods.Volatile = true
+			}
+		}
+		if self.Modifiers.Local && !foundMods.Local {
+			self.Modifiers.Bindings.List = append(self.Modifiers.Bindings.List,
+				&BindStm{
+					Node: self.Modifiers.Bindings.Node,
+					Id:   "local",
+					Exp:  &ValExp{self.Modifiers.Bindings.Node, KindBool, true},
+				})
+		}
+		if self.Modifiers.Preflight && !foundMods.Preflight {
+			self.Modifiers.Bindings.List = append(self.Modifiers.Bindings.List,
+				&BindStm{
+					Node: self.Modifiers.Bindings.Node,
+					Id:   "preflight",
+					Exp:  &ValExp{self.Modifiers.Bindings.Node, KindBool, true},
+				})
+		}
+		if self.Modifiers.Volatile && !foundMods.Volatile {
+			self.Modifiers.Bindings.List = append(self.Modifiers.Bindings.List,
+				&BindStm{
+					Node: self.Modifiers.Bindings.Node,
+					Id:   "volatile",
+					Exp:  &ValExp{self.Modifiers.Bindings.Node, KindBool, true},
+				})
+		}
+		sort.Slice(self.Modifiers.Bindings.List, func(i, j int) bool {
+			return self.Modifiers.Bindings.List[i].Id < self.Modifiers.Bindings.List[j].Id
+		})
+		self.Modifiers.Bindings.format(printer, prefix)
+		printer.WriteString(prefix)
+	}
 	printer.WriteString(")\n")
 }
 

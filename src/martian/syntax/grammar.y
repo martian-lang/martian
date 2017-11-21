@@ -54,13 +54,13 @@ func unquote(qs string) string {
 %type <params>    in_param_list out_param_list
 %type <par_tuple> split_param_list
 %type <src>       src_stm
-%type <exp>       exp ref_exp val_exp
+%type <exp>       exp ref_exp val_exp bool_exp
 %type <exps>      exp_list
 %type <kvpairs>   kvpair_list
 %type <call>      call_stm
 %type <calls>     call_stm_list
-%type <binding>   bind_stm
-%type <bindings>  bind_stm_list
+%type <binding>   bind_stm modifier_stm
+%type <bindings>  bind_stm_list modifier_stm_list
 %type <retstm>    return_stm
 %type <res>       resources resource_list
 
@@ -314,11 +314,16 @@ call_stm
         {{ $$ = &CallStm{NewAstNode($<loc>1, $<locmap>1), $2, $3, $3, $5} }}
     | CALL modifiers ID AS ID LPAREN bind_stm_list RPAREN
         {{ $$ = &CallStm{NewAstNode($<loc>1, $<locmap>1), $2, $5, $3, $7} }}
+    | call_stm USING LPAREN modifier_stm_list RPAREN
+        {{
+            $1.Modifiers.Bindings = $4
+            $$ = $1
+        }}
     ;
 
 modifiers
     :
-      {{ $$ = &Modifiers{false, false, false} }}
+      {{ $$ = &Modifiers{} }}
     | modifiers LOCAL
       {{ $$.Local = true }}
     | modifiers PREFLIGHT
@@ -326,6 +331,24 @@ modifiers
     | modifiers VOLATILE
       {{ $$.Volatile = true }}
     ;
+
+modifier_stm_list
+    :
+        {{ $$ = &BindStms{NewAstNode($<loc>0, $<locmap>0), []*BindStm{}, map[string]*BindStm{}} }}
+    | modifier_stm_list modifier_stm
+        {{
+            $1.List = append($1.List, $2)
+            $$ = $1
+        }}
+    ;
+
+modifier_stm
+    : LOCAL EQUALS bool_exp COMMA
+        {{ $$ = &BindStm{NewAstNode($<loc>1, $<locmap>1), "local", $3, false, ""} }}
+    | PREFLIGHT EQUALS bool_exp COMMA
+        {{ $$ = &BindStm{NewAstNode($<loc>1, $<locmap>1), "preflight", $3, false, ""} }}
+    | VOLATILE EQUALS bool_exp COMMA
+        {{ $$ = &BindStm{NewAstNode($<loc>1, $<locmap>1), "volatile", $3, false, ""} }}
 
 bind_stm_list
     :
@@ -394,13 +417,17 @@ val_exp
         }}
     | LITSTRING
         {{ $$ = &ValExp{Node:NewAstNode($<loc>1, $<locmap>1), Kind: KindString, Value: unquote($1)} }}
-    | TRUE
-        {{ $$ = &ValExp{Node:NewAstNode($<loc>1, $<locmap>1), Kind: KindBool, Value: true} }}
-    | FALSE
-        {{ $$ = &ValExp{Node:NewAstNode($<loc>1, $<locmap>1), Kind: KindBool, Value: false} }}
+    | bool_exp
+        {{ $$ = $1 }}
     | NULL
         {{ $$ = &ValExp{Node:NewAstNode($<loc>1, $<locmap>1), Kind: KindNull, Value: nil} }}
     ;
+
+bool_exp
+    : TRUE
+        {{ $$ = &ValExp{Node:NewAstNode($<loc>1, $<locmap>1), Kind: KindBool, Value: true} }}
+    | FALSE
+        {{ $$ = &ValExp{Node:NewAstNode($<loc>1, $<locmap>1), Kind: KindBool, Value: false} }}
 
 ref_exp
     : ID DOT ID

@@ -295,6 +295,13 @@ func (pipeline *Pipeline) topoSort(global *Ast) error {
 					errs = append(errs, err)
 				}
 			}
+			if call.Modifiers.Bindings != nil {
+				for _, bind := range call.Modifiers.Bindings.Table {
+					if err := findDeps(call, bind.Exp); err != nil {
+						errs = append(errs, err)
+					}
+				}
+			}
 		}
 		return deps, errs.If()
 	}(pipeline.Calls)
@@ -434,6 +441,99 @@ func (stage *Stage) compile(global *Ast, stagecodePaths []string, checkSrcPath b
 	return errs.If()
 }
 
+// For checking modifier bindings.  Modifiers are optional so
+// only the list is set.
+var modParams = Params{
+	Table: map[string]Param{
+		"volatile":  &InParam{Id: "volatile", Tname: "bool"},
+		"local":     &InParam{Id: "local", Tname: "bool"},
+		"preflight": &InParam{Id: "preflight", Tname: "bool"},
+	},
+}
+
+func (mods *Modifiers) compile(global *Ast, parent Callable, call *CallStm) error {
+	var errs ErrorList
+	if mods.Bindings != nil {
+		if err := mods.Bindings.compile(global, parent, &modParams); err != nil {
+			return err
+		}
+		// Simplifly value expressions down.
+		if binding := mods.Bindings.Table["volatile"]; binding != nil {
+			if mods.Volatile {
+				errs = append(errs, global.err(call,
+					"ConflictingModifiers: Cannot specify modifiers in more than one way."))
+			}
+			// grammar only allows bool literals.
+			mods.Volatile = binding.Exp.ToInterface().(bool)
+			delete(mods.Bindings.Table, "volatile")
+		}
+		if binding := mods.Bindings.Table["local"]; binding != nil {
+			if mods.Local {
+				errs = append(errs, global.err(call,
+					"ConflictingModifiers: Cannot specify modifiers in more than one way."))
+			}
+			// grammar only allows bool literals.
+			mods.Local = binding.Exp.ToInterface().(bool)
+			delete(mods.Bindings.Table, "local")
+		}
+		if binding := mods.Bindings.Table["preflight"]; binding != nil {
+			if mods.Preflight {
+				errs = append(errs, global.err(call,
+					"ConflictingModifiers: Cannot specify modifiers in more than one way."))
+			}
+			// grammar only allows bool literals.
+			mods.Preflight = binding.Exp.ToInterface().(bool)
+			delete(mods.Bindings.Table, "preflight")
+		}
+	}
+
+	callable := global.Callables.Table[call.DecId]
+	// Check to make sure if local, preflight or volatile is declared, callable is a stage
+	if _, ok := callable.(*Stage); !ok {
+		if call.Modifiers.Local {
+			errs = append(errs, global.err(call,
+				"UnsupportedTagError: Pipeline '%s' cannot be called with 'local' tag",
+				call.Id))
+		}
+		if call.Modifiers.Preflight {
+			errs = append(errs, global.err(call,
+				"UnsupportedTagError: Pipeline '%s' cannot be called with 'preflight' tag",
+				call.Id))
+		}
+		if call.Modifiers.Volatile {
+			errs = append(errs, global.err(call,
+				"UnsupportedTagError: Pipeline '%s' cannot be called with 'volatile' tag",
+				call.Id))
+		}
+	}
+
+	if mods.Preflight {
+		for _, binding := range call.Bindings.List {
+			if binding.Exp.getKind() == "call" {
+				errs = append(errs, global.err(call,
+					"PreflightBindingError: Preflight stage '%s' cannot have input parameter bound to output parameter of another stage or pipeline",
+					call.Id))
+			}
+		}
+		if mods.Bindings != nil {
+			for _, binding := range mods.Bindings.Table {
+				if binding.Exp.getKind() == "call" {
+					errs = append(errs, global.err(call,
+						"PreflightBindingError: Preflight stage '%s' cannot have input parameter bound to output parameter of another stage or pipeline",
+						call.Id))
+				}
+			}
+		}
+
+		if len(callable.GetOutParams().List) > 0 {
+			errs = append(errs, global.err(call,
+				"PreflightOutputError: Preflight stage '%s' cannot have any output parameters",
+				call.Id))
+		}
+	}
+	return errs.If()
+}
+
 func (pipeline *Pipeline) compile(global *Ast) error {
 	var errs ErrorList
 	// Check in parameters.
@@ -464,25 +564,6 @@ func (pipeline *Pipeline) compile(global *Ast) error {
 		}
 		// Save the valid callables for this scope.
 		pipeline.Callables.Table[call.Id] = callable
-
-		// Check to make sure if local, preflight or volatile is declared, callable is a stage
-		if _, ok := callable.(*Stage); !ok {
-			if call.Modifiers.Local {
-				errs = append(errs, global.err(call,
-					"UnsupportedTagError: Pipeline '%s' cannot be called with 'local' tag",
-					call.Id))
-			}
-			if call.Modifiers.Preflight {
-				errs = append(errs, global.err(call,
-					"UnsupportedTagError: Pipeline '%s' cannot be called with 'preflight' tag",
-					call.Id))
-			}
-			if call.Modifiers.Volatile {
-				errs = append(errs, global.err(call,
-					"UnsupportedTagError: Pipeline '%s' cannot be called with 'volatile' tag",
-					call.Id))
-			}
-		}
 	}
 	if err := errs.If(); err != nil {
 		return err
@@ -490,24 +571,14 @@ func (pipeline *Pipeline) compile(global *Ast) error {
 	// Check call bindings after all calls are checked, so that the Callables
 	// table is fully populated.
 	for _, call := range pipeline.Calls {
-		callable := global.Callables.Table[call.DecId]
-		if call.Modifiers.Preflight {
-			for _, binding := range call.Bindings.List {
-				if binding.Exp.getKind() == "call" {
-					errs = append(errs, global.err(call,
-						"PreflightBindingError: Preflight stage '%s' cannot have input parameter bound to output parameter of another stage or pipeline",
-						call.Id))
-				}
-			}
-			if len(callable.GetOutParams().List) > 0 {
-				errs = append(errs, global.err(call,
-					"PreflightOutputError: Preflight stage '%s' cannot have any output parameters",
-					call.Id))
-			}
+		if err := call.Modifiers.compile(global, pipeline, call); err != nil {
+			errs = append(errs, err)
 		}
+		callable := global.Callables.Table[call.DecId]
 
 		// Check the bindings
-		if err := call.Bindings.compile(global, pipeline, callable.GetInParams()); err != nil {
+		if err := call.Bindings.compile(
+			global, pipeline, callable.GetInParams()); err != nil {
 			errs = append(errs, err)
 			continue
 		}
@@ -549,6 +620,14 @@ func (global *Ast) compilePipelineArgs() error {
 				refexp, ok := binding.Exp.(*RefExp)
 				if ok {
 					boundParamIds[refexp.Id] = true
+				}
+			}
+			if call.Modifiers.Bindings != nil {
+				for _, binding := range call.Modifiers.Bindings.List {
+					refexp, ok := binding.Exp.(*RefExp)
+					if ok {
+						boundParamIds[refexp.Id] = true
+					}
 				}
 			}
 		}
