@@ -441,13 +441,21 @@ func (stage *Stage) compile(global *Ast, stagecodePaths []string, checkSrcPath b
 	return errs.If()
 }
 
+const (
+	disabled  = "disabled"
+	local     = "local"
+	preflight = "preflight"
+	volatile  = "volatile"
+)
+
 // For checking modifier bindings.  Modifiers are optional so
 // only the list is set.
 var modParams = Params{
 	Table: map[string]Param{
-		"volatile":  &InParam{Id: "volatile", Tname: "bool"},
-		"local":     &InParam{Id: "local", Tname: "bool"},
-		"preflight": &InParam{Id: "preflight", Tname: "bool"},
+		disabled:  &InParam{Id: disabled, Tname: "bool"},
+		local:     &InParam{Id: local, Tname: "bool"},
+		preflight: &InParam{Id: preflight, Tname: "bool"},
+		volatile:  &InParam{Id: volatile, Tname: "bool"},
 	},
 }
 
@@ -458,32 +466,32 @@ func (mods *Modifiers) compile(global *Ast, parent Callable, call *CallStm) erro
 			return err
 		}
 		// Simplifly value expressions down.
-		if binding := mods.Bindings.Table["volatile"]; binding != nil {
+		if binding := mods.Bindings.Table[volatile]; binding != nil {
 			if mods.Volatile {
 				errs = append(errs, global.err(call,
 					"ConflictingModifiers: Cannot specify modifiers in more than one way."))
 			}
 			// grammar only allows bool literals.
 			mods.Volatile = binding.Exp.ToInterface().(bool)
-			delete(mods.Bindings.Table, "volatile")
+			delete(mods.Bindings.Table, volatile)
 		}
-		if binding := mods.Bindings.Table["local"]; binding != nil {
+		if binding := mods.Bindings.Table[local]; binding != nil {
 			if mods.Local {
 				errs = append(errs, global.err(call,
 					"ConflictingModifiers: Cannot specify modifiers in more than one way."))
 			}
 			// grammar only allows bool literals.
 			mods.Local = binding.Exp.ToInterface().(bool)
-			delete(mods.Bindings.Table, "local")
+			delete(mods.Bindings.Table, local)
 		}
-		if binding := mods.Bindings.Table["preflight"]; binding != nil {
+		if binding := mods.Bindings.Table[preflight]; binding != nil {
 			if mods.Preflight {
 				errs = append(errs, global.err(call,
 					"ConflictingModifiers: Cannot specify modifiers in more than one way."))
 			}
 			// grammar only allows bool literals.
 			mods.Preflight = binding.Exp.ToInterface().(bool)
-			delete(mods.Bindings.Table, "preflight")
+			delete(mods.Bindings.Table, preflight)
 		}
 	}
 
@@ -508,8 +516,12 @@ func (mods *Modifiers) compile(global *Ast, parent Callable, call *CallStm) erro
 	}
 
 	if mods.Preflight {
+		if mods.Bindings != nil && mods.Bindings.Table[disabled] != nil {
+			errs = append(errs, global.err(call,
+				"UnsupportedTagError: Preflight stages cannot be declared disabled."))
+		}
 		for _, binding := range call.Bindings.List {
-			if binding.Exp.getKind() == "call" {
+			if binding.Exp.getKind() == KindCall {
 				errs = append(errs, global.err(call,
 					"PreflightBindingError: Preflight stage '%s' cannot have input parameter bound to output parameter of another stage or pipeline",
 					call.Id))
@@ -517,7 +529,7 @@ func (mods *Modifiers) compile(global *Ast, parent Callable, call *CallStm) erro
 		}
 		if mods.Bindings != nil {
 			for _, binding := range mods.Bindings.Table {
-				if binding.Exp.getKind() == "call" {
+				if binding.Exp.getKind() == KindCall {
 					errs = append(errs, global.err(call,
 						"PreflightBindingError: Preflight stage '%s' cannot have input parameter bound to output parameter of another stage or pipeline",
 						call.Id))
@@ -574,9 +586,9 @@ func (pipeline *Pipeline) compile(global *Ast) error {
 		if err := call.Modifiers.compile(global, pipeline, call); err != nil {
 			errs = append(errs, err)
 		}
-		callable := global.Callables.Table[call.DecId]
 
 		// Check the bindings
+		callable := global.Callables.Table[call.DecId]
 		if err := call.Bindings.compile(
 			global, pipeline, callable.GetInParams()); err != nil {
 			errs = append(errs, err)

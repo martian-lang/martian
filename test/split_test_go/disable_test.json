@@ -1,0 +1,8 @@
+{
+  "command": ["run_disable_test.sh"],
+  "expected_return": 0,
+  "output_dir": "disable_pipeline_test",
+  "expected_dir": "disable_expected",
+  "contains_only_files": ["*"],
+  "contents_match": ["*"]
+}

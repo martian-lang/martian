@@ -13,15 +13,15 @@ syn keyword src       src nextgroup=srctype skipwhite contained
 syn keyword srctype   py comp exe nextgroup=mroString contained skipwhite
 syn keyword restype   mem_gb threads special nextgroup=assign contained skipwhite
 syn keyword modifier  local preflight volatile nextgroup=modifier,callTarg skipwhite contained
-syn keyword boundMod  local preflight volatile nextgroup=assign contained skipwhite
+syn keyword boundMod  local preflight volatile disabled nextgroup=assign contained skipwhite
+syn keyword sweep     sweep nextgroup=sweepArray contained
 
 syn keyword declaration pipeline stage nextgroup=pipeName skipwhite
 syn keyword call        call nextgroup=modifier,callTarg skipwhite
 syn keyword return      return nextgroup=callParams skipwhite contained
 
-syn keyword mroNull  null  contained
-syn keyword mroTrue  true  contained
-syn keyword mroFalse false contained
+syn keyword mroNull  null       contained
+syn keyword mroBool  true false contained
 
 syn keyword split      split nextgroup=splitUsing,paramBlock skipwhite contained
 syn keyword splitUsing using nextgroup=paramBlock skipwhite contained
@@ -31,10 +31,10 @@ syn keyword as         as    nextgroup=callTarg skipwhite contained
 syn keyword self       self  nextgroup=dot contained
 
 syn match dot    '\.' nextgroup=parName contained
-syn match mapSep ':'  nextgroup=mroString,mroNull,mroTrue,mroFalse,arrayLit,mapLit skipwhite contained
-syn match assign '='  nextgroup=self,mroString,mroNumber,mroNull,mroTrue,mroFalse,parName,arrayLit,mapLit skipwhite contained
+syn match mapSep ':'  nextgroup=mroString,mroNull,mroBool,arrayLit,mapLit skipwhite contained
+syn match assign '='  nextgroup=self,sweep,mroString,mroNumber,mroNull,mroBool,parName,arrayLit,mapLit skipwhite contained
 
-syn match assignment '_\?[A-Za-z][A-Za-z0-9_]*\s*=' contains=parName,assign contained skipwhite nextgroup=self,mroString,mroNumber,mroNull,mroTrue,mroFalse,parName,arrayLit,mapLit
+syn match assignment '_\?[A-Za-z][A-Za-z0-9_]*\s*=' contains=parName,assign contained skipwhite nextgroup=self,sweep,mroString,mroNumber,mroNull,mroBool,parName,arrayLit,mapLit
 syn match parType '_\?[A-Za-z][A-Za-z0-9_]*' nextgroup=arrayDim,parName skipwhite contained
 syn match arrayDim '\[\]' nextgroup=arraydim,parName skipwhite contained
 syn match parName '_\?[A-Za-z][A-Za-z0-9_]*' nextgroup=dot,mroString skipwhite contained
@@ -52,7 +52,8 @@ syn region resParams  start="(" end=")" fold transparent contained contains=rest
 syn region modBlock   start="(" end=")" fold transparent contained contains=boundMod
 syn region callBlock  start="{" end="}" fold transparent contains=call,return contained skipwhite
 syn region mroString  start=/"/ skip=/\\"/ end=/"/ nextgroup=mapSep skipwhite contained
-syn region arrayLit   start='\[' end='\]' transparent contains=mroString,mroNumber,mroNull,mroTrue,mroFalse,arrayLit,mapLit,parName contained
+syn region arrayLit   start='\[' end='\]' transparent contains=mroString,mroNumber,mroNull,mroBool,arrayLit,mapLit,parName contained
+syn region sweepArray start='(' end=')' transparent contains=mroString,mroNumber,mroNull,mroBool,arrayLit,mapLit contained
 syn region mapLit     start="{" end="}" transparent contains=mroString,mroNumber contained
 
 let b:current_syntax = "mro"
@@ -75,6 +76,7 @@ hi def link as            Keyword
 hi def link resType       Keyword
 hi def link boundMod      Keyword
 hi def link self          Keyword
+hi def link sweep         Keyword
 
 hi def link parType       Type
 hi def link srcType       Type

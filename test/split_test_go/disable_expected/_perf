@@ -1,0 +1,506 @@
+[
+    {
+        "name": "SUM_SQUARE_PIPELINE",
+        "fqname": "ID.disable_pipeline_test.SUM_SQUARE_PIPELINE",
+        "type": "pipeline",
+        "forks": [
+            {
+                "stages": [
+                    {
+                        "name": "SUM_SQUARES",
+                        "fqname": "ID.disable_pipeline_test.SUM_SQUARE_PIPELINE.SUM_SQUARES",
+                        "forki": 0
+                    },
+                    {
+                        "name": "REPORT",
+                        "fqname": "ID.disable_pipeline_test.SUM_SQUARE_PIPELINE.REPORT",
+                        "forki": 0
+                    }
+                ],
+                "index": 0,
+                "chunks": [],
+                "split_stats": null,
+                "join_stats": null,
+                "fork_stats": {
+                    "num_jobs": 1,
+                    "num_threads": 1,
+                    "duration": 0.061949733,
+                    "core_hours": 0.000017208259166666665,
+                    "maxrss": 12788,
+                    "maxvmem": 300,
+                    "in_blocks": 16,
+                    "out_blocks": 80,
+                    "total_blocks": 96,
+                    "in_blocks_rate": 258.2739137874896,
+                    "out_blocks_rate": 1291.369568937448,
+                    "total_blocks_rate": 1549.6434827249377,
+                    "start": "2017-11-27T16:51:18Z",
+                    "end": "2017-11-27T16:51:18Z",
+                    "walltime": 0,
+                    "usertime": 0.028,
+                    "systemtime": 0.008,
+                    "total_files": 0,
+                    "total_bytes": 0,
+                    "output_files": 0,
+                    "output_bytes": 0,
+                    "vdr_files": 0,
+                    "vdr_bytes": 0
+                }
+            },
+            {
+                "stages": [
+                    {
+                        "name": "SUM_SQUARES",
+                        "fqname": "ID.disable_pipeline_test.SUM_SQUARE_PIPELINE.SUM_SQUARES",
+                        "forki": 1
+                    },
+                    {
+                        "name": "REPORT",
+                        "fqname": "ID.disable_pipeline_test.SUM_SQUARE_PIPELINE.REPORT",
+                        "forki": 1
+                    }
+                ],
+                "index": 1,
+                "chunks": [],
+                "split_stats": null,
+                "join_stats": null,
+                "fork_stats": {
+                    "num_jobs": 6,
+                    "num_threads": 6,
+                    "duration": 0.18428815599999998,
+                    "core_hours": 0.00005119115444444445,
+                    "maxrss": 12788,
+                    "maxvmem": 3408,
+                    "in_blocks": 56,
+                    "out_blocks": 464,
+                    "total_blocks": 520,
+                    "in_blocks_rate": 303.87194280678574,
+                    "out_blocks_rate": 2517.7960975419387,
+                    "total_blocks_rate": 2821.6680403487244,
+                    "start": "2017-11-27T16:51:02Z",
+                    "end": "2017-11-27T16:51:18Z",
+                    "walltime": 16,
+                    "usertime": 0.048,
+                    "systemtime": 0.032,
+                    "total_files": 0,
+                    "total_bytes": 0,
+                    "output_files": 0,
+                    "output_bytes": 0,
+                    "vdr_files": 0,
+                    "vdr_bytes": 0
+                }
+            }
+        ],
+        "maxbytes": 0,
+        "bytehist": [
+            {
+                "ts": "0001-01-01T00:00:00Z",
+                "bytes": 0,
+                "desc": "ID.disable_pipeline_test.SUM_SQUARE_PIPELINE.SUM_SQUARES.fork0 alloc"
+            },
+            {
+                "ts": "2017-11-27T16:51:02Z",
+                "bytes": 0,
+                "desc": "ID.disable_pipeline_test.SUM_SQUARE_PIPELINE.SUM_SQUARES.fork1 alloc"
+            },
+            {
+                "ts": "2017-11-27T16:51:18Z",
+                "bytes": 0,
+                "desc": "ID.disable_pipeline_test.SUM_SQUARE_PIPELINE.REPORT.fork0 alloc"
+            },
+            {
+                "ts": "2017-11-27T16:51:18Z",
+                "bytes": 0,
+                "desc": "ID.disable_pipeline_test.SUM_SQUARE_PIPELINE.REPORT.fork1 alloc"
+            },
+            {
+                "ts": "2017-11-27T16:51:21Z",
+                "bytes": 0,
+                "desc": "ID.disable_pipeline_test.SUM_SQUARE_PIPELINE.SUM_SQUARES.fork0 delete"
+            },
+            {
+                "ts": "2017-11-27T16:51:21Z",
+                "bytes": 0,
+                "desc": "ID.disable_pipeline_test.SUM_SQUARE_PIPELINE.SUM_SQUARES.fork1 delete"
+            },
+            {
+                "ts": "2017-11-27T16:51:21Z",
+                "bytes": 0,
+                "desc": "ID.disable_pipeline_test.SUM_SQUARE_PIPELINE.REPORT.fork0 delete"
+            },
+            {
+                "ts": "2017-11-27T16:51:21Z",
+                "bytes": 0,
+                "desc": "ID.disable_pipeline_test.SUM_SQUARE_PIPELINE.REPORT.fork1 delete"
+            }
+        ],
+        "highmem": {
+            "rss": 0,
+            "shared": 0,
+            "vmem": 0,
+            "text": 0,
+            "stack": 0
+        }
+    },
+    {
+        "name": "REPORT",
+        "fqname": "ID.disable_pipeline_test.SUM_SQUARE_PIPELINE.REPORT",
+        "type": "stage",
+        "forks": [
+            {
+                "stages": [
+                    {
+                        "name": "REPORT",
+                        "fqname": "ID.disable_pipeline_test.SUM_SQUARE_PIPELINE.REPORT",
+                        "forki": 0
+                    }
+                ],
+                "index": 0,
+                "chunks": [
+                    {
+                        "index": 0,
+                        "chunk_stats": {
+                            "num_jobs": 1,
+                            "num_threads": 1,
+                            "duration": 0.061949733,
+                            "core_hours": 0.000017208259166666665,
+                            "maxrss": 12788,
+                            "maxvmem": 300,
+                            "in_blocks": 16,
+                            "out_blocks": 80,
+                            "total_blocks": 96,
+                            "in_blocks_rate": 258.2739137874896,
+                            "out_blocks_rate": 1291.369568937448,
+                            "total_blocks_rate": 1549.6434827249377,
+                            "start": "2017-11-27T16:51:18Z",
+                            "end": "2017-11-27T16:51:18Z",
+                            "walltime": 0,
+                            "usertime": 0.028,
+                            "systemtime": 0.008,
+                            "total_files": 0,
+                            "total_bytes": 0,
+                            "output_files": 0,
+                            "output_bytes": 0,
+                            "vdr_files": 0,
+                            "vdr_bytes": 0
+                        }
+                    }
+                ],
+                "split_stats": null,
+                "join_stats": null,
+                "fork_stats": {
+                    "num_jobs": 1,
+                    "num_threads": 1,
+                    "duration": 0.061949733,
+                    "core_hours": 0.000017208259166666665,
+                    "maxrss": 12788,
+                    "maxvmem": 300,
+                    "in_blocks": 16,
+                    "out_blocks": 80,
+                    "total_blocks": 96,
+                    "in_blocks_rate": 258.2739137874896,
+                    "out_blocks_rate": 1291.369568937448,
+                    "total_blocks_rate": 1549.6434827249377,
+                    "start": "2017-11-27T16:51:18Z",
+                    "end": "2017-11-27T16:51:18Z",
+                    "walltime": 0,
+                    "usertime": 0.028,
+                    "systemtime": 0.008,
+                    "total_files": 0,
+                    "total_bytes": 0,
+                    "output_files": 0,
+                    "output_bytes": 0,
+                    "vdr_files": 0,
+                    "vdr_bytes": 0
+                }
+            },
+            {
+                "stages": [
+                    {
+                        "name": "REPORT",
+                        "fqname": "ID.disable_pipeline_test.SUM_SQUARE_PIPELINE.REPORT",
+                        "forki": 1
+                    }
+                ],
+                "index": 1,
+                "chunks": [
+                    {
+                        "index": 0,
+                        "chunk_stats": {
+                            "num_jobs": 1,
+                            "num_threads": 1,
+                            "duration": 0.067723287,
+                            "core_hours": 0.000018812024166666666,
+                            "maxrss": 12788,
+                            "maxvmem": 164,
+                            "in_blocks": 16,
+                            "out_blocks": 96,
+                            "total_blocks": 112,
+                            "in_blocks_rate": 236.255514295991,
+                            "out_blocks_rate": 1417.5330857759461,
+                            "total_blocks_rate": 1653.788600071937,
+                            "start": "2017-11-27T16:51:18Z",
+                            "end": "2017-11-27T16:51:18Z",
+                            "walltime": 0,
+                            "usertime": 0.024,
+                            "systemtime": 0.016,
+                            "total_files": 0,
+                            "total_bytes": 0,
+                            "output_files": 0,
+                            "output_bytes": 0,
+                            "vdr_files": 0,
+                            "vdr_bytes": 0
+                        }
+                    }
+                ],
+                "split_stats": null,
+                "join_stats": null,
+                "fork_stats": {
+                    "num_jobs": 1,
+                    "num_threads": 1,
+                    "duration": 0.067723287,
+                    "core_hours": 0.000018812024166666666,
+                    "maxrss": 12788,
+                    "maxvmem": 164,
+                    "in_blocks": 16,
+                    "out_blocks": 96,
+                    "total_blocks": 112,
+                    "in_blocks_rate": 236.255514295991,
+                    "out_blocks_rate": 1417.5330857759461,
+                    "total_blocks_rate": 1653.788600071937,
+                    "start": "2017-11-27T16:51:18Z",
+                    "end": "2017-11-27T16:51:18Z",
+                    "walltime": 0,
+                    "usertime": 0.024,
+                    "systemtime": 0.016,
+                    "total_files": 0,
+                    "total_bytes": 0,
+                    "output_files": 0,
+                    "output_bytes": 0,
+                    "vdr_files": 0,
+                    "vdr_bytes": 0
+                }
+            }
+        ],
+        "maxbytes": 0,
+        "bytehist": null
+    },
+    {
+        "name": "SUM_SQUARES",
+        "fqname": "ID.disable_pipeline_test.SUM_SQUARE_PIPELINE.SUM_SQUARES",
+        "type": "stage",
+        "forks": [
+            {
+                "stages": [
+                    {
+                        "name": "SUM_SQUARES",
+                        "fqname": "ID.disable_pipeline_test.SUM_SQUARE_PIPELINE.SUM_SQUARES",
+                        "forki": 0
+                    }
+                ],
+                "index": 0,
+                "chunks": [],
+                "split_stats": null,
+                "join_stats": null,
+                "fork_stats": {
+                    "num_jobs": 0,
+                    "num_threads": 0,
+                    "duration": 0,
+                    "core_hours": 0,
+                    "maxrss": 0,
+                    "maxvmem": 0,
+                    "in_blocks": 0,
+                    "out_blocks": 0,
+                    "total_blocks": 0,
+                    "in_blocks_rate": 0,
+                    "out_blocks_rate": 0,
+                    "total_blocks_rate": 0,
+                    "start": "0001-01-01T00:00:00Z",
+                    "end": "0001-01-01T00:00:00Z",
+                    "walltime": 0,
+                    "usertime": 0,
+                    "systemtime": 0,
+                    "total_files": 0,
+                    "total_bytes": 0,
+                    "output_files": 0,
+                    "output_bytes": 0,
+                    "vdr_files": 0,
+                    "vdr_bytes": 0
+                }
+            },
+            {
+                "stages": [
+                    {
+                        "name": "SUM_SQUARES",
+                        "fqname": "ID.disable_pipeline_test.SUM_SQUARE_PIPELINE.SUM_SQUARES",
+                        "forki": 1
+                    }
+                ],
+                "index": 1,
+                "chunks": [
+                    {
+                        "index": 0,
+                        "chunk_stats": {
+                            "num_jobs": 1,
+                            "num_threads": 1,
+                            "duration": 0.02741194,
+                            "core_hours": 0.000007614427777777778,
+                            "maxrss": 12552,
+                            "maxvmem": 3408,
+                            "in_blocks": 8,
+                            "out_blocks": 80,
+                            "total_blocks": 88,
+                            "in_blocks_rate": 291.8436272660746,
+                            "out_blocks_rate": 2918.4362726607455,
+                            "total_blocks_rate": 3210.2798999268202,
+                            "start": "2017-11-27T16:51:08Z",
+                            "end": "2017-11-27T16:51:08Z",
+                            "walltime": 0,
+                            "usertime": 0,
+                            "systemtime": 0.008,
+                            "total_files": 0,
+                            "total_bytes": 0,
+                            "output_files": 0,
+                            "output_bytes": 0,
+                            "vdr_files": 0,
+                            "vdr_bytes": 0
+                        }
+                    },
+                    {
+                        "index": 1,
+                        "chunk_stats": {
+                            "num_jobs": 1,
+                            "num_threads": 1,
+                            "duration": 0.023232644,
+                            "core_hours": 0.000006453512222222222,
+                            "maxrss": 12552,
+                            "maxvmem": 3408,
+                            "in_blocks": 8,
+                            "out_blocks": 80,
+                            "total_blocks": 88,
+                            "in_blocks_rate": 344.3430717571362,
+                            "out_blocks_rate": 3443.430717571362,
+                            "total_blocks_rate": 3787.7737893284984,
+                            "start": "2017-11-27T16:51:08Z",
+                            "end": "2017-11-27T16:51:08Z",
+                            "walltime": 0,
+                            "usertime": 0.004,
+                            "systemtime": 0.004,
+                            "total_files": 0,
+                            "total_bytes": 0,
+                            "output_files": 0,
+                            "output_bytes": 0,
+                            "vdr_files": 0,
+                            "vdr_bytes": 0
+                        }
+                    },
+                    {
+                        "index": 2,
+                        "chunk_stats": {
+                            "num_jobs": 1,
+                            "num_threads": 1,
+                            "duration": 0.027073097,
+                            "core_hours": 0.000007520304722222222,
+                            "maxrss": 12552,
+                            "maxvmem": 3408,
+                            "in_blocks": 8,
+                            "out_blocks": 80,
+                            "total_blocks": 88,
+                            "in_blocks_rate": 295.4963002570411,
+                            "out_blocks_rate": 2954.9630025704114,
+                            "total_blocks_rate": 3250.4593028274526,
+                            "start": "2017-11-27T16:51:08Z",
+                            "end": "2017-11-27T16:51:08Z",
+                            "walltime": 0,
+                            "usertime": 0.004,
+                            "systemtime": 0.004,
+                            "total_files": 0,
+                            "total_bytes": 0,
+                            "output_files": 0,
+                            "output_bytes": 0,
+                            "vdr_files": 0,
+                            "vdr_bytes": 0
+                        }
+                    }
+                ],
+                "split_stats": {
+                    "num_jobs": 1,
+                    "num_threads": 1,
+                    "duration": 0.019418554,
+                    "core_hours": 0.000005394042777777778,
+                    "maxrss": 12552,
+                    "maxvmem": 3408,
+                    "in_blocks": 8,
+                    "out_blocks": 64,
+                    "total_blocks": 72,
+                    "in_blocks_rate": 411.9771224984105,
+                    "out_blocks_rate": 3295.816979987284,
+                    "total_blocks_rate": 3707.7941024856946,
+                    "start": "2017-11-27T16:51:02Z",
+                    "end": "2017-11-27T16:51:02Z",
+                    "walltime": 0,
+                    "usertime": 0.008,
+                    "systemtime": 0,
+                    "total_files": 0,
+                    "total_bytes": 0,
+                    "output_files": 0,
+                    "output_bytes": 0,
+                    "vdr_files": 0,
+                    "vdr_bytes": 0
+                },
+                "join_stats": {
+                    "num_jobs": 1,
+                    "num_threads": 1,
+                    "duration": 0.019428634,
+                    "core_hours": 0.000005396842777777778,
+                    "maxrss": 12788,
+                    "maxvmem": 3408,
+                    "in_blocks": 8,
+                    "out_blocks": 64,
+                    "total_blocks": 72,
+                    "in_blocks_rate": 411.76337976205633,
+                    "out_blocks_rate": 3294.1070380964507,
+                    "total_blocks_rate": 3705.870417858507,
+                    "start": "2017-11-27T16:51:11Z",
+                    "end": "2017-11-27T16:51:12Z",
+                    "walltime": 1,
+                    "usertime": 0.008,
+                    "systemtime": 0,
+                    "total_files": 0,
+                    "total_bytes": 0,
+                    "output_files": 0,
+                    "output_bytes": 0,
+                    "vdr_files": 0,
+                    "vdr_bytes": 0
+                },
+                "fork_stats": {
+                    "num_jobs": 5,
+                    "num_threads": 5,
+                    "duration": 0.116564869,
+                    "core_hours": 0.00003237913027777778,
+                    "maxrss": 12788,
+                    "maxvmem": 3408,
+                    "in_blocks": 40,
+                    "out_blocks": 368,
+                    "total_blocks": 408,
+                    "in_blocks_rate": 343.1565646078151,
+                    "out_blocks_rate": 3157.0403943918986,
+                    "total_blocks_rate": 3500.196958999714,
+                    "start": "2017-11-27T16:51:02Z",
+                    "end": "2017-11-27T16:51:12Z",
+                    "walltime": 10,
+                    "usertime": 0.024,
+                    "systemtime": 0.016,
+                    "total_files": 0,
+                    "total_bytes": 0,
+                    "output_files": 0,
+                    "output_bytes": 0,
+                    "vdr_files": 0,
+                    "vdr_bytes": 0
+                }
+            }
+        ],
+        "maxbytes": 0,
+        "bytehist": null
+    }
+]

@@ -144,7 +144,7 @@ func (self *Node) vdrKill() (*VDRKillReport, bool) {
 
 	if self.filePostNodes != nil {
 		for _, node := range self.filePostNodes {
-			if node.getNode().state != Complete {
+			if s := node.getNode().state; s != Complete && s != DisabledState {
 				return &VDRKillReport{}, false
 			}
 			if _, ok := node.(*TopNode); ok {

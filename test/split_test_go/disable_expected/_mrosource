@@ -1,0 +1,60 @@
+# A super-simple test pipeline with splits.
+# A super-simple test pipeline with splits.
+
+# Computes the sum of each value in a separate chunk, and
+# sums the squares in the join phase.
+stage SUM_SQUARES(
+    in  float[] values,
+    out float   sum,
+    src comp    "sum_squares",
+) split (
+    in  float   value,
+) using (
+    mem_gb = 1,
+)
+
+# Prints the output to the user, but only if the pipestance doesn't finish.
+stage REPORT(
+    in  float[] values,
+    in  float   sum,
+    src py      "stages/report",
+) using (
+    mem_gb = 1,
+)
+
+
+# Runs the stage.
+pipeline SUM_SQUARE_PIPELINE(
+    in  float[] values,
+    in  bool    disable_sq,
+    out float   sum,
+)
+{
+    call SUM_SQUARES(
+        values = self.values,
+    ) using (
+        disabled = self.disable_sq,
+    )
+
+    call REPORT(
+        values = self.values,
+        sum    = SUM_SQUARES.sum,
+    )
+
+    return (
+        sum = SUM_SQUARES.sum,
+    )
+}
+
+# Calls the pipelines, sweeping over two forks.
+call SUM_SQUARE_PIPELINE(
+    values     = [
+        1,
+        2,
+        3
+    ],
+    disable_sq = sweep(
+        true,
+        false
+    ),
+)

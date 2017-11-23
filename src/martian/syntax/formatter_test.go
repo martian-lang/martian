@@ -116,6 +116,7 @@ stage ADD_KEY3(
     in  json   start,
     in  string failfile,
     out json   result,
+    out bool   disable_example,
     src py     "stages/add_key",
 )
 
@@ -191,6 +192,8 @@ pipeline AWESOME(
             "bing": null
         },
     ) using (
+        # ADD_KEY3 can disable this stage.
+        disabled = ADD_KEY3.disable_example,
         local    = true,
         # This shouldn't be volatile because reasons.
         volatile = false,

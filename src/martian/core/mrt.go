@@ -215,8 +215,8 @@ func (n *Node) VDRMurdered() bool {
 	}
 	for _, f := range n.forks {
 		f.metadata.loadCache()
-		var exists = f.metadata.exists("complete")
-		var thiskilled = f.metadata.exists("vdrkill")
+		var exists = f.metadata.exists(CompleteFile) || f.metadata.exists(DisabledFile)
+		var thiskilled = f.metadata.exists(VdrKill)
 
 		if !exists {
 			/* If the complete record does not exist, assume the stage
@@ -228,7 +228,7 @@ func (n *Node) VDRMurdered() bool {
 		}
 
 		if thiskilled {
-			jsondata := f.metadata.read("vdrkill")
+			jsondata := f.metadata.read(VdrKill)
 
 			/* TODO: Do some type checking here. */
 			m := jsondata.(map[string]interface{})

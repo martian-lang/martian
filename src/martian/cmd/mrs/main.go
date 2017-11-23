@@ -184,12 +184,12 @@ Options:
 
 			// Check for completion states.
 			state := stagestance.GetState()
-			if state == "complete" {
+			if state == core.Complete {
 				stagestance.PostProcess()
 				util.Println("Stage completed, exiting.")
 				os.Exit(0)
 			}
-			if state == "failed" {
+			if state == core.Failed {
 				if _, _, errpath, log, kind, err := stagestance.GetFatalError(); kind == "assert" {
 					util.Println("\n%s\n", log)
 				} else {

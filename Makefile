@@ -77,6 +77,9 @@ test/split_test/pipeline_test: mrp mrjob $(ADAPTERS)
 test/split_test_go/pipeline_test: mrp mrjob $(ADAPTERS) bin/sum_squares
 	test/martian_test.py test/split_test_go/split_test.json
 
+test/split_test_go/disable_pipeline_test: mrp mrjob $(ADAPTERS) bin/sum_squares
+	test/martian_test.py test/split_test_go/disable_test.json
+
 test/files_test/pipeline_test: mrp mrjob $(ADAPTERS)
 	test/martian_test.py test/files_test/files_test.json
 
@@ -91,6 +94,7 @@ test/fork_test/pipeline_test: mrp mrjob $(ADAPTERS)
 
 longtests: test/split_test/pipeline_test \
            test/split_test_go/pipeline_test \
+           test/split_test_go/disable_pipeline_test \
            test/files_test/pipeline_test \
            test/fork_test/pipeline_test \
            test/fork_test/pipeline_fail

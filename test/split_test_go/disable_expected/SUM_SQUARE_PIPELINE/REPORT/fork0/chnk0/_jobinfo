@@ -1,0 +1,84 @@
+{
+    "name": "ID.disable_pipeline_test.SUM_SQUARE_PIPELINE.REPORT.fork0.chnk0",
+    "pid": 44045,
+    "host": "bespin1.fuzzplex.com",
+    "type": "local",
+    "cwd": "/user/martian/test/split_test_go/disable_pipeline_test/SUM_SQUARE_PIPELINE/REPORT/fork0/chnk0-uaba31cb303/files",
+    "python": {
+        "binpath": "/usr/bin/python",
+        "version": "2.7.12 (default, Sep  1 2016, 22:14:00) \n[GCC 4.8.3 20140911 (Red Hat 4.8.3-9)]"
+    },
+    "rusage": {
+        "self": {
+            "ru_maxrss": 12788,
+            "ru_ixrss": 0,
+            "ru_idrss": 0,
+            "ru_minflt": 594,
+            "ru_majflt": 0,
+            "ru_nswap": 0,
+            "ru_utime": 0,
+            "ru_stime": 0.004,
+            "ru_inblock": 8,
+            "ru_oublock": 48,
+            "ru_msgsnd": 0,
+            "ru_msgrcv": 0,
+            "ru_nsignals": 0
+        },
+        "children": {
+            "ru_maxrss": 11980,
+            "ru_ixrss": 0,
+            "ru_idrss": 0,
+            "ru_minflt": 2945,
+            "ru_majflt": 0,
+            "ru_nswap": 0,
+            "ru_utime": 0.028,
+            "ru_stime": 0.004,
+            "ru_inblock": 8,
+            "ru_oublock": 32,
+            "ru_msgsnd": 0,
+            "ru_msgrcv": 0,
+            "ru_nsignals": 0
+        }
+    },
+    "used_bytes": {
+        "rss": 13094912,
+        "shared": 0,
+        "vmem": 307200,
+        "text": 0,
+        "stack": 151552
+    },
+    "wallclock": {
+        "start": "2017-11-27 16:51:18",
+        "end": "2017-11-27 16:51:18",
+        "duration_seconds": 0.061949733
+    },
+    "threads": 1,
+    "memGB": 1,
+    "profile_mode": "disable",
+    "stackvars_flag": "disable",
+    "monitor_flag": "disable",
+    "invocation": {
+        "call": "SUM_SQUARE_PIPELINE",
+        "args": {
+            "disable_sq": [
+                true,
+                false
+            ],
+            "values": [
+                1,
+                2,
+                3
+            ]
+        },
+        "sweepargs": [
+            "disable_sq"
+        ],
+        "incpaths": [
+            "pipeline_stages.mro"
+        ]
+    },
+    "version": {
+        "martian": "'v2.3.0-rc3-48-gd2e35e7c-dirty'",
+        "pipelines": "v2.3.0-rc3-48-gd2e35e7c-dirty"
+    }
+}

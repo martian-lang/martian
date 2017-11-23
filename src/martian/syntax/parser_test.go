@@ -863,6 +863,9 @@ pipeline SQ_PIPE(
 			if mods.Local {
 				t.Errorf("Expected non-local")
 			}
+			if !mods.Preflight {
+				t.Errorf("Expected preflight")
+			}
 		}
 	}
 }
@@ -895,6 +898,95 @@ pipeline SQ_PIPE(
 			if mods.Local {
 				t.Errorf("Expected non-local")
 			}
+			if !mods.Preflight {
+				t.Errorf("Expected preflight")
+			}
 		}
 	}
+}
+
+func TestDisable(t *testing.T) {
+	if ast := testGood(t, `
+stage SQUARE(
+    in  int   value,
+    src py    "stages/square",
+)
+
+pipeline SQ_PIPE(
+    in bool disable_square,
+)
+{
+    call SQUARE(
+        value = 1,
+    ) using (
+        disabled  = self.disable_square,
+		volatile  = true,
+		preflight = false,
+	)
+	return ()
+}
+`); ast != nil {
+		if mods := ast.Pipelines[0].Calls[0].Modifiers; mods == nil {
+			t.Errorf("Nil mods")
+		} else {
+			if !mods.Volatile {
+				t.Errorf("Expected volatile")
+			}
+			if mods.Local {
+				t.Errorf("Expected non-local")
+			}
+			if mods.Preflight {
+				t.Errorf("Expected non-preflight")
+			}
+			if mods.Bindings == nil {
+				t.Errorf("Expected bindings.")
+			} else if dis := mods.Bindings.Table[disabled]; dis == nil {
+				t.Errorf("Expected disable binding.")
+			}
+		}
+	}
+}
+
+func TestBadDisable(t *testing.T) {
+	testBadCompile(t, `
+stage SQUARE(
+    in  int   value,
+    src py    "stages/square",
+)
+
+pipeline SQ_PIPE(
+    in int disable_square,
+)
+{
+    call SQUARE(
+        value = 1,
+    ) using (
+        disabled  = self.disable_square,
+		volatile  = true,
+		preflight = false,
+	)
+	return ()
+}
+`)
+}
+
+func TestBadDisable2(t *testing.T) {
+	testBadGrammar(t, `
+stage SQUARE(
+    in  int   value,
+    src py    "stages/square",
+)
+
+pipeline SQ_PIPE()
+{
+    call SQUARE(
+        value = 1,
+    ) using (
+        disabled  = true,
+		volatile  = true,
+		preflight = false,
+	)
+	return ()
+}
+`)
 }

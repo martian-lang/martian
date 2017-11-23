@@ -148,10 +148,10 @@ func runLoop(pipestanceBox *pipestanceHolder, stepSecs int, vdrMode string,
 		state := pipestance.GetState()
 		pipestanceBox.UpdateState(state)
 		hadProgress := false
-		if state == "complete" {
+		if state == core.Complete || state == core.DisabledState {
 			cleanupCompleted(pipestance, pipestanceBox, vdrMode, noExit)
 			return
-		} else if state == "failed" {
+		} else if state == core.Failed {
 			if !attemptRetry(pipestance, pipestanceBox) {
 				pipestance.Unlock()
 				cleanupFailed(pipestance, pipestanceBox, showedFailed, noExit)

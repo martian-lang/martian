@@ -67,7 +67,8 @@ func unquote(qs string) string {
 %token SKIP COMMENT INVALID
 %token SEMICOLON COLON COMMA EQUALS
 %token LBRACKET RBRACKET LPAREN RPAREN LBRACE RBRACE
-%token FILETYPE STAGE PIPELINE CALL LOCAL PREFLIGHT VOLATILE SWEEP SPLIT USING SELF RETURN
+%token FILETYPE STAGE PIPELINE CALL SWEEP SPLIT USING SELF RETURN
+%token <val> LOCAL PREFLIGHT VOLATILE DISABLED
 %token IN OUT SRC AS
 %token THREADS MEM_GB SPECIAL
 %token <val> ID LITSTRING NUM_FLOAT NUM_INT DOT
@@ -344,11 +345,13 @@ modifier_stm_list
 
 modifier_stm
     : LOCAL EQUALS bool_exp COMMA
-        {{ $$ = &BindStm{NewAstNode($<loc>1, $<locmap>1), "local", $3, false, ""} }}
+        {{ $$ = &BindStm{NewAstNode($<loc>1, $<locmap>1), $1, $3, false, ""} }}
     | PREFLIGHT EQUALS bool_exp COMMA
-        {{ $$ = &BindStm{NewAstNode($<loc>1, $<locmap>1), "preflight", $3, false, ""} }}
+        {{ $$ = &BindStm{NewAstNode($<loc>1, $<locmap>1), $1, $3, false, ""} }}
     | VOLATILE EQUALS bool_exp COMMA
-        {{ $$ = &BindStm{NewAstNode($<loc>1, $<locmap>1), "volatile", $3, false, ""} }}
+        {{ $$ = &BindStm{NewAstNode($<loc>1, $<locmap>1), $1, $3, false, ""} }}
+    | DISABLED EQUALS ref_exp COMMA
+        {{ $$ = &BindStm{NewAstNode($<loc>1, $<locmap>1), $1, $3, false, ""} }}
 
 bind_stm_list
     :

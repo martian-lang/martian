@@ -1,0 +1,10 @@
+@include "pipeline_stages.mro"
+
+call REPORT(
+    values = [
+        1,
+        2,
+        3
+    ],
+    sum = 14,
+)

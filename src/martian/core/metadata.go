@@ -57,6 +57,7 @@ const (
 	UuidFile       MetadataFileName = "uuid"
 	VdrKill        MetadataFileName = "vdrkill"
 	VersionsFile   MetadataFileName = "versions"
+	DisabledFile   MetadataFileName = "disabled"
 )
 
 const MetadataFilePrefix string = "_"
@@ -72,13 +73,14 @@ func metadataFileNameFromPath(p string) MetadataFileName {
 type MetadataState string
 
 const (
-	Complete    MetadataState = "complete"
-	Failed      MetadataState = "failed"
-	Running     MetadataState = "running"
-	Queued      MetadataState = "queued"
-	Ready       MetadataState = "ready"
-	Waiting     MetadataState = ""
-	ForkWaiting MetadataState = "waiting"
+	Complete      MetadataState = "complete"
+	Failed        MetadataState = "failed"
+	DisabledState MetadataState = "disabled"
+	Running       MetadataState = "running"
+	Queued        MetadataState = "queued"
+	Ready         MetadataState = "ready"
+	Waiting       MetadataState = ""
+	ForkWaiting   MetadataState = "waiting"
 )
 
 const (
@@ -334,6 +336,9 @@ func (self *Metadata) _getStateNoLock() (MetadataState, bool) {
 			self._removeNoLock(JobId)
 		}
 		return Complete, true
+	}
+	if self._existsNoLock(DisabledFile) {
+		return DisabledState, true
 	}
 	if self._existsNoLock(LogFile) {
 		return Running, true

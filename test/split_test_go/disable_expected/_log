@@ -1,0 +1,82 @@
+Martian Runtime - 'v2.3.0-rc3-48-gd2e35e7c-dirty'
+2017-11-27 16:51:02 [build  ] Built with Go version go1.9.2
+2017-11-27 16:51:02 [cmdline] mrp disable_pipeline.mro disable_pipeline_test
+2017-11-27 16:51:02 [pid    ] 43939
+2017-11-27 16:51:02 [environ] HOSTNAME=bespin1.fuzzplex.com
+2017-11-27 16:51:02 [environ] TERM=xterm
+2017-11-27 16:51:02 [environ] SHELL=/bin/bash
+2017-11-27 16:51:02 [environ] EC2_AMITOOL_HOME=/opt/aws/amitools/ec2
+2017-11-27 16:51:02 [environ] SSH_CLIENT=10.111.15.106 52779 22
+2017-11-27 16:51:02 [environ] PYTHON_INSTALL_LAYOUT=amzn
+2017-11-27 16:51:02 [environ] SSH_TTY=/dev/pts/257
+2017-11-27 16:51:02 [environ] USER=adam.azarchs
+2017-11-27 16:51:02 [environ] EC2_HOME=/opt/aws/apitools/ec2
+2017-11-27 16:51:02 [environ] PATH=/user/martian/test/split_test_go/../../bin:/usr/local/bin:/bin:/usr/bin:/usr/local/sbin:/usr/sbin:/sbin:/opt/aws/bin
+2017-11-27 16:51:02 [environ] PWD=/user/martian/test/split_test_go
+2017-11-27 16:51:02 [environ] JAVA_HOME=/usr/lib/jvm/java
+2017-11-27 16:51:02 [environ] LANG=en_US.UTF-8
+2017-11-27 16:51:02 [environ] SHLVL=2
+2017-11-27 16:51:02 [environ] HOME=/user/martian
+2017-11-27 16:51:02 [environ] LOGNAME=adam.azarchs
+2017-11-27 16:51:02 [environ] SSH_CONNECTION=10.111.15.106 52779 10.113.15.180 22
+2017-11-27 16:51:02 [environ] _=/user/martian/test/split_test_go/../../bin/mrp
+2017-11-27 16:51:02 [environ] MROPATH=/user/martian/test/split_test_go
+2017-11-27 16:51:02 [version] MRO Version=v2.3.0-rc3-48-gd2e35e7c-dirty
+2017-11-27 16:51:02 [options] --jobmode=local
+2017-11-27 16:51:02 [options] --maxjobs=0
+2017-11-27 16:51:02 [options] --jobinterval=0
+2017-11-27 16:51:02 [options] --vdrmode=post
+2017-11-27 16:51:02 [options] --profile=disable
+2017-11-27 16:51:02 [options] --stackvars=false
+2017-11-27 16:51:02 [options] --zip=false
+2017-11-27 16:51:02 [options] --limit-loadavg=false
+2017-11-27 16:51:02 [options] --noexit=false
+2017-11-27 16:51:02 [options] --nopreflight=false
+2017-11-27 16:51:02 [jobmngr] Job config = /user/martian/jobmanagers/config.json
+2017-11-27 16:51:02 [jobmngr] Using 64 logical cores available on system.
+2017-11-27 16:51:02 [jobmngr] Using 226 GB, 90% of system memory.
+2017-11-27 16:51:02 [jobmngr] WARNING: configured to use 226GB of local memory, but only 215.6GB is currently available.
+Serving UI at http://bespin1.fuzzplex.com:39887?auth=uV1vkN4qHAsBG6qjKXcgt70aTVdv4AoM71tTun6UBYQ
+
+Running preflight checks (please wait)...
+2017-11-27 16:51:02 [runtime] (ready)           ID.disable_pipeline_test.SUM_SQUARE_PIPELINE.SUM_SQUARES.fork0
+2017-11-27 16:51:02 [runtime] (disabled)        ID.disable_pipeline_test.SUM_SQUARE_PIPELINE.SUM_SQUARES.fork0
+2017-11-27 16:51:02 [runtime] (ready)           ID.disable_pipeline_test.SUM_SQUARE_PIPELINE.SUM_SQUARES.fork1
+2017-11-27 16:51:02 [runtime] (run:local)       ID.disable_pipeline_test.SUM_SQUARE_PIPELINE.SUM_SQUARES.fork1.split
+2017-11-27 16:51:05 [runtime] (disabled)        ID.disable_pipeline_test.SUM_SQUARE_PIPELINE.SUM_SQUARES.fork0
+2017-11-27 16:51:05 [runtime] (split_complete)  ID.disable_pipeline_test.SUM_SQUARE_PIPELINE.SUM_SQUARES.fork1
+2017-11-27 16:51:08 [runtime] (disabled)        ID.disable_pipeline_test.SUM_SQUARE_PIPELINE.SUM_SQUARES.fork0
+2017-11-27 16:51:08 [runtime] (split_complete)  ID.disable_pipeline_test.SUM_SQUARE_PIPELINE.SUM_SQUARES.fork1
+2017-11-27 16:51:08 [runtime] (run:local)       ID.disable_pipeline_test.SUM_SQUARE_PIPELINE.SUM_SQUARES.fork1.chnk0.main
+2017-11-27 16:51:08 [runtime] (run:local)       ID.disable_pipeline_test.SUM_SQUARE_PIPELINE.SUM_SQUARES.fork1.chnk1.main
+2017-11-27 16:51:08 [runtime] (run:local)       ID.disable_pipeline_test.SUM_SQUARE_PIPELINE.SUM_SQUARES.fork1.chnk2.main
+2017-11-27 16:51:11 [runtime] (progress)        ID.disable_pipeline_test.SUM_SQUARE_PIPELINE.SUM_SQUARES.fork1.chnk0: Running with 1 threads and 1GB of memory.
+2017-11-27 16:51:11 [runtime] (progress)        ID.disable_pipeline_test.SUM_SQUARE_PIPELINE.SUM_SQUARES.fork1.chnk1: Running with 1 threads and 1GB of memory.
+2017-11-27 16:51:11 [runtime] (progress)        ID.disable_pipeline_test.SUM_SQUARE_PIPELINE.SUM_SQUARES.fork1.chnk2: Running with 1 threads and 1GB of memory.
+2017-11-27 16:51:11 [runtime] (disabled)        ID.disable_pipeline_test.SUM_SQUARE_PIPELINE.SUM_SQUARES.fork0
+2017-11-27 16:51:11 [runtime] (chunks_complete) ID.disable_pipeline_test.SUM_SQUARE_PIPELINE.SUM_SQUARES.fork1
+2017-11-27 16:51:11 [runtime] (run:local)       ID.disable_pipeline_test.SUM_SQUARE_PIPELINE.SUM_SQUARES.fork1.join
+2017-11-27 16:51:14 [runtime] (disabled)        ID.disable_pipeline_test.SUM_SQUARE_PIPELINE.SUM_SQUARES.fork0
+2017-11-27 16:51:14 [runtime] (join_complete)   ID.disable_pipeline_test.SUM_SQUARE_PIPELINE.SUM_SQUARES.fork1
+2017-11-27 16:51:14 [runtime] (ready)           ID.disable_pipeline_test.SUM_SQUARE_PIPELINE.REPORT.fork0
+2017-11-27 16:51:15 [runtime] (ready)           ID.disable_pipeline_test.SUM_SQUARE_PIPELINE.REPORT.fork1
+2017-11-27 16:51:18 [runtime] (split_complete)  ID.disable_pipeline_test.SUM_SQUARE_PIPELINE.REPORT.fork0
+2017-11-27 16:51:18 [runtime] (run:local)       ID.disable_pipeline_test.SUM_SQUARE_PIPELINE.REPORT.fork0.chnk0.main
+2017-11-27 16:51:18 [runtime] (split_complete)  ID.disable_pipeline_test.SUM_SQUARE_PIPELINE.REPORT.fork1
+2017-11-27 16:51:18 [runtime] (run:local)       ID.disable_pipeline_test.SUM_SQUARE_PIPELINE.REPORT.fork1.chnk0.main
+2017-11-27 16:51:21 [runtime] (progress)        ID.disable_pipeline_test.SUM_SQUARE_PIPELINE.REPORT.fork1.chnk0: 1.000000^2+2.000000^2+3.000000^2 = 14.000000
+2017-11-27 16:51:21 [runtime] (chunks_complete) ID.disable_pipeline_test.SUM_SQUARE_PIPELINE.REPORT.fork0
+2017-11-27 16:51:21 [runtime] (chunks_complete) ID.disable_pipeline_test.SUM_SQUARE_PIPELINE.REPORT.fork1
+2017-11-27 16:51:21 [runtime] VDR killed 0 files, 0B.
+
+Outputs (fork0):
+- sum: null
+
+
+Outputs (fork1):
+- sum: 14
+
+2017-11-27 16:51:21 [perform] Serializing pipestance performance data.
+Waiting 6 seconds for UI to do final refresh.
+Pipestance completed successfully!
+

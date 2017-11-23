@@ -60,6 +60,8 @@ type Node struct {
 	volatile           bool
 	local              bool
 	preflight          bool
+	disabled           []*Binding
+	modBindingList     []*Binding
 	stagecodeLang      syntax.StageCodeType
 	stagecodeCmd       string
 	journalPath        string
@@ -146,13 +148,16 @@ func NewNode(parent Nodable, kind string, callStm *syntax.CallStm, callables *sy
 		self.argbindings[id] = binding
 		self.argbindingList = append(self.argbindingList, binding)
 	}
-	var modBindingList []*Binding
+	self.disabled = parent.getNode().disabled
 	if callStm.Modifiers.Bindings != nil {
-		// currently, nothing.
-		// TODO: Eventually, we're going to have modifiers which make sense to
-		// make bindable.
+		if disabled := callStm.Modifiers.Bindings.Table["disabled"]; disabled != nil {
+			binding := NewBinding(self, disabled)
+			self.disabled = append(self.disabled, binding)
+		}
+		// Any future bindable modifiers here.
 	}
-	self.attachBindings(append(self.argbindingList, modBindingList...))
+	self.modBindingList = self.disabled
+	self.attachBindings(append(self.argbindingList, self.modBindingList...))
 
 	// Do not set state = getState here, or else nodes will wrongly report
 	// complete before the first refreshMetadata call
@@ -271,7 +276,7 @@ func (self *Node) mkdirs() error {
 //
 // Sweep management
 //
-func (self *Node) buildUniqueSweepBindings(bindings map[string]*Binding) {
+func (self *Node) buildUniqueSweepBindings(bindings []*Binding) {
 	// Add all unique sweep bindings to self.sweepbindings.
 	// Make sure to use sweepRootId to uniquify and not just id.
 	// This will ensure stages bind a sweep value to differently
@@ -324,8 +329,8 @@ func cartesianProduct(valueSets []interface{}) []interface{} {
 	return perms
 }
 
-func (self *Node) buildForks(bindings map[string]*Binding) {
-	self.buildUniqueSweepBindings(bindings)
+func (self *Node) buildForks(bindings []*Binding) {
+	self.buildUniqueSweepBindings(append(bindings, self.modBindingList...))
 
 	// Expand out sweep values for each binding.
 	paramIds := []string{}
@@ -488,26 +493,30 @@ func (self *Node) getFork(index int) *Fork {
 }
 
 func (self *Node) getState() MetadataState {
-	// If every fork is complete, we're complete.
+	// If any fork is failed, we're failed.
+	// If every fork is disabled, we're disabled.
+	// Otherwise, if every fork is complete or disabled, we're complete.
 	complete := true
+	disabled := true
 	for _, fork := range self.forks {
-		if fork.getState() != Complete {
+		if s := fork.getState(); s == Failed {
+			return Failed
+		} else if s != Complete && s != DisabledState {
 			complete = false
 			break
+		} else if s != DisabledState {
+			disabled = false
 		}
 	}
 	if complete {
-		return Complete
-	}
-	// If any fork is failed, we're failed.
-	for _, fork := range self.forks {
-		if fork.getState() == Failed {
-			return Failed
+		if disabled {
+			return DisabledState
 		}
+		return Complete
 	}
 	// If any prenode is not complete, we're waiting.
 	for _, prenode := range self.prenodes {
-		if prenode.getNode().getState() != Complete {
+		if s := prenode.getNode().getState(); s != Complete && s != DisabledState {
 			return Waiting
 		}
 	}
@@ -710,11 +719,13 @@ func (self *Node) step() bool {
 			self.vdrKill()
 			self.cachePerf()
 		}
+		fallthrough
+	case DisabledState:
 		for _, node := range self.postnodes {
 			self.addFrontierNode(node)
 		}
 		self.removeFrontierNode(self)
-	case "waiting":
+	case ForkWaiting:
 		self.removeFrontierNode(self)
 	}
 	return self.state != previousState

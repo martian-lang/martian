@@ -64,7 +64,7 @@ func NewStagestance(parent Nodable, callStm *syntax.CallStm, callables *syntax.C
 			Special: stage.Resources.Special,
 		}
 	}
-	self.node.buildForks(self.node.argbindings)
+	self.node.buildForks(self.node.argbindingList)
 	return self, nil
 }
 
@@ -198,7 +198,7 @@ func NewPipestance(parent Nodable, callStm *syntax.CallStm, callables *syntax.Ca
 		}
 	}
 
-	self.node.buildForks(self.node.retbindings)
+	self.node.buildForks(self.node.retbindingList)
 	return self, nil
 }
 
@@ -244,7 +244,17 @@ func (self *Pipestance) GetState() MetadataState {
 	}
 	every := true
 	for _, node := range self.allNodes() {
-		if node.state != Complete {
+		if node.state != DisabledState {
+			every = false
+			break
+		}
+	}
+	if every {
+		return DisabledState
+	}
+	every = true
+	for _, node := range self.allNodes() {
+		if node.state != Complete && node.state != DisabledState {
 			every = false
 			break
 		}

@@ -73,23 +73,23 @@ func (self *ValExp) format(prefix string) string {
 	if self.Value == nil {
 		return "null"
 	}
-	if self.Kind == "int" {
+	if self.Kind == KindInt {
 		return fmt.Sprintf("%d", self.Value)
 	}
-	if self.Kind == "float" {
+	if self.Kind == KindFloat {
 		return fmt.Sprintf("%g", self.Value)
 	}
-	if self.Kind == "string" {
+	if self.Kind == KindString {
 		return fmt.Sprintf("\"%s\"", self.Value)
 	}
-	if self.Kind == "map" {
+	if self.Kind == KindMap {
 		bytes, err := json.MarshalIndent(self.ToInterface(), prefix, INDENT)
 		if err != nil {
 			panic(err)
 		}
 		return string(bytes)
 	}
-	if self.Kind == "array" {
+	if self.Kind == KindArray {
 		return self.formatArray(prefix)
 	}
 	return fmt.Sprintf("%v", self.Value)
@@ -122,7 +122,7 @@ func (self *ValExp) formatArray(prefix string) string {
 }
 
 func (self *RefExp) format(prefix string) string {
-	if self.Kind == "call" {
+	if self.Kind == KindCall {
 		fsrc := self.Id
 		if self.OutputId != "default" {
 			fsrc += "." + self.OutputId
@@ -310,11 +310,11 @@ func (self *CallStm) format(printer *printer, prefix string) {
 		var foundMods Modifiers
 		for _, binding := range self.Modifiers.Bindings.List {
 			switch binding.Id {
-			case "local":
+			case local:
 				foundMods.Local = true
-			case "preflight":
+			case preflight:
 				foundMods.Preflight = true
-			case "volatile":
+			case volatile:
 				foundMods.Volatile = true
 			}
 		}

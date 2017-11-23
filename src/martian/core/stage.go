@@ -19,10 +19,12 @@ import (
 	"time"
 )
 
-func makeOutArgs(outParams *syntax.Params, filesPath string) map[string]interface{} {
+func makeOutArgs(outParams *syntax.Params, filesPath string, nullAll bool) map[string]interface{} {
 	args := map[string]interface{}{}
 	for id, param := range outParams.Table {
-		if param.IsFile() {
+		if nullAll || param.GetArrayDim() > 0 {
+			args[id] = nil
+		} else if param.IsFile() {
 			args[id] = path.Join(filesPath, param.GetId()+"."+param.GetTname())
 		} else if param.GetTname() == "path" {
 			args[id] = path.Join(filesPath, param.GetId())
@@ -147,10 +149,10 @@ func (self *Chunk) step(bindings map[string]interface{}) {
 
 	// Write out input and ouput args for the chunk.
 	self.metadata.Write(ArgsFile, resolvedBindings)
-	outs := makeOutArgs(self.fork.node.outparams, self.metadata.curFilesPath)
+	outs := makeOutArgs(self.fork.node.outparams, self.metadata.curFilesPath, false)
 	if self.fork.node.split {
 		for k, v := range makeOutArgs(self.fork.node.chunkOuts,
-			self.metadata.curFilesPath) {
+			self.metadata.curFilesPath, false) {
 			outs[k] = v
 		}
 	}
@@ -365,14 +367,14 @@ func (self *Fork) mkdirs() {
 	self.metadata.mkdirs()
 	if state, ok := self.split_metadata.getState(); !disableUniquification &&
 		self.node.split &&
-		(!ok || state != Complete) {
+		(!ok || (state != Complete && state != DisabledState)) {
 		self.split_metadata.uniquify()
 	} else {
 		self.split_metadata.mkdirs()
 	}
 	if state, ok := self.join_metadata.getState(); !disableUniquification &&
 		self.node.split &&
-		(!ok || state != Complete) {
+		(!ok || (state != Complete && state != DisabledState)) {
 		self.join_metadata.uniquify()
 	} else {
 		self.join_metadata.mkdirs()
@@ -413,7 +415,9 @@ func (self *Fork) verifyOutput(outs interface{}) (bool, string) {
 }
 
 func (self *Fork) getState() MetadataState {
-	if state, _ := self.metadata.getState(); state == Failed || state == Complete {
+	if state, _ := self.metadata.getState(); state == Failed ||
+		state == Complete ||
+		state == DisabledState {
 		return state
 	}
 	if state, ok := self.join_metadata.getState(); ok {
@@ -458,6 +462,24 @@ func (self *Fork) getState() MetadataState {
 	return Ready
 }
 
+func (self *Fork) disabled() bool {
+	for _, bind := range self.node.disabled {
+		if res := bind.resolve(self.argPermute); res != nil {
+			if d, ok := res.(bool); ok && d {
+				return true
+			}
+		}
+	}
+	return false
+}
+
+func (self *Fork) writeDisable() {
+	self.metadata.Write(OutsFile, makeOutArgs(
+		self.node.outparams, self.metadata.curFilesPath, true))
+	self.skip()
+	self.printState(DisabledState)
+}
+
 func (self *Fork) updateState(state, uniquifier string) {
 	if state == string(ProgressFile) {
 		self.lastPrint = time.Now()
@@ -488,7 +510,7 @@ func (self *Fork) getChunk(index int) *Chunk {
 }
 
 func (self *Fork) skip() {
-	self.metadata.WriteTime(CompleteFile)
+	self.metadata.WriteTime(DisabledFile)
 }
 
 func (self *Fork) writeInvocation() {
@@ -504,23 +526,27 @@ func (self *Fork) writeInvocation() {
 	}
 }
 
+func (self *Fork) printState(state MetadataState) {
+	statePad := strings.Repeat(" ", int(math.Max(0, float64(15-len(state)))))
+	// Only log fork num if we've got more than one fork
+	fqname := self.node.fqname
+	if len(self.node.forks) > 1 {
+		fqname = self.fqname
+	}
+	self.lastPrint = time.Now()
+	msg := fmt.Sprintf("(%s)%s %s", state, statePad, fqname)
+	if self.node.preflight {
+		util.LogInfo("runtime", msg)
+	} else {
+		util.PrintInfo("runtime", msg)
+	}
+}
+
 func (self *Fork) step() {
 	if self.node.kind == "stage" {
 		state := self.getState()
 		if !state.IsRunning() && !state.IsQueued() {
-			statePad := strings.Repeat(" ", int(math.Max(0, float64(15-len(state)))))
-			// Only log fork num if we've got more than one fork
-			fqname := self.node.fqname
-			if len(self.node.forks) > 1 {
-				fqname = self.fqname
-			}
-			self.lastPrint = time.Now()
-			msg := fmt.Sprintf("(%s)%s %s", state, statePad, fqname)
-			if self.node.preflight {
-				util.LogInfo("runtime", msg)
-			} else {
-				util.PrintInfo("runtime", msg)
-			}
+			self.printState(state)
 		}
 
 		// Lazy-evaluate bindings, only once per step.
@@ -531,7 +557,14 @@ func (self *Fork) step() {
 			}
 			return bindings
 		}
+		if state == DisabledState {
+			return
+		}
 		if state == Ready {
+			if self.disabled() {
+				self.writeDisable()
+				return
+			}
 			self.writeInvocation()
 			self.split_metadata.Write(ArgsFile, getBindings())
 			if self.node.split {
@@ -616,7 +649,7 @@ func (self *Fork) step() {
 					chunkOuts = append(chunkOuts, outs)
 				}
 				self.join_metadata.Write(ChunkOutsFile, chunkOuts)
-				self.join_metadata.Write(OutsFile, makeOutArgs(self.node.outparams, self.join_metadata.curFilesPath))
+				self.join_metadata.Write(OutsFile, makeOutArgs(self.node.outparams, self.join_metadata.curFilesPath, false))
 				if !self.join_has_run {
 					self.join_has_run = true
 					self.lastPrint = time.Now()
@@ -651,6 +684,10 @@ func (self *Fork) step() {
 		}
 
 	} else if self.node.kind == "pipeline" {
+		if self.disabled() {
+			self.writeDisable()
+			return
+		}
 		self.writeInvocation()
 		outs := resolveBindings(self.node.retbindings, self.argPermute)
 		self.metadata.Write(OutsFile, outs)
