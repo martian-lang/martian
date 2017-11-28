@@ -172,6 +172,13 @@ func runLoop(pipestanceBox *pipestanceHolder, stepSecs int, vdrMode string,
 		if !hadProgress {
 			// Wait for a bit.
 			time.Sleep(time.Second * time.Duration(stepSecs))
+			// During the idle portion of the run loop is a good time to
+			// run the GC.  We do this after the sleep because StepNodes
+			// launches jobs on goroutines, and it's better to give them
+			// time to get to the point where they're waiting on the
+			// subprocess (or, in cluster mode, possibly finish waiting)
+			// before the GC runs.
+			runtime.GC()
 		}
 	}
 }
@@ -219,6 +226,7 @@ func cleanupCompleted(pipestance *core.Pipestance, pipestanceBox *pipestanceHold
 	pipestance.OnFinishHook()
 	if noExit {
 		util.Println("Pipestance completed successfully, staying alive because --noexit given.\n")
+		runtime.GC()
 	} else {
 		if pipestanceBox.enableUI {
 			// Give time for web ui client to get last update.
@@ -816,6 +824,5 @@ Options:
 	go runLoop(&pipestanceBox, stepSecs, config.VdrMode, noExit)
 
 	// Let daemons take over.
-	done := make(chan bool)
-	<-done
+	runtime.Goexit()
 }
