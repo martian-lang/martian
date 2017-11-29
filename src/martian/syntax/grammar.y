@@ -44,7 +44,7 @@ func unquote(qs string) string {
 }
 
 %type <pre_dir>   preprocess_directives
-%type <val>       id_list type help type src_lang type outname
+%type <val>       id id_list type help type src_lang type outname
 %type <modifiers> modifiers
 %type <arr>       arr_list
 %type <dec>       dec stage
@@ -67,10 +67,11 @@ func unquote(qs string) string {
 %token SKIP COMMENT INVALID
 %token SEMICOLON COLON COMMA EQUALS
 %token LBRACKET RBRACKET LPAREN RPAREN LBRACE RBRACE
-%token FILETYPE STAGE PIPELINE CALL SWEEP SPLIT USING SELF RETURN
+%token SWEEP RETURN SELF
+%token <val> FILETYPE STAGE PIPELINE CALL SPLIT USING
 %token <val> LOCAL PREFLIGHT VOLATILE DISABLED
 %token IN OUT SRC AS
-%token THREADS MEM_GB SPECIAL
+%token <val> THREADS MEM_GB SPECIAL
 %token <val> ID LITSTRING NUM_FLOAT NUM_INT DOT
 %token <val> PY GO SH EXEC COMPILED
 %token <val> MAP INT STRING FLOAT PATH BOOL TRUE FALSE NULL DEFAULT
@@ -136,13 +137,12 @@ dec
     : FILETYPE id_list SEMICOLON
         {{ $$ = &UserType{NewAstNode($<loc>2, $<locmap>2), $2} }}
     | stage
-        {{ $$ = $1 }}
-    | PIPELINE ID LPAREN in_param_list out_param_list RPAREN LBRACE call_stm_list return_stm RBRACE
+    | PIPELINE id LPAREN in_param_list out_param_list RPAREN LBRACE call_stm_list return_stm RBRACE
         {{ $$ = &Pipeline{NewAstNode($<loc>2, $<locmap>2), $2, $4, $5, $8, &Callables{[]Callable{}, map[string]Callable{}}, $9} }}
     ;
 
 stage
-    : STAGE ID LPAREN in_param_list out_param_list src_stm RPAREN split_param_list resources
+    : STAGE id LPAREN in_param_list out_param_list src_stm RPAREN split_param_list resources
         {{ $$ = &Stage{
                 Node: NewAstNode($<loc>2, $<locmap>2),
                 Id:  $2,
@@ -195,9 +195,9 @@ resource_list
     ;
 
 id_list
-    : id_list DOT ID
+    : id_list DOT id
         {{ $$ = $1 + $2 + $3 }}
-    | ID
+    | id
     ;
 
 arr_list
@@ -218,9 +218,9 @@ in_param_list
     ;
 
 in_param
-    : IN type arr_list ID help COMMA
+    : IN type arr_list id help COMMA
         {{ $$ = &InParam{NewAstNode($<loc>1, $<locmap>1), $2, $3, $4, unquote($5), false } }}
-    | IN type arr_list ID COMMA
+    | IN type arr_list id COMMA
         {{ $$ = &InParam{NewAstNode($<loc>1, $<locmap>1), $2, $3, $4, "", false } }}
     ;
 
@@ -241,11 +241,11 @@ out_param
         {{ $$ = &OutParam{NewAstNode($<loc>1, $<locmap>1), $2, $3, "default", unquote($4), "", false } }}
     | OUT type arr_list help outname COMMA
         {{ $$ = &OutParam{NewAstNode($<loc>1, $<locmap>1), $2, $3, "default", unquote($4), unquote($5), false } }}
-    | OUT type arr_list ID COMMA
+    | OUT type arr_list id COMMA
         {{ $$ = &OutParam{NewAstNode($<loc>1, $<locmap>1), $2, $3, $4, "", "", false } }}
-    | OUT type arr_list ID help COMMA
+    | OUT type arr_list id help COMMA
         {{ $$ = &OutParam{NewAstNode($<loc>1, $<locmap>1), $2, $3, $4, unquote($5), "", false } }}
-    | OUT type arr_list ID help outname COMMA
+    | OUT type arr_list id help outname COMMA
         {{ $$ = &OutParam{NewAstNode($<loc>1, $<locmap>1), $2, $3, $4, unquote($5), unquote($6), false } }}
     ;
 
@@ -257,12 +257,10 @@ src_stm
 
 help
     : LITSTRING
-        {{ $$ = $1 }}
     ;
 
 outname
     : LITSTRING
-        {{ $$ = $1 }}
     ;
 
 type
@@ -311,9 +309,9 @@ call_stm_list
     ;
 
 call_stm
-    : CALL modifiers ID LPAREN bind_stm_list RPAREN
+    : CALL modifiers id LPAREN bind_stm_list RPAREN
         {{ $$ = &CallStm{NewAstNode($<loc>1, $<locmap>1), $2, $3, $3, $5} }}
-    | CALL modifiers ID AS ID LPAREN bind_stm_list RPAREN
+    | CALL modifiers id AS id LPAREN bind_stm_list RPAREN
         {{ $$ = &CallStm{NewAstNode($<loc>1, $<locmap>1), $2, $5, $3, $7} }}
     | call_stm USING LPAREN modifier_stm_list RPAREN
         {{
@@ -364,11 +362,11 @@ bind_stm_list
     ;
 
 bind_stm
-    : ID EQUALS exp COMMA
+    : id EQUALS exp COMMA
         {{ $$ = &BindStm{NewAstNode($<loc>1, $<locmap>1), $1, $3, false, ""} }}
-    | ID EQUALS SWEEP LPAREN exp_list COMMA RPAREN COMMA
+    | id EQUALS SWEEP LPAREN exp_list COMMA RPAREN COMMA
         {{ $$ = &BindStm{NewAstNode($<loc>1, $<locmap>1), $1, &ValExp{Node:NewAstNode($<loc>1, $<locmap>1), Kind: KindArray, Value: $5}, true, ""} }}
-    | ID EQUALS SWEEP LPAREN exp_list RPAREN COMMA
+    | id EQUALS SWEEP LPAREN exp_list RPAREN COMMA
         {{ $$ = &BindStm{NewAstNode($<loc>1, $<locmap>1), $1, &ValExp{Node:NewAstNode($<loc>1, $<locmap>1), Kind: KindArray, Value: $5}, true, ""} }}
     ;
 
@@ -391,9 +389,7 @@ kvpair_list
 
 exp
     : val_exp
-        {{ $$ = $1 }}
     | ref_exp
-        {{ $$ = $1 }}
 
 val_exp
     : LBRACKET exp_list RBRACKET
@@ -421,7 +417,6 @@ val_exp
     | LITSTRING
         {{ $$ = &ValExp{Node:NewAstNode($<loc>1, $<locmap>1), Kind: KindString, Value: unquote($1)} }}
     | bool_exp
-        {{ $$ = $1 }}
     | NULL
         {{ $$ = &ValExp{Node:NewAstNode($<loc>1, $<locmap>1), Kind: KindNull, Value: nil} }}
     ;
@@ -433,11 +428,27 @@ bool_exp
         {{ $$ = &ValExp{Node:NewAstNode($<loc>1, $<locmap>1), Kind: KindBool, Value: false} }}
 
 ref_exp
-    : ID DOT ID
+    : id DOT id
         {{ $$ = &RefExp{NewAstNode($<loc>1, $<locmap>1), KindCall, $1, $3} }}
-    | ID
+    | id
         {{ $$ = &RefExp{NewAstNode($<loc>1, $<locmap>1), KindCall, $1, "default"} }}
-    | SELF DOT ID
+    | SELF DOT id
         {{ $$ = &RefExp{NewAstNode($<loc>1, $<locmap>1), KindSelf, $3, ""} }}
+    ;
+
+id
+    : ID
+    | THREADS
+    | MEM_GB
+    | SPECIAL
+    | DISABLED
+    | LOCAL
+    | PREFLIGHT
+    | VOLATILE
+    | EXEC
+    | COMPILED
+    | FILETYPE
+    | SPLIT
+    | USING
     ;
 %%

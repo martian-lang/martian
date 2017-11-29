@@ -13,10 +13,11 @@ import (
 func testGood(t *testing.T, src string) *Ast {
 	t.Helper()
 	if ast, err := yaccParse(src, nil); err != nil {
-		t.Fatalf("Failed to parse: %v", err)
+		t.Fatalf("ParseError: unexpected token '%s' at line %d:%d in\n%s",
+			err.token, err.loc, err.pos, err.src)
 		return nil
 	} else if err := ast.compile(nil, false); err != nil {
-		t.Errorf("Failed to compile src: %v", err)
+		t.Errorf("Failed to compile src: %v\n%s", err, err.Error())
 		return nil
 	} else {
 		return ast
@@ -33,7 +34,8 @@ func testBadGrammar(t *testing.T, src string) {
 func testBadCompile(t *testing.T, src string) {
 	t.Helper()
 	if ast, err := yaccParse(src, nil); err != nil {
-		t.Fatalf("Failed to parse: %v", err)
+		t.Fatalf("ParseError: unexpected token '%s' at line %d:%d in\n%s",
+			err.token, err.loc, err.pos, err.src)
 	} else if err := ast.compile(nil, false); err == nil {
 		t.Error("Expected failure to compile.")
 	}
@@ -70,6 +72,8 @@ func TestBinding(t *testing.T) {
 	testGood(t, `
 stage SUM_SQUARES(
     in  float[] values,
+    in  int     threads,
+    in  bool    local,
     out float   sum,
     src py      "stages/sum_squares",
 )
@@ -86,7 +90,9 @@ pipeline SUM_SQUARE_PIPELINE(
 )
 {
     call SUM_SQUARES(
-        values = self.values,
+        values  = self.values,
+        threads = 1,
+        local   = false,
     )
     call REPORT(
         values = self.values,
@@ -819,7 +825,7 @@ pipeline SQ_PIPE(
     call preflight SQUARE(
         value = 1,
     )
-	return ()
+    return ()
 }
 `); ast != nil {
 		if mods := ast.Pipelines[0].Calls[0].Modifiers; mods == nil {
@@ -848,7 +854,7 @@ pipeline SQ_PIPE(
     call preflight volatile SQUARE(
         value = 1,
     )
-	return ()
+    return ()
 }
 `); ast != nil {
 		if mods := ast.Pipelines[0].Calls[0].Modifiers; mods == nil {
@@ -883,10 +889,10 @@ pipeline SQ_PIPE(
     call SQUARE(
         value = 1,
     ) using (
-		volatile  = true,
-		preflight = true,
-	)
-	return ()
+        volatile  = true,
+        preflight = true,
+    )
+    return ()
 }
 `); ast != nil {
 		if mods := ast.Pipelines[0].Calls[0].Modifiers; mods == nil {
@@ -920,10 +926,10 @@ pipeline SQ_PIPE(
         value = 1,
     ) using (
         disabled  = self.disable_square,
-		volatile  = true,
-		preflight = false,
-	)
-	return ()
+        volatile  = true,
+        preflight = false,
+    )
+    return ()
 }
 `); ast != nil {
 		if mods := ast.Pipelines[0].Calls[0].Modifiers; mods == nil {
@@ -962,10 +968,10 @@ pipeline SQ_PIPE(
         value = 1,
     ) using (
         disabled  = self.disable_square,
-		volatile  = true,
-		preflight = false,
-	)
-	return ()
+        volatile  = true,
+        preflight = false,
+    )
+    return ()
 }
 `)
 }
@@ -983,10 +989,10 @@ pipeline SQ_PIPE()
         value = 1,
     ) using (
         disabled  = true,
-		volatile  = true,
-		preflight = false,
-	)
-	return ()
+        volatile  = true,
+        preflight = false,
+    )
+    return ()
 }
 `)
 }
@@ -1004,8 +1010,8 @@ pipeline SQ_PIPE(
 {
     call SQUARE(
         value = self.value,
-	)
-	return ()
+    )
+    return ()
 }
 
 call SQ_PIPE(
@@ -1027,8 +1033,8 @@ pipeline SQ_PIPE(
 {
     call SQUARE(
         value = self.value,
-	)
-	return ()
+    )
+    return ()
 }
 
 call SQ_PIPE(
