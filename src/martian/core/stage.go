@@ -571,7 +571,8 @@ func (self *Fork) step() {
 							chunk.mkdirs()
 						}
 						self.metadatasCache = nil
-					} else {
+					}
+					if len(self.chunks) > 0 {
 						bindings := getBindings()
 						for _, chunk := range self.chunks {
 							chunk.step(bindings)
