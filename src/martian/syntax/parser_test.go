@@ -990,3 +990,51 @@ pipeline SQ_PIPE()
 }
 `)
 }
+
+func TestTopCall(t *testing.T) {
+	testGood(t, `
+stage SQUARE(
+    in  int   value,
+    src py    "stages/square",
+)
+
+pipeline SQ_PIPE(
+    in int value,
+)
+{
+    call SQUARE(
+        value = self.value,
+	)
+	return ()
+}
+
+call SQ_PIPE(
+    value = 1,
+)
+`)
+}
+
+func TestDisableTopCall(t *testing.T) {
+	testBadGrammar(t, `
+stage SQUARE(
+    in  int   value,
+    src py    "stages/square",
+)
+
+pipeline SQ_PIPE(
+    in int value,
+)
+{
+    call SQUARE(
+        value = self.value,
+	)
+	return ()
+}
+
+call SQ_PIPE(
+    value = 1,
+) using (
+    disabled = true,
+)
+`)
+}

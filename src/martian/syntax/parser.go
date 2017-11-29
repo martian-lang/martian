@@ -675,8 +675,21 @@ func (global *Ast) compileCall() error {
 		if !ok {
 			return global.err(global.Call, "ScopeNameError: '%s' is not defined in this scope", global.Call.Id)
 		}
-		if err := global.Call.Bindings.compile(global, callable, callable.GetInParams()); err != nil {
+		if err := global.Call.Bindings.compile(global, nil, callable.GetInParams()); err != nil {
 			return err
+		}
+		if err := global.Call.Modifiers.compile(global, nil, global.Call); err != nil {
+			return err
+		}
+		if global.Call.Modifiers.Bindings != nil {
+			if _, ok := global.Call.Modifiers.Bindings.Table[disabled]; ok {
+				return global.err(global.Call,
+					"UnsupportedTagError: Top-level call cannot be disabled.")
+			}
+			if global.Call.Modifiers.Preflight {
+				return global.err(global.Call,
+					"UnsupportedTagError: Top-level call cannot be preflight.")
+			}
 		}
 	}
 	return nil
