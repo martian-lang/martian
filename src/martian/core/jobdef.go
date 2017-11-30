@@ -20,6 +20,20 @@ type JobResources struct {
 	Special string `json:"__special,omitempty"`
 }
 
+func (self *JobResources) ToMap() ArgumentMap {
+	r := make(ArgumentMap, 3)
+	if self.Threads != 0 {
+		r["__threads"] = self.Threads
+	}
+	if self.MemGB != 0 {
+		r["__mem_gb"] = self.MemGB
+	}
+	if self.Special != "" {
+		r["__special"] = self.Special
+	}
+	return r
+}
+
 func (self *JobResources) updateFromArgs(args ArgumentMap) error {
 	if args == nil {
 		return nil
@@ -162,12 +176,7 @@ func (self *ChunkDef) MarshalJSON() ([]byte, error) {
 		}
 		return json.Marshal(self.Args)
 	}
-	args := make(map[string]interface{}, len(self.Args)+3)
-	if b, err := json.Marshal(self.Resources); err != nil {
-		return nil, err
-	} else if err := json.Unmarshal(b, &args); err != nil {
-		return nil, err
-	}
+	args := self.Resources.ToMap()
 	for k, v := range self.Args {
 		args[k] = v
 	}

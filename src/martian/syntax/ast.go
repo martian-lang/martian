@@ -17,10 +17,20 @@ type (
 		Loc          int
 		Fname        string
 		IncludeStack []string
+		Comments     []string
 	}
 
 	AstNodable interface {
+		nodeContainer
 		getNode() *AstNode
+	}
+
+	nodeContainer interface {
+		getSubnodes() []AstNodable
+		// If true, indicates that the first subnode of this node should
+		// get the comments which were attached to this node.  This is true
+		// for container nodes such as Params and BindStms.
+		inheritComments() bool
 	}
 
 	Type interface {
@@ -37,11 +47,12 @@ type (
 	}
 
 	Dec interface {
+		AstNodable
 		getDec()
 	}
 
 	Callable interface {
-		getNode() *AstNode
+		AstNodable
 		GetId() string
 		GetInParams() *Params
 		GetOutParams() *Params
@@ -99,7 +110,7 @@ type (
 	}
 
 	Param interface {
-		getNode() *AstNode
+		AstNodable
 		getMode() string
 		GetTname() string
 		GetArrayDim() int
@@ -174,7 +185,7 @@ type (
 
 	Exp interface {
 		getExp()
-		getNode() *AstNode
+		AstNodable
 		getKind() ExpKind
 		resolveType(*Ast, Callable) ([]string, int, error)
 		format(prefix string) string
@@ -270,12 +281,41 @@ func NewAstNode(loc int, locmap []FileLoc) AstNode {
 		if loc >= len(locmap) {
 			loc = len(locmap) - 1
 		}
-		return AstNode{locmap[loc].loc, locmap[loc].fname, locmap[loc].includedFrom}
+		return AstNode{locmap[loc].loc, locmap[loc].fname, locmap[loc].includedFrom, nil}
 	} else {
 		// locmap will be empty when yaccParse is called from mrf
-		return AstNode{loc, "", nil}
+		return AstNode{loc, "", nil, nil}
 	}
 }
+
+func (s *Ast) inheritComments() bool { return false }
+func (s *Ast) getSubnodes() []AstNodable {
+	subs := make([]AstNodable, 0,
+		1+len(s.UserTypes)+
+			len(s.Callables.List)+
+			len(s.preprocess))
+	for _, n := range s.preprocess {
+		subs = append(subs, n)
+	}
+	for _, n := range s.UserTypes {
+		subs = append(subs, n)
+	}
+	for _, n := range s.Callables.List {
+		subs = append(subs, n)
+	}
+	if s.Call != nil {
+		subs = append(subs, s.Call)
+	}
+	return subs
+}
+
+func (s *AstNode) getNode() *AstNode         { return s }
+func (s *AstNode) getSubnodes() []AstNodable { return nil }
+func (s *AstNode) inheritComments() bool     { return false }
+
+func (s *preprocessorDirective) getNode() *AstNode         { return &s.Node }
+func (s *preprocessorDirective) getSubnodes() []AstNodable { return nil }
+func (s *preprocessorDirective) inheritComments() bool     { return false }
 
 // Interface whitelist for Dec, Param, Exp, and Stm implementors.
 // Patterned after code in Go's ast.go.
@@ -289,11 +329,54 @@ func (s *BuiltinType) GetId() string  { return s.Id }
 func (s *UserType) GetId() string     { return s.Id }
 func (s *UserType) getNode() *AstNode { return &s.Node }
 
+func (s *UserType) inheritComments() bool     { return false }
+func (s *UserType) getSubnodes() []AstNodable { return nil }
+
 func (s *Stage) GetId() string         { return s.Id }
 func (s *Stage) getNode() *AstNode     { return &s.Node }
 func (s *Stage) GetInParams() *Params  { return s.InParams }
 func (s *Stage) GetOutParams() *Params { return s.OutParams }
 func (s *Stage) Type() string          { return "stage" }
+
+func (s *Stage) inheritComments() bool { return false }
+func (s *Stage) getSubnodes() []AstNodable {
+	subs := make([]AstNodable, 0, 2+
+		len(s.InParams.List)+len(s.OutParams.List)+
+		len(s.ChunkIns.List)+len(s.ChunkOuts.List))
+	for _, n := range s.InParams.List {
+		subs = append(subs, n)
+	}
+	for _, n := range s.OutParams.List {
+		subs = append(subs, n)
+	}
+	subs = append(subs, s.Src)
+	for _, n := range s.ChunkIns.List {
+		subs = append(subs, n)
+	}
+	for _, n := range s.ChunkOuts.List {
+		subs = append(subs, n)
+	}
+	if s.Resources != nil {
+		subs = append(subs, s.Resources)
+	}
+	return subs
+}
+
+func (s *Resources) getNode() *AstNode     { return &s.Node }
+func (s *Resources) inheritComments() bool { return false }
+func (s *Resources) getSubnodes() []AstNodable {
+	subs := make([]AstNodable, 0, 3)
+	if s.ThreadNode != nil {
+		subs = append(subs, s.ThreadNode)
+	}
+	if s.MemNode != nil {
+		subs = append(subs, s.MemNode)
+	}
+	if s.SpecialNode != nil {
+		subs = append(subs, s.SpecialNode)
+	}
+	return subs
+}
 
 func (s *Pipeline) GetId() string         { return s.Id }
 func (s *Pipeline) getNode() *AstNode     { return &s.Node }
@@ -301,7 +384,33 @@ func (s *Pipeline) GetInParams() *Params  { return s.InParams }
 func (s *Pipeline) GetOutParams() *Params { return s.OutParams }
 func (s *Pipeline) Type() string          { return "pipeline" }
 
+func (s *Pipeline) inheritComments() bool { return false }
+func (s *Pipeline) getSubnodes() []AstNodable {
+	subs := make([]AstNodable, 0, 1+
+		len(s.InParams.List)+len(s.OutParams.List)+len(s.Calls))
+	for _, n := range s.InParams.List {
+		subs = append(subs, n)
+	}
+	for _, n := range s.OutParams.List {
+		subs = append(subs, n)
+	}
+	for _, n := range s.Calls {
+		subs = append(subs, n)
+	}
+	subs = append(subs, s.Ret)
+	return subs
+}
+
 func (s *CallStm) getNode() *AstNode { return &s.Node }
+
+func (s *CallStm) inheritComments() bool { return false }
+func (s *CallStm) getSubnodes() []AstNodable {
+	if s.Modifiers != nil && s.Modifiers.Bindings != nil {
+		return []AstNodable{s.Bindings, s.Modifiers.Bindings}
+	} else {
+		return []AstNodable{s.Bindings}
+	}
+}
 
 func (s *InParam) getNode() *AstNode  { return &s.Node }
 func (s *InParam) getMode() string    { return "in" }
@@ -313,6 +422,11 @@ func (s *InParam) GetOutName() string { return "" }
 func (s *InParam) IsFile() bool       { return s.Isfile }
 func (s *InParam) setIsFile(b bool)   { s.Isfile = b }
 
+func (s *InParam) inheritComments() bool { return false }
+func (s *InParam) getSubnodes() []AstNodable {
+	return nil
+}
+
 func (s *OutParam) getNode() *AstNode  { return &s.Node }
 func (s *OutParam) getMode() string    { return "out" }
 func (s *OutParam) GetTname() string   { return s.Tname }
@@ -323,12 +437,62 @@ func (s *OutParam) GetOutName() string { return s.OutName }
 func (s *OutParam) IsFile() bool       { return s.Isfile }
 func (s *OutParam) setIsFile(b bool)   { s.Isfile = b }
 
+func (s *OutParam) inheritComments() bool { return false }
+func (s *OutParam) getSubnodes() []AstNodable {
+	return nil
+}
+
+func (s *SrcParam) getNode() *AstNode         { return &s.Node }
+func (s *SrcParam) inheritComments() bool     { return false }
+func (s *SrcParam) getSubnodes() []AstNodable { return nil }
+
 func (s *ReturnStm) getNode() *AstNode { return &s.Node }
 func (s *BindStm) getNode() *AstNode   { return &s.Node }
 func (s *BindStms) getNode() *AstNode  { return &s.Node }
 
+func (s *ReturnStm) inheritComments() bool { return false }
+func (s *ReturnStm) getSubnodes() []AstNodable {
+	return []AstNodable{s.Bindings}
+}
+
+func (s *BindStm) inheritComments() bool { return false }
+func (s *BindStm) getSubnodes() []AstNodable {
+	return []AstNodable{s.Exp}
+}
+
+func (s *BindStms) inheritComments() bool { return true }
+func (s *BindStms) getSubnodes() []AstNodable {
+	subs := make([]AstNodable, 0, len(s.List))
+	for _, n := range s.List {
+		subs = append(subs, n)
+	}
+	return subs
+}
+
 func (s *ValExp) getNode() *AstNode { return &s.Node }
 func (s *ValExp) getKind() ExpKind  { return s.Kind }
 
+func (s *ValExp) inheritComments() bool { return false }
+func (s *ValExp) getSubnodes() []AstNodable {
+	if s.Kind == KindArray {
+		if arr, ok := s.Value.([]Exp); !ok {
+			return nil
+		} else {
+			subs := make([]AstNodable, 0, len(arr))
+			for _, n := range arr {
+				subs = append(subs, n)
+			}
+			return subs
+		}
+	} else {
+		return nil
+	}
+}
+
 func (s *RefExp) getNode() *AstNode { return &s.Node }
 func (s *RefExp) getKind() ExpKind  { return s.Kind }
+
+func (s *RefExp) inheritComments() bool { return false }
+func (s *RefExp) getSubnodes() []AstNodable {
+	return nil
+}

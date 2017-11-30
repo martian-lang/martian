@@ -695,6 +695,47 @@ func (global *Ast) compileCall() error {
 	return nil
 }
 
+func attachComments(comments []*commentBlock, node *AstNode) []*commentBlock {
+	nodeComments := make([]*commentBlock, 0, len(comments))
+	loc := node.Loc
+	for len(comments) > 0 && comments[0].Loc <= loc {
+		if len(nodeComments) > 0 &&
+			nodeComments[len(nodeComments)-1].Loc <
+				comments[0].Loc-1 {
+			// If a line was skipped, discard the comments before
+			// the skipped line, only associating the ones which
+			// didn't skip a line.
+			nodeComments = nil
+		}
+		nodeComments = append(nodeComments, comments[0])
+		comments = comments[1:]
+	}
+	if len(nodeComments) > 0 &&
+		nodeComments[len(nodeComments)-1].Loc < node.Loc-1 {
+		// If there was a blank non-comment line between the last comment
+		// block and this node, ignore the comment block.
+		nodeComments = nil
+	}
+	for _, c := range nodeComments {
+		node.Comments = append(node.Comments, c.Value)
+	}
+	return comments
+}
+
+func compileComments(comments []*commentBlock, node nodeContainer) []*commentBlock {
+	nodes := node.getSubnodes()
+	for _, n := range nodes {
+		comments = attachComments(comments, n.getNode())
+		comments = compileComments(comments, n)
+	}
+	if len(nodes) > 0 && node.inheritComments() {
+		nodes[0].getNode().Comments = append(
+			node.(AstNodable).getNode().Comments,
+			nodes[0].getNode().Comments...)
+	}
+	return comments
+}
+
 func (global *Ast) compile(stagecodePaths []string, checkSrcPath bool) error {
 	if err := global.compileTypes(); err != nil {
 		return err
@@ -720,6 +761,8 @@ func (global *Ast) compile(stagecodePaths []string, checkSrcPath bool) error {
 	if err := global.compileCall(); err != nil {
 		return err
 	}
+
+	compileComments(global.comments, global)
 
 	return nil
 }

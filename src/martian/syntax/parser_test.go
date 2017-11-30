@@ -42,9 +42,14 @@ func testBadCompile(t *testing.T, src string) {
 }
 
 func TestSimplePipe(t *testing.T) {
-	testGood(t, `
+	if ast := testGood(t, `
+# File comment
+
+# Stage comment
+# This describes the stage.
 stage SUM_SQUARES(
     in  float[] values,
+    # sum comment
     out float   sum,
     src py      "stages/sum_squares",
 )
@@ -65,7 +70,39 @@ pipeline SUM_SQUARE_PIPELINE(
 call SUM_SQUARE_PIPELINE(
     values = [1.0, 2.0, 3.0],
 )
-`)
+`); ast != nil {
+		if s := ast.Callables.Table["SUM_SQUARES"]; s == nil {
+			t.Error("No callable named SUM_SQUARES found")
+		} else {
+			if len(s.getNode().Comments) != 2 {
+				t.Errorf("Incorrect stage comment count %d", len(s.getNode().Comments))
+			} else {
+				if s.getNode().Comments[0] != "# Stage comment" {
+					t.Errorf("Expected comment '# Stage comment', got %s",
+						s.getNode().Comments[0])
+				}
+				if s.getNode().Comments[1] != "# This describes the stage." {
+					t.Errorf("Expected comment '# This describes the stage.', got %s",
+						s.getNode().Comments[1])
+				}
+			}
+			o := s.(*Stage).OutParams
+			if len(o.Table) != 1 {
+				t.Errorf("Incorrect out param count %d", len(o.Table))
+			} else if p := o.Table["sum"]; p == nil {
+				t.Error("No out param 'sum' found")
+			} else {
+				if len(p.getNode().Comments) != 1 {
+					t.Errorf("Incorrect param comment count %d", len(p.getNode().Comments))
+				} else {
+					if p.getNode().Comments[0] != "# sum comment" {
+						t.Errorf("Expected comment '# sum comment', got %s",
+							p.getNode().Comments[0])
+					}
+				}
+			}
+		}
+	}
 }
 
 func TestBinding(t *testing.T) {
