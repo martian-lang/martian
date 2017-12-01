@@ -7,8 +7,14 @@
 package syntax
 
 import (
+	"os"
 	"testing"
 )
+
+func TestMain(m *testing.M) {
+	SetEnforcementLevel(EnforceError)
+	os.Exit(m.Run())
+}
 
 func testGood(t *testing.T, src string) *Ast {
 	t.Helper()
@@ -521,6 +527,45 @@ stage SUM_SQUARES(
 ) using (
     threads = 2,
     mem_gb = 1,
+)
+`)
+}
+
+func TestSplit(t *testing.T) {
+	testGood(t, `
+stage SUM_SQUARES(
+    in  float[] values,
+    out float   sum,
+    src py      "stages/sum_squares",
+) split (
+    in  int     foo,
+    out int     bar,
+)
+`)
+}
+
+func TestSplitDuplicateIn(t *testing.T) {
+	testBadCompile(t, `
+stage SUM_SQUARES(
+    in  float[] values,
+    out float   sum,
+    src py      "stages/sum_squares",
+) split (
+    in  int     values,
+    out int     bar,
+)
+`)
+}
+
+func TestSplitDuplicateOut(t *testing.T) {
+	testBadCompile(t, `
+stage SUM_SQUARES(
+    in  float[] values,
+    out float   sum,
+    src py      "stages/sum_squares",
+) split (
+    in  int     foo,
+    out int     sum,
 )
 `)
 }

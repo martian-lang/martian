@@ -42,6 +42,7 @@ type Node struct {
 	path               string
 	metadata           *Metadata
 	outparams          *syntax.Params
+	chunkIns           *syntax.Params
 	chunkOuts          *syntax.Params
 	resources          *JobResources
 	argbindings        map[string]*Binding

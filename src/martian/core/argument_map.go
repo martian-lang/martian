@@ -116,7 +116,21 @@ func checkType(val interface{}, typename string, arrayDim int,
 //
 // Hard errors are returned as the first parameter.  "soft" error messages
 // are returned in the second.
-func (self ArgumentMap) Validate(expected *syntax.Params, isInput bool) (error, string) {
+//
+// Optional params are values which are permitted to be in the argument map
+// (if they are of the correct type) but which are not required to be present.
+// For example, for a stage defined as
+//
+//     stage STAGE(
+//         in  int a,
+//         out int b,
+//     ) split (
+//         in  int c,
+//         out int d,
+//     )
+//
+// then in the outputs from the chunks, d is required but b is optional.
+func (self ArgumentMap) Validate(expected *syntax.Params, isInput bool, optional ...*syntax.Params) (error, string) {
 	var result, alarms bytes.Buffer
 	for _, param := range expected.Table {
 		if val, ok := self[param.GetId()]; !ok {
@@ -143,12 +157,33 @@ func (self ArgumentMap) Validate(expected *syntax.Params, isInput bool) (error, 
 			}
 		}
 	}
-	for key := range self {
+	for key, val := range self {
 		if _, ok := expected.Table[key]; !ok {
-			if isInput {
-				fmt.Fprintf(&result, "Unexpected parameter '%s'\n", key)
-			} else {
-				fmt.Fprintf(&alarms, "Unexpected output '%s'\n", key)
+			isOptional := false
+			for _, params := range optional {
+				if param, ok := params.Table[key]; ok {
+					isOptional = true
+					if val != nil && !checkType(val, param.GetTname(), param.GetArrayDim(), &alarms) {
+						if isInput {
+							fmt.Fprintf(&result,
+								"Optional %s input parameter '%s' has incorrect type %v\n",
+								param.GetTname(), param.GetId(),
+								reflect.TypeOf(val))
+						} else {
+							fmt.Fprintf(&result,
+								"Optional %s output value '%s' has incorrect type %v\n",
+								param.GetTname(), param.GetId(),
+								reflect.TypeOf(val))
+						}
+					}
+				}
+			}
+			if !isOptional {
+				if isInput {
+					fmt.Fprintf(&result, "Unexpected parameter '%s'\n", key)
+				} else {
+					fmt.Fprintf(&alarms, "Unexpected output '%s'\n", key)
+				}
 			}
 		}
 	}

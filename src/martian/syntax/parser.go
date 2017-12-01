@@ -424,6 +424,21 @@ func (stage *Stage) compile(global *Ast, stagecodePaths []string, checkSrcPath b
 		if err := stage.ChunkIns.compile(global); err != nil {
 			errs = append(errs, err)
 		}
+		if GetEnforcementLevel() > EnforceDisable {
+			for paramName := range stage.ChunkIns.Table {
+				if _, ok := stage.InParams.Table[paramName]; ok {
+					if GetEnforcementLevel() >= EnforceError {
+						errs = append(errs, global.err(stage,
+							"DuplicateNameError: '%s' appears as both a stage and split input",
+							paramName))
+					} else {
+						util.PrintInfo("compile",
+							"WARNING: '%s' appears as both a stage and split input for stage %s",
+							paramName, stage.Id)
+					}
+				}
+			}
+		}
 	}
 	if stage.ChunkOuts != nil {
 		if err := stage.ChunkOuts.compile(global); err != nil {
@@ -433,7 +448,7 @@ func (stage *Stage) compile(global *Ast, stagecodePaths []string, checkSrcPath b
 		for _, param := range stage.ChunkOuts.List {
 			if _, ok := stage.OutParams.Table[param.GetId()]; ok {
 				errs = append(errs, global.err(param,
-					"DuplicateNameError: parameter name '%s' of stage %s is used for both chunk and stage outs.",
+					"DuplicateNameError: parameter name '%s' of stage %s is used for both chunk and stage outs",
 					param.GetId(), stage.Id))
 			}
 		}

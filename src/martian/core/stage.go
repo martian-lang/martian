@@ -98,6 +98,68 @@ func NewChunk(fork *Fork, index int,
 	return self
 }
 
+func (self *Chunk) verifyDef() {
+	if syntax.GetEnforcementLevel() <= syntax.EnforceDisable {
+		return
+	}
+	inParams := self.fork.node.chunkIns
+	if inParams == nil {
+		return
+	}
+	if self.chunkDef.Args == nil {
+		self.metadata.WriteRaw(Errors, "Chunk def args were nil.")
+		return
+	}
+	if err, alarms := self.chunkDef.Args.Validate(inParams, true); err != nil {
+		self.metadata.WriteRaw(Errors, err.Error()+alarms)
+	} else if alarms != "" {
+		switch syntax.GetEnforcementLevel() {
+		case syntax.EnforceError:
+			self.metadata.WriteRaw(Errors, alarms)
+		case syntax.EnforceAlarm:
+			self.metadata.AppendAlarm(alarms)
+		case syntax.EnforceLog:
+			util.PrintInfo("runtime",
+				"(outputs)         %s: WARNING: invalid chunk definition\n%s",
+				self.fork.fqname, alarms)
+		}
+	}
+}
+
+func (self *Chunk) verifyOutput(output interface{}) {
+	if syntax.GetEnforcementLevel() <= syntax.EnforceDisable {
+		return
+	}
+	if len(self.fork.node.outparams.List) == 0 &&
+		(self.fork.node.chunkOuts == nil ||
+			len(self.fork.node.chunkOuts.List) == 0) {
+		return
+	}
+	if output == nil {
+		self.metadata.WriteRaw(Errors, "Output not found.")
+	}
+	if outputMap, ok := output.(map[string]interface{}); !ok {
+		self.metadata.WriteRaw(Errors, "Output was not a map.")
+	} else {
+		outParams := self.fork.node.chunkOuts
+		if err, alarms := ArgumentMap(outputMap).Validate(
+			outParams, true, self.fork.node.outparams); err != nil {
+			self.metadata.WriteRaw(Errors, err.Error()+alarms)
+		} else if alarms != "" {
+			switch syntax.GetEnforcementLevel() {
+			case syntax.EnforceError:
+				self.metadata.WriteRaw(Errors, alarms)
+			case syntax.EnforceAlarm:
+				self.metadata.AppendAlarm(alarms)
+			case syntax.EnforceLog:
+				util.PrintInfo("runtime",
+					"(outputs)         %s: WARNING: invalid chunk definition\n%s",
+					self.fork.fqname, alarms)
+			}
+		}
+	}
+}
+
 func (self *Chunk) mkdirs() error {
 	if state := self.getState(); !disableUniquification &&
 		state != Complete {
@@ -602,6 +664,7 @@ func (self *Fork) step() {
 							chunk := NewChunk(self, i, chunkDef, width)
 							self.chunks = append(self.chunks, chunk)
 							chunk.mkdirs()
+							chunk.verifyDef()
 						}
 						self.metadatasCache = nil
 					}
@@ -647,6 +710,7 @@ func (self *Fork) step() {
 				for _, chunk := range self.chunks {
 					outs := chunk.metadata.read(OutsFile)
 					chunkOuts = append(chunkOuts, outs)
+					chunk.verifyOutput(outs)
 				}
 				self.join_metadata.Write(ChunkOutsFile, chunkOuts)
 				self.join_metadata.Write(OutsFile, makeOutArgs(self.node.outparams, self.join_metadata.curFilesPath, false))
