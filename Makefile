@@ -27,13 +27,13 @@ bin/goyacc: src/vendor/golang.org/x/tools/cmd/goyacc/yacc.go
 src/martian/syntax/grammar.go: bin/goyacc src/martian/syntax/grammar.y
 	bin/goyacc -p "mm" -o src/martian/syntax/grammar.go src/martian/syntax/grammar.y && rm y.output
 
-test/split_test_go/stages/sum_squares/types.go: PATH:=$(GOPATH)/bin:$(PATH)
-test/split_test_go/stages/sum_squares/types.go: test/split_test_go/pipeline_stages.mro mro2go
-	go generate test/split_test_go/stages/sum_squares/*
+src/martian/test/sum_squares/types.go: PATH:=$(GOPATH)/bin:$(PATH)
+src/martian/test/sum_squares/types.go: test/split_test_go/pipeline_stages.mro mro2go
+	go generate martian/test/sum_squares
 
-bin/sum_squares: test/split_test_go/stages/sum_squares/sum_squares.go \
-	test/split_test_go/stages/sum_squares/types.go
-	go build -o $@ $(dir $<)*
+bin/sum_squares: src/martian/test/sum_squares/sum_squares.go \
+	src/martian/test/sum_squares/types.go
+	go install $(GO_FLAGS) martian/test/sum_squares
 
 grammar: src/martian/syntax/grammar.go
 

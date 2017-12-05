@@ -1,4 +1,4 @@
-//go:generate mro2go -p main -o types.go ../../pipeline_stages.mro
+//go:generate mro2go -p main -o types.go ../sum_squares.mro
 
 package main
 
