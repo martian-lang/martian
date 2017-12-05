@@ -113,7 +113,6 @@ to generate stagestructs.go:
 		...
 	}
 */
-
 package main
 
 import (
