@@ -4,11 +4,13 @@
 # Computes the sum of each value in a separate chunk, and
 # sums the squares in the join phase.
 stage SUM_SQUARES(
-    in  float[] values,
-    out float   sum,
+    # These values are squared and then summed over.
+    in  float[] values  "The values to sum over",
+    out float   sum     "The sum of the squares of the values",
     src comp    "sum_squares",
 ) split (
     in  float   value,
+    out float   square,
 ) using (
     mem_gb = 1,
 )

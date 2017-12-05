@@ -1,3 +1,5 @@
+//go:generate mro2go -p main -o types.go ../../pipeline_stages.mro
+
 package main
 
 import (
@@ -15,27 +17,9 @@ stage SUM_SQUARES(
 )
 `
 
-type argsType struct {
-	Values []float64 `json:"values"`
-}
-
-type outsType struct {
-	Sum float64 `json:"sum"`
-}
-
-type chunkArgsType struct {
-	*core.JobResources `json:",omitempty"`
-	Value              float64 `json:"value"`
-}
-
-type joinArgsType struct {
-	core.JobResources
-	argsType
-}
-
 // Make a chunk for each value.
 func split(metadata *core.Metadata) (*core.StageDefs, error) {
-	var args argsType
+	var args SumSquaresArgs
 	if err := metadata.ReadInto(core.ArgsFile, &args); err != nil {
 		return nil, err
 	}
@@ -47,21 +31,19 @@ func split(metadata *core.Metadata) (*core.StageDefs, error) {
 		},
 	}
 	for _, val := range args.Values {
-		sd.ChunkDefs = append(sd.ChunkDefs, &core.ChunkDef{
-			Args: core.MakeArgumentMap(&chunkArgsType{
-				Value: val,
-			}),
-			Resources: &core.JobResources{
+		sd.ChunkDefs = append(sd.ChunkDefs, (&SumSquaresChunkDef{
+			Value: val,
+			JobResources: &core.JobResources{
 				Threads: 1,
 				MemGB:   1,
 			},
-		})
+		}).ToChunkDef())
 	}
 	return sd, nil
 }
 
 func chunk(metadata *core.Metadata) (interface{}, error) {
-	var args chunkArgsType
+	var args SumSquaresChunkArgs
 	if err := metadata.ReadInto(core.ArgsFile, &args); err != nil {
 		return nil, err
 	} else if err := metadata.WriteRaw(core.ProgressFile, fmt.Sprintf(
@@ -71,19 +53,19 @@ func chunk(metadata *core.Metadata) (interface{}, error) {
 	} else if err := metadata.UpdateJournal(core.ProgressFile); err != nil {
 		return nil, err
 	}
-	return &outsType{Sum: args.Value * args.Value}, nil
+	return &SumSquaresChunkOuts{Square: args.Value * args.Value}, nil
 }
 
 func join(metadata *core.Metadata) (interface{}, error) {
-	chunkOuts := make([]outsType, 0, 3)
+	chunkOuts := make([]SumSquaresChunkOuts, 0, 3)
 	if err := metadata.ReadInto(core.ChunkOutsFile, &chunkOuts); err != nil {
 		return nil, err
 	}
 	var sum float64
 	for _, out := range chunkOuts {
-		sum += out.Sum
+		sum += out.Square
 	}
-	return &outsType{Sum: sum}, nil
+	return &SumSquaresOuts{Sum: sum}, nil
 }
 
 // Note here that a single main function handles all 3 phases for the stage.

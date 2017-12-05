@@ -10,7 +10,7 @@ before_cache:
 - rm -f $HOME/.npm/anonymous-cli-metrics.json
 sudo: false
 before_script:
-- nvm install node
+- nvm install --lts node
 - npm install -g gulp
 - pip install --user pylint
 script:
