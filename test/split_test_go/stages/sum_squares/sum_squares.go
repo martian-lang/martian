@@ -14,6 +14,7 @@ stage SUM_SQUARES(
     out float   sum,
 ) split using (
     in  float   value,
+    out float   square,
 )
 `
 

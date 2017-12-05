@@ -13,7 +13,42 @@ The given source file is created, with the given package name.  For each
 stage which will be used, a structure is created which is appropriate for
 serializing the stage args and outs files.  In addition, for stages which
 split, structures are generated for stagedefs and chunk args.  These structs
-are named as <stageName><File>, where file is one of Args, Outs or ChunkArgs.
+are named as <stageName><File>, where file is one of Args, Outs, ChunkDef,
+ChunkArgs, or JoinArgs.  Stages which do not split will have only the first
+two of those.
+
+ChunkDefs objects will have a ToChunkDef method, which converts from the stage-
+specific chunk def object to a *core.ChunkDef, which is required by the go
+adapter for the return value of the split.
+
+ChunkArgs is a combination of ChunkDefs and the stage Args, and is used by the
+chunk main to deserialize its arguments.
+
+ChunkOuts is a combination of the split outs and the stage outs.  It defines
+a custom json marshaller in order to ensure the outputs are correctly
+flattened in the json representation.  It is used by the chunk main for its
+output and by the join to deserialize the chunk outputs.
+
+JoinArgs is a combination of the Args and to job resources structure.  It is
+used by the join instead of Args if the join wants to see the thread/memory
+request assigned to it by the split.
+
+A stage without a split will look like the following simple example:
+
+	func main(metadata *core.Metadata) (interface{}, error) {
+		var args StageNameArgs
+		if err := metadata.ReadInto(core.ArgsFile, &args); err != nil {
+			return nil, err
+		}
+		return &StageNameOuts{
+			Arg1: value1,
+			Arg2: value2,
+		}, nil
+	}
+
+Stages with splits will be more complex and should use the corresponding
+datastructures.
+
 Leading underscores are stripped from the stage.  The stage name is converted
 to camelCase unless '-public' is specified on the command line, in which case
 it is converted to PascalCase.
@@ -98,7 +133,7 @@ to generate stagestructs.go:
 	}
 
 	// A structure to decode args to the join method.
-	type PipulateInfoFieldsJoinArgs struct {
+	type PopulateInfoFieldsJoinArgs struct {
 		core.JobResources
 		PopulateInfoFieldsArgs
 	}

@@ -28,7 +28,7 @@ src/martian/syntax/grammar.go: bin/goyacc src/martian/syntax/grammar.y
 	bin/goyacc -p "mm" -o src/martian/syntax/grammar.go src/martian/syntax/grammar.y && rm y.output
 
 test/split_test_go/stages/sum_squares/types.go: PATH:=$(GOPATH)/bin:$(PATH)
-test/split_test_go/stages/sum_squares/types.go: test/split_test_go/pipeline_stages.mro bin/mro2go
+test/split_test_go/stages/sum_squares/types.go: test/split_test_go/pipeline_stages.mro mro2go
 	go generate test/split_test_go/stages/sum_squares/*
 
 bin/sum_squares: test/split_test_go/stages/sum_squares/sum_squares.go \
