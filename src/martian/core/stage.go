@@ -22,7 +22,12 @@ import (
 func makeOutArgs(outParams *syntax.Params, filesPath string, nullAll bool) map[string]interface{} {
 	args := map[string]interface{}{}
 	for id, param := range outParams.Table {
-		if nullAll || param.GetArrayDim() > 0 {
+		// TODO(azarchs): Don't put file names in arrays.  Except we have
+		// released pipelines which depend on this incorrect behavior.  It can
+		// be fixed once we have an Enterprise-based solution for running
+		// flowcells.
+		// if nullAll || param.GetArrayDim() > 0 {
+		if nullAll {
 			args[id] = nil
 		} else if param.IsFile() {
 			args[id] = path.Join(filesPath, param.GetId()+"."+param.GetTname())
