@@ -200,7 +200,8 @@ func main() {
 			"Could not get working directory: %v\n",
 			err)
 	}
-	mroPaths := util.ParseMroPath(cwd)
+	mroPaths := append([]string{cwd},
+		util.ParseMroPath(os.Getenv("MROPATH"))...)
 	var f *os.File
 	if *stdout {
 		f = os.Stdout
