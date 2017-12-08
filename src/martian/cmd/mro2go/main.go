@@ -180,6 +180,8 @@ func main() {
 	flags.StringVar(packageName, "p", "",
 		"The name of the package in for the generated source file.  "+
 			"Defaults to the name of the output file's directory.")
+	stageName := flags.String("stage", "",
+		"Only generate code for the given stage.")
 	stdout := flags.Bool("stdout", false,
 		"Write the go source to standard out.")
 	if err := flags.Parse(os.Args[1:]); err != nil {
@@ -243,11 +245,12 @@ func main() {
 				thisPackage = path.Base(path.Dir(p))
 			}
 		}
-		processFile(f, mrofile, thisPackage, mroPaths)
+		processFile(f, mrofile, *stageName, thisPackage, mroPaths)
 	}
 }
 
-func processFile(dest *os.File, mrofile, packageName string, mroPaths []string) {
+func processFile(dest *os.File, mrofile, stageName, packageName string,
+	mroPaths []string) {
 	if dest == nil {
 		thisOut := path.Base(strings.TrimSuffix(mrofile, ".mro")) + ".go"
 		if t, err := os.Create(thisOut); err != nil {
@@ -271,7 +274,7 @@ func processFile(dest *os.File, mrofile, packageName string, mroPaths []string) 
 		fmt.Fprintf(os.Stderr, "Error reading source file\n%s\n", err.Error())
 		os.Exit(1)
 	} else if err := MroToGo(dest, string(src),
-		mrofile, mroPaths,
+		mrofile, stageName, mroPaths,
 		packageName, dest.Name()); err != nil {
 		fmt.Fprintf(os.Stderr, "Error generating go source for %s\n%s\n",
 			mrofile, err.Error())
@@ -299,12 +302,12 @@ func readSrc(mrofile string, mroPaths []string) ([]byte, string, error) {
 }
 
 func MroToGo(dest io.Writer,
-	src, mrofile string, mroPaths []string,
+	src, mrofile, stageName string, mroPaths []string,
 	pkg, outName string) error {
 	if ast, err := parseMro(src, mrofile, mroPaths); err != nil {
 		return err
 	} else {
-		return gofmt(dest, makeGoRaw(ast, pkg, mrofile), outName)
+		return gofmt(dest, makeGoRaw(ast, pkg, mrofile, stageName), outName)
 	}
 }
 
@@ -313,10 +316,11 @@ func parseMro(src, fname string, mroPaths []string) (*syntax.Ast, error) {
 	return ast, err
 }
 
-func getStages(ast *syntax.Ast, fname string) []*syntax.Stage {
+func getStages(ast *syntax.Ast, fname, stageName string) []*syntax.Stage {
 	stages := make([]*syntax.Stage, 0, len(ast.Stages))
 	for _, stage := range ast.Stages {
-		if path.Base(stage.Node.Fname) == path.Base(fname) {
+		if path.Base(stage.Node.Fname) == path.Base(fname) &&
+			(stageName == "" || stage.Id == stageName) {
 			stages = append(stages, stage)
 		}
 	}

@@ -51,7 +51,8 @@ func TestMroToGo(t *testing.T) {
 	}
 	var dest bytes.Buffer
 	if err := MroToGo(&dest,
-		string(mrosrc), "testdata/pipeline_stages.mro", nil,
+		string(mrosrc), "testdata/pipeline_stages.mro", "",
+		nil,
 		"main", "split_test.go"); err != nil {
 		t.Fatal(err)
 	}
