@@ -106,22 +106,38 @@ func writeParam(buffer *bytes.Buffer, param syntax.Param) {
 		}
 	}
 	var goType string
-	switch param.GetTname() {
-	case "int", "bool":
-		goType = param.GetTname()
-	case "float":
-		goType = "float64"
-	case "map":
-		goType = "map[string]interface{}"
-	default:
-		goType = "string"
+	if _, ok := param.(*syntax.OutParam); ok &&
+		param.IsFile() && param.GetArrayDim() > 0 {
+		// HACK: Currently, Martian puts filenames into out parameters
+		// of file type, even for arrays.  That can't be fixed, yet, because
+		// there are released pipelines which depend on that broken behavior.
+		buffer.WriteString("\t// In _outs file written by Martian, will be of type string.\n")
+		buffer.WriteString("\t// Must be changed to type []string by successful stages.\n")
+		goType = "interface{}"
+
+		fmt.Fprintf(buffer,
+			"\t%s %s `json:\"%s\"`\n",
+			GoName(param.GetId()),
+			goType,
+			param.GetId())
+	} else {
+		switch param.GetTname() {
+		case "int", "bool":
+			goType = param.GetTname()
+		case "float":
+			goType = "float64"
+		case "map":
+			goType = "map[string]interface{}"
+		default:
+			goType = "string"
+		}
+		fmt.Fprintf(buffer,
+			"\t%s %s%s `json:\"%s\"`\n",
+			GoName(param.GetId()),
+			strings.Repeat("[]", param.GetArrayDim()),
+			goType,
+			param.GetId())
 	}
-	fmt.Fprintf(buffer,
-		"\t%s %s%s `json:\"%s\"`\n",
-		GoName(param.GetId()),
-		strings.Repeat("[]", param.GetArrayDim()),
-		goType,
-		param.GetId())
 }
 
 func writeStageArgs(buffer *bytes.Buffer, prefix string, stage *syntax.Stage) {
