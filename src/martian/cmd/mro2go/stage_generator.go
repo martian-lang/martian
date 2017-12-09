@@ -97,8 +97,13 @@ func writeParam(buffer *bytes.Buffer, param syntax.Param) {
 			buffer.WriteString("\t//\n")
 		}
 		fmt.Fprintf(buffer,
-			"\t// %s file\n",
+			"\t// %s file",
 			param.GetTname())
+		if param.GetArrayDim() > 0 {
+			buffer.WriteString("s\n")
+		} else {
+			buffer.WriteRune('\n')
+		}
 	}
 	var goType string
 	switch param.GetTname() {
