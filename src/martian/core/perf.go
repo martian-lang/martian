@@ -41,6 +41,7 @@ type ObservedMemory struct {
 	Vmem   int64 `json:"vmem"`
 	Text   int64 `json:"text"`
 	Stack  int64 `json:"stack"`
+	Procs  int   `json:"proc_count"`
 }
 
 // Increase this value to max(this,other).
@@ -60,6 +61,9 @@ func (self *ObservedMemory) IncreaseTo(other ObservedMemory) {
 	if other.Stack > self.Stack {
 		self.Stack = other.Stack
 	}
+	if other.Procs > self.Procs {
+		self.Procs = other.Procs
+	}
 }
 
 // Add other to this.
@@ -69,6 +73,7 @@ func (self *ObservedMemory) Add(other ObservedMemory) {
 	self.Shared += other.Shared
 	self.Text += other.Text
 	self.Stack += other.Stack
+	self.Procs += other.Procs
 }
 
 // Increase this value to the max RSS reported by getrusage, if it
