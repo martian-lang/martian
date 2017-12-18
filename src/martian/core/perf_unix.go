@@ -68,13 +68,14 @@ func GetProcessTreeMemory(pid int, includeParent bool) (mem ObservedMemory, err 
 		for _, tid := range threads {
 			if childrenBytes, err := ioutil.ReadFile(fmt.Sprintf("/proc/%d/task/%s/children", pid, tid)); err == nil {
 				for _, child := range strings.Fields(string(childrenBytes)) {
-					if childPid, err := strconv.Atoi(child); err != nil {
+					if childPid, err := strconv.Atoi(child); err == nil {
 						cmem, _ := GetProcessTreeMemory(childPid, true)
 						mem.Add(cmem)
 					}
 				}
 			}
 		}
+		mem.Procs += len(threads)
 	}
 	return mem, nil
 }
