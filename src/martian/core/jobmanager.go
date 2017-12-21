@@ -53,6 +53,7 @@ func max(a, b int) int {
 //
 type JobManager interface {
 	execJob(string, []string, map[string]string, *Metadata, int, int, string, string, string, bool)
+	endJob(*Metadata)
 
 	// Given a list of candidate job IDs, returns a list of jobIds which may be
 	// still queued or running, as well as the stderr output of the queue check.
@@ -66,7 +67,13 @@ type JobManager interface {
 	// against races between NFS caching in the directories Martian watches and
 	// whatever the queue manager uses to syncronize state.
 	queueCheckGrace() time.Duration
-	refreshLocalResources(localMode bool) error
+
+	// Update resouce availability.
+	//
+	// For local mode, this means free memory and possibly loadavg.
+	//
+	// For remote job managers, this means maxjobs.
+	refreshResources(localMode bool) error
 	GetSystemReqs(int, int) (int, int)
 	GetMaxCores() int
 	GetMaxMemGB() int
@@ -196,7 +203,7 @@ func (self *LocalJobManager) GetSettings() *JobManagerSettings {
 	return self.jobSettings
 }
 
-func (self *LocalJobManager) refreshLocalResources(localMode bool) error {
+func (self *LocalJobManager) refreshResources(localMode bool) error {
 	sysMem := sigar.Mem{}
 	if err := sysMem.Get(); err != nil {
 		return err
@@ -494,6 +501,8 @@ func (self *LocalJobManager) execJob(shellCmd string, argv []string,
 	self.Enqueue(shellCmd, argv, envs, metadata, threads, memGB, fqname, 0, 0, preflight)
 }
 
+func (self *LocalJobManager) endJob(*Metadata) {}
+
 type RemoteJobManager struct {
 	jobMode              string
 	jobResourcesMappings map[string]string
@@ -501,7 +510,7 @@ type RemoteJobManager struct {
 	memGBPerCore         int
 	maxJobs              int
 	jobFreqMillis        int
-	jobSem               *ResourceSemaphore
+	jobSem               *MaxJobsSemaphore
 	limiter              *time.Ticker
 	debug                bool
 }
@@ -531,7 +540,7 @@ func NewRemoteJobManager(jobMode string, memGBPerCore int, maxJobs int, jobFreqM
 	}
 
 	if self.maxJobs > 0 {
-		self.jobSem = NewResourceSemaphore(int64(self.maxJobs), "jobs")
+		self.jobSem = NewMaxJobsSemaphore(self.maxJobs)
 	}
 	if self.jobFreqMillis > 0 {
 		self.limiter = time.NewTicker(time.Millisecond * time.Duration(self.jobFreqMillis))
@@ -542,8 +551,8 @@ func NewRemoteJobManager(jobMode string, memGBPerCore int, maxJobs int, jobFreqM
 	return self
 }
 
-func (self *RemoteJobManager) refreshLocalResources(localMode bool) error {
-	// Remote job manager doesn't manage resources.
+func (self *RemoteJobManager) refreshResources(bool) error {
+	self.jobSem.FindDone()
 	return nil
 }
 
@@ -607,24 +616,18 @@ func (self *RemoteJobManager) execJob(shellCmd string, argv []string,
 		}
 		// if we want to try to put a more precise cap on cluster execution load,
 		// might be preferable to request num threads here instead of a slot per job
-		if err := self.jobSem.Acquire(1); err != nil {
-			panic(err)
+		if success := self.jobSem.Acquire(metadata); !success {
+			return
 		}
 		if self.debug {
 			util.LogInfo("jobmngr", "Job sent: %s", fqname)
 		}
 		self.sendJob(shellCmd, argv, envs, metadata, threads, memGB, special, fqname, shellName)
-		for {
-			if state, _ := metadata.getState(); state == Complete || state == Failed {
-				self.jobSem.Release(1)
-				if self.debug {
-					util.LogInfo("jobmngr", "Job finished: %s (%s)", fqname, state)
-				}
-				break
-			}
-			time.Sleep(time.Second * 1)
-		}
 	}()
+}
+
+func (self *RemoteJobManager) endJob(metadata *Metadata) {
+	self.jobSem.Release(metadata)
 }
 
 // Set environment variables which control thread count.  Do not override

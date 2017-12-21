@@ -71,11 +71,20 @@ func NewStagestance(parent Nodable, callStm *syntax.CallStm, callables *syntax.C
 
 func (self *Stagestance) getNode() *Node          { return self.node }
 func (self *Stagestance) GetState() MetadataState { return self.getNode().getState() }
-func (self *Stagestance) Step()                   { self.getNode().step() }
-func (self *Stagestance) CheckHeartbeats()        { self.getNode().checkHeartbeats() }
-func (self *Stagestance) RefreshState()           { self.getNode().refreshState(false) }
-func (self *Stagestance) LoadMetadata()           { self.getNode().loadMetadata() }
-func (self *Stagestance) PostProcess()            { self.getNode().postProcess() }
+
+func (self *Stagestance) Step() bool {
+	if err := self.node.rt.JobManager.refreshResources(
+		self.node.rt.jobMode == "local"); err != nil {
+		util.LogError(err, "runtime",
+			"Error refreshing resources: %s", err.Error())
+	}
+	return self.getNode().step()
+}
+
+func (self *Stagestance) CheckHeartbeats() { self.getNode().checkHeartbeats() }
+func (self *Stagestance) RefreshState()    { self.getNode().refreshState(false) }
+func (self *Stagestance) LoadMetadata()    { self.getNode().loadMetadata() }
+func (self *Stagestance) PostProcess()     { self.getNode().postProcess() }
 func (self *Stagestance) GetFatalError() (string, bool, string, string, MetadataFileName, []string) {
 	return self.getNode().getFatalError()
 }
@@ -463,9 +472,16 @@ func (self *Pipestance) StepNodes() bool {
 			return false
 		}
 	}
-	if err := self.node.rt.LocalJobManager.refreshLocalResources(
+	if err := self.node.rt.LocalJobManager.refreshResources(
 		self.node.rt.jobMode == "local"); err != nil {
-		util.LogError(err, "runtime", "Error refreshing local resources: %s", err.Error())
+		util.LogError(err, "runtime",
+			"Error refreshing local resources: %s", err.Error())
+	}
+	if self.node.rt.LocalJobManager != self.node.rt.JobManager {
+		if err := self.node.rt.JobManager.refreshResources(false); err != nil {
+			util.LogError(err, "runtime",
+				"Error refreshing cluster resources: %s", err.Error())
+		}
 	}
 	hadProgress := false
 	for _, node := range self.node.getFrontierNodes() {

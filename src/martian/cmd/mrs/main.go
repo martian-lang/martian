@@ -204,10 +204,10 @@ Options:
 			stagestance.CheckHeartbeats()
 
 			// Step the node.
-			stagestance.Step()
-
-			// Wait for a bit.
-			time.Sleep(time.Second * time.Duration(stepSecs))
+			if !stagestance.Step() {
+				// Wait for a bit.
+				time.Sleep(time.Second * time.Duration(stepSecs))
+			}
 		}
 	}()
 

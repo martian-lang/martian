@@ -1,0 +1,104 @@
+// Copyright (c) 2017 10X Genomics, Inc. All rights reserved.
+
+// Keeps track of the number of running jobs.
+
+package core
+
+import (
+	"sync"
+)
+
+// A semaphore limiting the number of unique jobs which are active at a time.
+type MaxJobsSemaphore struct {
+	running map[*Metadata]struct{}
+	cond    *sync.Cond
+	lock    sync.Mutex
+	Limit   int
+}
+
+func NewMaxJobsSemaphore(limit int) *MaxJobsSemaphore {
+	if limit < 1 {
+		panic("Invalid max jobs limit")
+	}
+	self := &MaxJobsSemaphore{
+		running: make(map[*Metadata]struct{}),
+		Limit:   limit,
+	}
+	self.cond = sync.NewCond(&self.lock)
+	return self
+}
+
+// Wait for this semaphore to have capacity to run this metadata
+// object.
+//
+// If the object is not in the queued or waiting states, it was canceled
+// between when the job was enqueued and now.
+//
+// If the object was already in the semaphore, as may be the case in the
+// event of automatic restart if the failure was missed for whatever reason,
+// then we only treat the metadata object as having one job running ever.
+func (self *MaxJobsSemaphore) Acquire(metadata *Metadata) bool {
+	if metadata == nil {
+		return false
+	}
+	if st, ok := metadata.getState(); ok && st != Queued && st != Waiting {
+		return false
+	}
+	self.lock.Lock()
+	defer self.lock.Unlock()
+	for len(self.running) >= self.Limit {
+		if _, ok := self.running[metadata]; ok {
+			return true
+		}
+		self.cond.Wait()
+	}
+	self.running[metadata] = struct{}{}
+	return true
+}
+
+// Check that each metadata object which holds the semaphore is still
+// actually running.
+func (self *MaxJobsSemaphore) FindDone() {
+	self.lock.Lock()
+	defer self.lock.Unlock()
+
+	finished := make([]*Metadata, 0, len(self.running))
+	for m := range self.running {
+		if st, ok := m.getState(); ok && st != Running && st != Queued {
+			finished = append(finished, m)
+		}
+	}
+	if len(finished) > 0 {
+		// Some metadatas which were believed to be running were not,
+		// in fact, running.  Remove them from the semaphore.
+		for _, m := range finished {
+			delete(self.running, m)
+		}
+		// If there is now more than one free capacity in the semaphore,
+		// notify other waiters.
+		spare := self.Limit - len(self.running)
+		if spare > 1 {
+			self.cond.Broadcast()
+		} else if spare == 1 {
+			self.cond.Signal()
+		}
+	}
+}
+
+func (self *MaxJobsSemaphore) Release(metadata *Metadata) {
+	if metadata == nil {
+		return
+	}
+	self.lock.Lock()
+	defer self.lock.Unlock()
+	if _, ok := self.running[metadata]; ok {
+		delete(self.running, metadata)
+		self.cond.Signal()
+	}
+}
+
+func (self *MaxJobsSemaphore) Current() int {
+	self.lock.Lock()
+	defer self.lock.Unlock()
+	return len(self.running)
+}

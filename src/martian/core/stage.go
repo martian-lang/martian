@@ -183,6 +183,7 @@ func (self *Chunk) getState() MetadataState {
 }
 
 func (self *Chunk) updateState(state MetadataFileName, uniquifier string) {
+	beginState, _ := self.metadata.getState()
 	self.metadata.cache(state, uniquifier)
 	if state == ProgressFile {
 		self.fork.lastPrint = time.Now()
@@ -190,6 +191,11 @@ func (self *Chunk) updateState(state MetadataFileName, uniquifier string) {
 			util.PrintInfo("runtime", "(progress)        %s: %s", self.fqname, msg)
 		} else {
 			util.LogError(err, "progres", "Error reading progress file for %s", self.fqname)
+		}
+	}
+	if beginState == Running || beginState == Queued {
+		if st, _ := self.metadata.getState(); st != Running && st != Queued {
+			self.fork.node.rt.JobManager.endJob(self.metadata)
 		}
 	}
 }
@@ -315,8 +321,6 @@ func NewFork(nodable Nodable, index int, argPermute map[string]interface{}) *For
 	self.argPermute = argPermute
 	self.split_has_run = false
 	self.join_has_run = false
-	self.subforks = []*Fork{}
-	self.chunks = []*Chunk{}
 	self.lastPrint = time.Now()
 
 	// By default, initialize stage defs with one empty chunk.
@@ -324,6 +328,7 @@ func NewFork(nodable Nodable, index int, argPermute map[string]interface{}) *For
 
 	if err := json.Unmarshal([]byte(self.split_metadata.readRaw(StageDefsFile)), &self.stageDefs); err == nil {
 		width := util.WidthForInt(len(self.stageDefs.ChunkDefs))
+		self.chunks = make([]*Chunk, 0, len(self.stageDefs.ChunkDefs))
 		for i, chunkDef := range self.stageDefs.ChunkDefs {
 			chunk := NewChunk(self, i, chunkDef, width)
 			self.chunks = append(self.chunks, chunk)
@@ -347,7 +352,10 @@ func (self *Fork) kill(message string) {
 }
 
 func (self *Fork) reset() {
-	self.chunks = []*Chunk{}
+	for _, chunk := range self.chunks {
+		self.node.rt.JobManager.endJob(chunk.metadata)
+	}
+	self.chunks = nil
 	self.metadatasCache = nil
 	self.split_has_run = false
 	self.join_has_run = false
@@ -560,10 +568,16 @@ func (self *Fork) updateState(state, uniquifier string) {
 		self.split_metadata.cache(
 			MetadataFileName(strings.TrimPrefix(state, SplitPrefix)),
 			uniquifier)
+		if st, _ := self.split_metadata.getState(); st != Running && st != Queued {
+			self.node.rt.JobManager.endJob(self.split_metadata)
+		}
 	} else if strings.HasPrefix(state, JoinPrefix) {
 		self.join_metadata.cache(
 			MetadataFileName(strings.TrimPrefix(state, JoinPrefix)),
 			uniquifier)
+		if st, _ := self.join_metadata.getState(); st != Running && st != Queued {
+			self.node.rt.JobManager.endJob(self.join_metadata)
+		}
 	} else {
 		self.metadata.cache(MetadataFileName(state), uniquifier)
 	}
@@ -647,6 +661,7 @@ func (self *Fork) step() {
 			}
 		}
 		if state == Complete.Prefixed(SplitPrefix) {
+			self.node.rt.JobManager.endJob(self.split_metadata)
 			// MARTIAN-395 We have observed a possible race condition where
 			// split_complete could be detected but _stage_defs is not
 			// written yet or is corrupted. Check that stage_defs exists
@@ -731,6 +746,7 @@ func (self *Fork) step() {
 			}
 		}
 		if state == Complete.Prefixed(JoinPrefix) {
+			self.node.rt.JobManager.endJob(self.join_metadata)
 			joinOut := self.join_metadata.read(OutsFile)
 			self.metadata.Write(OutsFile, joinOut)
 			if ok, msg := self.verifyOutput(joinOut); ok {
@@ -993,7 +1009,7 @@ func (self *Fork) serializeState() *ForkInfo {
 		Argument: argbindings,
 		Return:   retbindings,
 	}
-	chunks := []*ChunkInfo{}
+	chunks := make([]*ChunkInfo, 0, len(self.chunks))
 	for _, chunk := range self.chunks {
 		chunks = append(chunks, chunk.serializeState())
 	}
@@ -1031,8 +1047,8 @@ func (self *Fork) serializePerf() (*ForkPerfInfo, *VDRKillReport) {
 		return self.perfCache.perfInfo, self.perfCache.vdrKillReport
 	}
 
-	chunks := []*ChunkPerfInfo{}
-	stats := []*PerfInfo{}
+	chunks := make([]*ChunkPerfInfo, 0, len(self.chunks))
+	stats := make([]*PerfInfo, 0, len(self.chunks))
 	for _, chunk := range self.chunks {
 		chunkSer := chunk.serializePerf()
 		chunks = append(chunks, chunkSer)
