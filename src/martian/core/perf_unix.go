@@ -10,6 +10,8 @@ import (
 	"fmt"
 	"io/ioutil"
 	"martian/util"
+	"os"
+	"path"
 	"strconv"
 	"strings"
 	"syscall"
@@ -48,6 +50,29 @@ func GetRusage() *RusageInfo {
 		return nil
 	}
 	return &ru
+}
+
+// Get the number of processes (threads) currently running for the current
+// user.
+func GetUserProcessCount() (int, error) {
+	if pids, err := util.Readdirnames("/proc"); err != nil {
+		return 0, err
+	} else {
+		uidstring := strconv.Itoa(os.Getuid())
+		count := 0
+		for _, pid := range pids {
+			if _, err := strconv.Atoi(pid); err == nil {
+				if b, err := ioutil.ReadFile(path.Join("/proc", pid, "loginuid")); err == nil {
+					if string(b) == uidstring {
+						if threads, err := util.Readdirnames(path.Join("/proc", pid, "task")); err == nil {
+							count += len(threads)
+						}
+					}
+				}
+			}
+		}
+		return count, nil
+	}
 }
 
 // Gets the total memory usage for the given process and all of its

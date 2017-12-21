@@ -24,6 +24,22 @@ import (
 const maxRetries = 5
 const retryExitCode = 513
 
+// The following constants are used to estimate process (thread) counts.
+// In local mode, these are used to estimate the number of processes spawned,
+// to avoid bumping into the process ulimit.  This is all very rough approximation.
+
+// The approximate number of physical threads assumed used by the user at
+// startup, including those used by mrp.  The actual value is used as well in
+// real time, but this amount is reserved in the semaphore regardless.
+const startingThreadCount = 45
+
+// The base number of threads assumed per job.  This includes the threads used
+// by the mrjob process and whatever threads the spawned process uses for
+// runtime management.  Very approximate since it depends on many details of
+// the stage code langauge and implementation.  The number of threads reserved
+// by the job will be added to this number.
+const procsPerJob = 15
+
 func max(a, b int) int {
 	if a > b {
 		return a
@@ -63,6 +79,7 @@ type LocalJobManager struct {
 	jobSettings *JobManagerSettings
 	coreSem     *ResourceSemaphore
 	memMBSem    *ResourceSemaphore
+	procsSem    *ResourceSemaphore
 	lastMemDiff int64
 	queue       []*exec.Cmd
 	debug       bool
@@ -143,6 +160,33 @@ func NewLocalJobManager(userMaxCores int, userMaxMemGB int,
 
 	self.coreSem = NewResourceSemaphore(int64(self.maxCores), "threads")
 	self.memMBSem = NewResourceSemaphore(int64(self.maxMemGB)*1024, "MB of memory")
+	if rlim, err := GetMaxProcs(); err != nil {
+		util.LogError(err, "jobmngr",
+			"WARNING: Could not get process rlimit.")
+	} else if int64(rlim.Max) > startingThreadCount &&
+		int64(rlim.Cur) > startingThreadCount {
+		self.procsSem = NewResourceSemaphore(int64(rlim.Max), "processes")
+		self.procsSem.Acquire(startingThreadCount)
+
+		if userProcs, err := GetUserProcessCount(); err != nil {
+			self.procsSem.UpdateSize(int64(rlim.Cur))
+		} else {
+			self.procsSem.UpdateFreeUsed(
+				int64(rlim.Cur)-int64(userProcs),
+				startingThreadCount)
+		}
+		if self.procsSem.Available()/(procsPerJob+1) < int64(self.maxCores) {
+			if rlim.Max > rlim.Cur {
+				util.PrintInfo("jobmngr",
+					"WARNING: The current process count limit %d is low. To increase parallelism, set ulimit -u %d.",
+					rlim.Cur, rlim.Max)
+			} else {
+				util.PrintInfo("jobmngr",
+					"WARNING: The current process count limit %d is low. Contact your system administrator to increase it.",
+					rlim.Cur)
+			}
+		}
+	}
 	self.queue = []*exec.Cmd{}
 	util.RegisterSignalHandler(self)
 	return self
@@ -185,6 +229,17 @@ func (self *LocalJobManager) refreshLocalResources(localMode bool) error {
 			float64(runtime.NumCPU()) - load.One + 0.9)); diff < -int64(self.maxCores)/4 &&
 			localMode {
 			util.LogInfo("jobmngr", "%d fewer core%s than expected were free.", -diff, util.Pluralize(int(-diff)))
+		}
+	}
+	if self.procsSem != nil {
+		if rlim, err := GetMaxProcs(); err != nil {
+			return err
+		} else if userProcs, err := GetUserProcessCount(); err != nil {
+			return err
+		} else {
+			self.procsSem.UpdateFreeUsed(
+				int64(rlim.Cur)-int64(userProcs),
+				int64(usedMem.Procs)+startingThreadCount)
 		}
 	}
 	return nil
@@ -319,6 +374,30 @@ func (self *LocalJobManager) Enqueue(shellCmd string, argv []string,
 			util.LogInfo("jobmngr", "%d goroutines", runtime.NumGoroutine())
 		}
 
+		procEstimate := int64(procsPerJob + threads)
+		if self.procsSem != nil {
+			// Acquire processes
+			if self.debug {
+				util.LogInfo("jobmngr", "Waiting for %d processes", memGB)
+			}
+			if err := self.procsSem.Acquire(procEstimate); err != nil {
+				util.LogError(err, "jobmngr",
+					"%s estimated to require %d processes, but the process ulimit is %d.",
+					metadata.fqname, procEstimate, self.procsSem.CurrentSize())
+				self.coreSem.Release(int64(threads))
+				self.memMBSem.Release(int64(memGB) * 1024)
+				metadata.WriteRaw(Errors, err.Error())
+				return
+			}
+			if self.debug {
+				util.LogInfo("jobmngr", "Acquired %d processes (%d/%d in use)",
+					procEstimate, self.procsSem.InUse(), self.procsSem.CurrentSize())
+			}
+			if self.debug {
+				util.LogInfo("jobmngr", "%d goroutines", runtime.NumGoroutine())
+			}
+		}
+
 		// Set up _stdout and _stderr for the job.
 		if stdoutFile, err := os.Create(stdoutPath); err == nil {
 			stdoutFile.WriteString("[stdout]\n")
@@ -389,6 +468,14 @@ func (self *LocalJobManager) Enqueue(shellCmd string, argv []string,
 		if self.debug {
 			util.LogInfo("jobmngr", "Released %d GB (%.1f/%d in use)", memGB,
 				float64(self.memMBSem.InUse())/1024, self.maxMemGB)
+		}
+		if self.procsSem != nil {
+			// Release processes.
+			self.procsSem.Release(procEstimate)
+			if self.debug {
+				util.LogInfo("jobmngr", "Released %d processes (%d/%d in use)",
+					procEstimate, self.procsSem.InUse(), self.procsSem.CurrentSize())
+			}
 		}
 	}()
 }

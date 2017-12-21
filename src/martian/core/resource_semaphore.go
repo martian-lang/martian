@@ -169,6 +169,20 @@ func (self *ResourceSemaphore) UpdateActual(n int64) int64 {
 	return actualSize - self.maxSize
 }
 
+// Change the current semaphore size.  This is is for cases where the resource
+// limit may change but the current consumption is invisible.  It is logically
+// equivalent to self.UpdateActual(n, self.Reserved()), though without the
+// potential race conditions.
+func (self *ResourceSemaphore) UpdateSize(n int64) {
+	self.mu.Lock()
+	defer self.mu.Unlock()
+	oldSize := self.curSize
+	self.curSize = n
+	if oldSize < self.curSize {
+		self.runJobs()
+	}
+}
+
 // Set the current actual availability based on the current free amount and the
 // amount of the reserved usage which is actually in use.  This handles the
 // case where, for example, 30 of 32 GB of memory are reserved, but only 16GB

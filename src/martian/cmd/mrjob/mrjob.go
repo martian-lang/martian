@@ -118,15 +118,9 @@ func (self *runner) writeJobinfo() {
 }
 
 func (self *runner) setRlimit() {
-	var rlim syscall.Rlimit
-	if err := syscall.Getrlimit(syscall.RLIMIT_NOFILE, &rlim); err != nil {
-		util.PrintError(err, "monitor", "Error getting file rlimit.")
+	if err := core.MaximizeMaxFiles(); err != nil {
+		util.PrintError(err, "monitor", "Error setting the file rlimit.")
 		return
-	}
-	rlim.Cur = rlim.Max
-	if err := syscall.Setrlimit(syscall.RLIMIT_NOFILE, &rlim); err != nil {
-		util.PrintError(err, "monitor",
-			"Could not increase the file handle ulimit to %d", rlim.Max)
 	}
 }
 

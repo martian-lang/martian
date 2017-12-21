@@ -16,3 +16,6 @@
 [submodule "src/github.com/golang/tools"]
 	path = src/vendor/golang.org/x/tools
 	url = https://github.com/golang/tools
+[submodule "src/vendor/golang.org/x/sys"]
+	path = src/vendor/golang.org/x/sys
+	url = https://github.com/golang/sys
