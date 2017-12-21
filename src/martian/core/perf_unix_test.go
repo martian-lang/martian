@@ -6,7 +6,9 @@
 
 package core
 
-import "testing"
+import (
+	"testing"
+)
 
 func TestGetUserProcessCount(t *testing.T) {
 	if c, err := GetUserProcessCount(); err != nil {

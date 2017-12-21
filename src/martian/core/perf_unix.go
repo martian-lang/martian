@@ -55,18 +55,19 @@ func GetRusage() *RusageInfo {
 // Get the number of processes (threads) currently running for the current
 // user.
 func GetUserProcessCount() (int, error) {
-	if pids, err := util.Readdirnames("/proc"); err != nil {
+	if pids, err := ioutil.ReadDir("/proc"); err != nil {
 		return 0, err
 	} else {
-		uidstring := strconv.Itoa(os.Getuid())
+		uid := uint32(os.Getuid())
 		count := 0
 		for _, pid := range pids {
-			if _, err := strconv.Atoi(pid); err == nil {
-				if b, err := ioutil.ReadFile(path.Join("/proc", pid, "loginuid")); err == nil {
-					if string(b) == uidstring {
-						if threads, err := util.Readdirnames(path.Join("/proc", pid, "task")); err == nil {
-							count += len(threads)
-						}
+			if ufinfo, ok := pid.Sys().(*syscall.Stat_t); !ok {
+				return count, fmt.Errorf("Unexpected Stat_t type")
+			} else if ufinfo.Uid == uid {
+				if _, err := strconv.Atoi(pid.Name()); err == nil {
+					if threads, err := util.Readdirnames(path.Join(
+						"/proc", pid.Name(), "task")); err == nil {
+						count += len(threads)
 					}
 				}
 			}
