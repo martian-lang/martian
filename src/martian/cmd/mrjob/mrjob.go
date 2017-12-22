@@ -1,6 +1,7 @@
 //
 // Copyright (c) 2017 10X Genomics, Inc. All rights reserved.
 //
+
 // Martian job monitor.
 //
 // Manages process lifetime and data collection for martian stage code.
@@ -30,6 +31,7 @@ type runner struct {
 	errorReader *os.File
 	highMem     core.ObservedMemory
 	metadata    *core.Metadata
+	runType     string
 	jobInfo     *core.JobInfo
 	start       time.Time
 }
@@ -50,6 +52,7 @@ func main() {
 
 	run := runner{
 		metadata: core.NewMetadataRunWithJournalPath(fqname, metadataPath, filesPath, journalPath, runType),
+		runType:  runType,
 		start:    time.Now(),
 	}
 	util.RegisterSignalHandler(&run)
@@ -204,10 +207,21 @@ func (self *runner) Complete() {
 			util.PrintError(writeError, "monitor", "Could not write complete file.")
 		}
 	}
+	self.sync()
 	if jErr := self.metadata.UpdateJournal(target); jErr != nil {
 		util.PrintError(jErr, "monitor", "Could not update %v journal file.", target)
 	}
 	os.Exit(0)
+}
+
+func (self *runner) sync() {
+	if self.runType == "split" {
+		syncFile(self.metadata.MetadataFilePath(core.StageDefsFile))
+	} else {
+		syncFile(self.metadata.MetadataFilePath(core.OutsFile))
+	}
+	syncFile(path.Dir(self.metadata.FilePath("nil")))
+	syncFile(path.Dir(self.metadata.MetadataFilePath(core.CompleteFile)))
 }
 
 func (self *runner) makeErrorPipe() (*os.File, error) {
