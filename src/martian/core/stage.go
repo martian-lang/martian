@@ -626,7 +626,7 @@ func (self *Fork) printState(state MetadataState) {
 func (self *Fork) step() {
 	if self.node.kind == "stage" {
 		state := self.getState()
-		if !state.IsRunning() && !state.IsQueued() {
+		if !state.IsRunning() && !state.IsQueued() && state != DisabledState {
 			self.printState(state)
 		}
 
