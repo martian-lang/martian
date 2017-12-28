@@ -91,7 +91,7 @@ func (self *mrpWebServer) Start() {
 			self.serveGraphPage(w, req)
 		}
 	})
-	self.handleDebug(sm)
+	api.EnableDebug(sm, self.verifyAuth)
 
 	if err := http.Serve(self.listener, sm); err != nil {
 		fmt.Println(err.Error())

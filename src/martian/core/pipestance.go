@@ -697,10 +697,10 @@ func (self *Pipestance) Immortalize(force bool) error {
 	}
 	self.metadata.loadCache()
 	if !self.metadata.exists(Perf) {
-		self.metadata.Write(Perf, self.Serialize(Perf))
+		self.metadata.Write(Perf, self.SerializePerf())
 	}
 	if !self.metadata.exists(FinalState) {
-		self.metadata.Write(FinalState, self.Serialize(FinalState))
+		self.metadata.Write(FinalState, self.SerializeState())
 	}
 	if !self.metadata.exists(MetadataZip) {
 		zipPath := self.metadata.MetadataFilePath(MetadataZip)
