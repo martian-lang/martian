@@ -552,7 +552,9 @@ func NewRemoteJobManager(jobMode string, memGBPerCore int, maxJobs int, jobFreqM
 }
 
 func (self *RemoteJobManager) refreshResources(bool) error {
-	self.jobSem.FindDone()
+	if self.jobSem != nil {
+		self.jobSem.FindDone()
+	}
 	return nil
 }
 
@@ -627,7 +629,9 @@ func (self *RemoteJobManager) execJob(shellCmd string, argv []string,
 }
 
 func (self *RemoteJobManager) endJob(metadata *Metadata) {
-	self.jobSem.Release(metadata)
+	if self.jobSem != nil {
+		self.jobSem.Release(metadata)
+	}
 }
 
 // Set environment variables which control thread count.  Do not override
