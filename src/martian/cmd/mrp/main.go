@@ -40,6 +40,7 @@ type pipestanceHolder struct {
 	enableUI     bool
 	lastRegister time.Time
 	lock         sync.Mutex
+	cleanupLock  sync.Mutex
 }
 
 func (self *pipestanceHolder) getPipestance() *core.Pipestance {
@@ -119,32 +120,36 @@ func runLoop(pipestanceBox *pipestanceHolder, stepSecs int, vdrMode string,
 		state := pipestance.GetState()
 		pipestanceBox.UpdateState(state)
 		if state == "complete" {
-			if vdrMode == "disable" {
-				util.LogInfo("runtime", "VDR disabled. No files killed.")
-			} else {
-				killReport := pipestance.VDRKill()
-				util.LogInfo("runtime", "VDR killed %d files, %s.",
-					killReport.Count, humanize.Bytes(killReport.Size))
-			}
-			pipestance.PostProcess()
-			pipestance.Unlock()
-			if !showedComplete {
-				pipestance.OnFinishHook()
-				showedComplete = true
-			}
-			if noExit {
-				util.Println("Pipestance completed successfully, staying alive because --noexit given.\n")
-				break
-			} else {
-				if enableUI {
-					// Give time for web ui client to get last update.
-					util.Println("Waiting %d seconds for UI to do final refresh.", WAIT_SECS)
-					time.Sleep(time.Second * time.Duration(WAIT_SECS))
-					pipestance.ClearUiPort()
+			func() {
+				pipestanceBox.cleanupLock.Lock()
+				defer pipestanceBox.cleanupLock.Unlock()
+				if vdrMode == "disable" {
+					util.LogInfo("runtime", "VDR disabled. No files killed.")
+				} else {
+					killReport := pipestance.VDRKill()
+					util.LogInfo("runtime", "VDR killed %d files, %s.",
+						killReport.Count, humanize.Bytes(killReport.Size))
 				}
-				util.Println("Pipestance completed successfully!\n")
-				os.Exit(0)
-			}
+				pipestance.PostProcess()
+				pipestance.Unlock()
+				if !showedComplete {
+					pipestance.OnFinishHook()
+					showedComplete = true
+				}
+				if noExit {
+					util.Println("Pipestance completed successfully, staying alive because --noexit given.\n")
+				} else {
+					if enableUI {
+						// Give time for web ui client to get last update.
+						util.Println("Waiting %d seconds for UI to do final refresh.", WAIT_SECS)
+						time.Sleep(time.Second * time.Duration(WAIT_SECS))
+						pipestance.ClearUiPort()
+					}
+					util.Println("Pipestance completed successfully!\n")
+					os.Exit(0)
+				}
+			}()
+			break
 		} else if state == "failed" {
 			canRetry := false
 			var transient_log string
@@ -165,27 +170,31 @@ func runLoop(pipestanceBox *pipestanceHolder, stepSecs int, vdrMode string,
 			} else {
 				pipestance.Unlock()
 				if !showedFailed {
-					pipestance.OnFinishHook()
-					if _, preflight, _, log, kind, errPaths := pipestance.GetFatalError(); kind == "assert" {
-						// Print preflight check failures.
-						util.Println("\n[%s] %s\n", "error", log)
-						if preflight {
-							os.Exit(2)
-						} else {
-							os.Exit(1)
-						}
-					} else if len(errPaths) > 0 {
-						// Build relative path to _errors file
-						errPath, _ := filepath.Rel(filepath.Dir(pipestance.GetPath()), errPaths[0])
+					func() {
+						pipestanceBox.cleanupLock.Lock()
+						defer pipestanceBox.cleanupLock.Unlock()
+						pipestance.OnFinishHook()
+						if _, preflight, _, log, kind, errPaths := pipestance.GetFatalError(); kind == "assert" {
+							// Print preflight check failures.
+							util.Println("\n[%s] %s\n", "error", log)
+							if preflight {
+								os.Exit(2)
+							} else {
+								os.Exit(1)
+							}
+						} else if len(errPaths) > 0 {
+							// Build relative path to _errors file
+							errPath, _ := filepath.Rel(filepath.Dir(pipestance.GetPath()), errPaths[0])
 
-						if log != "" {
-							util.Println("\n[%s] Pipestance failed. Error log at:\n%s\n\nLog message:\n%s\n",
-								"error", errPath, log)
-						} else {
-							// Print path to _errors metadata file in failed stage.
-							util.Println("\n[%s] Pipestance failed. Please see log at:\n%s\n", "error", errPath)
+							if log != "" {
+								util.Println("\n[%s] Pipestance failed. Error log at:\n%s\n\nLog message:\n%s\n",
+									"error", errPath, log)
+							} else {
+								// Print path to _errors metadata file in failed stage.
+								util.Println("\n[%s] Pipestance failed. Please see log at:\n%s\n", "error", errPath)
+							}
 						}
-					}
+					}()
 				}
 				if noExit {
 					// If pipestance failed but we're staying alive, only print this once
