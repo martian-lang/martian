@@ -408,6 +408,7 @@ def main(argv):
             return 0
         sys.stderr.write('Output incorrect!\n')
         return 3
+    return 0
 
 
 if __name__ == '__main__':
