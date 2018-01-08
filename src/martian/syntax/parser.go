@@ -411,7 +411,7 @@ func (stage *Stage) compile(global *Ast, stagecodePaths []string, checkSrcPath b
 		// Check existence of src path.
 		if _, found := util.SearchPaths(stage.Src.Path, stagecodePaths); !found {
 			// Exempt exec stages
-			if stage.Src.Lang != "exec" {
+			if stage.Src.Lang != "exec" && stage.Src.Lang != "comp" {
 				stagecodePathsList := strings.Join(stagecodePaths, ", ")
 				errs = append(errs, global.err(stage,
 					"SourcePathError: searched (%s) but stage source path not found '%s'",
