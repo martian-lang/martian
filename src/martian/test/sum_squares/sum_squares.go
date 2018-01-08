@@ -49,7 +49,7 @@ func chunk(metadata *core.Metadata) (interface{}, error) {
 		return nil, err
 	} else if err := metadata.WriteRaw(core.ProgressFile, fmt.Sprintf(
 		"Running with %d threads and %dGB of memory.",
-		args.Threads, args.MemGB)); err != nil {
+		adapter.GetJobInfo().Threads, adapter.GetJobInfo().MemGB)); err != nil {
 		return nil, err
 	} else if err := metadata.UpdateJournal(core.ProgressFile); err != nil {
 		return nil, err

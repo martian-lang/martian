@@ -67,6 +67,19 @@ func IsAssertion(err error) bool {
 	return ok
 }
 
+var jobinfo core.JobInfo
+
+// Get the cached version of the JobInfo object for this job.
+func GetJobInfo() *core.JobInfo {
+	return &jobinfo
+}
+
+func readJobInfo(metadata *core.Metadata) {
+	if err := metadata.ReadInto(core.JobInfoFile, &jobinfo); err != nil {
+		util.LogError(err, "adapter", "Error reading jobinfo file.")
+	}
+}
+
 // A function for a stage's split phase.  Must return a StageDefs object.
 // Stage Args, jobinfo, and so on can be read with metadata.ReadInto().
 type SplitFunc func(metadata *core.Metadata) (*core.StageDefs, error)
@@ -105,13 +118,14 @@ func RunStage(split SplitFunc, main MainFunc, join MainFunc) {
 		os.Exit(0)
 	}()
 	metadata, runType := parseCommandLine()
+	readJobInfo(metadata)
 	switch runType {
 	case "split":
-		runSplit(split, metadata, errorFile)
+		runSplit(profileSplit(split), metadata, errorFile)
 	case "main":
-		runMain(main, metadata, errorFile)
+		runMain(profileMain(main), metadata, errorFile)
 	case "join":
-		runMain(join, metadata, errorFile)
+		runMain(profileMain(join), metadata, errorFile)
 	default:
 		fmt.Fprintf(errorFile, "ASSERT:Invalid run type %s", runType)
 		return
