@@ -146,18 +146,20 @@ func runLoop(pipestanceBox *pipestanceHolder, stepSecs int, vdrMode string,
 
 		// Check for completion states.
 		state := pipestance.GetState()
-		pipestanceBox.UpdateState(state)
 		hadProgress := false
 		if state == core.Complete || state == core.DisabledState {
+			pipestanceBox.UpdateState(state.Prefixed(core.CleanupPrefix))
 			cleanupCompleted(pipestance, pipestanceBox, vdrMode, noExit)
 			return
 		} else if state == core.Failed {
+			pipestanceBox.UpdateState(state.Prefixed(core.CleanupPrefix))
 			if !attemptRetry(pipestance, pipestanceBox) {
 				pipestance.Unlock()
 				cleanupFailed(pipestance, pipestanceBox, showedFailed, noExit)
 				showedFailed = true
 			}
 		} else {
+			pipestanceBox.UpdateState(state)
 			// If we went from failed to something else, allow the failure message to
 			// be shown once if we fail again.
 			showedFailed = false
@@ -193,6 +195,7 @@ func attemptRetry(pipestance *core.Pipestance, pipestanceBox *pipestanceHolder) 
 		canRetry, transient_log = pipestance.IsErrorTransient()
 	}
 	if canRetry {
+		pipestanceBox.UpdateState(core.Failed.Prefixed(core.RetryPrefix))
 		pipestance.Unlock()
 		if transient_log != "" {
 			util.LogInfo("runtime", "Transient error detected.  Log content:\n\n%s\n", transient_log)
@@ -209,6 +212,7 @@ func attemptRetry(pipestance *core.Pipestance, pipestanceBox *pipestanceHolder) 
 func cleanupCompleted(pipestance *core.Pipestance, pipestanceBox *pipestanceHolder,
 	vdrMode string, noExit bool) {
 	if pipestanceBox.readOnly {
+		pipestanceBox.UpdateState(core.Complete)
 		util.Println("Pipestance completed successfully, staying alive because --inspect given.\n")
 		return
 	}
@@ -224,6 +228,7 @@ func cleanupCompleted(pipestance *core.Pipestance, pipestanceBox *pipestanceHold
 	pipestance.PostProcess()
 	pipestance.Unlock()
 	pipestance.OnFinishHook()
+	pipestanceBox.UpdateState(core.Complete)
 	if noExit {
 		util.Println("Pipestance completed successfully, staying alive because --noexit given.\n")
 		runtime.GC()
@@ -242,6 +247,7 @@ func cleanupCompleted(pipestance *core.Pipestance, pipestanceBox *pipestanceHold
 func cleanupFailed(pipestance *core.Pipestance, pipestanceBox *pipestanceHolder,
 	showedFailed bool, noExit bool) {
 	if pipestanceBox.readOnly {
+		pipestanceBox.UpdateState(core.Failed)
 		if !showedFailed {
 			util.Println("Pipestance failed, staying alive because --inspect given.\n")
 		}
@@ -255,6 +261,7 @@ func cleanupFailed(pipestance *core.Pipestance, pipestanceBox *pipestanceHolder,
 			// Print preflight check failures.
 			util.Println("\n[%s] %s\n", "error", log)
 			pipestance.ClearUiPort()
+			pipestanceBox.UpdateState(core.Failed)
 			if preflight {
 				os.Exit(3)
 			} else {
@@ -271,7 +278,10 @@ func cleanupFailed(pipestance *core.Pipestance, pipestanceBox *pipestanceHolder,
 				// Print path to _errors metadata file in failed stage.
 				util.Println("\n[%s] Pipestance failed. Please see log at:\n%s\n", "error", errPath)
 			}
+			pipestanceBox.UpdateState(core.Failed)
 		}
+	} else {
+		pipestanceBox.UpdateState(core.Failed)
 	}
 	if noExit {
 		// If pipestance failed but we're staying alive, only print this once

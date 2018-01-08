@@ -84,9 +84,11 @@ const (
 )
 
 const (
-	ChunksPrefix = "chunks_"
-	SplitPrefix  = "split_"
-	JoinPrefix   = "join_"
+	ChunksPrefix  = "chunks_"
+	SplitPrefix   = "split_"
+	JoinPrefix    = "join_"
+	CleanupPrefix = "cleanup_"
+	RetryPrefix   = "retry_"
 )
 
 func (self MetadataState) Prefixed(prefix string) MetadataState {
