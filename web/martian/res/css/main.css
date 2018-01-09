@@ -154,11 +154,11 @@ tr.active {
 .glyphicon-transfer {
     color: #de5068;
 }
-.failed rect {
+.failed rect, .cleanup_failed rect {
     fill: #666;
     color: white !important;
 }
-.failed text {
+.failed text, .cleanup_failed text {
     color: white;
     text-color: white !important;
 }
@@ -175,7 +175,7 @@ tr.active {
     border: none;
     color: white;
 }
-.btn.btn-default.complete {
+.btn.btn-default.complete, .btn.btn-default.cleanup_complete {
     background: #b6d7a8;
     border: none;
 }
@@ -184,12 +184,12 @@ tr.active {
     border: none;
     color: white;
 }
-.btn.btn-default.failed {
+.btn.btn-default.failed, .btn.btn-default.cleanup_failed {
     background: #666;
     border: none;
     color: white;
 }
-.complete rect, .chunks_complete rect, .join_complete rect, .split_complete rect {
+.complete rect, .cleanup_complete rect, .chunks_complete rect, .join_complete rect, .split_complete rect {
     fill: #b6d7a8;
     color: black;
 }
@@ -242,7 +242,7 @@ tspan {
 .minibox.queued a, .minibox.chunks_queued a, .minibox.split_queued a, .minibox.join_queued a {
     color: white;
 }
-.minibox.complete, .minibox.chunks_complete, .minibox.split_complete, .minibox.join_complete {
+.minibox.complete, .minibox.cleanup_complete, .minibox.chunks_complete, .minibox.split_complete, .minibox.join_complete {
     background: #b6d7a8;
     color: #555;
 }
@@ -256,10 +256,10 @@ tspan {
 .minibox.running a, .minibox.chunks_running a, .minibox.split_running a, .minibox.join_running a {
     color: white;
 }
-.minibox.failed a, .minibox.incomplete a {
+.minibox.failed a, .minibox.cleanup_failed a, .minibox.incomplete a {
     color: white;
 }
-.minibox.failed, .minibox.incomplete {
+.minibox.failed, .minibox.cleanup_failed, .minibox.incomplete {
     background: #666;
     color: white;
 }
