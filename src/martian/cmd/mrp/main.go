@@ -41,6 +41,7 @@ type pipestanceHolder struct {
 	remainingRetries int
 	authKey          string
 	enableUI         bool
+	showedFailed     bool
 	lastRegister     time.Time
 	cleanupLock      sync.Mutex
 	lock             sync.Mutex
@@ -73,6 +74,7 @@ func (self *pipestanceHolder) consumeRetry() bool {
 func (self *pipestanceHolder) reset() error {
 	self.lock.Lock()
 	self.remainingRetries = self.maxRetries
+	self.showedFailed = false
 	self.lock.Unlock()
 	return self.restart()
 }
@@ -137,7 +139,6 @@ const WAIT_SECS = 6
 //=============================================================================
 func runLoop(pipestanceBox *pipestanceHolder, stepSecs int, vdrMode string,
 	noExit bool) {
-	showedFailed := false
 	pipestanceBox.getPipestance().LoadMetadata()
 
 	for {
@@ -152,17 +153,20 @@ func runLoop(pipestanceBox *pipestanceHolder, stepSecs int, vdrMode string,
 			cleanupCompleted(pipestance, pipestanceBox, vdrMode, noExit)
 			return
 		} else if state == core.Failed {
-			pipestanceBox.UpdateState(state.Prefixed(core.CleanupPrefix))
+			if pipestanceBox.showedFailed {
+				pipestanceBox.UpdateState(state)
+			} else {
+				pipestanceBox.UpdateState(state.Prefixed(core.CleanupPrefix))
+			}
 			if !attemptRetry(pipestance, pipestanceBox) {
 				pipestance.Unlock()
-				cleanupFailed(pipestance, pipestanceBox, showedFailed, noExit)
-				showedFailed = true
+				cleanupFailed(pipestance, pipestanceBox, noExit)
 			}
 		} else {
 			pipestanceBox.UpdateState(state)
 			// If we went from failed to something else, allow the failure message to
 			// be shown once if we fail again.
-			showedFailed = false
+			pipestanceBox.showedFailed = false
 
 			// Check job heartbeats.
 			pipestance.CheckHeartbeats()
@@ -245,17 +249,19 @@ func cleanupCompleted(pipestance *core.Pipestance, pipestanceBox *pipestanceHold
 }
 
 func cleanupFailed(pipestance *core.Pipestance, pipestanceBox *pipestanceHolder,
-	showedFailed bool, noExit bool) {
+	noExit bool) {
 	if pipestanceBox.readOnly {
 		pipestanceBox.UpdateState(core.Failed)
-		if !showedFailed {
+		if !pipestanceBox.showedFailed {
+			pipestanceBox.showedFailed = true
 			util.Println("Pipestance failed, staying alive because --inspect given.\n")
 		}
 		return
 	}
 	pipestanceBox.cleanupLock.Lock()
 	defer pipestanceBox.cleanupLock.Unlock()
-	if !showedFailed {
+	defer func() { pipestanceBox.showedFailed = true }()
+	if !pipestanceBox.showedFailed {
 		pipestance.OnFinishHook()
 		if _, preflight, _, log, kind, errPaths := pipestance.GetFatalError(); kind == "assert" {
 			// Print preflight check failures.
@@ -286,7 +292,7 @@ func cleanupFailed(pipestance *core.Pipestance, pipestanceBox *pipestanceHolder,
 	if noExit {
 		// If pipestance failed but we're staying alive, only print this once
 		// as long as we stay failed.
-		if !showedFailed {
+		if !pipestanceBox.showedFailed {
 			util.Println("Pipestance failed, staying alive because --noexit given.\n")
 		}
 	} else {
