@@ -92,6 +92,14 @@ func (self *pipestanceHolder) Register() {
 		self.lastRegister = time.Now()
 		go func() {
 			if res, err := http.PostForm(u.String(), form); err == nil {
+				defer func() {
+					// Clear out the response buffer and close it.
+					// Ignore the content.
+					b := make([]byte, 1024)
+					for _, err := res.Body.Read(b); err == nil; _, err = res.Body.Read(b) {
+					}
+					res.Body.Close()
+				}()
 				if res.StatusCode >= http.StatusBadRequest {
 					util.LogError(err, "mrenter", "Registration failed with %s.", res.Status)
 				}
