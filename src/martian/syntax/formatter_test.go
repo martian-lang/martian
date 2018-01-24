@@ -123,7 +123,7 @@ stage ADD_KEY3(
 stage SUM_SQUARES(
     in  float[] values,
     out float   sum,
-    src comp    "bin/sum_squares",
+    src comp    "bin/sum_squares mode_arg",
 ) split using (
     in  float   value,
     out float   square,

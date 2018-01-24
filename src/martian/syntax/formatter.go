@@ -423,7 +423,8 @@ func (self *SrcParam) format(printer *printer, modeWidth int, typeWidth int, idW
 	langPad := strings.Repeat(" ", typeWidth-len(string(self.Lang)))
 	modePad := strings.Repeat(" ", modeWidth-len("src"))
 	printer.Printf("%ssrc%s %v%s \"%s\",\n", INDENT,
-		modePad, self.Lang, langPad, self.Path)
+		modePad, self.Lang, langPad,
+		strings.Join(append([]string{self.Path}, self.Args...), " "))
 }
 
 //
