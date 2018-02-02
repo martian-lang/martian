@@ -144,15 +144,14 @@ func (self *Node) vdrKill() (*VDRKillReport, bool) {
 
 	if self.filePostNodes != nil {
 		for _, node := range self.filePostNodes {
-			if s := node.getNode().state; s != Complete && s != DisabledState {
-				return &VDRKillReport{}, false
-			}
 			if _, ok := node.(*TopNode); ok {
 				// This is a top-level node
-				return &VDRKillReport{}, false
+				self.volatile = false
 			} else if _, ok := node.getNode().parent.(*TopNode); ok {
 				// This is a top-level pipestance or stagestance.
 				// Don't VDR if the top-level outputs depend on this.
+				self.volatile = false
+			} else if s := node.getNode().state; s != Complete && s != DisabledState {
 				return &VDRKillReport{}, false
 			}
 		}
