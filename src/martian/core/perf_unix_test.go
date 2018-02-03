@@ -1,5 +1,5 @@
 //
-// Copyright (c) 201 10X Genomics, Inc. All rights reserved.
+// Copyright (c) 2017 10X Genomics, Inc. All rights reserved.
 //
 // Converts system rusage into our structures.
 //

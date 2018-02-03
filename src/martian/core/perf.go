@@ -10,6 +10,7 @@ package core
 
 import (
 	"martian/util"
+	"math"
 	"time"
 )
 
@@ -123,6 +124,12 @@ type PerfInfo struct {
 	InBlocksRate    float64   `json:"in_blocks_rate"`
 	OutBlocksRate   float64   `json:"out_blocks_rate"`
 	TotalBlocksRate float64   `json:"total_blocks_rate"`
+	InBytes         int64     `json:"in_bytes"`
+	OutBytes        int64     `json:"out_bytes"`
+	InBytesRate     float64   `json:"in_bytes_rate"`
+	OutBytesRate    float64   `json:"out_bytes_rate"`
+	InBytesPeak     float64   `json:"in_bytes_peak"`
+	OutBytesPeak    float64   `json:"out_bytes_peak"`
 	Start           time.Time `json:"start"`
 	End             time.Time `json:"end"`
 	WallTime        float64   `json:"walltime"`
@@ -134,6 +141,11 @@ type PerfInfo struct {
 	OutputBytes     uint64    `json:"output_bytes"`
 	VdrFiles        uint      `json:"vdr_files"`
 	VdrBytes        uint64    `json:"vdr_bytes"`
+
+	// Deviation for a single job is deviation over time as measured by mrjob.
+	// For node aggregates, it's the deviation between child nodes.
+	InBytesDev  float64 `json:"in_bytes_dev"`
+	OutBytesDev float64 `json:"out_bytes_dev"`
 }
 
 type PerfInfoByStart []*PerfInfo
@@ -221,6 +233,18 @@ func reduceJobInfo(jobInfo *JobInfo, outputPaths []string, numThreads int) *Perf
 		}
 		perfInfo.MaxVmem = jobInfo.MemoryUsage.VmemKb()
 	}
+	if jobInfo.IoStats != nil {
+		perfInfo.InBytes = jobInfo.IoStats.Total.Read.BlockBytes
+		perfInfo.OutBytes = jobInfo.IoStats.Total.Write.BlockBytes
+		if perfInfo.Duration > 0 {
+			perfInfo.InBytesRate = float64(perfInfo.InBytes) / perfInfo.Duration
+			perfInfo.OutBytesRate = float64(perfInfo.OutBytes) / perfInfo.Duration
+		}
+		perfInfo.InBytesPeak = jobInfo.IoStats.RateMax.Read.BlockBytes
+		perfInfo.OutBytesPeak = jobInfo.IoStats.RateMax.Write.BlockBytes
+		perfInfo.InBytesDev = jobInfo.IoStats.RateDev.Read.BlockBytes
+		perfInfo.OutBytesDev = jobInfo.IoStats.RateDev.Write.BlockBytes
+	}
 
 	perfInfo.OutputFiles, perfInfo.OutputBytes = util.GetDirectorySize(outputPaths)
 	perfInfo.TotalFiles = perfInfo.OutputFiles
@@ -231,6 +255,16 @@ func reduceJobInfo(jobInfo *JobInfo, outputPaths []string, numThreads int) *Perf
 
 func ComputeStats(perfInfos []*PerfInfo, outputPaths []string, vdrKillReport *VDRKillReport) *PerfInfo {
 	aggPerfInfo := &PerfInfo{}
+	fmax := func(x, y float64) float64 {
+		if x > y {
+			return x
+		} else {
+			return y
+		}
+	}
+	square := func(x float64) float64 {
+		return x * x
+	}
 	for _, perfInfo := range perfInfos {
 		if aggPerfInfo.Start.IsZero() || (!perfInfo.Start.IsZero() && aggPerfInfo.Start.After(perfInfo.Start)) {
 			aggPerfInfo.Start = perfInfo.Start
@@ -248,10 +282,20 @@ func ComputeStats(perfInfos []*PerfInfo, outputPaths []string, vdrKillReport *VD
 		aggPerfInfo.OutBlocks += perfInfo.OutBlocks
 		aggPerfInfo.InBlocks += perfInfo.InBlocks
 		aggPerfInfo.TotalBlocks += perfInfo.TotalBlocks
+		aggPerfInfo.OutBytes += perfInfo.OutBytes
+		aggPerfInfo.InBytes += perfInfo.InBytes
+		aggPerfInfo.OutBytesPeak = fmax(aggPerfInfo.OutBytesPeak, perfInfo.OutBytesPeak)
+		aggPerfInfo.InBytesPeak = fmax(aggPerfInfo.InBytesPeak, perfInfo.InBytesPeak)
 		aggPerfInfo.OutputFiles += perfInfo.OutputFiles
 		aggPerfInfo.OutputBytes += perfInfo.OutputBytes
 		aggPerfInfo.UserTime += perfInfo.UserTime
 		aggPerfInfo.SystemTime += perfInfo.SystemTime
+
+		if perfInfo.Duration > 0 {
+			// Accumulate sum^2 bytes here.  Convert to deviation at the end.
+			aggPerfInfo.InBytesDev += square(float64(perfInfo.InBytes)) / perfInfo.Duration
+			aggPerfInfo.OutBytesDev += square(float64(perfInfo.OutBytes)) / perfInfo.Duration
+		}
 
 		if vdrKillReport == nil {
 			// If VDR kill report is nil, use perf reports' VDR stats
@@ -263,6 +307,21 @@ func ComputeStats(perfInfos []*PerfInfo, outputPaths []string, vdrKillReport *VD
 		aggPerfInfo.InBlocksRate = float64(aggPerfInfo.InBlocks) / aggPerfInfo.Duration
 		aggPerfInfo.OutBlocksRate = float64(aggPerfInfo.OutBlocks) / aggPerfInfo.Duration
 		aggPerfInfo.TotalBlocksRate = float64(aggPerfInfo.TotalBlocks) / aggPerfInfo.Duration
+		aggPerfInfo.InBytesRate = float64(aggPerfInfo.InBytes) / aggPerfInfo.Duration
+		aggPerfInfo.OutBytesRate = float64(aggPerfInfo.OutBytes) / aggPerfInfo.Duration
+		safeSqrt := func(x float64) float64 {
+			if x > 0 {
+				return math.Sqrt(x)
+			} else {
+				return 0
+			}
+		}
+		aggPerfInfo.InBytesDev = safeSqrt(
+			aggPerfInfo.InBytesDev/aggPerfInfo.Duration -
+				aggPerfInfo.InBytesRate*aggPerfInfo.InBytesRate)
+		aggPerfInfo.OutBytesDev = safeSqrt(
+			aggPerfInfo.OutBytesDev/aggPerfInfo.Duration -
+				aggPerfInfo.OutBytesRate*aggPerfInfo.OutBytesRate)
 	}
 	if vdrKillReport != nil {
 		aggPerfInfo.VdrFiles = vdrKillReport.Count

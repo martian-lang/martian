@@ -7,6 +7,7 @@
 package core
 
 import (
+	"bytes"
 	"fmt"
 	"io/ioutil"
 	"martian/util"
@@ -80,10 +81,17 @@ func GetUserProcessCount() (int, error) {
 // children.  Only errors getting the first process's memory, or the
 // set of children for that process, are reported.  includeParent specifies
 // whether the top-level pid is included in the total.
-func GetProcessTreeMemory(pid int, includeParent bool) (mem ObservedMemory, err error) {
+func GetProcessTreeMemory(pid int, includeParent bool, io map[int]*IoAmount) (mem ObservedMemory, err error) {
 	if includeParent {
 		if mem, err = GetRunningMemory(pid); err != nil {
 			return mem, err
+		}
+		if io != nil {
+			if ioV, err := GetRunningIo(pid); err == nil {
+				io[pid] = ioV
+			} else {
+				fmt.Println("Error fetching io for", pid, err)
+			}
 		}
 	} else {
 		mem = ObservedMemory{}
@@ -95,7 +103,7 @@ func GetProcessTreeMemory(pid int, includeParent bool) (mem ObservedMemory, err 
 			if childrenBytes, err := ioutil.ReadFile(fmt.Sprintf("/proc/%d/task/%s/children", pid, tid)); err == nil {
 				for _, child := range strings.Fields(string(childrenBytes)) {
 					if childPid, err := strconv.Atoi(child); err == nil {
-						cmem, _ := GetProcessTreeMemory(childPid, true)
+						cmem, _ := GetProcessTreeMemory(childPid, true, io)
 						mem.Add(cmem)
 					}
 				}
@@ -153,5 +161,59 @@ func GetRunningMemory(pid int) (ObservedMemory, error) {
 		}
 		mem.pagesToBytes()
 		return mem, nil
+	}
+}
+
+var (
+	newline     = []byte{'\n'}
+	syscr       = []byte("syscr: ")
+	syscw       = []byte("syscw: ")
+	read_bytes  = []byte("read_bytes: ")
+	write_bytes = []byte("write_bytes: ")
+)
+
+// Gets IO statistics for a running process by pid.
+func GetRunningIo(pid int) (*IoAmount, error) {
+	if b, err := ioutil.ReadFile(fmt.Sprintf("/proc/%d/io", pid)); err != nil {
+		return nil, err
+	} else {
+		lines := bytes.Split(b, newline)
+		if len(lines) < 6 {
+			return nil, fmt.Errorf(
+				"io: unexpected result %q", b)
+		}
+		readTo := func(line, prefix []byte, target *int64) (bool, error) {
+			if bytes.HasPrefix(line, prefix) {
+				if v, err := strconv.ParseInt(string(bytes.TrimSpace(line[len(prefix):])), 10, 64); err != nil {
+					return true, err
+				} else {
+					*target = v
+					return true, nil
+				}
+			} else {
+				return false, nil
+			}
+		}
+		var result IoAmount
+		for _, line := range lines {
+			if found, err := readTo(line, syscr, &result.Read.Syscalls); found {
+				continue
+			} else if err != nil {
+				return nil, err
+			} else if found, err := readTo(line, syscw, &result.Write.Syscalls); found {
+				continue
+			} else if err != nil {
+				return nil, err
+			} else if found, err := readTo(line, read_bytes, &result.Read.BlockBytes); found {
+				continue
+			} else if err != nil {
+				return nil, err
+			} else if found, err := readTo(line, write_bytes, &result.Read.BlockBytes); found {
+				continue
+			} else if err != nil {
+				return nil, err
+			}
+		}
+		return &result, nil
 	}
 }

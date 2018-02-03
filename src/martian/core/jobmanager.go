@@ -208,7 +208,7 @@ func (self *LocalJobManager) refreshResources(localMode bool) error {
 	if err := sysMem.Get(); err != nil {
 		return err
 	}
-	usedMem, err := GetProcessTreeMemory(os.Getpid(), false)
+	usedMem, err := GetProcessTreeMemory(os.Getpid(), false, nil)
 	if err != nil {
 		util.LogError(err, "jobmngr", "Error getting process tree memory usage.")
 	}

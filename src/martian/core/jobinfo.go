@@ -13,6 +13,7 @@ type JobInfo struct {
 	PythonInfo    *PythonInfo       `json:"python,omitempty"`
 	RusageInfo    *RusageInfo       `json:"rusage,omitempty"`
 	MemoryUsage   *ObservedMemory   `json:"used_bytes,omitempty"`
+	IoStats       *IoStats          `json:"io,omitempty"`
 	WallClockInfo *WallClockInfo    `json:"wallclock,omitempty"`
 	Threads       int               `json:"threads,omitempty"`
 	MemGB         int               `json:"memGB,omitempty"`

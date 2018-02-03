@@ -30,6 +30,7 @@ type runner struct {
 	log         *os.File
 	errorReader *os.File
 	highMem     core.ObservedMemory
+	ioStats     *core.IoStatsBuilder
 	metadata    *core.Metadata
 	runType     string
 	jobInfo     *core.JobInfo
@@ -51,6 +52,7 @@ func main() {
 	journalPath := path.Dir(args[3])
 
 	run := runner{
+		ioStats:  core.NewIoStatsBuilder(),
 		metadata: core.NewMetadataRunWithJournalPath(fqname, metadataPath, filesPath, journalPath, runType),
 		runType:  runType,
 		start:    time.Now(),
@@ -142,6 +144,7 @@ func (self *runner) done() {
 		if !self.highMem.IsZero() {
 			self.jobInfo.MemoryUsage = &self.highMem
 		}
+		self.jobInfo.IoStats = &self.ioStats.IoStats
 		if err := self.metadata.WriteAtomic(core.JobInfoFile, self.jobInfo); err != nil {
 			util.PrintError(err, "monitor", "Could not write final jobInfo.")
 		} else {
@@ -456,9 +459,15 @@ func (self *runner) getChildMemGB() float64 {
 	if proc == nil {
 		return 0
 	}
-	mem, _ := core.GetProcessTreeMemory(proc.Pid, true)
+	io := make(map[int]*core.IoAmount)
+	mem, err := core.GetProcessTreeMemory(proc.Pid, true, io)
 	mem.IncreaseRusage(core.GetRusage())
 	self.highMem.IncreaseTo(mem)
+	if err != nil {
+		util.LogError(err, "monitor", "Error updating job statistics.")
+	} else {
+		self.ioStats.Update(io, time.Now())
+	}
 	return float64(mem.Rss) / (1024 * 1024 * 1024)
 }
 
