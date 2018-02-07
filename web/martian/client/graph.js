@@ -1,5 +1,5 @@
 (function() {
-  var _humanizeBytes, _humanizeTime, _humanizeUnits, _humanizeWithSuffixes, addColumns, addRow, app, humanize, renderChart, renderGraph;
+  var _humanizeBytes, _humanizeTime, _humanizeUnits, _humanizeWithSuffix, addColumns, addRow, app, humanize, renderChart, renderGraph;
 
   app = angular.module('app', ['ui.bootstrap', 'ngClipboard', 'googlechart']);
 
@@ -102,28 +102,22 @@
     return s.trim();
   };
 
-  _humanizeWithSuffixes = function(num, suffixes, base) {
+  _humanizeWithSuffix = function(num, suffixes, base, precision) {
     var i;
     i = 0;
     while (num > base && i < suffixes.length - 1) {
       num = num / base;
       i += 1;
     }
-    return [num, suffixes[i]];
+    return num.toFixed(precision) + ' ' + suffixes[i];
   };
 
   _humanizeTime = function(num) {
-    var ref, suffix;
-    ref = _humanizeWithSuffixes(num, ['seconds', 'minutes', 'hours'], 60), num = ref[0], suffix = ref[1];
-    num = num.toFixed(2);
-    return num.toString() + ' ' + suffix;
+    return _humanizeWithSuffix(num, ['seconds', 'minutes', 'hours'], 60, 2);
   };
 
   _humanizeBytes = function(num) {
-    var ref, suffix;
-    ref = _humanizeWithSuffixes(num, ['B', 'KB', 'MB', 'GB', 'TB'], 1024), num = ref[0], suffix = ref[1];
-    num = Math.round(num);
-    return num.toString() + ' ' + suffix;
+    return _humanizeWithSuffix(num, ['B', 'KB', 'MB', 'GB', 'TB'], 1024, 0);
   };
 
   _humanizeUnits = function(num, units) {
@@ -150,12 +144,7 @@
   };
 
   renderChart = function($scope, columns, units) {
-    var chart, chunk, fork, height, j, k, len, len1, name, node, pnode, ref, stage, stages;
-    if ($scope.node) {
-      node = $scope.node;
-    } else {
-      node = $scope.topnode;
-    }
+    var chart, chunk, fork, height, j, k, len, len1, name, pnode, ref, stage, stages;
     pnode = $scope.pnode;
     chart = {};
     chart.type = $scope.charttype;
@@ -198,7 +187,7 @@
   };
 
   app.controller('MartianGraphCtrl', function($scope, $compile, $http, $interval) {
-    var auth, j, key, len, ref, ref1, ref2, selected, tab, v, val;
+    var auth, j, len, ref, ref1, selected, tab, v;
     $scope.pname = pname;
     $scope.psid = psid;
     $scope.admin = admin;
@@ -209,8 +198,7 @@
     ref = window.location.search.substring(1).split("&");
     for (j = 0, len = ref.length; j < len; j++) {
       v = ref[j];
-      ref1 = v.split("="), key = ref1[0], val = ref1[1];
-      if (key === 'auth') {
+      if (v.split("=")[0] === 'auth') {
         auth = '?' + v;
         break;
       }
@@ -290,9 +278,9 @@
         });
       }
     });
-    ref2 = $scope.tabs;
-    for (tab in ref2) {
-      selected = ref2[tab];
+    ref1 = $scope.tabs;
+    for (tab in ref1) {
+      selected = ref1[tab];
       $scope.$watch('tabs.' + tab, function() {
         return $scope.getChart();
       });
@@ -313,10 +301,10 @@
       return humanize(node[name], units);
     };
     $scope.getActiveTab = function() {
-      var ref3;
-      ref3 = $scope.tabs;
-      for (tab in ref3) {
-        selected = ref3[tab];
+      var ref2;
+      ref2 = $scope.tabs;
+      for (tab in ref2) {
+        selected = ref2[tab];
         if (selected) {
           return tab;
         }

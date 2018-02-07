@@ -71,22 +71,18 @@ humanize = (num, units) ->
         s = _humanizeUnits(num, units)
     return s.trim()
 
-_humanizeWithSuffixes = (num, suffixes, base) ->
+_humanizeWithSuffix = (num, suffixes, base, precision) ->
     i = 0
     while num > base and i < suffixes.length - 1
         num = num / base
         i += 1
-    return [num, suffixes[i]]
+    return num.toFixed(precision)+' '+suffixes[i]
 
 _humanizeTime = (num) ->
-    [num, suffix] = _humanizeWithSuffixes(num, ['seconds', 'minutes', 'hours'], 60)
-    num = num.toFixed(2)
-    return num.toString()+' '+suffix
+    return _humanizeWithSuffix(num, ['seconds', 'minutes', 'hours'], 60, 2)
 
 _humanizeBytes = (num) ->
-    [num, suffix] = _humanizeWithSuffixes(num, ['B', 'KB', 'MB', 'GB', 'TB'], 1024)
-    num = Math.round(num)
-    return num.toString()+' '+suffix
+    return _humanizeWithSuffix(num, ['B', 'KB', 'MB', 'GB', 'TB'], 1024, 0)
 
 _humanizeUnits = (num, units) ->
     if num >= 1000
@@ -104,10 +100,6 @@ _humanizeUnits = (num, units) ->
     return s+' '+units
 
 renderChart = ($scope, columns, units) ->
-    if $scope.node
-        node = $scope.node
-    else
-        node = $scope.topnode
     pnode = $scope.pnode
     chart = {}
     chart.type = $scope.charttype
@@ -142,8 +134,7 @@ app.controller('MartianGraphCtrl', ($scope, $compile, $http, $interval) ->
     $scope.urlprefix = if adminstyle then '/admin' else '/'
     auth = ''
     for v in window.location.search.substring(1).split("&")
-        [key, val] = v.split("=")
-        if key == 'auth'
+        if v.split("=")[0] == 'auth'
             auth = '?' + v
             break
 
