@@ -43,7 +43,8 @@ gulp.task('compress', [
             'res/**/*.min.js',
             'res/**/ng-google-chart.js',
             'res/**/ngClip.js',
-            'res/**/bootstrap.min.css'
+            'res/**/bootstrap.min.css',
+            'res/favicon.ico'
         ])
         .pipe(gzip({ append: false }))
         .pipe(gulp.dest('serve'));

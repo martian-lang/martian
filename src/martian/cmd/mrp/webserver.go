@@ -136,6 +136,7 @@ func (self *mrpWebServer) handleStatic(sm *http.ServeMux) {
 		res.ServeHTTP(w, req)
 	}
 	sm.HandleFunc("/graph.js", contentGzip)
+	sm.HandleFunc("/favicon.ico", contentGzip)
 	sm.HandleFunc("/css/", contentGzip)
 	sm.HandleFunc("/js/", contentGzip)
 	sm.Handle("/fonts/", res)
