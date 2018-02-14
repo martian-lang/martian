@@ -2,6 +2,6 @@
 
 call ADD_KEY(
     key = "1",
-    value = "one",
+    value = "première",
     start = null,
 )

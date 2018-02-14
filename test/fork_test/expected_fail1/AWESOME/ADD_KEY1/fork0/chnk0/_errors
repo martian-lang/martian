@@ -1,11 +1,11 @@
 Traceback (most recent call last):
-  File "/Users/testuser/martian/adapters/python/martian_shell.py", line 529, in _main
+  File "/Users/testuser/martian/adapters/python/martian_shell.py", line 541, in _main
     stage.main()
-  File "/Users/testuser/martian/adapters/python/martian_shell.py", line 495, in main
+  File "/Users/testuser/martian/adapters/python/martian_shell.py", line 507, in main
     self._run(lambda: self._module.main(args, outs))
-  File "/Users/testuser/martian/adapters/python/martian_shell.py", line 464, in _run
+  File "/Users/testuser/martian/adapters/python/martian_shell.py", line 476, in _run
     cmd()
-  File "/Users/testuser/martian/adapters/python/martian_shell.py", line 495, in <lambda>
+  File "/Users/testuser/martian/adapters/python/martian_shell.py", line 507, in <lambda>
     self._run(lambda: self._module.main(args, outs))
   File "/Users/testuser/martian/test/fork_test/stages/add_key/__init__.py", line 25, in main
     os.kill(os.getpid(), int(s))

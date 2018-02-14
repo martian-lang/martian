@@ -190,6 +190,8 @@ class _Metadata(object):
 
     def write_raw(self, name, text, force=False):
         """Write the given text to the given metadata file."""
+        if isinstance(text, unicode):
+            text = text.encode('utf-8')
         with open(self.make_path(name), 'w') as dest:
             dest.write(text)
         self.update_journal(name, force)
@@ -204,6 +206,8 @@ class _Metadata(object):
         """Write the given text to the given metadata file, by creating a
         temporary file and then moving it, in order to prevent corruption
         of the existing file if the proces of writing is interupted."""
+        if isinstance(text, unicode):
+            text = text.encode('utf-8')
         fname = self.make_path(name)
         fname_tmp = fname + '.tmp'
         with open(fname_tmp, 'w') as dest:
@@ -232,6 +236,8 @@ class _Metadata(object):
 
     def _append(self, message, filename):
         """Append to the given metadata file."""
+        if isinstance(message, unicode):
+            message = message.encode('utf-8')
         with open(self.make_path(filename), 'a') as dest:
             dest.write(message + '\n')
         self.update_journal(filename)
@@ -241,29 +247,35 @@ class _Metadata(object):
         if not isinstance(message, basestring):
             # If not a basestring (str or unicode), convert to string here
             message = str(message)
+        elif isinstance(message, unicode):
+            message = message.encode('utf-8')
         self._logfile.write('%s [%s] %s\n' %
                             (self.make_timestamp_now(),
                              level,
-                             message.encode('utf-8')))
+                             message))
         self._logfile.flush()
 
     def alarm(self, message):
         """Append to the alarms file."""
-        self._append(message.encode('utf-8'), 'alarm')
+        self._append(message, 'alarm')
 
     def progress(self, message):
         """Report a progress update."""
-        self.write_raw_atomic('progress', message.encode('utf-8'), True)
+        self.write_raw_atomic('progress', message, True)
 
     @staticmethod
     def write_errors(message):
         """Write to the errors file."""
+        if isinstance(message, unicode):
+            message = message.encode('utf-8')
         with os.fdopen(4, 'w') as error_out:
-            error_out.write(message.encode('utf-8'))
+            error_out.write(message)
 
     def write_assert(self, message):
         """Write to the assert file."""
-        self.write_errors('ASSERT:' + message.encode('utf-8'))
+        if isinstance(message, unicode):
+            message = message.encode('utf-8')
+        self.write_errors('ASSERT:' + message)
 
     def update_journal(self, name, force=False):
         """Write a journal entry notifying the parent mrp process of changes to

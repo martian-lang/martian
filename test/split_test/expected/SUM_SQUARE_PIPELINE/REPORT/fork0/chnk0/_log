@@ -1,4 +1,5 @@
 2017-10-23 10:28:48 [time] __start__
-2017-10-23 10:28:48 [info] Logging à non-ascii character.
+2017-10-23 10:28:48 [info] Logging à non-ascii character from unicode string.
+2017-10-23 10:28:48 [info] Logging à non-ascii character from python string.
 2017-10-23 10:28:48 [info] {'hello': 'world'}
 2017-10-23 10:28:48 [time] __end__
