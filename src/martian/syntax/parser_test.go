@@ -209,6 +209,35 @@ call SUM_SQUARE_PIPELINE(
 `)
 }
 
+func TestUnusedParam(t *testing.T) {
+	testBadCompile(t, `
+stage SUM_SQUARES(
+	in  int     unused,
+    in  float[] values,
+    out float   sum,
+    src py      "stages/sum_squares",
+)
+
+pipeline SUM_SQUARE_PIPELINE(
+    in  float[] values,
+    out float   sum,
+)
+{
+    call SUM_SQUARES(
+        values = self.values,
+    )
+
+    return (
+        sum = SUM_SQUARES.sum,
+    )
+}
+
+call SUM_SQUARE_PIPELINE(
+    values = [1.0, 2.0, 3.0],
+)
+`)
+}
+
 func TestMissingReturn(t *testing.T) {
 	testBadCompile(t, `
 stage SUM_SQUARES(
@@ -666,6 +695,30 @@ pipeline QUARTIC(
 {
     call SQUARES(
         values = [[1], [2, 3], [1, SQUARES.square]],
+    )
+    return (
+        quart = SQUARES.square,
+    )
+}
+`)
+}
+
+// Check that binding inside an array works.
+func TestGoodBindArray(t *testing.T) {
+	testGood(t, `
+stage SQUARES(
+    in  float[][] values,
+    out float     square,
+    src py        "stages/square",
+)
+
+pipeline QUARTIC(
+	in  float value,
+    out float quart,
+)
+{
+    call SQUARES(
+        values = [[1], [2, 3], [1, self.value]],
     )
     return (
         quart = SQUARES.square,

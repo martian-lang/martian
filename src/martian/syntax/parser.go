@@ -636,6 +636,22 @@ func (global *Ast) compilePipelineDecs() error {
 	return errs.If()
 }
 
+func getBoundParamIds(uexp Exp) []string {
+	switch exp := uexp.(type) {
+	case *RefExp:
+		return []string{exp.Id}
+	case *ValExp:
+		if exp.Kind == KindArray {
+			var ids []string
+			for _, subExp := range exp.Value.([]Exp) {
+				ids = append(ids, getBoundParamIds(subExp)...)
+			}
+			return ids
+		}
+	}
+	return nil
+}
+
 // Check all pipeline input params are bound in a call statement.
 func (global *Ast) compilePipelineArgs() error {
 	// Doing these in a separate loop gives the user better incremental
@@ -644,9 +660,8 @@ func (global *Ast) compilePipelineArgs() error {
 		boundParamIds := map[string]bool{}
 		for _, call := range pipeline.Calls {
 			for _, binding := range call.Bindings.List {
-				refexp, ok := binding.Exp.(*RefExp)
-				if ok {
-					boundParamIds[refexp.Id] = true
+				for _, id := range getBoundParamIds(binding.Exp) {
+					boundParamIds[id] = true
 				}
 			}
 			if call.Modifiers.Bindings != nil {
