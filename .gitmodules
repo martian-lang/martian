@@ -1,21 +1,21 @@
 [submodule "src/github.com/dustin/go-humanize"]
-	path = src/vendor/github.com/dustin/go-humanize
+	path = vendor/github.com/dustin/go-humanize
 	url = https://github.com/dustin/go-humanize
 [submodule "src/github.com/cloudfoundry/gosigar"]
-	path = src/vendor/github.com/cloudfoundry/gosigar
+	path = vendor/github.com/cloudfoundry/gosigar
 	url = https://github.com/cloudfoundry/gosigar
 [submodule "src/github.com/stretchr/testify"]
-	path = src/vendor/github.com/stretchr/testify
+	path = vendor/github.com/stretchr/testify
 	url = https://github.com/stretchr/testify
 [submodule "src/github.com/martian-lang/docopt.go"]
-	path = src/vendor/github.com/martian-lang/docopt.go
+	path = vendor/github.com/martian-lang/docopt.go
 	url = https://github.com/martian-lang/docopt.go
 [submodule "src/github.com/satori/go.uuid"]
-	path = src/vendor/github.com/satori/go.uuid
+	path = vendor/github.com/satori/go.uuid
 	url = https://github.com/satori/go.uuid
 [submodule "src/github.com/golang/tools"]
-	path = src/vendor/golang.org/x/tools
+	path = vendor/golang.org/x/tools
 	url = https://github.com/golang/tools
 [submodule "src/vendor/golang.org/x/sys"]
-	path = src/vendor/golang.org/x/sys
+	path = vendor/golang.org/x/sys
 	url = https://github.com/golang/sys

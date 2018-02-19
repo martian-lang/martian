@@ -4,8 +4,9 @@
 # Build a Go package with git version embedding.
 #
 
-GOBINS=mrc mrf mrg mrp mrs mrt_helper mrstat mrjob mro2go
-GOLIBTESTS=$(addprefix test-, core util syntax adapter)
+GOBINS=$(notdir $(wildcard cmd/*))
+REPO=github.com/martian-lang/martian
+GOLIBTESTS=$(addprefix test-, $(notdir $(wildcard martian/*)))
 GOBINTESTS=$(addprefix test-, $(GOBINS))
 GOTESTS=$(GOLIBTESTS) $(GOBINTESTS) test-all
 VERSION=$(shell git describe --tags --always --dirty)
@@ -14,31 +15,34 @@ GO_FLAGS=-ldflags "-X martian/util.__VERSION__='$(VERSION)' -X martian/util.__RE
 
 export GOPATH=$(shell pwd)
 
-.PHONY: $(GOBINS) grammar web $(GOTESTS) govet bin/sum_squares longtests
+.PHONY: $(GOBINS) grammar web $(GOTESTS) govet all-bins bin/sum_squares longtests
 
 #
 # Targets for development builds.
 #
-all: grammar $(GOBINS) web test
+all: grammar all-bins web test
 
-bin/goyacc: src/vendor/golang.org/x/tools/cmd/goyacc/yacc.go
-	go install vendor/golang.org/x/tools/cmd/goyacc
+bin/goyacc: vendor/golang.org/x/tools/cmd/goyacc/yacc.go
+	go install golang.org/x/tools/cmd/goyacc
 
 src/martian/syntax/grammar.go: bin/goyacc src/martian/syntax/grammar.y
-	bin/goyacc -p "mm" -o src/martian/syntax/grammar.go src/martian/syntax/grammar.y && rm y.output
+	bin/goyacc -p "mm" -o martian/syntax/grammar.go martian/syntax/grammar.y && rm y.output
 
 src/martian/test/sum_squares/types.go: PATH:=$(GOPATH)/bin:$(PATH)
 src/martian/test/sum_squares/types.go: test/split_test_go/pipeline_stages.mro mro2go
-	go generate martian/test/sum_squares
+	go generate $(REPO)/martian/test/sum_squares
 
-bin/sum_squares: src/martian/test/sum_squares/sum_squares.go \
+bin/sum_squares: martian/test/sum_squares/sum_squares.go \
 	src/martian/test/sum_squares/types.go
-	go install $(GO_FLAGS) martian/test/sum_squares
+	go install $(GO_FLAGS) $(REPO)/martian/test/sum_squares
 
-grammar: src/martian/syntax/grammar.go
+grammar: martian/syntax/grammar.go
 
 $(GOBINS):
-	go install $(GO_FLAGS) martian/cmd/$@
+	go install $(GO_FLAGS) $(REPO)/cmd/$@
+
+all-bins:
+	go install $(GO_FLAGS) $(addprefix $(REPO)/, $(wildcard cmd/*))
 
 web:
 	(cd web/martian && npm install && node_modules/gulp/bin/gulp.js)
@@ -47,10 +51,10 @@ mrt:
 	cp scripts/mrt bin/mrt
 
 $(GOLIBTESTS): test-%:
-	go test -v martian/$*
+	go test -v $(REPO)/martian/$*
 
 $(GOBINTESTS): test-%:
-	go test -v martian/cmd/$*
+	go test -v $(REPO)/cmd/$*
 
 WEB_FILES=web/martian/serve web/martian/templates/graph.html
 
@@ -69,10 +73,10 @@ $(PRODUCT_NAME).tar.%: $(addprefix bin/, $(GOBINS)) $(ADAPTERS) $(JOBMANAGERS) $
 tarball: $(PRODUCT_NAME).tar.gz
 
 test-all:
-	go test -v martian/...
+	go test -v $(addprefix $(REPO)/, $(wildcard martian/* cmd/*))
 
 govet:
-	go tool vet src/martian
+	go tool vet martian
 
 test: test-all govet bin/sum_squares
 
