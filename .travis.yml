@@ -11,7 +11,6 @@ before_cache:
 sudo: false
 before_script:
 - nvm install --lts node
-- npm install -g gulp
 - pip install --user pylint
 script:
 - make all
