@@ -11,7 +11,7 @@ GOBINTESTS=$(addprefix test-, $(GOBINS))
 GOTESTS=$(GOLIBTESTS) $(GOBINTESTS) test-all
 VERSION=$(shell git describe --tags --always --dirty)
 RELEASE=false
-GO_FLAGS=-ldflags "-X martian/util.__VERSION__='$(VERSION)' -X martian/util.__RELEASE__='$(RELEASE)'"
+GO_FLAGS=-ldflags "-X $(REPO)/martian/util.__VERSION__='$(VERSION)' -X $(REPO)/martian/util.__RELEASE__='$(RELEASE)'"
 
 export GOPATH=$(shell pwd)
 
@@ -33,7 +33,7 @@ src/martian/test/sum_squares/types.go: test/split_test_go/pipeline_stages.mro mr
 	go generate $(REPO)/martian/test/sum_squares
 
 bin/sum_squares: martian/test/sum_squares/sum_squares.go \
-	src/martian/test/sum_squares/types.go
+                 martian/test/sum_squares/types.go
 	go install $(GO_FLAGS) $(REPO)/martian/test/sum_squares
 
 grammar: martian/syntax/grammar.go
