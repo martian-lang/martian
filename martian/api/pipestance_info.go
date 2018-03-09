@@ -51,6 +51,7 @@ type PipestanceInfo struct {
 	Port         string             `json:"mroport"`
 	MroVersion   string             `json:"mroversion"`
 	Uuid         string             `json:"uuid"`
+	PsPath       string             `json:"pipestance_path,omitempty"`
 }
 
 // The full state information for a pipestance, including the status of every
