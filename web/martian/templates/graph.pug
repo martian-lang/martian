@@ -23,22 +23,25 @@ html(ng-app="app" ng-controller="MartianGraphCtrl")
         script(src="/js/ng-google-chart.js")
 
     body
-        header.navbar.navbar-inverse.navbar-fixed-top(ng-class="{admin: adminstyle}")
+        header.navbar.navbar-inverse.navbar-fixed-top(class="[[if .AdminStyle]]admin[[end]]")
             .navbar-header
                 .navbar-brand
                     a(href="{{urlprefix}}" style="color:#555") 10
                         span.logo-color X
                         | &nbsp;[[.InstanceName]]
-                    | &nbsp;/ {{info.username}} / {{info.psid}} / {{info.pname}}
-                    span(ng-if="adminstyle")
+                    | &nbsp;/ {{info.username}} / [[.Psid]] / [[.Pname]]
+                    | [[if .AdminStyle]]
+                    span
                         | &nbsp;(
                         a.admin-exit(href="/") exit admin mode
                         | )
-                    .navbar-views(ng-show="!release")
+                    | [[end]][[if not .Release]]
+                    .navbar-views
                         .btn-group
                             button.btn.btn-default(ng-model="perf" btn-radio="false" style="margin-top: -7px") Details
                             | &nbsp;
                             .btn.btn-default(ng-model="perf" btn-radio="true" style="margin-top: -7px") Performance
+                    | [[end]]
         #graph(style="margin-left: 10px; margin-top: 60px;")
             svg(width="750px" height="1000px" ng-click="alert('l')")
                 g#top(transform="translate(5,5) scale(1.0)")
@@ -185,7 +188,9 @@ html(ng-app="app" ng-controller="MartianGraphCtrl")
                     td(style="width: 85px") State
                     td
                         span.minibox(ng-class="node.state") {{node.state}}
-                        button.btn.btn-default.btn-xs(ng-if="info.state == 'failed' && node.state == 'failed' && showRestart && admin" ng-click="restart()" style="margin-left: 10px") Restart
+                        | [[if .Admin]]
+                        button.btn.btn-default.btn-xs(ng-if="info.state == 'failed' && node.state == 'failed' && showRestart" ng-click="restart()" style="margin-left: 10px") Restart
+                        | [[end]]
                 tr
                     td FQName
                     td {{node.fqname}}
