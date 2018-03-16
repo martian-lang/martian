@@ -108,6 +108,12 @@ func (self *pipestanceHolder) UpdateState(state core.MetadataState) {
 	}
 }
 
+func (self *pipestanceHolder) UpdateError(message string) {
+	self.lock.Lock()
+	self.info.LastErrorMessage = message
+	self.lock.Unlock()
+}
+
 func (self *pipestanceHolder) Register() {
 	if !self.enableUI {
 		return
@@ -207,6 +213,9 @@ func attemptRetry(pipestance *core.Pipestance, pipestanceBox *pipestanceHolder) 
 	if pipestanceBox.consumeRetry() {
 		canRetry, transient_log = pipestance.IsErrorTransient()
 	}
+	if transient_log != "" && !pipestanceBox.showedFailed {
+		pipestanceBox.UpdateError(transient_log)
+	}
 	if canRetry {
 		pipestanceBox.UpdateState(core.Failed.Prefixed(core.RetryPrefix))
 		pipestance.Unlock()
@@ -275,8 +284,14 @@ func cleanupFailed(pipestance *core.Pipestance, pipestanceBox *pipestanceHolder,
 		if _, preflight, _, log, kind, errPaths := pipestance.GetFatalError(); kind == "assert" {
 			// Print preflight check failures.
 			util.Println("\n[%s] %s\n", "error", log)
-			pipestance.ClearUiPort()
+			if log != "" {
+				pipestanceBox.UpdateError(log)
+			} else {
+				pipestanceBox.UpdateError(fmt.Sprintf("Assertion failed.  See logs at:\n%s",
+					strings.Join(errPaths, "\n")))
+			}
 			pipestanceBox.UpdateState(core.Failed)
+			pipestance.ClearUiPort()
 			if preflight {
 				os.Exit(3)
 			} else {
@@ -289,9 +304,13 @@ func cleanupFailed(pipestance *core.Pipestance, pipestanceBox *pipestanceHolder,
 			if log != "" {
 				util.Println("\n[%s] Pipestance failed. Error log at:\n%s\n\nLog message:\n%s\n",
 					"error", errPath, log)
+				pipestanceBox.UpdateError(fmt.Sprintf("Pipestance failed. Full log at:\n%s\n%s",
+					strings.Join(errPaths, "\n"), log))
 			} else {
 				// Print path to _errors metadata file in failed stage.
 				util.Println("\n[%s] Pipestance failed. Please see log at:\n%s\n", "error", errPath)
+				pipestanceBox.UpdateError(fmt.Sprintf("Pipestance failed. See logs at:\n%s",
+					strings.Join(errPaths, "\n")))
 			}
 			pipestanceBox.UpdateState(core.Failed)
 		}

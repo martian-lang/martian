@@ -215,8 +215,8 @@ func (self *mrpWebServer) getInfo(w http.ResponseWriter, req *http.Request) {
 	}
 	pipestance := self.pipestanceBox.getPipestance()
 	st := pipestance.GetState()
+	self.pipestanceBox.UpdateState(st)
 	self.mutex.Lock()
-	self.pipestanceBox.info.State = st
 	bytes, err := json.Marshal(self.pipestanceBox.info)
 	self.mutex.Unlock()
 	if err != nil {
@@ -237,8 +237,8 @@ func (self *mrpWebServer) getState(w http.ResponseWriter, req *http.Request) {
 		Info:  self.pipestanceBox.info,
 	}
 	st := pipestance.GetState()
+	self.pipestanceBox.UpdateState(st)
 	self.mutex.Lock()
-	self.pipestanceBox.info.State = st
 	bytes, err := json.Marshal(&state)
 	self.mutex.Unlock()
 	if err != nil {

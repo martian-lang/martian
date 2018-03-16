@@ -7,9 +7,11 @@
 package api
 
 import (
-	"github.com/martian-lang/martian/martian/core"
 	"net/url"
+	"path/filepath"
 	"strconv"
+
+	"github.com/martian-lang/martian/martian/core"
 )
 
 // Stores information about a pipestance which might be interesting to
@@ -45,13 +47,16 @@ type PipestanceInfo struct {
 	MaxCores     int                `json:"maxcores"`
 	MaxMemGB     int                `json:"maxmemgb"`
 	InvokePath   string             `json:"invokepath"`
-	InvokeSource string             `json:"invokesrc"`
+	InvokeSource string             `json:"invokesrc,omitempty"`
 	MroPath      string             `json:"mropath"`
 	ProfileMode  core.ProfileMode   `json:"mroprofile"`
 	Port         string             `json:"mroport"`
 	MroVersion   string             `json:"mroversion"`
 	Uuid         string             `json:"uuid"`
 	PsPath       string             `json:"pipestance_path,omitempty"`
+
+	// The reason for the most recent pipestance failure, if any.
+	LastErrorMessage string `json:"err_msg,omitempty"`
 }
 
 // The full state information for a pipestance, including the status of every
@@ -85,35 +90,52 @@ func (self *PipestanceInfo) StripMro() *PipestanceInfo {
 		MaxMemGB:   self.MaxMemGB,
 		InvokePath: self.InvokePath,
 		// omitted source
-		MroPath:     self.MroPath,
-		ProfileMode: self.ProfileMode,
-		Port:        self.Port,
-		MroVersion:  self.MroVersion,
-		Uuid:        self.Uuid,
+		MroPath:          self.MroPath,
+		ProfileMode:      self.ProfileMode,
+		Port:             self.Port,
+		MroVersion:       self.MroVersion,
+		Uuid:             self.Uuid,
+		PsPath:           self.PsPath,
+		LastErrorMessage: self.LastErrorMessage,
+	}
+}
+
+// Get the absoulte path to the pipestance directory
+func (self *PipestanceInfo) FullPipestancePath() string {
+	if self.PsPath != "" {
+		if filepath.IsAbs(self.PsPath) {
+			return self.PsPath
+		} else {
+			return filepath.Join(self.Cwd, self.PsPath)
+		}
+	} else {
+		return filepath.Join(self.Cwd, self.PsId)
 	}
 }
 
 // Convert url form fields to a PipestanceInfo.
 func ParsePipestanceInfoForm(form url.Values) (PipestanceInfo, error) {
 	info := PipestanceInfo{
-		Hostname:     form.Get("hostname"),
-		Username:     form.Get("username"),
-		Cwd:          form.Get("cwd"),
-		Binpath:      form.Get("binpath"),
-		Cmdline:      form.Get("cmdline"),
-		Start:        form.Get("start"),
-		Version:      form.Get("version"),
-		Pname:        form.Get("pname"),
-		PsId:         form.Get("psid"),
-		State:        core.MetadataState(form.Get("state")),
-		JobMode:      form.Get("jobmode"),
-		InvokePath:   form.Get("invokepath"),
-		InvokeSource: form.Get("invokesrc"),
-		MroPath:      form.Get("mropath"),
-		ProfileMode:  core.ProfileMode(form.Get("mroprofile")),
-		Port:         form.Get("mroport"),
-		MroVersion:   form.Get("mroversion"),
-		Uuid:         form.Get("uuid"),
+		Hostname:         form.Get("hostname"),
+		Username:         form.Get("username"),
+		Cwd:              form.Get("cwd"),
+		Binpath:          form.Get("binpath"),
+		Cmdline:          form.Get("cmdline"),
+		Start:            form.Get("start"),
+		Version:          form.Get("version"),
+		Pname:            form.Get("pname"),
+		PsId:             form.Get("psid"),
+		State:            core.MetadataState(form.Get("state")),
+		JobMode:          form.Get("jobmode"),
+		InvokePath:       form.Get("invokepath"),
+		InvokeSource:     form.Get("invokesrc"),
+		MroPath:          form.Get("mropath"),
+		ProfileMode:      core.ProfileMode(form.Get("mroprofile")),
+		Port:             form.Get("mroport"),
+		MroVersion:       form.Get("mroversion"),
+		Uuid:             form.Get("uuid"),
+		PsPath:           form.Get("pipestance_path"),
+		LastErrorMessage: form.Get("err_msg"),
 	}
 	var err, lastErr error
 	if info.Pid, err = strconv.Atoi(form.Get("pid")); err != nil {
@@ -146,11 +168,19 @@ func (self *PipestanceInfo) AsForm() url.Values {
 	form.Add("maxcores", strconv.Itoa(self.MaxCores))
 	form.Add("maxmemgb", strconv.Itoa(self.MaxMemGB))
 	form.Add("invokepath", self.InvokePath)
-	form.Add("invokesrc", self.InvokeSource)
+	if self.InvokeSource != "" {
+		form.Add("invokesrc", self.InvokeSource)
+	}
 	form.Add("mropath", self.MroPath)
 	form.Add("mroprofile", string(self.ProfileMode))
 	form.Add("mroport", self.Port)
 	form.Add("mroversion", self.MroVersion)
 	form.Add("uuid", self.Uuid)
+	if self.PsPath != "" {
+		form.Add("pipestance_path", self.PsPath)
+	}
+	if self.LastErrorMessage != "" {
+		form.Add("err_msg", self.LastErrorMessage)
+	}
 	return form
 }
