@@ -89,7 +89,7 @@ func GetDirectorySize(paths []string) (uint, uint64) {
 	var numFiles uint = 0
 	var numBytes uint64 = 0
 	for _, path := range paths {
-		filepath.Walk(path, func(_ string, info os.FileInfo, err error) error {
+		Walk(path, func(_ string, info os.FileInfo, err error) error {
 			if err == nil {
 				numBytes += uint64(info.Size())
 				numFiles++

@@ -7,11 +7,11 @@ package core
 //
 
 import (
-	"github.com/martian-lang/martian/martian/util"
 	"os"
-	"path/filepath"
 	"sort"
 	"time"
+
+	"github.com/martian-lang/martian/martian/util"
 )
 
 //
@@ -89,7 +89,7 @@ func (self *Fork) vdrKill() *VDRKillReport {
 	}
 	// Actually delete the paths.
 	for _, p := range killPaths {
-		filepath.Walk(p, func(_ string, info os.FileInfo, err error) error {
+		util.Walk(p, func(_ string, info os.FileInfo, err error) error {
 			if err == nil {
 				killReport.Size += uint64(info.Size())
 				killReport.Count++
