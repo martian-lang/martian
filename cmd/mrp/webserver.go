@@ -184,6 +184,7 @@ func (self *mrpWebServer) makeGraphPage() {
 func (self *mrpWebServer) serveGraphPage(w http.ResponseWriter, req *http.Request) {
 	if !self.readAuth || self.verifyAuth(w, req) {
 		w.Header().Set("Content-Encoding", "gzip")
+		w.Header().Set("Content-Type", "text/html")
 		http.ServeContent(w, req, "graph.html", self.startTime,
 			bytes.NewReader(self.graphPage))
 	}
@@ -247,6 +248,7 @@ func (self *mrpWebServer) getState(w http.ResponseWriter, req *http.Request) {
 	}
 
 	w.Header().Set("Content-Encoding", "gzip")
+	w.Header().Set("Content-Type", "application/json")
 	zipper, _ := gzip.NewWriterLevel(w, gzip.BestSpeed)
 	zipper.Write(bytes)
 	if err := zipper.Close(); err != nil {
@@ -270,6 +272,7 @@ func (self *mrpWebServer) getPerf(w http.ResponseWriter, req *http.Request) {
 	}
 
 	w.Header().Set("Content-Encoding", "gzip")
+	w.Header().Set("Content-Type", "application/json")
 	zipper, _ := gzip.NewWriterLevel(w, gzip.BestSpeed)
 	zipper.Write(bytes)
 	if err := zipper.Close(); err != nil {
