@@ -467,7 +467,7 @@ Options:
     --stest             Substitute real stages with stress-testing stage.
     --autoretry=NUM     Automatically retry failed runs up to NUM times.
     --overrides=JSON    JSON file supplying custom run conditions per stage.
-    --pspath=PATH       The path to the pipestance directory.  The default is
+    --psdir=PATH        The path to the pipestance directory.  The default is
                         to use <pipestance_name>.
 
     -h --help           Show this message.
@@ -686,7 +686,7 @@ Options:
 	psid := opts["<pipestance_name>"].(string)
 	invocationPath := opts["<call.mro>"].(string)
 	pipestancePath := path.Join(cwd, psid)
-	if value := opts["--pspath"]; value != nil {
+	if value := opts["--psdir"]; value != nil {
 		if p, ok := value.(string); ok && p != "" {
 			if filepath.IsAbs(p) {
 				pipestancePath = p
