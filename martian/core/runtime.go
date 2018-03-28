@@ -391,13 +391,12 @@ func (self *Runtime) InvokePipeline(src string, srcPath string, psid string,
 
 	// Error if pipestance directory is non-empty, otherwise create.
 	if err := os.MkdirAll(pipestancePath, 0777); err != nil {
-		if os.IsExist(err) {
-			if fileNames, err := util.Readdirnames(pipestancePath); err != nil || len(fileNames) > 0 {
-				return nil, &PipestanceExistsError{psid}
-			}
-		} else {
-			return nil, err
-		}
+		return nil, err
+	}
+	if fileNames, err := util.Readdirnames(pipestancePath); err != nil {
+		return nil, err
+	} else if len(fileNames) > 0 {
+		return nil, &PipestanceExistsError{psid}
 	}
 
 	// Expand env vars in invocation source and instantiate.
