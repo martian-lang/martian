@@ -527,7 +527,7 @@ func (self *Node) getState() MetadataState {
 }
 
 func (self *Node) reset() error {
-	if self.rt.fullStageReset {
+	if self.rt.Config.FullStageReset {
 		util.PrintInfo("runtime", "(reset)           %s", self.fqname)
 
 		// Blow away the entire stage node.
@@ -565,7 +565,7 @@ func (self *Node) reset() error {
 }
 
 func (self *Node) restartLocallyQueuedJobs() error {
-	if self.rt.fullStageReset {
+	if self.rt.Config.FullStageReset {
 		// If entire stages got blown away then this isn't needed.
 		return nil
 	}
@@ -578,7 +578,7 @@ func (self *Node) restartLocallyQueuedJobs() error {
 }
 
 func (self *Node) restartLocalJobs() error {
-	if self.rt.fullStageReset {
+	if self.rt.Config.FullStageReset {
 		// If entire stages got blown away then this isn't needed.
 		return nil
 	}
@@ -645,7 +645,7 @@ func (self *Node) getFatalError() (string, bool, string, string, MetadataFileNam
 				metadata.MetadataFilePath(StdOut),
 				metadata.MetadataFilePath(StdErr),
 			}
-			if self.rt.enableStackVars {
+			if self.rt.Config.StackVars {
 				errpaths = append(errpaths, metadata.MetadataFilePath(Stackvars))
 			}
 			return metadata.fqname, self.preflight, summary, errlog, Errors, errpaths
@@ -694,7 +694,7 @@ func (self *Node) isErrorTransient() (bool, string) {
 func (self *Node) step() bool {
 	if self.state == Running {
 		for _, fork := range self.forks {
-			if self.preflight && self.rt.skipPreflight {
+			if self.preflight && self.rt.Config.SkipPreflight {
 				fork.skip()
 			} else {
 				fork.step()
@@ -712,7 +712,7 @@ func (self *Node) step() bool {
 		}
 		self.addFrontierNode(self)
 	case Complete:
-		if self.rt.vdrMode == "rolling" {
+		if self.rt.Config.VdrMode == "rolling" {
 			for _, node := range self.prenodes {
 				node.getNode().vdrKill()
 				node.getNode().cachePerf()
@@ -956,13 +956,13 @@ func (self *Node) runJob(shellName string, fqname string, metadata *Metadata,
 
 	// Configure local variable dumping.
 	stackVars := "disable"
-	if self.rt.enableStackVars {
+	if self.rt.Config.StackVars {
 		stackVars = "stackvars"
 	}
 
 	// Configure memory monitoring.
 	monitor := "disable"
-	if self.rt.enableMonitor {
+	if self.rt.Config.Monitor {
 		monitor = "monitor"
 	}
 
@@ -975,7 +975,7 @@ func (self *Node) runJob(shellName string, fqname string, metadata *Metadata,
 		runFile += ".u" + metadata.uniquifier
 	}
 	version := &VersionInfo{
-		Martian:   self.rt.martianVersion,
+		Martian:   self.rt.Config.MartianVersion,
 		Pipelines: self.mroVersion,
 	}
 	envs := self.envs
@@ -1005,7 +1005,7 @@ func (self *Node) runJob(shellName string, fqname string, metadata *Metadata,
 	}
 
 	// Log the job run.
-	jobMode := self.rt.jobMode
+	jobMode := self.rt.Config.JobMode
 	jobManager := self.rt.JobManager
 	if self.local {
 		jobMode = "local"
@@ -1029,7 +1029,7 @@ func (self *Node) runJob(shellName string, fqname string, metadata *Metadata,
 			Type:        jobMode,
 			Threads:     threads,
 			MemGB:       memGB,
-			ProfileMode: self.rt.profileMode,
+			ProfileMode: self.rt.Config.ProfileMode,
 			Stackvars:   stackVars,
 			Monitor:     monitor,
 			Invocation:  self.invocation,

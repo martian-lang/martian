@@ -165,25 +165,94 @@ type RuntimeOptions struct {
 	LimitLoadavg    bool
 }
 
+func DefaultRuntimeOptions() RuntimeOptions {
+	return RuntimeOptions{
+		MartianVersion: util.GetVersion(),
+		ProfileMode:    DisableProfile,
+		JobMode:        "local",
+		VdrMode:        "post",
+	}
+}
+
+// returns the set of command line flags which would set these options.
+func (config *RuntimeOptions) ToFlags() []string {
+	var flags []string
+	if config.JobMode != "local" {
+		flags = append(flags, "--jobmode="+config.JobMode)
+	}
+	if config.VdrMode != "post" {
+		flags = append(flags, "--vdrmode="+config.VdrMode)
+	}
+	if config.ProfileMode != DisableProfile {
+		flags = append(flags, fmt.Sprintf("--profile=%v",
+			config.ProfileMode))
+	}
+	if config.LocalMem != 0 {
+		flags = append(flags, fmt.Sprintf("--localmem=%d",
+			config.LocalMem))
+	}
+	if config.LocalCores != 0 {
+		flags = append(flags, fmt.Sprintf("--localcores=%d",
+			config.LocalCores))
+	}
+	if config.MemPerCore != 0 {
+		flags = append(flags, fmt.Sprintf("--mempercore=%d",
+			config.MemPerCore))
+	}
+	if config.MaxJobs != 0 {
+		flags = append(flags, fmt.Sprintf("--maxjobs=%d",
+			config.MaxJobs))
+	}
+	if config.JobFreqMillis != 0 {
+		flags = append(flags, fmt.Sprintf("--jobinterval=%d",
+			config.JobFreqMillis))
+	}
+	if config.StackVars {
+		flags = append(flags, "--stackvars")
+	}
+	if config.Zip {
+		flags = append(flags, "--zip")
+	}
+	if config.SkipPreflight {
+		flags = append(flags, "--nopreflight")
+	}
+	if config.Monitor {
+		flags = append(flags, "--monitor")
+	}
+	if config.Debug {
+		flags = append(flags, "--debug")
+	}
+	if config.StressTest {
+		flags = append(flags, "--stest")
+	}
+	if config.OnFinishHandler != "" {
+		if p, err := exec.LookPath(config.OnFinishHandler); err != nil {
+			util.LogError(err, "runtime",
+				"Could not find path for onfinish handler.")
+			flags = append(flags, "--onfinish="+config.OnFinishHandler)
+		} else if ap, err := filepath.Abs(p); err != nil {
+			util.LogError(err, "runtime",
+				"Could not find abs path for onfinish handler.")
+			flags = append(flags, "--onfinish="+p)
+		} else {
+			flags = append(flags, "--onfinish="+ap)
+		}
+	}
+	if config.LimitLoadavg {
+		flags = append(flags, "--limit-loadavg")
+	}
+	return flags
+}
+
 // Collects configuration and state required to initialize and run pipestances
 // and stagestances.
 type Runtime struct {
+	Config          *RuntimeOptions
 	adaptersPath    string
 	mrjob           string
-	martianVersion  string
-	vdrMode         string
-	jobMode         string
-	profileMode     ProfileMode
 	MroCache        *MroCache
 	JobManager      JobManager
 	LocalJobManager JobManager
-	fullStageReset  bool
-	enableStackVars bool
-	enableZip       bool
-	skipPreflight   bool
-	enableMonitor   bool
-	stest           bool
-	onFinishExec    string
 	overrides       *PipestanceOverrides
 }
 
@@ -223,43 +292,25 @@ func NewRuntimeWithCores(jobMode string, vdrMode string, profileMode ProfileMode
 	return c.NewRuntime()
 }
 
-func DefaultRuntimeOptions() RuntimeOptions {
-	return RuntimeOptions{
-		MartianVersion: util.GetVersion(),
-		ProfileMode:    DisableProfile,
-		JobMode:        "local",
-		VdrMode:        "post",
-	}
-}
-
 func (c *RuntimeOptions) NewRuntime() *Runtime {
-	self := &Runtime{}
-	self.adaptersPath = util.RelPath(path.Join("..", "adapters"))
-	self.mrjob = util.RelPath("mrjob")
-	self.martianVersion = c.MartianVersion
-	self.jobMode = c.JobMode
-	self.vdrMode = c.VdrMode
-	self.profileMode = c.ProfileMode
-	self.fullStageReset = c.FullStageReset
-	self.enableStackVars = c.StackVars
-	self.enableZip = c.Zip
-	self.skipPreflight = c.SkipPreflight
-	self.enableMonitor = c.Monitor
-	self.stest = c.StressTest
-	self.onFinishExec = c.OnFinishHandler
+	self := &Runtime{
+		Config:       c,
+		adaptersPath: util.RelPath(path.Join("..", "adapters")),
+		mrjob:        util.RelPath("mrjob"),
+	}
 
 	self.MroCache = NewMroCache()
 	self.LocalJobManager = NewLocalJobManager(c.LocalCores, c.LocalMem, c.Debug,
 		c.LimitLoadavg,
-		self.jobMode != "local")
-	if self.jobMode == "local" {
+		c.JobMode != "local")
+	if c.JobMode == "local" {
 		self.JobManager = self.LocalJobManager
 	} else {
-		self.JobManager = NewRemoteJobManager(self.jobMode, c.MemPerCore, c.MaxJobs,
+		self.JobManager = NewRemoteJobManager(c.JobMode, c.MemPerCore, c.MaxJobs,
 			c.JobFreqMillis, c.ResourceSpecial, c.Debug)
 	}
-	VerifyVDRMode(self.vdrMode)
-	VerifyProfileMode(self.profileMode)
+	VerifyVDRMode(c.VdrMode)
+	VerifyProfileMode(c.ProfileMode)
 
 	if c.Overrides == nil {
 		self.overrides, _ = ReadOverrides("")
@@ -339,12 +390,14 @@ func (self *Runtime) InvokePipeline(src string, srcPath string, psid string,
 	envs map[string]string, tags []string) (*Pipestance, error) {
 
 	// Error if pipestance directory is non-empty, otherwise create.
-	if _, err := os.Stat(pipestancePath); err == nil {
-		if fileNames, err := util.Readdirnames(pipestancePath); err != nil || len(fileNames) > 0 {
-			return nil, &PipestanceExistsError{psid}
+	if err := os.MkdirAll(pipestancePath, 0777); err != nil {
+		if os.IsExist(err) {
+			if fileNames, err := util.Readdirnames(pipestancePath); err != nil || len(fileNames) > 0 {
+				return nil, &PipestanceExistsError{psid}
+			}
+		} else {
+			return nil, err
 		}
-	} else if err := os.MkdirAll(pipestancePath, 0777); err != nil {
-		return nil, err
 	}
 
 	// Expand env vars in invocation source and instantiate.
@@ -360,10 +413,10 @@ func (self *Runtime) InvokePipeline(src string, srcPath string, psid string,
 
 	// Write top-level metadata files.
 	pipestance.metadata.WriteRaw(InvocationFile, src)
-	pipestance.metadata.WriteRaw(JobModeFile, self.jobMode)
+	pipestance.metadata.WriteRaw(JobModeFile, self.Config.JobMode)
 	pipestance.metadata.WriteRaw(MroSourceFile, postsrc)
 	pipestance.metadata.Write(VersionsFile, &VersionInfo{
-		Martian:   self.martianVersion,
+		Martian:   self.Config.MartianVersion,
 		Pipelines: mroVersion,
 	})
 	pipestance.metadata.Write(TagsFile, tags)
@@ -437,8 +490,8 @@ func (self *Runtime) reattachToPipestance(psid string, pipestancePath string, sr
 	// left in a running state from last mrp run. The actual job would
 	// have been killed by the CTRL-C.
 	if !readOnly {
-		util.PrintInfo("runtime", "Reattaching in %s mode.", self.jobMode)
-		if err = pipestance.RestartRunningNodes(self.jobMode); err != nil {
+		util.PrintInfo("runtime", "Reattaching in %s mode.", self.Config.JobMode)
+		if err = pipestance.RestartRunningNodes(self.Config.JobMode); err != nil {
 			pipestance.Unlock()
 			return nil, err
 		}
@@ -504,6 +557,9 @@ func (self *Runtime) GetSerialization(pipestancePath string, name MetadataFileNa
 
 func (self *Runtime) GetMetadata(pipestancePath string, metadataPath string) (string, error) {
 	metadata := NewMetadata("", pipestancePath)
+	if !filepath.IsAbs(metadataPath) {
+		metadataPath = path.Join(pipestancePath, metadataPath)
+	}
 	metadata.loadCache()
 	if metadata.exists(MetadataZip) {
 		relPath, _ := filepath.Rel(pipestancePath, metadataPath)

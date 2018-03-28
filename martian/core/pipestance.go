@@ -45,7 +45,7 @@ func NewStagestance(parent Nodable, callStm *syntax.CallStm, callables *syntax.C
 	if self.node.stagecodeLang, err = stage.Src.Lang.Parse(); err != nil {
 		return self, fmt.Errorf("Unsupported language in stage %s: %v", callStm.DecId, stage.Src.Lang)
 	}
-	if self.node.rt.stest {
+	if self.node.rt.Config.StressTest {
 		switch self.node.stagecodeLang {
 		case syntax.PythonStage:
 			self.node.stagecodeCmd = util.RelPath(path.Join("..", "adapters", "python", "tester"))
@@ -74,7 +74,7 @@ func (self *Stagestance) GetState() MetadataState { return self.getNode().getSta
 
 func (self *Stagestance) Step() bool {
 	if err := self.node.rt.JobManager.refreshResources(
-		self.node.rt.jobMode == "local"); err != nil {
+		self.node.rt.Config.JobMode == "local"); err != nil {
 		util.LogError(err, "runtime",
 			"Error refreshing resources: %s", err.Error())
 	}
@@ -109,7 +109,7 @@ type Pipestance struct {
 
 /* Run a script whenever a pipestance finishes */
 func (self *Pipestance) OnFinishHook() {
-	exec_path := self.getNode().rt.onFinishExec
+	exec_path := self.getNode().rt.Config.OnFinishHandler
 	if exec_path != "" {
 		util.Println("\nRunning onfinish handler...")
 
@@ -473,7 +473,7 @@ func (self *Pipestance) StepNodes() bool {
 		}
 	}
 	if err := self.node.rt.LocalJobManager.refreshResources(
-		self.node.rt.jobMode == "local"); err != nil {
+		self.node.rt.Config.JobMode == "local"); err != nil {
 		util.LogError(err, "runtime",
 			"Error refreshing local resources: %s", err.Error())
 	}
@@ -612,7 +612,7 @@ func (self *Pipestance) ComputeDiskUsage(nodePerf *NodePerfInfo) *NodePerfInfo {
 }
 
 func (self *Pipestance) ZipMetadata(zipPath string) error {
-	if !self.node.rt.enableZip {
+	if !self.node.rt.Config.Zip {
 		return nil
 	}
 
@@ -664,7 +664,7 @@ func (self *Pipestance) VerifyJobMode() error {
 	self.metadata.loadCache()
 	if self.metadata.exists(JobModeFile) {
 		jobMode := self.metadata.readRaw(JobModeFile)
-		if jobMode != self.node.rt.jobMode {
+		if jobMode != self.node.rt.Config.JobMode {
 			return &PipestanceJobModeError{self.GetPsid(), jobMode}
 		}
 	}

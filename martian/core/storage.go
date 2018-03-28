@@ -56,7 +56,7 @@ func mergeVDRKillReports(killReports []*VDRKillReport) *VDRKillReport {
 
 func (self *Fork) vdrKill() *VDRKillReport {
 	killReport := &VDRKillReport{}
-	if self.node.rt.vdrMode == "disable" {
+	if self.node.rt.Config.VdrMode == "disable" {
 		return killReport
 	}
 	if killReport, ok := self.getVdrKillReport(); ok {
