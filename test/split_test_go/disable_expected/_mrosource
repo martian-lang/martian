@@ -24,7 +24,6 @@ stage REPORT(
     mem_gb = 1,
 )
 
-
 # Runs the stage.
 pipeline SUM_SQUARE_PIPELINE(
     in  float[] values,
@@ -47,6 +46,7 @@ pipeline SUM_SQUARE_PIPELINE(
         sum = SUM_SQUARES.sum,
     )
 }
+
 
 # Calls the pipelines, sweeping over two forks.
 call SUM_SQUARE_PIPELINE(

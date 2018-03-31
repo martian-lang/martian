@@ -2,25 +2,12 @@
 
 @include "pipeline_stages.mro"
 
-# Runs the stage.
-pipeline SUM_SQUARE_PIPELINE(
-    in  float[] values,
-    out float   sum,
-)
-{
-    call SUM_SQUARES(
-        values = self.values,
-    )
-    call REPORT(
-        values = self.values,
-        sum    = SUM_SQUARES.sum,
-    )
-    return (
-        sum = SUM_SQUARES.sum,
-    )
-}
-
 # Calls the pipelines, sweeping over two forks.
 call SUM_SQUARE_PIPELINE(
-    values = [1.0, 2.0, 3.0],
+    values     = [
+        1,
+        2,
+        3
+    ],
+    disable_sq = false,
 )

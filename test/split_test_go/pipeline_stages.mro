@@ -22,3 +22,26 @@ stage REPORT(
 ) using (
     mem_gb = 1,
 )
+
+# Runs the stage.
+pipeline SUM_SQUARE_PIPELINE(
+    in  float[] values,
+    in  bool    disable_sq,
+    out float   sum,
+)
+{
+    call SUM_SQUARES(
+        values = self.values,
+    ) using (
+        disabled = self.disable_sq,
+    )
+
+    call REPORT(
+        values = self.values,
+        sum    = SUM_SQUARES.sum,
+    )
+
+    return (
+        sum = SUM_SQUARES.sum,
+    )
+}
