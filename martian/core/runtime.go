@@ -15,6 +15,7 @@ import (
 	"path/filepath"
 	"regexp"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/martian-lang/martian/martian/syntax"
@@ -580,37 +581,81 @@ func (self *Runtime) GetMetadata(pipestancePath string, metadataPath string) (st
 type MroCache struct {
 	callableTable map[string]map[string]syntax.Callable
 	pipelines     map[string]bool
+	lock          sync.RWMutex
 }
 
 func NewMroCache() *MroCache {
-	self := &MroCache{}
-	self.callableTable = map[string]map[string]syntax.Callable{}
-	self.pipelines = map[string]bool{}
-
-	return self
-}
-
-func (self *MroCache) CacheMros(mroPaths []string) {
-	for _, mroPath := range mroPaths {
-		self.callableTable[mroPath] = map[string]syntax.Callable{}
-		fpaths, _ := filepath.Glob(mroPath + "/[^_]*.mro")
-		for _, fpath := range fpaths {
-			if data, err := ioutil.ReadFile(fpath); err == nil {
-				if _, _, ast, err := syntax.ParseSource(string(data), fpath, mroPaths, true); err == nil {
-					for _, callable := range ast.Callables.Table {
-						self.callableTable[mroPath][callable.GetId()] = callable
-						if _, ok := callable.(*syntax.Pipeline); ok {
-							self.pipelines[callable.GetId()] = true
-						}
-					}
-				}
-			}
-		}
+	return &MroCache{
+		callableTable: make(map[string]map[string]syntax.Callable),
+		pipelines:     make(map[string]bool),
 	}
 }
 
+func (self *MroCache) CacheMros(mroPaths []string) {
+	var wg sync.WaitGroup
+	wg.Add(len(mroPaths))
+	for _, mroPath := range mroPaths {
+		go func(mroPath string) {
+			defer wg.Done()
+			fpaths, _ := filepath.Glob(mroPath + "/[^_]*.mro")
+			callables := make(chan map[string]syntax.Callable, len(fpaths))
+			for _, fpath := range fpaths {
+				go func(fpath string, result chan map[string]syntax.Callable, mroPaths []string) {
+					if data, err := ioutil.ReadFile(fpath); err == nil {
+						if _, _, ast, err := syntax.ParseSource(string(data), fpath, mroPaths, true); err == nil {
+							result <- ast.Callables.Table
+						} else {
+							util.PrintError(err, "runtime", "Failed to parse %s", fpath)
+							result <- nil
+						}
+					}
+				}(fpath, callables, mroPaths)
+			}
+			callableTable := make(map[string]syntax.Callable, len(fpaths))
+			remaining := len(fpaths)
+			for calls := range callables {
+				if calls == nil {
+					continue
+				}
+				for _, call := range calls {
+					name := call.GetId()
+					if existing, ok := callableTable[name]; ok {
+						efile := syntax.DefiningFile(existing)
+						nfile := syntax.DefiningFile(call)
+						if efile != nfile {
+							util.PrintInfo("runtime",
+								"Warning: %s is defined in both %s and %s",
+								name, efile, nfile)
+						}
+					}
+					if _, ok := call.(*syntax.Pipeline); ok {
+						func(pname string) {
+							self.lock.Lock()
+							defer self.lock.Unlock()
+							self.pipelines[pname] = true
+						}(name)
+					}
+					callableTable[name] = call
+				}
+				remaining--
+				if remaining == 0 {
+					break
+				}
+			}
+			func(mroPath string, callables map[string]syntax.Callable) {
+				self.lock.Lock()
+				defer self.lock.Unlock()
+				self.callableTable[mroPath] = callableTable
+			}(mroPath, callableTable)
+		}(mroPath)
+	}
+	wg.Wait()
+}
+
 func (self *MroCache) GetPipelines() []string {
-	pipelines := []string{}
+	self.lock.RLock()
+	defer self.lock.RUnlock()
+	pipelines := make([]string, 0, len(self.pipelines))
 	for pipeline := range self.pipelines {
 		pipelines = append(pipelines, pipeline)
 	}
@@ -618,6 +663,8 @@ func (self *MroCache) GetPipelines() []string {
 }
 
 func (self *MroCache) GetCallable(mroPaths []string, name string) (syntax.Callable, error) {
+	self.lock.RLock()
+	defer self.lock.RUnlock()
 	for _, mroPath := range mroPaths {
 		// Make sure MROs from mroPath have been loaded.
 		if _, ok := self.callableTable[mroPath]; !ok {

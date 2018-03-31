@@ -288,6 +288,11 @@ func NewAstNode(loc int, locmap []FileLoc) AstNode {
 	}
 }
 
+// Gets the name of the file that defines the node.
+func DefiningFile(node AstNodable) string {
+	return node.getNode().Fname
+}
+
 func (s *Ast) inheritComments() bool { return false }
 func (s *Ast) getSubnodes() []AstNodable {
 	subs := make([]AstNodable, 0,
