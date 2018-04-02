@@ -599,24 +599,26 @@ func (self *MroCache) CacheMros(mroPaths []string) {
 			defer wg.Done()
 			fpaths, _ := filepath.Glob(mroPath + "/[^_]*.mro")
 			callables := make(chan map[string]syntax.Callable, len(fpaths))
+			var filesWg sync.WaitGroup
+			filesWg.Add(len(fpaths))
 			for _, fpath := range fpaths {
-				go func(fpath string, result chan map[string]syntax.Callable, mroPaths []string) {
+				go func(fpath string, result chan map[string]syntax.Callable, mroPaths []string, wg *sync.WaitGroup) {
+					defer wg.Done()
 					if data, err := ioutil.ReadFile(fpath); err == nil {
 						if _, _, ast, err := syntax.ParseSource(string(data), fpath, mroPaths, true); err == nil {
 							result <- ast.Callables.Table
 						} else {
 							util.PrintError(err, "runtime", "Failed to parse %s", fpath)
-							result <- nil
 						}
+					} else {
+						util.PrintError(err, "runtime", "Could not read %s", fpath)
 					}
-				}(fpath, callables, mroPaths)
+				}(fpath, callables, mroPaths, &filesWg)
 			}
+			filesWg.Wait()
+			close(callables)
 			callableTable := make(map[string]syntax.Callable, len(fpaths))
-			remaining := len(fpaths)
 			for calls := range callables {
-				if calls == nil {
-					continue
-				}
 				for _, call := range calls {
 					name := call.GetId()
 					if existing, ok := callableTable[name]; ok {
@@ -636,10 +638,6 @@ func (self *MroCache) CacheMros(mroPaths []string) {
 						}(name)
 					}
 					callableTable[name] = call
-				}
-				remaining--
-				if remaining == 0 {
-					break
 				}
 			}
 			func(mroPath string, callables map[string]syntax.Callable) {
