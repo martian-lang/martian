@@ -161,7 +161,6 @@ Options:
 	// Configure Martian runtime.
 	//=========================================================================
 	rt := config.NewRuntime()
-	rt.MroCache.CacheMros(mroPaths)
 
 	// Invoke stagestance.
 	data, err := ioutil.ReadFile(invocationPath)

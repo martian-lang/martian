@@ -347,7 +347,7 @@ func (self *Runtime) instantiatePipeline(src string, srcPath string, psid string
 	pipestancePath string, mroPaths []string, mroVersion string,
 	envs map[string]string, readOnly bool) (string, *Pipestance, error) {
 	// Parse the invocation source.
-	postsrc, _, ast, err := syntax.ParseSource(src, srcPath, mroPaths, !readOnly)
+	postsrc, incpaths, ast, err := syntax.ParseSource(src, srcPath, mroPaths, !readOnly)
 	if err != nil {
 		return "", nil, err
 	}
@@ -361,7 +361,7 @@ func (self *Runtime) instantiatePipeline(src string, srcPath string, psid string
 		return "", nil, &RuntimeError{fmt.Sprintf("'%s' is not a declared pipeline", ast.Call.Id)}
 	}
 
-	invocationData, _ := BuildCallData(src, srcPath, mroPaths)
+	invocationData, _ := BuildDataForAst(incpaths, ast)
 
 	// Instantiate the pipeline.
 	if err := CheckMinimalSpace(pipestancePath); err != nil {
@@ -513,7 +513,7 @@ func (self *Runtime) InvokeStage(src string, srcPath string, ssid string,
 
 	// Parse the invocation source.
 	src = os.ExpandEnv(src)
-	_, _, ast, err := syntax.ParseSource(src, srcPath, mroPaths, true)
+	_, incpaths, ast, err := syntax.ParseSource(src, srcPath, mroPaths, true)
 	if err != nil {
 		return nil, err
 	}
@@ -527,7 +527,7 @@ func (self *Runtime) InvokeStage(src string, srcPath string, ssid string,
 		return nil, &RuntimeError{fmt.Sprintf("'%s' is not a declared stage", ast.Call.Id)}
 	}
 
-	invocationData, _ := BuildCallData(src, srcPath, mroPaths)
+	invocationData, _ := BuildDataForAst(incpaths, ast)
 
 	// Instantiate stagestance.
 	stagestance, err := NewStagestance(NewTopNode(self, "", stagestancePath, mroPaths, mroVersion, envs, invocationData),
@@ -760,7 +760,10 @@ func BuildCallData(src string, srcPath string, mroPaths []string) (*InvocationDa
 	if err != nil {
 		return nil, err
 	}
+	return BuildDataForAst(incpaths, ast)
+}
 
+func BuildDataForAst(incpaths []string, ast *syntax.Ast) (*InvocationData, error) {
 	if ast.Call == nil {
 		return nil, &RuntimeError{"cannot jsonify a pipeline without a call statement"}
 	}

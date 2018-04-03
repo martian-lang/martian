@@ -737,7 +737,6 @@ Options:
 	// Configure Martian runtime.
 	//=========================================================================
 	rt := config.NewRuntime()
-	rt.MroCache.CacheMros(mroPaths)
 
 	//=========================================================================
 	// Invoke pipestance or Reattach if exists.
