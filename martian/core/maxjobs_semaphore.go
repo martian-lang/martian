@@ -44,13 +44,23 @@ func (self *MaxJobsSemaphore) Acquire(metadata *Metadata) bool {
 	if st, ok := metadata.getState(); ok && st != Queued && st != Waiting {
 		return false
 	}
+	// In case this particular metadata object is waiting more than once,
+	// make sure to always signal the condition variable once this one
+	// successfully acquires.
+	defer self.cond.Signal()
 	self.lock.Lock()
 	defer self.lock.Unlock()
 	for len(self.running) >= self.Limit {
+		if st, ok := metadata.getState(); ok && st != Queued && st != Waiting {
+			return false
+		}
 		if _, ok := self.running[metadata]; ok {
 			return true
 		}
 		self.cond.Wait()
+	}
+	if st, ok := metadata.getState(); ok && st != Queued && st != Waiting {
+		return false
 	}
 	self.running[metadata] = struct{}{}
 	return true
