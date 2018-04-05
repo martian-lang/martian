@@ -41,9 +41,7 @@ type Node struct {
 	fqname             string
 	path               string
 	metadata           *Metadata
-	outparams          *syntax.Params
-	chunkIns           *syntax.Params
-	chunkOuts          *syntax.Params
+	callable           syntax.Callable
 	resources          *JobResources
 	argbindings        map[string]*Binding
 	argbindingList     []*Binding // for stable ordering
@@ -56,7 +54,6 @@ type Node struct {
 	postnodes          map[string]Nodable
 	frontierNodes      *threadSafeNodeMap
 	forks              []*Fork
-	split              bool
 	state              MetadataState
 	volatile           bool
 	local              bool
@@ -132,8 +129,7 @@ func NewNode(parent Nodable, kind string, callStm *syntax.CallStm, callables *sy
 	self.local = callStm.Modifiers.Local
 	self.preflight = callStm.Modifiers.Preflight
 
-	callable := callables.Table[callStm.DecId]
-	self.outparams = callable.GetOutParams()
+	self.callable = callables.Table[callStm.DecId]
 	self.argbindings = map[string]*Binding{}
 	self.argbindingList = []*Binding{}
 	self.retbindings = map[string]*Binding{}

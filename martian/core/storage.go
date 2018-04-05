@@ -80,7 +80,7 @@ func (self *Fork) vdrKill() *VDRKillReport {
 	// Must check for split here, otherwise we'll end up deleting
 	// output files of non-volatile nodes because single-chunk nodes
 	// get their output redirected to the one chunk's files path.
-	if self.node.split && self.node.rt.overrides.GetOverride(self.node, "force_volatile", true).(bool) {
+	if self.Split() && self.node.rt.overrides.GetOverride(self.node, "force_volatile", true).(bool) {
 		for _, chunk := range self.chunks {
 			if paths, err := chunk.metadata.enumerateFiles(); err == nil {
 				killPaths = append(killPaths, paths...)

@@ -53,11 +53,6 @@ func NewStagestance(parent Nodable, callStm *syntax.CallStm, callables *syntax.C
 			return self, fmt.Errorf("Unsupported stress test language: %v", stage.Src.Lang)
 		}
 	}
-	self.node.split = stage.Split
-	if stage.Split {
-		self.node.chunkIns = stage.ChunkIns
-		self.node.chunkOuts = stage.ChunkOuts
-	}
 	if stage.Resources != nil {
 		self.node.resources = &JobResources{
 			Threads: stage.Resources.Threads,

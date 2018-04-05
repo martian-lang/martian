@@ -92,7 +92,7 @@ func NewChunk(fork *Fork, index int,
 		}
 	}
 	self.hasBeenRun = false
-	if !self.fork.node.split {
+	if !self.fork.Split() {
 		// If we're not splitting, just set the sole chunk's filesPath
 		// to the filesPath of the parent fork, to save a pseudo-join copy.
 		self.metadata.finalFilePath = self.fork.metadata.finalFilePath
@@ -107,7 +107,7 @@ func (self *Chunk) verifyDef() {
 	if syntax.GetEnforcementLevel() <= syntax.EnforceDisable {
 		return
 	}
-	inParams := self.fork.node.chunkIns
+	inParams := self.Stage().ChunkIns
 	if inParams == nil {
 		return
 	}
@@ -135,9 +135,9 @@ func (self *Chunk) verifyOutput(output interface{}) {
 	if syntax.GetEnforcementLevel() <= syntax.EnforceDisable {
 		return
 	}
-	if len(self.fork.node.outparams.List) == 0 &&
-		(self.fork.node.chunkOuts == nil ||
-			len(self.fork.node.chunkOuts.List) == 0) {
+	if len(self.fork.OutParams().List) == 0 &&
+		(self.Stage().ChunkOuts == nil ||
+			len(self.Stage().ChunkOuts.List) == 0) {
 		return
 	}
 	if output == nil {
@@ -146,9 +146,9 @@ func (self *Chunk) verifyOutput(output interface{}) {
 	if outputMap, ok := output.(map[string]interface{}); !ok {
 		self.metadata.WriteRaw(Errors, "Output was not a map.")
 	} else {
-		outParams := self.fork.node.chunkOuts
+		outParams := self.Stage().ChunkOuts
 		if err, alarms := ArgumentMap(outputMap).Validate(
-			outParams, true, self.fork.node.outparams); err != nil {
+			outParams, true, self.fork.OutParams()); err != nil {
 			self.metadata.WriteRaw(Errors, err.Error()+alarms)
 		} else if alarms != "" {
 			switch syntax.GetEnforcementLevel() {
@@ -222,9 +222,9 @@ func (self *Chunk) step(bindings map[string]interface{}) {
 
 	// Write out input and ouput args for the chunk.
 	self.metadata.Write(ArgsFile, resolvedBindings)
-	outs := makeOutArgs(self.fork.node.outparams, self.metadata.curFilesPath, false)
-	if self.fork.node.split {
-		for k, v := range makeOutArgs(self.fork.node.chunkOuts,
+	outs := makeOutArgs(self.fork.OutParams(), self.metadata.curFilesPath, false)
+	if self.fork.Split() {
+		for k, v := range makeOutArgs(self.Stage().ChunkOuts,
 			self.metadata.curFilesPath, false) {
 			outs[k] = v
 		}
@@ -252,6 +252,11 @@ func (self *Chunk) serializePerf() *ChunkPerfInfo {
 		Index:      self.index,
 		ChunkStats: stats,
 	}
+}
+
+// Get the stage definition for this chunk.  Panics if this is not a stage fork.
+func (self *Chunk) Stage() *syntax.Stage {
+	return self.fork.node.callable.(*syntax.Stage)
 }
 
 //=============================================================================
@@ -313,7 +318,7 @@ func NewFork(nodable Nodable, index int, argPermute map[string]interface{}) *For
 	self.metadata = NewMetadata(self.fqname, self.path)
 	self.split_metadata = NewMetadata(self.fqname+".split", path.Join(self.path, "split"))
 	self.join_metadata = NewMetadata(self.fqname+".join", path.Join(self.path, "join"))
-	if self.node.split {
+	if self.Split() {
 		self.split_metadata.discoverUniquify()
 		self.join_metadata.finalFilePath = self.metadata.finalFilePath
 		self.join_metadata.discoverUniquify()
@@ -335,6 +340,19 @@ func NewFork(nodable Nodable, index int, argPermute map[string]interface{}) *For
 		}
 	}
 	return self
+}
+
+func (self *Fork) Split() bool {
+	if stage, ok := self.node.callable.(*syntax.Stage); ok {
+		return stage.Split
+	} else {
+		return false
+	}
+}
+
+// Get the fork's output parameter list.
+func (self *Fork) OutParams() *syntax.Params {
+	return self.node.callable.GetOutParams()
 }
 
 func (self *Fork) kill(message string) {
@@ -441,14 +459,14 @@ func (self *Fork) removeMetadata() {
 func (self *Fork) mkdirs() {
 	self.metadata.mkdirs()
 	if state, ok := self.split_metadata.getState(); !disableUniquification &&
-		self.node.split &&
+		self.Split() &&
 		(!ok || (state != Complete && state != DisabledState)) {
 		self.split_metadata.uniquify()
 	} else {
 		self.split_metadata.mkdirs()
 	}
 	if state, ok := self.join_metadata.getState(); !disableUniquification &&
-		self.node.split &&
+		self.Split() &&
 		(!ok || (state != Complete && state != DisabledState)) {
 		self.join_metadata.uniquify()
 	} else {
@@ -461,7 +479,7 @@ func (self *Fork) mkdirs() {
 }
 
 func (self *Fork) verifyOutput(outs interface{}) (bool, string) {
-	outparams := self.node.outparams
+	outparams := self.OutParams()
 	if len(outparams.List) > 0 {
 		outsMap, ok := outs.(map[string]interface{})
 		if !ok {
@@ -550,7 +568,7 @@ func (self *Fork) disabled() bool {
 
 func (self *Fork) writeDisable() {
 	self.metadata.Write(OutsFile, makeOutArgs(
-		self.node.outparams, self.metadata.curFilesPath, true))
+		self.OutParams(), self.metadata.curFilesPath, true))
 	self.skip()
 	self.printState(DisabledState)
 }
@@ -599,10 +617,10 @@ func (self *Fork) writeInvocation() {
 		argBindings := resolveBindings(self.node.argbindings, self.argPermute)
 		sweepBindings := []string{}
 		incpaths := self.node.invocation.IncludePaths
-		invocation, _ := self.node.rt.BuildCallSource(incpaths,
+		invocation, _ := BuildCallSource(incpaths,
 			self.node.callableId,
 			argBindings, sweepBindings,
-			self.node.mroPaths)
+			self.node.callable)
 		self.metadata.WriteRaw(InvocationFile, invocation)
 	}
 }
@@ -648,7 +666,7 @@ func (self *Fork) step() {
 			}
 			self.writeInvocation()
 			self.split_metadata.Write(ArgsFile, getBindings())
-			if self.node.split {
+			if self.Split() {
 				if !self.split_has_run {
 					self.split_has_run = true
 					self.lastPrint = time.Now()
@@ -725,7 +743,7 @@ func (self *Fork) step() {
 			}
 			self.join_metadata.Write(ArgsFile, &resolvedBindings)
 			self.join_metadata.Write(ChunkDefsFile, self.stageDefs.ChunkDefs)
-			if self.node.split {
+			if self.Split() {
 				chunkOuts := []interface{}{}
 				for _, chunk := range self.chunks {
 					outs := chunk.metadata.read(OutsFile)
@@ -733,7 +751,7 @@ func (self *Fork) step() {
 					chunk.verifyOutput(outs)
 				}
 				self.join_metadata.Write(ChunkOutsFile, chunkOuts)
-				self.join_metadata.Write(OutsFile, makeOutArgs(self.node.outparams, self.join_metadata.curFilesPath, false))
+				self.join_metadata.Write(OutsFile, makeOutArgs(self.OutParams(), self.join_metadata.curFilesPath, false))
 				if !self.join_has_run {
 					self.join_has_run = true
 					self.lastPrint = time.Now()
@@ -855,7 +873,7 @@ func (self *Fork) postProcess() {
 	errors := []error{}
 
 	// Calculate longest key name for alignment
-	paramList := self.node.outparams.List
+	paramList := self.OutParams().List
 	keyWidth := 0
 	for _, param := range paramList {
 		// Print out the param help and value
@@ -1055,7 +1073,7 @@ func (self *Fork) serializePerf() (*ForkPerfInfo, *VDRKillReport) {
 		if chunkSer.ChunkStats != nil {
 			// avoid double-counting of bytes/files if there is no
 			// actual split; it will be counted by ComputeStats() below.
-			if !self.node.split {
+			if !self.Split() {
 				chunkSer.ChunkStats.OutputBytes = 0
 				chunkSer.ChunkStats.OutputFiles = 0
 			}
