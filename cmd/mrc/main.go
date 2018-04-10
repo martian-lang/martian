@@ -24,7 +24,7 @@ func main() {
 	doc := `Martian Compiler.
 
 Usage:
-    mrc <file.mro>...
+    mrc [options] <file.mro>...
     mrc [options]
     mrc -h | --help | --version
 
@@ -32,6 +32,7 @@ Options:
     --all           Compile all files in $MROPATH.
     --json          Output abstract syntax tree as JSON.
     --strict        Strict syntax validation
+    --no-check-src  Do not check that stage source paths exist.
 
     -h --help       Show this message.
     --version       Show version.`
@@ -41,12 +42,15 @@ Options:
 	util.ENABLE_LOGGING = false
 
 	// Martian environment variables.
-	cwd, _ := filepath.Abs(path.Dir(os.Args[0]))
+	cwd, _ := os.Getwd()
 	mroPaths := util.ParseMroPath(cwd)
 	if value := os.Getenv("MROPATH"); len(value) > 0 {
 		mroPaths = util.ParseMroPath(value)
 	}
 	checkSrcPath := true
+	if opts["--no-check-src"].(bool) {
+		checkSrcPath = false
+	}
 
 	// Setup strictness
 	syntax.SetEnforcementLevel(syntax.EnforceLog)
@@ -58,6 +62,7 @@ Options:
 			syntax.SetEnforcementLevel(syntax.ParseEnforcementLevel(match[1]))
 		}
 	}
+	mkjson := opts["--json"].(bool)
 
 	// Setup runtime with MRO path.
 	cfg := core.DefaultRuntimeOptions()
@@ -80,13 +85,21 @@ Options:
 		count += num
 	} else {
 		// Compile just the specified MRO files.
+		var asts []*syntax.Ast
 		for _, fname := range opts["<file.mro>"].([]string) {
-			_, _, _, err := syntax.Compile(path.Join(cwd, fname), mroPaths, checkSrcPath)
+			if !filepath.IsAbs(fname) {
+				fname = path.Join(cwd, fname)
+			}
+			_, _, ast, err := syntax.Compile(fname, mroPaths, checkSrcPath)
 			if err != nil {
 				fmt.Fprintln(os.Stderr, err.Error())
-				os.Exit(1)
+			} else if mkjson {
+				asts = append(asts, ast)
+				count++
 			}
-			count++
+		}
+		if mkjson {
+			fmt.Printf("%s\n", syntax.JsonDumpAsts(asts))
 		}
 	}
 	fmt.Fprintln(os.Stderr, "Successfully compiled", count, "mro files.")
