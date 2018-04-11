@@ -64,7 +64,17 @@ func NewStagestance(parent Nodable, callStm *syntax.CallStm, callables *syntax.C
 	return self, nil
 }
 
-func (self *Stagestance) getNode() *Node          { return self.node }
+func (self *Stagestance) getNode() *Node    { return self.node }
+func (self *Stagestance) GetFQName() string { return self.node.fqname }
+
+func (self *Stagestance) GetPrenodes() map[string]Nodable {
+	return self.node.GetPrenodes()
+}
+
+func (self *Stagestance) GetPostNodes() map[string]Nodable {
+	return self.node.GetPostNodes()
+}
+
 func (self *Stagestance) GetState() MetadataState { return self.getNode().getState() }
 
 func (self *Stagestance) Step() bool {
@@ -213,6 +223,14 @@ func (self *Pipestance) GetPsid() string   { return self.node.parent.getNode().n
 func (self *Pipestance) GetFQName() string { return self.node.fqname }
 func (self *Pipestance) RefreshState()     { self.node.refreshState(self.readOnly()) }
 func (self *Pipestance) readOnly() bool    { return !self.metadata.exists(Lock) }
+
+func (self *Pipestance) GetPrenodes() map[string]Nodable {
+	return self.node.GetPrenodes()
+}
+
+func (self *Pipestance) GetPostNodes() map[string]Nodable {
+	return self.node.GetPostNodes()
+}
 
 func (self *Pipestance) allNodes() []*Node {
 	if self.allNodesCache == nil {
@@ -795,6 +813,18 @@ type TopNode struct {
 }
 
 func (self *TopNode) getNode() *Node { return self.node }
+
+func (self *TopNode) GetFQName() string {
+	return self.node.fqname
+}
+
+func (self *TopNode) GetPrenodes() map[string]Nodable {
+	return make(map[string]Nodable)
+}
+
+func (self *TopNode) GetPostNodes() map[string]Nodable {
+	return make(map[string]Nodable)
+}
 
 func NewTopNode(rt *Runtime, psid string, p string, mroPaths []string, mroVersion string,
 	envs map[string]string, j *InvocationData) *TopNode {

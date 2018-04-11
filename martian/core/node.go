@@ -29,6 +29,17 @@ import (
 
 type Nodable interface {
 	getNode() *Node
+
+	// Gets the node's fully-qualified name.
+	GetFQName() string
+
+	// Returns the set of nodes which serve as prerequisites to this node,
+	// as a mapping from fully-qualified name to node.
+	GetPrenodes() map[string]Nodable
+
+	// Returns the set of nodes which are able to run once this node
+	// has completed.
+	GetPostNodes() map[string]Nodable
 }
 
 // Represents a node in the pipeline graph.
@@ -107,6 +118,14 @@ type NodeInfo struct {
 }
 
 func (self *Node) getNode() *Node { return self }
+
+func (self *Node) GetPrenodes() map[string]Nodable {
+	return self.prenodes
+}
+
+func (self *Node) GetPostNodes() map[string]Nodable {
+	return self.postnodes
+}
 
 func NewNode(parent Nodable, kind string, callStm *syntax.CallStm, callables *syntax.Callables) *Node {
 	self := &Node{}
