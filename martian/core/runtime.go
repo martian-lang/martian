@@ -164,6 +164,7 @@ type RuntimeOptions struct {
 	OnFinishHandler string
 	Overrides       *PipestanceOverrides
 	LimitLoadavg    bool
+	NeverLocal      bool
 }
 
 func DefaultRuntimeOptions() RuntimeOptions {
@@ -241,6 +242,9 @@ func (config *RuntimeOptions) ToFlags() []string {
 	}
 	if config.LimitLoadavg {
 		flags = append(flags, "--limit-loadavg")
+	}
+	if config.NeverLocal {
+		flags = append(flags, "--never-local")
 	}
 	return flags
 }
@@ -323,7 +327,7 @@ func (c *RuntimeOptions) NewRuntime() *Runtime {
 }
 
 // Compile all the MRO files in mroPaths.
-func (self *Runtime) CompileAll(mroPaths []string, checkSrcPath bool) (int, []*syntax.Ast, error) {
+func CompileAll(mroPaths []string, checkSrcPath bool) (int, []*syntax.Ast, error) {
 	numFiles := 0
 	asts := []*syntax.Ast{}
 	for _, mroPath := range mroPaths {

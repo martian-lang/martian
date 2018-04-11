@@ -126,8 +126,10 @@ func NewNode(parent Nodable, kind string, callStm *syntax.CallStm, callables *sy
 	self.invocation = parent.getNode().invocation
 	self.metadata = NewMetadata(self.fqname, self.path)
 	self.volatile = callStm.Modifiers.Volatile
-	self.local = callStm.Modifiers.Local
 	self.preflight = callStm.Modifiers.Preflight
+	if self.preflight || !self.rt.Config.NeverLocal {
+		self.local = callStm.Modifiers.Local
+	}
 
 	self.callable = callables.Table[callStm.DecId]
 	self.argbindings = map[string]*Binding{}

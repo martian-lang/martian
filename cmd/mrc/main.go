@@ -39,8 +39,6 @@ Options:
 	martianVersion := util.GetVersion()
 	opts, _ := docopt.Parse(doc, nil, true, martianVersion, false)
 
-	util.ENABLE_LOGGING = false
-
 	// Martian environment variables.
 	cwd, _ := os.Getwd()
 	mroPaths := util.ParseMroPath(cwd)
@@ -57,28 +55,24 @@ Options:
 	if opts["--strict"].(bool) {
 		syntax.SetEnforcementLevel(syntax.EnforceError)
 	} else if flags := os.Getenv("MROFLAGS"); flags != "" {
-		re := regexp.MustCompile(`-strict=(alarm|error)`)
+		re := regexp.MustCompile(`-strict=(log|alarm|error)`)
 		if match := re.FindStringSubmatch(flags); len(match) > 1 {
 			syntax.SetEnforcementLevel(syntax.ParseEnforcementLevel(match[1]))
 		}
 	}
 	mkjson := opts["--json"].(bool)
 
-	// Setup runtime with MRO path.
-	cfg := core.DefaultRuntimeOptions()
-	rt := cfg.NewRuntime()
-
 	count := 0
 	if opts["--all"].(bool) {
 		// Compile all MRO files in MRO path.
-		num, asts, err := rt.CompileAll(mroPaths, checkSrcPath)
+		num, asts, err := core.CompileAll(mroPaths, checkSrcPath)
 
 		if err != nil {
 			fmt.Fprintln(os.Stderr, err.Error())
 			os.Exit(1)
 		}
 
-		if opts["--json"].(bool) {
+		if mkjson {
 			fmt.Printf("%s", syntax.JsonDumpAsts(asts))
 		}
 

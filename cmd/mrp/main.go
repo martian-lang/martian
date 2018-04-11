@@ -469,6 +469,7 @@ Options:
     --overrides=JSON    JSON file supplying custom run conditions per stage.
     --psdir=PATH        The path to the pipestance directory.  The default is
                         to use <pipestance_name>.
+    --never-local       Ignore 'local' modifiers on non-preflight stages.
 
     -h --help           Show this message.
     --version           Show version.`
@@ -559,6 +560,13 @@ Options:
 		config.JobMode = value.(string)
 	}
 	util.LogInfo("options", "--jobmode=%s", config.JobMode)
+
+	if value := opts["--never-local"]; value != nil {
+		if nl, ok := value.(bool); ok && nl {
+			config.NeverLocal = true
+			util.LogInfo("options", "--never-local")
+		}
+	}
 
 	// Max parallel jobs.
 	if config.JobMode != "local" {

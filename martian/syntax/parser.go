@@ -559,6 +559,7 @@ func (mods *Modifiers) compile(global *Ast, parent Callable, call *CallStm) erro
 				call.Id))
 		}
 	}
+
 	return errs.If()
 }
 
