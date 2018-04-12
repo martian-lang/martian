@@ -75,6 +75,10 @@ func (self *Stagestance) GetPostNodes() map[string]Nodable {
 	return self.node.GetPostNodes()
 }
 
+func (self *Stagestance) Callable() syntax.Callable {
+	return self.node.Callable()
+}
+
 func (self *Stagestance) GetState() MetadataState { return self.getNode().getState() }
 
 func (self *Stagestance) Step() bool {
@@ -230,6 +234,10 @@ func (self *Pipestance) GetPrenodes() map[string]Nodable {
 
 func (self *Pipestance) GetPostNodes() map[string]Nodable {
 	return self.node.GetPostNodes()
+}
+
+func (self *Pipestance) Callable() syntax.Callable {
+	return self.node.Callable()
 }
 
 func (self *Pipestance) allNodes() []*Node {
@@ -824,6 +832,10 @@ func (self *TopNode) GetPrenodes() map[string]Nodable {
 
 func (self *TopNode) GetPostNodes() map[string]Nodable {
 	return make(map[string]Nodable)
+}
+
+func (self *TopNode) Callable() syntax.Callable {
+	return nil
 }
 
 func NewTopNode(rt *Runtime, psid string, p string, mroPaths []string, mroVersion string,

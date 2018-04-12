@@ -40,6 +40,9 @@ type Nodable interface {
 	// Returns the set of nodes which are able to run once this node
 	// has completed.
 	GetPostNodes() map[string]Nodable
+
+	// Gets the mro AST object, if any, which will be executed for this node.
+	Callable() syntax.Callable
 }
 
 // Represents a node in the pipeline graph.
@@ -125,6 +128,10 @@ func (self *Node) GetPrenodes() map[string]Nodable {
 
 func (self *Node) GetPostNodes() map[string]Nodable {
 	return self.postnodes
+}
+
+func (self *Node) Callable() syntax.Callable {
+	return self.callable
 }
 
 func NewNode(parent Nodable, kind string, callStm *syntax.CallStm, callables *syntax.Callables) *Node {
