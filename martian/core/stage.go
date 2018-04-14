@@ -25,9 +25,10 @@ func makeOutArgs(outParams *syntax.Params, filesPath string, nullAll bool) map[s
 		// TODO(azarchs): Don't put file names in arrays.  Except we have
 		// released pipelines which depend on this incorrect behavior.  It can
 		// be fixed once we have an Enterprise-based solution for running
-		// flowcells.
-		// if nullAll || param.GetArrayDim() > 0 {
-		if nullAll {
+		// flowcells so breaking backwards compatibility will be ok.
+		if nullAll ||
+			(syntax.GetEnforcementLevel() == syntax.EnforceError &&
+				param.GetArrayDim() > 0) {
 			args[id] = nil
 		} else if param.IsFile() {
 			args[id] = path.Join(filesPath, param.GetId()+"."+param.GetTname())
@@ -131,14 +132,14 @@ func (self *Chunk) verifyDef() {
 	}
 }
 
-func (self *Chunk) verifyOutput(output interface{}) {
+func (self *Chunk) verifyOutput(output interface{}) bool {
 	if syntax.GetEnforcementLevel() <= syntax.EnforceDisable {
-		return
+		return true
 	}
 	if len(self.fork.OutParams().List) == 0 &&
 		(self.Stage().ChunkOuts == nil ||
 			len(self.Stage().ChunkOuts.List) == 0) {
-		return
+		return true
 	}
 	if output == nil {
 		self.metadata.WriteRaw(Errors, "Output not found.")
@@ -150,10 +151,12 @@ func (self *Chunk) verifyOutput(output interface{}) {
 		if err, alarms := ArgumentMap(outputMap).Validate(
 			outParams, true, self.fork.OutParams()); err != nil {
 			self.metadata.WriteRaw(Errors, err.Error()+alarms)
+			return false
 		} else if alarms != "" {
 			switch syntax.GetEnforcementLevel() {
 			case syntax.EnforceError:
 				self.metadata.WriteRaw(Errors, alarms)
+				return false
 			case syntax.EnforceAlarm:
 				self.metadata.AppendAlarm(alarms)
 			case syntax.EnforceLog:
@@ -163,6 +166,7 @@ func (self *Chunk) verifyOutput(output interface{}) {
 			}
 		}
 	}
+	return true
 }
 
 func (self *Chunk) mkdirs() error {
@@ -744,11 +748,15 @@ func (self *Fork) step() {
 			self.join_metadata.Write(ArgsFile, &resolvedBindings)
 			self.join_metadata.Write(ChunkDefsFile, self.stageDefs.ChunkDefs)
 			if self.Split() {
+				ok := true
 				chunkOuts := []interface{}{}
 				for _, chunk := range self.chunks {
 					outs := chunk.metadata.read(OutsFile)
 					chunkOuts = append(chunkOuts, outs)
-					chunk.verifyOutput(outs)
+					ok = chunk.verifyOutput(outs) && ok
+				}
+				if !ok {
+					return
 				}
 				self.join_metadata.Write(ChunkOutsFile, chunkOuts)
 				self.join_metadata.Write(OutsFile, makeOutArgs(self.OutParams(), self.join_metadata.curFilesPath, false))
