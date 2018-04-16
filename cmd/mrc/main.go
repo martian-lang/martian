@@ -87,8 +87,10 @@ Options:
 			_, _, ast, err := syntax.Compile(fname, mroPaths, checkSrcPath)
 			if err != nil {
 				fmt.Fprintln(os.Stderr, err.Error())
-			} else if mkjson {
-				asts = append(asts, ast)
+			} else {
+				if mkjson {
+					asts = append(asts, ast)
+				}
 				count++
 			}
 		}
