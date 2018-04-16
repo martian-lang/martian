@@ -83,11 +83,7 @@ func (self *ValExp) format(prefix string) string {
 		return fmt.Sprintf("\"%s\"", self.Value)
 	}
 	if self.Kind == KindMap {
-		bytes, err := json.MarshalIndent(self.ToInterface(), prefix, INDENT)
-		if err != nil {
-			panic(err)
-		}
-		return string(bytes)
+		return self.formatMap(prefix)
 	}
 	if self.Kind == KindArray {
 		return self.formatArray(prefix)
@@ -107,17 +103,35 @@ func (self *ValExp) formatArray(prefix string) string {
 		var buf bytes.Buffer
 		buf.WriteString("[\n")
 		vindent := prefix + INDENT
-		for i, val := range values {
-			if i > 0 {
-				buf.WriteString(",\n")
-			}
+		for _, val := range values {
 			buf.WriteString(vindent)
 			buf.WriteString(val.format(vindent))
+			buf.WriteString(",\n")
 		}
-		buf.WriteRune('\n')
 		buf.WriteString(prefix)
 		buf.WriteRune(']')
 		return buf.String()
+	}
+}
+
+func (self *ValExp) formatMap(prefix string) string {
+	if valExpMap, ok := self.Value.(map[string]Exp); ok && len(valExpMap) > 0 {
+		var buf bytes.Buffer
+		buf.WriteString("{\n")
+		vindent := prefix + INDENT
+		for key, val := range valExpMap {
+			buf.WriteString(vindent)
+			buf.WriteRune('"')
+			buf.WriteString(key)
+			buf.WriteString(`": `)
+			buf.WriteString(val.format(vindent))
+			buf.WriteString(",\n")
+		}
+		buf.WriteString(prefix)
+		buf.WriteRune('}')
+		return buf.String()
+	} else {
+		return "{}"
 	}
 }
 
@@ -283,17 +297,6 @@ func (self *CallStm) format(printer *printer, prefix string) {
 	printer.printComments(self.Node.Loc, prefix)
 	printer.WriteString(prefix)
 	printer.WriteString("call ")
-	if self.Modifiers.Bindings == nil {
-		if self.Modifiers.Local {
-			printer.WriteString("local ")
-		}
-		if self.Modifiers.Preflight {
-			printer.WriteString("preflight ")
-		}
-		if self.Modifiers.Volatile {
-			printer.WriteString("volatile ")
-		}
-	}
 	printer.WriteString(self.DecId)
 	if self.Id != self.DecId {
 		printer.WriteString(" as ")
@@ -302,7 +305,14 @@ func (self *CallStm) format(printer *printer, prefix string) {
 	printer.WriteString("(\n")
 	self.Bindings.format(printer, prefix)
 	printer.WriteString(prefix)
-	if self.Modifiers.Bindings != nil && len(self.Modifiers.Bindings.List) > 0 {
+
+	if self.Modifiers.Bindings != nil && len(self.Modifiers.Bindings.List) > 0 ||
+		self.Modifiers.Local || self.Modifiers.Preflight || self.Modifiers.Volatile {
+		if self.Modifiers.Bindings == nil {
+			self.Modifiers.Bindings = &BindStms{
+				Node: self.Node,
+			}
+		}
 		printer.WriteString(") using (\n")
 		// Convert unbound-form mods to bound form.
 		// Because we remove elements from the binding table if they're
@@ -380,7 +390,7 @@ func (self *Stage) format(printer *printer) {
 			self.ChunkIns, self.ChunkOuts)
 	}
 	if self.Split {
-		printer.WriteString(") split using (\n")
+		printer.WriteString(") split (\n")
 		self.ChunkIns.format(printer, modeWidth, typeWidth, idWidth, helpWidth)
 		self.ChunkOuts.format(printer, modeWidth, typeWidth, idWidth, helpWidth)
 	}

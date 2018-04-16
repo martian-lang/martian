@@ -124,7 +124,7 @@ stage SUM_SQUARES(
     in  float[] values,
     out float   sum,
     src comp    "bin/sum_squares mode_arg",
-) split using (
+) split (
     in  float   value,
     out float   square,
 )
@@ -155,11 +155,13 @@ pipeline AWESOME(
     out json   outfile,
 )
 {
-    call local ADD_KEY1(
+    call ADD_KEY1(
         key      = self.key1,
         value    = self.value1,
         failfile = "fail1",
         start    = null,
+    ) using (
+        local = true,
     )
 
     call ADD_KEY2(
@@ -180,7 +182,7 @@ pipeline AWESOME(
         key      = "4",
         value    = sweep(
             "four",
-            "feir"
+            "feir",
         ),
         failfile = "fail4",
         start    = ADD_KEY2.result,
@@ -189,7 +191,10 @@ pipeline AWESOME(
     call MAP_EXAMPLE(
         foo = {
             "bar": "baz",
-            "bing": null
+            "bing": null,
+            "blarg": {
+                "n": 2,
+            },
         },
     ) using (
         # ADD_KEY3 can disable this stage.
@@ -199,16 +204,18 @@ pipeline AWESOME(
         volatile = false,
     )
 
-    call volatile ADD_KEY5(
+    call ADD_KEY5(
         key   = "5",
         value = ["five"],
+    ) using (
+        volatile = true,
     )
 
     call ADD_KEY6(
         key   = "6",
         value = [
             "six",
-            "seven"
+            "seven",
         ],
     )
 
@@ -224,14 +231,14 @@ pipeline AWESOME(
     call MERGE_JSON3(
         input = [
             ADD_KEY3.result,
-            ADD_KEY4.result
+            ADD_KEY4.result,
         ],
     )
 
     call MERGE_JSON4(
         input = [
             "four",
-            ADD_KEY4.result
+            ADD_KEY4.result,
         ],
     )
 
@@ -251,7 +258,7 @@ call AWESOME(
     key2   = "2",
     value2 = sweep(
         "two",
-        "deux"
+        "deux",
     ),
 )
 `
