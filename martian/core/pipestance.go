@@ -8,16 +8,16 @@ package core
 
 import (
 	"fmt"
-	"github.com/martian-lang/martian/martian/syntax"
-	"github.com/martian-lang/martian/martian/util"
 	"os"
 	"os/exec"
 	"path"
 	"path/filepath"
-	"sort"
 	"strings"
 	"sync"
 	"time"
+
+	"github.com/martian-lang/martian/martian/syntax"
+	"github.com/martian-lang/martian/martian/util"
 )
 
 //=============================================================================
@@ -543,7 +543,8 @@ func (self *Pipestance) SerializePerf() []*NodePerfInfo {
 	nodes := self.allNodes()
 	ser := make([]*NodePerfInfo, 0, len(nodes))
 	for _, node := range nodes {
-		ser = append(ser, node.serializePerf())
+		perf, _ := node.serializePerf()
+		ser = append(ser, perf)
 	}
 	util.LogInfo("perform", "Serializing pipestance performance data.")
 	if len(ser) > 0 {
@@ -570,56 +571,31 @@ func forkDependentName(fqname string, forkIndex int) string {
 }
 
 func (self *Pipestance) ComputeDiskUsage(nodePerf *NodePerfInfo) *NodePerfInfo {
-	forksVisited := make(map[string]*ForkStorageEvent)
 
-	for _, node := range self.allNodes() {
-		nodePerf := node.serializePerf()
-		for forkIdx, fork := range nodePerf.Forks {
-			if fork.ForkStats != nil {
-				forkEvent := NewForkStorageEvent(fork.ForkStats.Start, fork.ForkStats.TotalBytes,
-					fork.ForkStats.VdrBytes, forkDependentName(node.fqname, forkIdx))
-				forksVisited[forkDependentName(node.fqname, forkIdx)] = forkEvent
-			}
-		}
-		// remove pipeline counts; they double-count only (do not add own files logic)
-		for _, fork := range node.forks {
-			if fork.node.kind == "pipeline" {
-				if _, ok := forksVisited[fork.fqname]; ok {
-					delete(forksVisited, fork.fqname)
-				}
-			}
-		}
-
-		for _, fork := range node.forks {
-			forkVDR, _ := fork.getVdrKillReport()
-			if forkVDR == nil {
-				continue
-			}
-			vdrTimestamp, _ := time.Parse(util.TIMEFMT, forkVDR.Timestamp)
-			if forkEvent, ok := forksVisited[fork.fqname]; ok {
-				forkEvent.VDRTimestamp = vdrTimestamp
+	nodes := self.allNodes()
+	allStorageEvents := make(StorageEventByTimestamp, 0, len(nodes)*2)
+	for _, node := range nodes {
+		_, storageEvents := node.serializePerf()
+		for _, ev := range storageEvents {
+			if ev.DeltaBytes != 0 {
+				allStorageEvents = append(allStorageEvents,
+					NewStorageEvent(ev.Timestamp, ev.DeltaBytes, func(name string, ev *VdrEvent) string {
+						if ev.DeltaBytes > 0 {
+							return fmt.Sprintf("%s alloc", name)
+						} else {
+							return fmt.Sprintf("%s delete", name)
+						}
+					}(node.fqname, ev)))
 			}
 		}
 	}
 
-	storageEvents := make([]*StorageEvent, 0, len(forksVisited)*2)
-	for _, fse := range forksVisited {
-		storageEvents = append(
-			storageEvents,
-			NewStorageEvent(fse.Timestamp, int64(fse.ForkBytes), fmt.Sprintf("%s alloc", fse.Name)))
-		if !fse.VDRTimestamp.IsZero() {
-			storageEvents = append(
-				storageEvents,
-				NewStorageEvent(fse.VDRTimestamp, -1*int64(fse.ForkVDRBytes), fmt.Sprintf("%s delete", fse.Name)))
-		}
-	}
+	allStorageEvents = allStorageEvents.Collapse()
 
-	sort.Sort(StorageEventByTimestamp(storageEvents))
-	highMark := int64(0)
-	currentMark := int64(0)
+	var highMark, currentMark int64
 
-	byteStamps := make([]*NodeByteStamp, len(storageEvents))
-	for idx, se := range storageEvents {
+	byteStamps := make([]*NodeByteStamp, len(allStorageEvents))
+	for idx, se := range allStorageEvents {
 		currentMark += se.Delta
 		byteStamps[idx] = &NodeByteStamp{Timestamp: se.Timestamp, Bytes: currentMark, Description: se.Name}
 		if currentMark > highMark {

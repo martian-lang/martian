@@ -312,7 +312,11 @@ def compare_file_content(output, expect, filename):
         return compare_jobinfo(output, expect, filename)
     elif os.path.basename(filename) == '_finalstate':
         return compare_final_state(output, expect, filename)
-    elif os.path.basename(filename) in ['_outs', '_args', '_stage_defs']:
+    elif os.path.basename(filename) in ['_outs',
+                                        '_args',
+                                        '_stage_defs',
+                                        '_vdrkill.partial',
+                                        '_vdrkill']:
         return compare_json(output, expect, filename)
     return compare_lines(output, expect, filename)
 

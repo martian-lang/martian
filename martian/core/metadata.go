@@ -57,6 +57,7 @@ const (
 	UiPort         MetadataFileName = "uiport"
 	UuidFile       MetadataFileName = "uuid"
 	VdrKill        MetadataFileName = "vdrkill"
+	PartialVdr     MetadataFileName = "vdrkill.partial"
 	VersionsFile   MetadataFileName = "versions"
 	DisabledFile   MetadataFileName = "disabled"
 )
@@ -106,6 +107,10 @@ func (self MetadataState) IsRunning() bool {
 
 func (self MetadataState) IsQueued() bool {
 	return strings.HasSuffix(string(self), string(Queued))
+}
+
+func (self MetadataState) IsFailed() bool {
+	return strings.HasSuffix(string(self), string(Failed))
 }
 
 func makeUniquifier() string {
@@ -208,9 +213,25 @@ func (self *Metadata) enumerateFiles() ([]string, error) {
 	return filepath.Glob(path.Join(self.curFilesPath, "*"))
 }
 
+func (self *Metadata) enumerateTemp() ([]string, error) {
+	if td := self.TempDir(); td == "" {
+		return nil, nil
+	} else {
+		return filepath.Glob(path.Join(td, "*"))
+	}
+}
+
 // The path containing output files for this node.
 func (self *Metadata) FilesPath() string {
 	return self.curFilesPath
+}
+
+func (self *Metadata) TempDir() string {
+	if p := self.path; p != "" {
+		return path.Join(p, "tmp")
+	} else {
+		return ""
+	}
 }
 
 func (self *Metadata) mkdirs() error {
@@ -252,6 +273,15 @@ func (self *Metadata) uniquify() error {
 		return err
 	}
 	self.curFilesPath = filesPath
+	if err := util.Mkdir(self.TempDir()); err != nil {
+		msg := fmt.Sprintf("Could not create temp directory for %s: %s", self.fqname, err.Error())
+		util.LogError(err, "runtime", msg)
+		self._writeRawNoLock(Errors, msg)
+		os.Remove(filesPath)
+		os.Remove(p)
+		return err
+	}
+
 	if self.discoverUniquifier() != self.uniquifier {
 		if relPath, err := filepath.Rel(filepath.Dir(self.finalPath), p); err != nil {
 			msg := fmt.Sprintf("Could not compute relative path for %s to %s", self.finalPath, p)

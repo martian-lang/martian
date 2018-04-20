@@ -70,6 +70,7 @@ type Node struct {
 	forks              []*Fork
 	state              MetadataState
 	volatile           bool
+	strictVolatile     bool
 	local              bool
 	preflight          bool
 	disabled           []*Binding
@@ -84,11 +85,16 @@ type Node struct {
 	invocation         *InvocationData
 	blacklistedFromMRT bool // Don't used cached data when MRT'ing
 
-	// Post-nodes which depend on at least one output of a type that
-	// might contain a filename - specifically: user-defined file types,
-	// strings, maps, or arrays of any of those.  Not counted are
-	// int, float, or bool outputs or arrays of those.
-	filePostNodes map[string]Nodable
+	// Mapping from argument name to set of nodes which depend on the
+	// argument, for arguments which may contain any file names.  This
+	// includes user-defined file types, strings, maps, or arrays of any
+	// of those.  Nothing else (int, float, bool) can contain file names.
+	fileArgs map[string]map[Nodable]struct{}
+
+	// Mapping from post-node to set of file-type args it depends on.
+	filePostNodes map[Nodable]map[string]struct{}
+
+	fileNodeMutex sync.Mutex
 }
 
 // Represents an edge in the pipeline graph.
@@ -196,13 +202,36 @@ func (self *Node) attachBindings(bindingList []*Binding) {
 		prenode.getNode().postnodes[self.fqname] = self
 	}
 	self.directPrenodes = append(self.directPrenodes, directPrenodes...)
-	for prenode := range fileParents {
-		if prenode.getNode().filePostNodes == nil {
-			prenode.getNode().filePostNodes = map[string]Nodable{
-				self.fqname: self,
-			}
+	for prenode, boundArgs := range fileParents {
+		setNode := self
+		if _, ok := self.parent.(*TopNode); ok {
+			setNode = nil
+			prenode.getNode().volatile = false
+			// Don't add to file post-nodes, since this will never count as
+			// "done".  However still add to fileArgs since we want to
+			// preserve the arg.
 		} else {
-			prenode.getNode().filePostNodes[self.fqname] = self
+			if pNodeFiles := prenode.getNode().filePostNodes; pNodeFiles == nil {
+				prenode.getNode().filePostNodes = map[Nodable]map[string]struct{}{
+					self: boundArgs,
+				}
+			} else {
+				pNodeFiles[self] = boundArgs
+			}
+		}
+		pArgs := prenode.getNode().fileArgs
+		if pArgs == nil {
+			pArgs = make(map[string]map[Nodable]struct{}, len(boundArgs))
+			prenode.getNode().fileArgs = pArgs
+		}
+		for arg := range boundArgs {
+			if nodes := pArgs[arg]; nodes == nil {
+				pArgs[arg] = map[Nodable]struct{}{
+					setNode: struct{}{},
+				}
+			} else {
+				nodes[setNode] = struct{}{}
+			}
 		}
 	}
 }
@@ -218,9 +247,9 @@ func maybeFileType(tname string) bool {
 // the given binding set.
 func recurseBoundNodes(bindingList []*Binding) (prenodes map[string]Nodable,
 	parents []Nodable,
-	fileParents map[Nodable]struct{}) {
+	fileParents map[Nodable]map[string]struct{}) {
 	found := make(map[string]Nodable)
-	fileParents = make(map[Nodable]struct{})
+	fileParents = make(map[Nodable]map[string]struct{})
 	allParents := make(map[Nodable]struct{})
 	parentList := make([]Nodable, 0, len(bindingList))
 	addPrenode := func(prenode Nodable) {
@@ -242,7 +271,13 @@ func recurseBoundNodes(bindingList []*Binding) (prenodes map[string]Nodable,
 				parentList = append(parentList, parent)
 			}
 			if maybeFileType(binding.tname) {
-				fileParents[binding.boundNode] = struct{}{}
+				if par := fileParents[binding.boundNode]; par == nil {
+					fileParents[binding.boundNode] = map[string]struct{}{
+						binding.output: struct{}{},
+					}
+				} else {
+					par[binding.output] = struct{}{}
+				}
 			}
 		} else if binding.mode == "array" {
 			prenodes, parents, fparents := recurseBoundNodes(binding.value.([]*Binding))
@@ -256,7 +291,13 @@ func recurseBoundNodes(bindingList []*Binding) (prenodes map[string]Nodable,
 				}
 			}
 			for key, val := range fparents {
-				fileParents[key] = val
+				if a := fileParents[key]; a == nil {
+					fileParents[key] = val
+				} else {
+					for arg := range val {
+						a[arg] = struct{}{}
+					}
+				}
 			}
 		}
 	}
@@ -448,9 +489,6 @@ func (self *Node) getFrontierNodes() []*Node {
 }
 
 func (self *Node) allNodes() []*Node {
-	all := make([]*Node, 1, 1+len(self.subnodes))
-	all[0] = self
-
 	// Enumerate and sort the keys in subnodes first.
 	// This ensures a stable chirality for the dag UI.
 	ids := make([]string, 0, len(self.subnodes))
@@ -458,6 +496,9 @@ func (self *Node) allNodes() []*Node {
 		ids = append(ids, id)
 	}
 	sort.Strings(ids)
+
+	all := make([]*Node, 1, 1+len(ids))
+	all[0] = self
 
 	// Build a list of all subnodes.
 	for _, id := range ids {
@@ -863,17 +904,61 @@ func (self *Node) serializeState() *NodeInfo {
 	}
 }
 
-func (self *Node) serializePerf() *NodePerfInfo {
+func (self *Node) serializePerf() (*NodePerfInfo, []*VdrEvent) {
 	forks := make([]*ForkPerfInfo, 0, len(self.forks))
+	var storageEvents []*VdrEvent
 	for _, fork := range self.forks {
-		forkSer, _ := fork.serializePerf()
+		forkSer, vdrKill := fork.serializePerf()
 		forks = append(forks, forkSer)
+		if vdrKill != nil && self.kind != "pipeline" {
+			storageEvents = append(storageEvents, vdrKill.Events...)
+		}
 	}
 	return &NodePerfInfo{
 		Name:   self.name,
 		Fqname: self.fqname,
 		Type:   self.kind,
 		Forks:  forks,
+	}, storageEvents
+}
+
+// Marks a possible file out argument as not actually containing any files.
+// For example, a map output which does not actually contain any strings.
+// This may result in the removal of some file post-nodes, which may allow for
+// earlier VDR.
+func (self *Node) removeFileArg(arg string) {
+	if nodes, ok := self.fileArgs[arg]; !ok {
+		return
+	} else {
+		delete(self.fileArgs, arg)
+		for node := range nodes {
+			if args, ok := self.filePostNodes[node]; ok {
+				delete(args, arg)
+				if len(args) == 0 {
+					delete(self.filePostNodes, node)
+				}
+			}
+		}
+	}
+}
+
+// Removes file post-nodes which are complete from the set of nodes on which
+// VDR for this stage is still waiting, and also removes arguments from
+// fileArgs for which no post-node is still waiting.  This is how it is
+// determined when VDR is safe to run.
+func (self *Node) removeFilePostNodes(nodes []Nodable) {
+	for _, node := range nodes {
+		if args, ok := self.filePostNodes[node]; ok {
+			delete(self.filePostNodes, node)
+			for arg := range args {
+				if remaining, ok := self.fileArgs[arg]; ok {
+					delete(remaining, node)
+					if len(remaining) == 0 {
+						delete(self.fileArgs, arg)
+					}
+				}
+			}
+		}
 	}
 }
 
@@ -1002,7 +1087,13 @@ func (self *Node) runJob(shellName string, fqname string, metadata *Metadata,
 		Martian:   self.rt.Config.MartianVersion,
 		Pipelines: self.mroVersion,
 	}
-	envs := self.envs
+	envs := make(map[string]string, len(self.envs)+1)
+	for k, v := range self.envs {
+		envs[k] = v
+	}
+	if td := metadata.TempDir(); td != "" {
+		envs["TMPDIR"] = td
+	}
 
 	switch self.stagecodeLang {
 	case syntax.PythonStage:

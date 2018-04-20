@@ -9,14 +9,16 @@ package core
 import (
 	"encoding/json"
 	"fmt"
-	"github.com/martian-lang/martian/martian/syntax"
-	"github.com/martian-lang/martian/martian/util"
 	"math"
 	"os"
 	"path"
 	"path/filepath"
 	"strings"
+	"sync"
 	"time"
+
+	"github.com/martian-lang/martian/martian/syntax"
+	"github.com/martian-lang/martian/martian/util"
 )
 
 func makeOutArgs(outParams *syntax.Params, filesPath string, nullAll bool) map[string]interface{} {
@@ -288,6 +290,7 @@ type Fork struct {
 	perfCache      *ForkPerfCache
 	lastPrint      time.Time
 	metadatasCache []*Metadata // cache for collectMetadata
+	storageLock    sync.Mutex
 }
 
 // Exportable information from a Fork object.
@@ -482,6 +485,68 @@ func (self *Fork) mkdirs() {
 
 	for _, chunk := range self.chunks {
 		chunk.mkdirs()
+	}
+}
+
+// Get strings appearing in data as deserialized from json, e.g. recursively
+// searching map[string]interface{}, []interface{} and string.  Ignores bool
+// and json.Number/float64.  Ignores strings which do not contain a path
+// separator character, since there is no way for downstream stages to figure
+// out the location of this stage's file outputs without an absolute path, or
+// at least one relative to something the downstream stage can know about.
+func getMaybeFileNames(value interface{}) []string {
+	if value == nil {
+		return nil
+	}
+	switch v := value.(type) {
+	case string:
+		if strings.ContainsRune(v, os.PathSeparator) {
+			return []string{v}
+		} else {
+			return nil
+		}
+	case []interface{}:
+		if len(v) == 0 {
+			return nil
+		}
+		var vs []string
+		for _, element := range v {
+			vs = append(vs, getMaybeFileNames(element)...)
+		}
+		return vs
+	case map[string]interface{}:
+		if len(v) == 0 {
+			return nil
+		}
+		var vs []string
+		for key, element := range v {
+			if strings.ContainsRune(key, os.PathSeparator) {
+				vs = append(vs, key)
+			}
+			vs = append(vs, getMaybeFileNames(element)...)
+		}
+		return vs
+	default:
+		return nil
+	}
+}
+
+// Once the job has completed, look for arguments which might contain file
+// names and remove any which didn't actually have any.
+func (self *Fork) removeEmptyFileArgs(outs interface{}) {
+	self.storageLock.Lock()
+	defer self.storageLock.Unlock()
+	if len(self.node.fileArgs) == 0 {
+		return
+	} else if outsMap, ok := outs.(map[string]interface{}); !ok {
+		return
+	} else {
+		for arg := range self.node.fileArgs {
+			if val, ok := outsMap[arg]; !ok ||
+				len(getMaybeFileNames(val)) == 0 {
+				self.node.removeFileArg(arg)
+			}
+		}
 	}
 }
 
@@ -687,6 +752,16 @@ func (self *Fork) step() {
 		}
 		if state == Complete.Prefixed(SplitPrefix) {
 			self.node.rt.JobManager.endJob(self.split_metadata)
+			if self.node.volatile {
+				lockAquired := make(chan struct{}, 1)
+				go func() {
+					self.storageLock.Lock()
+					defer self.storageLock.Unlock()
+					lockAquired <- struct{}{}
+					self.cleanSplitTemp(nil)
+				}()
+				<-lockAquired
+			}
 			// MARTIAN-395 We have observed a possible race condition where
 			// split_complete could be detected but _stage_defs is not
 			// written yet or is corrupted. Check that stage_defs exists
@@ -741,6 +816,7 @@ func (self *Fork) step() {
 			}
 		}
 		if state == Complete.Prefixed(ChunksPrefix) {
+			go self.partialVdrKill()
 			if self.stageDefs.JoinDef == nil {
 				self.stageDefs.JoinDef = &JobResources{}
 			}
@@ -779,6 +855,11 @@ func (self *Fork) step() {
 			self.node.rt.JobManager.endJob(self.join_metadata)
 			joinOut := self.join_metadata.read(OutsFile)
 			self.metadata.Write(OutsFile, joinOut)
+			if self.node.rt.Config.VdrMode == "post" {
+				// Still clean up tmp, but run before we've declared
+				// the stage maybe complete.
+				go self.partialVdrKill()
+			}
 			if ok, msg := self.verifyOutput(joinOut); ok {
 				if msg != "" {
 					self.metadata.AppendAlarm(msg)
@@ -795,6 +876,10 @@ func (self *Fork) step() {
 				}
 			} else {
 				self.metadata.WriteRaw(Errors, msg)
+			}
+			self.removeEmptyFileArgs(joinOut)
+			if self.node.rt.Config.VdrMode != "post" {
+				go self.partialVdrKill()
 			}
 		}
 
@@ -846,12 +931,32 @@ func (self *Fork) cachePerf() {
 }
 
 func (self *Fork) getVdrKillReport() (*VDRKillReport, bool) {
-	killReport := &VDRKillReport{}
+	var killReport VDRKillReport
 	ok := false
 	if self.metadata.exists(VdrKill) {
-		ok = (self.metadata.ReadInto(VdrKill, killReport) == nil)
+		ok = (self.metadata.ReadInto(VdrKill, &killReport) == nil)
 	}
-	return killReport, ok
+	return &killReport, ok
+}
+
+func (self *Fork) getPartialKillReport() *PartialVdrKillReport {
+	if self.metadata.exists(PartialVdr) {
+		var killReport PartialVdrKillReport
+		if self.metadata.ReadInto(PartialVdr, &killReport) == nil {
+			return &killReport
+		}
+	}
+	return nil
+}
+
+func (self *Fork) deletePartialKill() {
+	if self.metadata.exists(PartialVdr) {
+		self.metadata.remove(PartialVdr)
+	}
+}
+
+func (self *Fork) writePartialKill(killReport *PartialVdrKillReport) {
+	self.metadata.Write(PartialVdr, killReport)
 }
 
 func (self *Fork) postProcess() {
@@ -1107,7 +1212,9 @@ func (self *Fork) serializePerf() (*ForkPerfInfo, *VDRKillReport) {
 	for _, subfork := range self.subforks {
 		subforkSer, subforkKillReport := subfork.serializePerf()
 		stats = append(stats, subforkSer.ForkStats)
-		killReports = append(killReports, subforkKillReport)
+		if subforkKillReport != nil {
+			killReports = append(killReports, subforkKillReport)
+		}
 	}
 	killReport := mergeVDRKillReports(killReports)
 	fpaths, _ := self.metadata.enumerateFiles()
