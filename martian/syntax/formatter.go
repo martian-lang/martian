@@ -119,12 +119,17 @@ func (self *ValExp) formatMap(prefix string) string {
 		var buf bytes.Buffer
 		buf.WriteString("{\n")
 		vindent := prefix + INDENT
-		for key, val := range valExpMap {
+		keys := make([]string, 0, len(valExpMap))
+		for key := range valExpMap {
+			keys = append(keys, key)
+		}
+		sort.Strings(keys)
+		for _, key := range keys {
 			buf.WriteString(vindent)
 			buf.WriteRune('"')
 			buf.WriteString(key)
 			buf.WriteString(`": `)
-			buf.WriteString(val.format(vindent))
+			buf.WriteString(valExpMap[key].format(vindent))
 			buf.WriteString(",\n")
 		}
 		buf.WriteString(prefix)
