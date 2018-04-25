@@ -450,8 +450,12 @@ func (self *Metadata) exists(name MetadataFileName) bool {
 	return ok
 }
 
+func (self *Metadata) readRawBytes(name MetadataFileName) ([]byte, error) {
+	return ioutil.ReadFile(self.MetadataFilePath(name))
+}
+
 func (self *Metadata) readRawSafe(name MetadataFileName) (string, error) {
-	bytes, err := ioutil.ReadFile(self.MetadataFilePath(name))
+	bytes, err := self.readRawBytes(name)
 	return string(bytes), err
 }
 
@@ -478,12 +482,13 @@ func (self *Metadata) read(name MetadataFileName) interface{} {
 	if ok {
 		return v
 	}
-	str, err := self.readRawSafe(name)
-	dec := json.NewDecoder(bytes.NewReader([]byte(str)))
-	dec.UseNumber()
-	dec.Decode(&v)
+	b, err := self.readRawBytes(name)
 	if err == nil {
-		self.saveToCache(name, v)
+		dec := json.NewDecoder(bytes.NewReader(b))
+		dec.UseNumber()
+		if dec.Decode(&v) == nil {
+			self.saveToCache(name, v)
+		}
 	}
 	return v
 }
@@ -491,12 +496,11 @@ func (self *Metadata) read(name MetadataFileName) interface{} {
 // Reads the content of the given metadata file and deserializes it into
 // the given object.
 func (self *Metadata) ReadInto(name MetadataFileName, target interface{}) error {
-	str, err := self.readRawSafe(name)
-	if err != nil {
+	if b, err := self.readRawBytes(name); err != nil {
 		return err
+	} else {
+		return json.Unmarshal(b, target)
 	}
-	err = json.Unmarshal([]byte(str), target)
-	return err
 }
 
 func (self *Metadata) _writeRawNoLock(name MetadataFileName, text string) error {

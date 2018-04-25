@@ -570,7 +570,6 @@ func forkDependentName(fqname string, forkIndex int) string {
 }
 
 func (self *Pipestance) ComputeDiskUsage(nodePerf *NodePerfInfo) *NodePerfInfo {
-	storageEvents := []*StorageEvent{}
 	forksVisited := make(map[string]*ForkStorageEvent)
 
 	for _, node := range self.allNodes() {
@@ -603,6 +602,7 @@ func (self *Pipestance) ComputeDiskUsage(nodePerf *NodePerfInfo) *NodePerfInfo {
 		}
 	}
 
+	storageEvents := make([]*StorageEvent, 0, len(forksVisited)*2)
 	for _, fse := range forksVisited {
 		storageEvents = append(
 			storageEvents,

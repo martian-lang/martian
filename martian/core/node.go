@@ -864,7 +864,7 @@ func (self *Node) serializeState() *NodeInfo {
 }
 
 func (self *Node) serializePerf() *NodePerfInfo {
-	forks := []*ForkPerfInfo{}
+	forks := make([]*ForkPerfInfo, 0, len(self.forks))
 	for _, fork := range self.forks {
 		forkSer, _ := fork.serializePerf()
 		forks = append(forks, forkSer)

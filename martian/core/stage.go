@@ -20,7 +20,7 @@ import (
 )
 
 func makeOutArgs(outParams *syntax.Params, filesPath string, nullAll bool) map[string]interface{} {
-	args := map[string]interface{}{}
+	args := make(map[string]interface{}, len(outParams.Table))
 	for id, param := range outParams.Table {
 		// TODO(azarchs): Don't put file names in arrays.  Except we have
 		// released pipelines which depend on this incorrect behavior.  It can
@@ -438,7 +438,9 @@ func (self *Fork) restartLocalJobs() error {
 func (self *Fork) collectMetadatas() []*Metadata {
 	metadatas := self.metadatasCache
 	if metadatas == nil {
-		metadatas = []*Metadata{self.metadata, self.split_metadata, self.join_metadata}
+		metadatas = make([]*Metadata, 3, 3+len(self.chunks))
+		metadatas[0], metadatas[1], metadatas[2] =
+			self.metadata, self.split_metadata, self.join_metadata
 		for _, chunk := range self.chunks {
 			metadatas = append(metadatas, chunk.metadata)
 		}
@@ -448,15 +450,16 @@ func (self *Fork) collectMetadatas() []*Metadata {
 }
 
 func (self *Fork) removeMetadata() {
-	metadatas := []*Metadata{self.split_metadata, self.join_metadata}
-	for _, chunk := range self.chunks {
-		metadatas = append(metadatas, chunk.metadata)
-	}
-	for _, metadata := range metadatas {
+	rem := func(metadata *Metadata) {
 		filePaths, _ := metadata.enumerateFiles()
 		if len(filePaths) == 0 {
 			metadata.removeAll()
 		}
+	}
+	rem(self.split_metadata)
+	rem(self.join_metadata)
+	for _, chunk := range self.chunks {
+		rem(chunk.metadata)
 	}
 }
 
@@ -701,6 +704,7 @@ func (self *Fork) step() {
 					state = Complete.Prefixed(ChunksPrefix)
 				} else {
 					if len(self.chunks) == 0 {
+						self.chunks = make([]*Chunk, 0, len(self.stageDefs.ChunkDefs))
 						width := util.WidthForInt(len(self.stageDefs.ChunkDefs))
 						for i, chunkDef := range self.stageDefs.ChunkDefs {
 							chunk := NewChunk(self, i, chunkDef, width)
@@ -749,7 +753,7 @@ func (self *Fork) step() {
 			self.join_metadata.Write(ChunkDefsFile, self.stageDefs.ChunkDefs)
 			if self.Split() {
 				ok := true
-				chunkOuts := []interface{}{}
+				chunkOuts := make([]interface{}, 0, len(self.chunks))
 				for _, chunk := range self.chunks {
 					outs := chunk.metadata.read(OutsFile)
 					chunkOuts = append(chunkOuts, outs)
@@ -845,10 +849,7 @@ func (self *Fork) getVdrKillReport() (*VDRKillReport, bool) {
 	killReport := &VDRKillReport{}
 	ok := false
 	if self.metadata.exists(VdrKill) {
-		data := self.metadata.readRaw(VdrKill)
-		if err := json.Unmarshal([]byte(data), &killReport); err == nil {
-			ok = true
-		}
+		ok = (self.metadata.ReadInto(VdrKill, killReport) == nil)
 	}
 	return killReport, ok
 }
@@ -1023,11 +1024,11 @@ func (self *Fork) getAlarms() string {
 }
 
 func (self *Fork) serializeState() *ForkInfo {
-	argbindings := []*BindingInfo{}
+	argbindings := make([]*BindingInfo, 0, len(self.node.argbindingList))
 	for _, argbinding := range self.node.argbindingList {
 		argbindings = append(argbindings, argbinding.serializeState(self.argPermute))
 	}
-	retbindings := []*BindingInfo{}
+	retbindings := make([]*BindingInfo, 0, len(self.node.retbindingList))
 	for _, retbinding := range self.node.retbindingList {
 		retbindings = append(retbindings, retbinding.serializeState(self.argPermute))
 	}
@@ -1053,7 +1054,7 @@ func (self *Fork) serializeState() *ForkInfo {
 }
 
 func (self *Fork) getStages() []*StagePerfInfo {
-	stages := []*StagePerfInfo{}
+	stages := make([]*StagePerfInfo, 0, len(self.subforks)+1)
 	for _, subfork := range self.subforks {
 		stages = append(stages, subfork.getStages()...)
 	}
@@ -1074,7 +1075,7 @@ func (self *Fork) serializePerf() (*ForkPerfInfo, *VDRKillReport) {
 	}
 
 	chunks := make([]*ChunkPerfInfo, 0, len(self.chunks))
-	stats := make([]*PerfInfo, 0, len(self.chunks))
+	stats := make([]*PerfInfo, 0, len(self.chunks)+len(self.subforks)+2)
 	for _, chunk := range self.chunks {
 		chunkSer := chunk.serializePerf()
 		chunks = append(chunks, chunkSer)
@@ -1101,19 +1102,21 @@ func (self *Fork) serializePerf() (*ForkPerfInfo, *VDRKillReport) {
 		stats = append(stats, joinStats)
 	}
 
-	killReport, _ := self.getVdrKillReport()
-	killReports := []*VDRKillReport{killReport}
+	killReports := make([]*VDRKillReport, 1, len(self.subforks)+1)
+	killReports[0], _ = self.getVdrKillReport()
 	for _, subfork := range self.subforks {
 		subforkSer, subforkKillReport := subfork.serializePerf()
 		stats = append(stats, subforkSer.ForkStats)
 		killReports = append(killReports, subforkKillReport)
 	}
-	killReport = mergeVDRKillReports(killReports)
+	killReport := mergeVDRKillReports(killReports)
 	fpaths, _ := self.metadata.enumerateFiles()
 
-	forkStats := &PerfInfo{}
+	var forkStats *PerfInfo
 	if len(stats) > 0 {
 		forkStats = ComputeStats(stats, fpaths, killReport)
+	} else {
+		forkStats = new(PerfInfo)
 	}
 	return &ForkPerfInfo{
 		Stages:     self.getStages(),
