@@ -145,6 +145,9 @@ func (self *IoAmount) update(other *IoAmount) (diff IoAmount) {
 }
 
 func (self *IoAmount) rate(seconds float64) *IoRate {
+	if seconds <= 0 {
+		return new(IoRate)
+	}
 	return &IoRate{
 		Read:  self.Read.rate(seconds),
 		Write: self.Write.rate(seconds),
@@ -173,6 +176,9 @@ func (self *IoValues) update(other IoValues, diff *IoValues) {
 }
 
 func (self *IoValues) rate(seconds float64) IoRateValues {
+	if seconds <= 0 {
+		return IoRateValues{}
+	}
 	return IoRateValues{
 		Syscalls:   float64(self.Syscalls) / seconds,
 		BlockBytes: float64(self.BlockBytes) / seconds,
@@ -269,6 +275,12 @@ func (self IoRateValues) sub(other IoRateValues) IoRateValues {
 }
 
 func (self IoRateValues) sqrt() IoRateValues {
+	if self.Syscalls < 0 {
+		self.Syscalls = 0
+	}
+	if self.BlockBytes < 0 {
+		self.BlockBytes = 0
+	}
 	return IoRateValues{
 		Syscalls:   math.Sqrt(self.Syscalls),
 		BlockBytes: math.Sqrt(self.BlockBytes),
@@ -291,6 +303,9 @@ func (self IoRateValues) sqrt() IoRateValues {
 //          sum_i[δt_i*x_i*mx]) / t
 //       = sum_i[δt_i*x_i^2] / t - mx^2
 func (sumSq *IoRateValues) computeStdDev(total IoValues, seconds float64) IoRateValues {
+	if seconds <= 0 {
+		return IoRateValues{}
+	}
 	return IoRateValues{
 		Syscalls:   sumSq.Syscalls / seconds,
 		BlockBytes: sumSq.BlockBytes / seconds,

@@ -192,16 +192,17 @@ func totalCpu(ru *core.RusageInfo) float64 {
 func (self *runner) Complete() {
 	self.done()
 	target := core.CompleteFile
-	if self.jobInfo.Monitor == "monitor" &&
-		time.Since(self.start) > time.Minute*15 {
-		if threads := totalCpu(self.jobInfo.RusageInfo) /
-			time.Since(self.start).Seconds(); threads > 1.5*float64(self.jobInfo.Threads) {
-			target = core.Errors
-			if writeError := self.metadata.WriteRaw(target, fmt.Sprintf(
-				"Stage exceeded its threads quota (using %.1f, allowed %d)",
-				threads,
-				self.jobInfo.Threads)); writeError != nil {
-				util.PrintError(writeError, "monitor", "Could not write errors file.")
+	if self.jobInfo.Monitor == "monitor" {
+		if t := time.Since(self.start); t > time.Minute*15 {
+			if threads := totalCpu(self.jobInfo.RusageInfo) /
+				t.Seconds(); threads > 1.5*float64(self.jobInfo.Threads) {
+				target = core.Errors
+				if writeError := self.metadata.WriteRaw(target, fmt.Sprintf(
+					"Stage exceeded its threads quota (using %.1f, allowed %d)",
+					threads,
+					self.jobInfo.Threads)); writeError != nil {
+					util.PrintError(writeError, "monitor", "Could not write errors file.")
+				}
 			}
 		}
 	}
