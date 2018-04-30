@@ -23,13 +23,13 @@ export GOPATH=$(shell pwd)
 all: grammar all-bins web test
 
 bin/goyacc: vendor/golang.org/x/tools/cmd/goyacc/yacc.go
-	go install golang.org/x/tools/cmd/goyacc
+	go install vendor/golang.org/x/tools/cmd/goyacc
 
-src/martian/syntax/grammar.go: bin/goyacc src/martian/syntax/grammar.y
+martian/syntax/grammar.go: bin/goyacc martian/syntax/grammar.y
 	bin/goyacc -p "mm" -o martian/syntax/grammar.go martian/syntax/grammar.y && rm y.output
 
-src/martian/test/sum_squares/types.go: PATH:=$(GOPATH)/bin:$(PATH)
-src/martian/test/sum_squares/types.go: test/split_test_go/pipeline_stages.mro mro2go
+martian/test/sum_squares/types.go: PATH:=$(GOPATH)/bin:$(PATH)
+martian/test/sum_squares/types.go: test/split_test_go/pipeline_stages.mro mro2go
 	go generate $(REPO)/martian/test/sum_squares
 
 bin/sum_squares: martian/test/sum_squares/sum_squares.go \
