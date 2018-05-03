@@ -6,6 +6,7 @@
 package main
 
 import (
+	"context"
 	"crypto/rand"
 	"encoding/base64"
 	"fmt"
@@ -47,6 +48,7 @@ type pipestanceHolder struct {
 	cleanupLock      sync.Mutex
 	lock             sync.Mutex
 	readOnly         bool
+	server           *http.Server
 }
 
 func (self *pipestanceHolder) getPipestance() *core.Pipestance {
@@ -144,6 +146,18 @@ func (self *pipestanceHolder) Register() {
 				util.LogError(err, "mrenter", "Registration to %s failed", u.Host)
 			}
 		}()
+	}
+}
+
+func (self *pipestanceHolder) HandleSignal(os.Signal) {
+	if self.enableUI && !self.readOnly {
+		if ps := self.getPipestance(); ps != nil {
+			ps.ClearUiPort()
+		}
+	}
+	if srv := self.server; srv != nil {
+		ctx, _ := context.WithTimeout(context.Background(), 20*time.Second)
+		srv.Shutdown(ctx)
 	}
 }
 
@@ -259,10 +273,9 @@ func cleanupCompleted(pipestance *core.Pipestance, pipestanceBox *pipestanceHold
 			// Give time for web ui client to get last update.
 			util.Println("Waiting %d seconds for UI to do final refresh.", WAIT_SECS)
 			time.Sleep(time.Second * time.Duration(WAIT_SECS))
-			pipestance.ClearUiPort()
 		}
 		util.Println("Pipestance completed successfully!\n")
-		os.Exit(0)
+		util.Suicide(true)
 	}
 }
 
@@ -281,7 +294,7 @@ func cleanupFailed(pipestance *core.Pipestance, pipestanceBox *pipestanceHolder,
 	defer func() { pipestanceBox.showedFailed = true }()
 	if !pipestanceBox.showedFailed {
 		pipestance.OnFinishHook()
-		if _, preflight, _, log, kind, errPaths := pipestance.GetFatalError(); kind == "assert" {
+		if _, _, _, log, kind, errPaths := pipestance.GetFatalError(); kind == "assert" {
 			// Print preflight check failures.
 			util.Println("\n[%s] %s\n", "error", log)
 			if log != "" {
@@ -291,12 +304,7 @@ func cleanupFailed(pipestance *core.Pipestance, pipestanceBox *pipestanceHolder,
 					strings.Join(errPaths, "\n")))
 			}
 			pipestanceBox.UpdateState(core.Failed)
-			pipestance.ClearUiPort()
-			if preflight {
-				os.Exit(3)
-			} else {
-				os.Exit(1)
-			}
+			util.Suicide(false)
 		} else if len(errPaths) > 0 {
 			// Build relative path to _errors file
 			errPath, _ := filepath.Rel(filepath.Dir(pipestance.GetPath()), errPaths[0])
@@ -329,9 +337,8 @@ func cleanupFailed(pipestance *core.Pipestance, pipestanceBox *pipestanceHolder,
 			util.Println("Waiting %d seconds for UI to do final refresh.", WAIT_SECS)
 			time.Sleep(time.Second * time.Duration(WAIT_SECS))
 			util.Println("Pipestance failed. Use --noexit option to keep UI running after failure.\n")
-			pipestance.ClearUiPort()
 		}
-		os.Exit(1)
+		util.Suicide(false)
 	}
 }
 
@@ -824,11 +831,12 @@ Options:
 			// Print this here because the log makes more sense when this appears before
 			// the runloop messages start to appear.
 			util.Println("Serving UI at %s\n", u.String())
+			pipestanceBox.enableUI = true
+			pipestanceBox.authKey = authKey
+			util.RegisterSignalHandler(&pipestanceBox)
 			if !readOnly {
 				pipestance.RecordUiPort(u.String())
 			}
-			pipestanceBox.authKey = authKey
-			pipestanceBox.enableUI = true
 		}
 	} else {
 		util.LogInfo("webserv", "UI disabled.")

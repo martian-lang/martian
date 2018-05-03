@@ -94,9 +94,19 @@ func (self *mrpWebServer) Start() {
 	})
 	api.EnableDebug(sm, self.verifyAuth)
 
-	if err := http.Serve(self.listener, sm); err != nil {
-		fmt.Println(err.Error())
-		os.Exit(1)
+	self.pipestanceBox.server = &http.Server{
+		Handler:      sm,
+		ReadTimeout:  5 * time.Second,
+		WriteTimeout: 30 * time.Second,
+		IdleTimeout:  time.Minute,
+	}
+	self.pipestanceBox.server.ErrorLog, _ = util.GetLogger("webserv")
+
+	if err := self.pipestanceBox.server.Serve(self.listener); err != nil {
+		if err != http.ErrServerClosed {
+			fmt.Println(err.Error())
+			os.Exit(1)
+		}
 	}
 }
 
@@ -369,6 +379,10 @@ func (self *mrpWebServer) kill(w http.ResponseWriter, req *http.Request) {
 				"Pipstance was killed by API call from " + req.RemoteAddr)
 			time.Sleep(6 * time.Second) // Make sure UI has a chance to refresh.
 		}
-		util.Suicide()
+		if info := self.pipestanceBox.info; info != nil {
+			util.Suicide(info.State == core.Complete)
+		} else {
+			util.Suicide(false)
+		}
 	}()
 }

@@ -96,12 +96,16 @@ func (self *SignalHandler) Notify() {
 
 // Kill this process cleanly, after waiting for critical sections
 // and handlers to complete.
-func Suicide() {
+func Suicide(success bool) {
 	Println("%s Shutting down.", Timestamp())
 	if signalHandler == nil {
 		os.Exit(1)
 	}
-	signalHandler.sigchan <- syscall.Signal(-1)
+	if success {
+		signalHandler.sigchan <- syscall.Signal(-1)
+	} else {
+		signalHandler.sigchan <- syscall.Signal(-2)
+	}
 }
 
 // Initializes the global signal handler.
@@ -112,7 +116,7 @@ func SetupSignalHandlers() {
 
 	go func() {
 		sig := <-sigchan
-		if sig != syscall.Signal(-1) {
+		if sig != syscall.Signal(-1) && sig != syscall.Signal(-2) {
 			Println("%s Caught signal %v", Timestamp(), sig)
 		}
 
@@ -122,6 +126,10 @@ func SetupSignalHandlers() {
 		for object := range signalHandler.objects {
 			object.HandleSignal(sig)
 		}
-		os.Exit(1)
+		if sig == syscall.Signal(-1) {
+			os.Exit(0)
+		} else {
+			os.Exit(1)
+		}
 	}()
 }

@@ -43,7 +43,7 @@ func DieIf(err error) {
 		fmt.Println()
 		fmt.Println(err.Error())
 		fmt.Println()
-		Suicide()
+		Suicide(false)
 		// We don't want to return, but if someone ran this from inside a
 		// critical section that's also bad.
 		time.Sleep(time.Minute)

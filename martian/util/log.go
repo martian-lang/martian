@@ -9,6 +9,7 @@ package util
 import (
 	"fmt"
 	"io"
+	golog "log"
 	"os"
 )
 
@@ -40,6 +41,23 @@ func logInit() bool {
 		return true
 	}
 	return false
+}
+
+func (logger *Logger) Write(msg []byte) (int, error) {
+	if logger.fileWriter != nil {
+		return logger.fileWriter.Write(msg)
+	} else {
+		logger.cache += string(msg)
+		return len(msg), nil
+	}
+}
+
+func GetLogger(component string) (*golog.Logger, bool) {
+	if logInit() {
+		return golog.New(LOGGER, "["+component+"]", golog.LstdFlags), true
+	} else {
+		return nil, false
+	}
 }
 
 func log(msg string) {
