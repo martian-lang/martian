@@ -296,6 +296,7 @@ func (self *Pipeline) format(printer *printer) {
 	printer.WriteString(NEWLINE)
 	self.Ret.format(printer)
 	if self.Retain != nil {
+		printer.WriteString(NEWLINE)
 		self.Retain.format(printer)
 	}
 	printer.WriteString("}\n")
@@ -384,7 +385,8 @@ func (self *PipelineRetains) format(printer *printer) {
 	printer.WriteString("retain (\n")
 	for _, ref := range self.Refs {
 		printer.WriteString(INDENT)
-		printer.WriteString(ref.format(INDENT))
+		printer.WriteString(INDENT)
+		printer.WriteString(ref.format(INDENT + INDENT))
 		printer.WriteString(",\n")
 	}
 	printer.WriteString(INDENT)

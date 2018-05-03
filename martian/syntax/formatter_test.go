@@ -252,6 +252,10 @@ pipeline AWESOME(
     return (
         outfile = MERGE_JSON.result,
     )
+
+    retain (
+        ADD_KEY1.result,
+    )
 }
 
 # Calls the pipelines, sweeping over two forks.
