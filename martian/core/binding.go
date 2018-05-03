@@ -216,3 +216,47 @@ func resolveBindings(bindings map[string]*Binding, argPermute map[string]interfa
 	}
 	return resolvedBindings
 }
+
+func (pipestance *Pipestance) retain(ref *syntax.RefExp) {
+	if ref.Kind == syntax.KindSelf {
+		parentBinding := pipestance.node.argbindings[ref.Id]
+		if parentBinding != nil {
+			if nodable := parentBinding.boundNode; nodable != nil {
+				if node := nodable.getNode(); node != nil {
+					for _, fork := range node.forks {
+						if fileArgs := fork.fileArgs; fileArgs != nil {
+							if children := fileArgs[ref.OutputId]; children != nil {
+								children[nil] = struct{}{}
+							} else {
+								fileArgs[ref.OutputId] = map[Nodable]struct{}{nil: struct{}{}}
+							}
+						} else {
+							fork.fileArgs = map[string]map[Nodable]struct{}{
+								ref.OutputId: map[Nodable]struct{}{nil: struct{}{}},
+							}
+						}
+					}
+				}
+			}
+		}
+	} else if ref.Kind == syntax.KindCall {
+		if boundNode, _, _, _ := pipestance.node.findBoundNode(
+			ref.Id, ref.OutputId, "reference", nil); boundNode != nil {
+			if node := boundNode.getNode(); node != nil {
+				for _, fork := range node.forks {
+					if fileArgs := fork.fileArgs; fileArgs != nil {
+						if children := fileArgs[ref.OutputId]; children != nil {
+							children[nil] = struct{}{}
+						} else {
+							fileArgs[ref.OutputId] = map[Nodable]struct{}{nil: struct{}{}}
+						}
+					} else {
+						fork.fileArgs = map[string]map[Nodable]struct{}{
+							ref.OutputId: map[Nodable]struct{}{nil: struct{}{}},
+						}
+					}
+				}
+			}
+		}
+	}
+}

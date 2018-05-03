@@ -118,6 +118,8 @@ stage ADD_KEY3(
     out json   result,
     out bool   disable_example,
     src py     "stages/add_key",
+) retain (
+    resut,
 )
 
 stage SUM_SQUARES(
@@ -144,6 +146,7 @@ stage MAP_EXAMPLE(
     mem_gb  = 2,
     # This stage always uses 4 threads!
     threads = 4,
+    volatile = strict,
 )
 
 # Adds some keys to some json files and then merges them.

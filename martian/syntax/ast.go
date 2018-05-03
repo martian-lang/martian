@@ -35,6 +35,7 @@ type (
 
 	Type interface {
 		GetId() string
+		IsFile() bool
 	}
 
 	BuiltinType struct {
@@ -61,14 +62,16 @@ type (
 	}
 
 	Resources struct {
-		Node        AstNode
-		ThreadNode  *AstNode
-		MemNode     *AstNode
-		SpecialNode *AstNode
+		Node         AstNode
+		ThreadNode   *AstNode
+		MemNode      *AstNode
+		SpecialNode  *AstNode
+		VolatileNode *AstNode
 
-		Threads int
-		MemGB   int
-		Special string
+		Threads        int
+		MemGB          int
+		Special        string
+		StrictVolatile bool
 	}
 
 	paramsTuple struct {
@@ -82,6 +85,7 @@ type (
 		Id        string
 		InParams  *Params
 		OutParams *Params
+		Retain    *RetainParams
 		Src       *SrcParam
 		ChunkIns  *Params
 		ChunkOuts *Params
@@ -97,6 +101,7 @@ type (
 		Calls     []*CallStm
 		Callables *Callables `json:"-"`
 		Ret       *ReturnStm
+		Retain    *PipelineRetains
 	}
 
 	Params struct {
@@ -138,6 +143,21 @@ type (
 		Help     string
 		OutName  string
 		Isfile   bool
+	}
+
+	PipelineRetains struct {
+		Node AstNode
+		Refs []*RefExp
+	}
+
+	RetainParams struct {
+		Node   AstNode
+		Params []*RetainParam
+	}
+
+	RetainParam struct {
+		Node AstNode
+		Id   string
 	}
 
 	SrcParam struct {
@@ -330,8 +350,18 @@ func (*Pipeline) getDec() {}
 func (*ValExp) getExp()   {}
 func (*RefExp) getExp()   {}
 
-func (s *BuiltinType) GetId() string  { return s.Id }
+func (s *BuiltinType) GetId() string { return s.Id }
+func (s *BuiltinType) IsFile() bool {
+	switch s.Id {
+	case "path", "file":
+		return true
+	default:
+		return false
+	}
+}
+
 func (s *UserType) GetId() string     { return s.Id }
+func (s *UserType) IsFile() bool      { return true }
 func (s *UserType) getNode() *AstNode { return &s.Node }
 
 func (s *UserType) inheritComments() bool     { return false }
@@ -446,6 +476,10 @@ func (s *OutParam) inheritComments() bool { return false }
 func (s *OutParam) getSubnodes() []AstNodable {
 	return nil
 }
+
+func (s *RetainParam) getNode() *AstNode         { return &s.Node }
+func (s *RetainParam) getSubnodes() []AstNodable { return nil }
+func (s *RetainParam) inheritComments() bool     { return false }
 
 func (s *SrcParam) getNode() *AstNode         { return &s.Node }
 func (s *SrcParam) inheritComments() bool     { return false }

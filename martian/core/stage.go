@@ -33,9 +33,11 @@ func makeOutArgs(outParams *syntax.Params, filesPath string, nullAll bool) map[s
 				param.GetArrayDim() > 0) {
 			args[id] = nil
 		} else if param.IsFile() {
-			args[id] = path.Join(filesPath, param.GetId()+"."+param.GetTname())
-		} else if param.GetTname() == "path" {
-			args[id] = path.Join(filesPath, param.GetId())
+			if t := param.GetTname(); t == "path" || t == "file" {
+				args[id] = path.Join(filesPath, param.GetId())
+			} else {
+				args[id] = path.Join(filesPath, param.GetId()+"."+param.GetTname())
+			}
 		} else {
 			args[id] = nil
 		}
@@ -290,7 +292,20 @@ type Fork struct {
 	perfCache      *ForkPerfCache
 	lastPrint      time.Time
 	metadatasCache []*Metadata // cache for collectMetadata
-	storageLock    sync.Mutex
+
+	// Caches the set of strict-mode VDR-able files and the
+	// arguments which are keeping them alive.
+	fileParamMap map[string]*vdrFileCache
+	storageLock  sync.Mutex
+
+	// Mapping from argument name to set of nodes which depend on the
+	// argument, for arguments which may contain any file names.  This
+	// includes user-defined file types, strings, maps, or arrays of any
+	// of those.  Nothing else (int, float, bool) can contain file names.
+	fileArgs map[string]map[Nodable]struct{}
+
+	// Mapping from post-node to set of file-type args it depends on.
+	filePostNodes map[Nodable]map[string]struct{}
 }
 
 // Exportable information from a Fork object.
@@ -346,6 +361,7 @@ func NewFork(nodable Nodable, index int, argPermute map[string]interface{}) *For
 			self.chunks = append(self.chunks, chunk)
 		}
 	}
+
 	return self
 }
 
@@ -536,15 +552,15 @@ func getMaybeFileNames(value interface{}) []string {
 func (self *Fork) removeEmptyFileArgs(outs interface{}) {
 	self.storageLock.Lock()
 	defer self.storageLock.Unlock()
-	if len(self.node.fileArgs) == 0 {
+	if len(self.fileArgs) == 0 {
 		return
 	} else if outsMap, ok := outs.(map[string]interface{}); !ok {
 		return
 	} else {
-		for arg := range self.node.fileArgs {
+		for arg := range self.fileArgs {
 			if val, ok := outsMap[arg]; !ok ||
 				len(getMaybeFileNames(val)) == 0 {
-				self.node.removeFileArg(arg)
+				self.removeFileArg(arg)
 			}
 		}
 	}
@@ -858,7 +874,12 @@ func (self *Fork) step() {
 			if self.node.rt.Config.VdrMode == "post" {
 				// Still clean up tmp, but run before we've declared
 				// the stage maybe complete.
-				go self.partialVdrKill()
+				func() {
+					self.storageLock.Lock()
+					defer self.storageLock.Unlock()
+					self.cacheParamFileMap(joinOut)
+				}()
+				self.partialVdrKill()
 			}
 			if ok, msg := self.verifyOutput(joinOut); ok {
 				if msg != "" {
@@ -879,7 +900,14 @@ func (self *Fork) step() {
 			}
 			self.removeEmptyFileArgs(joinOut)
 			if self.node.rt.Config.VdrMode != "post" {
-				go self.partialVdrKill()
+				go func() {
+					func() {
+						self.storageLock.Lock()
+						defer self.storageLock.Unlock()
+						self.cacheParamFileMap(joinOut)
+					}()
+					self.partialVdrKill()
+				}()
 			}
 		}
 
@@ -1012,7 +1040,7 @@ func (self *Fork) postProcess() {
 
 		// Handle file and path params
 		for {
-			if !param.IsFile() && param.GetTname() != "path" {
+			if !param.IsFile() {
 				break
 			}
 			// Make sure value is a string
@@ -1233,4 +1261,44 @@ func (self *Fork) serializePerf() (*ForkPerfInfo, *VDRKillReport) {
 		JoinStats:  joinStats,
 		ForkStats:  forkStats,
 	}, killReport
+}
+
+// Marks a possible file out argument as not actually containing any files.
+// For example, a map output which does not actually contain any strings.
+// This may result in the removal of some file post-nodes, which may allow for
+// earlier VDR.
+func (self *Fork) removeFileArg(arg string) {
+	if nodes, ok := self.fileArgs[arg]; !ok {
+		return
+	} else {
+		delete(self.fileArgs, arg)
+		for node := range nodes {
+			if args, ok := self.filePostNodes[node]; ok {
+				delete(args, arg)
+				if len(args) == 0 {
+					delete(self.filePostNodes, node)
+				}
+			}
+		}
+	}
+}
+
+// Removes file post-nodes which are complete from the set of nodes on which
+// VDR for this stage is still waiting, and also removes arguments from
+// fileArgs for which no post-node is still waiting.  This is how it is
+// determined when VDR is safe to run.
+func (self *Fork) removeFilePostNodes(nodes []Nodable) {
+	for _, node := range nodes {
+		if args, ok := self.filePostNodes[node]; ok {
+			delete(self.filePostNodes, node)
+			for arg := range args {
+				if remaining, ok := self.fileArgs[arg]; ok {
+					delete(remaining, node)
+					if len(remaining) == 0 {
+						delete(self.fileArgs, arg)
+					}
+				}
+			}
+		}
+	}
 }

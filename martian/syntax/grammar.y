@@ -28,18 +28,24 @@ func unquote(qs string) string {
     decs      []Dec
     inparam   *InParam
     outparam  *OutParam
+    retains   []*RetainParam
+    stretains *RetainParams
     params    *Params
     res       *Resources
     par_tuple paramsTuple
     src       *SrcParam
     exp       Exp
     exps      []Exp
+    rexp      *RefExp
+    vexp      *ValExp
     kvpairs   map[string]Exp
     call      *CallStm
     calls     []*CallStm
     binding   *BindStm
     bindings  *BindStms
     retstm    *ReturnStm
+    plretains *PipelineRetains
+    reflist   []*RefExp
     pre_dir   []*preprocessorDirective
 }
 
@@ -51,10 +57,16 @@ func unquote(qs string) string {
 %type <decs>      dec_list
 %type <inparam>   in_param
 %type <outparam>  out_param
+%type <retains>   stage_retain_list
+%type <stretains> stage_retain
+%type <reflist>   pipeline_retain_list
+%type <plretains> pipeline_retain
 %type <params>    in_param_list out_param_list
 %type <par_tuple> split_param_list
 %type <src>       src_stm
-%type <exp>       exp ref_exp val_exp bool_exp
+%type <exp>       exp
+%type <rexp>      ref_exp
+%type <vexp>      val_exp bool_exp
 %type <exps>      exp_list
 %type <kvpairs>   kvpair_list
 %type <call>      call_stm
@@ -68,8 +80,8 @@ func unquote(qs string) string {
 %token SEMICOLON COLON COMMA EQUALS
 %token LBRACKET RBRACKET LPAREN RPAREN LBRACE RBRACE
 %token SWEEP RETURN SELF
-%token <val> FILETYPE STAGE PIPELINE CALL SPLIT USING
-%token <val> LOCAL PREFLIGHT VOLATILE DISABLED
+%token <val> FILETYPE STAGE PIPELINE CALL SPLIT USING RETAIN
+%token <val> LOCAL PREFLIGHT VOLATILE DISABLED STRICT
 %token IN OUT SRC AS
 %token <val> THREADS MEM_GB SPECIAL
 %token <val> ID LITSTRING NUM_FLOAT NUM_INT DOT
@@ -137,12 +149,12 @@ dec
     : FILETYPE id_list SEMICOLON
         {{ $$ = &UserType{NewAstNode($<loc>2, $<locmap>2), $2} }}
     | stage
-    | PIPELINE id LPAREN in_param_list out_param_list RPAREN LBRACE call_stm_list return_stm RBRACE
-        {{ $$ = &Pipeline{NewAstNode($<loc>2, $<locmap>2), $2, $4, $5, $8, &Callables{[]Callable{}, map[string]Callable{}}, $9} }}
+    | PIPELINE id LPAREN in_param_list out_param_list RPAREN LBRACE call_stm_list return_stm pipeline_retain RBRACE
+        {{ $$ = &Pipeline{NewAstNode($<loc>2, $<locmap>2), $2, $4, $5, $8, &Callables{[]Callable{}, map[string]Callable{}}, $9, $10} }}
     ;
 
 stage
-    : STAGE id LPAREN in_param_list out_param_list src_stm RPAREN split_param_list resources
+    : STAGE id LPAREN in_param_list out_param_list src_stm RPAREN split_param_list resources stage_retain
         {{ $$ = &Stage{
                 Node: NewAstNode($<loc>2, $<locmap>2),
                 Id:  $2,
@@ -153,6 +165,7 @@ stage
                 ChunkOuts: $8.Outs,
                 Split: $8.Present,
                 Resources: $9,
+                Retain: $10,
            } }}
    ;
 
@@ -192,7 +205,39 @@ resource_list
             $1.Special = $4
             $$ = $1
         }}
+    | resource_list VOLATILE EQUALS STRICT COMMA
+        {{
+            n := NewAstNode($<loc>2, $<locmap>2)
+            $1.VolatileNode = &n
+            $1.StrictVolatile = true
+            $$ = $1
+        }}
     ;
+
+stage_retain
+    :
+        {{ $$ = nil }}
+    | RETAIN LPAREN stage_retain_list RPAREN
+        {{
+             $$ = &RetainParams{
+                Node: NewAstNode($<loc>1, $<locmap>1),
+                Params: $3,
+             }
+         }}
+    ;
+
+stage_retain_list
+    :
+        {{ $$ = nil }}
+    | stage_retain_list id COMMA
+        {{
+            $$ = append($1, &RetainParam{
+                Node: NewAstNode($<loc>2, $<locmap>2),
+                Id: $2,
+            })
+        }}
+    ;
+
 
 id_list
     : id_list DOT id
@@ -252,7 +297,12 @@ out_param
 src_stm
     : SRC src_lang LITSTRING COMMA
         {{ stagecodeParts := strings.Split(unquote($3), " ")
-	   $$ = &SrcParam{NewAstNode($<loc>1, $<locmap>1), StageLanguage($2), stagecodeParts[0], stagecodeParts[1:]} }}
+           $$ = &SrcParam{
+               NewAstNode($<loc>1, $<locmap>1),
+               StageLanguage($2),
+               stagecodeParts[0],
+               stagecodeParts[1:],
+           } }}
     ;
 
 help
@@ -300,6 +350,18 @@ return_stm
     : RETURN LPAREN bind_stm_list RPAREN
         {{ $$ = &ReturnStm{NewAstNode($<loc>1, $<locmap>1), $3} }}
     ;
+
+pipeline_retain
+    :
+        {{ $$ = nil }}
+    | RETAIN LPAREN pipeline_retain_list RPAREN
+        {{ $$ = &PipelineRetains{NewAstNode($<loc>1, $<locmap>1), $3} }}
+
+pipeline_retain_list
+    :
+        {{ $$ = nil }}
+    | pipeline_retain_list ref_exp COMMA
+        {{ $$ = append($1, $2) }}
 
 call_stm_list
     : call_stm_list call_stm
@@ -389,7 +451,9 @@ kvpair_list
 
 exp
     : val_exp
+        {{ $$ = $1 }}
     | ref_exp
+        {{ $$ = $1 }}
 
 val_exp
     : LBRACKET exp_list RBRACKET
@@ -438,17 +502,19 @@ ref_exp
 
 id
     : ID
-    | THREADS
-    | MEM_GB
-    | SPECIAL
-    | DISABLED
-    | LOCAL
-    | PREFLIGHT
-    | VOLATILE
-    | EXEC
     | COMPILED
+    | DISABLED
+    | EXEC
     | FILETYPE
+    | LOCAL
+    | MEM_GB
+    | PREFLIGHT
+    | RETAIN
+    | SPECIAL
     | SPLIT
+    | STRICT
+    | THREADS
     | USING
+    | VOLATILE
     ;
 %%

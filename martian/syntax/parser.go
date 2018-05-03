@@ -67,8 +67,8 @@ func (params *Params) compile(global *Ast) error {
 		}
 
 		// Cache if param is file or path.
-		_, ok := global.UserTypeTable[param.GetTname()]
-		param.setIsFile(ok)
+		t, ok := global.TypeTable[param.GetTname()]
+		param.setIsFile(ok && t.IsFile())
 	}
 	return errs.If()
 }
@@ -196,12 +196,14 @@ func (bindings *BindStms) compile(global *Ast, callable Callable, params *Params
 		}
 	}
 
-	// Check that all input params of the called segment are bound.
-	for _, param := range params.List {
-		if _, ok := bindings.Table[param.GetId()]; !ok {
-			errs = append(errs, global.err(bindings,
-				"ArgumentNotSuppliedError: no argument supplied for parameter '%s'",
-				param.GetId()))
+	if params != nil {
+		// Check that all input params of the called segment are bound.
+		for _, param := range params.List {
+			if _, ok := bindings.Table[param.GetId()]; !ok {
+				errs = append(errs, global.err(bindings,
+					"ArgumentNotSuppliedError: no argument supplied for parameter '%s'",
+					param.GetId()))
+			}
 		}
 	}
 	return errs.If()
@@ -454,6 +456,65 @@ func (stage *Stage) compile(global *Ast, stagecodePaths []string, checkSrcPath b
 			}
 		}
 	}
+	if stage.Retain != nil {
+		if err := stage.Retain.compile(global, stage); err != nil {
+			errs = append(errs, err)
+		}
+	}
+	return errs.If()
+}
+
+func (retains *RetainParams) compile(global *Ast, stage *Stage) error {
+	var errs ErrorList
+	ids := make(map[string]AstNode, len(retains.Params))
+	for _, param := range retains.Params {
+		if out := stage.OutParams.Table[param.Id]; out == nil {
+			errs = append(errs, global.err(param,
+				"RetainParamError: stage %s does not have an out parameter named %s to retain.",
+				stage.Id, param.Id))
+		} else if !out.IsFile() {
+			errs = append(errs, global.err(param,
+				"RetainParamError: out parameter %s of %s is not of file type.",
+				param.Id, stage.Id))
+		} else {
+			ids[param.Id] = param.Node
+		}
+	}
+	if len(ids) != len(retains.Params) {
+		retains.Params = make([]*RetainParam, 0, len(ids))
+		for id, node := range ids {
+			retains.Params = append(retains.Params, &RetainParam{
+				Node: node,
+				Id:   id,
+			})
+		}
+	}
+	sort.Slice(retains.Params, func(i, j int) bool {
+		return retains.Params[i].Id < retains.Params[j].Id
+	})
+	return errs.If()
+}
+
+func (retains *PipelineRetains) compile(global *Ast, pipeline *Pipeline) error {
+	var errs ErrorList
+	for _, param := range retains.Refs {
+		if types, _, err := param.resolveType(global, pipeline); err != nil {
+			errs = append(errs, err)
+		} else {
+			any := false
+			for _, tName := range types {
+				if t, ok := global.TypeTable[tName]; ok && t.IsFile() {
+					any = true
+					break
+				}
+			}
+			if !any {
+				errs = append(errs, global.err(param,
+					"RetainParamError: parameter %s of %s is not of file type.",
+					param.OutputId, param.Id))
+			}
+		}
+	}
 	return errs.If()
 }
 
@@ -462,6 +523,7 @@ const (
 	local     = "local"
 	preflight = "preflight"
 	volatile  = "volatile"
+	strict    = "strict"
 )
 
 // For checking modifier bindings.  Modifiers are optional so
@@ -695,6 +757,13 @@ func (global *Ast) compilePipelineArgs() error {
 		// Check return bindings.
 		if err := pipeline.Ret.Bindings.compile(global, pipeline, pipeline.OutParams); err != nil {
 			return err
+		}
+
+		// Check retain bindings.
+		if pipeline.Retain != nil {
+			if err := pipeline.Retain.compile(global, pipeline); err != nil {
+				return err
+			}
 		}
 	}
 	return nil

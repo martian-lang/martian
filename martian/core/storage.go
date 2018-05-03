@@ -8,6 +8,8 @@ package core
 
 import (
 	"os"
+	"path"
+	"path/filepath"
 	"sort"
 	"strings"
 	"time"
@@ -127,16 +129,16 @@ func (self *Fork) partialVdrKill() (*VDRKillReport, bool) {
 			partial = self.cleanJoinTemp(partial)
 		}
 		if state == Complete {
-			doneNodes := make([]Nodable, 0, len(self.node.filePostNodes))
-			for node := range self.node.filePostNodes {
+			doneNodes := make([]Nodable, 0, len(self.filePostNodes))
+			for node := range self.filePostNodes {
 				if node != nil {
 					if st := node.getNode().getState(); st == Complete || st == DisabledState {
 						doneNodes = append(doneNodes, node)
 					}
 				}
 			}
-			self.node.removeFilePostNodes(doneNodes)
-			if len(self.node.filePostNodes) == 0 {
+			self.removeFilePostNodes(doneNodes)
+			if len(self.filePostNodes) == 0 {
 				if self.node.rt.Config.Debug {
 					util.LogInfo("storage",
 						"Running full vdr on %s",
@@ -145,7 +147,7 @@ func (self *Fork) partialVdrKill() (*VDRKillReport, bool) {
 				return self.vdrKill(partial), true
 			} else {
 				if self.node.rt.Config.Debug {
-					for node, args := range self.node.filePostNodes {
+					for node, args := range self.filePostNodes {
 						a := make([]string, 0, len(args))
 						for arg := range args {
 							a = append(a, arg)
@@ -166,7 +168,7 @@ func (self *Fork) partialVdrKill() (*VDRKillReport, bool) {
 					}
 				}
 				if self.node.strictVolatile {
-					partial = self.vdrKillSome(partial)
+					return self.vdrKillSome(partial, false)
 				}
 			}
 		}
@@ -188,9 +190,305 @@ func (self *Fork) partialVdrKill() (*VDRKillReport, bool) {
 	}
 }
 
-func (self *Fork) vdrKillSome(partial *PartialVdrKillReport) *PartialVdrKillReport {
-	// TODO: implement strict-mode volatile logic.
-	return partial
+func (self *Fork) vdrKillSome(partial *PartialVdrKillReport, done bool) (*VDRKillReport, bool) {
+	if self.fileParamMap == nil {
+		self.cacheParamFileMap(nil)
+	} else {
+		self.updateParamFileCache()
+	}
+	if self.node.rt.Config.VdrMode == "disable" ||
+		!self.node.rt.overrides.GetOverride(self.node, "force_volatile", true).(bool) {
+		if partial == nil {
+			return nil, false
+		}
+		return &partial.VDRKillReport, false
+	}
+	killPaths := make([]string, 0, len(self.fileParamMap))
+	for file, keepAliveArgs := range self.fileParamMap {
+		if keepAliveArgs.args == nil {
+			killPaths = append(killPaths, file)
+		}
+	}
+	if len(killPaths) == 0 {
+		if done {
+			func() {
+				self.metadata.Write(VdrKill, &partial.VDRKillReport)
+				self.deletePartialKill()
+			}()
+		}
+		if partial == nil {
+			return nil, false
+		} else {
+			return &partial.VDRKillReport, false
+		}
+	}
+	if partial == nil {
+		partial = new(PartialVdrKillReport)
+	}
+	sort.Strings(killPaths)
+	collapsedPaths := make([]string, 0, len(killPaths))
+
+	var event VdrEvent
+	for _, fpath := range killPaths {
+		entry := self.fileParamMap[fpath]
+		event.DeltaBytes -= entry.size
+		partial.Size += uint64(entry.size)
+		partial.Count += uint(entry.count)
+		if len(collapsedPaths) == 0 || !pathIsInside(fpath, collapsedPaths[len(collapsedPaths)-1]) {
+			collapsedPaths = append(collapsedPaths, fpath)
+		} else {
+			other := self.fileParamMap[collapsedPaths[len(collapsedPaths)-1]]
+			other.size += entry.size
+			other.count += entry.count
+			delete(self.fileParamMap, fpath)
+		}
+	}
+	partial.Paths = append(partial.Paths, collapsedPaths...)
+	partial.Events = append(partial.Events, &event)
+	util.EnterCriticalSection()
+	defer util.ExitCriticalSection()
+	for _, fpath := range collapsedPaths {
+		if err := os.RemoveAll(fpath); err != nil {
+			partial.Errors = append(partial.Errors, err.Error())
+		}
+		delete(self.fileParamMap, fpath)
+	}
+	event.Timestamp = time.Now()
+	partial.Timestamp = util.Timestamp()
+
+	if len(self.fileParamMap) == 0 || done || len(self.filePostNodes) == 0 {
+		self.metadata.Write(VdrKill, &partial.VDRKillReport)
+		self.deletePartialKill()
+		if self.node.rt.Config.Debug {
+			util.LogInfo("storage", "VDR of %s complete",
+				self.node.GetFQName())
+		}
+		return &partial.VDRKillReport, true
+	} else {
+		self.writePartialKill(partial)
+		if self.node.rt.Config.Debug {
+			util.LogInfo("storage",
+				"VDR of %s still waiting on %d nodes, "+
+					"keeping %d files alive through %d arguments.",
+				self.node.GetFQName(),
+				len(self.filePostNodes),
+				len(self.fileParamMap),
+				len(self.fileArgs))
+		}
+
+		return &partial.VDRKillReport, false
+	}
+}
+
+func pathIsInside(test, parent string) bool {
+	parent = filepath.Clean(parent)
+	for name := filepath.Clean(test); len(name) >= len(parent); name = path.Dir(name) {
+		if name == parent {
+			return true
+		}
+	}
+	return false
+}
+
+// Returns all of the logical file names which may refer to the same file as
+// the give path name.
+func getLogicalFileNames(name string) []string {
+	var names []string
+	if info, err := os.Lstat(name); err == nil {
+		names = append(names, name)
+		if resolved, err := filepath.EvalSymlinks(name); err == nil &&
+			name != resolved {
+			names = append(names, resolved)
+		}
+		for info.Mode()&os.ModeSymlink != 0 {
+			if dest, err := os.Readlink(name); err != nil {
+				break
+			} else {
+				names = append(names, dest)
+				if destInfo, err := os.Lstat(dest); err != nil {
+					break
+				} else {
+					name = dest
+					info = destInfo
+				}
+			}
+		}
+	}
+	return names
+}
+
+type vdrFileCache struct {
+	size  int64
+	count int
+	args  map[string]struct{}
+}
+
+// Returns the set of arguments from fileArgs which actually refer to files,
+// and, for each one, the set of files to which they refer.
+func getArgsToFilesMap(fileArgs map[string]map[Nodable]struct{},
+	outs map[string]interface{},
+	debug bool, fqname string) map[string]map[string]struct{} {
+	argToFiles := make(map[string]map[string]struct{}, len(fileArgs))
+	// Get the set of files each argument refers to.
+	for arg := range fileArgs {
+		for _, name := range getMaybeFileNames(outs[arg]) {
+			for _, fullName := range getLogicalFileNames(name) {
+				fileSet := argToFiles[arg]
+				if fileSet == nil {
+					fileSet = map[string]struct{}{fullName: struct{}{}}
+					argToFiles[arg] = fileSet
+				} else {
+					fileSet[fullName] = struct{}{}
+				}
+				if debug {
+					util.LogInfo("storage",
+						"Argument %s of %s references file %s.",
+						arg, fqname, fullName)
+				}
+			}
+		}
+	}
+	return argToFiles
+}
+
+// Add files from fpath to filesToArgs.  If they are present in argToFiles,
+// add the appropriate argument list.
+func addFilesToArgsMappings(fpath string, debug bool, fqname string,
+	filesToArgs map[string]*vdrFileCache,
+	argToFiles map[string]map[string]struct{}) {
+	util.Walk(fpath, func(fpath string, info os.FileInfo, err error) error {
+		if err != nil {
+			return nil
+		}
+		if _, ok := filesToArgs[fpath]; ok {
+			if info.IsDir() {
+				return filepath.SkipDir
+			} else {
+				return nil
+			}
+		}
+		entry := &vdrFileCache{
+			size:  info.Size(),
+			count: 1,
+		}
+		filesToArgs[fpath] = entry
+		seenNames := make(map[string]struct{})
+		for _, name := range getLogicalFileNames(fpath) {
+			if _, ok := seenNames[name]; ok {
+				return nil
+			}
+			seenNames[name] = struct{}{}
+			for arg, files := range argToFiles {
+				for file := range files {
+					if pathIsInside(file, name) || pathIsInside(name, file) {
+						if debug {
+							util.LogInfo("storage",
+								"Argument %s of %s references file\n%s",
+								arg, fqname, fpath)
+							util.LogInfo("storage",
+								"The direct reference is to\n%s\ncontained by\n%s",
+								file, name)
+						}
+
+						if entry.args == nil {
+							entry.args = map[string]struct{}{arg: struct{}{}}
+						} else {
+							entry.args[arg] = struct{}{}
+						}
+						break
+					}
+				}
+			}
+		}
+		if len(entry.args) == 0 && debug {
+			util.LogInfo("storage",
+				"%s does not reference file\n%s",
+				fqname, fpath)
+		}
+		return nil
+	})
+}
+
+// Gets the set of files generated by this stage, and the set of arguments
+// which are keeping those files live.  Files with nothing keeping them alive
+// are still added to the set, so VDR knows what it can kill.
+func (self *Fork) cacheParamFileMap(outI interface{}) {
+	if outI == nil {
+		outI = self.metadata.read(OutsFile)
+	}
+	outs, _ := outI.(map[string]interface{})
+	if outs == nil {
+		return
+	}
+	argToFiles := getArgsToFilesMap(
+		self.fileArgs,
+		outs,
+		self.node.rt.Config.Debug,
+		self.node.GetFQName())
+	// Remove "file" args which don't actually refer to existing files.
+	for arg := range self.fileArgs {
+		if _, ok := argToFiles[arg]; !ok {
+			self.removeFileArg(arg)
+		}
+	}
+	filesToArgs := make(map[string]*vdrFileCache, len(self.fileArgs))
+	addMetadata := func(md *Metadata) {
+		files, _ := md.enumerateFiles()
+		for _, fpath := range files {
+			addFilesToArgsMappings(fpath,
+				self.node.rt.Config.Debug,
+				self.node.GetFQName(),
+				filesToArgs, argToFiles)
+		}
+	}
+	addMetadata(self.split_metadata)
+	addMetadata(self.join_metadata)
+	for _, chunk := range self.chunks {
+		addMetadata(chunk.metadata)
+	}
+	// Take out arguments which don't refer to any files owned by this stage.
+	for arg := range self.fileArgs {
+		any := false
+		for _, entry := range filesToArgs {
+			if args := entry.args; args != nil {
+				if _, ok := args[arg]; ok {
+					any = true
+					break
+				}
+			}
+		}
+		if !any {
+			self.removeFileArg(arg)
+		}
+	}
+	self.fileParamMap = filesToArgs
+}
+
+func (self *Fork) updateParamFileCache() {
+	for file, keepAliveArgs := range self.fileParamMap {
+		if keepAliveArgs.args != nil {
+			// Check whether args were removed because nodes completed since
+			// things were cached.
+			for arg := range keepAliveArgs.args {
+				if _, ok := self.fileArgs[arg]; !ok {
+					if self.node.rt.Config.Debug {
+						util.LogInfo("storage",
+							"File %s of %s is no longer being kept alive by %s.",
+							file, self.node.GetFQName(), arg)
+					}
+					delete(keepAliveArgs.args, arg)
+				}
+			}
+			if len(keepAliveArgs.args) == 0 {
+				if self.node.rt.Config.Debug {
+					util.LogInfo("storage",
+						"File %s of %s is no longer required.",
+						file, self.node.GetFQName())
+				}
+				keepAliveArgs.args = nil
+			}
+		}
+	}
 }
 
 func (metadata *Metadata) getStartTime() time.Time {
@@ -432,17 +730,8 @@ func (self *Fork) vdrKill(partialKill *PartialVdrKillReport) *VDRKillReport {
 	var killPaths []string
 	// For volatile nodes, kill fork-level files.
 	if self.node.rt.overrides.GetOverride(self.node, "force_volatile", self.node.volatile).(bool) {
-		if paths, err := self.split_metadata.enumerateFiles(); err == nil {
-			killPaths = append(killPaths, paths...)
-		}
-		if paths, err := self.join_metadata.enumerateFiles(); err == nil {
-			killPaths = append(killPaths, paths...)
-		}
-		for _, chunk := range self.chunks {
-			if paths, err := chunk.metadata.enumerateFiles(); err == nil {
-				killPaths = append(killPaths, paths...)
-			}
-		}
+		rep, _ := self.vdrKillSome(partialKill, true)
+		return rep
 	} else if self.Split() && self.node.rt.overrides.GetOverride(self.node, "force_volatile", true).(bool) {
 		// If the node splits, kill chunk-level files.
 		// Must check for split here, otherwise we'll end up deleting

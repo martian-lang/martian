@@ -545,7 +545,7 @@ stage SUM_SQUARES(
 }
 
 func TestResourcesWithSplit(t *testing.T) {
-	testGood(t, `
+	if ast := testGood(t, `
 stage SUM_SQUARES(
     in  float[] values,
     out float   sum,
@@ -555,7 +555,93 @@ stage SUM_SQUARES(
     out int     bar,
 ) using (
     threads = 2,
+    mem_gb = 3,
+)
+`); ast != nil {
+		if len(ast.Stages) != 1 {
+			t.Fatalf("Incorrect stage count %d", len(ast.Stages))
+		} else if res := ast.Stages[0].Resources; res == nil {
+			t.Fatal("No resources.")
+		} else {
+			if res.StrictVolatile {
+				t.Error("Should not be strict volatile.")
+			}
+			if res.Threads != 2 {
+				t.Errorf("Expected 2 threads, saw %d",
+					res.Threads)
+			}
+			if res.MemGB != 3 {
+				t.Errorf("Expected 3gb, saw %d",
+					res.MemGB)
+			}
+		}
+	}
+}
+
+func TestStrictVolatile(t *testing.T) {
+	if ast := testGood(t, `
+stage SUM_SQUARES(
+    in  float[] values,
+    out float   sum,
+    src py      "stages/sum_squares",
+) using (
+    threads = 2,
     mem_gb = 1,
+    volatile = strict,
+)
+`); ast != nil {
+		if len(ast.Stages) != 1 {
+			t.Fatalf("Incorrect stage count %d", len(ast.Stages))
+		} else if res := ast.Stages[0].Resources; res == nil {
+			t.Fatal("No resources.")
+		} else if !res.StrictVolatile {
+			t.Error("Not volatile.")
+		}
+	}
+}
+
+func TestRetain(t *testing.T) {
+	if ast := testGood(t, `
+stage SUM_SQUARES(
+    in  float[] values,
+    out float   sum,
+    out file    report,
+    src py      "stages/sum_squares",
+) using (
+    threads = 2,
+    mem_gb = 1,
+    volatile = strict,
+) retain (
+    report,
+)
+`); ast != nil {
+		if len(ast.Stages) != 1 {
+			t.Fatalf("Incorrect stage count %d", len(ast.Stages))
+		} else if ret := ast.Stages[0].Retain; ret == nil {
+			t.Fatal("No retain.")
+		} else if len(ret.Params) != 1 {
+			t.Errorf("Expected 1 retain, found %d",
+				len(ret.Params))
+		} else if ret.Params[0].Id != "report" {
+			t.Errorf("Expected to retain 'report'.  Saw '%s' instead.",
+				ret.Params[0].Id)
+		}
+	}
+}
+
+func TestRetainNonFile(t *testing.T) {
+	testBadCompile(t, `
+stage SUM_SQUARES(
+    in  float[] values,
+    out float   sum,
+    out file    report,
+    src py      "stages/sum_squares",
+) using (
+    threads = 2,
+    mem_gb = 1,
+    volatile = strict,
+) retain (
+    sum,
 )
 `)
 }

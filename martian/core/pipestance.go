@@ -59,8 +59,27 @@ func NewStagestance(parent Nodable, callStm *syntax.CallStm, callables *syntax.C
 			MemGB:   stage.Resources.MemGB,
 			Special: stage.Resources.Special,
 		}
+		self.node.strictVolatile = stage.Resources.StrictVolatile
 	}
 	self.node.buildForks(self.node.argbindingList)
+	if stage.Retain != nil {
+		for _, param := range stage.Retain.Params {
+			for _, fork := range self.node.forks {
+				if fork.fileArgs == nil {
+					fork.fileArgs = make(
+						map[string]map[Nodable]struct{},
+						len(stage.Retain.Params))
+				}
+				if arg := fork.fileArgs[param.Id]; arg == nil {
+					fork.fileArgs[param.Id] = map[Nodable]struct{}{
+						nil: struct{}{},
+					}
+				} else {
+					arg[nil] = struct{}{}
+				}
+			}
+		}
+	}
 	return self, nil
 }
 
@@ -207,6 +226,11 @@ func NewPipestance(parent Nodable, callStm *syntax.CallStm, callables *syntax.Ca
 		self.node.retbindingList = append(self.node.retbindingList, binding)
 	}
 	self.node.attachBindings(self.node.retbindingList)
+	if pipeline.Retain != nil {
+		for _, retain := range pipeline.Retain.Refs {
+			self.retain(retain)
+		}
+	}
 
 	// Add preflight dependencies if preflight stages exist.
 	for _, preflightNode := range preflightNodes {

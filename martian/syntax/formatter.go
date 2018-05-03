@@ -295,6 +295,9 @@ func (self *Pipeline) format(printer *printer) {
 	}
 	printer.WriteString(NEWLINE)
 	self.Ret.format(printer)
+	if self.Retain != nil {
+		self.Retain.format(printer)
+	}
 	printer.WriteString("}\n")
 }
 
@@ -375,6 +378,19 @@ func (self *ReturnStm) format(printer *printer) {
 	printer.WriteString(")\n")
 }
 
+func (self *PipelineRetains) format(printer *printer) {
+	printer.printComments(self.Node.Loc, INDENT)
+	printer.WriteString(INDENT)
+	printer.WriteString("retain (\n")
+	for _, ref := range self.Refs {
+		printer.WriteString(INDENT)
+		printer.WriteString(ref.format(INDENT))
+		printer.WriteString(",\n")
+	}
+	printer.WriteString(INDENT)
+	printer.WriteString(")\n")
+}
+
 //
 // Stage
 //
@@ -401,6 +417,9 @@ func (self *Stage) format(printer *printer) {
 	}
 	if self.Resources != nil {
 		self.Resources.format(printer)
+	}
+	if self.Retain != nil {
+		self.Retain.format(printer)
 	}
 	printer.WriteString(")\n")
 }
@@ -430,6 +449,22 @@ func (self *Resources) format(printer *printer) {
 		printer.printComments(self.ThreadNode.Loc, INDENT)
 		printer.WriteString(INDENT)
 		printer.Printf("threads = %d,\n", self.Threads)
+	}
+	if self.VolatileNode != nil {
+		printer.printComments(self.VolatileNode.Loc, INDENT)
+		printer.WriteString(INDENT)
+		printer.WriteString("volatile = strict,\n")
+	}
+}
+
+func (self *RetainParams) format(printer *printer) {
+	printer.printComments(self.Node.Loc, INDENT)
+	printer.WriteString(") retain (\n")
+	for _, param := range self.Params {
+		printer.printComments(param.Node.Loc, INDENT)
+		printer.WriteString(INDENT)
+		printer.WriteString(param.Id)
+		printer.WriteString(",\n")
 	}
 }
 
