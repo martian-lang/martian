@@ -172,7 +172,7 @@ func DefaultRuntimeOptions() RuntimeOptions {
 		MartianVersion: util.GetVersion(),
 		ProfileMode:    DisableProfile,
 		JobMode:        "local",
-		VdrMode:        "post",
+		VdrMode:        "rolling",
 	}
 }
 

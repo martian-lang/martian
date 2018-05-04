@@ -447,7 +447,7 @@ Options:
                             Only applies to local jobs.
 
     --vdrmode=MODE      Enables Volatile Data Removal. Valid options:
-                            post (default), rolling, or disable
+                            post, rolling (default), or disable
 
     --nopreflight       Skips preflight stages.
     --strict=MODE       Determines how mrp reports cases where it needs to fall
