@@ -97,7 +97,7 @@ func (self *mrpWebServer) Start() {
 	self.pipestanceBox.server = &http.Server{
 		Handler:      sm,
 		ReadTimeout:  5 * time.Second,
-		WriteTimeout: 30 * time.Second,
+		WriteTimeout: 65 * time.Second,
 		IdleTimeout:  time.Minute,
 	}
 	self.pipestanceBox.server.ErrorLog, _ = util.GetLogger("webserv")
