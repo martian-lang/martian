@@ -201,7 +201,11 @@ func (self *Fork) vdrKillSome(partial *PartialVdrKillReport, done bool) (*VDRKil
 		if partial == nil {
 			return nil, false
 		}
-		return &partial.VDRKillReport, false
+		if partial != nil {
+			return &partial.VDRKillReport, false
+		} else {
+			return nil, false
+		}
 	}
 	killPaths := make([]string, 0, len(self.fileParamMap))
 	for file, keepAliveArgs := range self.fileParamMap {
@@ -211,10 +215,13 @@ func (self *Fork) vdrKillSome(partial *PartialVdrKillReport, done bool) (*VDRKil
 	}
 	if len(killPaths) == 0 {
 		if done {
-			func() {
+			if partial != nil {
 				self.metadata.Write(VdrKill, &partial.VDRKillReport)
-				self.deletePartialKill()
-			}()
+			} else {
+				self.metadata.Write(VdrKill,
+					VDRKillReport{Timestamp: util.Timestamp()})
+			}
+			self.deletePartialKill()
 		}
 		if partial == nil {
 			return nil, false
