@@ -102,12 +102,13 @@ func (self *pipestanceHolder) restart() error {
 	return err
 }
 
-func (self *pipestanceHolder) UpdateState(state core.MetadataState) {
+func (self *pipestanceHolder) UpdateState(state core.MetadataState) chan struct{} {
 	oldState := self.info.State
 	self.info.State = state
 	if oldState != state || time.Since(self.lastRegister) > 10*time.Minute {
-		self.Register()
+		return self.Register()
 	}
+	return nil
 }
 
 func (self *pipestanceHolder) UpdateError(message string) {
@@ -116,9 +117,9 @@ func (self *pipestanceHolder) UpdateError(message string) {
 	self.lock.Unlock()
 }
 
-func (self *pipestanceHolder) Register() {
+func (self *pipestanceHolder) Register() chan struct{} {
 	if !self.enableUI {
-		return
+		return nil
 	}
 	if enterpriseHost := os.Getenv("MARTIAN_ENTERPRISE"); enterpriseHost != "" {
 		u := url.URL{
@@ -129,7 +130,9 @@ func (self *pipestanceHolder) Register() {
 		form := self.info.AsForm()
 		form.Set("authkey", self.authKey)
 		self.lastRegister = time.Now()
+		complete := make(chan struct{})
 		go func() {
+			defer close(complete)
 			if res, err := http.PostForm(u.String(), form); err == nil {
 				defer func() {
 					// Clear out the response buffer and close it.
@@ -146,6 +149,9 @@ func (self *pipestanceHolder) Register() {
 				util.LogError(err, "mrenter", "Registration to %s failed", u.Host)
 			}
 		}()
+		return complete
+	} else {
+		return nil
 	}
 }
 
@@ -264,7 +270,7 @@ func cleanupCompleted(pipestance *core.Pipestance, pipestanceBox *pipestanceHold
 	pipestance.PostProcess()
 	pipestance.Unlock()
 	pipestance.OnFinishHook()
-	pipestanceBox.UpdateState(core.Complete)
+	updateComplete := pipestanceBox.UpdateState(core.Complete)
 	if noExit {
 		util.Println("Pipestance completed successfully, staying alive because --noexit given.\n")
 		runtime.GC()
@@ -275,6 +281,9 @@ func cleanupCompleted(pipestance *core.Pipestance, pipestanceBox *pipestanceHold
 			time.Sleep(time.Second * time.Duration(WAIT_SECS))
 		}
 		util.Println("Pipestance completed successfully!\n")
+		if updateComplete != nil {
+			<-updateComplete
+		}
 		util.Suicide(true)
 	}
 }
@@ -292,6 +301,7 @@ func cleanupFailed(pipestance *core.Pipestance, pipestanceBox *pipestanceHolder,
 	pipestanceBox.cleanupLock.Lock()
 	defer pipestanceBox.cleanupLock.Unlock()
 	defer func() { pipestanceBox.showedFailed = true }()
+	var serverUpdate chan struct{}
 	if !pipestanceBox.showedFailed {
 		pipestance.OnFinishHook()
 		if _, _, _, log, kind, errPaths := pipestance.GetFatalError(); kind == "assert" {
@@ -303,7 +313,10 @@ func cleanupFailed(pipestance *core.Pipestance, pipestanceBox *pipestanceHolder,
 				pipestanceBox.UpdateError(fmt.Sprintf("Assertion failed.  See logs at:\n%s",
 					strings.Join(errPaths, "\n")))
 			}
-			pipestanceBox.UpdateState(core.Failed)
+			serverUpdate = pipestanceBox.UpdateState(core.Failed)
+			if serverUpdate != nil {
+				<-serverUpdate
+			}
 			util.Suicide(false)
 		} else if len(errPaths) > 0 {
 			// Build relative path to _errors file
@@ -320,10 +333,10 @@ func cleanupFailed(pipestance *core.Pipestance, pipestanceBox *pipestanceHolder,
 				pipestanceBox.UpdateError(fmt.Sprintf("Pipestance failed. See logs at:\n%s",
 					strings.Join(errPaths, "\n")))
 			}
-			pipestanceBox.UpdateState(core.Failed)
+			serverUpdate = pipestanceBox.UpdateState(core.Failed)
 		}
 	} else {
-		pipestanceBox.UpdateState(core.Failed)
+		serverUpdate = pipestanceBox.UpdateState(core.Failed)
 	}
 	if noExit {
 		// If pipestance failed but we're staying alive, only print this once
@@ -337,6 +350,9 @@ func cleanupFailed(pipestance *core.Pipestance, pipestanceBox *pipestanceHolder,
 			util.Println("Waiting %d seconds for UI to do final refresh.", WAIT_SECS)
 			time.Sleep(time.Second * time.Duration(WAIT_SECS))
 			util.Println("Pipestance failed. Use --noexit option to keep UI running after failure.\n")
+		}
+		if serverUpdate != nil {
+			<-serverUpdate
 		}
 		util.Suicide(false)
 	}
