@@ -388,6 +388,7 @@ var loggedEnvPrefixes = map[string]bool{
 	"LSB":     true, // LSF
 	"LSF":     true, // LSF
 	"MRO":     true, // Martian
+	"MALLOC":  true, // jemalloc
 	"MARTIAN": true,
 	"MYSYS2":  true, // Anaconda
 	"PBS":     true, // PBS
