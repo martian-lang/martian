@@ -48,6 +48,7 @@ type pipestanceHolder struct {
 	cleanupLock      sync.Mutex
 	lock             sync.Mutex
 	readOnly         bool
+	retryWait        time.Duration
 	server           *http.Server
 }
 
@@ -238,6 +239,26 @@ func attemptRetry(pipestance *core.Pipestance, pipestanceBox *pipestanceHolder) 
 	}
 	if canRetry {
 		pipestanceBox.UpdateState(core.Failed.Prefixed(core.RetryPrefix))
+		if pipestanceBox.retryWait > 0 {
+			util.LogInfo("runtime",
+				"Waiting %s before attempting a retry.",
+				pipestanceBox.retryWait.String())
+			time.Sleep(pipestanceBox.retryWait)
+		}
+		// Heartbeat failures often come in clusters.  Look for any others
+		// which have come in since failure was detected so that all of
+		// those failures get batched up into a single retry.
+		pipestance.RefreshState()
+		pipestance.CheckHeartbeats()
+		// Check that no non-transient failures happend in the mean time.
+		canRetry, transient_log = pipestance.IsErrorTransient()
+		if !canRetry {
+			if transient_log != "" && !pipestanceBox.showedFailed {
+				pipestanceBox.UpdateError(transient_log)
+			}
+			return false
+		}
+
 		pipestance.Unlock()
 		if transient_log != "" {
 			util.LogInfo("runtime", "Transient error detected.  Log content:\n\n%s\n", transient_log)
@@ -490,6 +511,8 @@ Options:
     --debug             Enable debug logging for local job manager.
     --stest             Substitute real stages with stress-testing stage.
     --autoretry=NUM     Automatically retry failed runs up to NUM times.
+    --retry-wait=SECS   Wait SECS seconds after a failure before attempting
+                        automatic retry.  Defaults to 1 second.
     --overrides=JSON    JSON file supplying custom run conditions per stage.
     --psdir=PATH        The path to the pipestance directory.  The default is
                         to use <pipestance_name>.
@@ -751,6 +774,19 @@ Options:
 			"\nWARNING: ignoring autoretry when MRO_FULLSTAGERESET is set.\n")
 		util.LogInfo("options", "autoretry disabled due to MRO_FULLSTAGERESET.\n")
 	}
+	retryWait := time.Second
+	if retries > 0 {
+		if value := opts["--retry-wait"]; value != nil {
+			if value, err := strconv.Atoi(value.(string)); err == nil {
+				retryWait = time.Duration(value) * time.Second
+				util.LogInfo("options", "--retry-wait=%d", retries)
+			} else {
+				util.PrintError(err, "options",
+					"Could not parse --retry-wait value \"%s\"", opts["--retry-wait"].(string))
+				os.Exit(1)
+			}
+		}
+	}
 	// Validate psid.
 	util.DieIf(util.ValidateID(psid))
 
@@ -803,6 +839,7 @@ Options:
 		maxRetries:       retries,
 		remainingRetries: retries,
 		readOnly:         readOnly,
+		retryWait:        retryWait,
 	}
 
 	if !readOnly {
