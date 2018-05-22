@@ -36,7 +36,7 @@ $(GOBINS):
 	go install $(GO_FLAGS) martian/cmd/$@
 
 web:
-	(cd web/martian && npm install && gulp)
+	(cd web/martian && npm install && node_modules/gulp/bin/gulp.js)
 
 mrt:
 	cp scripts/mrt bin/mrt
