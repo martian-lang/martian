@@ -42,18 +42,25 @@ func (self *ArgumentMap) UnmarshalJSON(b []byte) error {
 // Returns true if the given value has the correct mro type.
 // Non-fatal errors are written to alarms.
 func checkType(val interface{}, typename string, arrayDim int,
-	alarms *bytes.Buffer) bool {
+	alarms *bytes.Buffer) (bool, string) {
+	incorrectType := func(val interface{}) (bool, string) {
+		return false, fmt.Sprintf("has incorrect type %v",
+			reflect.TypeOf(val))
+	}
 	if arrayDim > 0 {
+		if val == nil {
+			return true, ""
+		}
 		arr, ok := val.([]interface{})
 		if !ok {
-			return false
+			return incorrectType(val)
 		}
-		for _, v := range arr {
-			if !checkType(v, typename, arrayDim-1, alarms) {
-				return false
+		for i, v := range arr {
+			if ok, msg := checkType(v, typename, arrayDim-1, alarms); !ok {
+				return false, fmt.Sprintf("element %d %s", i, msg)
 			}
 		}
-		return true
+		return true, ""
 	} else {
 		switch typename {
 		case "float":
@@ -62,14 +69,16 @@ func checkType(val interface{}, typename string, arrayDim int,
 				// so that is the fast path.
 				switch val.(type) {
 				case float32, float64:
-					return true
+					return true, ""
 				default:
-					return false
+					return incorrectType(val)
 				}
 			} else if _, err := v.Float64(); err != nil {
-				return false
+				return false, fmt.Sprintf(
+					"with value '%v' cannot be parsed as a floating point number",
+					v)
 			} else {
-				return true
+				return true, ""
 			}
 		case "int":
 			if v, ok := val.(json.Number); !ok {
@@ -78,24 +87,38 @@ func checkType(val interface{}, typename string, arrayDim int,
 				switch val.(type) {
 				case int, int8, int32, int64,
 					uint, uint8, uint32, uint64:
-					return true
+					return true, ""
 				default:
-					return false
+					return incorrectType(val)
 				}
 			} else if _, err := v.Int64(); err != nil {
-				return false
+				return false, fmt.Sprintf(
+					"with value '%v' cannot be parsed as an integer",
+					v)
 			} else {
-				return true
+				return true, ""
 			}
 		case "bool":
-			_, ret := val.(bool)
-			return ret
+			if _, ret := val.(bool); !ret {
+				return incorrectType(val)
+			} else {
+				return true, ""
+			}
 		case "map":
-			_, ret := val.(map[string]interface{})
-			return ret
+			if val == nil {
+				return true, ""
+			}
+			if _, ret := val.(map[string]interface{}); !ret {
+				return incorrectType(val)
+			} else {
+				return true, ""
+			}
 		case "path", "file", "string":
-			_, ret := val.(string)
-			return ret
+			if _, ret := val.(string); !ret {
+				return incorrectType(val)
+			} else {
+				return true, ""
+			}
 		default:
 			// User defined file types.  For backwards compatiblity we need
 			// to accept everything here.
@@ -105,7 +128,7 @@ func checkType(val interface{}, typename string, arrayDim int,
 					"Expected type %s but found %v instead.\n",
 					typename, reflect.TypeOf(val))
 			}
-			return true
+			return true, ""
 		}
 	}
 }
@@ -132,6 +155,9 @@ func checkType(val interface{}, typename string, arrayDim int,
 // then in the outputs from the chunks, d is required but b is optional.
 func (self ArgumentMap) Validate(expected *syntax.Params, isInput bool, optional ...*syntax.Params) (error, string) {
 	var result, alarms bytes.Buffer
+	tname := func(param syntax.Param) string {
+		return param.GetTname() + strings.Repeat("[]", param.GetArrayDim())
+	}
 	for _, param := range expected.Table {
 		if val, ok := self[param.GetId()]; !ok {
 			if isInput {
@@ -143,17 +169,17 @@ func (self ArgumentMap) Validate(expected *syntax.Params, isInput bool, optional
 		} else if val == nil {
 			// Allow for null output parameters
 			continue
-		} else if !checkType(val, param.GetTname(), param.GetArrayDim(), &alarms) {
+		} else if ok, msg := checkType(val, param.GetTname(), param.GetArrayDim(), &alarms); !ok {
 			if isInput {
 				fmt.Fprintf(&result,
-					"Expected %s input parameter '%s' has incorrect type %v\n",
-					param.GetTname(), param.GetId(),
-					reflect.TypeOf(val))
+					"Expected %s input parameter '%s' %s\n",
+					tname(param), param.GetId(),
+					msg)
 			} else {
 				fmt.Fprintf(&result,
-					"Expected %s output value '%s' has incorrect type %v\n",
-					param.GetTname(), param.GetId(),
-					reflect.TypeOf(val))
+					"Expected %s output value '%s' %s\n",
+					tname(param), param.GetId(),
+					msg)
 			}
 		}
 	}
@@ -163,17 +189,19 @@ func (self ArgumentMap) Validate(expected *syntax.Params, isInput bool, optional
 			for _, params := range optional {
 				if param, ok := params.Table[key]; ok {
 					isOptional = true
-					if val != nil && !checkType(val, param.GetTname(), param.GetArrayDim(), &alarms) {
-						if isInput {
-							fmt.Fprintf(&result,
-								"Optional %s input parameter '%s' has incorrect type %v\n",
-								param.GetTname(), param.GetId(),
-								reflect.TypeOf(val))
-						} else {
-							fmt.Fprintf(&result,
-								"Optional %s output value '%s' has incorrect type %v\n",
-								param.GetTname(), param.GetId(),
-								reflect.TypeOf(val))
+					if val != nil {
+						if ok, msg := checkType(val, param.GetTname(), param.GetArrayDim(), &alarms); !ok {
+							if isInput {
+								fmt.Fprintf(&result,
+									"Optional %s input parameter '%s' %s\n",
+									tname(param), param.GetId(),
+									msg)
+							} else {
+								fmt.Fprintf(&result,
+									"Optional %s output value '%s' %s\n",
+									tname(param), param.GetId(),
+									msg)
+							}
 						}
 					}
 				}
