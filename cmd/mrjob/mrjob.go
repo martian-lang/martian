@@ -268,7 +268,7 @@ func (self *runner) startProfile() error {
 	switch self.jobInfo.ProfileMode {
 	case core.PyflameProfile:
 		journaledFiles = []core.MetadataFileName{
-			"profile.out",
+			core.ProfileOut,
 			"profile.out.html",
 		}
 		cmd = exec.Command("pyflame",
@@ -290,7 +290,7 @@ func (self *runner) startProfile() error {
 		if duration == "" {
 			duration = "2400"
 		}
-		journaledFiles = []core.MetadataFileName{"perf.data"}
+		journaledFiles = []core.MetadataFileName{core.PerfData}
 		// Running perf record for 2400 seconds (40 minutes) with these default
 		// settings will produce about 26MB per thread/process.
 		cmd = exec.Command("perf",

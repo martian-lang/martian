@@ -46,6 +46,8 @@ const (
 	MroSourceFile  MetadataFileName = "mrosource"
 	OutsFile       MetadataFileName = "outs"
 	Perf           MetadataFileName = "perf"
+	PerfData       MetadataFileName = "perf.data"
+	ProfileOut     MetadataFileName = "profile.out"
 	ProgressFile   MetadataFileName = "progress"
 	QueuedLocally  MetadataFileName = "queued_locally"
 	Stackvars      MetadataFileName = "stackvars"
