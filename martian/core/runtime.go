@@ -561,10 +561,14 @@ func (self *Runtime) GetSerialization(pipestancePath string, name MetadataFileNa
 
 func (self *Runtime) GetMetadata(pipestancePath string, metadataPath string) (string, error) {
 	metadata := NewMetadata("", pipestancePath)
+	metadata.loadCache()
+	if mdf := MetadataFileName(
+		strings.TrimPrefix(metadataPath, MetadataFilePrefix)); metadata.exists(mdf) {
+		return metadata.readRawSafe(mdf)
+	}
 	if !filepath.IsAbs(metadataPath) {
 		metadataPath = path.Join(pipestancePath, metadataPath)
 	}
-	metadata.loadCache()
 	if metadata.exists(MetadataZip) {
 		relPath, _ := filepath.Rel(pipestancePath, metadataPath)
 
