@@ -1,6 +1,6 @@
 // Copyright (c) 2014 10X Genomics, Inc. All rights reserved.
 
-package core
+package util
 
 // Linux-specific code for launching processes.
 

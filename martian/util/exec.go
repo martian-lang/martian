@@ -1,7 +1,7 @@
 // Copyright (c) 2014 10X Genomics, Inc. All rights reserved.
 // +build !linux
 
-package core
+package util
 
 // Platform-specific code for launching processes.  This file is
 // a stub to allow non-linux systems to build with reduced functionality.

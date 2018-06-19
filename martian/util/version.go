@@ -13,6 +13,7 @@ import (
 	"path"
 	"strconv"
 	"strings"
+	"syscall"
 )
 
 var __VERSION__ string = "<version not embedded>"
@@ -67,6 +68,7 @@ func GetSakeVersion(dir string) (string, error) {
 func runGit(dir string, args ...string) (string, error) {
 	cmd := exec.Command("git", args...)
 	cmd.Dir = dir
+	cmd.SysProcAttr = Pdeathsig(&syscall.SysProcAttr{}, syscall.SIGKILL)
 	out, err := cmd.Output()
 	return strings.TrimSpace(string(out)), err
 }
