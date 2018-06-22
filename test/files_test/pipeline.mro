@@ -68,11 +68,13 @@ pipeline AWESOME(
         volatile = true,
     )
 
-    call volatile MERGE_JSON(
+    call MERGE_JSON(
         inputs = [
             ADD_KEY3.result,
-            ADD_KEY4.result
+            ADD_KEY4.result,
         ],
+    ) using (
+        volatile = true,
     )
 
     return (

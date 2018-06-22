@@ -29,17 +29,16 @@ func (callables *Callables) compile(global *Ast) error {
 	for _, callable := range callables.List {
 		// Check for duplicates
 		if existing, ok := callables.Table[callable.GetId()]; ok {
-			msg := fmt.Sprintf(
+			var msg strings.Builder
+			fmt.Fprintf(&msg,
 				"DuplicateNameError: %s '%s' was already declared when encountered again",
 				callable.Type(), callable.GetId())
-			if node := existing.getNode(); node != nil && node.Fname != "" {
-				msg += fmt.Sprintf(".\n  Previous declaration at %s:%d\n",
-					node.Fname, node.Loc)
-				for _, inc := range node.IncludeStack {
-					msg += fmt.Sprintf("\t  included from %s\n", inc)
-				}
+			if node := existing.getNode(); node != nil {
+				msg.WriteString(".\n  Previous declaration at ")
+				node.Loc.writeTo(&msg, "      ")
+				msg.WriteRune('\n')
 			}
-			errs = append(errs, global.err(callable, msg))
+			errs = append(errs, global.err(callable, msg.String()))
 		} else {
 			callables.Table[callable.GetId()] = callable
 		}
@@ -253,7 +252,14 @@ func (binding *BindStm) compile(global *Ast, callable Callable, params *Params) 
 
 // Do a stable sort of the calls in topological order.  Returns an error
 // if there is a dependency cycle or self-dependency.
-func (pipeline *Pipeline) topoSort(global *Ast) error {
+func (pipeline *Pipeline) topoSort() error {
+	// While there are probably better algorithms out there, most of them
+	// don't produce a stable sort, which is important here.
+
+	if len(pipeline.Calls) == 0 {
+		return nil
+	}
+
 	// Find the direct dependencies of each call.
 	depsMap, err := func(calls []*CallStm) (map[*CallStm]map[*CallStm]struct{}, error) {
 		deps := make(map[*CallStm]map[*CallStm]struct{}, len(calls))
@@ -274,9 +280,11 @@ func (pipeline *Pipeline) topoSort(global *Ast) error {
 					}
 					dep := callMap[exp.Id]
 					if dep == src {
-						return global.err(src,
-							"Call %s input bound to its own output.",
-							src.Id)
+						return &wrapError{
+							innerError: fmt.Errorf("Call %s input bound to its own output in pipeline %s.",
+								src.Id, pipeline.Id),
+							loc: exp.getNode().Loc,
+						}
 					}
 					depSet[dep] = struct{}{}
 				}
@@ -299,7 +307,7 @@ func (pipeline *Pipeline) topoSort(global *Ast) error {
 				}
 			}
 			if call.Modifiers.Bindings != nil {
-				for _, bind := range call.Modifiers.Bindings.Table {
+				for _, bind := range call.Modifiers.Bindings.List {
 					if err := findDeps(call, bind.Exp); err != nil {
 						errs = append(errs, err)
 					}
@@ -320,9 +328,12 @@ func (pipeline *Pipeline) topoSort(global *Ast) error {
 			for transDep := range depsMap[dep] {
 				if _, ok := deps[transDep]; !ok {
 					if transDep == src {
-						return nil, global.err(src,
-							"Call depends transitively on itself (%s -> ... -> %s -> %s).",
-							src.Id, dep.Id, transDep.Id)
+						return nil, &wrapError{
+							innerError: fmt.Errorf(
+								"Call depends transitively on itself (%s -> ... -> %s -> %s) in pipeline %s.",
+								src.Id, dep.Id, transDep.Id, pipeline.Id),
+							loc: src.getNode().Loc,
+						}
 					}
 					missing = append(missing, transDep)
 				}
@@ -356,13 +367,33 @@ func (pipeline *Pipeline) topoSort(global *Ast) error {
 	}(depsMap); err != nil {
 		return err
 	}
-
-	sort.SliceStable(pipeline.Calls, func(i, j int) bool {
-		// i < j if j depends on i
-		deps := depsMap[pipeline.Calls[j]]
-		_, ok := deps[pipeline.Calls[i]]
-		return ok
-	})
+	// checkIndex is the last index known to be in the sorted region.
+	checkIndex := 0
+	for checkIndex+1 < len(pipeline.Calls) {
+		call := pipeline.Calls[checkIndex]
+		deps := depsMap[call]
+		if deps == nil || len(deps) == 0 {
+			checkIndex++
+			continue
+		}
+		// If call depends on any calls which appear later in the sort order,
+		// move it down to there.  Otherwise, increment the index.
+		maxIndex := -1
+		for i, maybeDep := range pipeline.Calls[checkIndex+1:] {
+			if _, ok := deps[maybeDep]; ok {
+				maxIndex = i
+			}
+		}
+		if maxIndex >= 0 {
+			// Shift
+			copy(pipeline.Calls[checkIndex:checkIndex+maxIndex+1],
+				pipeline.Calls[checkIndex+1:checkIndex+maxIndex+2])
+			// Replace
+			pipeline.Calls[checkIndex+maxIndex+1] = call
+		} else {
+			checkIndex++
+		}
+	}
 	return nil
 }
 
@@ -388,17 +419,17 @@ func (global *Ast) compileTypes() error {
 }
 
 // Check stage declarations.
-func (global *Ast) compileStages(stagecodePaths []string, checkSrcPath bool) error {
+func (global *Ast) compileStages() error {
 	var errs ErrorList
 	for _, stage := range global.Stages {
-		if err := stage.compile(global, stagecodePaths, checkSrcPath); err != nil {
+		if err := stage.compile(global); err != nil {
 			errs = append(errs, err)
 		}
 	}
 	return errs.If()
 }
 
-func (stage *Stage) compile(global *Ast, stagecodePaths []string, checkSrcPath bool) error {
+func (stage *Stage) compile(global *Ast) error {
 	var errs ErrorList
 	// Check in parameters.
 	if err := stage.InParams.compile(global); err != nil {
@@ -410,18 +441,6 @@ func (stage *Stage) compile(global *Ast, stagecodePaths []string, checkSrcPath b
 		errs = append(errs, err)
 	}
 
-	if checkSrcPath {
-		// Check existence of src path.
-		if _, found := util.SearchPaths(stage.Src.Path, stagecodePaths); !found {
-			// Exempt exec stages
-			if stage.Src.Lang != "exec" && stage.Src.Lang != "comp" {
-				stagecodePathsList := strings.Join(stagecodePaths, ", ")
-				errs = append(errs, global.err(stage,
-					"SourcePathError: searched (%s) but stage source path not found '%s'",
-					stagecodePathsList, stage.Src.Path))
-			}
-		}
-	}
 	// Check split parameters.
 	if stage.ChunkIns != nil {
 		if err := stage.ChunkIns.compile(global); err != nil {
@@ -686,7 +705,7 @@ func (pipeline *Pipeline) compile(global *Ast) error {
 	if err := errs.If(); err != nil {
 		return err
 	}
-	return pipeline.topoSort(global)
+	return pipeline.topoSort()
 }
 
 // Check pipeline declarations.
@@ -796,48 +815,7 @@ func (global *Ast) compileCall() error {
 	return nil
 }
 
-func attachComments(comments []*commentBlock, node *AstNode) []*commentBlock {
-	nodeComments := make([]*commentBlock, 0, len(comments))
-	loc := node.Loc
-	for len(comments) > 0 && comments[0].Loc <= loc {
-		if len(nodeComments) > 0 &&
-			nodeComments[len(nodeComments)-1].Loc <
-				comments[0].Loc-1 {
-			// If a line was skipped, discard the comments before
-			// the skipped line, only associating the ones which
-			// didn't skip a line.
-			nodeComments = nil
-		}
-		nodeComments = append(nodeComments, comments[0])
-		comments = comments[1:]
-	}
-	if len(nodeComments) > 0 &&
-		nodeComments[len(nodeComments)-1].Loc < node.Loc-1 {
-		// If there was a blank non-comment line between the last comment
-		// block and this node, ignore the comment block.
-		nodeComments = nil
-	}
-	for _, c := range nodeComments {
-		node.Comments = append(node.Comments, c.Value)
-	}
-	return comments
-}
-
-func compileComments(comments []*commentBlock, node nodeContainer) []*commentBlock {
-	nodes := node.getSubnodes()
-	for _, n := range nodes {
-		comments = attachComments(comments, n.getNode())
-		comments = compileComments(comments, n)
-	}
-	if len(nodes) > 0 && node.inheritComments() {
-		nodes[0].getNode().Comments = append(
-			node.(AstNodable).getNode().Comments,
-			nodes[0].getNode().Comments...)
-	}
-	return comments
-}
-
-func (global *Ast) compile(stagecodePaths []string, checkSrcPath bool) error {
+func (global *Ast) compile() error {
 	if err := global.compileTypes(); err != nil {
 		return err
 	}
@@ -847,7 +825,7 @@ func (global *Ast) compile(stagecodePaths []string, checkSrcPath bool) error {
 		return err
 	}
 
-	if err := global.compileStages(stagecodePaths, checkSrcPath); err != nil {
+	if err := global.compileStages(); err != nil {
 		return err
 	}
 
@@ -863,50 +841,167 @@ func (global *Ast) compile(stagecodePaths []string, checkSrcPath bool) error {
 		return err
 	}
 
-	compileComments(global.comments, global)
-
 	return nil
 }
 
+func (global *Ast) checkSrcPaths(stagecodePaths []string) error {
+	var errs ErrorList
+	for _, stage := range global.Stages {
+		// Exempt exec stages
+		if stage.Src.Lang != "exec" && stage.Src.Lang != "comp" {
+			if _, found := util.SearchPaths(stage.Src.Path, stagecodePaths); !found {
+				stagecodePathsList := strings.Join(stagecodePaths, ", ")
+				errs = append(errs, global.err(stage,
+					"SourcePathError: searched (%s) but stage source path not found '%s'",
+					stagecodePathsList, stage.Src.Path))
+			}
+		}
+	}
+	return errs.If()
+}
+
+func (src *SourceFile) checkIncludes(fullPath string, inc *SourceLoc) error {
+	var errs ErrorList
+	if fullPath == src.FullPath {
+		errs = append(errs, &wrapError{
+			innerError: fmt.Errorf("Include cycle: %s included", src.FullPath),
+			loc:        *inc,
+		})
+	} else {
+		for _, parent := range src.IncludedFrom {
+			if err := parent.File.checkIncludes(fullPath, inc); err != nil {
+				errs = append(errs, err)
+			}
+		}
+	}
+	return errs.If()
+}
+
+// ParseSource parses a souce string into an AST.
 //
-// Parser interface, called by runtime.
+// src is the mro source code.
 //
+// srcPath is the path to the source code file (if applicable), used for
+// debugging information.
+//
+// incPaths is the orderd set of search paths to use when resolving include
+// directives.
+//
+// If checkSrc is true, then the parser will verify that stage src values
+// refer to code that actually exists.
 func ParseSource(src string, srcPath string, incPaths []string, checkSrc bool) (string, []string, *Ast, error) {
+	return ParseSourceBytes([]byte(src), srcPath, incPaths, checkSrc)
+}
+
+func ParseSourceBytes(src []byte, srcPath string, incPaths []string, checkSrc bool) (string, []string, *Ast, error) {
+	fname := filepath.Base(srcPath)
+	absPath, _ := filepath.Abs(srcPath)
+	srcFile := SourceFile{
+		FileName: fname,
+		FullPath: absPath,
+	}
+	if ast, err := parseSource(src, &srcFile, incPaths,
+		map[string]*SourceFile{absPath: &srcFile}); err != nil {
+		return "", nil, ast, err
+	} else {
+		err := ast.compile()
+		ifnames := make([]string, len(ast.Includes))
+		for i, inc := range ast.Includes {
+			ifnames[i] = inc.Value
+		}
+		if checkSrc {
+			stagecodePaths := filepath.SplitList(os.Getenv("PATH"))
+			seenPaths := make(map[string]struct{}, len(incPaths)+len(stagecodePaths))
+			for f := range ast.Files {
+				p := filepath.Dir(f)
+				if _, ok := seenPaths[p]; !ok {
+					stagecodePaths = append(stagecodePaths, p)
+					seenPaths[p] = struct{}{}
+				}
+			}
+			if srcerr := ast.checkSrcPaths(stagecodePaths); err != nil {
+				err = ErrorList{err, srcerr}.If()
+			}
+		}
+		return ast.format(false), ifnames, ast, err
+	}
+}
+
+func parseSource(src []byte, srcFile *SourceFile, incPaths []string,
+	processedIncludes map[string]*SourceFile) (*Ast, error) {
 	// Add the source file's own folder to the include path for
 	// resolving both @includes and stage src paths.
-	incPaths = append([]string{filepath.Dir(srcPath)}, incPaths...)
+	incPaths = append([]string{filepath.Dir(srcFile.FullPath)}, incPaths...)
 
-	// Add PATH environment variable to the stage code path
-	stagecodePaths := append(incPaths, strings.Split(os.Getenv("PATH"), ":")...)
-
-	// Preprocess: generate new source and a locmap.
-	postsrc, ifnames, locmap, err := preprocess(src, filepath.Base(srcPath), make(map[string]struct{}), nil, incPaths)
+	// Parse the source into an AST and attach the comments.
+	ast, err := yaccParse(src, srcFile)
 	if err != nil {
-		return "", nil, nil, err
+		return nil, err
 	}
-	//printSourceMap(postsrc, locmap)
 
-	// Parse the source into an AST and attach the locmap.
-	ast, perr := yaccParse(postsrc, locmap)
-	if perr != nil { // perr is an mmLexInfo struct
-		// Guard against index out of range, which can happen if there is syntax error
-		// at the end of the file, e.g. forgetting to put a close paren at the end of
-		// and invocation call/file.
-		if perr.loc >= len(locmap) {
-			perr.loc = len(locmap) - 1
+	var errs ErrorList
+	var iasts *Ast
+	seen := make(map[string]struct{}, len(ast.Includes))
+	for _, inc := range ast.Includes {
+		if ifpath, found := util.SearchPaths(inc.Value, incPaths); !found {
+			errs = append(errs, &FileNotFoundError{
+				name: inc.Value,
+				loc:  inc.Node.Loc,
+			})
+		} else {
+			absPath, _ := filepath.Abs(ifpath)
+			if _, ok := seen[absPath]; ok {
+				errs = append(errs, &wrapError{
+					innerError: fmt.Errorf("%s included multiple times",
+						inc.Value),
+					loc: inc.Node.Loc,
+				})
+			}
+			seen[absPath] = struct{}{}
+
+			if absPath == srcFile.FullPath {
+				errs = append(errs, &wrapError{
+					innerError: fmt.Errorf("%s includes itself", srcFile.FullPath),
+					loc:        inc.Node.Loc,
+				})
+			} else if iSrcFile := processedIncludes[absPath]; iSrcFile != nil {
+				iSrcFile.IncludedFrom = append(iSrcFile.IncludedFrom, &inc.Node.Loc)
+				if err := srcFile.checkIncludes(absPath, &inc.Node.Loc); err != nil {
+					errs = append(errs, err)
+				}
+			} else {
+				iSrcFile = &SourceFile{
+					FileName:     inc.Value,
+					FullPath:     absPath,
+					IncludedFrom: []*SourceLoc{&inc.Node.Loc},
+				}
+				processedIncludes[absPath] = iSrcFile
+				if b, err := ioutil.ReadFile(iSrcFile.FullPath); err != nil {
+					errs = append(errs, &wrapError{
+						innerError: err,
+						loc:        inc.Node.Loc,
+					})
+				} else {
+					iast, err := parseSource(b, iSrcFile,
+						incPaths[1:], processedIncludes)
+					errs = append(errs, err)
+					if iast != nil {
+						if iasts == nil {
+							iasts = iast
+						} else {
+							// x.merge(y) puts y's stuff before x's.
+							iast.merge(iasts)
+							iasts = iast
+						}
+					}
+				}
+			}
 		}
-		return "", nil, nil, &ParseError{perr.token,
-			locmap[perr.loc].fname,
-			locmap[perr.loc].loc,
-			locmap[perr.loc].includedFrom}
 	}
-
-	// Run semantic checks.
-	if err := ast.compile(stagecodePaths, checkSrc); err != nil {
-		return "", nil, nil, err
+	if iasts != nil {
+		ast.merge(iasts)
 	}
-
-	return postsrc, ifnames, ast, nil
+	return ast, errs.If()
 }
 
 // Compile an MRO file in cwd or mroPaths.
@@ -914,6 +1009,6 @@ func Compile(fpath string, mroPaths []string, checkSrcPath bool) (string, []stri
 	if data, err := ioutil.ReadFile(fpath); err != nil {
 		return "", nil, nil, err
 	} else {
-		return ParseSource(string(data), fpath, mroPaths, checkSrcPath)
+		return ParseSourceBytes(data, fpath, mroPaths, checkSrcPath)
 	}
 }

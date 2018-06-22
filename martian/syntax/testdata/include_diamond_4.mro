@@ -1,0 +1,5 @@
+stage STAGE(
+    in  int input,
+    out int output,
+    src py  "nope.py",
+)

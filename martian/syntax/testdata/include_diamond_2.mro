@@ -1,0 +1,15 @@
+@include "include_diamond_4.mro"
+
+pipeline PIPELINE_1(
+    in  int input,
+    out int output,
+)
+{
+    call STAGE(
+        input = self.input,
+    )
+
+    return (
+        output = STAGE.output,
+    )
+}

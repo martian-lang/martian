@@ -320,7 +320,7 @@ func parseMro(src, fname string, mroPaths []string) (*syntax.Ast, error) {
 func getStages(ast *syntax.Ast, fname, stageName string) []*syntax.Stage {
 	stages := make([]*syntax.Stage, 0, len(ast.Stages))
 	for _, stage := range ast.Stages {
-		if path.Base(stage.Node.Fname) == path.Base(fname) &&
+		if path.Base(stage.Node.Loc.File.FullPath) == path.Base(fname) &&
 			(stageName == "" || stage.Id == stageName) {
 			stages = append(stages, stage)
 		}

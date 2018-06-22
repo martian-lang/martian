@@ -14,10 +14,24 @@ type StageLanguage string
 
 type (
 	AstNode struct {
-		Loc          int
-		Fname        string
-		IncludeStack []string
-		Comments     []string
+		Loc SourceLoc
+
+		// comments which are in the scope for the node, appearing
+		// before the node, but not attached to the node.
+		scopeComments []*commentBlock
+
+		Comments []string
+	}
+
+	SourceLoc struct {
+		Line int
+		File *SourceFile
+	}
+
+	SourceFile struct {
+		FileName     string
+		FullPath     string
+		IncludedFrom []*SourceLoc
 	}
 
 	AstNodable interface {
@@ -208,7 +222,7 @@ type (
 		AstNodable
 		getKind() ExpKind
 		resolveType(*Ast, Callable) ([]string, int, error)
-		format(prefix string) string
+		format(w stringWriter, prefix string)
 		ToInterface() interface{}
 	}
 
@@ -225,9 +239,8 @@ type (
 		OutputId string
 	}
 
-	// Preprocessor variables aren't, strictly speaking, part of the
-	// AST.  They're stripped before parsing, except when formatting code.
-	preprocessorDirective struct {
+	// Include directive.
+	Include struct {
 		Node  AstNode
 		Value string
 	}
@@ -235,7 +248,7 @@ type (
 	// Comments are also not, strictly speaking, part of the AST, but for
 	// formatting code we need to keep track of them.
 	commentBlock struct {
-		Loc   int
+		Loc   SourceLoc
 		Value string
 	}
 
@@ -243,12 +256,13 @@ type (
 		UserTypes     []*UserType
 		UserTypeTable map[string]*UserType
 		TypeTable     map[string]Type
+		Files         map[string]*SourceFile
 		Stages        []*Stage
 		Pipelines     []*Pipeline
 		Callables     *Callables
 		Call          *CallStm
 		Errors        []error
-		preprocess    []*preprocessorDirective
+		Includes      []*Include
 		comments      []*commentBlock
 	}
 )
@@ -265,7 +279,7 @@ const (
 	KindCall           = "call" // reference
 )
 
-func NewAst(decs []Dec, call *CallStm) *Ast {
+func NewAst(decs []Dec, call *CallStm, srcFile *SourceFile) *Ast {
 	self := &Ast{}
 	self.UserTypes = []*UserType{}
 	self.UserTypeTable = map[string]*UserType{}
@@ -275,6 +289,7 @@ func NewAst(decs []Dec, call *CallStm) *Ast {
 	self.Callables = &Callables{[]Callable{}, map[string]Callable{}}
 	self.Call = call
 	self.Errors = []error{}
+	self.Files = map[string]*SourceFile{srcFile.FullPath: srcFile}
 
 	for _, dec := range decs {
 		switch dec := dec.(type) {
@@ -291,26 +306,18 @@ func NewAst(decs []Dec, call *CallStm) *Ast {
 	return self
 }
 
-func NewAstNode(loc int, locmap []FileLoc) AstNode {
-	// Process the accumulated comments/whitespace.
-
-	if len(locmap) > 0 {
-		// If there's no newline at the end of the source and the error is in the
-		// node at the end of the file, the loc can be one larger than the size
-		// of the locmap. So cap it so we don't have an array out of bounds.
-		if loc >= len(locmap) {
-			loc = len(locmap) - 1
-		}
-		return AstNode{locmap[loc].loc, locmap[loc].fname, locmap[loc].includedFrom, nil}
-	} else {
-		// locmap will be empty when yaccParse is called from mrf
-		return AstNode{loc, "", nil, nil}
+func NewAstNode(loc int, file *SourceFile) AstNode {
+	return AstNode{
+		Loc: SourceLoc{
+			Line: loc,
+			File: file,
+		},
 	}
 }
 
 // Gets the name of the file that defines the node.
 func DefiningFile(node AstNodable) string {
-	return node.getNode().Fname
+	return node.getNode().Loc.File.FullPath
 }
 
 func (s *Ast) inheritComments() bool { return false }
@@ -318,8 +325,8 @@ func (s *Ast) getSubnodes() []AstNodable {
 	subs := make([]AstNodable, 0,
 		1+len(s.UserTypes)+
 			len(s.Callables.List)+
-			len(s.preprocess))
-	for _, n := range s.preprocess {
+			len(s.Includes))
+	for _, n := range s.Includes {
 		subs = append(subs, n)
 	}
 	for _, n := range s.UserTypes {
@@ -338,9 +345,9 @@ func (s *AstNode) getNode() *AstNode         { return s }
 func (s *AstNode) getSubnodes() []AstNodable { return nil }
 func (s *AstNode) inheritComments() bool     { return false }
 
-func (s *preprocessorDirective) getNode() *AstNode         { return &s.Node }
-func (s *preprocessorDirective) getSubnodes() []AstNodable { return nil }
-func (s *preprocessorDirective) inheritComments() bool     { return false }
+func (s *Include) getNode() *AstNode         { return &s.Node }
+func (s *Include) getSubnodes() []AstNodable { return nil }
+func (s *Include) inheritComments() bool     { return false }
 
 // Interface whitelist for Dec, Param, Exp, and Stm implementors.
 // Patterned after code in Go's ast.go.
@@ -394,6 +401,9 @@ func (s *Stage) getSubnodes() []AstNodable {
 	if s.Resources != nil {
 		subs = append(subs, s.Resources)
 	}
+	if s.Retain != nil {
+		subs = append(subs, s.Retain)
+	}
 	return subs
 }
 
@@ -409,6 +419,9 @@ func (s *Resources) getSubnodes() []AstNodable {
 	}
 	if s.SpecialNode != nil {
 		subs = append(subs, s.SpecialNode)
+	}
+	if s.VolatileNode != nil {
+		subs = append(subs, s.VolatileNode)
 	}
 	return subs
 }
@@ -433,6 +446,9 @@ func (s *Pipeline) getSubnodes() []AstNodable {
 		subs = append(subs, n)
 	}
 	subs = append(subs, s.Ret)
+	if s.Retain != nil {
+		subs = append(subs, s.Retain)
+	}
 	return subs
 }
 
@@ -533,5 +549,47 @@ func (s *RefExp) getKind() ExpKind  { return s.Kind }
 
 func (s *RefExp) inheritComments() bool { return false }
 func (s *RefExp) getSubnodes() []AstNodable {
+	return nil
+}
+
+func (p *PipelineRetains) getNode() *AstNode     { return &p.Node }
+func (s *PipelineRetains) inheritComments() bool { return true }
+func (s *PipelineRetains) getSubnodes() []AstNodable {
+	params := make([]AstNodable, 0, len(s.Refs))
+	for _, p := range s.Refs {
+		params = append(params, p)
+	}
+	return params
+}
+
+func (p *RetainParams) getNode() *AstNode     { return &p.Node }
+func (s *RetainParams) inheritComments() bool { return true }
+func (s *RetainParams) getSubnodes() []AstNodable {
+	params := make([]AstNodable, 0, len(s.Params))
+	for _, p := range s.Params {
+		params = append(params, p)
+	}
+	return params
+}
+
+func (ast *Ast) merge(other *Ast) error {
+	ast.UserTypes = append(other.UserTypes, ast.UserTypes...)
+	ast.Stages = append(other.Stages, ast.Stages...)
+	ast.Pipelines = append(other.Pipelines, ast.Pipelines...)
+	if ast.Call == nil {
+		ast.Call = other.Call
+	} else if other.Call != nil {
+		return &DuplicateCallError{
+			First:  ast.Call,
+			Second: ast.Call,
+		}
+	}
+	for k, v := range other.Files {
+		ast.Files[k] = v
+	}
+	ast.Callables.List = append(other.Callables.List, ast.Callables.List...)
+	ast.Errors = append(other.Errors, ast.Errors...)
+	ast.Includes = append(ast.Includes, other.Includes...)
+	ast.comments = append(other.comments, ast.comments...)
 	return nil
 }

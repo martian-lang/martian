@@ -1,0 +1,7 @@
+# This file contains the top-level call.
+
+@include "pipeline.mro"
+
+call MY_PIPELINE(
+    info = 2,
+)

@@ -7,10 +7,11 @@
 package syntax
 
 import (
-	"bytes"
 	"encoding/json"
 	"fmt"
+	"io"
 	"io/ioutil"
+	"path/filepath"
 	"sort"
 	"strings"
 )
@@ -28,26 +29,66 @@ func max(a, b int) int {
 	}
 }
 
+type stringWriter interface {
+	io.ByteWriter
+	io.Writer
+	WriteRune(rune) (int, error)
+	WriteString(string) (int, error)
+}
+
 type printer struct {
-	buf      bytes.Buffer
-	comments []*commentBlock
+	buf         strings.Builder
+	comments    map[string][]*commentBlock
+	lastComment SourceLoc
 }
 
-func (self *printer) printComments(loc int, prefix string) {
-	for len(self.comments) > 0 && self.comments[0].Loc <= loc {
-		self.buf.WriteString(prefix)
-		self.buf.WriteString(self.comments[0].Value)
-		self.buf.WriteString(NEWLINE)
-		self.comments = self.comments[1:]
+func (self *printer) printComments(node *AstNode, prefix string) {
+	if self.lastComment.File != nil &&
+		self.lastComment.File.FullPath != node.Loc.File.FullPath {
+		for _, comment := range self.comments[self.lastComment.File.FullPath] {
+			self.buf.WriteString(comment.Value)
+			self.buf.WriteString(NEWLINE)
+		}
+		delete(self.comments, self.lastComment.File.FullPath)
+		self.buf.WriteString("#\n# @include \"")
+		self.buf.WriteString(node.Loc.File.FileName)
+		self.buf.WriteString("\"\n#\n\n")
 	}
+	for _, c := range node.scopeComments {
+		if self.lastComment.Line != 0 && self.lastComment.Line == c.Loc.Line-2 {
+			self.buf.WriteString(NEWLINE)
+		}
+
+		self.lastComment = c.Loc
+		self.buf.WriteString(prefix)
+		self.buf.WriteString(c.Value)
+		self.buf.WriteString(NEWLINE)
+	}
+	if len(node.scopeComments) > 0 {
+		self.buf.WriteString(NEWLINE)
+	}
+	for _, c := range node.Comments {
+		self.buf.WriteString(prefix)
+		self.buf.WriteString(c)
+		self.buf.WriteString(NEWLINE)
+	}
+	self.lastComment = node.Loc
 }
 
-func (self *printer) WriteString(s string) {
-	self.buf.WriteString(s)
+func (self *printer) WriteString(s string) (int, error) {
+	return self.buf.WriteString(s)
 }
 
 func (self *printer) Write(b []byte) (int, error) {
 	return self.buf.Write(b)
+}
+
+func (self *printer) WriteByte(b byte) error {
+	return self.buf.WriteByte(b)
+}
+
+func (self *printer) WriteRune(r rune) (int, error) {
+	return self.buf.WriteRune(r)
 }
 
 func (self *printer) Printf(format string, args ...interface{}) {
@@ -55,9 +96,11 @@ func (self *printer) Printf(format string, args ...interface{}) {
 }
 
 func (self *printer) DumpComments() {
-	for _, comment := range self.comments {
-		self.buf.WriteString(comment.Value)
-		self.buf.WriteString(NEWLINE)
+	for _, fcomments := range self.comments {
+		for _, comment := range fcomments {
+			self.buf.WriteString(comment.Value)
+			self.buf.WriteString(NEWLINE)
+		}
 	}
 	self.comments = nil
 }
@@ -69,55 +112,62 @@ func (self *printer) String() string {
 //
 // Expression
 //
-func (self *ValExp) format(prefix string) string {
+func (self *ValExp) format(w stringWriter, prefix string) {
 	if self.Value == nil {
-		return "null"
+		w.WriteString("null")
+	} else if self.Kind == KindInt {
+		fmt.Fprintf(w, "%d", self.Value)
+	} else if self.Kind == KindFloat {
+		fmt.Fprintf(w, "%g", self.Value)
+	} else if self.Kind == KindString {
+		fmt.Fprintf(w, "\"%s\"", self.Value)
+	} else if self.Kind == KindMap {
+		self.formatMap(w, prefix)
+	} else if self.Kind == KindArray {
+		self.formatArray(w, prefix)
+	} else {
+		fmt.Fprint(w, self.Value)
 	}
-	if self.Kind == KindInt {
-		return fmt.Sprintf("%d", self.Value)
-	}
-	if self.Kind == KindFloat {
-		return fmt.Sprintf("%g", self.Value)
-	}
-	if self.Kind == KindString {
-		return fmt.Sprintf("\"%s\"", self.Value)
-	}
-	if self.Kind == KindMap {
-		return self.formatMap(prefix)
-	}
-	if self.Kind == KindArray {
-		return self.formatArray(prefix)
-	}
-	return fmt.Sprintf("%v", self.Value)
 }
 
-func (self *ValExp) formatArray(prefix string) string {
+func (self *ValExp) formatSweep(w stringWriter, prefix string) {
+	values := self.Value.([]Exp)
+	w.WriteString("sweep(\n")
+	vindent := prefix + INDENT
+	for _, val := range values {
+		w.WriteString(vindent)
+		val.format(w, vindent)
+		w.WriteString(",\n")
+	}
+	w.WriteString(prefix)
+	w.WriteRune(')')
+}
+
+func (self *ValExp) formatArray(w stringWriter, prefix string) {
 	values := self.Value.([]Exp)
 	if len(values) == 0 {
-		return "[]"
+		w.WriteString("[]")
 	} else if len(values) == 1 {
 		// Place single-element arrays on a single line.
-		return fmt.Sprintf("[%s]",
-			values[0].format(prefix))
+		w.WriteRune('[')
+		values[0].format(w, prefix)
+		w.WriteRune(']')
 	} else {
-		var buf bytes.Buffer
-		buf.WriteString("[\n")
+		w.WriteString("[\n")
 		vindent := prefix + INDENT
 		for _, val := range values {
-			buf.WriteString(vindent)
-			buf.WriteString(val.format(vindent))
-			buf.WriteString(",\n")
+			w.WriteString(vindent)
+			val.format(w, vindent)
+			w.WriteString(",\n")
 		}
-		buf.WriteString(prefix)
-		buf.WriteRune(']')
-		return buf.String()
+		w.WriteString(prefix)
+		w.WriteRune(']')
 	}
 }
 
-func (self *ValExp) formatMap(prefix string) string {
+func (self *ValExp) formatMap(w stringWriter, prefix string) {
 	if valExpMap, ok := self.Value.(map[string]Exp); ok && len(valExpMap) > 0 {
-		var buf bytes.Buffer
-		buf.WriteString("{\n")
+		w.WriteString("{\n")
 		vindent := prefix + INDENT
 		keys := make([]string, 0, len(valExpMap))
 		for key := range valExpMap {
@@ -125,52 +175,60 @@ func (self *ValExp) formatMap(prefix string) string {
 		}
 		sort.Strings(keys)
 		for _, key := range keys {
-			buf.WriteString(vindent)
-			buf.WriteRune('"')
-			buf.WriteString(key)
-			buf.WriteString(`": `)
-			buf.WriteString(valExpMap[key].format(vindent))
-			buf.WriteString(",\n")
+			w.WriteString(vindent)
+			w.WriteRune('"')
+			w.WriteString(key)
+			w.WriteString(`": `)
+			valExpMap[key].format(w, vindent)
+			w.WriteString(",\n")
 		}
-		buf.WriteString(prefix)
-		buf.WriteRune('}')
-		return buf.String()
+		w.WriteString(prefix)
+		w.WriteRune('}')
 	} else {
-		return "{}"
+		w.WriteString("{}")
 	}
 }
 
-func (self *RefExp) format(prefix string) string {
+func (self *RefExp) format(w stringWriter, prefix string) {
 	if self.Kind == KindCall {
-		fsrc := self.Id
+		w.WriteString(self.Id)
 		if self.OutputId != "default" {
-			fsrc += "." + self.OutputId
+			w.WriteRune('.')
+			w.WriteString(self.OutputId)
 		}
-		return fsrc
+	} else {
+		w.WriteString("self.")
+		w.WriteString(self.Id)
 	}
-	return "self." + self.Id
 }
 
 //
 // Binding
 //
 func (self *BindStm) format(printer *printer, prefix string, idWidth int) {
-	printer.printComments(self.getNode().Loc, prefix+INDENT)
-	printer.printComments(self.Exp.getNode().Loc, prefix+INDENT)
+	printer.printComments(self.getNode(), prefix+INDENT)
+	printer.printComments(self.Exp.getNode(), prefix+INDENT)
 	idPad := ""
 	if len(self.Id) < idWidth {
 		idPad = strings.Repeat(" ", idWidth-len(self.Id))
 	}
-	fmtExp := self.Exp.format(prefix + INDENT)
-	if self.Sweep {
-		fmtExp = fmt.Sprintf("sweep(%s)", strings.Trim(fmtExp, "[]"))
+	printer.Printf("%s%s%s%s = ", prefix, INDENT,
+		self.Id, idPad)
+	if ve, ok := self.Exp.(*ValExp); ok {
+		if arr, ok := ve.Value.([]Exp); ok && self.Sweep && len(arr) > 1 {
+			ve.formatSweep(printer, prefix+INDENT)
+			printer.WriteRune(',')
+			printer.WriteString(NEWLINE)
+			return
+		}
 	}
-	printer.Printf("%s%s%s%s = %s,\n", prefix, INDENT,
-		self.Id, idPad, fmtExp)
+	self.Exp.format(printer, prefix+INDENT)
+	printer.WriteRune(',')
+	printer.WriteString(NEWLINE)
 }
 
 func (self *BindStms) format(printer *printer, prefix string) {
-	printer.printComments(self.getNode().Loc, prefix)
+	printer.printComments(self.getNode(), prefix)
 	idWidth := 0
 	for _, bindstm := range self.List {
 		if len(bindstm.Id) < 30 {
@@ -186,7 +244,7 @@ func (self *BindStms) format(printer *printer, prefix string) {
 // Parameter
 //
 func paramFormat(printer *printer, param Param, modeWidth int, typeWidth int, idWidth int, helpWidth int) {
-	printer.printComments(param.getNode().Loc, INDENT)
+	printer.printComments(param.getNode(), INDENT)
 	id := param.GetId()
 	if id == "default" {
 		id = ""
@@ -279,7 +337,7 @@ func (self *Params) format(printer *printer, modeWidth int, typeWidth int, idWid
 // Pipeline, Call, Return
 //
 func (self *Pipeline) format(printer *printer) {
-	printer.printComments(self.Node.Loc, "")
+	printer.printComments(&self.Node, "")
 
 	modeWidth, typeWidth, idWidth, helpWidth := measureParamsWidths(
 		self.InParams, self.OutParams,
@@ -289,6 +347,7 @@ func (self *Pipeline) format(printer *printer) {
 	self.InParams.format(printer, modeWidth, typeWidth, idWidth, helpWidth)
 	self.OutParams.format(printer, modeWidth, typeWidth, idWidth, helpWidth)
 	printer.WriteString(")\n{")
+	self.topoSort()
 	for _, callstm := range self.Calls {
 		printer.WriteString(NEWLINE)
 		callstm.format(printer, INDENT)
@@ -303,7 +362,7 @@ func (self *Pipeline) format(printer *printer) {
 }
 
 func (self *CallStm) format(printer *printer, prefix string) {
-	printer.printComments(self.Node.Loc, prefix)
+	printer.printComments(&self.Node, prefix)
 	printer.WriteString(prefix)
 	printer.WriteString("call ")
 	printer.WriteString(self.DecId)
@@ -371,7 +430,7 @@ func (self *CallStm) format(printer *printer, prefix string) {
 }
 
 func (self *ReturnStm) format(printer *printer) {
-	printer.printComments(self.Node.Loc, INDENT)
+	printer.printComments(&self.Node, INDENT)
 	printer.WriteString(INDENT)
 	printer.WriteString("return (\n")
 	self.Bindings.format(printer, INDENT)
@@ -380,13 +439,13 @@ func (self *ReturnStm) format(printer *printer) {
 }
 
 func (self *PipelineRetains) format(printer *printer) {
-	printer.printComments(self.Node.Loc, INDENT)
+	printer.printComments(&self.Node, INDENT)
 	printer.WriteString(INDENT)
 	printer.WriteString("retain (\n")
 	for _, ref := range self.Refs {
 		printer.WriteString(INDENT)
 		printer.WriteString(INDENT)
-		printer.WriteString(ref.format(INDENT + INDENT))
+		ref.format(printer, INDENT+INDENT)
 		printer.WriteString(",\n")
 	}
 	printer.WriteString(INDENT)
@@ -397,7 +456,7 @@ func (self *PipelineRetains) format(printer *printer) {
 // Stage
 //
 func (self *Stage) format(printer *printer) {
-	printer.printComments(self.Node.Loc, "")
+	printer.printComments(&self.Node, "")
 
 	modeWidth, typeWidth, idWidth, helpWidth := measureParamsWidths(
 		self.InParams, self.OutParams, self.ChunkIns, self.ChunkOuts,
@@ -427,43 +486,47 @@ func (self *Stage) format(printer *printer) {
 }
 
 func (self *Resources) format(printer *printer) {
-	printer.printComments(self.Node.Loc, INDENT)
+	printer.printComments(&self.Node, INDENT)
 	printer.WriteString(") using (\n")
 	// Pad depending on which arguments are present.
-	// mem_gb  = x,
-	// special = y
-	// threads = y,
-	var memPad string
-	if self.SpecialNode != nil || self.ThreadNode != nil {
+	// mem_gb   = x,
+	// special  = y
+	// threads  = y,
+	// volatile = z,
+	var memPad, threadPad string
+	if self.VolatileNode != nil {
+		memPad = "  "
+		threadPad = " "
+	} else if self.SpecialNode != nil || self.ThreadNode != nil {
 		memPad = " "
 	}
 	if self.MemNode != nil {
-		printer.printComments(self.MemNode.Loc, INDENT)
+		printer.printComments(self.MemNode, INDENT)
 		printer.WriteString(INDENT)
 		printer.Printf("mem_gb%s = %d,\n", memPad, self.MemGB)
 	}
 	if self.SpecialNode != nil {
-		printer.printComments(self.SpecialNode.Loc, INDENT)
+		printer.printComments(self.SpecialNode, INDENT)
 		printer.WriteString(INDENT)
-		printer.Printf("special = \"%s\",\n", self.Special)
+		printer.Printf("special%s = \"%s\",\n", threadPad, self.Special)
 	}
 	if self.ThreadNode != nil {
-		printer.printComments(self.ThreadNode.Loc, INDENT)
+		printer.printComments(self.ThreadNode, INDENT)
 		printer.WriteString(INDENT)
-		printer.Printf("threads = %d,\n", self.Threads)
+		printer.Printf("threads%s = %d,\n", threadPad, self.Threads)
 	}
 	if self.VolatileNode != nil {
-		printer.printComments(self.VolatileNode.Loc, INDENT)
+		printer.printComments(self.VolatileNode, INDENT)
 		printer.WriteString(INDENT)
 		printer.WriteString("volatile = strict,\n")
 	}
 }
 
 func (self *RetainParams) format(printer *printer) {
-	printer.printComments(self.Node.Loc, INDENT)
+	printer.printComments(&self.Node, INDENT)
 	printer.WriteString(") retain (\n")
 	for _, param := range self.Params {
-		printer.printComments(param.Node.Loc, INDENT)
+		printer.printComments(&param.Node, INDENT)
 		printer.WriteString(INDENT)
 		printer.WriteString(param.Id)
 		printer.WriteString(",\n")
@@ -471,7 +534,7 @@ func (self *RetainParams) format(printer *printer) {
 }
 
 func (self *SrcParam) format(printer *printer, modeWidth int, typeWidth int, idWidth int) {
-	printer.printComments(self.Node.Loc, INDENT)
+	printer.printComments(&self.Node, INDENT)
 	langPad := strings.Repeat(" ", typeWidth-len(string(self.Lang)))
 	modePad := strings.Repeat(" ", modeWidth-len("src"))
 	printer.Printf("%ssrc%s %v%s \"%s\",\n", INDENT,
@@ -483,8 +546,10 @@ func (self *SrcParam) format(printer *printer, modeWidth int, typeWidth int, idW
 // Callable
 //
 func (self *Callables) format(printer *printer) {
-	for _, callable := range self.List {
-		printer.WriteString(NEWLINE)
+	for i, callable := range self.List {
+		if i != 0 {
+			printer.WriteString(NEWLINE)
+		}
 		callable.format(printer)
 	}
 }
@@ -493,40 +558,76 @@ func (self *Callables) format(printer *printer) {
 // Filetype
 //
 func (self *UserType) format(printer *printer) {
-	printer.printComments(self.Node.Loc, "")
+	printer.printComments(&self.Node, "")
 	printer.Printf("filetype %s;\n", self.Id)
 }
 
 //
 // AST
 //
-func (self *Ast) format() string {
-	printer := printer{comments: self.comments}
-	for _, directive := range self.preprocess {
-		printer.printComments(directive.Node.Loc, "")
-		printer.WriteString(directive.Value)
-		printer.WriteString(NEWLINE)
+func (self *Ast) format(writeIncludes bool) string {
+	needSpacer := false
+	printer := printer{
+		comments: make(map[string][]*commentBlock, len(self.Files)),
 	}
-	if len(self.preprocess) > 0 && len(self.UserTypes) > 0 {
-		printer.WriteString(NEWLINE)
+	if len(self.Files) > 0 {
+		// Set the printer's last comment location to the top of the
+		// top-level file, so that the top-level include is reported
+		// correctly.
+		var topFile *SourceFile
+		for _, f := range self.Files {
+			topFile = f
+			break
+		}
+		for topFile != nil && len(topFile.IncludedFrom) > 0 {
+			topFile = topFile.IncludedFrom[0].File
+		}
+		printer.lastComment = SourceLoc{
+			Line: 0,
+			File: topFile,
+		}
+	}
+
+	for _, comment := range self.comments {
+		printer.comments[comment.Loc.File.FullPath] = append(
+			printer.comments[comment.Loc.File.FullPath],
+			comment)
+	}
+	if writeIncludes {
+		for _, directive := range self.Includes {
+			printer.printComments(&directive.Node, "")
+			printer.WriteString("@include \"")
+			printer.WriteString(directive.Value)
+			printer.WriteRune('"')
+			printer.WriteString(NEWLINE)
+			needSpacer = true
+		}
 	}
 
 	// filetype declarations.
+	if needSpacer && len(self.UserTypes) > 0 {
+		printer.WriteString(NEWLINE)
+	}
 	for _, filetype := range self.UserTypes {
 		filetype.format(&printer)
+		needSpacer = true
 	}
 
 	// callables.
+	if needSpacer && len(self.Callables.List) > 0 {
+		printer.WriteString(NEWLINE)
+	}
 	self.Callables.format(&printer)
 
 	// call.
 	if self.Call != nil {
-		if len(self.Callables.List) > 0 {
+		if len(self.Callables.List) > 0 || needSpacer {
 			printer.WriteString(NEWLINE)
 		}
 		self.Call.format(&printer, "")
 	}
 
+	// Any comments which went at the ends of a file, after any nodes.
 	printer.DumpComments()
 	return printer.String()
 }
@@ -540,18 +641,27 @@ func FormatFile(filename string) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	return Format(string(data), filename)
+	return FormatSrcBytes(data, filename)
 }
 
-func Format(src, filename string) (string, error) {
+func Format(src string, filename string) (string, error) {
+	return FormatSrcBytes([]byte(src), filename)
+}
+
+func FormatSrcBytes(src []byte, filename string) (string, error) {
+	absPath, _ := filepath.Abs(filename)
 	// Parse and generate the AST.
-	global, mmli := yaccParse(src, []FileLoc{})
+	srcFile := SourceFile{
+		FileName: filename,
+		FullPath: absPath,
+	}
+	global, mmli := yaccParse(src, &srcFile)
 	if mmli != nil { // mmli is an mmLexInfo struct
-		return "", &ParseError{mmli.token, filename, mmli.loc, nil}
+		return "", mmli
 	}
 
 	// Format the source.
-	return global.format(), nil
+	return global.format(true), nil
 }
 
 func JsonDumpAsts(asts []*Ast) string {

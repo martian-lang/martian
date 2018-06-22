@@ -1,0 +1,2 @@
+# This should fail because include_cycle_1.mro includes this file.
+@include "include_cycle_1.mro"

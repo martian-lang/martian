@@ -18,11 +18,10 @@ func TestMain(m *testing.M) {
 
 func testGood(t *testing.T, src string) *Ast {
 	t.Helper()
-	if ast, err := yaccParse(src, nil); err != nil {
-		t.Fatalf("ParseError: unexpected token '%s' at line %d:%d in\n%s",
-			err.token, err.loc, err.pos, err.src)
+	if ast, err := yaccParse([]byte(src), new(SourceFile)); err != nil {
+		t.Fatal(err.Error())
 		return nil
-	} else if err := ast.compile(nil, false); err != nil {
+	} else if err := ast.compile(); err != nil {
 		t.Errorf("Failed to compile src: %v\n%s", err, err.Error())
 		return nil
 	} else {
@@ -32,22 +31,22 @@ func testGood(t *testing.T, src string) *Ast {
 
 func testBadGrammar(t *testing.T, src string) {
 	t.Helper()
-	if _, err := yaccParse(src, nil); err == nil {
+	if _, err := yaccParse([]byte(src), new(SourceFile)); err == nil {
 		t.Error("Expected failure to parse, but got success.")
 	}
 }
 
 func testBadCompile(t *testing.T, src string) {
 	t.Helper()
-	if ast, err := yaccParse(src, nil); err != nil {
-		t.Fatalf("ParseError: unexpected token '%s' at line %d:%d in\n%s",
-			err.token, err.loc, err.pos, err.src)
-	} else if err := ast.compile(nil, false); err == nil {
+	if ast, err := yaccParse([]byte(src), new(SourceFile)); err != nil {
+		t.Fatal(err.Error())
+	} else if err := ast.compile(); err == nil {
 		t.Error("Expected failure to compile.")
 	}
 }
 
 func TestSimplePipe(t *testing.T) {
+	t.Parallel()
 	if ast := testGood(t, `
 # File comment
 
@@ -112,6 +111,7 @@ call SUM_SQUARE_PIPELINE(
 }
 
 func TestBinding(t *testing.T) {
+	t.Parallel()
 	testGood(t, `
 stage SUM_SQUARES(
     in  float[] values,
@@ -154,6 +154,7 @@ call SUM_SQUARE_PIPELINE(
 }
 
 func TestSubPipe(t *testing.T) {
+	t.Parallel()
 	testGood(t, `
 stage SUM_SQUARES(
     in  float[] values,
@@ -210,6 +211,7 @@ call SUM_SQUARE_PIPELINE(
 }
 
 func TestUnusedParam(t *testing.T) {
+	t.Parallel()
 	testBadCompile(t, `
 stage SUM_SQUARES(
 	in  int     unused,
@@ -239,6 +241,7 @@ call SUM_SQUARE_PIPELINE(
 }
 
 func TestMissingReturn(t *testing.T) {
+	t.Parallel()
 	testBadCompile(t, `
 stage SUM_SQUARES(
     in  float[] values,
@@ -297,6 +300,7 @@ call SUM_SQUARE_PIPELINE(
 }
 
 func TestSelfReturnBinding(t *testing.T) {
+	t.Parallel()
 	testBadCompile(t, `
 stage SUM_SQUARES(
     in  float[] values,
@@ -325,6 +329,7 @@ call SUM_SQUARE_PIPELINE(
 }
 
 func TestTopoSort(t *testing.T) {
+	t.Parallel()
 	if ast := testGood(t, `
 stage SUM_SQUARES(
     in  float[] values,
@@ -370,7 +375,87 @@ call SUM_SQUARE_PIPELINE(
 	}
 }
 
+func TestTopoSort2(t *testing.T) {
+	t.Parallel()
+	if ast := testGood(t, `
+stage STAGE (
+    in  int input,
+    out int output,
+    src py  "stages/code",
+)
+
+stage STAGE_3 (
+    in  int in1,
+	in  int in2,
+    out int output,
+    src py  "stages/code",
+)
+
+
+pipeline PIPELINE(
+    in  int input,
+    out int output1,
+    out int output2,
+)
+{
+    call STAGE_3(
+        in1 = self.input,
+        in2 = STAGE_2.output,
+    )
+
+    call STAGE as STAGE_1(
+        input = self.input,
+    )
+
+    call STAGE as STAGE_2(
+        input = self.input,
+    )
+
+    call STAGE as STAGE_4(
+        input = STAGE_2.output,
+    )
+
+    call STAGE_3 as STAGE_5(
+        in1 = self.input,
+        in2 = STAGE_2.output,
+    )
+
+    return (
+        output1 = STAGE_3.output,
+        output2 = STAGE_5.output,
+    )
+}
+
+call PIPELINE(
+    input = 1,
+)
+`); ast != nil {
+		if len(ast.Pipelines) != 1 {
+			t.Fatal("Incorrect pipeline count", len(ast.Pipelines))
+		} else if calls := ast.Pipelines[0].Calls; len(calls) != 5 {
+			t.Fatal("Incorrect call count", len(calls))
+		} else {
+			if calls[0].Id != "STAGE_1" {
+				t.Errorf("Incorrect stage ordering: %s was first", calls[0].Id)
+			}
+			if calls[1].Id != "STAGE_2" {
+				t.Errorf("Incorrect stage ordering: %s was second", calls[1].Id)
+			}
+			if calls[2].Id != "STAGE_3" {
+				t.Errorf("Incorrect stage ordering: %s was third", calls[2].Id)
+			}
+			if calls[3].Id != "STAGE_4" {
+				t.Errorf("Incorrect stage ordering: %s was fourth", calls[3].Id)
+			}
+			if calls[4].Id != "STAGE_5" {
+				t.Errorf("Incorrect stage ordering: %s was fifth", calls[4].Id)
+			}
+		}
+	}
+}
+
 func TestArrayBind(t *testing.T) {
+	t.Parallel()
 	testGood(t, `
 filetype json;
 
@@ -423,6 +508,7 @@ pipeline STUFF(
 }
 
 func TestUserType(t *testing.T) {
+	t.Parallel()
 	testGood(t, `
 filetype goodness;
 
@@ -435,6 +521,7 @@ stage SUM_SQUARES(
 }
 
 func TestFileAsUserType(t *testing.T) {
+	t.Parallel()
 	testGood(t, `
 filetype goodness;
 
@@ -460,6 +547,7 @@ pipeline PIPE(
 }
 
 func TestIncompatibleUserType(t *testing.T) {
+	t.Parallel()
 	testBadCompile(t, `
 filetype goodness;
 filetype badness;
@@ -496,6 +584,7 @@ stage SUM_SQUARES(
 }
 
 func TestInvalidOutType(t *testing.T) {
+	t.Parallel()
 	testBadCompile(t, `
 stage SUM_SQUARES(
     in  float[] values,
@@ -506,6 +595,7 @@ stage SUM_SQUARES(
 }
 
 func TestResources(t *testing.T) {
+	t.Parallel()
 	testGood(t, `
 stage SUM_SQUARES(
     in  float[] values,
@@ -519,6 +609,7 @@ stage SUM_SQUARES(
 }
 
 func TestBadMemGB(t *testing.T) {
+	t.Parallel()
 	testBadGrammar(t, `
 stage SUM_SQUARES(
     in  float[] values,
@@ -532,6 +623,7 @@ stage SUM_SQUARES(
 }
 
 func TestBadThreads(t *testing.T) {
+	t.Parallel()
 	testBadGrammar(t, `
 stage SUM_SQUARES(
     in  float[] values,
@@ -545,6 +637,7 @@ stage SUM_SQUARES(
 }
 
 func TestResourcesWithSplit(t *testing.T) {
+	t.Parallel()
 	if ast := testGood(t, `
 stage SUM_SQUARES(
     in  float[] values,
@@ -579,6 +672,7 @@ stage SUM_SQUARES(
 }
 
 func TestStrictVolatile(t *testing.T) {
+	t.Parallel()
 	if ast := testGood(t, `
 stage SUM_SQUARES(
     in  float[] values,
@@ -601,6 +695,7 @@ stage SUM_SQUARES(
 }
 
 func TestRetain(t *testing.T) {
+	t.Parallel()
 	if ast := testGood(t, `
 stage SUM_SQUARES(
     in  float[] values,
@@ -630,6 +725,7 @@ stage SUM_SQUARES(
 }
 
 func TestRetainNonFile(t *testing.T) {
+	t.Parallel()
 	testBadCompile(t, `
 stage SUM_SQUARES(
     in  float[] values,
@@ -647,6 +743,7 @@ stage SUM_SQUARES(
 }
 
 func TestSplit(t *testing.T) {
+	t.Parallel()
 	testGood(t, `
 stage SUM_SQUARES(
     in  float[] values,
@@ -660,6 +757,7 @@ stage SUM_SQUARES(
 }
 
 func TestSplitDuplicateIn(t *testing.T) {
+	t.Parallel()
 	testBadCompile(t, `
 stage SUM_SQUARES(
     in  float[] values,
@@ -673,6 +771,7 @@ stage SUM_SQUARES(
 }
 
 func TestSplitDuplicateOut(t *testing.T) {
+	t.Parallel()
 	testBadCompile(t, `
 stage SUM_SQUARES(
     in  float[] values,
@@ -687,6 +786,7 @@ stage SUM_SQUARES(
 
 // Check that there is an error if a call depends on itself directly.
 func TestSelfBind(t *testing.T) {
+	t.Parallel()
 	testBadCompile(t, `
 stage SQUARES(
     in  float value,
@@ -711,6 +811,7 @@ pipeline QUARTIC(
 // Check that there is an error if a call depends on itself with one level of
 // indirection.
 func TestTransDep(t *testing.T) {
+	t.Parallel()
 	testBadCompile(t, `
 stage SQUARES(
     in  float value,
@@ -738,6 +839,7 @@ pipeline POLY(
 // Check that there is an error if a call depends on itself with two levels of
 // indirection.
 func TestTransDep2(t *testing.T) {
+	t.Parallel()
 	testBadCompile(t, `
 stage SQUARES(
     in  float value,
@@ -768,6 +870,7 @@ pipeline POLY(
 // Check that there is an error if a call depends on itself directly in an
 // array.
 func TestSelfBindArray(t *testing.T) {
+	t.Parallel()
 	testBadCompile(t, `
 stage SQUARES(
     in  float[][] values,
@@ -791,6 +894,7 @@ pipeline QUARTIC(
 
 // Check that binding inside an array works.
 func TestGoodBindArray(t *testing.T) {
+	t.Parallel()
 	testGood(t, `
 stage SQUARES(
     in  float[][] values,
@@ -814,6 +918,7 @@ pipeline QUARTIC(
 }
 
 func TestMultiArray(t *testing.T) {
+	t.Parallel()
 	testGood(t, `
 stage SQUARES(
     in  int[][] values,
@@ -836,6 +941,7 @@ pipeline QUARTIC(
 }
 
 func TestInconsistentArray(t *testing.T) {
+	t.Parallel()
 	testBadCompile(t, `
 stage SQUARES(
     in  int[][] values,
@@ -858,6 +964,7 @@ pipeline QUARTIC(
 }
 
 func TestWrongArrayDim(t *testing.T) {
+	t.Parallel()
 	testBadCompile(t, `
 stage SQUARES(
     in  int[][] values,
@@ -880,6 +987,7 @@ pipeline QUARTIC(
 }
 
 func TestArrayType(t *testing.T) {
+	t.Parallel()
 	testBadCompile(t, `
 stage SQUARES(
     in  int[][] values,
@@ -902,6 +1010,7 @@ pipeline QUARTIC(
 }
 
 func TestDuplicateInParam(t *testing.T) {
+	t.Parallel()
 	testBadCompile(t, `
 stage SUM_SQUARES(
     in  float[] values,
@@ -913,6 +1022,7 @@ stage SUM_SQUARES(
 }
 
 func TestDuplicateOutParam(t *testing.T) {
+	t.Parallel()
 	testBadCompile(t, `
 stage SUM_SQUARES(
     in  float[] values,
@@ -924,6 +1034,7 @@ stage SUM_SQUARES(
 }
 
 func TestSplitOut(t *testing.T) {
+	t.Parallel()
 	testGood(t, `
 stage SUM_SQUARES(
     in  float[] values,
@@ -937,6 +1048,7 @@ stage SUM_SQUARES(
 }
 
 func TestDuplicateSplitOut(t *testing.T) {
+	t.Parallel()
 	testBadCompile(t, `
 stage SUM_SQUARES(
     in  float[] values,
@@ -961,6 +1073,7 @@ stage SUM_SQUARES(
 }
 
 func TestDuplicateCallable(t *testing.T) {
+	t.Parallel()
 	testBadCompile(t, `
 stage SUM_SQUARES(
     in  float[] values,
@@ -984,6 +1097,7 @@ pipeline SUM_SQUARES(
 }
 
 func TestMissingCallable(t *testing.T) {
+	t.Parallel()
 	testBadCompile(t, `
 pipeline SUM_SQUARES_PIPE(
     in  float[] values,
@@ -1001,6 +1115,7 @@ pipeline SUM_SQUARES_PIPE(
 }
 
 func TestVolatile(t *testing.T) {
+	t.Parallel()
 	if ast := testGood(t, `
 stage SQUARE(
     in  int   value,
@@ -1034,6 +1149,7 @@ pipeline SQ_PIPE(
 }
 
 func TestPreflight(t *testing.T) {
+	t.Parallel()
 	if ast := testGood(t, `
 stage SQUARE(
     in  int   value,
@@ -1063,6 +1179,7 @@ pipeline SQ_PIPE(
 }
 
 func TestVolatilePreflight(t *testing.T) {
+	t.Parallel()
 	if ast := testGood(t, `
 stage SQUARE(
     in  int   value,
@@ -1098,6 +1215,7 @@ pipeline SQ_PIPE(
 }
 
 func TestVolatilePreflight2(t *testing.T) {
+	t.Parallel()
 	if ast := testGood(t, `
 stage SQUARE(
     in  int   value,
@@ -1133,6 +1251,7 @@ pipeline SQ_PIPE(
 }
 
 func TestDisable(t *testing.T) {
+	t.Parallel()
 	if ast := testGood(t, `
 stage SQUARE(
     in  int   value,
@@ -1175,6 +1294,7 @@ pipeline SQ_PIPE(
 }
 
 func TestBadDisable(t *testing.T) {
+	t.Parallel()
 	testBadCompile(t, `
 stage SQUARE(
     in  int   value,
@@ -1198,6 +1318,7 @@ pipeline SQ_PIPE(
 }
 
 func TestBadDisable2(t *testing.T) {
+	t.Parallel()
 	testBadGrammar(t, `
 stage SQUARE(
     in  int   value,
@@ -1219,6 +1340,7 @@ pipeline SQ_PIPE()
 }
 
 func TestTopCall(t *testing.T) {
+	t.Parallel()
 	testGood(t, `
 stage SQUARE(
     in  int   value,
@@ -1242,6 +1364,7 @@ call SQ_PIPE(
 }
 
 func TestDisableTopCall(t *testing.T) {
+	t.Parallel()
 	testBadGrammar(t, `
 stage SQUARE(
     in  int   value,

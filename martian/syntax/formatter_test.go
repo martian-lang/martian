@@ -14,7 +14,7 @@ import (
 
 func TestFormatValueExpression(t *testing.T) {
 	ve := ValExp{
-		Node:  AstNode{0, "", nil, nil},
+		Node:  AstNode{SourceLoc{0, new(SourceFile)}, nil, nil},
 		Kind:  "float",
 		Value: 0,
 	}
@@ -22,25 +22,38 @@ func TestFormatValueExpression(t *testing.T) {
 	//
 	// Format float ValExps.
 	//
+	var buff strings.Builder
 	ve.Kind = "float"
 
 	ve.Value = 10.0
-	assert.Equal(t, ve.format(""), "10", "Preserve single zero after decimal.")
+	ve.format(&buff, "")
+	assert.Equal(t, buff.String(), "10", "Preserve single zero after decimal.")
+	buff.Reset()
 
 	ve.Value = 10.05
-	assert.Equal(t, ve.format(""), "10.05", "Do not strip numbers ending in non-zero digit.")
+	ve.format(&buff, "")
+	assert.Equal(t, buff.String(), "10.05", "Do not strip numbers ending in non-zero digit.")
+	buff.Reset()
 
 	ve.Value = 10.050
-	assert.Equal(t, ve.format(""), "10.05", "Strip single trailing zero.")
+	ve.format(&buff, "")
+	assert.Equal(t, buff.String(), "10.05", "Strip single trailing zero.")
+	buff.Reset()
 
 	ve.Value = 10.050000000
-	assert.Equal(t, ve.format(""), "10.05", "Strip multiple trailing zeroes.")
+	ve.format(&buff, "")
+	assert.Equal(t, buff.String(), "10.05", "Strip multiple trailing zeroes.")
+	buff.Reset()
 
 	ve.Value = 0.0000000005
-	assert.Equal(t, ve.format(""), "5e-10", "Handle exponential notation.")
+	ve.format(&buff, "")
+	assert.Equal(t, buff.String(), "5e-10", "Handle exponential notation.")
+	buff.Reset()
 
 	ve.Value = 0.0005
-	assert.Equal(t, ve.format(""), "0.0005", "Handle low decimal floats.")
+	ve.format(&buff, "")
+	assert.Equal(t, buff.String(), "0.0005", "Handle low decimal floats.")
+	buff.Reset()
 
 	//
 	// Format int ValExps.
@@ -48,13 +61,19 @@ func TestFormatValueExpression(t *testing.T) {
 	ve.Kind = "int"
 
 	ve.Value = 0
-	assert.Equal(t, ve.format(""), "0", "Format zero integer.")
+	ve.format(&buff, "")
+	assert.Equal(t, buff.String(), "0", "Format zero integer.")
+	buff.Reset()
 
 	ve.Value = 10
-	assert.Equal(t, ve.format(""), "10", "Format non-zero integer.")
+	ve.format(&buff, "")
+	assert.Equal(t, buff.String(), "10", "Format non-zero integer.")
+	buff.Reset()
 
 	ve.Value = 1000000
-	assert.Equal(t, ve.format(""), "1000000", "Preserve integer trailing zeroes.")
+	ve.format(&buff, "")
+	assert.Equal(t, buff.String(), "1000000", "Preserve integer trailing zeroes.")
+	buff.Reset()
 
 	//
 	// Format string ValExps.
@@ -62,20 +81,29 @@ func TestFormatValueExpression(t *testing.T) {
 	ve.Kind = "string"
 
 	ve.Value = "blah"
-	assert.Equal(t, ve.format(""), "\"blah\"", "Double quote a string.")
+	ve.format(&buff, "")
+	assert.Equal(t, buff.String(), "\"blah\"", "Double quote a string.")
+	buff.Reset()
 
 	ve.Value = "\"blah\""
-	assert.Equal(t, ve.format(""), "\"\"blah\"\"", "Double quote a double-quoted string.")
+	ve.format(&buff, "")
+	assert.Equal(t, buff.String(), "\"\"blah\"\"", "Double quote a double-quoted string.")
+	buff.Reset()
 
 	//
 	// Format nil ValExps.
 	//
 	ve.Value = nil
-	assert.Equal(t, ve.format(""), "null", "Nil value is 'null'.")
+	ve.format(&buff, "")
+	assert.Equal(t, buff.String(), "null", "Nil value is 'null'.")
 }
 
 func TestFormatCommentedSrc(t *testing.T) {
 	src := `# A super-simple test pipeline with forks.
+
+# I am good at documenting my code with useful headers.
+
+# Get my other stuff.
 @include "my_special_stuff.mro"
 
 # Files storing json.
@@ -98,6 +126,8 @@ stage ADD_KEY1(
     # The source file.
     src py     "stages/add_key",
 )
+
+# Some more explanation of what I'm doing could go here.
 
 # Adds a second key to the json in a file.
 stage ADD_KEY2(
@@ -129,6 +159,11 @@ stage SUM_SQUARES(
 ) split (
     in  float   value,
     out float   square,
+) using (
+    # For some reason this uses lots of memory.
+    mem_gb   = 4,
+    # This doesn't generate files anyway.
+    volatile = strict,
 )
 
 # Takes two files containing json dictionaries and merges them.
@@ -143,9 +178,9 @@ stage MAP_EXAMPLE(
     in  map foo,
     src py  "stages/merge_json",
 ) using (
-    mem_gb  = 2,
+    mem_gb   = 2,
     # This stage always uses 4 threads!
-    threads = 4,
+    threads  = 4,
     volatile = strict,
 )
 
@@ -273,6 +308,82 @@ call AWESOME(
 		t.Errorf("Format error: %v", err)
 	} else if formatted != src {
 		diffLines(src, formatted, t)
+	}
+}
+
+func TestFormatTopoSort(t *testing.T) {
+	const src = `pipeline PIPELINE(
+    in  int input,
+    out int output1,
+    out int output2,
+)
+{
+    call STAGE_3(
+        in1 = self.input,
+        in2 = STAGE_2.output,
+    )
+
+    call STAGE as STAGE_1(
+        input = self.input,
+    )
+
+    call STAGE as STAGE_2(
+        input = self.input,
+    )
+
+    call STAGE as STAGE_4(
+        input = STAGE_2.output,
+    )
+
+    call STAGE_3 as STAGE_5(
+        in1 = self.input,
+        in2 = STAGE_2.output,
+    )
+
+    return (
+        output1 = STAGE_3.output,
+        output2 = STAGE_5.output,
+    )
+}
+`
+	const expected = `pipeline PIPELINE(
+    in  int input,
+    out int output1,
+    out int output2,
+)
+{
+    call STAGE as STAGE_1(
+        input = self.input,
+    )
+
+    call STAGE as STAGE_2(
+        input = self.input,
+    )
+
+    call STAGE_3(
+        in1 = self.input,
+        in2 = STAGE_2.output,
+    )
+
+    call STAGE as STAGE_4(
+        input = STAGE_2.output,
+    )
+
+    call STAGE_3 as STAGE_5(
+        in1 = self.input,
+        in2 = STAGE_2.output,
+    )
+
+    return (
+        output1 = STAGE_3.output,
+        output2 = STAGE_5.output,
+    )
+}
+`
+	if formatted, err := Format(src, "test"); err != nil {
+		t.Errorf("Format error: %v", err)
+	} else if formatted != expected {
+		diffLines(expected, formatted, t)
 	}
 }
 

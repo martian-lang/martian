@@ -1,5 +1,4 @@
 # A super-simple test pipeline with forks.
-
 # Files storing json.
 filetype json;
 
@@ -92,7 +91,7 @@ pipeline AWESOME(
         key      = "4",
         value    = sweep(
             "four",
-            "feir"
+            "feir",
         ),
         failfile = "fail4",
         start    = ADD_KEY2.result,
@@ -115,6 +114,6 @@ call AWESOME(
     key2   = "2",
     value2 = sweep(
         "two",
-        "deux"
+        "deux",
     ),
 )

@@ -1,0 +1,25 @@
+# 1 includes 2 and 3, both of which include 4, which is legal.
+
+@include "include_diamond_2.mro"
+@include "include_diamond_3.mro"
+
+pipeline TOP_LEVEL(
+    in  int input1,
+    in  int input2,
+    out int output1,
+    out int output2,
+)
+{
+    call PIPELINE_1(
+        input = self.input1,
+    )
+
+    call PIPELINE_2(
+        input = self.input2,
+    )
+
+    return (
+        output1 = PIPELINE_1.output,
+        output2 = PIPELINE_2.output,
+    )
+}
