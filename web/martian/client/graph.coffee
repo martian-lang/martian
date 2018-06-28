@@ -132,6 +132,7 @@ app.controller('MartianGraphCtrl', ($scope, $compile, $http, $interval) ->
     $scope.adminstyle = adminstyle
     $scope.release = release
     $scope.urlprefix = if adminstyle then '/admin' else '/'
+    $scope.files = files
     auth = ''
     for v in window.location.search.substring(1).split("&")
         if v.split("=")[0] == 'auth'
@@ -143,6 +144,9 @@ app.controller('MartianGraphCtrl', ($scope, $compile, $http, $interval) ->
         $scope.nodes = _.indexBy(state.nodes, 'fqname')
         $scope.info = state.info
         renderGraph($scope, $compile)
+    )
+    $http.get("/api/list-metadata-top/#{container}/#{pname}/#{psid}#{auth}").success((files) ->
+        $scope.files = files
     )
 
     $scope.id = null
@@ -265,5 +269,8 @@ app.controller('MartianGraphCtrl', ($scope, $compile, $http, $interval) ->
         ).error((data, status) ->
             console.log("Server responded with error #{status}: #{data} for /api/get-state, so stopping auto-refresh.")
             $interval.cancel($scope.stopRefresh)
+        )
+        $http.get("/api/list-metadata-top/#{container}/#{pname}/#{psid}#{auth}").success((files) ->
+            $scope.files = files
         )
 )

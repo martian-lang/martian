@@ -194,6 +194,7 @@
     $scope.adminstyle = adminstyle;
     $scope.release = release;
     $scope.urlprefix = adminstyle ? '/admin' : '/';
+    $scope.files = files;
     auth = '';
     ref = window.location.search.substring(1).split("&");
     for (j = 0, len = ref.length; j < len; j++) {
@@ -208,6 +209,9 @@
       $scope.nodes = _.indexBy(state.nodes, 'fqname');
       $scope.info = state.info;
       return renderGraph($scope, $compile);
+    });
+    $http.get("/api/list-metadata-top/" + container + "/" + pname + "/" + psid + auth).success(function(files) {
+      return $scope.files = files;
     });
     $scope.id = null;
     $scope.forki = 0;
@@ -384,7 +388,7 @@
       return !found;
     };
     return $scope.refresh = function() {
-      return $http.get("/api/get-state/" + container + "/" + pname + "/" + psid + auth).success(function(state) {
+      $http.get("/api/get-state/" + container + "/" + pname + "/" + psid + auth).success(function(state) {
         $scope.nodes = _.indexBy(state.nodes, 'fqname');
         if ($scope.id) {
           $scope.node = $scope.nodes[$scope.id];
@@ -394,6 +398,9 @@
       }).error(function(data, status) {
         console.log("Server responded with error " + status + ": " + data + " for /api/get-state, so stopping auto-refresh.");
         return $interval.cancel($scope.stopRefresh);
+      });
+      return $http.get("/api/list-metadata-top/" + container + "/" + pname + "/" + psid + auth).success(function(files) {
+        return $scope.files = files;
       });
     };
   });

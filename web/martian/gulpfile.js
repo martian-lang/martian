@@ -2,7 +2,7 @@ var gulp = require('gulp');
 
 var coffee = require('gulp-coffee');
 var pug = require('gulp-pug');
-var gzip = require('gulp-zopfli');
+var gzip = require('gulp-zopfli-green');
 var cleanCSS = require('gulp-clean-css');
 
 var paths = {
@@ -33,10 +33,10 @@ gulp.task('copy_fonts', function() {
         .pipe(gulp.dest('serve/fonts'));
 });
 
-gulp.task('compress', [
+gulp.task('compress', gulp.series(gulp.parallel(
     'coffee',
     'css',
-], function() {
+), function() {
     return gulp.src([
             'build/**/*',
             'client/*.js',
@@ -48,17 +48,17 @@ gulp.task('compress', [
         ])
         .pipe(gzip({ append: false }))
         .pipe(gulp.dest('serve'));
-});
+}));
 
-gulp.task('watch', [ 'build' ], function() {
-    gulp.watch(paths.coffee, [ 'coffee' ]);
-    gulp.watch(paths.pages, [ 'pages' ]);
-});
-
-gulp.task('build', [
+gulp.task('build', gulp.parallel(
     'pages', 
     'compress',
     'copy_fonts'
-]);
+));
 
-gulp.task('default', [ 'build' ]);
+gulp.task('watch', gulp.series('build', function() {
+    gulp.watch(paths.coffee).on('change', gulp.series('coffee'));
+    gulp.watch(paths.pages).on('change', gulp.series('pages'));
+}));
+
+gulp.task('default', gulp.series('build'));

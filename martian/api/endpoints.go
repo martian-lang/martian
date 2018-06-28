@@ -32,4 +32,10 @@ const (
 
 	// Register (or re-register) an instance of mrp with an Enterprise host.
 	QueryRegisterEnterprise = "/api/register"
+
+	// Get the list of valid top-level metadata files.
+	QueryListMetadataTop = "/api/list-metadata-top"
+
+	// Gets the content of files in the pipestance extras directory.
+	QueryExtras = "/extras/"
 )

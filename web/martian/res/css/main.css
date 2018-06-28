@@ -75,6 +75,11 @@ a { cursor:pointer; }
     float: right;
 }
 
+div.topfile {
+    display: inline-block;
+    padding-right: 0.5em;
+}
+
 /*******************************************/
 .close {
     top: -1px;

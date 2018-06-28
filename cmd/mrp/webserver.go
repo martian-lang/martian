@@ -15,6 +15,7 @@ import (
 	"io/ioutil"
 	"net"
 	"net/http"
+	"net/url"
 	"os"
 	"path"
 	"strings"
@@ -215,8 +216,60 @@ func (self *mrpWebServer) handleApi(sm *http.ServeMux) {
 	sm.HandleFunc(api.QueryGetMetadata+"/", self.getMetadata)
 	sm.HandleFunc(api.QueryRestart, self.restart)
 	sm.HandleFunc(api.QueryRestart+"/", self.restart)
-	sm.HandleFunc(api.QueryGetMetadataTop, self.getMetadataTop)
+	p := self.pipestanceBox.getPipestance().GetPath()
+	sm.Handle(api.QueryGetMetadataTop, self.authorize(pathToMetadata(
+		http.FileServer(http.Dir(p)))))
+	sm.HandleFunc(api.QueryListMetadataTop, self.listMetadataTop)
+	sm.HandleFunc(api.QueryListMetadataTop+"/", self.listMetadataTop)
 	sm.HandleFunc(api.QueryKill, self.kill)
+	sm.Handle(api.QueryExtras, self.authorize(noDot(
+		http.FileServer(http.Dir(path.Join(p, "extras"))))))
+}
+
+func (self *mrpWebServer) authorize(source http.Handler) http.Handler {
+	if self.readAuth {
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			if self.verifyAuth(w, r) {
+				source.ServeHTTP(w, r)
+			}
+		})
+	} else {
+		return source
+	}
+}
+
+// Strips a request down to the base name and prepends the metadata file
+// prefix.
+func pathToMetadata(source http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if p := path.Base(r.URL.Path); len(p) > 0 {
+			r2 := new(http.Request)
+			*r2 = *r
+			r2.URL = new(url.URL)
+			*r2.URL = *r.URL
+			r2.URL.Path = core.MetadataFilePrefix + p
+			source.ServeHTTP(w, r2)
+		} else {
+			http.NotFound(w, r)
+		}
+	})
+}
+
+// Strips a request down to the base name and returns 404 if that starts with
+// a '.' character.
+func noDot(source http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if p := path.Base(r.URL.Path); len(p) > 0 && p[0] != '.' {
+			r2 := new(http.Request)
+			*r2 = *r
+			r2.URL = new(url.URL)
+			*r2.URL = *r.URL
+			r2.URL.Path = p
+			source.ServeHTTP(w, r2)
+		} else {
+			http.NotFound(w, r)
+		}
+	})
 }
 
 // Get pipestance state: nodes and fatal error (if any).
@@ -324,25 +377,23 @@ func (self *mrpWebServer) getMetadata(w http.ResponseWriter, req *http.Request) 
 	w.Write([]byte(data))
 }
 
-// Get metadata from the pipestance top-level.
-func (self *mrpWebServer) getMetadataTop(w http.ResponseWriter, req *http.Request) {
+// Get the list of metadata files from the pipestance top-level.  This is a
+// whitelisted subset of actual metadata files, because some of those files,
+// such as _uuid, are uninteresting, while others such as _uiport, _versions,
+// _finalstate and so on are redundant with other queries.
+func (self *mrpWebServer) listMetadataTop(w http.ResponseWriter, req *http.Request) {
 	if self.readAuth && !self.verifyAuth(w, req) {
 		return
 	}
-	p := path.Clean(strings.TrimLeft(strings.TrimPrefix(
-		req.URL.Path, api.QueryGetMetadataTop), "/"))
-	if strings.HasPrefix(p, "..") {
-		http.Error(w, "'..' not allowed in path.", http.StatusBadRequest)
-		return
+	p := self.pipestanceBox.getPipestance().GetPath()
+	if result, err := api.GetFilesListing(p); err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+	} else if b, err := json.Marshal(&result); err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+	} else {
+		w.Header().Set("Content-Type", "application/json")
+		w.Write(b)
 	}
-	pipestance := self.pipestanceBox.getPipestance()
-	data, err := self.rt.GetMetadata(pipestance.GetPath(),
-		path.Join(pipestance.GetPath(), "_"+path.Base(p)))
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusNotFound)
-		return
-	}
-	w.Write([]byte(data))
 }
 
 // Restart failed stage.

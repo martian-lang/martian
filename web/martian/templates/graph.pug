@@ -73,14 +73,18 @@ html(ng-app="app" ng-controller="MartianGraphCtrl")
                 tr
                     td Versions
                     td martian={{info.version}}, pipelines={{info.mroversion}}
-                tr
+                tr(ng-if="files.files")
                     td Logging
-                    td 
-                        a(href="/api/get-metadata-top/[[.Container]]/[[.Pname]]/[[.Psid]]/filelist[[.Auth]]") filelist
-                        | &nbsp;&nbsp;
-                        a(href="/api/get-metadata-top/[[.Container]]/[[.Pname]]/[[.Psid]]/log[[.Auth]]") log
-                        | &nbsp;&nbsp;
-                        a(href="/api/get-metadata-top/[[.Container]]/[[.Pname]]/[[.Psid]]/sitecheck[[.Auth]]") sitecheck
+                    td
+                        div(ng-repeat="filename in files.files" class="topfile")
+                            a(href="/api/get-metadata-top/[[.Container]]/[[.Pname]]/[[.Psid]]/{{filename}}[[.Auth]]").
+                                {{filename}}
+                tr(ng-if="files.extras")
+                    td Extras
+                    td
+                        div(ng-repeat="filename in files.extras" class="topfile")
+                            a(href="/extras/[[.Container]]/[[.Pname]]/[[.Psid]]/{{filename}}[[.Auth]]").
+                                {{filename}}
             h5 Paths
             table.table(style="margin-bottom: 0px")
                 tr
@@ -329,4 +333,5 @@ html(ng-app="app" ng-controller="MartianGraphCtrl")
         | admin = [[.Admin]];
         | adminstyle = [[.AdminStyle]];
         | release = [[.Release]];
+        | files = { "files": [ "log" ] }
     script(src="/graph.js")

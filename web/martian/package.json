@@ -1,6 +1,6 @@
 {
   "name": "martian-web",
-  "version": "0.0.1",
+  "version": "0.0.2",
   "description": "Martian UI",
   "private": true,
   "main": "",
@@ -9,10 +9,10 @@
   "author": "",
   "license": "",
   "devDependencies": {
-    "gulp": "^3.8.7",
-    "gulp-clean-css": "^3.7.0",
+    "gulp": "^4.0.0",
+    "gulp-clean-css": "^3.9.4",
     "gulp-coffee": "^2.1.1",
     "gulp-pug": "^4.0.1",
-    "gulp-zopfli": "^1.0.0"
+    "gulp-zopfli-green": "^2.0.4"
   }
 }
