@@ -939,10 +939,19 @@ func parseSource(src []byte, srcFile *SourceFile, incPaths []string,
 		return nil, err
 	}
 
+	iasts, err := getIncludes(srcFile, ast.Includes, incPaths, processedIncludes)
+	if iasts != nil {
+		ast.merge(iasts)
+	}
+	return ast, err
+}
+
+func getIncludes(srcFile *SourceFile, includes []*Include, incPaths []string,
+	processedIncludes map[string]*SourceFile) (*Ast, error) {
 	var errs ErrorList
 	var iasts *Ast
-	seen := make(map[string]struct{}, len(ast.Includes))
-	for _, inc := range ast.Includes {
+	seen := make(map[string]struct{}, len(includes))
+	for _, inc := range includes {
 		if ifpath, found := util.SearchPaths(inc.Value, incPaths); !found {
 			errs = append(errs, &FileNotFoundError{
 				name: inc.Value,
@@ -998,10 +1007,7 @@ func parseSource(src []byte, srcFile *SourceFile, incPaths []string,
 			}
 		}
 	}
-	if iasts != nil {
-		ast.merge(iasts)
-	}
-	return ast, errs.If()
+	return iasts, errs.If()
 }
 
 // Compile an MRO file in cwd or mroPaths.

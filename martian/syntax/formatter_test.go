@@ -304,7 +304,7 @@ call AWESOME(
     ),
 )
 `
-	if formatted, err := Format(src, "test"); err != nil {
+	if formatted, err := Format(src, "test", false, nil); err != nil {
 		t.Errorf("Format error: %v", err)
 	} else if formatted != src {
 		diffLines(src, formatted, t)
@@ -380,7 +380,7 @@ func TestFormatTopoSort(t *testing.T) {
     )
 }
 `
-	if formatted, err := Format(src, "test"); err != nil {
+	if formatted, err := Format(src, "test", false, nil); err != nil {
 		t.Errorf("Format error: %v", err)
 	} else if formatted != expected {
 		diffLines(expected, formatted, t)

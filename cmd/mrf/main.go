@@ -32,13 +32,13 @@ func main() {
 	doc := `Martian Formatter.
 
 Usage:
-    mrf <file.mro>... [--rewrite]
-    mrf --all
+    mrf [--rewrite] [--includes] <file.mro>...
+    mrf --all [--includes]
     mrf -h | --help | --version
 
 Options:
-    --rewrite     Rewrite the specified file(s) in place in addition to
-                  printing reformatted source to stdout.
+    --rewrite     Rewrite the specified file(s) in place.
+    --includes    Add and remove includes as appropriate.
     --all         Rewrite all files in MROPATH.
     -h --help     Show this message.
     --version     Show version.`
@@ -52,6 +52,7 @@ Options:
 		mroPaths = util.ParseMroPath(value)
 	}
 
+	fixIncludes := opts["--includes"].(bool)
 	if opts["--all"].(bool) {
 		// Format all MRO files in MRO path.
 		numFiles := 0
@@ -59,7 +60,7 @@ Options:
 			fnames, err := filepath.Glob(mroPath + "/*.mro")
 			util.DieIf(err)
 			for _, fname := range fnames {
-				fsrc, err := syntax.FormatFile(fname)
+				fsrc, err := syntax.FormatFile(fname, fixIncludes, mroPaths)
 				util.DieIf(err)
 				ioutil.WriteFile(fname, []byte(fsrc), 0644)
 			}
@@ -69,11 +70,12 @@ Options:
 	} else {
 		// Format just the specified MRO files.
 		for _, fname := range opts["<file.mro>"].([]string) {
-			fsrc, err := syntax.FormatFile(fname)
+			fsrc, err := syntax.FormatFile(fname, fixIncludes, mroPaths)
 			util.DieIf(err)
-			fmt.Print(fsrc)
 			if opts["--rewrite"].(bool) {
 				ioutil.WriteFile(fname, []byte(fsrc), 0644)
+			} else {
+				fmt.Print(fsrc)
 			}
 		}
 	}

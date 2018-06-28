@@ -635,20 +635,20 @@ func (self *Ast) format(writeIncludes bool) string {
 //
 // Exported API
 //
-func FormatFile(filename string) (string, error) {
+func FormatFile(filename string, fixIncludes bool, mropath []string) (string, error) {
 	// Read MRO source file.
 	data, err := ioutil.ReadFile(filename)
 	if err != nil {
 		return "", err
 	}
-	return FormatSrcBytes(data, filename)
+	return FormatSrcBytes(data, filename, fixIncludes, mropath)
 }
 
-func Format(src string, filename string) (string, error) {
-	return FormatSrcBytes([]byte(src), filename)
+func Format(src string, filename string, fixIncludes bool, mropath []string) (string, error) {
+	return FormatSrcBytes([]byte(src), filename, fixIncludes, mropath)
 }
 
-func FormatSrcBytes(src []byte, filename string) (string, error) {
+func FormatSrcBytes(src []byte, filename string, fixIncludes bool, mropath []string) (string, error) {
 	absPath, _ := filepath.Abs(filename)
 	// Parse and generate the AST.
 	srcFile := SourceFile{
@@ -659,9 +659,13 @@ func FormatSrcBytes(src []byte, filename string) (string, error) {
 	if mmli != nil { // mmli is an mmLexInfo struct
 		return "", mmli
 	}
+	var err error
+	if fixIncludes {
+		err = FixIncludes(global, mropath)
+	}
 
 	// Format the source.
-	return global.format(true), nil
+	return global.format(true), err
 }
 
 func JsonDumpAsts(asts []*Ast) string {
