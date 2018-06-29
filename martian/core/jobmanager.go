@@ -224,7 +224,7 @@ func (self *LocalJobManager) refreshResources(localMode bool) error {
 		if usedMem.Rss > self.memMBSem.Reserved()*1024*1024 {
 			util.LogInfo("jobmngr",
 				"MRP and its child processes are using %.1fGB of rss.  %.1fGB are reserved.",
-				float64(usedMem.Rss)/(1024*1024*1024), self.memMBSem.Reserved()/1024)
+				float64(usedMem.Rss)/(1024*1024*1024), float64(self.memMBSem.Reserved())/1024)
 		}
 	}
 	self.lastMemDiff = memDiff / 128

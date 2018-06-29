@@ -163,7 +163,8 @@ func (self *pipestanceHolder) HandleSignal(os.Signal) {
 		}
 	}
 	if srv := self.server; srv != nil {
-		ctx, _ := context.WithTimeout(context.Background(), 20*time.Second)
+		ctx, cancel := context.WithTimeout(context.Background(), 20*time.Second)
+		defer cancel()
 		srv.Shutdown(ctx)
 	}
 }
