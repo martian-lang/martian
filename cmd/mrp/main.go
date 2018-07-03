@@ -431,6 +431,7 @@ var loggedEnvPrefixes = map[string]bool{
 	"MYSYS2":  true, // Anaconda
 	"PBS":     true, // PBS
 	"PD":      true,
+	"RUST":    true,
 	"SBATCH":  true, // Slurm
 	"SELINUX": true, // Linux
 	"SGE":     true,
