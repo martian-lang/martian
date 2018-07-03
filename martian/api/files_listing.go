@@ -19,7 +19,7 @@ func fileOnWhitelist(f core.MetadataFileName) bool {
 	switch f {
 	case "filelist", "sitecheck",
 		core.AlarmFile, core.Assert, core.Errors,
-		core.LogFile, core.TagsFile:
+		core.LogFile:
 		return true
 	default:
 		return false
