@@ -55,6 +55,28 @@ func (self VDRByTimestamp) Less(i, j int) bool {
 	return self[i].Timestamp < self[j].Timestamp
 }
 
+// Merge events with the same timestamp.
+func (pr *VDRKillReport) mergeEvents() {
+	allEvents := pr.Events
+	sort.Slice(allEvents, func(i, j int) bool {
+		return allEvents[i].Timestamp.Before(
+			allEvents[j].Timestamp)
+	})
+	result := make([]*VdrEvent, 0, len(allEvents))
+	for _, ev := range allEvents {
+		last := len(result) - 1
+		if last < 0 ||
+			result[last].Timestamp.Truncate(time.Second) !=
+				ev.Timestamp.Truncate(time.Second) ||
+			(ev.DeltaBytes < 0) != (result[last].DeltaBytes < 0) {
+			result = append(result, ev)
+		} else {
+			result[last].DeltaBytes += ev.DeltaBytes
+		}
+	}
+	pr.Events = result
+}
+
 func mergeVDRKillReports(killReports []*VDRKillReport) *VDRKillReport {
 	allKillReport := &VDRKillReport{}
 	var allEvents []*VdrEvent
@@ -74,21 +96,8 @@ func mergeVDRKillReports(killReports []*VDRKillReport) *VDRKillReport {
 			allKillReport.Timestamp = killReport.Timestamp
 		}
 	}
-	// Merge events with the same timestamp.
-	sort.Slice(allEvents, func(i, j int) bool {
-		return allEvents[i].Timestamp.Before(allEvents[j].Timestamp)
-	})
-	allKillReport.Events = make([]*VdrEvent, 0, len(allEvents))
-	for _, ev := range allEvents {
-		last := len(allKillReport.Events) - 1
-		if last < 0 ||
-			allKillReport.Events[last].Timestamp != ev.Timestamp ||
-			(ev.DeltaBytes < 0) != (allKillReport.Events[last].DeltaBytes < 0) {
-			allKillReport.Events = append(allKillReport.Events, ev)
-		} else {
-			allKillReport.Events[last].DeltaBytes += ev.DeltaBytes
-		}
-	}
+	allKillReport.Events = allEvents
+	allKillReport.mergeEvents()
 	return allKillReport
 }
 
@@ -216,6 +225,7 @@ func (self *Fork) vdrKillSome(partial *PartialVdrKillReport, done bool) (*VDRKil
 	if len(killPaths) == 0 {
 		if done {
 			if partial != nil {
+				partial.VDRKillReport.mergeEvents()
 				self.metadata.Write(VdrKill, &partial.VDRKillReport)
 			} else {
 				self.metadata.Write(VdrKill,
@@ -264,6 +274,7 @@ func (self *Fork) vdrKillSome(partial *PartialVdrKillReport, done bool) (*VDRKil
 	partial.Timestamp = util.Timestamp()
 
 	if len(self.fileParamMap) == 0 || done || len(self.filePostNodes) == 0 {
+		partial.VDRKillReport.mergeEvents()
 		self.metadata.Write(VdrKill, &partial.VDRKillReport)
 		self.deletePartialKill()
 		if self.node.rt.Config.Debug {
@@ -500,8 +511,15 @@ func (self *Fork) updateParamFileCache() {
 
 func (metadata *Metadata) getStartTime() time.Time {
 	var jobInfo JobInfo
-	if err := metadata.ReadInto(JobInfoFile, &jobInfo); err != nil ||
-		jobInfo.WallClockInfo == nil {
+	if err := metadata.ReadInto(JobInfoFile, &jobInfo); err != nil && os.IsNotExist(err) {
+		// Stages which don't split/join still have metadata for the
+		// split/join, and still need accurate timestamps.
+		if info, _ := os.Stat(metadata.path); info != nil {
+			return util.FileCreateTime(info).Truncate(time.Second)
+		} else {
+			return time.Time{}
+		}
+	} else if err != nil || jobInfo.WallClockInfo == nil {
 		return time.Time{}
 	} else {
 		t, _ := time.ParseInLocation(util.TIMEFMT, jobInfo.WallClockInfo.Start, time.Local)
@@ -544,6 +562,14 @@ func (self *Fork) cleanSplitTemp(partial *PartialVdrKillReport) *PartialVdrKillR
 				return nil
 			})
 		}
+		// Add metadata file sizes.
+		for _, md := range self.split_metadata.glob() {
+			if info, err := os.Lstat(md); err != nil {
+				partial.Errors = append(partial.Errors, err.Error())
+			} else {
+				startEvent.DeltaBytes += int64(info.Size())
+			}
+		}
 		if self.node.rt.Config.Debug {
 			util.LogInfo("storage",
 				"%d bytes of split files for %s",
@@ -551,6 +577,8 @@ func (self *Fork) cleanSplitTemp(partial *PartialVdrKillReport) *PartialVdrKillR
 		}
 		if startEvent.DeltaBytes != 0 {
 			partial.Events = append(partial.Events, &startEvent)
+		}
+		if cleanupEvent.DeltaBytes != 0 {
 			partial.Paths = append(partial.Paths, tempPaths...)
 			// Critical section to avoid loosing accounting info.
 			util.EnterCriticalSection()
@@ -623,6 +651,17 @@ func (self *Fork) cleanChunkTemp(partial *PartialVdrKillReport) *PartialVdrKillR
 			return nil
 		})
 	}
+	// Add metadata file sizes.
+	for _, chunk := range self.chunks {
+		for _, md := range chunk.metadata.glob() {
+			if info, err := os.Lstat(md); err != nil {
+				partial.Errors = append(partial.Errors, err.Error())
+			} else {
+				startEvent.DeltaBytes += int64(info.Size())
+			}
+		}
+	}
+
 	if self.node.rt.Config.Debug {
 		util.LogInfo("storage",
 			"%d bytes of chunk files for %s",
@@ -630,6 +669,8 @@ func (self *Fork) cleanChunkTemp(partial *PartialVdrKillReport) *PartialVdrKillR
 	}
 	if startEvent.DeltaBytes != 0 {
 		partial.Events = append(partial.Events, &startEvent)
+	}
+	if cleanupEvent.DeltaBytes != 0 {
 		partial.Paths = append(partial.Paths, temps...)
 		// Critical section to avoid loosing accounting info.
 		util.EnterCriticalSection()
@@ -694,6 +735,13 @@ func (self *Fork) cleanJoinTemp(partial *PartialVdrKillReport) *PartialVdrKillRe
 				return nil
 			})
 		}
+		for _, md := range self.join_metadata.glob() {
+			if info, err := os.Lstat(md); err == nil {
+				startEvent.DeltaBytes += int64(info.Size())
+			} else {
+				partial.Errors = append(partial.Errors, err.Error())
+			}
+		}
 		if self.node.rt.Config.Debug {
 			util.LogInfo("storage",
 				"%d bytes of join files for %s",
@@ -702,6 +750,8 @@ func (self *Fork) cleanJoinTemp(partial *PartialVdrKillReport) *PartialVdrKillRe
 
 		if startEvent.DeltaBytes != 0 {
 			partial.Events = append(partial.Events, &startEvent)
+		}
+		if cleanupEvent.DeltaBytes != 0 {
 			partial.Paths = append(partial.Paths, tempPaths...)
 			// Critical section to avoid loosing accounting info.
 			util.EnterCriticalSection()
