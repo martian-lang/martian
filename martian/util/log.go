@@ -7,16 +7,42 @@
 package util
 
 import (
+	"bytes"
 	"fmt"
 	"io"
 	golog "log"
 	"os"
 )
 
+// StringWriter is the interface for writers which can write
+// both bytes and strings.
+type StringWriter interface {
+	io.Writer
+	WriteString(string) (int, error)
+}
+
 type Logger struct {
-	stdoutWriter io.Writer
-	fileWriter   io.Writer
-	cache        string
+	stdoutWriter StringWriter
+	fileWriter   StringWriter
+	cache        bytes.Buffer
+}
+
+func (logger *Logger) Write(msg []byte) (int, error) {
+	if logger.fileWriter != nil {
+		return logger.fileWriter.Write(msg)
+	} else {
+		logger.cache.Write(msg)
+		return len(msg), nil
+	}
+}
+
+func (logger *Logger) WriteString(msg string) (int, error) {
+	if logger.fileWriter != nil {
+		return logger.fileWriter.WriteString(msg)
+	} else {
+		logger.cache.WriteString(msg)
+		return len(msg), nil
+	}
 }
 
 var ENABLE_LOGGING bool = true
@@ -33,36 +59,64 @@ const (
 	ANSI_WHITE   = 37
 )
 
-// Sets the target for Print* logging.
-func SetPrintLogger(w io.Writer) {
-	if ENABLE_LOGGING {
-		if LOGGER == nil {
-			LOGGER = &Logger{w, nil, ""}
-		} else {
-			LOGGER.stdoutWriter = w
-		}
-	}
-}
-
 func logInit() bool {
 	if ENABLE_LOGGING {
 		if LOGGER == nil {
-			LOGGER = &Logger{io.Writer(os.Stdout), nil, ""}
+			LOGGER = &Logger{stdoutWriter: os.Stdout}
 		}
 		return true
 	}
 	return false
 }
 
-func (logger *Logger) Write(msg []byte) (int, error) {
-	if logger.fileWriter != nil {
-		return logger.fileWriter.Write(msg)
+// Wrappers which handle lazy init and redirection to the global LOGGER.
+
+// A writer which can be passed to fmt.Fprintf for the print methods.
+type printTarget struct{}
+
+func (p *printTarget) Write(msg []byte) (int, error) {
+	if logInit() {
+		LOGGER.stdoutWriter.Write(msg)
+		return LOGGER.Write(msg)
 	} else {
-		logger.cache += string(msg)
 		return len(msg), nil
 	}
 }
 
+func (p *printTarget) WriteString(msg string) (int, error) {
+	if logInit() {
+		LOGGER.stdoutWriter.WriteString(msg)
+		return LOGGER.WriteString(msg)
+	} else {
+		return len(msg), nil
+	}
+}
+
+var printWriter = new(printTarget)
+
+// A writer which can be passed to fmt.Fprintf for the log methods.
+type logTarget struct{}
+
+func (p *logTarget) Write(msg []byte) (int, error) {
+	if logInit() {
+		return LOGGER.Write(msg)
+	} else {
+		return len(msg), nil
+	}
+}
+
+func (p *logTarget) WriteString(msg string) (int, error) {
+	if logInit() {
+		return LOGGER.WriteString(msg)
+	} else {
+		return len(msg), nil
+	}
+}
+
+var logWriter = new(logTarget)
+
+// Wraps the martian logger as go log.Logger object for use with, for example,
+// net/http.HttpServer.ErrorLog
 func GetLogger(component string) (*golog.Logger, bool) {
 	if logInit() {
 		return golog.New(LOGGER, "["+component+"]", golog.LstdFlags), true
@@ -71,20 +125,14 @@ func GetLogger(component string) (*golog.Logger, bool) {
 	}
 }
 
-func log(msg string) {
-	if logInit() {
-		if LOGGER.fileWriter != nil {
-			LOGGER.fileWriter.Write([]byte(msg))
+// Sets the target for Print* logging.
+func SetPrintLogger(w StringWriter) {
+	if ENABLE_LOGGING {
+		if LOGGER == nil {
+			LOGGER = &Logger{stdoutWriter: w}
 		} else {
-			LOGGER.cache += msg
+			LOGGER.stdoutWriter = w
 		}
-	}
-}
-
-func print(msg string) {
-	if logInit() {
-		LOGGER.stdoutWriter.Write([]byte(msg))
-		log(msg)
 	}
 }
 
@@ -92,53 +140,54 @@ func print(msg string) {
 func LogTee(filename string) {
 	if logInit() {
 		if LOGGER.fileWriter == nil {
-			logInit()
 			f, err := os.OpenFile(filename, os.O_WRONLY|os.O_CREATE|os.O_APPEND, 0644)
 			if err != nil {
 				fmt.Println("ERROR: Could not open log file: ", err)
 			} else {
-				LOGGER.fileWriter = io.Writer(f)
-				log(LOGGER.cache)
+				LOGGER.fileWriter = f
+				LOGGER.cache.WriteTo(f)
+				LOGGER.cache = bytes.Buffer{}
 			}
 		}
 	}
 }
 
 // Sets up the logging methods to log to the given writer.
-func LogTeeWriter(writer io.Writer) {
+func LogTeeWriter(writer StringWriter) {
 	if logInit() {
 		if LOGGER.fileWriter == nil {
-			logInit()
 			LOGGER.fileWriter = writer
-			log(LOGGER.cache)
+			LOGGER.cache.WriteTo(writer)
+			LOGGER.cache = bytes.Buffer{}
 		}
 	}
 }
 
-func formatRaw(format string, v ...interface{}) string {
-	return fmt.Sprintf(format, v...)
+func formatInfo(w io.Writer, component string, format string, v ...interface{}) {
+	fmt.Fprintf(w, "%s [%s] %s\n", Timestamp(), component, fmt.Sprintf(format, v...))
 }
 
-func formatInfo(component string, format string, v ...interface{}) string {
-	return fmt.Sprintf("%s [%s] %s\n", Timestamp(), component, fmt.Sprintf(format, v...))
-}
-
-func formatError(err error, component string, format string, v ...interface{}) string {
-	return fmt.Sprintf("%s [%s] %s\n          %s\n", Timestamp(), component, fmt.Sprintf(format, v...), err.Error())
+func formatError(w io.Writer, err error, component string, format string, v ...interface{}) {
+	args := make([]interface{}, 0, 3+len(v))
+	args = append(args, Timestamp(), component)
+	args = append(args, v...)
+	args = append(args, err.Error())
+	fmt.Fprintf(w, "%s [%s] "+format+"%s\n          %s\n",
+		args...)
 }
 
 // Logs the given string to the current log stream.  If one has not been
 // initialized with LogTee or LogTeeWriter, the content is buffered until
 // one of those methods is called.
 func Log(format string, v ...interface{}) {
-	log(formatRaw(format, v...))
+	fmt.Fprintf(logWriter, format, v...)
 }
 
 // Logs a line in the form "<timestamp> [component] <message>".  Component
 // is intended to indicate the source of the message and should be a consistent
 // length.  By convention, this length is 7 characters.
 func LogInfo(component string, format string, v ...interface{}) {
-	log(formatInfo(component, format, v...))
+	formatInfo(logWriter, component, format, v...)
 }
 
 // Logs a line in the form "<timestamp> [component] <message>" followed by
@@ -146,26 +195,26 @@ func LogInfo(component string, format string, v ...interface{}) {
 // the message and should be a consistent length.  By convention, this length
 // is 7 characters.
 func LogError(err error, component string, format string, v ...interface{}) {
-	log(formatError(err, component, format, v...))
+	formatError(logWriter, err, component, format, v...)
 }
 
 // Like Log, but also prints to standard output.
 func Print(format string, v ...interface{}) {
-	print(formatRaw(format, v...))
+	fmt.Fprintf(printWriter, format, v...)
 }
 
 func Println(format string, v ...interface{}) {
-	print(formatRaw(format, v...) + "\n")
+	Print(format+"\n", v...)
 }
 
 // Like LogInfo but also prints to standard output.
 func PrintInfo(component string, format string, v ...interface{}) {
-	print(formatInfo(component, format, v...))
+	formatInfo(printWriter, component, format, v...)
 }
 
 // Like LogError but also prints to standard output.
 func PrintError(err error, component string, format string, v ...interface{}) {
-	print(formatError(err, component, format, v...))
+	formatError(printWriter, err, component, format, v...)
 }
 
 // Surrounds the given string with ANSI color control characters.
