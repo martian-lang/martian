@@ -19,6 +19,7 @@ import (
 )
 
 func main() {
+	util.SetPrintLogger(os.Stderr)
 	util.SetupSignalHandlers()
 	// Command-line arguments.
 	doc := `Martian Compiler.

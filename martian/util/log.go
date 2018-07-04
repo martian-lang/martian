@@ -33,6 +33,17 @@ const (
 	ANSI_WHITE   = 37
 )
 
+// Sets the target for Print* logging.
+func SetPrintLogger(w io.Writer) {
+	if ENABLE_LOGGING {
+		if LOGGER == nil {
+			LOGGER = &Logger{w, nil, ""}
+		} else {
+			LOGGER.stdoutWriter = w
+		}
+	}
+}
+
 func logInit() bool {
 	if ENABLE_LOGGING {
 		if LOGGER == nil {
