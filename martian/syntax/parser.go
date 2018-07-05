@@ -76,7 +76,7 @@ func (exp *ValExp) resolveType(global *Ast, callable Callable) ([]string, int, e
 	switch exp.getKind() {
 
 	// Handle scalar types.
-	case KindInt, KindFloat, KindBool, KindMap, KindNull, "path":
+	case KindInt, KindFloat, KindBool, KindMap, KindNull, KindPath:
 		return []string{string(exp.getKind())}, 0, nil
 
 	// Handle strings (which could be files too).
@@ -87,7 +87,7 @@ func (exp *ValExp) resolveType(global *Ast, callable Callable) ([]string, int, e
 	case KindArray:
 		subexps := exp.Value.([]Exp)
 		if len(subexps) == 0 {
-			return []string{"null"}, 1, nil
+			return []string{KindNull}, 1, nil
 		}
 		arrayTypes := make([]string, 0, len(subexps))
 		commonArrayDim := -1
@@ -109,7 +109,7 @@ func (exp *ValExp) resolveType(global *Ast, callable Callable) ([]string, int, e
 		}
 		return arrayTypes, commonArrayDim + 1, errs.If()
 	// File: look for matching t in user/file type table
-	case "file":
+	case KindFile:
 		for userType := range global.UserTypeTable {
 			if strings.HasSuffix(exp.Value.(string), userType) {
 				return []string{userType}, 0, nil
@@ -163,16 +163,16 @@ func (global *Ast) isUserType(t string) bool {
 }
 
 func (global *Ast) checkTypeMatch(paramType string, valueType string) bool {
-	return (valueType == "null" ||
+	return (valueType == KindNull ||
 		paramType == valueType ||
-		(paramType == "path" && valueType == "string") ||
-		(paramType == "file" && valueType == "string") ||
-		(paramType == "float" && valueType == "int") ||
+		(paramType == KindPath && valueType == KindString) ||
+		(paramType == KindFile && valueType == KindString) ||
+		(paramType == KindFloat && valueType == KindInt) ||
 		// Allow implicit cast between string and user file type
 		(global.isUserType(paramType) &&
-			(valueType == "string" || valueType == "file")) ||
+			(valueType == KindString || valueType == KindFile)) ||
 		(global.isUserType(valueType) &&
-			(paramType == "string" || paramType == "file")))
+			(paramType == KindString || paramType == KindFile)))
 }
 
 func (bindings *BindStms) compile(global *Ast, callable Callable, params *Params) error {
@@ -233,7 +233,7 @@ func (binding *BindStm) compile(global *Ast, callable Callable, params *Params) 
 			return global.err(binding, "TypeMismatchError: got array value for non-array parameter '%s'", param.GetId())
 		} else if param.GetArrayDim() > 0 && arrayDim == 0 {
 			// Allow an array-decorated parameter to accept null values.
-			if len(valueTypes) < 1 || valueTypes[0] != "null" {
+			if len(valueTypes) < 1 || valueTypes[0] != KindNull {
 				return global.err(binding, "TypeMismatchError: expected array of '%s' for '%s'", param.GetTname(), param.GetId())
 			}
 		} else {
@@ -400,13 +400,13 @@ func (pipeline *Pipeline) topoSort() error {
 // Build type table, starting with builtins. Duplicates allowed.
 func (global *Ast) compileTypes() error {
 	builtinTypes := []*BuiltinType{
-		{"string"},
-		{"int"},
-		{"float"},
-		{"bool"},
-		{"path"},
-		{"file"},
-		{"map"},
+		{KindString},
+		{KindInt},
+		{KindFloat},
+		{KindBool},
+		{KindPath},
+		{KindFile},
+		{KindMap},
 	}
 	for _, builtinType := range builtinTypes {
 		global.TypeTable[builtinType.Id] = builtinType

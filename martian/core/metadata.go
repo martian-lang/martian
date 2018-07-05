@@ -134,7 +134,7 @@ type Metadata struct {
 	path          string
 	finalPath     string
 	contents      map[MetadataFileName]bool
-	readCache     map[MetadataFileName]interface{}
+	readCache     map[MetadataFileName]LazyArgumentMap
 	curFilesPath  string
 	finalFilePath string
 	journalPath   string
@@ -168,7 +168,7 @@ func NewMetadata(fqname string, p string) *Metadata {
 		path:          p,
 		finalPath:     p,
 		contents:      make(map[MetadataFileName]bool),
-		readCache:     make(map[MetadataFileName]interface{}),
+		readCache:     make(map[MetadataFileName]LazyArgumentMap),
 		curFilesPath:  path.Join(p, "files"),
 		finalFilePath: path.Join(p, "files"),
 	}
@@ -337,7 +337,7 @@ func (self *Metadata) removeAll() error {
 		self.contents = make(map[MetadataFileName]bool)
 	}
 	if len(self.readCache) > 0 {
-		self.readCache = make(map[MetadataFileName]interface{})
+		self.readCache = make(map[MetadataFileName]LazyArgumentMap)
 	}
 	self.notRunningSince = time.Time{}
 	self.lastRefresh = time.Time{}
@@ -450,7 +450,7 @@ func (self *Metadata) loadCache() {
 		self.contents = make(map[MetadataFileName]bool)
 	}
 	if len(self.readCache) > 0 {
-		self.readCache = make(map[MetadataFileName]interface{})
+		self.readCache = make(map[MetadataFileName]LazyArgumentMap)
 	}
 	for _, p := range paths {
 		self.contents[metadataFileNameFromPath(p)] = true
@@ -496,20 +496,20 @@ func (self *Metadata) readRaw(name MetadataFileName) string {
 	return s
 }
 
-func (self *Metadata) readFromCache(name MetadataFileName) (interface{}, bool) {
+func (self *Metadata) readFromCache(name MetadataFileName) (LazyArgumentMap, bool) {
 	self.mutex.Lock()
 	i, ok := self.readCache[name]
 	self.mutex.Unlock()
 	return i, ok
 }
 
-func (self *Metadata) saveToCache(name MetadataFileName, value interface{}) {
+func (self *Metadata) saveToCache(name MetadataFileName, value LazyArgumentMap) {
 	self.mutex.Lock()
 	self.readCache[name] = value
 	self.mutex.Unlock()
 }
 
-func (self *Metadata) read(name MetadataFileName) interface{} {
+func (self *Metadata) read(name MetadataFileName) LazyArgumentMap {
 	v, ok := self.readFromCache(name)
 	if ok {
 		return v
@@ -548,9 +548,13 @@ func (self *Metadata) _writeRawNoLock(name MetadataFileName, text string) error 
 	return err
 }
 
-// Writes the given raw data into the given metadata file.
 func (self *Metadata) WriteRaw(name MetadataFileName, text string) error {
-	err := ioutil.WriteFile(self.MetadataFilePath(name), []byte(text), 0644)
+	return self.WriteRawBytes(name, []byte(text))
+}
+
+// Writes the given raw data into the given metadata file.
+func (self *Metadata) WriteRawBytes(name MetadataFileName, text []byte) error {
+	err := ioutil.WriteFile(self.MetadataFilePath(name), text, 0644)
 	self.cache(name, self.uniquifier)
 	if err != nil {
 		msg := fmt.Sprintf("Could not write %s for %s: %s", name, self.fqname, err.Error())
@@ -594,7 +598,7 @@ func (self *Metadata) AppendAlarm(text string) error {
 // Serializes the given object and writes it to the given metadata file.
 func (self *Metadata) Write(name MetadataFileName, object interface{}) error {
 	bytes, _ := json.MarshalIndent(object, "", "    ")
-	return self.WriteRaw(name, string(bytes))
+	return self.WriteRawBytes(name, bytes)
 }
 
 // Writes the current timestamp into the given metadata file.  Generally used
@@ -655,7 +659,7 @@ func (self *Metadata) _removeNoLock(name MetadataFileName) error {
 func (self *Metadata) clearReadCache() {
 	self.mutex.Lock()
 	if len(self.readCache) > 0 {
-		self.readCache = make(map[MetadataFileName]interface{})
+		self.readCache = make(map[MetadataFileName]LazyArgumentMap)
 	}
 	self.mutex.Unlock()
 }

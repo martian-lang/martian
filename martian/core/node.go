@@ -7,9 +7,8 @@
 package core
 
 import (
+	"encoding/json"
 	"fmt"
-	"github.com/martian-lang/martian/martian/syntax"
-	"github.com/martian-lang/martian/martian/util"
 	"math"
 	"os"
 	"path"
@@ -21,6 +20,9 @@ import (
 	"strings"
 	"sync"
 	"time"
+
+	"github.com/martian-lang/martian/martian/syntax"
+	"github.com/martian-lang/martian/martian/util"
 )
 
 //=============================================================================
@@ -432,7 +434,17 @@ func (self *Node) matchFork(targetArgPermute map[string]interface{}) *Fork {
 	for _, fork := range self.forks {
 		every := true
 		for paramId, argValue := range fork.argPermute {
-			if !reflect.DeepEqual(targetArgPermute[paramId], argValue) {
+			unmarshal := func(val interface{}) interface{} {
+				if msg, ok := val.(json.RawMessage); ok {
+					var result interface{}
+					if json.Unmarshal(msg, &result) != nil {
+						return nil
+					}
+					return result
+				}
+				return val
+			}
+			if !reflect.DeepEqual(unmarshal(targetArgPermute[paramId]), unmarshal(argValue)) {
 				every = false
 				break
 			}

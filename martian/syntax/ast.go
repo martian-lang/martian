@@ -277,6 +277,8 @@ const (
 	KindNull           = "null"
 	KindSelf           = "self" // reference
 	KindCall           = "call" // reference
+	KindFile           = "file"
+	KindPath           = "path"
 )
 
 func NewAst(decs []Dec, call *CallStm, srcFile *SourceFile) *Ast {
@@ -360,7 +362,7 @@ func (*RefExp) getExp()   {}
 func (s *BuiltinType) GetId() string { return s.Id }
 func (s *BuiltinType) IsFile() bool {
 	switch s.Id {
-	case "path", "file":
+	case KindPath, KindFile:
 		return true
 	default:
 		return false

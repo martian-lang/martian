@@ -11,7 +11,7 @@ import (
 )
 
 func TestArgumentMapValidate(t *testing.T) {
-	var def ChunkDef
+	var def LazyChunkDef
 	if err := json.Unmarshal([]byte(`{
 		"__threads": 4,
 		"__mem_gb": 3,
@@ -87,10 +87,10 @@ func TestArgumentMapValidate(t *testing.T) {
 	if err, msg := def.Args.Validate(&params, true); err == nil {
 		t.Errorf("Expected error from float, got none.")
 	} else if strings.TrimSpace(err.Error()) !=
-		"Expected int input parameter 'bar' with value '1.2' cannot be parsed as an integer" {
+		"Expected int input parameter 'bar' with value \"1.2\" cannot be parsed as an integer." {
 		t.Errorf(
 			"Validation error: expected \""+
-				"Expected int input parameter 'bar' with value '1.2' cannot be parsed as an integer"+
+				"Expected int input parameter 'bar' with value \"1.2\" cannot be parsed as an integer."+
 				"\", got \"%v\"",
 			err)
 	} else if msg != "" {

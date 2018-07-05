@@ -19,8 +19,8 @@ import (
 
 // Mapping from argument or output names to values.
 //
-// Includes convenience methods to validate the arguments against parameter
-// lists from MRO, and to convert to or from other structured data types.
+// Includes convenience methods to convert to or from other structured data
+// types.
 //
 // ArgumentMap always deserializes numbers as json.Number values, in order
 // to prevent loss of precision for integer types.
@@ -41,19 +41,24 @@ func (self *ArgumentMap) UnmarshalJSON(b []byte) error {
 
 // Returns true if the given value has the correct mro type.
 // Non-fatal errors are written to alarms.
-func checkType(val interface{}, typename string, arrayDim int,
+func checkType(val json.RawMessage, typename string, arrayDim int,
 	alarms *bytes.Buffer) (bool, string) {
-	incorrectType := func(val interface{}) (bool, string) {
-		return false, fmt.Sprintf("has incorrect type %v",
-			reflect.TypeOf(val))
+	truncateMessage := func(val json.RawMessage, expect string) (bool, string) {
+		if len(val) > 35 {
+			tr := append(val[:15:15], "..."...)
+			val = append(tr, val[len(val)-15:]...)
+		}
+		return false, fmt.Sprintf("with value %q cannot be parsed as %s.",
+			[]byte(val), expect)
+	}
+	// Null is always legal.
+	if bytes.Equal(val, nullBytes) {
+		return true, ""
 	}
 	if arrayDim > 0 {
-		if val == nil {
-			return true, ""
-		}
-		arr, ok := val.([]interface{})
-		if !ok {
-			return incorrectType(val)
+		var arr []json.RawMessage
+		if err := json.Unmarshal(val, &arr); err != nil {
+			return truncateMessage(val, "an array")
 		}
 		for i, v := range arr {
 			if ok, msg := checkType(v, typename, arrayDim-1, alarms); !ok {
@@ -64,74 +69,68 @@ func checkType(val interface{}, typename string, arrayDim int,
 	} else {
 		switch typename {
 		case "float":
-			if v, ok := val.(json.Number); !ok {
-				// Usually, ArgumentMap is populated from json,
-				// so that is the fast path.
-				switch val.(type) {
-				case float32, float64:
-					return true, ""
-				default:
-					return incorrectType(val)
-				}
-			} else if _, err := v.Float64(); err != nil {
-				return false, fmt.Sprintf(
-					"with value '%v' cannot be parsed as a floating point number",
-					v)
+			var v float64
+			if err := json.Unmarshal(val, &v); err != nil {
+				return truncateMessage(val, "a floating point number")
 			} else {
 				return true, ""
 			}
 		case "int":
-			if v, ok := val.(json.Number); !ok {
-				// Usually, ArgumentMap is populated from json,
-				// so that is the fast path.
-				switch val.(type) {
-				case int, int8, int32, int64,
-					uint, uint8, uint32, uint64:
-					return true, ""
-				default:
-					return incorrectType(val)
-				}
-			} else if _, err := v.Int64(); err != nil {
-				return false, fmt.Sprintf(
-					"with value '%v' cannot be parsed as an integer",
-					v)
+			var v int64
+			if err := json.Unmarshal(val, &v); err != nil {
+				return truncateMessage(val, "an integer")
 			} else {
 				return true, ""
 			}
 		case "bool":
-			if _, ret := val.(bool); !ret {
-				return incorrectType(val)
+			var v bool
+			if err := json.Unmarshal(val, &v); err != nil {
+				return truncateMessage(val, "boolean")
 			} else {
 				return true, ""
 			}
 		case "map":
-			if val == nil {
-				return true, ""
-			}
-			if _, ret := val.(map[string]interface{}); !ret {
-				return incorrectType(val)
+			var v map[string]json.RawMessage
+			if err := json.Unmarshal(val, &v); err != nil {
+				return truncateMessage(val, "a map")
 			} else {
 				return true, ""
 			}
 		case "path", "file", "string":
-			if _, ret := val.(string); !ret {
-				return incorrectType(val)
+			var v string
+			if err := json.Unmarshal(val, &v); err != nil {
+				return truncateMessage(val, "a string")
 			} else {
 				return true, ""
 			}
 		default:
 			// User defined file types.  For backwards compatiblity we need
 			// to accept everything here.
-			_, ret := val.(string)
-			if !ret {
+			var v string
+			if err := json.Unmarshal(val, &v); err != nil {
+				trunc := val
+				if len(val) > 35 {
+					trunc = append(val[:15:15], "..."...)
+					trunc = append(trunc, val[len(val)-15:]...)
+				}
 				fmt.Fprintf(alarms,
-					"Expected type %s but found %v instead.\n",
-					typename, reflect.TypeOf(val))
+					"Expected type %s but found %q instead.\n",
+					typename, trunc)
 			}
 			return true, ""
 		}
 	}
 }
+
+// Mapping from argument or output names to values.
+//
+// LazyArgumentMap does not fully deserialize the arguments.
+//
+// Includes convenience methods to validate the arguments against parameter
+// lists from MRO.
+type LazyArgumentMap map[string]json.RawMessage
+
+var nullBytes = []byte("null")
 
 // Validate that all of the arguments in the map are declared parameters, and
 // that all declared parameters are set in the arguments to a value of the
@@ -153,7 +152,7 @@ func checkType(val interface{}, typename string, arrayDim int,
 //     )
 //
 // then in the outputs from the chunks, d is required but b is optional.
-func (self ArgumentMap) Validate(expected *syntax.Params, isInput bool, optional ...*syntax.Params) (error, string) {
+func (self LazyArgumentMap) Validate(expected *syntax.Params, isInput bool, optional ...*syntax.Params) (error, string) {
 	var result, alarms bytes.Buffer
 	tname := func(param syntax.Param) string {
 		return param.GetTname() + strings.Repeat("[]", param.GetArrayDim())
@@ -166,10 +165,13 @@ func (self ArgumentMap) Validate(expected *syntax.Params, isInput bool, optional
 				fmt.Fprintf(&result, "Missing output value '%s'\n", param.GetId())
 			}
 			continue
-		} else if val == nil {
+		} else if len(val) == 0 || bytes.Equal(val, nullBytes) {
 			// Allow for null output parameters
 			continue
-		} else if ok, msg := checkType(val, param.GetTname(), param.GetArrayDim(), &alarms); !ok {
+		} else if ok, msg := checkType(val,
+			param.GetTname(),
+			param.GetArrayDim(),
+			&alarms); !ok {
 			if isInput {
 				fmt.Fprintf(&result,
 					"Expected %s input parameter '%s' %s\n",
@@ -189,8 +191,11 @@ func (self ArgumentMap) Validate(expected *syntax.Params, isInput bool, optional
 			for _, params := range optional {
 				if param, ok := params.Table[key]; ok {
 					isOptional = true
-					if val != nil {
-						if ok, msg := checkType(val, param.GetTname(), param.GetArrayDim(), &alarms); !ok {
+					if len(val) > 0 && !bytes.Equal(val, nullBytes) {
+						if ok, msg := checkType(val,
+							param.GetTname(),
+							param.GetArrayDim(),
+							&alarms); !ok {
 							if isInput {
 								fmt.Fprintf(&result,
 									"Optional %s input parameter '%s' %s\n",
@@ -239,8 +244,20 @@ func MakeArgumentMap(binding interface{}) ArgumentMap {
 	switch binding := binding.(type) {
 	case ArgumentMap:
 		return binding
+	case LazyArgumentMap:
+		m := make(ArgumentMap, len(binding))
+		for k, v := range binding {
+			m[k] = v
+		}
+		return m
 	case map[string]interface{}:
 		return ArgumentMap(binding)
+	case map[string]json.RawMessage:
+		m := make(ArgumentMap, len(binding))
+		for k, v := range binding {
+			m[k] = v
+		}
+		return m
 	default:
 		v := reflect.ValueOf(binding)
 		t := v.Type()
@@ -273,6 +290,71 @@ func MakeArgumentMap(binding interface{}) ArgumentMap {
 			// Fall back on cross-serializing as json.  This ensures that any
 			// nonstandard serialization gets applied.
 			m := make(ArgumentMap)
+			if err := json.Unmarshal(b, &m); err == nil {
+				return m
+			}
+		}
+	}
+	return nil
+}
+
+// Convenience method to convert an arbitrary object type into
+// a LazyArgumentMap.
+//
+// This is intended primarily for use by authors of native Go stages.
+func MakeLazyArgumentMap(binding interface{}) LazyArgumentMap {
+	if binding == nil {
+		return nil
+	}
+	switch binding := binding.(type) {
+	case LazyArgumentMap:
+		return binding
+	case ArgumentMap:
+		m := make(LazyArgumentMap, len(binding))
+		for k, v := range binding {
+			m[k], _ = json.Marshal(v)
+		}
+		return m
+	case map[string]interface{}:
+		m := make(LazyArgumentMap, len(binding))
+		for k, v := range binding {
+			m[k], _ = json.Marshal(v)
+		}
+		return m
+	case map[string]json.RawMessage:
+		return LazyArgumentMap(binding)
+	default:
+		v := reflect.ValueOf(binding)
+		t := v.Type()
+		for t.Kind() == reflect.Ptr || t.Kind() == reflect.Interface {
+			if v.IsNil() {
+				return nil
+			}
+			v = v.Elem()
+			t = v.Type()
+		}
+		if t := v.Type(); t.Kind() == reflect.Map && t.Key().Kind() == reflect.String {
+			// For map[string]X just get the key/value pairs out.
+			if v.Len() == 0 {
+				return nil
+			}
+			m := make(LazyArgumentMap)
+			for _, key := range v.MapKeys() {
+				if vv := v.MapIndex(key); vv.IsValid() {
+					m[key.String()], _ = json.Marshal(vv.Interface())
+				}
+			}
+			return m
+		} else if t.Kind() == reflect.Struct &&
+			!reflect.PtrTo(t).Implements(jsonMarshalerType) {
+			// If the struct has custom marshaling logic then we need to
+			// respect that.  Otherwise we can just pull out the public
+			// fields.
+			return MakeLazyArgumentMap(argumentMapFromStruct(t, v))
+		} else if b, err := json.Marshal(binding); err == nil {
+			// Fall back on cross-serializing as json.  This ensures that any
+			// nonstandard serialization gets applied.
+			m := make(LazyArgumentMap)
 			if err := json.Unmarshal(b, &m); err == nil {
 				return m
 			}

@@ -5,6 +5,8 @@ package core
 // Methods to resolve argument and output bindings.
 
 import (
+	"encoding/json"
+
 	"github.com/martian-lang/martian/martian/syntax"
 )
 
@@ -172,8 +174,7 @@ func (self *Binding) resolve(argPermute map[string]interface{}) interface{} {
 	}
 	if self.boundNode != nil {
 		matchedFork := self.boundNode.getNode().matchFork(argPermute)
-		outputs, ok := matchedFork.metadata.read(OutsFile).(map[string]interface{})
-		if ok {
+		if outputs := matchedFork.metadata.read(OutsFile); outputs != nil {
 			output, ok := outputs[self.output]
 			if ok {
 				return output
@@ -209,12 +210,17 @@ func (self *Binding) serializeState(argPermute map[string]interface{}) *BindingI
 	}
 }
 
-func resolveBindings(bindings map[string]*Binding, argPermute map[string]interface{}) map[string]interface{} {
-	resolvedBindings := map[string]interface{}{}
+func resolveBindings(bindings map[string]*Binding, argPermute map[string]interface{}) (LazyArgumentMap, error) {
+	resolvedBindings := make(LazyArgumentMap, len(bindings))
+	var errs syntax.ErrorList
 	for id, binding := range bindings {
-		resolvedBindings[id] = binding.resolve(argPermute)
+		if b, err := json.Marshal(binding.resolve(argPermute)); err != nil {
+			errs = append(errs, err)
+		} else {
+			resolvedBindings[id] = b
+		}
 	}
-	return resolvedBindings
+	return resolvedBindings, errs.If()
 }
 
 func (pipestance *Pipestance) retain(ref *syntax.RefExp) {

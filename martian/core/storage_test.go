@@ -1,6 +1,7 @@
 package core
 
 import (
+	"encoding/json"
 	"io/ioutil"
 	"os"
 	"path"
@@ -49,13 +50,22 @@ func TestGetArgsToFilesMap(t *testing.T) {
 		ioutil.WriteFile(p, []byte(p), 0644)
 	}
 	os.Symlink(realPaths[0], link)
-	outs := map[string]interface{}{
-		"thing1":      realPaths[0],
-		"thing2":      realPaths[1],
-		"things":      path.Join(forkDir, "thing"),
-		"otherThings": path.Join(forkDir, "not", "a", "path"),
-		"what":        realPaths[3],
-		"link":        link,
+
+	var outs LazyArgumentMap
+	{
+		outsFrom := map[string]interface{}{
+			"thing1":      realPaths[0],
+			"thing2":      realPaths[1],
+			"things":      path.Join(forkDir, "thing"),
+			"otherThings": path.Join(forkDir, "not", "a", "path"),
+			"what":        realPaths[3],
+			"link":        link,
+		}
+		if b, err := json.Marshal(outsFrom); err != nil {
+			t.Fatal(err)
+		} else if err := json.Unmarshal(b, &outs); err != nil {
+			t.Fatal(err)
+		}
 	}
 	result := getArgsToFilesMap(fileArgs, outs, true, "test")
 	if result == nil {
@@ -139,13 +149,21 @@ func TestAddFilesToArgsMappings(t *testing.T) {
 		ioutil.WriteFile(p, []byte(p), 0644)
 	}
 	os.Symlink(realPaths[0], link)
-	outs := map[string]interface{}{
-		"thing1":      realPaths[0],
-		"thing2":      realPaths[1],
-		"things":      path.Join(forkDir, "thing"),
-		"otherThings": path.Join(forkDir, "not", "a", "path"),
-		"what":        realPaths[3],
-		"link":        link,
+	var outs LazyArgumentMap
+	{
+		outsFrom := map[string]interface{}{
+			"thing1":      realPaths[0],
+			"thing2":      realPaths[1],
+			"things":      path.Join(forkDir, "thing"),
+			"otherThings": path.Join(forkDir, "not", "a", "path"),
+			"what":        realPaths[3],
+			"link":        link,
+		}
+		if b, err := json.Marshal(outsFrom); err != nil {
+			t.Fatal(err)
+		} else if err := json.Unmarshal(b, &outs); err != nil {
+			t.Fatal(err)
+		}
 	}
 	argToFiles := getArgsToFilesMap(fileArgs, outs, true, "test")
 	if argToFiles == nil {

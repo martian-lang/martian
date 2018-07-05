@@ -7,6 +7,7 @@
 package core
 
 import (
+	"bytes"
 	"encoding/json"
 	"fmt"
 	"math"
@@ -57,7 +58,7 @@ var disableUniquification = (os.Getenv("MRO_UNIQUIFIED_DIRECTORIES") == "disable
 type Chunk struct {
 	fork       *Fork
 	index      int
-	chunkDef   *ChunkDef
+	chunkDef   *LazyChunkDef
 	fqname     string
 	metadata   *Metadata
 	hasBeenRun bool
@@ -66,13 +67,13 @@ type Chunk struct {
 // Exportable information about a Chunk object.
 type ChunkInfo struct {
 	Index    int           `json:"index"`
-	ChunkDef *ChunkDef     `json:"chunkDef"`
+	ChunkDef *LazyChunkDef `json:"chunkDef"`
 	State    MetadataState `json:"state"`
 	Metadata *MetadataInfo `json:"metadata"`
 }
 
 func NewChunk(fork *Fork, index int,
-	chunkDef *ChunkDef, chunkIndexWidth int) *Chunk {
+	chunkDef *LazyChunkDef, chunkIndexWidth int) *Chunk {
 	self := &Chunk{}
 	self.fork = fork
 	self.index = index
@@ -136,7 +137,7 @@ func (self *Chunk) verifyDef() {
 	}
 }
 
-func (self *Chunk) verifyOutput(output interface{}) bool {
+func (self *Chunk) verifyOutput(output LazyArgumentMap) bool {
 	if syntax.GetEnforcementLevel() <= syntax.EnforceDisable {
 		return true
 	}
@@ -147,12 +148,9 @@ func (self *Chunk) verifyOutput(output interface{}) bool {
 	}
 	if output == nil {
 		self.metadata.WriteRaw(Errors, "Output not found.")
-	}
-	if outputMap, ok := output.(map[string]interface{}); !ok {
-		self.metadata.WriteRaw(Errors, "Output was not a map.")
 	} else {
 		outParams := self.Stage().ChunkOuts
-		if err, alarms := ArgumentMap(outputMap).Validate(
+		if err, alarms := output.Validate(
 			outParams, true, self.fork.OutParams()); err != nil {
 			self.metadata.WriteRaw(Errors, err.Error()+alarms)
 			return false
@@ -208,7 +206,7 @@ func (self *Chunk) updateState(state MetadataFileName, uniquifier string) {
 	}
 }
 
-func (self *Chunk) step(bindings map[string]interface{}) {
+func (self *Chunk) step(bindings LazyArgumentMap) {
 	if self.getState() != Ready {
 		return
 	}
@@ -288,7 +286,7 @@ type Fork struct {
 	split_has_run  bool
 	join_has_run   bool
 	argPermute     map[string]interface{}
-	stageDefs      *StageDefs
+	stageDefs      *LazyStageDefs
 	perfCache      *ForkPerfCache
 	lastPrint      time.Time
 	metadatasCache []*Metadata // cache for collectMetadata
@@ -351,9 +349,9 @@ func NewFork(nodable Nodable, index int, argPermute map[string]interface{}) *For
 	self.lastPrint = time.Now()
 
 	// By default, initialize stage defs with one empty chunk.
-	self.stageDefs = &StageDefs{ChunkDefs: []*ChunkDef{&ChunkDef{}}}
+	self.stageDefs = &LazyStageDefs{ChunkDefs: []*LazyChunkDef{new(LazyChunkDef)}}
 
-	if err := json.Unmarshal([]byte(self.split_metadata.readRaw(StageDefsFile)), &self.stageDefs); err == nil {
+	if err := self.split_metadata.ReadInto(StageDefsFile, &self.stageDefs); err == nil {
 		width := util.WidthForInt(len(self.stageDefs.ChunkDefs))
 		self.chunks = make([]*Chunk, 0, len(self.stageDefs.ChunkDefs))
 		for i, chunkDef := range self.stageDefs.ChunkDefs {
@@ -504,61 +502,73 @@ func (self *Fork) mkdirs() {
 	}
 }
 
+var escapedPathSep = func() []byte {
+	s, err := json.Marshal(string([]rune{os.PathSeparator}))
+	if err != nil {
+		panic(err)
+	}
+	return bytes.Trim(s, "\"")
+}()
+
 // Get strings appearing in data as deserialized from json, e.g. recursively
 // searching map[string]interface{}, []interface{} and string.  Ignores bool
 // and json.Number/float64.  Ignores strings which do not contain a path
 // separator character, since there is no way for downstream stages to figure
 // out the location of this stage's file outputs without an absolute path, or
 // at least one relative to something the downstream stage can know about.
-func getMaybeFileNames(value interface{}) []string {
-	if value == nil {
+func getMaybeFileNames(value json.RawMessage) []string {
+	if len(value) == 0 || bytes.Equal(value, nullBytes) {
 		return nil
 	}
-	switch v := value.(type) {
-	case string:
-		if strings.ContainsRune(v, os.PathSeparator) {
-			return []string{v}
+	if !bytes.Contains(value, escapedPathSep) {
+		return nil
+	}
+	var s string
+	if json.Unmarshal(value, &s) == nil {
+		if strings.ContainsRune(s, os.PathSeparator) {
+			return []string{s}
 		} else {
 			return nil
 		}
-	case []interface{}:
-		if len(v) == 0 {
+	}
+	var varr []json.RawMessage
+	if json.Unmarshal(value, &varr) == nil {
+		if len(varr) == 0 {
 			return nil
 		}
-		var vs []string
-		for _, element := range v {
+		vs := make([]string, 0, len(varr))
+		for _, element := range varr {
 			vs = append(vs, getMaybeFileNames(element)...)
 		}
 		return vs
-	case map[string]interface{}:
-		if len(v) == 0 {
+	}
+	var vmap map[string]json.RawMessage
+	if json.Unmarshal(value, &vmap) == nil {
+		if vmap == nil || len(vmap) == 0 {
 			return nil
 		}
-		var vs []string
-		for key, element := range v {
+		vs := make([]string, 0, len(vmap))
+		for key, element := range vmap {
 			if strings.ContainsRune(key, os.PathSeparator) {
 				vs = append(vs, key)
 			}
 			vs = append(vs, getMaybeFileNames(element)...)
 		}
 		return vs
-	default:
-		return nil
 	}
+	return nil
 }
 
 // Once the job has completed, look for arguments which might contain file
 // names and remove any which didn't actually have any.
-func (self *Fork) removeEmptyFileArgs(outs interface{}) {
+func (self *Fork) removeEmptyFileArgs(outs map[string]json.RawMessage) {
 	self.storageLock.Lock()
 	defer self.storageLock.Unlock()
 	if len(self.fileArgs) == 0 {
 		return
-	} else if outsMap, ok := outs.(map[string]interface{}); !ok {
-		return
 	} else {
 		for arg := range self.fileArgs {
-			if val, ok := outsMap[arg]; !ok ||
+			if val, ok := outs[arg]; !ok ||
 				len(getMaybeFileNames(val)) == 0 {
 				self.removeFileArg(arg)
 			}
@@ -566,15 +576,10 @@ func (self *Fork) removeEmptyFileArgs(outs interface{}) {
 	}
 }
 
-func (self *Fork) verifyOutput(outs interface{}) (bool, string) {
+func (self *Fork) verifyOutput(outs LazyArgumentMap) (bool, string) {
 	outparams := self.OutParams()
 	if len(outparams.List) > 0 {
-		outsMap, ok := outs.(map[string]interface{})
-		if !ok {
-			return false, "Fork outs were not a map."
-		}
-		outputs := ArgumentMap(outsMap)
-		if err, alarms := outputs.Validate(outparams, false); err != nil {
+		if err, alarms := outs.Validate(outparams, false); err != nil {
 			return false, err.Error() + alarms
 		} else if alarms != "" {
 			switch syntax.GetEnforcementLevel() {
@@ -702,12 +707,11 @@ func (self *Fork) skip() {
 
 func (self *Fork) writeInvocation() {
 	if !self.metadata.exists(InvocationFile) {
-		argBindings := resolveBindings(self.node.argbindings, self.argPermute)
-		sweepBindings := []string{}
+		argBindings, _ := resolveBindings(self.node.argbindings, self.argPermute)
 		incpaths := self.node.invocation.IncludePaths
 		invocation, _ := BuildCallSource(incpaths,
 			self.node.callableId,
-			argBindings, sweepBindings,
+			MakeArgumentMap(argBindings), nil,
 			self.node.callable)
 		self.metadata.WriteRaw(InvocationFile, invocation)
 	}
@@ -737,10 +741,14 @@ func (self *Fork) step() {
 		}
 
 		// Lazy-evaluate bindings, only once per step.
-		var bindings map[string]interface{}
-		getBindings := func() map[string]interface{} {
+		var bindings LazyArgumentMap
+		getBindings := func() LazyArgumentMap {
 			if bindings == nil {
-				bindings = resolveBindings(self.node.argbindings, self.argPermute)
+				var err error
+				bindings, err = resolveBindings(self.node.argbindings, self.argPermute)
+				if err != nil {
+					util.PrintError(err, "runtime", "Error resolving argument bindings.")
+				}
 			}
 			return bindings
 		}
@@ -783,7 +791,7 @@ func (self *Fork) step() {
 			// written yet or is corrupted. Check that stage_defs exists
 			// before attempting to read and unmarshal it.
 			if self.split_metadata.exists(StageDefsFile) {
-				if err := json.Unmarshal([]byte(self.split_metadata.readRaw(StageDefsFile)), &self.stageDefs); err != nil {
+				if err := self.split_metadata.ReadInto(StageDefsFile, &self.stageDefs); err != nil {
 					errstring := "none"
 					if err != nil {
 						errstring = err.Error()
@@ -862,7 +870,11 @@ func (self *Fork) step() {
 					self.node.runJoin(self.fqname, self.join_metadata, threads, memGB, special)
 				}
 			} else {
-				self.join_metadata.Write(OutsFile, self.chunks[0].metadata.read(OutsFile))
+				if b, err := self.chunks[0].metadata.readRawBytes(OutsFile); err == nil {
+					self.join_metadata.WriteRawBytes(OutsFile, b)
+				} else {
+					util.LogError(err, "runtime", "Could not read stage outs file.")
+				}
 				self.join_metadata.WriteTime(CompleteFile)
 				state = Complete.Prefixed(JoinPrefix)
 			}
@@ -870,7 +882,11 @@ func (self *Fork) step() {
 		if state == Complete.Prefixed(JoinPrefix) {
 			self.node.rt.JobManager.endJob(self.join_metadata)
 			joinOut := self.join_metadata.read(OutsFile)
-			self.metadata.Write(OutsFile, joinOut)
+			if joinOut == nil {
+				self.metadata.WriteRaw(OutsFile, "{}")
+			} else {
+				self.metadata.Write(OutsFile, joinOut)
+			}
 			if self.node.rt.Config.VdrMode == "post" {
 				// Still clean up tmp, but run before we've declared
 				// the stage maybe complete.
@@ -917,15 +933,19 @@ func (self *Fork) step() {
 			return
 		}
 		self.writeInvocation()
-		outs := resolveBindings(self.node.retbindings, self.argPermute)
-		self.metadata.Write(OutsFile, outs)
-		if ok, msg := self.verifyOutput(outs); ok {
-			if msg != "" {
-				self.metadata.AppendAlarm(msg)
-			}
-			self.metadata.WriteTime(CompleteFile)
+		if outs, err := resolveBindings(self.node.retbindings, self.argPermute); err != nil {
+			util.PrintError(err, "runtime", "Error resolving output argument bindings.")
+			self.metadata.WriteRaw(Errors, err.Error())
 		} else {
-			self.metadata.WriteRaw(Errors, msg)
+			self.metadata.Write(OutsFile, outs)
+			if ok, msg := self.verifyOutput(outs); ok {
+				if msg != "" {
+					self.metadata.AppendAlarm(msg)
+				}
+				self.metadata.WriteTime(CompleteFile)
+			} else {
+				self.metadata.WriteRaw(Errors, msg)
+			}
 		}
 	}
 }
@@ -1003,19 +1023,16 @@ func (self *Fork) postProcess() {
 	// Create the fork-specific outs/ folder
 	util.MkdirAll(outsPath)
 
+	paramList := self.OutParams().List
+
 	// Get fork's output parameter values
-	outs := map[string]interface{}{}
-	if data := self.metadata.read(OutsFile); data != nil {
-		if v, ok := data.(map[string]interface{}); ok {
-			outs = v
-		}
-	}
+	outs := make(map[string]interface{}, len(paramList))
+	self.metadata.ReadInto(OutsFile, &outs)
 
 	// Error message accumulator
 	errors := []error{}
 
 	// Calculate longest key name for alignment
-	paramList := self.OutParams().List
 	keyWidth := 0
 	for _, param := range paramList {
 		// Print out the param help and value

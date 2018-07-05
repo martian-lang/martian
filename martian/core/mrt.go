@@ -7,6 +7,7 @@ package core
 // private internals.
 
 import (
+	"encoding/json"
 	"errors"
 	"fmt"
 	"io/ioutil"
@@ -231,9 +232,8 @@ func (n *Node) VDRMurdered() bool {
 		if thiskilled {
 			jsondata := f.metadata.read(VdrKill)
 
-			/* TODO: Do some type checking here. */
-			m := jsondata.(map[string]interface{})
-			killcount := m["count"].(float64)
+			var killcount int
+			json.Unmarshal([]byte(jsondata["count"]), &killcount)
 
 			if killcount > 0 {
 				util.Println("VDR DETECTED: %v", n.name)
