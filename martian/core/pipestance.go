@@ -574,7 +574,7 @@ func (self *Pipestance) SerializePerf() []*NodePerfInfo {
 	if len(ser) > 0 {
 		overallPerf := ser[0]
 		self.ComputeDiskUsage(overallPerf)
-		overallPerf.HighMem = &self.node.rt.LocalJobManager.(*LocalJobManager).highMem
+		overallPerf.HighMem = &self.node.rt.LocalJobManager.highMem
 	}
 	return ser
 }

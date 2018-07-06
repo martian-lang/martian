@@ -432,7 +432,11 @@ func addFilesToArgsMappings(fpath string, debug bool, fqname string,
 // are still added to the set, so VDR knows what it can kill.
 func (self *Fork) cacheParamFileMap(outs LazyArgumentMap) {
 	if outs == nil {
-		outs = self.metadata.read(OutsFile)
+		var err error
+		outs, err = self.metadata.read(OutsFile, self.node.rt.FreeMemBytes()/2)
+		if err != nil {
+			util.LogError(err, "runtime", "Error reading stage outs.")
+		}
 	}
 	if outs == nil {
 		return

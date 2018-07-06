@@ -404,7 +404,8 @@ func (self *Node) buildForks(bindings []*Binding) {
 		// will also match using sweepRootId, not id.
 		// This is required for proper forking when param names don't match.
 		paramIds = append(paramIds, binding.sweepRootId)
-		argRanges = append(argRanges, binding.resolve(nil))
+		v, _ := binding.resolve(nil, 0)
+		argRanges = append(argRanges, v)
 	}
 
 	// Build out argument permutations.
@@ -869,7 +870,8 @@ func (self *Node) refreshState(readOnly bool) {
 func (self *Node) serializeState() *NodeInfo {
 	sweepbindings := []*BindingInfo{}
 	for _, sweepbinding := range self.sweepbindings {
-		sweepbindings = append(sweepbindings, sweepbinding.serializeState(nil))
+		v, _ := sweepbinding.serializeState(nil, 0)
+		sweepbindings = append(sweepbindings, v)
 	}
 	forks := []*ForkInfo{}
 	for _, fork := range self.forks {

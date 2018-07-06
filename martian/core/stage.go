@@ -650,9 +650,17 @@ func (self *Fork) getState() MetadataState {
 
 func (self *Fork) disabled() bool {
 	for _, bind := range self.node.disabled {
-		if res := bind.resolve(self.argPermute); res != nil {
-			if d, ok := res.(bool); ok && d {
-				return true
+		if res, _ := bind.resolve(self.argPermute, self.node.rt.FreeMemBytes()/2); res != nil {
+			switch d := res.(type) {
+			case bool:
+				if d {
+					return true
+				}
+			case json.RawMessage:
+				var v bool
+				if json.Unmarshal(d, &v) == nil && v {
+					return true
+				}
 			}
 		}
 	}
@@ -707,7 +715,8 @@ func (self *Fork) skip() {
 
 func (self *Fork) writeInvocation() {
 	if !self.metadata.exists(InvocationFile) {
-		argBindings, _ := resolveBindings(self.node.argbindings, self.argPermute)
+		argBindings, _ := resolveBindings(self.node.argbindings, self.argPermute,
+			self.node.rt.FreeMemBytes()/int64(1+len(self.node.prenodes)))
 		incpaths := self.node.invocation.IncludePaths
 		invocation, _ := BuildCallSource(incpaths,
 			self.node.callableId,
@@ -745,7 +754,8 @@ func (self *Fork) step() {
 		getBindings := func() LazyArgumentMap {
 			if bindings == nil {
 				var err error
-				bindings, err = resolveBindings(self.node.argbindings, self.argPermute)
+				bindings, err = resolveBindings(self.node.argbindings, self.argPermute,
+					self.node.rt.FreeMemBytes()/int64(len(self.node.prenodes)+1))
 				if err != nil {
 					util.PrintError(err, "runtime", "Error resolving argument bindings.")
 				}
@@ -854,10 +864,17 @@ func (self *Fork) step() {
 			if self.Split() {
 				ok := true
 				chunkOuts := make([]interface{}, 0, len(self.chunks))
-				for _, chunk := range self.chunks {
-					outs := chunk.metadata.read(OutsFile)
-					chunkOuts = append(chunkOuts, outs)
-					ok = chunk.verifyOutput(outs) && ok
+				if len(self.chunks) > 0 {
+					readSize := self.node.rt.FreeMemBytes() / int64(2*len(self.chunks))
+					for _, chunk := range self.chunks {
+						if outs, err := chunk.metadata.read(OutsFile, readSize); err != nil {
+							chunk.metadata.WriteRaw(Errors, err.Error())
+							ok = false
+						} else {
+							chunkOuts = append(chunkOuts, outs)
+							ok = chunk.verifyOutput(outs) && ok
+						}
+					}
 				}
 				if !ok {
 					return
@@ -881,11 +898,20 @@ func (self *Fork) step() {
 		}
 		if state == Complete.Prefixed(JoinPrefix) {
 			self.node.rt.JobManager.endJob(self.join_metadata)
-			joinOut := self.join_metadata.read(OutsFile)
-			if joinOut == nil {
-				self.metadata.WriteRaw(OutsFile, "{}")
+			var joinOut LazyArgumentMap
+			if len(self.OutParams().List) > 0 {
+				var err error
+				joinOut, err = self.join_metadata.read(OutsFile, self.node.rt.FreeMemBytes()/3)
+				if err != nil {
+					self.join_metadata.WriteRaw(Errors, err.Error())
+					return
+				} else if joinOut == nil {
+					self.metadata.WriteRaw(OutsFile, "{}")
+				} else {
+					self.metadata.Write(OutsFile, joinOut)
+				}
 			} else {
-				self.metadata.Write(OutsFile, joinOut)
+				self.metadata.WriteRaw(OutsFile, "{}")
 			}
 			if self.node.rt.Config.VdrMode == "post" {
 				// Still clean up tmp, but run before we've declared
@@ -933,7 +959,8 @@ func (self *Fork) step() {
 			return
 		}
 		self.writeInvocation()
-		if outs, err := resolveBindings(self.node.retbindings, self.argPermute); err != nil {
+		if outs, err := resolveBindings(self.node.retbindings, self.argPermute,
+			self.node.rt.FreeMemBytes()/int64(len(self.node.prenodes)+1)); err != nil {
 			util.PrintError(err, "runtime", "Error resolving output argument bindings.")
 			self.metadata.WriteRaw(Errors, err.Error())
 		} else {
@@ -1175,12 +1202,21 @@ func (self *Fork) getAlarms() string {
 
 func (self *Fork) serializeState() *ForkInfo {
 	argbindings := make([]*BindingInfo, 0, len(self.node.argbindingList))
+	readSize := self.node.rt.FreeMemBytes() / 2
 	for _, argbinding := range self.node.argbindingList {
-		argbindings = append(argbindings, argbinding.serializeState(self.argPermute))
+		if s, err := argbinding.serializeState(self.argPermute, readSize); err != nil && !os.IsNotExist(err) {
+			util.LogError(err, "runtime", "Error reading fork arg bindings.")
+		} else {
+			argbindings = append(argbindings, s)
+		}
 	}
 	retbindings := make([]*BindingInfo, 0, len(self.node.retbindingList))
 	for _, retbinding := range self.node.retbindingList {
-		retbindings = append(retbindings, retbinding.serializeState(self.argPermute))
+		if s, err := retbinding.serializeState(self.argPermute, readSize); err != nil && !os.IsNotExist(err) {
+			util.LogError(err, "runtime", "Error reading fork return bindings.")
+		} else {
+			retbindings = append(retbindings, s)
+		}
 	}
 	bindings := &ForkBindingsInfo{
 		Argument: argbindings,

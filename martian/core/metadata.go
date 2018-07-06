@@ -5,7 +5,6 @@ package core
 // Martian runtime. This is where the action happens.
 
 import (
-	"bytes"
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
@@ -509,20 +508,41 @@ func (self *Metadata) saveToCache(name MetadataFileName, value LazyArgumentMap) 
 	self.mutex.Unlock()
 }
 
-func (self *Metadata) read(name MetadataFileName) LazyArgumentMap {
+func (self *Metadata) read(name MetadataFileName, limit int64) (LazyArgumentMap, error) {
 	v, ok := self.readFromCache(name)
 	if ok {
-		return v
+		return v, nil
 	}
-	b, err := self.readRawBytes(name)
-	if err == nil {
-		dec := json.NewDecoder(bytes.NewReader(b))
-		dec.UseNumber()
-		if dec.Decode(&v) == nil {
+	p := self.MetadataFilePath(name)
+	if f, err := os.Open(p); err != nil {
+		if !os.IsNotExist(err) {
+			util.LogError(err, "runtime",
+				"Could not open %s",
+				p)
+		}
+		return nil, err
+	} else {
+		if err := func(p string, f *os.File, limit int64, v *LazyArgumentMap) error {
+			defer f.Close()
+			if limit > 0 {
+				if info, err := f.Stat(); err != nil {
+					return err
+				} else if info.Size() > limit {
+					return fmt.Errorf(
+						"Insufficient memory to read %s\n"+
+							"File is %d bytes, read size limited to %d bytes.",
+						p, info.Size(), limit)
+				}
+			}
+			dec := json.NewDecoder(f)
+			return dec.Decode(v)
+		}(p, f, limit, &v); err == nil {
 			self.saveToCache(name, v)
+			return v, nil
+		} else {
+			return nil, err
 		}
 	}
-	return v
 }
 
 // Reads the content of the given metadata file and deserializes it into

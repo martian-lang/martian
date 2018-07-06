@@ -257,7 +257,7 @@ type Runtime struct {
 	mrjob           string
 	MroCache        *MroCache
 	JobManager      JobManager
-	LocalJobManager JobManager
+	LocalJobManager *LocalJobManager
 	overrides       *PipestanceOverrides
 }
 
@@ -550,11 +550,15 @@ func (self *Runtime) GetSerializationInto(pipestancePath string, name MetadataFi
 	return metadata.ReadInto(name, target)
 }
 
-func (self *Runtime) GetSerialization(pipestancePath string, name MetadataFileName) (interface{}, bool) {
+func (self *Runtime) GetSerialization(pipestancePath string, name MetadataFileName) (LazyArgumentMap, bool) {
 	metadata := NewMetadata("", pipestancePath)
 	metadata.loadCache()
 	if metadata.exists(name) {
-		return metadata.read(name), true
+		if d, err := metadata.read(name, self.FreeMemBytes()/2); err != nil {
+			return nil, false
+		} else {
+			return d, true
+		}
 	}
 	return nil, false
 }
@@ -584,6 +588,26 @@ func (self *Runtime) GetMetadata(pipestancePath string, metadataPath string) (st
 		return "", err
 	}
 	return string(data), nil
+}
+
+func (self *Runtime) freeMemMB() int64 {
+	if !self.Config.Monitor {
+		return 0
+	}
+	if free := self.LocalJobManager.memMBSem.CurrentSize(); free < 1024 {
+		return free
+	} else {
+		return 1024
+	}
+}
+
+// FreeMemBytes returns the current amount of memory which the runtime may use
+// for tasks like reading files.
+//
+// For the sake of consistency, if monitoring is enabled, this is 1GB.
+// Otherwise, it will return 0 (unlimited).
+func (self *Runtime) FreeMemBytes() int64 {
+	return self.freeMemMB() * 1024 * 1024
 }
 
 type MroCache struct {

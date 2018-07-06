@@ -140,52 +140,56 @@ func NewReturnBinding(node *Node, bindStm *syntax.BindStm) *Binding {
 	return newBinding(node, bindStm, true)
 }
 
-func (self *Binding) resolve(argPermute map[string]interface{}) interface{} {
+func (self *Binding) resolve(argPermute map[string]interface{}, readSize int64) (interface{}, error) {
 	self.waiting = false
 	if self.mode == "value" {
 		if argPermute == nil {
 			// In this case we want to get the raw value, which might be a sweep array.
-			return self.value
+			return self.value, nil
 		}
 		// Replace literal sweep ranges with specific permuted argument values.
 		if self.sweep {
 			// This needs to use self.sweepRootId because argPermute
 			// is populated with sweepRootId's (not just id's) in buildForks.
 			// This is required for proper forking when param names don't match.
-			return argPermute[self.sweepRootId]
+			return argPermute[self.sweepRootId], nil
 		} else {
-			return self.value
+			return self.value, nil
 		}
 	} else if self.mode == "array" {
 		innerBinds := self.value.([]*Binding)
 		result := make([]interface{}, 0, len(innerBinds))
 		for _, binding := range innerBinds {
-			if r := binding.resolve(argPermute); binding.waiting {
+			if r, err := binding.resolve(argPermute, readSize); err != nil {
+				return nil, err
+			} else if binding.waiting {
 				self.waiting = true
-				return nil
+				return nil, nil
 			} else {
 				result = append(result, r)
 			}
 		}
-		return result
+		return result, nil
 	}
 	if argPermute == nil {
-		return nil
+		return nil, nil
 	}
 	if self.boundNode != nil {
 		matchedFork := self.boundNode.getNode().matchFork(argPermute)
-		if outputs := matchedFork.metadata.read(OutsFile); outputs != nil {
+		if outputs, err := matchedFork.metadata.read(OutsFile, readSize); err != nil {
+			return nil, err
+		} else if outputs != nil {
 			output, ok := outputs[self.output]
 			if ok {
-				return output
+				return output, nil
 			}
 		}
 	}
 	self.waiting = true
-	return nil
+	return nil, nil
 }
 
-func (self *Binding) serializeState(argPermute map[string]interface{}) *BindingInfo {
+func (self *Binding) serializeState(argPermute map[string]interface{}, readSize int64) (*BindingInfo, error) {
 	var node interface{} = nil
 	var matchedFork interface{} = nil
 	if self.boundNode != nil {
@@ -195,6 +199,7 @@ func (self *Binding) serializeState(argPermute map[string]interface{}) *BindingI
 			matchedFork = f.index
 		}
 	}
+	v, err := self.resolve(argPermute, readSize)
 	return &BindingInfo{
 		Id:          self.id,
 		Type:        self.tname,
@@ -205,16 +210,18 @@ func (self *Binding) serializeState(argPermute map[string]interface{}) *BindingI
 		SweepRootId: self.sweepRootId,
 		Node:        node,
 		MatchedFork: matchedFork,
-		Value:       self.resolve(argPermute),
+		Value:       v,
 		Waiting:     self.waiting,
-	}
+	}, err
 }
 
-func resolveBindings(bindings map[string]*Binding, argPermute map[string]interface{}) (LazyArgumentMap, error) {
+func resolveBindings(bindings map[string]*Binding, argPermute map[string]interface{}, readSize int64) (LazyArgumentMap, error) {
 	resolvedBindings := make(LazyArgumentMap, len(bindings))
 	var errs syntax.ErrorList
 	for id, binding := range bindings {
-		if b, err := json.Marshal(binding.resolve(argPermute)); err != nil {
+		if v, err := binding.resolve(argPermute, readSize); err != nil {
+			errs = append(errs, err)
+		} else if b, err := json.Marshal(v); err != nil {
 			errs = append(errs, err)
 		} else {
 			resolvedBindings[id] = b
