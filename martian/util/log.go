@@ -172,7 +172,7 @@ func formatError(w io.Writer, err error, component string, format string, v ...i
 	args = append(args, Timestamp(), component)
 	args = append(args, v...)
 	args = append(args, err.Error())
-	fmt.Fprintf(w, "%s [%s] "+format+"%s\n          %s\n",
+	fmt.Fprintf(w, "%s [%s] "+format+"\n          %s\n",
 		args...)
 }
 
