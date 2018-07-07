@@ -739,11 +739,11 @@ func (self *RemoteJobManager) sendJob(shellCmd string, argv []string, envs map[s
 	if output, err := cmd.CombinedOutput(); err != nil {
 		metadata.WriteRaw(Errors, "jobcmd error ("+err.Error()+"):\n"+string(output))
 	} else {
-		trimmed := strings.TrimSpace(string(output))
+		trimmed := bytes.TrimSpace(output)
 		// jobids should not have spaces in them.  This is the most general way to
 		// check that a string is actually a jobid.
-		if trimmed != "" && !strings.ContainsAny(trimmed, " \t\n\r") {
-			metadata.WriteRaw("jobid", strings.TrimSpace(string(output)))
+		if len(trimmed) > 0 && !bytes.ContainsAny(trimmed, " \t\n\r") {
+			metadata.WriteRawBytes("jobid", bytes.TrimSpace(output))
 			metadata.cache("jobid", metadata.uniquifier)
 		}
 	}

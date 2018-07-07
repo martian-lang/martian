@@ -7,6 +7,7 @@
 package util
 
 import (
+	"bytes"
 	"fmt"
 	"io/ioutil"
 	"os/exec"
@@ -62,7 +63,7 @@ func GetSakeVersion(dir string) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	return strings.TrimSpace(string(data)), nil
+	return string(bytes.TrimSpace(data)), nil
 }
 
 func runGit(dir string, args ...string) (string, error) {
@@ -70,7 +71,7 @@ func runGit(dir string, args ...string) (string, error) {
 	cmd.Dir = dir
 	cmd.SysProcAttr = Pdeathsig(&syscall.SysProcAttr{}, syscall.SIGKILL)
 	out, err := cmd.Output()
-	return strings.TrimSpace(string(out)), err
+	return string(bytes.TrimSpace(out)), err
 }
 
 // Returns the output of running 'git describe --tags --dirty --always'

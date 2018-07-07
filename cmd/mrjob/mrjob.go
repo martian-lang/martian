@@ -23,7 +23,7 @@ import (
 )
 
 const HeartbeatInterval = time.Minute * 2
-const MemorySampleInterval = time.Second * 30
+const MemorySampleInterval = time.Second * 5
 
 type runner struct {
 	job         *exec.Cmd
@@ -35,6 +35,7 @@ type runner struct {
 	runType     string
 	jobInfo     *core.JobInfo
 	start       time.Time
+	isDone      chan struct{}
 }
 
 func main() {
@@ -73,6 +74,7 @@ func main() {
 	if err := run.StartJob(os.Args[1:]); err != nil {
 		run.Fail(err, "Error starting job.")
 	}
+	run.isDone = make(chan struct{})
 	run.WaitLoop()
 }
 
@@ -325,6 +327,14 @@ func (self *runner) HandleSignal(sig os.Signal) {
 			proc.Kill()
 		}
 	}
+	if c := self.isDone; c != nil {
+		// Wait up to 5 seconds for the child process to terminate.
+		timer := time.NewTimer(time.Second * 5)
+		select {
+		case <-timer.C:
+		case <-c:
+		}
+	}
 	self.done()
 	if err := self.metadata.WriteRaw(core.Errors, fmt.Sprintf("Caught signal %v", sig)); err != nil {
 		util.PrintError(err, "monitor", "Could not write errors file.")
@@ -399,7 +409,6 @@ func sigToErr(err error) error {
 // exceed its memory quota.
 func (self *runner) WaitLoop() {
 	wait := make(chan error, 1)
-	done := make(chan struct{}, 1)
 	go func() {
 		errorBytes := readBytes(8100, self.errorReader)
 		if len(errorBytes) > 0 {
@@ -410,11 +419,11 @@ func (self *runner) WaitLoop() {
 			// have already terminated by the time we get here.
 			go func() {
 				self.job.Wait()
-				done <- struct{}{}
+				close(self.isDone)
 			}()
 			wait <- &stageReturnedError{message: string(errorBytes)}
 		} else {
-			done <- struct{}{}
+			close(self.isDone)
 			wait <- sigToErr(self.job.Wait())
 		}
 	}()
@@ -443,7 +452,7 @@ func (self *runner) WaitLoop() {
 		select {
 		case <-timer.C:
 			self.job.Process.Signal(syscall.SIGKILL)
-		case <-done:
+		case <-self.isDone:
 		}
 	}
 	util.EnterCriticalSection()

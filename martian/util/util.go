@@ -85,19 +85,25 @@ func ParseTag(tag string) (string, string) {
 	return tagList[0], tagList[1]
 }
 
-func GetDirectorySize(paths []string) (uint, uint64) {
-	var numFiles uint = 0
-	var numBytes uint64 = 0
-	for _, path := range paths {
-		Walk(path, func(_ string, info os.FileInfo, err error) error {
-			if err == nil {
-				numBytes += uint64(info.Size())
-				numFiles++
-			}
-			return nil
-		})
+type dirSizeCounter struct {
+	numFiles uint
+	numBytes uint64
+}
+
+func (c *dirSizeCounter) dirSizeWalker(_ string, info os.FileInfo, err error) error {
+	if err == nil {
+		c.numBytes += uint64(info.Size())
+		c.numFiles++
 	}
-	return numFiles, numBytes
+	return nil
+}
+
+func GetDirectorySize(paths []string) (uint, uint64) {
+	var count dirSizeCounter
+	for _, path := range paths {
+		Walk(path, count.dirSizeWalker)
+	}
+	return count.numFiles, count.numBytes
 }
 
 func SearchPaths(fname string, searchPaths []string) (string, bool) {
@@ -173,13 +179,44 @@ func WidthForInt(max int) int {
 	}
 }
 
+// Atoi returns parses the utf8-encoded bytes of a decimal string of native
+// size.  Use this instead of strconv.Atoi to avoid copying bytes to string.
+func Atoi(s []byte) (int64, error) {
+	// capture and remove sign, if any
+	neg := false
+	if s[0] == '+' {
+		s = s[1:]
+	} else if s[0] == '-' {
+		neg = true
+		s = s[1:]
+	}
+
+	const cutoff = int64(^uint64(0)>>1) / 10
+
+	var v int64
+	for _, b := range s {
+		if v >= cutoff {
+			return cutoff, fmt.Errorf("Overflow parsing %s", string(s))
+		} else if '0' <= b && b <= '9' {
+			v = 10*v + int64(b-'0')
+		} else {
+			return v, fmt.Errorf("Invalid character in int %s", string(s))
+		}
+	}
+	if neg {
+		return -v, nil
+	} else {
+		return v, nil
+	}
+}
+
 func GetFilenameWithSuffix(dir string, fname string) string {
 	suffix := 0
 	names, err := Readdirnames(dir)
 	if err != nil {
-		return fmt.Sprintf("%s-%d", fname, 0)
+		return fname + "-0"
 	}
-	re := regexp.MustCompile(fmt.Sprintf("^%s-(\\d+)$", fname))
+	re := regexp.MustCompile("^" + regexp.QuoteMeta(fname) + "-(\\d+)$")
 	for _, name := range names {
 		if m := re.FindStringSubmatch(name); m != nil {
 			infoSuffix, _ := strconv.Atoi(m[1])
@@ -188,7 +225,7 @@ func GetFilenameWithSuffix(dir string, fname string) string {
 			}
 		}
 	}
-	return fmt.Sprintf("%s-%d", fname, suffix)
+	return fname + "-" + strconv.Itoa(suffix)
 }
 
 func FormatEnv(envs map[string]string) []string {
@@ -225,7 +262,7 @@ func EnvRequire(reqs [][]string, log bool) map[string]string {
 			fmt.Println("Please set the following environment variables:")
 			for _, req := range reqs {
 				if len(os.Getenv(req[0])) == 0 {
-					fmt.Println("export", req[0]+"="+req[1])
+					fmt.Printf("export %s=%s", req[0], req[1])
 				}
 			}
 			os.Exit(1)
