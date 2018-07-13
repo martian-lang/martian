@@ -3,6 +3,7 @@
 //
 // Converts system rusage into our structures.
 //
+// +build freebsd linux netbsd openbsd solaris
 
 package core
 
