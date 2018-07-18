@@ -305,6 +305,7 @@ func MRTBuildPipeline(newinfo *PipestanceSetup, oldinfo *PipestanceSetup, invali
 	psold, err := rtold.ReattachToPipestanceWithMroSrc(oldinfo.Psid,
 		oldinfo.PipestancePath,
 		string(oldcall),
+		oldinfo.Srcpath,
 		oldinfo.MroPaths,
 		oldinfo.MroVersion,
 		oldinfo.Envs,

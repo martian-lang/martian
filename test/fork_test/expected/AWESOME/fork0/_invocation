@@ -1,4 +1,4 @@
-
+@include "pipeline.mro"
 
 call AWESOME(
     key1 = "1",

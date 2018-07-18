@@ -1,4 +1,4 @@
-
+@include "pipeline.mro"
 
 call ADD_KEY3(
     key = "3",

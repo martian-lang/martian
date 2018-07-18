@@ -349,44 +349,44 @@ func CompileAll(mroPaths []string, checkSrcPath bool) (int, []*syntax.Ast, error
 // public InvokeWithSource and Reattach methods.
 func (self *Runtime) instantiatePipeline(src string, srcPath string, psid string,
 	pipestancePath string, mroPaths []string, mroVersion string,
-	envs map[string]string, readOnly bool) (string, *Pipestance, error) {
+	envs map[string]string, readOnly bool) (string, *syntax.Ast, *Pipestance, error) {
 	// Parse the invocation source.
 	postsrc, incpaths, ast, err := syntax.ParseSource(src, srcPath, mroPaths, !readOnly)
 	if err != nil {
-		return "", nil, err
+		return "", nil, nil, err
 	}
 
 	// Check there's a call.
 	if ast.Call == nil {
-		return "", nil, &RuntimeError{"cannot start a pipeline without a call statement"}
+		return "", nil, nil, &RuntimeError{"cannot start a pipeline without a call statement"}
 	}
 	// Make sure it's a pipeline we're calling.
 	if pipeline := ast.Callables.Table[ast.Call.Id]; pipeline == nil {
-		return "", nil, &RuntimeError{fmt.Sprintf("'%s' is not a declared pipeline", ast.Call.Id)}
+		return "", nil, nil, &RuntimeError{fmt.Sprintf("'%s' is not a declared pipeline", ast.Call.Id)}
 	}
 
 	invocationData, _ := BuildDataForAst(incpaths, ast)
 
 	// Instantiate the pipeline.
 	if err := CheckMinimalSpace(pipestancePath); err != nil {
-		return "", nil, err
+		return "", nil, nil, err
 	}
 	pipestance, err := NewPipestance(NewTopNode(self, psid, pipestancePath, mroPaths, mroVersion, envs, invocationData),
 		ast.Call, ast.Callables)
 	if err != nil {
-		return "", nil, err
+		return "", nil, nil, err
 	}
 
 	// Lock the pipestance if not in read-only mode.
 	if !readOnly {
 		if err := pipestance.Lock(); err != nil {
-			return "", nil, err
+			return "", nil, nil, err
 		}
 	}
 
 	pipestance.getNode().mkdirs()
 
-	return postsrc, pipestance, nil
+	return postsrc, ast, pipestance, nil
 }
 
 // Invokes a new pipestance.
@@ -407,7 +407,7 @@ func (self *Runtime) InvokePipeline(src string, srcPath string, psid string,
 	// Expand env vars in invocation source and instantiate.
 	src = os.ExpandEnv(src)
 	readOnly := false
-	postsrc, pipestance, err := self.instantiatePipeline(src, srcPath, psid, pipestancePath, mroPaths,
+	postsrc, _, pipestance, err := self.instantiatePipeline(src, srcPath, psid, pipestancePath, mroPaths,
 		mroVersion, envs, readOnly)
 	if err != nil {
 		// If instantiation failed, delete the pipestance folder.
@@ -435,42 +435,62 @@ func (self *Runtime) InvokePipeline(src string, srcPath string, psid string,
 	return pipestance, nil
 }
 
-func (self *Runtime) ReattachToPipestance(psid string, pipestancePath string, src string, mroPaths []string,
+func (self *Runtime) ReattachToPipestance(psid string, pipestancePath string,
+	src string, invocationPath string, mroPaths []string,
 	mroVersion string, envs map[string]string, checkSrc bool, readOnly bool) (*Pipestance, error) {
-	return self.reattachToPipestance(psid, pipestancePath, src, mroPaths, mroVersion, envs, checkSrc,
-		readOnly, "invocation")
+	return self.reattachToPipestance(psid, pipestancePath,
+		src, invocationPath, mroPaths,
+		mroVersion, envs, checkSrc,
+		readOnly, InvocationFile)
 }
 
-func (self *Runtime) ReattachToPipestanceWithMroSrc(psid string, pipestancePath string, src string, mroPaths []string,
+func (self *Runtime) ReattachToPipestanceWithMroSrc(psid string, pipestancePath string,
+	src string, invocationPath string, mroPaths []string,
 	mroVersion string, envs map[string]string, checkSrc bool, readOnly bool) (*Pipestance, error) {
-	return self.reattachToPipestance(psid, pipestancePath, src, mroPaths, mroVersion, envs, checkSrc,
-		readOnly, "mrosource")
+	return self.reattachToPipestance(psid, pipestancePath,
+		src, invocationPath, mroPaths,
+		mroVersion, envs, checkSrc,
+		readOnly, MroSourceFile)
 }
 
 // Reattaches to an existing pipestance.
-func (self *Runtime) reattachToPipestance(psid string, pipestancePath string, src string, mroPaths []string,
+func (self *Runtime) reattachToPipestance(psid string, pipestancePath string,
+	src string, invocationPath string, mroPaths []string,
 	mroVersion string, envs map[string]string, checkSrc bool, readOnly bool,
-	srcType string) (*Pipestance, error) {
-	fname := "_" + srcType
-	invocationPath := path.Join(pipestancePath, fname)
-	metadataPath := path.Join(pipestancePath, "_metadata.zip")
+	srcType MetadataFileName) (*Pipestance, error) {
 
-	// Read in the existing _invocation file.
-	data, err := ioutil.ReadFile(invocationPath)
-	if err != nil {
-		return nil, &PipestancePathError{pipestancePath}
+	if checkSrc {
+		// Read in the existing _invocation file.
+		data, err := ioutil.ReadFile(path.Join(pipestancePath, srcType.FileName()))
+		if err != nil {
+			return nil, &PipestancePathError{pipestancePath}
+		}
+		// Check if _invocation has changed.
+		if src != string(data) {
+			return nil, &PipestanceInvocationError{psid, invocationPath}
+		}
 	}
-
-	// Check if _invocation has changed.
-	if checkSrc && src != string(data) {
-		return nil, &PipestanceInvocationError{psid, invocationPath}
-	}
-
 	// Instantiate the pipestance.
-	_, pipestance, err := self.instantiatePipeline(string(data), invocationPath, psid, pipestancePath, mroPaths,
+	_, ast, pipestance, err := self.instantiatePipeline(
+		src, invocationPath,
+		psid, pipestancePath, mroPaths,
 		mroVersion, envs, readOnly)
 	if err != nil {
 		return nil, err
+	}
+	if checkSrc && srcType != MroSourceFile {
+		oldSrcFile := path.Join(pipestancePath, MroSourceFile.FileName())
+		if _, _, oldAst, err := syntax.Compile(oldSrcFile, mroPaths, false); err != nil {
+			if !readOnly {
+				pipestance.Unlock()
+			}
+			return nil, err
+		} else if !ast.EquivalentCall(oldAst) {
+			if !readOnly {
+				pipestance.Unlock()
+			}
+			return nil, &PipestanceInvocationError{psid, invocationPath}
+		}
 	}
 
 	// If _jobmode exists, make sure we reattach to pipestance in the same job mode.
@@ -481,7 +501,8 @@ func (self *Runtime) reattachToPipestance(psid string, pipestancePath string, sr
 		}
 	}
 
-	// If _metadata exists, unzip it so the pipestance can reads its metadata.
+	// If _metadata exists, unzip it so the pipestance can read its metadata.
+	metadataPath := path.Join(pipestancePath, MetadataZip.FileName())
 	if _, err := os.Stat(metadataPath); err == nil {
 		if err := util.Unzip(metadataPath); err != nil {
 			pipestance.Unlock()
@@ -492,7 +513,8 @@ func (self *Runtime) reattachToPipestance(psid string, pipestancePath string, sr
 
 	// If we're reattaching in local mode, restart any stages that were
 	// left in a running state from last mrp run. The actual job would
-	// have been killed by the CTRL-C.
+	// have been killed by the CTRL-C or, if not, by SIGTERM when the
+	// mrp process died (on OSes where pdeathsig is supported).
 	if !readOnly {
 		util.PrintInfo("runtime", "Reattaching in %s mode.", self.Config.JobMode)
 		if err = pipestance.RestartRunningNodes(self.Config.JobMode); err != nil {
@@ -737,13 +759,9 @@ func GetCallable(mroPaths []string, name string) (syntax.Callable, error) {
 
 func buildVal(param syntax.Param, val interface{}) string {
 	indent := "    "
-	if data, err := json.MarshalIndent(val, "", indent); err == nil {
+	if data, err := json.MarshalIndent(val, indent, indent); err == nil {
 		// Indent multi-line values (but not first line).
-		sublines := strings.Split(string(data), "\n")
-		for i := range sublines[1:] {
-			sublines[i+1] = indent + sublines[i+1]
-		}
-		return strings.Join(sublines, "\n")
+		return string(data)
 	}
 	return fmt.Sprintf("<ParseError: %v>", val)
 }
@@ -764,9 +782,9 @@ func BuildCallSource(incpaths []string,
 	sweepargs []string,
 	callable syntax.Callable) (string, error) {
 	// Build @include statements.
-	includes := []string{}
-	for _, incpath := range incpaths {
-		includes = append(includes, fmt.Sprintf("@include \"%s\"", incpath))
+	var includes string
+	if f := callable.File(); f != nil && f.FileName != "" {
+		includes = fmt.Sprintf("@include \"%s\"\n", f.FileName)
 	}
 	// Loop over the pipeline's in params and print a binding
 	// whether the args bag has a value for it not.
@@ -783,8 +801,13 @@ func BuildCallSource(incpaths []string,
 
 		lines = append(lines, fmt.Sprintf("    %s = %s,", param.GetId(), valstr))
 	}
-	return fmt.Sprintf("%s\n\ncall %s(\n%s\n)", strings.Join(includes, "\n"),
-		name, strings.Join(lines, "\n")), nil
+	if callId := callable.GetId(); callId == name {
+		return fmt.Sprintf("%s\ncall %s(\n%s\n)", includes,
+			name, strings.Join(lines, "\n")), nil
+	} else {
+		return fmt.Sprintf("%s\ncall %s as %s(\n%s\n)", includes,
+			callId, name, strings.Join(lines, "\n")), nil
+	}
 }
 
 func BuildCallData(src string, srcPath string, mroPaths []string) (*InvocationData, error) {

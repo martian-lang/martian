@@ -911,8 +911,10 @@ func NewRuntimePipestanceFactory(rt *Runtime,
 }
 
 func (self runtimePipeFactory) ReattachToPipestance() (*Pipestance, error) {
-	return self.rt.ReattachToPipestance(self.psid, self.pipestancePath,
-		self.invocationSrc, self.mroPaths, self.mroVersion, self.envs,
+	return self.rt.ReattachToPipestance(
+		self.psid, self.pipestancePath,
+		self.invocationSrc, self.invocationPath,
+		self.mroPaths, self.mroVersion, self.envs,
 		self.checkSrc, self.readOnly)
 }
 

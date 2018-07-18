@@ -37,6 +37,7 @@ type (
 	AstNodable interface {
 		nodeContainer
 		getNode() *AstNode
+		File() *SourceFile
 	}
 
 	nodeContainer interface {
@@ -73,6 +74,8 @@ type (
 		GetOutParams() *Params
 		Type() string
 		format(printer *printer)
+		EquivalentTo(other Callable,
+			myCallables, otherCallables *Callables) bool
 	}
 
 	Resources struct {
@@ -223,6 +226,7 @@ type (
 		getKind() ExpKind
 		resolveType(*Ast, Callable) ([]string, int, error)
 		format(w stringWriter, prefix string)
+		equal(other Exp) bool
 		ToInterface() interface{}
 	}
 
@@ -346,10 +350,12 @@ func (s *Ast) getSubnodes() []AstNodable {
 func (s *AstNode) getNode() *AstNode         { return s }
 func (s *AstNode) getSubnodes() []AstNodable { return nil }
 func (s *AstNode) inheritComments() bool     { return false }
+func (s *AstNode) File() *SourceFile         { return s.Loc.File }
 
 func (s *Include) getNode() *AstNode         { return &s.Node }
 func (s *Include) getSubnodes() []AstNodable { return nil }
 func (s *Include) inheritComments() bool     { return false }
+func (s *Include) File() *SourceFile         { return s.Node.Loc.File }
 
 // Interface whitelist for Dec, Param, Exp, and Stm implementors.
 // Patterned after code in Go's ast.go.
@@ -372,12 +378,14 @@ func (s *BuiltinType) IsFile() bool {
 func (s *UserType) GetId() string     { return s.Id }
 func (s *UserType) IsFile() bool      { return true }
 func (s *UserType) getNode() *AstNode { return &s.Node }
+func (s *UserType) File() *SourceFile { return s.Node.Loc.File }
 
 func (s *UserType) inheritComments() bool     { return false }
 func (s *UserType) getSubnodes() []AstNodable { return nil }
 
 func (s *Stage) GetId() string         { return s.Id }
 func (s *Stage) getNode() *AstNode     { return &s.Node }
+func (s *Stage) File() *SourceFile     { return s.Node.Loc.File }
 func (s *Stage) GetInParams() *Params  { return s.InParams }
 func (s *Stage) GetOutParams() *Params { return s.OutParams }
 func (s *Stage) Type() string          { return "stage" }
@@ -410,6 +418,7 @@ func (s *Stage) getSubnodes() []AstNodable {
 }
 
 func (s *Resources) getNode() *AstNode     { return &s.Node }
+func (s *Resources) File() *SourceFile     { return s.Node.Loc.File }
 func (s *Resources) inheritComments() bool { return false }
 func (s *Resources) getSubnodes() []AstNodable {
 	subs := make([]AstNodable, 0, 3)
@@ -430,6 +439,7 @@ func (s *Resources) getSubnodes() []AstNodable {
 
 func (s *Pipeline) GetId() string         { return s.Id }
 func (s *Pipeline) getNode() *AstNode     { return &s.Node }
+func (s *Pipeline) File() *SourceFile     { return s.Node.Loc.File }
 func (s *Pipeline) GetInParams() *Params  { return s.InParams }
 func (s *Pipeline) GetOutParams() *Params { return s.OutParams }
 func (s *Pipeline) Type() string          { return "pipeline" }
@@ -455,6 +465,7 @@ func (s *Pipeline) getSubnodes() []AstNodable {
 }
 
 func (s *CallStm) getNode() *AstNode { return &s.Node }
+func (s *CallStm) File() *SourceFile { return s.Node.Loc.File }
 
 func (s *CallStm) inheritComments() bool { return false }
 func (s *CallStm) getSubnodes() []AstNodable {
@@ -466,6 +477,7 @@ func (s *CallStm) getSubnodes() []AstNodable {
 }
 
 func (s *InParam) getNode() *AstNode  { return &s.Node }
+func (s *InParam) File() *SourceFile  { return s.Node.Loc.File }
 func (s *InParam) getMode() string    { return "in" }
 func (s *InParam) GetTname() string   { return s.Tname }
 func (s *InParam) GetArrayDim() int   { return s.ArrayDim }
@@ -481,6 +493,7 @@ func (s *InParam) getSubnodes() []AstNodable {
 }
 
 func (s *OutParam) getNode() *AstNode  { return &s.Node }
+func (s *OutParam) File() *SourceFile  { return s.Node.Loc.File }
 func (s *OutParam) getMode() string    { return "out" }
 func (s *OutParam) GetTname() string   { return s.Tname }
 func (s *OutParam) GetArrayDim() int   { return s.ArrayDim }
@@ -496,16 +509,21 @@ func (s *OutParam) getSubnodes() []AstNodable {
 }
 
 func (s *RetainParam) getNode() *AstNode         { return &s.Node }
+func (s *RetainParam) File() *SourceFile         { return s.Node.Loc.File }
 func (s *RetainParam) getSubnodes() []AstNodable { return nil }
 func (s *RetainParam) inheritComments() bool     { return false }
 
 func (s *SrcParam) getNode() *AstNode         { return &s.Node }
+func (s *SrcParam) File() *SourceFile         { return s.Node.Loc.File }
 func (s *SrcParam) inheritComments() bool     { return false }
 func (s *SrcParam) getSubnodes() []AstNodable { return nil }
 
 func (s *ReturnStm) getNode() *AstNode { return &s.Node }
+func (s *ReturnStm) File() *SourceFile { return s.Node.Loc.File }
 func (s *BindStm) getNode() *AstNode   { return &s.Node }
+func (s *BindStm) File() *SourceFile   { return s.Node.Loc.File }
 func (s *BindStms) getNode() *AstNode  { return &s.Node }
+func (s *BindStms) File() *SourceFile  { return s.Node.Loc.File }
 
 func (s *ReturnStm) inheritComments() bool { return false }
 func (s *ReturnStm) getSubnodes() []AstNodable {
@@ -527,6 +545,7 @@ func (s *BindStms) getSubnodes() []AstNodable {
 }
 
 func (s *ValExp) getNode() *AstNode { return &s.Node }
+func (s *ValExp) File() *SourceFile { return s.Node.Loc.File }
 func (s *ValExp) getKind() ExpKind  { return s.Kind }
 
 func (s *ValExp) inheritComments() bool { return false }
@@ -547,6 +566,7 @@ func (s *ValExp) getSubnodes() []AstNodable {
 }
 
 func (s *RefExp) getNode() *AstNode { return &s.Node }
+func (s *RefExp) File() *SourceFile { return s.Node.Loc.File }
 func (s *RefExp) getKind() ExpKind  { return s.Kind }
 
 func (s *RefExp) inheritComments() bool { return false }
@@ -555,6 +575,7 @@ func (s *RefExp) getSubnodes() []AstNodable {
 }
 
 func (p *PipelineRetains) getNode() *AstNode     { return &p.Node }
+func (s *PipelineRetains) File() *SourceFile     { return s.Node.Loc.File }
 func (s *PipelineRetains) inheritComments() bool { return true }
 func (s *PipelineRetains) getSubnodes() []AstNodable {
 	params := make([]AstNodable, 0, len(s.Refs))
@@ -565,6 +586,7 @@ func (s *PipelineRetains) getSubnodes() []AstNodable {
 }
 
 func (p *RetainParams) getNode() *AstNode     { return &p.Node }
+func (s *RetainParams) File() *SourceFile     { return s.Node.Loc.File }
 func (s *RetainParams) inheritComments() bool { return true }
 func (s *RetainParams) getSubnodes() []AstNodable {
 	params := make([]AstNodable, 0, len(s.Params))
