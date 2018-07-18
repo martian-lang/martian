@@ -1,6 +1,6 @@
 @include "pipeline.mro"
 
-call ADD_KEY(
+call ADD_KEY as ADD_KEY3(
     key = "3",
     value = "three",
     start = "/user/test/files_test/pipeline_test/AWESOME/ADD_KEY2/fork0/files/result.json",

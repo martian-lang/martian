@@ -719,7 +719,7 @@ func (self *Fork) writeInvocation() {
 			self.node.rt.FreeMemBytes()/int64(1+len(self.node.prenodes)))
 		incpaths := self.node.invocation.IncludePaths
 		invocation, _ := BuildCallSource(incpaths,
-			self.node.callableId,
+			self.node.name,
 			MakeArgumentMap(argBindings), nil,
 			self.node.callable)
 		self.metadata.WriteRaw(InvocationFile, invocation)
