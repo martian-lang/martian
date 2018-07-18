@@ -1,3 +1,7 @@
+#
+# @include "pipeline.mro"
+#
+
 # A super-simple test pipeline with forks.
 # Files storing json.
 filetype json;
@@ -81,6 +85,10 @@ pipeline AWESOME(
         outfile = MERGE_JSON.result,
     )
 }
+
+#
+# @include "call.mro"
+#
 
 # Calls the pipelines, sweeping over two forks.
 call AWESOME(

@@ -598,17 +598,17 @@ func (mods *Modifiers) compile(global *Ast, parent Callable, call *CallStm) erro
 		if call.Modifiers.Local {
 			errs = append(errs, global.err(call,
 				"UnsupportedTagError: Pipeline '%s' cannot be called with 'local' tag",
-				call.Id))
+				call.DecId))
 		}
 		if call.Modifiers.Preflight {
 			errs = append(errs, global.err(call,
 				"UnsupportedTagError: Pipeline '%s' cannot be called with 'preflight' tag",
-				call.Id))
+				call.DecId))
 		}
 		if call.Modifiers.Volatile {
 			errs = append(errs, global.err(call,
 				"UnsupportedTagError: Pipeline '%s' cannot be called with 'volatile' tag",
-				call.Id))
+				call.DecId))
 		}
 	}
 
@@ -669,7 +669,7 @@ func (pipeline *Pipeline) compile(global *Ast) error {
 		if !ok {
 			errs = append(errs, global.err(call,
 				"ScopeNameError: '%s' is not defined in this scope",
-				call.Id))
+				call.DecId))
 			continue
 		}
 		// Save the valid callables for this scope.
@@ -791,9 +791,9 @@ func (global *Ast) compilePipelineArgs() error {
 // If call statement present, check the call and its bindings.
 func (global *Ast) compileCall() error {
 	if global.Call != nil {
-		callable, ok := global.Callables.Table[global.Call.Id]
+		callable, ok := global.Callables.Table[global.Call.DecId]
 		if !ok {
-			return global.err(global.Call, "ScopeNameError: '%s' is not defined in this scope", global.Call.Id)
+			return global.err(global.Call, "ScopeNameError: '%s' is not defined in this scope", global.Call.DecId)
 		}
 		if err := global.Call.Bindings.compile(global, nil, callable.GetInParams()); err != nil {
 			return err

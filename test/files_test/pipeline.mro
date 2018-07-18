@@ -81,11 +81,3 @@ pipeline AWESOME(
         outfile = MERGE_JSON.result,
     )
 }
-
-# Calls the pipelines, sweeping over two forks.
-call AWESOME(
-    key1   = "1",
-    value1 = "première",
-    key2   = "2",
-    value2 = "two",
-)

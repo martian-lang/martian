@@ -361,8 +361,8 @@ func (self *Runtime) instantiatePipeline(src string, srcPath string, psid string
 		return "", nil, nil, &RuntimeError{"cannot start a pipeline without a call statement"}
 	}
 	// Make sure it's a pipeline we're calling.
-	if pipeline := ast.Callables.Table[ast.Call.Id]; pipeline == nil {
-		return "", nil, nil, &RuntimeError{fmt.Sprintf("'%s' is not a declared pipeline", ast.Call.Id)}
+	if pipeline := ast.Callables.Table[ast.Call.DecId]; pipeline == nil {
+		return "", nil, nil, &RuntimeError{fmt.Sprintf("'%s' is not a declared pipeline", ast.Call.DecId)}
 	}
 
 	invocationData, _ := BuildDataForAst(incpaths, ast)
@@ -549,8 +549,8 @@ func (self *Runtime) InvokeStage(src string, srcPath string, ssid string,
 		return nil, &RuntimeError{"cannot start a stage without a call statement"}
 	}
 	// Make sure it's a stage we're calling.
-	if _, ok := ast.Callables.Table[ast.Call.Id].(*syntax.Stage); !ok {
-		return nil, &RuntimeError{fmt.Sprintf("'%s' is not a declared stage", ast.Call.Id)}
+	if _, ok := ast.Callables.Table[ast.Call.DecId].(*syntax.Stage); !ok {
+		return nil, &RuntimeError{fmt.Sprintf("'%s' is not a declared stage", ast.Call.DecId)}
 	}
 
 	invocationData, _ := BuildDataForAst(incpaths, ast)
@@ -832,7 +832,7 @@ func BuildDataForAst(incpaths []string, ast *syntax.Ast) (*InvocationData, error
 		}
 	}
 	return &InvocationData{
-		Call:         ast.Call.Id,
+		Call:         ast.Call.DecId,
 		Args:         args,
 		SweepArgs:    sweepargs,
 		IncludePaths: incpaths,
