@@ -399,15 +399,6 @@ func (pipeline *Pipeline) topoSort() error {
 
 // Build type table, starting with builtins. Duplicates allowed.
 func (global *Ast) compileTypes() error {
-	builtinTypes := []*BuiltinType{
-		{KindString},
-		{KindInt},
-		{KindFloat},
-		{KindBool},
-		{KindPath},
-		{KindFile},
-		{KindMap},
-	}
 	for _, builtinType := range builtinTypes {
 		global.TypeTable[builtinType.Id] = builtinType
 	}
