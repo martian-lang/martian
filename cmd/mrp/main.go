@@ -692,9 +692,9 @@ Options:
 		util.LogInfo("options", "--require-auth")
 	}
 	var authKey string
-	if value := opts["--authkey"]; value != nil {
+	if value := opts["--auth-key"]; value != nil {
 		authKey = value.(string)
-		util.LogInfo("options", "--authkey=%s", authKey)
+		util.LogInfo("options", "--auth-key=%s", authKey)
 	} else if enableUI {
 		key := make([]byte, 32)
 		if _, err := rand.Read(key); err != nil {
