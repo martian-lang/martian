@@ -459,6 +459,16 @@ func (self *Runtime) reattachToPipestance(psid string, pipestancePath string,
 	mroVersion string, envs map[string]string, checkSrc bool, readOnly bool,
 	srcType MetadataFileName) (*Pipestance, error) {
 
+	if src == "" {
+		if invocationPath == "" {
+			invocationPath = path.Join(pipestancePath, srcType.FileName())
+		}
+		if data, err := ioutil.ReadFile(invocationPath); err != nil {
+			return nil, &PipestancePathError{pipestancePath}
+		} else {
+			src = string(data)
+		}
+	}
 	if checkSrc {
 		// Read in the existing _invocation file.
 		data, err := ioutil.ReadFile(path.Join(pipestancePath, srcType.FileName()))
