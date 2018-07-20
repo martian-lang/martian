@@ -7,10 +7,17 @@
 package syntax
 
 import (
-	"github.com/stretchr/testify/assert"
 	"strings"
 	"testing"
 )
+
+func Equal(t *testing.T, value, expected, message string) {
+	t.Helper()
+	if value != expected {
+		t.Errorf("%s\nExpected: %q\nActual: %q",
+			message, expected, value)
+	}
+}
 
 func TestFormatValueExpression(t *testing.T) {
 	ve := ValExp{
@@ -27,32 +34,32 @@ func TestFormatValueExpression(t *testing.T) {
 
 	ve.Value = 10.0
 	ve.format(&buff, "")
-	assert.Equal(t, buff.String(), "10", "Preserve single zero after decimal.")
+	Equal(t, buff.String(), "10", "Preserve single zero after decimal.")
 	buff.Reset()
 
 	ve.Value = 10.05
 	ve.format(&buff, "")
-	assert.Equal(t, buff.String(), "10.05", "Do not strip numbers ending in non-zero digit.")
+	Equal(t, buff.String(), "10.05", "Do not strip numbers ending in non-zero digit.")
 	buff.Reset()
 
 	ve.Value = 10.050
 	ve.format(&buff, "")
-	assert.Equal(t, buff.String(), "10.05", "Strip single trailing zero.")
+	Equal(t, buff.String(), "10.05", "Strip single trailing zero.")
 	buff.Reset()
 
 	ve.Value = 10.050000000
 	ve.format(&buff, "")
-	assert.Equal(t, buff.String(), "10.05", "Strip multiple trailing zeroes.")
+	Equal(t, buff.String(), "10.05", "Strip multiple trailing zeroes.")
 	buff.Reset()
 
 	ve.Value = 0.0000000005
 	ve.format(&buff, "")
-	assert.Equal(t, buff.String(), "5e-10", "Handle exponential notation.")
+	Equal(t, buff.String(), "5e-10", "Handle exponential notation.")
 	buff.Reset()
 
 	ve.Value = 0.0005
 	ve.format(&buff, "")
-	assert.Equal(t, buff.String(), "0.0005", "Handle low decimal floats.")
+	Equal(t, buff.String(), "0.0005", "Handle low decimal floats.")
 	buff.Reset()
 
 	//
@@ -62,17 +69,17 @@ func TestFormatValueExpression(t *testing.T) {
 
 	ve.Value = 0
 	ve.format(&buff, "")
-	assert.Equal(t, buff.String(), "0", "Format zero integer.")
+	Equal(t, buff.String(), "0", "Format zero integer.")
 	buff.Reset()
 
 	ve.Value = 10
 	ve.format(&buff, "")
-	assert.Equal(t, buff.String(), "10", "Format non-zero integer.")
+	Equal(t, buff.String(), "10", "Format non-zero integer.")
 	buff.Reset()
 
 	ve.Value = 1000000
 	ve.format(&buff, "")
-	assert.Equal(t, buff.String(), "1000000", "Preserve integer trailing zeroes.")
+	Equal(t, buff.String(), "1000000", "Preserve integer trailing zeroes.")
 	buff.Reset()
 
 	//
@@ -82,12 +89,12 @@ func TestFormatValueExpression(t *testing.T) {
 
 	ve.Value = "blah"
 	ve.format(&buff, "")
-	assert.Equal(t, buff.String(), "\"blah\"", "Double quote a string.")
+	Equal(t, buff.String(), "\"blah\"", "Double quote a string.")
 	buff.Reset()
 
 	ve.Value = "\"blah\""
 	ve.format(&buff, "")
-	assert.Equal(t, buff.String(), "\"\"blah\"\"", "Double quote a double-quoted string.")
+	Equal(t, buff.String(), "\"\"blah\"\"", "Double quote a double-quoted string.")
 	buff.Reset()
 
 	//
@@ -95,7 +102,7 @@ func TestFormatValueExpression(t *testing.T) {
 	//
 	ve.Value = nil
 	ve.format(&buff, "")
-	assert.Equal(t, buff.String(), "null", "Nil value is 'null'.")
+	Equal(t, buff.String(), "null", "Nil value is 'null'.")
 }
 
 func TestFormatCommentedSrc(t *testing.T) {

@@ -848,6 +848,16 @@ Options:
 		// Start writing (including cached entries) to log file.
 		util.LogTee(path.Join(pipestancePath, "_log"))
 	}
+	if bSize, inodes, fstype, err := core.GetAvailableSpace(pipestancePath); err != nil {
+		util.PrintError(err, "filesys", "Error reading filesystem information.")
+	} else {
+		util.LogInfo("filesys", "Pipestance path %s",
+			pipestancePath)
+		util.LogInfo("filesys", "Filesystem type %s",
+			fstype)
+		util.LogInfo("filesys", "%s and %s inodes available.",
+			humanize.Bytes(bSize), humanize.Comma(int64(inodes)))
+	}
 
 	uuid, _ := pipestance.GetUuid()
 

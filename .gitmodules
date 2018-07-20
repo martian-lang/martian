@@ -4,9 +4,6 @@
 [submodule "src/github.com/cloudfoundry/gosigar"]
 	path = vendor/github.com/cloudfoundry/gosigar
 	url = https://github.com/cloudfoundry/gosigar
-[submodule "src/github.com/stretchr/testify"]
-	path = vendor/github.com/stretchr/testify
-	url = https://github.com/stretchr/testify
 [submodule "src/github.com/martian-lang/docopt.go"]
 	path = vendor/github.com/martian-lang/docopt.go
 	url = https://github.com/martian-lang/docopt.go

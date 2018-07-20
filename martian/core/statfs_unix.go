@@ -10,14 +10,229 @@ import (
 	"fmt"
 	"os"
 	"syscall"
+
+	"golang.org/x/sys/unix"
 )
 
-func GetAvailableSpace(path string) (bytes, inodes uint64, err error) {
+// Converts the fs type magic number to a string.
+//
+// Source: linux/magic.h plus a few others found around the internet.
+func FsTypeString(fsType int64) string {
+	switch fsType {
+	case unix.ANON_INODE_FS_MAGIC:
+		return "anonymous"
+	case 0x61756673:
+		return "aufs"
+	case unix.AUTOFS_SUPER_MAGIC:
+		return "auto"
+	case unix.AAFS_MAGIC:
+		return "aafs"
+	case unix.ADFS_SUPER_MAGIC:
+		return "adfs"
+	case unix.AFFS_SUPER_MAGIC:
+		return "affs"
+	case unix.AFS_FS_MAGIC, unix.AFS_SUPER_MAGIC:
+		return "afs"
+	case unix.BALLOON_KVM_MAGIC:
+		return "ballon"
+	case unix.BDEVFS_MAGIC:
+		return "bdev"
+	case 0x42465331:
+		return "befs"
+	case 0x1badface:
+		return "bfs"
+	case unix.BINFMTFS_MAGIC:
+		return "binfmt"
+	case unix.BPF_FS_MAGIC:
+		return "bpf"
+	case unix.BTRFS_SUPER_MAGIC, unix.BTRFS_TEST_MAGIC:
+		return "btrfs"
+	case 0x00C36400:
+		return "ceph"
+	case unix.CGROUP_SUPER_MAGIC:
+		return "cgroup"
+	case unix.CGROUP2_SUPER_MAGIC:
+		return "cgroup2"
+	case 0xff534d42:
+		return "cifs"
+	case unix.CODA_SUPER_MAGIC:
+		return "coda"
+	case 0x012ff7b7:
+		return "coh"
+	case unix.CRAMFS_MAGIC, 0x453dcd28:
+		return "cramfs"
+	case unix.DAXFS_MAGIC:
+		return "dax"
+	case unix.DEBUGFS_MAGIC:
+		return "debugfs"
+	case 0x1373:
+		return "dev"
+	case unix.DEVPTS_SUPER_MAGIC:
+		return "devpts"
+	case unix.ECRYPTFS_SUPER_MAGIC:
+		return "ecrypt"
+	case unix.EFIVARFS_MAGIC:
+		return "efivar"
+	case unix.EFS_SUPER_MAGIC:
+		return "efs"
+	case 0x137d:
+		return "ext1"
+	case 0xef51:
+		return "ext2"
+	case unix.EXT2_SUPER_MAGIC:
+		// EXT3_SUPER_MAGIC and EXT4_SUPER_MAGIC have the same value
+		return "ext"
+	case unix.F2FS_SUPER_MAGIC:
+		return "f2fs"
+	case 0x4006:
+		return "fat"
+	case 0x19830326:
+		return "fhgfs"
+	case 0x65735546:
+		return "fuse"
+	case 0x65735543:
+		return "fusectl"
+	case unix.FUTEXFS_SUPER_MAGIC:
+		return "futex"
+	case 0x1161970:
+		return "gfs"
+	case 0x47504653:
+		return "gpfs"
+	case 0x4244:
+		return "hfs"
+	case unix.HOSTFS_SUPER_MAGIC:
+		return "hostfs"
+	case unix.HPFS_SUPER_MAGIC:
+		return "hpfs"
+	case unix.HUGETLBFS_MAGIC:
+		return "hugetlb"
+	case 0x2bad1dea:
+		return "inotify"
+	case unix.ISOFS_SUPER_MAGIC:
+		return "isofs"
+	case 0x4004:
+		return "isofs_r_win"
+	case 0x4000:
+		return "isofs_win"
+	case 0x07C0:
+		return "jffs"
+	case unix.JFFS2_SUPER_MAGIC:
+		return "jffs2"
+	case 0x3153464a:
+		return "jfs"
+	case 0x0bd00bd0:
+		return "lustre"
+	case unix.MINIX_SUPER_MAGIC, unix.MINIX_SUPER_MAGIC2:
+		return "minix"
+	case unix.MINIX2_SUPER_MAGIC, unix.MINIX2_SUPER_MAGIC2:
+		return "minix2"
+	case unix.MINIX3_SUPER_MAGIC:
+		return "minix3"
+	case 0x19800202:
+		return "mqueue"
+	case unix.MSDOS_SUPER_MAGIC:
+		return "msdos"
+	case unix.MTD_INODE_FS_MAGIC:
+		return "mounted inode"
+	case unix.NCP_SUPER_MAGIC:
+		return "ncp"
+	case unix.NFS_SUPER_MAGIC:
+		return "nfs"
+	case 0x6e667364:
+		return "nfsd"
+	case unix.NILFS_SUPER_MAGIC:
+		return "nilfs"
+	case unix.NSFS_MAGIC:
+		return "nsfs"
+	case 0x5346544e:
+		return "ntfs"
+	case unix.OCFS2_SUPER_MAGIC:
+		return "ocfs2"
+	case unix.OPENPROM_SUPER_MAGIC:
+		return "openprom"
+	case unix.OVERLAYFS_SUPER_MAGIC:
+		return "overlayfs"
+	case 0xaad7aaea:
+		return "panfs"
+	case unix.PIPEFS_MAGIC:
+		return "pipefs"
+	case unix.PROC_SUPER_MAGIC:
+		return "proc"
+	case unix.PSTOREFS_MAGIC:
+		return "pstore"
+	case unix.QNX4_SUPER_MAGIC:
+		return "qnx4"
+	case unix.QNX6_SUPER_MAGIC:
+		return "qnx6"
+	case unix.RAMFS_MAGIC:
+		return "ramfs"
+	case unix.REISERFS_SUPER_MAGIC:
+		return "reiserfs"
+	case unix.RDTGROUP_SUPER_MAGIC:
+		return "rdtgroup"
+	case 0x7275:
+		return "romfs"
+	case 0x67596969:
+		return "rpc_pipefs"
+	case unix.SECURITYFS_MAGIC:
+		return "securityfs"
+	case unix.SELINUX_MAGIC:
+		return "selinux"
+	case unix.SMACK_MAGIC:
+		return "smack"
+	case unix.SMB_SUPER_MAGIC:
+		return "smb"
+	case unix.SOCKFS_MAGIC:
+		return "sockfs"
+	case unix.SQUASHFS_MAGIC:
+		return "squashfs"
+	case unix.SYSFS_MAGIC:
+		return "sysfs"
+	case 0x012ff7b6:
+		return "sysv2"
+	case 0x012ff7b5:
+		return "sysv4"
+	case unix.TMPFS_MAGIC:
+		return "tmpfs"
+	case unix.TRACEFS_MAGIC:
+		return "tracefs"
+	case unix.UDF_SUPER_MAGIC:
+		return "udf"
+	case 0x00011954, 0x54190100:
+		return "ufs"
+	case unix.USBDEVICE_SUPER_MAGIC:
+		return "usb"
+	case unix.V9FS_MAGIC:
+		return "v9fs"
+	case 0xbacbacbc:
+		return "vmhgfs"
+	case 0xa501fcf5:
+		return "vxfs"
+	case 0x565a4653:
+		return "vzfs"
+	case unix.XENFS_SUPER_MAGIC:
+		return "xenfs"
+	case 0x012ff7b4:
+		return "xenix"
+	case 0x58465342:
+		return "xfs"
+	case 0x012fd16d:
+		return "xiafs"
+	case 0x2fc12fc1:
+		return "zfs"
+	case unix.ZSMALLOC_MAGIC:
+		return "zsmalloc"
+	default:
+		return "unknown"
+	}
+}
+
+func GetAvailableSpace(path string) (bytes, inodes uint64, fstype string, err error) {
 	var fs syscall.Statfs_t
 	if err := syscall.Statfs(path, &fs); err != nil {
-		return 0, 0, err
+		return 0, 0, "", err
 	}
-	return fs.Bavail * uint64(fs.Bsize), fs.Ffree, nil
+	return fs.Bavail * uint64(fs.Bsize), fs.Ffree, FsTypeString(fs.Type), nil
 }
 
 // The minimum number of inodes available in the pipestance directory
@@ -47,7 +262,7 @@ func CheckMinimalSpace(path string) error {
 	if disableDiskSpaceCheck {
 		return nil
 	}
-	bytes, inodes, err := GetAvailableSpace(path)
+	bytes, inodes, _, err := GetAvailableSpace(path)
 	if err != nil {
 		return err
 	}
