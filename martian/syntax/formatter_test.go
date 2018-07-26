@@ -105,8 +105,7 @@ func TestFormatValueExpression(t *testing.T) {
 	Equal(t, buff.String(), "null", "Nil value is 'null'.")
 }
 
-func TestFormatCommentedSrc(t *testing.T) {
-	src := `# A super-simple test pipeline with forks.
+const fmtTestSrc = `# A super-simple test pipeline with forks.
 
 # I am good at documenting my code with useful headers.
 
@@ -156,7 +155,13 @@ stage ADD_KEY3(
     out bool   disable_example,
     src py     "stages/add_key",
 ) retain (
-    resut,
+    result,
+)
+
+stage ADD_KEY5(
+    in  string   key,
+    in  string[] value,
+    src py       "stages/whatever",
 )
 
 stage SUM_SQUARES(
@@ -179,6 +184,11 @@ stage MERGE_JSON(
     in  json json2,
     out json result,
     src py   "stages/merge_json",
+)
+
+stage MERGE_JSON2(
+    in  json[] input,
+    src py     "stages/merge_json",
 )
 
 stage MAP_EXAMPLE(
@@ -256,7 +266,7 @@ pipeline AWESOME(
         volatile = true,
     )
 
-    call ADD_KEY6(
+    call ADD_KEY5 as ADD_KEY6(
         key   = "6",
         value = [
             "six",
@@ -273,21 +283,21 @@ pipeline AWESOME(
         input = [ADD_KEY3.result],
     )
 
-    call MERGE_JSON3(
+    call MERGE_JSON2 as MERGE_JSON3(
         input = [
             ADD_KEY3.result,
             ADD_KEY4.result,
         ],
     )
 
-    call MERGE_JSON4(
+    call MERGE_JSON2 as MERGE_JSON4(
         input = [
             "four",
             ADD_KEY4.result,
         ],
     )
 
-    call MERGE_JSON5(
+    call MERGE_JSON2 as MERGE_JSON5(
         input = [],
     )
 
@@ -311,10 +321,25 @@ call AWESOME(
     ),
 )
 `
+
+func TestFormatCommentedSrc(t *testing.T) {
+	src := fmtTestSrc
 	if formatted, err := Format(src, "test", false, nil); err != nil {
 		t.Errorf("Format error: %v", err)
 	} else if formatted != src {
 		diffLines(src, formatted, t)
+	}
+}
+
+func BenchmarkFormat(b *testing.B) {
+	srcFile := new(SourceFile)
+	if ast, err := yaccParse([]byte(fmtTestSrc), srcFile); err != nil {
+		b.Error(err)
+	} else {
+		b.ResetTimer()
+		for i := 0; i < b.N; i++ {
+			ast.format(false)
+		}
 	}
 }
 
@@ -394,6 +419,7 @@ func TestFormatTopoSort(t *testing.T) {
 	}
 }
 
+// Produce a relatively debuggable side-by-side diff.
 func diffLines(src, formatted string, t *testing.T) {
 	src_lines := strings.Split(src, "\n")
 	formatted_lines := strings.Split(formatted, "\n")

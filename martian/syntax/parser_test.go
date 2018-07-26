@@ -73,7 +73,7 @@ pipeline SUM_SQUARE_PIPELINE(
 }
 
 call SUM_SQUARE_PIPELINE(
-    values = [1.0, 2.0, 3.0],
+    values = [10.0, 2.0e1, 3.0e+1, 400.0e-1, 5e1, 6e+1, 700e-1],
 )
 `); ast != nil {
 		if s := ast.Callables.Table["SUM_SQUARES"]; s == nil {
@@ -103,6 +103,40 @@ call SUM_SQUARE_PIPELINE(
 					if p.getNode().Comments[0] != "# sum comment" {
 						t.Errorf("Expected comment '# sum comment', got %s",
 							p.getNode().Comments[0])
+					}
+				}
+			}
+		}
+		if ast.Call == nil {
+			t.Error("Expected a call.")
+		} else {
+			if ast.Call.DecId != ast.Call.Id {
+				t.Errorf("Expected callable name %s to match alias %s",
+					ast.Call.DecId, ast.Call.Id)
+			}
+			if ast.Call.Bindings == nil || len(ast.Call.Bindings.List) != 1 {
+				t.Errorf("Expected 1 binding.")
+			} else if binding := ast.Call.Bindings.List[0]; binding.Id != "values" {
+				t.Errorf("Expected binding to 'values', got %s",
+					binding.Id)
+			} else if binding.Exp.getKind() != KindArray {
+				t.Errorf("Expected array binding, got %v",
+					binding.Exp.getKind())
+			} else if val := binding.Exp.ToInterface(); val == nil {
+				t.Errorf("Could not get binding value.")
+			} else if arr, ok := val.([]interface{}); !ok {
+				t.Errorf("Could not convert expression of type %T to array.",
+					val)
+			} else if len(arr) != 7 {
+				t.Errorf("Expected 7-element array, got %d elements.",
+					len(arr))
+			} else {
+				for i, v := range arr {
+					if f, ok := v.(float64); !ok {
+						t.Errorf("Expected floating point number, got %T",
+							v)
+					} else if f != float64(10*(i+1)) {
+						t.Errorf("Expected %d, got %f", 10*(i+1), f)
 					}
 				}
 			}
@@ -1387,4 +1421,35 @@ call SQ_PIPE(
     disabled = true,
 )
 `)
+}
+
+func TestCompileBig(t *testing.T) {
+	t.Parallel()
+	testGood(t, fmtTestSrc)
+}
+
+func BenchmarkParse(b *testing.B) {
+	srcBytes := []byte(fmtTestSrc)
+	srcFile := new(SourceFile)
+
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		if _, err := yaccParse(srcBytes, srcFile); err != nil {
+			b.Error(err.Error())
+		}
+	}
+}
+
+func BenchmarkParseAndCompile(b *testing.B) {
+	srcBytes := []byte(fmtTestSrc)
+	srcFile := new(SourceFile)
+
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		if ast, err := yaccParse(srcBytes, srcFile); err != nil {
+			b.Error(err.Error())
+		} else if err := ast.compile(); err != nil {
+			b.Error(err.Error())
+		}
+	}
 }
