@@ -18,7 +18,8 @@ func TestMain(m *testing.M) {
 
 func testGood(t *testing.T, src string) *Ast {
 	t.Helper()
-	if ast, err := yaccParse([]byte(src), new(SourceFile)); err != nil {
+	if ast, err := yaccParse([]byte(src), new(SourceFile),
+		makeStringIntern()); err != nil {
 		t.Fatal(err.Error())
 		return nil
 	} else if err := ast.compile(); err != nil {
@@ -29,19 +30,26 @@ func testGood(t *testing.T, src string) *Ast {
 	}
 }
 
-func testBadGrammar(t *testing.T, src string) {
+func testBadGrammar(t *testing.T, src string) string {
 	t.Helper()
-	if _, err := yaccParse([]byte(src), new(SourceFile)); err == nil {
+	if _, err := yaccParse([]byte(src), new(SourceFile), makeStringIntern()); err == nil {
 		t.Error("Expected failure to parse, but got success.")
+		return ""
+	} else {
+		return err.Error()
 	}
 }
 
-func testBadCompile(t *testing.T, src string) {
+func testBadCompile(t *testing.T, src string) string {
 	t.Helper()
-	if ast, err := yaccParse([]byte(src), new(SourceFile)); err != nil {
+	if ast, err := yaccParse([]byte(src), new(SourceFile), makeStringIntern()); err != nil {
 		t.Fatal(err.Error())
+		return ""
 	} else if err := ast.compile(); err == nil {
 		t.Error("Expected failure to compile.")
+		return ""
+	} else {
+		return err.Error()
 	}
 }
 
@@ -73,7 +81,7 @@ pipeline SUM_SQUARE_PIPELINE(
 }
 
 call SUM_SQUARE_PIPELINE(
-    values = [10.0, 2.0e1, 3.0e+1, 400.0e-1, 5e1, 6e+1, 700e-1],
+    values = [00.0e-10, 10.0, 2.0e1, 3.0e+1, 400.0e-1, 5e1, 6e+1, 700e-1],
 )
 `); ast != nil {
 		if s := ast.Callables.Table["SUM_SQUARES"]; s == nil {
@@ -127,16 +135,16 @@ call SUM_SQUARE_PIPELINE(
 			} else if arr, ok := val.([]interface{}); !ok {
 				t.Errorf("Could not convert expression of type %T to array.",
 					val)
-			} else if len(arr) != 7 {
-				t.Errorf("Expected 7-element array, got %d elements.",
+			} else if len(arr) != 8 {
+				t.Errorf("Expected 8-element array, got %d elements.",
 					len(arr))
 			} else {
 				for i, v := range arr {
 					if f, ok := v.(float64); !ok {
 						t.Errorf("Expected floating point number, got %T",
 							v)
-					} else if f != float64(10*(i+1)) {
-						t.Errorf("Expected %d, got %f", 10*(i+1), f)
+					} else if f != float64(10*i) {
+						t.Errorf("Expected %d, got %f", 10*i, f)
 					}
 				}
 			}
@@ -146,7 +154,7 @@ call SUM_SQUARE_PIPELINE(
 
 func TestBinding(t *testing.T) {
 	t.Parallel()
-	testGood(t, `
+	if ast := testGood(t, `
 stage SUM_SQUARES(
     in  float[] values,
     in  int     threads,
@@ -182,9 +190,44 @@ pipeline SUM_SQUARE_PIPELINE(
 }
 
 call SUM_SQUARE_PIPELINE(
-    values = [1.0, 2.0, 3.0],
+    values = [0.1, 2.0e-1, 3e-1],
 )
-`)
+`); ast != nil {
+		if ast.Call == nil {
+			t.Error("Expected a call.")
+		} else {
+			if ast.Call.DecId != ast.Call.Id {
+				t.Errorf("Expected callable name %s to match alias %s",
+					ast.Call.DecId, ast.Call.Id)
+			}
+			if ast.Call.Bindings == nil || len(ast.Call.Bindings.List) != 1 {
+				t.Errorf("Expected 1 binding.")
+			} else if binding := ast.Call.Bindings.List[0]; binding.Id != "values" {
+				t.Errorf("Expected binding to 'values', got %s",
+					binding.Id)
+			} else if binding.Exp.getKind() != KindArray {
+				t.Errorf("Expected array binding, got %v",
+					binding.Exp.getKind())
+			} else if val := binding.Exp.ToInterface(); val == nil {
+				t.Errorf("Could not get binding value.")
+			} else if arr, ok := val.([]interface{}); !ok {
+				t.Errorf("Could not convert expression of type %T to array.",
+					val)
+			} else if len(arr) != 3 {
+				t.Errorf("Expected 3-element array, got %d elements.",
+					len(arr))
+			} else {
+				for i, v := range arr {
+					if f, ok := v.(float64); !ok {
+						t.Errorf("Expected floating point number, got %T",
+							v)
+					} else if f != float64(i+1)/10 {
+						t.Errorf("Expected 0.%d, got %f", i+1, f)
+					}
+				}
+			}
+		}
+	}
 }
 
 func TestSubPipe(t *testing.T) {
@@ -240,6 +283,38 @@ pipeline SUM_SQUARE_PIPELINE(
 
 call SUM_SQUARE_PIPELINE(
     values = [1.0, 2.0, 3.0],
+	)
+`)
+}
+
+func TestBadSyntax(t *testing.T) {
+	testBadGrammar(t, `
+# File comment
+
+# Stage comment
+# This describes the stage.
+stage SUM_SQUARES(
+    in  float[] values,
+    # sum comment
+    osut float   sum,
+    src py      "stages/sum_squares",
+)
+
+pipeline SUM_SQUARE_PIPELINE(
+    in  float[] values,
+    out float   sum,
+)
+{
+    call SUM_SQUARES(
+        values = self.values,
+    )
+    return (
+        sum = SUM_SQUARES.sum,
+    )
+}
+
+call SUM_SQUARE_PIPELINE(
+    values = [10.0, 2.0e1, 3.0e+1, 400.0e-1, 5e1, 6e+1, 700e-1],
 )
 `)
 }
@@ -1434,7 +1509,7 @@ func BenchmarkParse(b *testing.B) {
 
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
-		if _, err := yaccParse(srcBytes, srcFile); err != nil {
+		if _, err := yaccParse(srcBytes, srcFile, makeStringIntern()); err != nil {
 			b.Error(err.Error())
 		}
 	}
@@ -1443,10 +1518,13 @@ func BenchmarkParse(b *testing.B) {
 func BenchmarkParseAndCompile(b *testing.B) {
 	srcBytes := []byte(fmtTestSrc)
 	srcFile := new(SourceFile)
+	intern := makeStringIntern()
+	// prepopulate the string internment cache.
+	yaccParse(srcBytes, srcFile, intern)
 
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
-		if ast, err := yaccParse(srcBytes, srcFile); err != nil {
+		if ast, err := yaccParse(srcBytes, srcFile, intern); err != nil {
 			b.Error(err.Error())
 		} else if err := ast.compile(); err != nil {
 			b.Error(err.Error())

@@ -8,7 +8,6 @@
 package syntax
 
 import (
-    "strconv"
     "strings"
 )
 
@@ -17,9 +16,9 @@ import (
 %union{
     global    *Ast
     srcfile   *SourceFile
-    arr       int
+    arr       int16
     loc       int
-    val       string
+    val       []byte
     modifiers *Modifiers
     dec       Dec
     decs      []Dec
@@ -27,7 +26,8 @@ import (
     outparam  *OutParam
     retains   []*RetainParam
     stretains *RetainParams
-    params    *Params
+    i_params  *InParams
+    o_params  *OutParams
     res       *Resources
     par_tuple paramsTuple
     src       *SrcParam
@@ -44,13 +44,14 @@ import (
     plretains *PipelineRetains
     reflist   []*RefExp
     includes  []*Include
+    intern    *stringIntern
 }
 
 %type <includes>  includes
 %type <val>       id id_list type help type src_lang type outname
 %type <modifiers> modifiers
 %type <arr>       arr_list
-%type <dec>       dec stage
+%type <dec>       dec stage pipeline
 %type <decs>      dec_list
 %type <inparam>   in_param
 %type <outparam>  out_param
@@ -58,7 +59,8 @@ import (
 %type <stretains> stage_retain
 %type <reflist>   pipeline_retain_list
 %type <plretains> pipeline_retain
-%type <params>    in_param_list out_param_list
+%type <i_params>  in_param_list
+%type <o_params>  out_param_list
 %type <par_tuple> split_param_list
 %type <src>       src_stm
 %type <exp>       exp
@@ -82,7 +84,7 @@ import (
 %token IN OUT SRC AS
 %token <val> THREADS MEM_GB SPECIAL
 %token <val> ID LITSTRING NUM_FLOAT NUM_INT DOT
-%token <val> PY GO SH EXEC COMPILED
+%token <val> PY EXEC COMPILED
 %token <val> MAP INT STRING FLOAT PATH BOOL TRUE FALSE NULL DEFAULT
 %token INCLUDE_DIRECTIVE
 
@@ -102,7 +104,7 @@ file
         }}
     | includes call_stm
         {{
-            global := NewAst([]Dec{}, $2, $<srcfile>2)
+            global := NewAst(nil, $2, $<srcfile>2)
             global.Includes = $1
             mmlex.(*mmLexInfo).global = global
         }}
@@ -118,19 +120,23 @@ file
         }}
     | call_stm
         {{
-            global := NewAst([]Dec{}, $1, $<srcfile>1)
+            global := NewAst(nil, $1, $<srcfile>1)
             mmlex.(*mmLexInfo).global = global
         }}
     ;
 
 includes
     : includes INCLUDE_DIRECTIVE LITSTRING
-        {{ $$ = append($1, &Include{NewAstNode($<loc>2, $<srcfile>2), unquote($3)}) }}
+        {{ $$ = append($1, &Include{
+            Node: NewAstNode($<loc>2, $<srcfile>2),
+            Value: $<intern>3.unquote($3),
+           })
+        }}
     | INCLUDE_DIRECTIVE LITSTRING
         {{ $$ = []*Include{
               &Include{
                   Node: NewAstNode($<loc>1, $<srcfile>1),
-                  Value: unquote($2),
+                  Value: $<intern>2.unquote($2),
               },
            }
         }}
@@ -144,17 +150,33 @@ dec_list
 
 dec
     : FILETYPE id_list SEMICOLON
-        {{ $$ = &UserType{NewAstNode($<loc>2, $<srcfile>2), $2} }}
+        {{ $$ = &UserType{
+            Node: NewAstNode($<loc>2, $<srcfile>2),
+            Id: $<intern>2.Get($2),
+        } }}
     | stage
-    | PIPELINE id LPAREN in_param_list out_param_list RPAREN LBRACE call_stm_list return_stm pipeline_retain RBRACE
-        {{ $$ = &Pipeline{NewAstNode($<loc>2, $<srcfile>2), $2, $4, $5, $8, &Callables{[]Callable{}, map[string]Callable{}}, $9, $10} }}
+    | pipeline
+    ;
+
+pipeline
+    : PIPELINE id LPAREN in_param_list out_param_list RPAREN LBRACE call_stm_list return_stm pipeline_retain RBRACE
+        {{ $$ = &Pipeline{
+            Node: NewAstNode($<loc>2, $<srcfile>2),
+            Id: $<intern>2.Get($2),
+            InParams: $4,
+            OutParams: $5,
+            Calls: $8,
+            Callables: &Callables{Table: make(map[string]Callable)},
+            Ret: $9,
+            Retain: $10,
+        } }}
     ;
 
 stage
     : STAGE id LPAREN in_param_list out_param_list src_stm RPAREN split_param_list resources stage_retain
         {{ $$ = &Stage{
                 Node: NewAstNode($<loc>2, $<srcfile>2),
-                Id:  $2,
+                Id: $<intern>2.Get($2),
                 InParams: $4,
                 OutParams: $5,
                 Src: $6,
@@ -163,7 +185,8 @@ stage
                 Split: $8.Present,
                 Resources: $9,
                 Retain: $10,
-           } }}
+           }
+        }}
    ;
 
 resources
@@ -178,28 +201,28 @@ resources
 
 resource_list
     :
-        {{ $$ = &Resources{} }}
+        {{ $$ = new(Resources) }}
     | resource_list THREADS EQUALS NUM_INT COMMA
         {{
             n := NewAstNode($<loc>2, $<srcfile>2)
             $1.ThreadNode = &n
-            i, _ := strconv.ParseInt($4, 0, 64)
-            $1.Threads = int(i)
+            i := parseInt($4)
+            $1.Threads = int16(i)
             $$ = $1
         }}
     | resource_list MEM_GB EQUALS NUM_INT COMMA
         {{
             n := NewAstNode($<loc>2, $<srcfile>2)
             $1.MemNode = &n
-            i, _ := strconv.ParseInt($4, 0, 64)
-            $1.MemGB = int(i)
+            i := parseInt($4)
+            $1.MemGB = int16(i)
             $$ = $1
         }}
     | resource_list SPECIAL EQUALS LITSTRING COMMA
         {{
             n := NewAstNode($<loc>2, $<srcfile>2)
             $1.SpecialNode = &n
-            $1.Special = $4
+            $1.Special = $<intern>4.unquote($4)
             $$ = $1
         }}
     | resource_list VOLATILE EQUALS STRICT COMMA
@@ -230,7 +253,7 @@ stage_retain_list
         {{
             $$ = append($1, &RetainParam{
                 Node: NewAstNode($<loc>2, $<srcfile>2),
-                Id: $2,
+                Id: $<intern>2.Get($2),
             })
         }}
     ;
@@ -238,20 +261,28 @@ stage_retain_list
 
 id_list
     : id_list DOT id
-        {{ $$ = $1 + $2 + $3 }}
+        {{
+            idd := append($1, '.')
+            $$ = append(idd, $3...)
+        }}
     | id
+        {{
+            // set capacity == length so append doesn't overwrite
+            // other parts of the buffer later.
+            $$ = $1[:len($1):len($1)]
+        }}
     ;
 
 arr_list
     :
         {{ $$ = 0 }}
     | arr_list LBRACKET RBRACKET
-        {{ $$ += 1 }}
+        {{ $$++ }}
     ;
 
 in_param_list
     :
-        {{ $$ = &Params{[]Param{}, map[string]Param{}} }}
+        {{ $$ = &InParams{Table: make(map[string]*InParam)} }}
     | in_param_list in_param
         {{
             $1.List = append($1.List, $2)
@@ -261,14 +292,25 @@ in_param_list
 
 in_param
     : IN type arr_list id help COMMA
-        {{ $$ = &InParam{NewAstNode($<loc>1, $<srcfile>1), $2, $3, $4, unquote($5), false } }}
+        {{ $$ = &InParam{
+            Node: NewAstNode($<loc>1, $<srcfile>1),
+            Tname: $<intern>2.Get($2),
+            ArrayDim: $3,
+            Id: $<intern>4.Get($4),
+            Help: unquote($5),
+        } }}
     | IN type arr_list id COMMA
-        {{ $$ = &InParam{NewAstNode($<loc>1, $<srcfile>1), $2, $3, $4, "", false } }}
+        {{ $$ = &InParam{
+            Node: NewAstNode($<loc>1, $<srcfile>1),
+            Tname: $<intern>2.Get($2),
+            ArrayDim: $3,
+            Id: $<intern>4.Get($4),
+        } }}
     ;
 
 out_param_list
     :
-        {{ $$ = &Params{[]Param{}, map[string]Param{}} }}
+        {{ $$ = &OutParams{Table: make(map[string]*OutParam)} }}
     | out_param_list out_param
         {{
             $1.List = append($1.List, $2)
@@ -278,27 +320,63 @@ out_param_list
 
 out_param
     : OUT type arr_list COMMA
-        {{ $$ = &OutParam{NewAstNode($<loc>1, $<srcfile>1), $2, $3, "default", "", "", false } }}
+        {{ $$ = &OutParam{
+            Node: NewAstNode($<loc>1, $<srcfile>1),
+            Tname: $<intern>2.Get($2),
+            ArrayDim: $3,
+            Id: default_out_name,
+        } }}
     | OUT type arr_list help COMMA
-        {{ $$ = &OutParam{NewAstNode($<loc>1, $<srcfile>1), $2, $3, "default", unquote($4), "", false } }}
+        {{ $$ = &OutParam{
+            Node: NewAstNode($<loc>1, $<srcfile>1),
+            Tname: $<intern>2.Get($2),
+            ArrayDim: $3,
+            Id: default_out_name,
+            Help: unquote($4),
+        } }}
     | OUT type arr_list help outname COMMA
-        {{ $$ = &OutParam{NewAstNode($<loc>1, $<srcfile>1), $2, $3, "default", unquote($4), unquote($5), false } }}
+        {{ $$ = &OutParam{
+            Node: NewAstNode($<loc>1, $<srcfile>1),
+            Tname: $<intern>2.Get($2),
+            ArrayDim: $3,
+            Id: default_out_name,
+            Help: unquote($4),
+            OutName: $<intern>5.unquote($5),
+        } }}
     | OUT type arr_list id COMMA
-        {{ $$ = &OutParam{NewAstNode($<loc>1, $<srcfile>1), $2, $3, $4, "", "", false } }}
+        {{ $$ = &OutParam{
+            Node: NewAstNode($<loc>1, $<srcfile>1),
+            Tname: $<intern>2.Get($2),
+            ArrayDim: $3,
+            Id: $<intern>4.Get($4),
+        } }}
     | OUT type arr_list id help COMMA
-        {{ $$ = &OutParam{NewAstNode($<loc>1, $<srcfile>1), $2, $3, $4, unquote($5), "", false } }}
+        {{ $$ = &OutParam{
+            Node: NewAstNode($<loc>1, $<srcfile>1),
+            Tname: $<intern>2.Get($2),
+            ArrayDim: $3,
+            Id: $<intern>4.Get($4),
+            Help: unquote($5),
+        } }}
     | OUT type arr_list id help outname COMMA
-        {{ $$ = &OutParam{NewAstNode($<loc>1, $<srcfile>1), $2, $3, $4, unquote($5), unquote($6), false } }}
+        {{ $$ = &OutParam{
+            Node: NewAstNode($<loc>1, $<srcfile>1),
+            Tname: $<intern>2.Get($2),
+            ArrayDim: $3,
+            Id: $<intern>4.Get($4),
+            Help: unquote($5),
+            OutName: $<intern>6.unquote($6),
+        } }}
     ;
 
 src_stm
     : SRC src_lang LITSTRING COMMA
-        {{ stagecodeParts := strings.Split(unquote($3), " ")
+        {{ stagecodeParts := strings.Split($<intern>3.unquote($3), " ")
            $$ = &SrcParam{
-               NewAstNode($<loc>1, $<srcfile>1),
-               StageLanguage($2),
-               stagecodeParts[0],
-               stagecodeParts[1:],
+               Node: NewAstNode($<loc>1, $<srcfile>1),
+               Lang: StageLanguage($<intern>2.Get($2)),
+               Path: stagecodeParts[0],
+               Args: stagecodeParts[1:],
            } }}
     ;
 
@@ -324,35 +402,47 @@ src_lang
     : PY
     | EXEC
     | COMPILED
-    //| GO
-    //| SH
     ;
 
 split_param_list
     :
         {{
             $$ = paramsTuple{
-                false,
-                &Params{[]Param{}, map[string]Param{}},
-                &Params{[]Param{}, map[string]Param{}},
+                Present: false,
+                Ins: &InParams{Table: make(map[string]*InParam)},
+                Outs: &OutParams{Table: make(map[string]*OutParam)},
             }
         }}
     | SPLIT USING LPAREN in_param_list out_param_list RPAREN
-        {{ $$ = paramsTuple{true, $4, $5} }}
+        {{ $$ = paramsTuple{
+            Present: true,
+            Ins: $4,
+            Outs: $5,
+        } }}
     | SPLIT LPAREN in_param_list out_param_list RPAREN
-        {{ $$ = paramsTuple{true, $3, $4} }}
+        {{ $$ = paramsTuple{
+            Present: true,
+            Ins: $3,
+            Outs: $4,
+        } }}
     ;
 
 return_stm
     : RETURN LPAREN bind_stm_list RPAREN
-        {{ $$ = &ReturnStm{NewAstNode($<loc>1, $<srcfile>1), $3} }}
+        {{ $$ = &ReturnStm{
+            Node: NewAstNode($<loc>1, $<srcfile>1),
+            Bindings: $3,
+        } }}
     ;
 
 pipeline_retain
     :
         {{ $$ = nil }}
     | RETAIN LPAREN pipeline_retain_list RPAREN
-        {{ $$ = &PipelineRetains{NewAstNode($<loc>1, $<srcfile>1), $3} }}
+        {{ $$ = &PipelineRetains{
+            Node: NewAstNode($<loc>1, $<srcfile>1),
+            Refs: $3,
+        } }}
 
 pipeline_retain_list
     :
@@ -369,9 +459,22 @@ call_stm_list
 
 call_stm
     : CALL modifiers id LPAREN bind_stm_list RPAREN
-        {{ $$ = &CallStm{NewAstNode($<loc>1, $<srcfile>1), $2, $3, $3, $5} }}
+        {{  id := $<intern>3.Get($3)
+            $$ = &CallStm{
+            Node: NewAstNode($<loc>1, $<srcfile>1),
+            Modifiers: $2,
+            Id: id,
+            DecId: id,
+            Bindings: $5,
+        } }}
     | CALL modifiers id AS id LPAREN bind_stm_list RPAREN
-        {{ $$ = &CallStm{NewAstNode($<loc>1, $<srcfile>1), $2, $5, $3, $7} }}
+        {{ $$ = &CallStm{
+            Node: NewAstNode($<loc>1, $<srcfile>1),
+            Modifiers: $2,
+            Id: $<intern>5.Get($5),
+            DecId: $<intern>3.Get($3),
+            Bindings: $7,
+        } }}
     | call_stm USING LPAREN modifier_stm_list RPAREN
         {{
             $1.Modifiers.Bindings = $4
@@ -381,7 +484,7 @@ call_stm
 
 modifiers
     :
-      {{ $$ = &Modifiers{} }}
+      {{ $$ = new(Modifiers) }}
     | modifiers LOCAL
       {{ $$.Local = true }}
     | modifiers PREFLIGHT
@@ -392,7 +495,10 @@ modifiers
 
 modifier_stm_list
     :
-        {{ $$ = &BindStms{NewAstNode($<loc>0, $<srcfile>0), []*BindStm{}, map[string]*BindStm{}} }}
+        {{ $$ = &BindStms{
+            Node: NewAstNode($<loc>0, $<srcfile>0),
+            Table: make(map[string]*BindStm),
+        } }}
     | modifier_stm_list modifier_stm
         {{
             $1.List = append($1.List, $2)
@@ -402,17 +508,36 @@ modifier_stm_list
 
 modifier_stm
     : LOCAL EQUALS bool_exp COMMA
-        {{ $$ = &BindStm{NewAstNode($<loc>1, $<srcfile>1), $1, $3, false, ""} }}
+        {{ $$ = &BindStm{
+            Node: NewAstNode($<loc>1, $<srcfile>1),
+            Id: local,
+            Exp: $3,
+        } }}
     | PREFLIGHT EQUALS bool_exp COMMA
-        {{ $$ = &BindStm{NewAstNode($<loc>1, $<srcfile>1), $1, $3, false, ""} }}
+        {{ $$ = &BindStm{
+            Node: NewAstNode($<loc>1, $<srcfile>1),
+            Id: preflight,
+            Exp: $3,
+        } }}
     | VOLATILE EQUALS bool_exp COMMA
-        {{ $$ = &BindStm{NewAstNode($<loc>1, $<srcfile>1), $1, $3, false, ""} }}
+        {{ $$ = &BindStm{
+            Node: NewAstNode($<loc>1, $<srcfile>1),
+            Id: volatile,
+            Exp: $3,
+        } }}
     | DISABLED EQUALS ref_exp COMMA
-        {{ $$ = &BindStm{NewAstNode($<loc>1, $<srcfile>1), $1, $3, false, ""} }}
+        {{ $$ = &BindStm{
+            Node: NewAstNode($<loc>1, $<srcfile>1),
+            Id: disabled,
+            Exp: $3,
+        } }}
 
 bind_stm_list
     :
-        {{ $$ = &BindStms{NewAstNode($<loc>0, $<srcfile>0), []*BindStm{}, map[string]*BindStm{}} }}
+        {{ $$ = &BindStms{
+            Node: NewAstNode($<loc>0, $<srcfile>0),
+            Table: make(map[string]*BindStm),
+        } }}
     | bind_stm_list bind_stm
         {{
             $1.List = append($1.List, $2)
@@ -422,11 +547,33 @@ bind_stm_list
 
 bind_stm
     : id EQUALS exp COMMA
-        {{ $$ = &BindStm{NewAstNode($<loc>1, $<srcfile>1), $1, $3, false, ""} }}
+        {{ $$ = &BindStm{
+            Node: NewAstNode($<loc>1, $<srcfile>1),
+            Id: $<intern>1.Get($1),
+            Exp: $3,
+        } }}
     | id EQUALS SWEEP LPAREN exp_list COMMA RPAREN COMMA
-        {{ $$ = &BindStm{NewAstNode($<loc>1, $<srcfile>1), $1, &ValExp{Node:NewAstNode($<loc>1, $<srcfile>1), Kind: KindArray, Value: $5}, true, ""} }}
+        {{ $$ = &BindStm{
+            Node: NewAstNode($<loc>1, $<srcfile>1),
+            Id: $<intern>1.Get($1),
+            Exp: &ValExp{
+                Node: NewAstNode($<loc>1, $<srcfile>1),
+                Kind: KindArray,
+                Value: $5,
+            },
+            Sweep: true,
+        } }}
     | id EQUALS SWEEP LPAREN exp_list RPAREN COMMA
-        {{ $$ = &BindStm{NewAstNode($<loc>1, $<srcfile>1), $1, &ValExp{Node:NewAstNode($<loc>1, $<srcfile>1), Kind: KindArray, Value: $5}, true, ""} }}
+        {{ $$ = &BindStm{
+            Node: NewAstNode($<loc>1, $<srcfile>1),
+            Id: $<intern>1.Get($1),
+            Exp: &ValExp{
+                Node: NewAstNode($<loc>1, $<srcfile>1),
+                Kind: KindArray,
+                Value: $5,
+            },
+            Sweep: true,
+        } }}
     ;
 
 exp_list
@@ -454,47 +601,108 @@ exp
 
 val_exp
     : LBRACKET exp_list RBRACKET
-        {{ $$ = &ValExp{Node:NewAstNode($<loc>1, $<srcfile>1), Kind: KindArray, Value: $2} }}
+        {{ $$ = &ValExp{
+            Node: NewAstNode($<loc>1, $<srcfile>1),
+            Kind: KindArray,
+            Value: $2,
+        } }}
     | LBRACKET exp_list COMMA RBRACKET
-        {{ $$ = &ValExp{Node:NewAstNode($<loc>1, $<srcfile>1), Kind: KindArray, Value: $2} }}
+        {{ $$ = &ValExp{
+            Node: NewAstNode($<loc>1, $<srcfile>1),
+            Kind: KindArray,
+            Value: $2,
+        } }}
     | LBRACKET RBRACKET
-        {{ $$ = &ValExp{Node:NewAstNode($<loc>1, $<srcfile>1), Kind: KindArray, Value: []Exp{}} }}
+        {{ $$ = &ValExp{
+            Node: NewAstNode($<loc>1, $<srcfile>1),
+            Kind: KindArray,
+            Value: make([]Exp, 0),
+        } }}
     | LBRACE RBRACE
-        {{ $$ = &ValExp{Node:NewAstNode($<loc>1, $<srcfile>1), Kind: KindMap, Value: map[string]interface{}{}} }}
+        {{ $$ = &ValExp{
+            Node: NewAstNode($<loc>1, $<srcfile>1),
+            Kind: KindMap,
+            Value: make(map[string]interface{}, 0),
+        } }}
     | LBRACE kvpair_list RBRACE
-        {{ $$ = &ValExp{Node:NewAstNode($<loc>1, $<srcfile>1), Kind: KindMap, Value: $2} }}
+        {{ $$ = &ValExp{
+            Node: NewAstNode($<loc>1, $<srcfile>1),
+            Kind: KindMap,
+            Value: $2,
+        } }}
     | LBRACE kvpair_list COMMA RBRACE
-        {{ $$ = &ValExp{Node:NewAstNode($<loc>1, $<srcfile>1), Kind: KindMap, Value: $2} }}
+        {{ $$ = &ValExp{
+            Node: NewAstNode($<loc>1, $<srcfile>1),
+            Kind: KindMap,
+            Value: $2,
+        } }}
     | NUM_FLOAT
         {{  // Lexer guarantees parseable float strings.
-            f, _ := strconv.ParseFloat($1, 64)
-            $$ = &ValExp{Node:NewAstNode($<loc>1, $<srcfile>1), Kind: KindFloat, Value: f }
+            f := parseFloat($1)
+            $$ = &ValExp{
+                Node: NewAstNode($<loc>1, $<srcfile>1),
+                Kind: KindFloat,
+                Value: f,
+            }
         }}
     | NUM_INT
         {{  // Lexer guarantees parseable int strings.
-            i, _ := strconv.ParseInt($1, 0, 64)
-            $$ = &ValExp{Node:NewAstNode($<loc>1, $<srcfile>1), Kind: KindInt, Value: i }
+            i := parseInt($1)
+            $$ = &ValExp{
+                Node: NewAstNode($<loc>1, $<srcfile>1),
+                Kind: KindInt,
+                Value: i,
+            }
         }}
     | LITSTRING
-        {{ $$ = &ValExp{Node:NewAstNode($<loc>1, $<srcfile>1), Kind: KindString, Value: unquote($1)} }}
+        {{ $$ = &ValExp{
+            Node: NewAstNode($<loc>1, $<srcfile>1),
+            Kind: KindString,
+            Value: unquote($1),
+        } }}
     | bool_exp
     | NULL
-        {{ $$ = &ValExp{Node:NewAstNode($<loc>1, $<srcfile>1), Kind: KindNull, Value: nil} }}
+        {{ $$ = &ValExp{
+            Node: NewAstNode($<loc>1, $<srcfile>1),
+            Kind: KindNull,
+        } }}
     ;
 
 bool_exp
     : TRUE
-        {{ $$ = &ValExp{Node:NewAstNode($<loc>1, $<srcfile>1), Kind: KindBool, Value: true} }}
+        {{ $$ = &ValExp{
+            Node: NewAstNode($<loc>1, $<srcfile>1),
+            Kind: KindBool,
+            Value: true,
+        } }}
     | FALSE
-        {{ $$ = &ValExp{Node:NewAstNode($<loc>1, $<srcfile>1), Kind: KindBool, Value: false} }}
+        {{ $$ = &ValExp{
+            Node: NewAstNode($<loc>1, $<srcfile>1),
+            Kind: KindBool,
+            Value: false,
+        } }}
 
 ref_exp
     : id DOT id
-        {{ $$ = &RefExp{NewAstNode($<loc>1, $<srcfile>1), KindCall, $1, $3} }}
+        {{ $$ = &RefExp{
+            Node: NewAstNode($<loc>1, $<srcfile>1),
+            Kind: KindCall,
+            Id: $<intern>1.Get($1),
+            OutputId: $<intern>3.Get($3),
+        } }}
     | id
-        {{ $$ = &RefExp{NewAstNode($<loc>1, $<srcfile>1), KindCall, $1, "default"} }}
+        {{ $$ = &RefExp{
+            Node: NewAstNode($<loc>1, $<srcfile>1),
+            Kind: KindCall,
+            Id: $<intern>1.Get($1),
+            OutputId: default_out_name,
+        } }}
     | SELF DOT id
-        {{ $$ = &RefExp{NewAstNode($<loc>1, $<srcfile>1), KindSelf, $3, ""} }}
+        {{ $$ = &RefExp{
+            Node: NewAstNode($<loc>1, $<srcfile>1),
+            Kind: KindSelf,
+            Id: $<intern>3.Get($3),
+        } }}
     ;
 
 id

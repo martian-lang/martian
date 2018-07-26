@@ -30,8 +30,11 @@ type (
 		Node  AstNode
 		Id    string
 		Exp   Exp
-		Sweep bool
 		Tname string
+
+		// If true, the expression is an array and the pipeline will
+		// fork into versions for each value in the array.
+		Sweep bool
 	}
 
 	// An ordered set of BindStm objects.
@@ -43,6 +46,12 @@ type (
 
 	// A set of modifiers on a call.
 	Modifiers struct {
+		// The set of bindings, if any, for call modifiers which are
+		// determined at run time (e.g. disabled).  There may also
+		// be bindings for modifiers which are known at compile time,
+		// because they may have comments associated with them.
+		Bindings *BindStms
+
 		// If true, this call should be run locally, even in cluster mode.
 		Local bool
 
@@ -55,7 +64,6 @@ type (
 		// If true, this stage's output files should be cleaned out after
 		// all dependent stages have completed.
 		Volatile bool
-		Bindings *BindStms
 	}
 )
 

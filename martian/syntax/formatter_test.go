@@ -142,6 +142,7 @@ stage ADD_KEY2(
     in  json   start,
     in  string failfile  "The file to check to force failure.",
     out json   result,
+    out int    very_long_output_name_should_not_push_help_text_over,
     src py     "stages/add_key",
 )
 
@@ -165,8 +166,10 @@ stage ADD_KEY5(
 )
 
 stage SUM_SQUARES(
-    in  float[] values,
+    in  float[] values   "The values to square and then sum.",
     out float   sum,
+    # default
+    out int,
     src comp    "bin/sum_squares mode_arg",
 ) split (
     in  float   value,
@@ -207,7 +210,7 @@ pipeline AWESOME(
     in  string value1,
     in  string key2,
     in  string value2,
-    out json   outfile,
+    out json   outfile  "The json file containing all of the keys and values."  "all_keys",
 )
 {
     call ADD_KEY1(
@@ -257,6 +260,10 @@ pipeline AWESOME(
         local    = true,
         # This shouldn't be volatile because reasons.
         volatile = false,
+    )
+
+    call MAP_EXAMPLE as MAP_EXAMPLE2(
+        foo = {},
     )
 
     call ADD_KEY5(
@@ -333,7 +340,8 @@ func TestFormatCommentedSrc(t *testing.T) {
 
 func BenchmarkFormat(b *testing.B) {
 	srcFile := new(SourceFile)
-	if ast, err := yaccParse([]byte(fmtTestSrc), srcFile); err != nil {
+	if ast, err := yaccParse([]byte(fmtTestSrc),
+		srcFile, makeStringIntern()); err != nil {
 		b.Error(err)
 	} else {
 		b.ResetTimer()

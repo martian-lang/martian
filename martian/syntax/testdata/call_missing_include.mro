@@ -1,0 +1,7 @@
+# This file contains the top-level call.
+
+@include "stages.mro"
+
+call MY_PIPELINE(
+    info = 2,
+)

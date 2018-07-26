@@ -294,7 +294,11 @@ func paramFormat(printer *printer, param Param, modeWidth int, typeWidth int, id
 	printer.WriteString(",\n")
 }
 
-func (self *Params) getWidths() (int, int, int, int) {
+type Params interface {
+	getWidths() (int, int, int, int)
+}
+
+func (self *InParams) getWidths() (int, int, int, int) {
 	modeWidth := 0
 	typeWidth := 0
 	idWidth := 0
@@ -312,7 +316,25 @@ func (self *Params) getWidths() (int, int, int, int) {
 	return modeWidth, typeWidth, idWidth, helpWidth
 }
 
-func measureParamsWidths(paramsList ...*Params) (int, int, int, int) {
+func (self *OutParams) getWidths() (int, int, int, int) {
+	modeWidth := 0
+	typeWidth := 0
+	idWidth := 0
+	helpWidth := 0
+	for _, param := range self.List {
+		modeWidth = max(modeWidth, len(param.getMode()))
+		typeWidth = max(typeWidth, len(param.GetTname())+2*param.GetArrayDim())
+		if len(param.GetId()) < 35 {
+			idWidth = max(idWidth, len(param.GetId()))
+		}
+		if len(param.GetHelp()) < 25 {
+			helpWidth = max(helpWidth, len(param.GetHelp()))
+		}
+	}
+	return modeWidth, typeWidth, idWidth, helpWidth
+}
+
+func measureParamsWidths(paramsList ...Params) (int, int, int, int) {
 	modeWidth := 0
 	typeWidth := 0
 	idWidth := 0
@@ -327,7 +349,13 @@ func measureParamsWidths(paramsList ...*Params) (int, int, int, int) {
 	return modeWidth, typeWidth, idWidth, helpWidth
 }
 
-func (self *Params) format(printer *printer, modeWidth int, typeWidth int, idWidth int, helpWidth int) {
+func (self *InParams) format(printer *printer, modeWidth int, typeWidth int, idWidth int, helpWidth int) {
+	for _, param := range self.List {
+		paramFormat(printer, param, modeWidth, typeWidth, idWidth, helpWidth)
+	}
+}
+
+func (self *OutParams) format(printer *printer, modeWidth int, typeWidth int, idWidth int, helpWidth int) {
 	for _, param := range self.List {
 		paramFormat(printer, param, modeWidth, typeWidth, idWidth, helpWidth)
 	}
@@ -635,7 +663,13 @@ func (self *Ast) format(writeIncludes bool) string {
 //
 // Exported API
 //
+
 func FormatFile(filename string, fixIncludes bool, mropath []string) (string, error) {
+	var parser Parser
+	return parser.FormatFile(filename, fixIncludes, mropath)
+}
+
+func (parser *Parser) FormatFile(filename string, fixIncludes bool, mropath []string) (string, error) {
 	// Read MRO source file.
 	data, err := ioutil.ReadFile(filename)
 	if err != nil {
@@ -649,19 +683,24 @@ func Format(src string, filename string, fixIncludes bool, mropath []string) (st
 }
 
 func FormatSrcBytes(src []byte, filename string, fixIncludes bool, mropath []string) (string, error) {
+	var parser Parser
+	return parser.FormatSrcBytes(src, filename, fixIncludes, mropath)
+}
+
+func (parser *Parser) FormatSrcBytes(src []byte, filename string, fixIncludes bool, mropath []string) (string, error) {
 	absPath, _ := filepath.Abs(filename)
 	// Parse and generate the AST.
 	srcFile := SourceFile{
 		FileName: filename,
 		FullPath: absPath,
 	}
-	global, mmli := yaccParse(src, &srcFile)
+	global, mmli := yaccParse(src, &srcFile, parser.getIntern())
 	if mmli != nil { // mmli is an mmLexInfo struct
 		return "", mmli
 	}
 	var err error
 	if fixIncludes {
-		err = FixIncludes(global, mropath)
+		err = fixIncludesTop(global, mropath, parser.getIntern())
 	}
 
 	// Format the source.

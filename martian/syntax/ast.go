@@ -67,17 +67,24 @@ type (
 	}
 
 	Ast struct {
-		UserTypes     []*UserType
+		// All types found in the source.
+		UserTypes []*UserType
+
+		// All unique types found the the source.  Populated during compile.
 		UserTypeTable map[string]*UserType
-		TypeTable     map[string]Type
-		Files         map[string]*SourceFile
-		Stages        []*Stage
-		Pipelines     []*Pipeline
-		Callables     *Callables
-		Call          *CallStm
-		Errors        []error
-		Includes      []*Include
-		comments      []*commentBlock
+
+		// All valid types, both user-defined and builtin.
+		TypeTable map[string]Type
+
+		// The source file object for each named include.
+		Files     map[string]*SourceFile
+		Stages    []*Stage
+		Pipelines []*Pipeline
+		Callables *Callables
+		Call      *CallStm
+		Errors    []error
+		Includes  []*Include
+		comments  []*commentBlock
 	}
 )
 

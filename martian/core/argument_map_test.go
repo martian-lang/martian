@@ -10,7 +10,7 @@ import (
 	"testing"
 )
 
-func TestArgumentMapValidate(t *testing.T) {
+func TestArgumentMapValidateInputs(t *testing.T) {
 	var def LazyChunkDef
 	if err := json.Unmarshal([]byte(`{
 		"__threads": 4,
@@ -23,7 +23,7 @@ func TestArgumentMapValidate(t *testing.T) {
 	}`), &def); err != nil {
 		t.Errorf("Unmarshal failure: %v", err)
 	}
-	plist := []syntax.Param{
+	plist := []*syntax.InParam{
 		&syntax.InParam{
 			Id:    "foo",
 			Tname: "int",
@@ -42,15 +42,15 @@ func TestArgumentMapValidate(t *testing.T) {
 			ArrayDim: 1,
 		},
 	}
-	ptable := make(map[string]syntax.Param, len(plist))
+	ptable := make(map[string]*syntax.InParam, len(plist))
 	for _, p := range plist {
 		ptable[p.GetId()] = p
 	}
-	params := syntax.Params{
+	params := syntax.InParams{
 		Table: ptable,
 		List:  plist,
 	}
-	if err, msg := def.Args.Validate(&params, true); err == nil {
+	if err, msg := def.Args.ValidateInputs(&params); err == nil {
 		t.Errorf("Expected error from extra param, got none.")
 	} else if strings.TrimSpace(err.Error()) != "Unexpected parameter 'bath'" {
 		t.Errorf(
@@ -62,29 +62,19 @@ func TestArgumentMapValidate(t *testing.T) {
 		t.Errorf("Didn't expect a soft error message, got %s", msg)
 	}
 
-	if err, alarms := def.Args.Validate(&params, false); err != nil {
-		t.Errorf("Expected pass from extra out param, got %v.",
-			err)
-	} else if strings.TrimSpace(alarms) != "Unexpected output 'bath'" {
-		t.Errorf(
-			"Validation error: expected \""+
-				"Unexpected output 'bath'"+
-				"\", got \"%s\"",
-			alarms)
-	}
 	bath := &syntax.InParam{
 		Id:    "bath",
 		Tname: "string",
 	}
 	params.Table[bath.Id] = bath
 	params.List = append(params.List, bath)
-	if err, msg := def.Args.Validate(&params, true); err != nil {
+	if err, msg := def.Args.ValidateInputs(&params); err != nil {
 		t.Errorf("Validation error: expected success, got %v", err)
 	} else if msg != "" {
 		t.Errorf("Didn't expect a soft error message, got %s", msg)
 	}
-	params.Table["bar"].(*syntax.InParam).Tname = "int"
-	if err, msg := def.Args.Validate(&params, true); err == nil {
+	params.Table["bar"].Tname = "int"
+	if err, msg := def.Args.ValidateInputs(&params); err == nil {
 		t.Errorf("Expected error from float, got none.")
 	} else if strings.TrimSpace(err.Error()) !=
 		"Expected int input parameter 'bar' with value \"1.2\" cannot be parsed as an integer." {
@@ -96,19 +86,114 @@ func TestArgumentMapValidate(t *testing.T) {
 	} else if msg != "" {
 		t.Errorf("Didn't expect a soft error message, got %s", msg)
 	}
-	params.Table["bar"].(*syntax.InParam).Tname = "float"
+	params.Table["bar"].Tname = "float"
 	missing := &syntax.InParam{
 		Id:    "miss",
 		Tname: "string",
 	}
 	params.Table[missing.Id] = missing
 	params.List = append(params.List, missing)
-	if err, msg := def.Args.Validate(&params, true); err == nil {
+	if err, msg := def.Args.ValidateInputs(&params); err == nil {
 		t.Errorf("Expected error from missing parameter, got none.")
 	} else if strings.TrimSpace(err.Error()) != "Missing input parameter 'miss'" {
 		t.Errorf(
 			"Validation error: expected \""+
 				"Missing input parameter 'miss'"+
+				"\", got \"%v\"",
+			err)
+	} else if msg != "" {
+		t.Errorf("Didn't expect a soft error message, got %s", msg)
+	}
+}
+
+func TestArgumentMapValidateOutputs(t *testing.T) {
+	var def LazyChunkDef
+	if err := json.Unmarshal([]byte(`{
+		"__threads": 4,
+		"__mem_gb": 3,
+		"foo": 12,
+		"bar": 1.2,
+		"baz": { "fooz": "bars" },
+		"bing": [1],
+		"bath": "soap"
+	}`), &def); err != nil {
+		t.Errorf("Unmarshal failure: %v", err)
+	}
+	plist := []*syntax.OutParam{
+		&syntax.OutParam{
+			Id:    "foo",
+			Tname: "int",
+		},
+		&syntax.OutParam{
+			Id:    "bar",
+			Tname: "float",
+		},
+		&syntax.OutParam{
+			Id:    "baz",
+			Tname: "map",
+		},
+		&syntax.OutParam{
+			Id:       "bing",
+			Tname:    "int",
+			ArrayDim: 1,
+		},
+	}
+	ptable := make(map[string]*syntax.OutParam, len(plist))
+	for _, p := range plist {
+		ptable[p.GetId()] = p
+	}
+	params := syntax.OutParams{
+		Table: ptable,
+		List:  plist,
+	}
+
+	if err, alarms := def.Args.ValidateOutputs(&params); err != nil {
+		t.Errorf("Expected pass from extra out param, got %v.",
+			err)
+	} else if strings.TrimSpace(alarms) != "Unexpected output 'bath'" {
+		t.Errorf(
+			"Validation error: expected \""+
+				"Unexpected output 'bath'"+
+				"\", got \"%s\"",
+			alarms)
+	}
+	bath := &syntax.OutParam{
+		Id:    "bath",
+		Tname: "string",
+	}
+	params.Table[bath.Id] = bath
+	params.List = append(params.List, bath)
+	if err, msg := def.Args.ValidateOutputs(&params); err != nil {
+		t.Errorf("Validation error: expected success, got %v", err)
+	} else if msg != "" {
+		t.Errorf("Didn't expect a soft error message, got %s", msg)
+	}
+	params.Table["bar"].Tname = "int"
+	if err, msg := def.Args.ValidateOutputs(&params); err == nil {
+		t.Errorf("Expected error from float, got none.")
+	} else if strings.TrimSpace(err.Error()) !=
+		"Expected int output value 'bar' with value \"1.2\" cannot be parsed as an integer." {
+		t.Errorf(
+			"Validation error: expected \""+
+				"Expected int output value 'bar' with value \"1.2\" cannot be parsed as an integer."+
+				"\", got \"%v\"",
+			err)
+	} else if msg != "" {
+		t.Errorf("Didn't expect a soft error message, got %s", msg)
+	}
+	params.Table["bar"].Tname = "float"
+	missing := &syntax.OutParam{
+		Id:    "miss",
+		Tname: "string",
+	}
+	params.Table[missing.Id] = missing
+	params.List = append(params.List, missing)
+	if err, msg := def.Args.ValidateOutputs(&params); err == nil {
+		t.Errorf("Expected error from missing parameter, got none.")
+	} else if strings.TrimSpace(err.Error()) != "Missing output value 'miss'" {
+		t.Errorf(
+			"Validation error: expected \""+
+				"Missing output value 'miss'"+
 				"\", got \"%v\"",
 			err)
 	} else if msg != "" {

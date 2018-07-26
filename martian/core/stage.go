@@ -22,7 +22,7 @@ import (
 	"github.com/martian-lang/martian/martian/util"
 )
 
-func makeOutArgs(outParams *syntax.Params, filesPath string, nullAll bool) map[string]interface{} {
+func makeOutArgs(outParams *syntax.OutParams, filesPath string, nullAll bool) map[string]interface{} {
 	args := make(map[string]interface{}, len(outParams.Table))
 	for id, param := range outParams.Table {
 		// TODO(azarchs): Don't put file names in arrays.  Except we have
@@ -121,7 +121,7 @@ func (self *Chunk) verifyDef() {
 		self.metadata.WriteRaw(Errors, "Chunk def args were nil.")
 		return
 	}
-	if err, alarms := self.chunkDef.Args.Validate(inParams, true); err != nil {
+	if err, alarms := self.chunkDef.Args.ValidateInputs(inParams); err != nil {
 		self.metadata.WriteRaw(Errors, err.Error()+alarms)
 	} else if alarms != "" {
 		switch syntax.GetEnforcementLevel() {
@@ -150,8 +150,8 @@ func (self *Chunk) verifyOutput(output LazyArgumentMap) bool {
 		self.metadata.WriteRaw(Errors, "Output not found.")
 	} else {
 		outParams := self.Stage().ChunkOuts
-		if err, alarms := output.Validate(
-			outParams, true, self.fork.OutParams()); err != nil {
+		if err, alarms := output.ValidateOutputs(
+			outParams, self.fork.OutParams()); err != nil {
 			self.metadata.WriteRaw(Errors, err.Error()+alarms)
 			return false
 		} else if alarms != "" {
@@ -372,7 +372,7 @@ func (self *Fork) Split() bool {
 }
 
 // Get the fork's output parameter list.
-func (self *Fork) OutParams() *syntax.Params {
+func (self *Fork) OutParams() *syntax.OutParams {
 	return self.node.callable.GetOutParams()
 }
 
@@ -579,7 +579,7 @@ func (self *Fork) removeEmptyFileArgs(outs map[string]json.RawMessage) {
 func (self *Fork) verifyOutput(outs LazyArgumentMap) (bool, string) {
 	outparams := self.OutParams()
 	if len(outparams.List) > 0 {
-		if err, alarms := outs.Validate(outparams, false); err != nil {
+		if err, alarms := outs.ValidateOutputs(outparams); err != nil {
 			return false, err.Error() + alarms
 		} else if alarms != "" {
 			switch syntax.GetEnforcementLevel() {

@@ -16,6 +16,10 @@ import (
 )
 
 func FixIncludes(source *Ast, mropath []string) error {
+	return fixIncludesTop(source, mropath, makeStringIntern())
+}
+
+func fixIncludesTop(source *Ast, mropath []string, intern *stringIntern) error {
 	seen := make(map[string]*SourceFile, len(source.Files)+len(source.Includes))
 	incPaths := make([]string, 0, len(mropath)+1)
 	seenPaths := make(map[string]struct{}, len(mropath))
@@ -34,12 +38,14 @@ func FixIncludes(source *Ast, mropath []string) error {
 		}
 	}
 	if closure, err := getIncludes(srcFile, source.Includes,
-		incPaths, seen); err != nil {
+		incPaths, seen, intern); err != nil {
 		return err
 	} else {
 		uncheckedMakeTables(source, closure)
 		needed, missingTypes, missingCalls := getRequiredIncludes(source)
-		extraIncs, extraTypes, err := findMissingIncludes(seen, missingTypes, missingCalls, incPaths)
+		extraIncs, extraTypes, err := findMissingIncludes(seen,
+			missingTypes, missingCalls,
+			incPaths, intern)
 		for _, file := range extraIncs {
 			if _, ok := needed[file.FileName]; !ok {
 				needed[file.FileName] = file
@@ -115,10 +121,25 @@ func getRequiredIncludes(source *Ast) (map[string]*SourceFile,
 	// For pipelines, we can assume that their input/output types match
 	// those of the stages, meaning we don't need to worry about them.
 	for _, stage := range source.Stages {
-		for _, params := range []*Params{
+		for _, params := range []*InParams{
 			stage.InParams,
-			stage.OutParams,
 			stage.ChunkIns,
+		} {
+			for _, param := range params.List {
+				tName := param.GetTname()
+				if t := source.UserTypeTable[tName]; t != nil {
+					if _, ok := required[t.getNode().Loc.File.FileName]; !ok {
+						unknownTypes[tName] = t
+					}
+				} else if _, ok := source.TypeTable[tName]; !ok {
+					unknownTypes[tName] = &UserType{
+						Id: tName,
+					}
+				}
+			}
+		}
+		for _, params := range []*OutParams{
+			stage.OutParams,
 			stage.ChunkOuts,
 		} {
 			for _, param := range params.List {
@@ -141,7 +162,8 @@ func getRequiredIncludes(source *Ast) (map[string]*SourceFile,
 func findMissingIncludes(seenFiles map[string]*SourceFile,
 	neededTypes map[string]*UserType,
 	neededCallables map[string]struct{},
-	incPaths []string) ([]*SourceFile, []*UserType, error) {
+	incPaths []string,
+	intern *stringIntern) ([]*SourceFile, []*UserType, error) {
 	if len(neededTypes) == 0 && len(neededCallables) == 0 {
 		return nil, nil, nil
 	}
@@ -167,7 +189,7 @@ func findMissingIncludes(seenFiles map[string]*SourceFile,
 							FileName: filepath.Base(absPath),
 							FullPath: absPath,
 						}
-						if ast, err := yaccParse(src, &srcFile); err == nil {
+						if ast, err := yaccParse(src, &srcFile, intern); err == nil {
 							needed := false
 							for _, callable := range ast.Callables.List {
 								if _, ok := neededCallables[callable.GetId()]; ok {

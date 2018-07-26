@@ -42,16 +42,16 @@ func (call *CallStm) EquivalentTo(other *CallStm,
 		return false
 	}
 	// Check the call names match.
-	if call.DecId != other.DecId {
+	if call.Id != other.Id {
 		util.PrintInfo("compare",
 			"Call name %s does not match %s",
-			call.DecId, other.DecId)
+			call.Id, other.Id)
 		return false
 	}
 	if !call.Bindings.Equals(other.Bindings) {
 		util.PrintInfo("compare",
 			"Call bindings for %s do not match.",
-			call.DecId)
+			call.Id)
 		return false
 	}
 	if !call.Modifiers.EquivalentTo(other.Modifiers) {
@@ -60,9 +60,9 @@ func (call *CallStm) EquivalentTo(other *CallStm,
 		return false
 	}
 
-	if callable := myCallables.Table[call.Id]; callable == nil {
-		return otherCallables.Table[other.Id] == nil
-	} else if oc := otherCallables.Table[other.Id]; oc == nil {
+	if callable := myCallables.Table[call.DecId]; callable == nil {
+		return otherCallables.Table[other.DecId] == nil
+	} else if oc := otherCallables.Table[other.DecId]; oc == nil {
 		util.PrintInfo("compare",
 			"Callable %s not found",
 			other.Id)
@@ -129,9 +129,37 @@ func (mods *Modifiers) EquivalentTo(other *Modifiers) bool {
 }
 
 // Equals returns true if the two parameter sets share the same parameter
+// names and types.  Changes to file type names are ignored.
+func (params *InParams) Equals(other *InParams) bool {
+	if params == nil || len(params.List) == 0 {
+		return other == nil || len(other.List) == 0
+	} else if other == nil || other.Table == nil ||
+		len(other.Table) != len(params.List) {
+		util.PrintInfo("compare",
+			"Argument length mismatch.")
+		return false
+	}
+	for _, arg := range params.List {
+		if oa := other.Table[arg.GetId()]; oa == nil {
+			util.PrintInfo("compare",
+				"Argument %s not found.",
+				arg.GetId())
+			return false
+		} else if arg.GetArrayDim() != oa.GetArrayDim() {
+			return false
+		} else if arg.IsFile() != oa.IsFile() {
+			return false
+		} else if !arg.IsFile() && arg.GetTname() != oa.GetTname() {
+			return false
+		}
+	}
+	return true
+}
+
+// Equals returns true if the two parameter sets share the same parameter
 // names and types.  Changes to file type names are ignored.  If checkOutNames
 // is true, the output name for the parameters are also compared.
-func (params *Params) Equals(other *Params, checkOutNames bool) bool {
+func (params *OutParams) Equals(other *OutParams, checkOutNames bool) bool {
 	if params == nil || len(params.List) == 0 {
 		return other == nil || len(other.List) == 0
 	} else if other == nil || other.Table == nil ||
@@ -171,7 +199,7 @@ func (pipeline *Pipeline) EquivalentTo(other Callable,
 	}
 	if op, ok := other.(*Pipeline); !ok {
 		return false
-	} else if !pipeline.InParams.Equals(op.InParams, false) {
+	} else if !pipeline.InParams.Equals(op.InParams) {
 		util.PrintInfo("compare",
 			"Pipeline %s in params unequal.",
 			pipeline.Id)
@@ -195,10 +223,10 @@ func (pipeline *Pipeline) EquivalentTo(other Callable,
 	} else {
 		oCalls := make(map[string]*CallStm, len(op.Calls))
 		for _, call := range op.Calls {
-			oCalls[call.DecId] = call
+			oCalls[call.Id] = call
 		}
 		for _, call := range pipeline.Calls {
-			if !call.EquivalentTo(oCalls[call.DecId], myCallables, otherCallables) {
+			if !call.EquivalentTo(oCalls[call.Id], myCallables, otherCallables) {
 				return false
 			}
 		}
@@ -222,7 +250,7 @@ func (stage *Stage) EquivalentTo(other Callable, _, _ *Callables) bool {
 			"Stage %s split status different.",
 			stage.Id)
 		return false
-	} else if !stage.InParams.Equals(os.InParams, false) {
+	} else if !stage.InParams.Equals(os.InParams) {
 		util.PrintInfo("compare",
 			"Stage %s in parameters unequal.",
 			stage.Id)
@@ -320,7 +348,8 @@ func (exp *RefExp) equal(other Exp) bool {
 		return false
 	} else if ov, ok := other.(*RefExp); !ok {
 		util.PrintInfo("compare",
-			"Values are not both references.")
+			"Values are not both references.  Other is %T",
+			other)
 		return false
 	} else if exp.Kind != ov.Kind {
 		util.PrintInfo("compare",

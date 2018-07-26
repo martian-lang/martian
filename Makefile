@@ -26,7 +26,8 @@ bin/goyacc: vendor/golang.org/x/tools/cmd/goyacc/yacc.go
 	go install vendor/golang.org/x/tools/cmd/goyacc
 
 martian/syntax/grammar.go: bin/goyacc martian/syntax/grammar.y
-	bin/goyacc -p "mm" -o martian/syntax/grammar.go martian/syntax/grammar.y && rm y.output
+	bin/goyacc -p "mm" -o $@ martian/syntax/grammar.y && rm y.output
+	gofmt -s -w $@
 
 martian/test/sum_squares/types.go: PATH:=$(GOPATH)/bin:$(PATH)
 martian/test/sum_squares/types.go: test/split_test_go/pipeline_stages.mro mro2go

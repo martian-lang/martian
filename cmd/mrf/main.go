@@ -56,18 +56,19 @@ Options:
 	fixIncludes := opts["--includes"].(bool)
 	if opts["--all"].(bool) {
 		// Format all MRO files in MRO path.
-		numFiles := 0
+		fileNames := make([]string, 0, len(mroPaths)*3)
 		for _, mroPath := range mroPaths {
 			fnames, err := filepath.Glob(mroPath + "/*.mro")
 			util.DieIf(err)
-			for _, fname := range fnames {
-				fsrc, err := syntax.FormatFile(fname, fixIncludes, mroPaths)
-				util.DieIf(err)
-				ioutil.WriteFile(fname, []byte(fsrc), 0644)
-			}
-			numFiles += len(fnames)
+			fileNames = append(fileNames, fnames...)
 		}
-		fmt.Printf("Successfully reformatted %d files.\n", numFiles)
+		var parser syntax.Parser
+		for _, fname := range fileNames {
+			fsrc, err := parser.FormatFile(fname, fixIncludes, mroPaths)
+			util.DieIf(err)
+			ioutil.WriteFile(fname, []byte(fsrc), 0644)
+		}
+		fmt.Printf("Successfully reformatted %d files.\n", len(fileNames))
 	} else {
 		// Format just the specified MRO files.
 		for _, fname := range opts["<file.mro>"].([]string) {

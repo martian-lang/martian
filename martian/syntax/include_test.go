@@ -136,9 +136,31 @@ pipeline MY_PIPELINE(
     )
 }
 
+# trailing comment
 #
 # @include "call.mro"
 #
+
+call MY_PIPELINE(
+    info = 2,
+)
+` {
+			t.Errorf("Incorrect combined source.  Got \n%s", src)
+		}
+	}
+}
+
+// Tests that FixIncludes does the right thing.
+func TestFixIncludes(t *testing.T) {
+	t.Parallel()
+	if src, err := FormatFile(path.Join("testdata", "call.mro"),
+		true,
+		[]string{"testdata"}); err != nil {
+		t.Error(err)
+	} else {
+		if src != `# This file contains the top-level call.
+
+@include "pipeline.mro"
 
 call MY_PIPELINE(
     info = 2,

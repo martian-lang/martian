@@ -152,18 +152,14 @@ var nullBytes = []byte("null")
 //     )
 //
 // then in the outputs from the chunks, d is required but b is optional.
-func (self LazyArgumentMap) Validate(expected *syntax.Params, isInput bool, optional ...*syntax.Params) (error, string) {
+func (self LazyArgumentMap) ValidateInputs(expected *syntax.InParams, optional ...*syntax.InParams) (error, string) {
 	var result, alarms bytes.Buffer
 	tname := func(param syntax.Param) string {
 		return param.GetTname() + strings.Repeat("[]", param.GetArrayDim())
 	}
 	for _, param := range expected.Table {
 		if val, ok := self[param.GetId()]; !ok {
-			if isInput {
-				fmt.Fprintf(&result, "Missing input parameter '%s'\n", param.GetId())
-			} else {
-				fmt.Fprintf(&result, "Missing output value '%s'\n", param.GetId())
-			}
+			fmt.Fprintf(&result, "Missing input parameter '%s'\n", param.GetId())
 			continue
 		} else if len(val) == 0 || bytes.Equal(val, nullBytes) {
 			// Allow for null output parameters
@@ -172,17 +168,10 @@ func (self LazyArgumentMap) Validate(expected *syntax.Params, isInput bool, opti
 			param.GetTname(),
 			param.GetArrayDim(),
 			&alarms); !ok {
-			if isInput {
-				fmt.Fprintf(&result,
-					"Expected %s input parameter '%s' %s\n",
-					tname(param), param.GetId(),
-					msg)
-			} else {
-				fmt.Fprintf(&result,
-					"Expected %s output value '%s' %s\n",
-					tname(param), param.GetId(),
-					msg)
-			}
+			fmt.Fprintf(&result,
+				"Expected %s input parameter '%s' %s\n",
+				tname(param), param.GetId(),
+				msg)
 		}
 	}
 	for key, val := range self {
@@ -196,27 +185,89 @@ func (self LazyArgumentMap) Validate(expected *syntax.Params, isInput bool, opti
 							param.GetTname(),
 							param.GetArrayDim(),
 							&alarms); !ok {
-							if isInput {
-								fmt.Fprintf(&result,
-									"Optional %s input parameter '%s' %s\n",
-									tname(param), param.GetId(),
-									msg)
-							} else {
-								fmt.Fprintf(&result,
-									"Optional %s output value '%s' %s\n",
-									tname(param), param.GetId(),
-									msg)
-							}
+							fmt.Fprintf(&result,
+								"Optional %s input parameter '%s' %s\n",
+								tname(param), param.GetId(),
+								msg)
 						}
 					}
 				}
 			}
 			if !isOptional {
-				if isInput {
-					fmt.Fprintf(&result, "Unexpected parameter '%s'\n", key)
-				} else {
-					fmt.Fprintf(&alarms, "Unexpected output '%s'\n", key)
+				fmt.Fprintf(&result, "Unexpected parameter '%s'\n", key)
+			}
+		}
+	}
+	if result.Len() == 0 {
+		return nil, alarms.String()
+	} else {
+		return fmt.Errorf(result.String()), alarms.String()
+	}
+}
+
+// Validate that all of the arguments in the map are declared parameters, and
+// that all declared parameters are set in the arguments to a value of the
+// correct type, or null.
+//
+// Hard errors are returned as the first parameter.  "soft" error messages
+// are returned in the second.
+//
+// Optional params are values which are permitted to be in the argument map
+// (if they are of the correct type) but which are not required to be present.
+// For example, for a stage defined as
+//
+//     stage STAGE(
+//         in  int a,
+//         out int b,
+//     ) split (
+//         in  int c,
+//         out int d,
+//     )
+//
+// then in the outputs from the chunks, d is required but b is optional.
+func (self LazyArgumentMap) ValidateOutputs(expected *syntax.OutParams, optional ...*syntax.OutParams) (error, string) {
+	var result, alarms bytes.Buffer
+	tname := func(param syntax.Param) string {
+		return param.GetTname() + strings.Repeat("[]", param.GetArrayDim())
+	}
+	for _, param := range expected.Table {
+		if val, ok := self[param.GetId()]; !ok {
+			fmt.Fprintf(&result, "Missing output value '%s'\n", param.GetId())
+			continue
+		} else if len(val) == 0 || bytes.Equal(val, nullBytes) {
+			// Allow for null output parameters
+			continue
+		} else if ok, msg := checkType(val,
+			param.GetTname(),
+			param.GetArrayDim(),
+			&alarms); !ok {
+			fmt.Fprintf(&result,
+				"Expected %s output value '%s' %s\n",
+				tname(param), param.GetId(),
+				msg)
+		}
+	}
+	for key, val := range self {
+		if _, ok := expected.Table[key]; !ok {
+			isOptional := false
+			for _, params := range optional {
+				if param, ok := params.Table[key]; ok {
+					isOptional = true
+					if len(val) > 0 && !bytes.Equal(val, nullBytes) {
+						if ok, msg := checkType(val,
+							param.GetTname(),
+							param.GetArrayDim(),
+							&alarms); !ok {
+							fmt.Fprintf(&result,
+								"Optional %s output value '%s' %s\n",
+								tname(param), param.GetId(),
+								msg)
+						}
+					}
 				}
+			}
+			if !isOptional {
+				fmt.Fprintf(&alarms, "Unexpected output '%s'\n", key)
 			}
 		}
 	}

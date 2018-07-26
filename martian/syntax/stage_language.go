@@ -33,13 +33,19 @@ func (self StageCodeType) String() string {
 	}
 }
 
+const (
+	abr_python   = "py"
+	abr_exec     = "exec"
+	abr_compiled = "comp"
+)
+
 func (lang StageLanguage) Parse() (StageCodeType, error) {
 	switch lang {
-	case "py":
+	case abr_python:
 		return PythonStage, nil
-	case "exec":
+	case abr_exec:
 		return ExecStage, nil
-	case "comp":
+	case abr_compiled:
 		return CompiledStage, nil
 	default:
 		return UnknownStageLang, fmt.Errorf("Unknown language %v", lang)

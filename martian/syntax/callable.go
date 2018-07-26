@@ -9,8 +9,8 @@ type (
 	Callable interface {
 		AstNodable
 		GetId() string
-		GetInParams() *Params
-		GetOutParams() *Params
+		GetInParams() *InParams
+		GetOutParams() *OutParams
 		Type() string
 		format(printer *printer)
 		EquivalentTo(other Callable,
@@ -19,14 +19,26 @@ type (
 
 	// An ordered set of Callable objects.
 	Callables struct {
-		List  []Callable `json:"-"`
+		List []Callable `json:"-"`
+
+		// Lookup table of callables by Id.  Populated during compile.
 		Table map[string]Callable
 	}
 
 	// An ordered set of parameters.
-	Params struct {
-		List  []Param
-		Table map[string]Param
+	InParams struct {
+		List []*InParam
+
+		// Lookup table of params by Id.  Populated during compile.
+		Table map[string]*InParam
+	}
+
+	// An ordered set of parameters.
+	OutParams struct {
+		List []*OutParam
+
+		// Lookup table of params by Id.  Populated during compile.
+		Table map[string]*OutParam
 	}
 
 	Param interface {
@@ -44,41 +56,41 @@ type (
 	InParam struct {
 		Node     AstNode
 		Tname    string
-		ArrayDim int
 		Id       string
 		Help     string
+		ArrayDim int16
 		Isfile   bool
 	}
 
 	OutParam struct {
 		Node     AstNode
 		Tname    string
-		ArrayDim int
 		Id       string
 		Help     string
 		OutName  string
+		ArrayDim int16
 		Isfile   bool
 	}
 
 	Stage struct {
 		Node      AstNode
 		Id        string
-		InParams  *Params
-		OutParams *Params
+		InParams  *InParams
+		OutParams *OutParams
 		Retain    *RetainParams
 		Src       *SrcParam
-		ChunkIns  *Params
-		ChunkOuts *Params
-		Split     bool
+		ChunkIns  *InParams
+		ChunkOuts *OutParams
 		Resources *Resources
+		Split     bool
 	}
 
 	// To simplify implementation of the parser, this stores the stage's
 	// ChunkIns and ChunkOuts.
 	paramsTuple struct {
 		Present bool
-		Ins     *Params
-		Outs    *Params
+		Ins     *InParams
+		Outs    *OutParams
 	}
 
 	RetainParams struct {
@@ -120,17 +132,17 @@ type (
 		SpecialNode  *AstNode
 		VolatileNode *AstNode
 
-		Threads        int
-		MemGB          int
 		Special        string
+		Threads        int16
+		MemGB          int16
 		StrictVolatile bool
 	}
 
 	Pipeline struct {
 		Node      AstNode
 		Id        string
-		InParams  *Params
-		OutParams *Params
+		InParams  *InParams
+		OutParams *OutParams
 		Calls     []*CallStm
 		Callables *Callables `json:"-"`
 		Ret       *ReturnStm
@@ -184,14 +196,14 @@ func (s *RetainParam) File() *SourceFile         { return s.Node.Loc.File }
 func (s *RetainParam) getSubnodes() []AstNodable { return nil }
 func (s *RetainParam) inheritComments() bool     { return false }
 
-func (*Stage) getDec()                 {}
-func (*Pipeline) getDec()              {}
-func (s *Stage) GetId() string         { return s.Id }
-func (s *Stage) getNode() *AstNode     { return &s.Node }
-func (s *Stage) File() *SourceFile     { return s.Node.Loc.File }
-func (s *Stage) GetInParams() *Params  { return s.InParams }
-func (s *Stage) GetOutParams() *Params { return s.OutParams }
-func (s *Stage) Type() string          { return "stage" }
+func (*Stage) getDec()                    {}
+func (*Pipeline) getDec()                 {}
+func (s *Stage) GetId() string            { return s.Id }
+func (s *Stage) getNode() *AstNode        { return &s.Node }
+func (s *Stage) File() *SourceFile        { return s.Node.Loc.File }
+func (s *Stage) GetInParams() *InParams   { return s.InParams }
+func (s *Stage) GetOutParams() *OutParams { return s.OutParams }
+func (s *Stage) Type() string             { return "stage" }
 
 func (s *Stage) inheritComments() bool { return false }
 func (s *Stage) getSubnodes() []AstNodable {
@@ -240,12 +252,12 @@ func (s *Resources) getSubnodes() []AstNodable {
 	return subs
 }
 
-func (s *Pipeline) GetId() string         { return s.Id }
-func (s *Pipeline) getNode() *AstNode     { return &s.Node }
-func (s *Pipeline) File() *SourceFile     { return s.Node.Loc.File }
-func (s *Pipeline) GetInParams() *Params  { return s.InParams }
-func (s *Pipeline) GetOutParams() *Params { return s.OutParams }
-func (s *Pipeline) Type() string          { return "pipeline" }
+func (s *Pipeline) GetId() string            { return s.Id }
+func (s *Pipeline) getNode() *AstNode        { return &s.Node }
+func (s *Pipeline) File() *SourceFile        { return s.Node.Loc.File }
+func (s *Pipeline) GetInParams() *InParams   { return s.InParams }
+func (s *Pipeline) GetOutParams() *OutParams { return s.OutParams }
+func (s *Pipeline) Type() string             { return "pipeline" }
 
 func (s *Pipeline) inheritComments() bool { return false }
 func (s *Pipeline) getSubnodes() []AstNodable {
@@ -271,7 +283,7 @@ func (s *InParam) getNode() *AstNode  { return &s.Node }
 func (s *InParam) File() *SourceFile  { return s.Node.Loc.File }
 func (s *InParam) getMode() string    { return "in" }
 func (s *InParam) GetTname() string   { return s.Tname }
-func (s *InParam) GetArrayDim() int   { return s.ArrayDim }
+func (s *InParam) GetArrayDim() int   { return int(s.ArrayDim) }
 func (s *InParam) GetId() string      { return s.Id }
 func (s *InParam) GetHelp() string    { return s.Help }
 func (s *InParam) GetOutName() string { return "" }
@@ -287,7 +299,7 @@ func (s *OutParam) getNode() *AstNode  { return &s.Node }
 func (s *OutParam) File() *SourceFile  { return s.Node.Loc.File }
 func (s *OutParam) getMode() string    { return "out" }
 func (s *OutParam) GetTname() string   { return s.Tname }
-func (s *OutParam) GetArrayDim() int   { return s.ArrayDim }
+func (s *OutParam) GetArrayDim() int   { return int(s.ArrayDim) }
 func (s *OutParam) GetId() string      { return s.Id }
 func (s *OutParam) GetHelp() string    { return s.Help }
 func (s *OutParam) GetOutName() string { return s.OutName }

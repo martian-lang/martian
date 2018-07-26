@@ -328,20 +328,21 @@ func (c *RuntimeOptions) NewRuntime() *Runtime {
 
 // Compile all the MRO files in mroPaths.
 func CompileAll(mroPaths []string, checkSrcPath bool) (int, []*syntax.Ast, error) {
-	numFiles := 0
-	asts := []*syntax.Ast{}
+	fileNames := make([]string, 0, len(mroPaths)*3)
 	for _, mroPath := range mroPaths {
 		fpaths, _ := filepath.Glob(mroPath + "/[^_]*.mro")
-		for _, fpath := range fpaths {
-			if _, _, ast, err := syntax.Compile(fpath, mroPaths, checkSrcPath); err != nil {
-				return 0, []*syntax.Ast{}, err
-			} else {
-				asts = append(asts, ast)
-			}
-		}
-		numFiles += len(fpaths)
+		fileNames = append(fileNames, fpaths...)
 	}
-	return numFiles, asts, nil
+	asts := make([]*syntax.Ast, 0, len(fileNames))
+	var parser syntax.Parser
+	for _, fpath := range fileNames {
+		if _, _, ast, err := parser.Compile(fpath, mroPaths, checkSrcPath); err != nil {
+			return 0, nil, err
+		} else {
+			asts = append(asts, ast)
+		}
+	}
+	return len(fileNames), asts, nil
 }
 
 // Instantiate a pipestance object given a psid, MRO source, and a

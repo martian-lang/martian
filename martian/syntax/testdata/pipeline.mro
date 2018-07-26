@@ -13,3 +13,5 @@ pipeline MY_PIPELINE(
         result = MY_PIPELINE.result,
     )
 }
+
+# trailing comment

@@ -4,6 +4,9 @@
 
 package syntax
 
+// Kinds of value or reference expressions.  These include all of
+// the builtin types as well as "array" and "null", and for references
+// "self" and "call".
 const (
 	// Represents an array of expressions.
 	KindArray  ExpKind = "array"
