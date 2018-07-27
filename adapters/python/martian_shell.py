@@ -5,9 +5,10 @@
 
 """Martian stage code wrapper.
 
-This module contains infrastructure to load python stage code, possibly in a
-python profiling tool, and execute it with appropriate arguments.  Stage code
-should use the 'martian' module to interface with the infrastructure.
+This module contains infrastructure to load python stage code, possibly
+in a python profiling tool, and execute it with appropriate arguments.
+Stage code should use the 'martian' module to interface with the
+infrastructure.
 """
 
 import os
@@ -316,6 +317,8 @@ class _CachedJobInfo(object):
         # Cache invocation and version JSON.
         self._invocation = jobinfo['invocation']
         self._version = jobinfo['version']
+        self._threads = jobinfo['threads']
+        self._memgb = jobinfo['memGB']
 
     @property
     def profile_mode(self):
@@ -337,6 +340,16 @@ class _CachedJobInfo(object):
         """The martian and pipline version information."""
         return self._version
 
+    @property
+    def threads(self):
+        """The number of threads allocated to this job."""
+        return self._threads
+
+    @property
+    def mem_gb(self):
+        """The amount of memory allocated to this job."""
+        return self._memgb
+
 
 class StageWrapper(object):
     """This class encapsulates the logic for invoking stage code, possibly
@@ -347,7 +360,6 @@ class StageWrapper(object):
 
         If test is true, then many bits of functionality are disabled
         and interaction with the filesystem is limited.
-
         """
 
         # Take options from command line.
@@ -530,6 +542,7 @@ def _initialize(argv):
     # pylint: disable=protected-access
     return martian._INSTANCE
 
+
 def _main(argv):
     """Parse command line and run."""
     stage = None
@@ -550,6 +563,7 @@ def _main(argv):
             stage.fail()
         else:
             raise
+
 
 if __name__ == '__main__':
     _main(sys.argv)

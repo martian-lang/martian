@@ -7,7 +7,6 @@
 
 This module contains an API for python stage code to use to interact
 with the higher-level martian logic, plus common utility methods.
-
 """
 
 
@@ -188,6 +187,16 @@ def get_martian_version():
 def get_pipelines_version():
     """Get the pipelines version from the jobinfo."""
     return _INSTANCE.jobinfo.version['pipelines']
+
+
+def get_threads_allocation():
+    """Get the number of threads allocated to this job by the runtime."""
+    return _INSTANCE.jobinfo.threads
+
+
+def get_memory_allocation():
+    """Get the amount of memory in GB allocated to this job by the runtime."""
+    return _INSTANCE.jobinfo.mem_gb
 
 
 def update_progress(message):
