@@ -184,15 +184,52 @@ func (self *Pipestance) OnFinishHook() {
 	}
 }
 
+// If the top-level call is a stage, not a pipeline, create a "fake" pipeline
+// which wraps that stage.
+func wrapStageAsPipeline(call *syntax.CallStm, stage *syntax.Stage) *syntax.Pipeline {
+	returns := &syntax.BindStms{
+		List:  make([]*syntax.BindStm, 0, len(stage.OutParams.List)),
+		Table: make(map[string]*syntax.BindStm, len(stage.OutParams.List)),
+	}
+	for _, param := range stage.OutParams.List {
+		binding := &syntax.BindStm{
+			Id:    param.Id,
+			Tname: param.Tname,
+			Exp: &syntax.RefExp{
+				Kind:     syntax.KindCall,
+				Id:       stage.Id,
+				OutputId: param.Id,
+			},
+		}
+		returns.List = append(returns.List, binding)
+		returns.Table[param.Id] = binding
+	}
+	return &syntax.Pipeline{
+		Node:  stage.Node,
+		Calls: []*syntax.CallStm{call},
+		Ret:   &syntax.ReturnStm{Bindings: returns},
+	}
+}
+
 func NewPipestance(parent Nodable, callStm *syntax.CallStm, callables *syntax.Callables) (*Pipestance, error) {
 	self := &Pipestance{}
 	self.node = NewNode(parent, "pipeline", callStm, callables)
 	self.metadata = NewMetadata(self.node.parent.getNode().fqname, self.GetPath())
 
 	// Build subcall tree.
-	pipeline, ok := callables.Table[callStm.DecId].(*syntax.Pipeline)
-	if !ok {
-		return nil, &RuntimeError{fmt.Sprintf("'%s' is not a declared pipeline", callStm.DecId)}
+	var pipeline *syntax.Pipeline
+	if callable := callables.Table[callStm.DecId]; callable == nil {
+		return nil, &RuntimeError{fmt.Sprintf(
+			"'%s' is not a declared stage or pipeline",
+			callStm.DecId)}
+	} else if p, ok := callable.(*syntax.Pipeline); ok {
+		pipeline = p
+	} else if s, ok := callable.(*syntax.Stage); ok {
+		pipeline = wrapStageAsPipeline(callStm, s)
+	} else {
+		return nil, &RuntimeError{fmt.Sprintf(
+			"'%s' of type %T is not a declared stage or pipeline",
+			callStm.DecId, callable)}
 	}
 	preflightNodes := []Nodable{}
 	for _, subcallStm := range pipeline.Calls {

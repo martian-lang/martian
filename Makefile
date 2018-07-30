@@ -15,12 +15,12 @@ GO_FLAGS=-ldflags "-X $(REPO)/martian/util.__VERSION__='$(VERSION)' -X $(REPO)/m
 
 export GOPATH=$(shell pwd)
 
-.PHONY: $(GOBINS) grammar web $(GOTESTS) govet all-bins bin/sum_squares longtests
+.PHONY: $(GOBINS) grammar web $(GOTESTS) govet all-bins bin/sum_squares longtests mrs
 
 #
 # Targets for development builds.
 #
-all: grammar all-bins web test
+all: grammar all-bins web test mrs
 
 bin/goyacc: vendor/golang.org/x/tools/cmd/goyacc/yacc.go
 	go install vendor/golang.org/x/tools/cmd/goyacc
@@ -41,6 +41,12 @@ grammar: martian/syntax/grammar.go
 
 $(GOBINS):
 	go install $(GO_FLAGS) $(REPO)/cmd/$@
+
+mrs: bin/mrs
+
+bin/mrs: mrp
+	rm -f bin/mrs && ln -s mrp bin/mrs
+
 
 all-bins:
 	go install $(GO_FLAGS) $(addprefix $(REPO)/, $(wildcard cmd/*))

@@ -537,47 +537,6 @@ func (self *Runtime) reattachToPipestance(psid string, pipestancePath string,
 	return pipestance, nil
 }
 
-// Instantiate a stagestance.
-func (self *Runtime) InvokeStage(src string, srcPath string, ssid string,
-	stagestancePath string, mroPaths []string, mroVersion string,
-	envs map[string]string) (*Stagestance, error) {
-	// Check if stagestance path already exists.
-	if _, err := os.Stat(stagestancePath); err == nil {
-		return nil, &RuntimeError{fmt.Sprintf("stagestance '%s' already exists", ssid)}
-	} else if err := os.MkdirAll(stagestancePath, 0777); err != nil {
-		return nil, err
-	}
-
-	// Parse the invocation source.
-	src = os.ExpandEnv(src)
-	_, incpaths, ast, err := syntax.ParseSource(src, srcPath, mroPaths, true)
-	if err != nil {
-		return nil, err
-	}
-
-	// Check there's a call.
-	if ast.Call == nil {
-		return nil, &RuntimeError{"cannot start a stage without a call statement"}
-	}
-	// Make sure it's a stage we're calling.
-	if _, ok := ast.Callables.Table[ast.Call.DecId].(*syntax.Stage); !ok {
-		return nil, &RuntimeError{fmt.Sprintf("'%s' is not a declared stage", ast.Call.DecId)}
-	}
-
-	invocationData, _ := BuildDataForAst(incpaths, ast)
-
-	// Instantiate stagestance.
-	stagestance, err := NewStagestance(NewTopNode(self, "", stagestancePath, mroPaths, mroVersion, envs, invocationData),
-		ast.Call, ast.Callables)
-	if err != nil {
-		return nil, err
-	}
-
-	stagestance.getNode().mkdirs()
-
-	return stagestance, nil
-}
-
 func (self *Runtime) GetSerializationInto(pipestancePath string, name MetadataFileName, target interface{}) error {
 	metadata := NewMetadata("", pipestancePath)
 	return metadata.ReadInto(name, target)
