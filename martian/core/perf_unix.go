@@ -334,26 +334,6 @@ func statmFileName(pid int) string {
 	return buf.String()
 }
 
-func taskFileName(pid int) string {
-	var buf strings.Builder
-	buf.Grow(len("/proc//task") + 10)
-	buf.WriteString("/proc/")
-	buf.WriteString(strconv.Itoa(pid))
-	buf.WriteString("/task")
-	return buf.String()
-}
-
-func childrenFileName(pid int, tid string) string {
-	var buf strings.Builder
-	buf.Grow(len("/proc//task//children") + 10 + len(tid))
-	buf.WriteString("/proc/")
-	buf.WriteString(strconv.Itoa(pid))
-	buf.WriteString("/task/")
-	buf.WriteString(tid)
-	buf.WriteString("/children")
-	return buf.String()
-}
-
 func readTo(line, prefix []byte, target *int64) (bool, error) {
 	if bytes.HasPrefix(line, prefix) {
 		if v, err := util.Atoi(bytes.TrimSpace(line[len(prefix):])); err != nil {

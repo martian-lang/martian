@@ -627,10 +627,6 @@ func (self *Pipestance) Serialize(name MetadataFileName) interface{} {
 	}
 }
 
-func forkDependentName(fqname string, forkIndex int) string {
-	return fmt.Sprintf("%s.fork%d", fqname, forkIndex)
-}
-
 func (self *Pipestance) ComputeDiskUsage(nodePerf *NodePerfInfo) *NodePerfInfo {
 
 	nodes := self.allNodes()
