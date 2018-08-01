@@ -64,6 +64,7 @@ Options:
 	mkjson := opts["--json"].(bool)
 
 	count := 0
+	wasErr := false
 	if opts["--all"].(bool) {
 		// Compile all MRO files in MRO path.
 		num, asts, err := core.CompileAll(mroPaths, checkSrcPath)
@@ -88,6 +89,7 @@ Options:
 			_, _, ast, err := syntax.Compile(fname, mroPaths, checkSrcPath)
 			if err != nil {
 				fmt.Fprintln(os.Stderr, err.Error())
+				wasErr = true
 			} else {
 				if mkjson {
 					asts = append(asts, ast)
@@ -100,4 +102,8 @@ Options:
 		}
 	}
 	fmt.Fprintln(os.Stderr, "Successfully compiled", count, "mro files.")
+
+	if wasErr {
+		os.Exit(1)
+	}
 }
