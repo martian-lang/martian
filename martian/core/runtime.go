@@ -369,8 +369,10 @@ func (self *Runtime) instantiatePipeline(src string, srcPath string, psid string
 	invocationData, _ := BuildDataForAst(incpaths, ast)
 
 	// Instantiate the pipeline.
-	if err := CheckMinimalSpace(pipestancePath); err != nil {
-		return "", nil, nil, err
+	if !readOnly {
+		if err := CheckMinimalSpace(pipestancePath); err != nil {
+			return "", nil, nil, err
+		}
 	}
 	pipestance, err := NewPipestance(NewTopNode(self, psid, pipestancePath, mroPaths, mroVersion, envs, invocationData),
 		ast.Call, ast.Callables)
@@ -515,7 +517,7 @@ func (self *Runtime) reattachToPipestance(psid string, pipestancePath string,
 	// If _metadata exists, unzip it so the pipestance can read its metadata.
 	metadataPath := path.Join(pipestancePath, MetadataZip.FileName())
 	if _, err := os.Stat(metadataPath); err == nil {
-		if err := util.Unzip(metadataPath); err != nil {
+		if err := util.UnzipIgnoreExisting(metadataPath); err != nil {
 			pipestance.Unlock()
 			return nil, err
 		}

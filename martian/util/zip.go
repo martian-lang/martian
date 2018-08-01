@@ -120,6 +120,16 @@ func unzipFile(filePath string, f *zip.File) error {
 }
 
 func Unzip(zipPath string) error {
+	return unzip(zipPath, false)
+}
+
+// UnzipIgnoreExisting unzips the given archive, skipping over files which
+// already exist.
+func UnzipIgnoreExisting(zipPath string) error {
+	return unzip(zipPath, true)
+}
+
+func unzip(zipPath string, ignoreExisting bool) error {
 	zr, err := zip.OpenReader(zipPath)
 	if err != nil {
 		return err
@@ -136,13 +146,15 @@ func Unzip(zipPath string) error {
 		if f.Mode()&os.ModeSymlink != 0 {
 			links = append(links, deferredLink{filePath: filePath, file: f})
 		} else {
-			if err := unzipFile(filePath, f); err != nil {
+			if err := unzipFile(filePath, f); err != nil &&
+				(!ignoreExisting || !os.IsExist(err)) {
 				return err
 			}
 		}
 	}
 	for _, link := range links {
-		if err := unzipLink(link.filePath, link.file); err != nil && !os.IsNotExist(err) {
+		if err := unzipLink(link.filePath, link.file); err != nil &&
+			(!ignoreExisting || !os.IsExist(err)) {
 			return err
 		}
 	}
