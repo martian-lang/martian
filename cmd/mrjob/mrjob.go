@@ -282,7 +282,7 @@ func (self *runner) startProfile() error {
 	case core.PerfRecordProfile:
 		events := os.Getenv("MRO_PERF_EVENTS")
 		if events == "" {
-			events = "task-clock,bpf-output"
+			events = "task-clock"
 		}
 		freq := os.Getenv("MRO_PERF_FREQ")
 		if freq == "" {
