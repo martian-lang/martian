@@ -177,7 +177,7 @@ func (parser *Parser) ParseSourceBytes(src []byte, srcPath string,
 					seenPaths[p] = struct{}{}
 				}
 			}
-			if srcerr := ast.checkSrcPaths(stagecodePaths); err != nil {
+			if srcerr := ast.checkSrcPaths(stagecodePaths); srcerr != nil {
 				err = ErrorList{err, srcerr}.If()
 			}
 		}

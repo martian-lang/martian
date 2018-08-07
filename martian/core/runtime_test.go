@@ -80,13 +80,13 @@ stage SUM_SQUARES(
     in  int     threads,
     in  bool    local,
     out float   sum,
-    src py      "stages/sum_squares",
+    src comp    "stages/sum_squares",
 )
 
 stage REPORT(
     in  float[] values,
     in  float   sum,
-    src py      "stages/report",
+    src exec    "stages/report",
 )
 
 pipeline SUM_SQUARE_PIPELINE(

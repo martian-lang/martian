@@ -1503,6 +1503,34 @@ func TestCompileBig(t *testing.T) {
 	testGood(t, fmtTestSrc)
 }
 
+func TestCheckSrcBad(t *testing.T) {
+	t.Parallel()
+	if ast := testGood(t, `
+stage SQUARE(
+    in  int   value,
+    src py    "☺_a_path_that_¢ertainly_∂oεsn_t_℮xist_☺",
+)
+`); ast != nil {
+		if err := ast.checkSrcPaths([]string{"."}); err == nil {
+			t.Error("Expected source check failure.")
+		}
+	}
+}
+
+func TestCheckSrcGood(t *testing.T) {
+	t.Parallel()
+	if ast := testGood(t, `
+stage SQUARE(
+    in  int   value,
+    src py    "testdata",
+)
+`); ast != nil {
+		if err := ast.checkSrcPaths([]string{"."}); err != nil {
+			t.Error(err)
+		}
+	}
+}
+
 func BenchmarkParse(b *testing.B) {
 	srcBytes := []byte(fmtTestSrc)
 	srcFile := new(SourceFile)
