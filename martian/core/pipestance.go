@@ -39,7 +39,13 @@ func NewStagestance(parent Nodable, callStm *syntax.CallStm, callables *syntax.C
 	}
 
 	stagecodePaths := append(self.node.mroPaths, strings.Split(os.Getenv("PATH"), ":")...)
-	stagecodePath, _ := util.SearchPaths(stage.Src.Path, stagecodePaths)
+	stagecodePath := stage.Src.Path
+	if fullPath, found := util.SearchPaths(stage.Src.Path, stagecodePaths); found {
+		// While it should have been checked at compile time (at least for
+		// python stages), it's better to have a relative path here than
+		// an empty string if the path no longer resolves.
+		stagecodePath = fullPath
+	}
 	self.node.stagecodeCmd = strings.Join(append([]string{stagecodePath}, stage.Src.Args...), " ")
 	var err error
 	if self.node.stagecodeLang, err = stage.Src.Lang.Parse(); err != nil {
