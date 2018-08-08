@@ -5,6 +5,7 @@
 package syntax
 
 import (
+	"math"
 	"reflect"
 	"strings"
 
@@ -305,6 +306,23 @@ func (exp *ValExp) equal(other Exp) bool {
 		util.PrintInfo("compare",
 			"Value are not both literals.")
 		return false
+	} else {
+		return exp.equalVal(ov)
+	}
+}
+
+func (exp *ValExp) equalVal(ov *ValExp) bool {
+	if exp.Kind == KindArray {
+		// unlike other types, empty array is equivalent to nil
+		return exp.equalArray(ov)
+	} else if exp.Value == nil {
+		return ov.Value == nil
+	} else if ov.Value == nil {
+		return false
+	} else if exp.Kind == KindInt {
+		return exp.equalInt(ov)
+	} else if exp.Kind == KindFloat {
+		return exp.equalFloat(ov)
 	} else if exp.Kind != ov.Kind {
 		util.PrintInfo("compare",
 			"Value type %v != %v",
@@ -312,14 +330,6 @@ func (exp *ValExp) equal(other Exp) bool {
 		return false
 	} else if exp.Value == nil {
 		return ov.Value == nil
-	} else if exp.Kind == KindArray {
-		ovals := ov.Value.([]Exp)
-		for i, v := range exp.Value.([]Exp) {
-			if !v.equal(ovals[i]) {
-				return false
-			}
-		}
-		return true
 	} else if reflect.DeepEqual(exp.Value, ov.Value) {
 		return true
 	} else {
@@ -338,6 +348,92 @@ func (exp *ValExp) equal(other Exp) bool {
 			return false
 		}
 		return true
+	}
+}
+
+func (exp *ValExp) equalArray(ov *ValExp) bool {
+	if ov.Kind != KindArray {
+		return false
+	}
+	var a1, a2 []Exp
+	if v, ok := exp.Value.([]Exp); ok {
+		a1 = v
+	}
+	if v, ok := ov.Value.([]Exp); ok {
+		a2 = v
+	}
+	if len(a1) != len(a2) {
+		util.PrintInfo("compare", "Lengths %d != %d",
+			len(a1), len(a2))
+	}
+	for i, v := range a1 {
+		if !v.equal(a2[i]) {
+			return false
+		}
+	}
+	return true
+}
+
+func (exp *ValExp) equalInt(ov *ValExp) bool {
+	if ov.Kind == KindInt {
+		if i, ok := exp.Value.(int64); !ok {
+			if _, ok := ov.Value.(int64); ok {
+				util.PrintInfo("compare", "Inconsistent types %T != %T", exp.Value, ov.Value)
+				return false
+			}
+			return true
+		} else if i2, ok := ov.Value.(int64); !ok {
+			util.PrintInfo("compare", "Inconsistent types %T != %T", exp.Value, ov.Value)
+			return false
+		} else {
+			return i == i2
+		}
+	} else if ov.Kind == KindFloat {
+		if i, ok := exp.Value.(int64); !ok {
+			if _, ok := ov.Value.(float64); ok {
+				util.PrintInfo("compare",
+					"Inconsistent types %T != %T", exp.Value, ov.Value)
+				return false
+			}
+			return true
+		} else if f, ok := ov.Value.(float64); !ok {
+			util.PrintInfo("compare",
+				"Inconsistent types %T != %T", exp.Value, ov.Value)
+			return false
+		} else {
+			return math.Abs(float64(i)-f) < 1e-15
+		}
+	} else {
+		util.PrintInfo("compare",
+			"Value type %v != %v",
+			exp.Kind, ov.Kind)
+		return false
+	}
+}
+
+func (exp *ValExp) equalFloat(ov *ValExp) bool {
+	if ov.Kind == KindInt {
+		return ov.equalInt(exp)
+	} else if ov.Kind == KindFloat {
+		if f1, ok := exp.Value.(float64); !ok {
+			if _, ok := ov.Value.(float64); ok {
+				util.PrintInfo("compare",
+					"Inconsistent types %T != %T", exp.Value, ov.Value)
+				return false
+			}
+			return true
+		} else if f2, ok := ov.Value.(float64); !ok {
+			util.PrintInfo("compare",
+				"Inconsistent types %T != %T", exp.Value, ov.Value)
+			return false
+		} else {
+			return math.Abs(f1-f2) < f1*1e-15
+		}
+	} else {
+		util.PrintInfo("compare",
+			"Value type %v != %v",
+			exp.Kind, ov.Kind)
+		return false
 	}
 }
 

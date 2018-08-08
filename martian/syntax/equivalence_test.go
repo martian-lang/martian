@@ -244,3 +244,57 @@ call SUM_SQUARE_PIPELINE(
 		}
 	}
 }
+
+func TestNumExpEquivalence(t *testing.T) {
+	exp := ValExp{
+		Kind:  KindInt,
+		Value: parseInt([]byte("1")),
+	}
+	i1 := ValExp{
+		Kind:  KindInt,
+		Value: parseInt([]byte("1")),
+	}
+	i2 := ValExp{
+		Kind:  KindInt,
+		Value: parseInt([]byte("2")),
+	}
+	f1 := ValExp{
+		Kind:  KindFloat,
+		Value: parseFloat([]byte("1.0")),
+	}
+	f2 := ValExp{
+		Kind:  KindFloat,
+		Value: parseFloat([]byte("2.0")),
+	}
+	f3 := ValExp{
+		Kind:  KindFloat,
+		Value: parseFloat([]byte("1.1")),
+	}
+	if !exp.equal(&i1) {
+		t.Errorf("Expected 1 == 1")
+	}
+	if exp.equal(&i2) {
+		t.Errorf("Expected 1 != 2")
+	}
+	if !exp.equal(&f1) {
+		t.Errorf("Expected 1 == 1.0")
+	}
+	if exp.equal(&f2) {
+		t.Errorf("Expected 1 != 2.0")
+	}
+	if exp.equal(&f3) {
+		t.Errorf("Expected 1 != 1.1")
+	}
+	if !f1.equal(&exp) {
+		t.Errorf("Expected 1.0 == 1")
+	}
+	if f2.equal(&exp) {
+		t.Errorf("Expected 2.0 != 1")
+	}
+	if f1.equal(&f3) {
+		t.Errorf("Expected 1.0 != 1.1")
+	}
+	if !f1.equal(&f1) {
+		t.Error("Expcted 1.0 == 1.0")
+	}
+}
