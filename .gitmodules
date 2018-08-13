@@ -16,3 +16,6 @@
 [submodule "src/vendor/golang.org/x/sys"]
 	path = vendor/golang.org/x/sys
 	url = https://github.com/golang/sys
+[submodule "vendor/github.com/google/shlex"]
+	path = vendor/github.com/google/shlex
+	url = https://github.com/google/shlex.git

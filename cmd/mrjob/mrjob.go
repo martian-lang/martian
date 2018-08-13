@@ -10,8 +10,6 @@ package main
 
 import (
 	"fmt"
-	"github.com/martian-lang/martian/martian/core"
-	"github.com/martian-lang/martian/martian/util"
 	"os"
 	"os/exec"
 	"path"
@@ -20,6 +18,10 @@ import (
 	"strings"
 	"syscall"
 	"time"
+
+	"github.com/google/shlex"
+	"github.com/martian-lang/martian/martian/core"
+	"github.com/martian-lang/martian/martian/util"
 )
 
 const HeartbeatInterval = time.Minute * 2
@@ -280,28 +282,42 @@ func (self *runner) startProfile() error {
 			strconv.Itoa(self.job.Process.Pid),
 		)
 	case core.PerfRecordProfile:
-		events := os.Getenv("MRO_PERF_EVENTS")
-		if events == "" {
-			events = "task-clock"
-		}
-		freq := os.Getenv("MRO_PERF_FREQ")
-		if freq == "" {
-			freq = "200"
-		}
-		duration := os.Getenv("MRO_PERF_DURATION")
-		if duration == "" {
-			duration = "2400"
-		}
 		journaledFiles = []core.MetadataFileName{core.PerfData}
-		// Running perf record for 2400 seconds (40 minutes) with these default
-		// settings will produce about 26MB per thread/process.
-		cmd = exec.Command("perf",
-			"record", "-g", "-F", freq,
-			"-o", self.metadata.MetadataFilePath(journaledFiles[0]),
-			"-e", events,
-			"-p", strconv.Itoa(self.job.Process.Pid),
-			"sleep", duration,
-		)
+		if perfArgs := os.Getenv("MRO_PERF_ARGS"); perfArgs != "" {
+			if args, err := shlex.Split(perfArgs); err != nil {
+				util.PrintError(err, "profile", "Error parsing perf args")
+				return nil
+			} else {
+				baseArgs := []string{
+					"record",
+					"-p", strconv.Itoa(self.job.Process.Pid),
+					"-o", self.metadata.MetadataFilePath(journaledFiles[0]),
+				}
+				cmd = exec.Command("perf", append(baseArgs, args...)...)
+			}
+		} else {
+			events := os.Getenv("MRO_PERF_EVENTS")
+			if events == "" {
+				events = "task-clock"
+			}
+			freq := os.Getenv("MRO_PERF_FREQ")
+			if freq == "" {
+				freq = "200"
+			}
+			duration := os.Getenv("MRO_PERF_DURATION")
+			if duration == "" {
+				duration = "2400"
+			}
+			// Running perf record for 2400 seconds (40 minutes) with these default
+			// settings will produce about 26MB per thread/process.
+			cmd = exec.Command("perf",
+				"record", "-g", "-F", freq,
+				"-o", self.metadata.MetadataFilePath(journaledFiles[0]),
+				"-e", events,
+				"-p", strconv.Itoa(self.job.Process.Pid),
+				"sleep", duration,
+			)
+		}
 	default:
 		return nil
 	}
