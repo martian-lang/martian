@@ -14,6 +14,9 @@ a { cursor:pointer; }
 .admin {
     background-color: #822 !important;
 }
+.admin .navbar-brand {
+    color: lightblue;
+}
 .admin .navbar-brand a {
     color: white !important;
 }
