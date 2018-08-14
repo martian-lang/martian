@@ -325,11 +325,13 @@ func (self *runner) startProfile() error {
 	cmd.Stdout = os.Stderr
 	cmd.Stderr = os.Stderr
 	if err := cmd.Start(); err != nil {
+		go cmd.Wait()
 		return err
 	} else {
 		for _, file := range journaledFiles {
 			self.metadata.UpdateJournal(file)
 		}
+		go cmd.Wait()
 		return nil
 	}
 }
