@@ -14,9 +14,6 @@ a { cursor:pointer; }
 .admin {
     background-color: #822 !important;
 }
-.admin .navbar-brand {
-    color: lightblue;
-}
 .admin .navbar-brand a {
     color: white !important;
 }
@@ -47,6 +44,9 @@ a { cursor:pointer; }
     width: 100%;
     color: #555;
     font-size: 20px;
+}
+.admin .navbar-brand {
+    color: lightblue;
 }
 .navbar-inverse .navbar-left {
     padding: 15px;
