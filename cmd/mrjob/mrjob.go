@@ -38,6 +38,7 @@ type runner struct {
 	jobInfo     *core.JobInfo
 	start       time.Time
 	isDone      chan struct{}
+	perfCmd     *exec.Cmd
 }
 
 func main() {
@@ -176,7 +177,25 @@ func (self *runner) Fail(err error, message string) {
 	if jErr := self.metadata.UpdateJournal(target); jErr != nil {
 		util.PrintError(jErr, "monitor", "Could not update %v journal file.", target)
 	}
+	self.waitForPerf()
 	os.Exit(0)
+}
+
+// Wait for up to 15 seconds after the stage code terminates for perf record to
+// terminate (if applicable).  Otherwise some cluster managers might kill perf
+// as soon as the head process for the job (mrjob, in this case) terminates.
+func (self *runner) waitForPerf() {
+	if c := self.perfCmd; c != nil {
+		done := make(chan struct{})
+		go func(c *exec.Cmd, done chan struct{}) {
+			c.Wait()
+			close(done)
+		}(c, done)
+		select {
+		case <-done:
+		case <-time.After(15 * time.Second):
+		}
+	}
 }
 
 func totalCpu(ru *core.RusageInfo) float64 {
@@ -219,6 +238,7 @@ func (self *runner) Complete() {
 	if jErr := self.metadata.UpdateJournal(target); jErr != nil {
 		util.PrintError(jErr, "monitor", "Could not update %v journal file.", target)
 	}
+	self.waitForPerf()
 	os.Exit(0)
 }
 
@@ -324,14 +344,13 @@ func (self *runner) startProfile() error {
 	cmd.SysProcAttr = util.Pdeathsig(&syscall.SysProcAttr{}, syscall.SIGINT)
 	cmd.Stdout = os.Stderr
 	cmd.Stderr = os.Stderr
+	self.perfCmd = cmd
 	if err := cmd.Start(); err != nil {
-		go cmd.Wait()
 		return err
 	} else {
 		for _, file := range journaledFiles {
 			self.metadata.UpdateJournal(file)
 		}
-		go cmd.Wait()
 		return nil
 	}
 }
@@ -347,9 +366,8 @@ func (self *runner) HandleSignal(sig os.Signal) {
 	}
 	if c := self.isDone; c != nil {
 		// Wait up to 5 seconds for the child process to terminate.
-		timer := time.NewTimer(time.Second * 5)
 		select {
-		case <-timer.C:
+		case <-time.After(time.Second * 5):
 		case <-c:
 		}
 	}
@@ -466,9 +484,8 @@ func (self *runner) WaitLoop() {
 	}()
 	{
 		// Wait up to 5 seconds for the job to finish, to ensure we get rusage.
-		timer := time.NewTimer(time.Second * 5)
 		select {
-		case <-timer.C:
+		case <-time.After(time.Second * 5):
 			self.job.Process.Signal(syscall.SIGKILL)
 		case <-self.isDone:
 		}
