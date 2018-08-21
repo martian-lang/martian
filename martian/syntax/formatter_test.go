@@ -162,7 +162,7 @@ stage ADD_KEY3(
 stage ADD_KEY5(
     in  string   key,
     in  string[] value,
-    src py       "stages/whatever",
+    src py       "stages/whatever arg",
 )
 
 stage SUM_SQUARES(
