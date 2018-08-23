@@ -684,13 +684,9 @@ func (self *Pipestance) ZipMetadata(zipPath string) error {
 	filePaths := make([]string, 0, 7*len(metadatas))
 	removePaths := make([]string, 0, len(metadatas))
 	for _, metadata := range metadatas {
-		for _, file := range metadata.glob() {
-			if fb := path.Base(file); fb != PerfData.FileName() &&
-				fb != ProfileOut.FileName() {
-				filePaths = append(filePaths, file)
-				removePaths = append(removePaths, file)
-			}
-		}
+		files := metadata.glob()
+		filePaths = append(filePaths, files...)
+		removePaths = append(removePaths, files...)
 		filePaths = append(filePaths, metadata.symlinks()...)
 	}
 
