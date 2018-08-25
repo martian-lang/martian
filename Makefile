@@ -50,8 +50,13 @@ bin/mrs: mrp
 all-bins:
 	go install $(GO_FLAGS) $(addprefix $(REPO)/, $(wildcard cmd/*))
 
+NPM_CMD=install
+ifeq ($(CI),true)
+	NPM_CMD=ci
+endif
+
 web:
-	(cd web/martian && npm install && node_modules/gulp/bin/gulp.js)
+	(cd web/martian && npm $(NPM_CMD) && node_modules/gulp/bin/gulp.js)
 
 mrt:
 	cp scripts/mrt bin/mrt
@@ -117,3 +122,4 @@ longtests: test/split_test/pipeline_test \
 clean:
 	rm -rf $(GOPATH)/bin
 	rm -rf $(GOPATH)/pkg
+	rm -rf web/martian/node_modules
