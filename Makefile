@@ -14,6 +14,7 @@ RELEASE=false
 GO_FLAGS=-ldflags "-X $(REPO)/martian/util.__VERSION__='$(VERSION)' -X $(REPO)/martian/util.__RELEASE__='$(RELEASE)'"
 
 export GOPATH=$(shell pwd)
+export GO111MODULE=off
 
 .PHONY: $(GOBINS) grammar web $(GOTESTS) govet all-bins bin/sum_squares longtests mrs
 
