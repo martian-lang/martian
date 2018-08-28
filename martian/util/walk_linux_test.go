@@ -20,6 +20,10 @@ func ExampleWalk() {
 		if err := os.MkdirAll(path.Join(root, "a", "b", "c", "d"), 0777); err != nil {
 			fmt.Println(err)
 		}
+		if err := os.Symlink(path.Join(root, "a", "b", "c", "d"),
+			path.Join(root, "a", "b", "c", "ds")); err != nil {
+			fmt.Println(err)
+		}
 		if err := os.MkdirAll(path.Join(root, "a", "b", "e", "f"), 0777); err != nil {
 			fmt.Println(err)
 		}
@@ -57,6 +61,8 @@ func ExampleWalk() {
 			} else {
 				if info.IsDir() {
 					fmt.Printf("Directory '%s'\n", strings.TrimPrefix(p, root))
+				} else if info.Mode()&os.ModeSymlink != 0 {
+					fmt.Printf("Symlink '%s'\n", strings.TrimPrefix(p, root))
 				} else {
 					fmt.Printf("File '%s' had %d bytes\n", strings.TrimPrefix(p, root), info.Size())
 				}
@@ -94,6 +100,7 @@ func ExampleWalk() {
 		// Directory '/a/b/e'
 		// Directory '/a/b/g'
 		// Directory '/a/b/c/d'
+		// Symlink '/a/b/c/ds'
 		// Directory '/a/b/e/f'
 		// File '/a/b/g/e.txt' had 15 bytes
 		// File '/a/b/g/f.txt' had 16 bytes

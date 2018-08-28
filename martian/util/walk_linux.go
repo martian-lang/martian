@@ -18,6 +18,7 @@ import (
 // Implements the os.FileInfo interface to wrap unix.Stat_t
 type unixFileInfo struct {
 	name string
+	mode os.FileMode
 	sys  unix.Stat_t
 }
 
@@ -42,7 +43,7 @@ func (info *unixFileInfo) Mode() os.FileMode {
 	if info == nil {
 		return 0
 	}
-	return os.FileMode(info.sys.Mode & (0777 | unix.S_IFMT))
+	return info.mode
 }
 
 // Modification time
@@ -69,6 +70,45 @@ func (info *unixFileInfo) Sys() interface{} {
 	return &info.sys
 }
 
+// Converts system mode into generic os mode flags.
+func (info *unixFileInfo) fill() {
+	info.mode = os.FileMode(info.sys.Mode & 0777)
+	switch info.sys.Mode & unix.S_IFMT {
+	case unix.S_IFBLK:
+		info.mode |= os.ModeDevice
+	case unix.S_IFCHR:
+		info.mode |= os.ModeDevice | os.ModeCharDevice
+	case unix.S_IFDIR:
+		info.mode |= os.ModeDir
+	case unix.S_IFIFO:
+		info.mode |= os.ModeNamedPipe
+	case unix.S_IFLNK:
+		info.mode |= os.ModeSymlink
+	case unix.S_IFREG:
+		// nothing to do
+	case unix.S_IFSOCK:
+		info.mode |= os.ModeSocket
+	}
+	if info.sys.Mode&unix.S_ISGID != 0 {
+		info.mode |= os.ModeSetgid
+	}
+	if info.sys.Mode&unix.S_ISUID != 0 {
+		info.mode |= os.ModeSetuid
+	}
+	if info.sys.Mode&unix.S_ISVTX != 0 {
+		info.mode |= os.ModeSticky
+	}
+}
+
+// Calls fstatat and then fills the mode flags.
+func (info *unixFileInfo) fstatat(fd int, name string) (err error) {
+	err = unix.Fstatat(fd, name,
+		&info.sys,
+		unix.AT_SYMLINK_NOFOLLOW|unix.AT_NO_AUTOMOUNT)
+	info.fill()
+	return
+}
+
 // Faster, Unix-specific implementation of filepath.Walk, which avoids the
 // directory sort and uses openat and fstatat to avoid forcing extra dirent
 // syncs.  This can save a lot of time on NFS servers, and also provides more
@@ -91,8 +131,10 @@ func Walk(root string, walkFn filepath.WalkFunc) error {
 		info := unixFileInfo{name: path.Base(root)}
 		if err := unix.Fstat(int(start.Fd()), &info.sys); err != nil {
 			start.Close()
+			info.fill()
 			return walkFn(root, &info, err)
 		}
+		info.fill()
 		if err := walkFn(root, &info, nil); err == filepath.SkipDir {
 			start.Close()
 			return nil
@@ -131,9 +173,7 @@ func walkInternal(root string, start *os.File, walkFn filepath.WalkFunc) error {
 		startFd := int(start.Fd())
 		for _, name := range list {
 			info := unixFileInfo{name: name}
-			if err := unix.Fstatat(startFd, name,
-				&info.sys,
-				unix.AT_SYMLINK_NOFOLLOW|unix.AT_NO_AUTOMOUNT); err != nil {
+			if err := info.fstatat(startFd, name); err != nil {
 				if walkFn(path.Join(root, name), &info, err); err != nil && err != filepath.SkipDir {
 					return err
 				} else if err == filepath.SkipDir {
