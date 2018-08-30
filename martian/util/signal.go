@@ -88,7 +88,7 @@ var HANDLED_SIGNALS = [...]os.Signal{
 // Notify this handler of signals.
 func (self *SignalHandler) Notify() {
 	for _, sig := range HANDLED_SIGNALS {
-		if sig != syscall.SIGHUP || !SignalIsIgnored(syscall.SIGHUP) {
+		if sig != syscall.SIGHUP || !signal.Ignored(syscall.SIGHUP) {
 			signal.Notify(self.sigchan, sig)
 		}
 	}
