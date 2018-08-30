@@ -6,6 +6,7 @@ package core // import "github.com/martian-lang/martian/martian/core"
 // pipestances.
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
@@ -14,6 +15,7 @@ import (
 	"path"
 	"path/filepath"
 	"regexp"
+	"runtime/trace"
 	"strings"
 	"sync"
 	"time"
@@ -350,7 +352,10 @@ func CompileAll(mroPaths []string, checkSrcPath bool) (int, []*syntax.Ast, error
 // public InvokeWithSource and Reattach methods.
 func (self *Runtime) instantiatePipeline(src string, srcPath string, psid string,
 	pipestancePath string, mroPaths []string, mroVersion string,
-	envs map[string]string, readOnly bool) (string, *syntax.Ast, *Pipestance, error) {
+	envs map[string]string, readOnly bool,
+	ctx context.Context) (string, *syntax.Ast, *Pipestance, error) {
+	r := trace.StartRegion(ctx, "instantiatePipeline")
+	defer r.End()
 	// Parse the invocation source.
 	postsrc, incpaths, ast, err := syntax.ParseSource(src, srcPath, mroPaths, !readOnly)
 	if err != nil {
@@ -411,7 +416,7 @@ func (self *Runtime) InvokePipeline(src string, srcPath string, psid string,
 	src = os.ExpandEnv(src)
 	readOnly := false
 	postsrc, _, pipestance, err := self.instantiatePipeline(src, srcPath, psid, pipestancePath, mroPaths,
-		mroVersion, envs, readOnly)
+		mroVersion, envs, readOnly, context.Background())
 	if err != nil {
 		// If instantiation failed, delete the pipestance folder.
 		os.RemoveAll(pipestancePath)
@@ -440,27 +445,30 @@ func (self *Runtime) InvokePipeline(src string, srcPath string, psid string,
 
 func (self *Runtime) ReattachToPipestance(psid string, pipestancePath string,
 	src string, invocationPath string, mroPaths []string,
-	mroVersion string, envs map[string]string, checkSrc bool, readOnly bool) (*Pipestance, error) {
+	mroVersion string, envs map[string]string, checkSrc bool, readOnly bool,
+	ctx context.Context) (*Pipestance, error) {
 	return self.reattachToPipestance(psid, pipestancePath,
 		src, invocationPath, mroPaths,
 		mroVersion, envs, checkSrc,
-		readOnly, InvocationFile)
+		readOnly, InvocationFile,
+		ctx)
 }
 
 func (self *Runtime) ReattachToPipestanceWithMroSrc(psid string, pipestancePath string,
 	src string, invocationPath string, mroPaths []string,
-	mroVersion string, envs map[string]string, checkSrc bool, readOnly bool) (*Pipestance, error) {
+	mroVersion string, envs map[string]string, checkSrc bool,
+	readOnly bool, ctx context.Context) (*Pipestance, error) {
 	return self.reattachToPipestance(psid, pipestancePath,
 		src, invocationPath, mroPaths,
 		mroVersion, envs, checkSrc,
-		readOnly, MroSourceFile)
+		readOnly, MroSourceFile, ctx)
 }
 
 // Reattaches to an existing pipestance.
 func (self *Runtime) reattachToPipestance(psid string, pipestancePath string,
 	src string, invocationPath string, mroPaths []string,
 	mroVersion string, envs map[string]string, checkSrc bool, readOnly bool,
-	srcType MetadataFileName) (*Pipestance, error) {
+	srcType MetadataFileName, ctx context.Context) (*Pipestance, error) {
 
 	if src == "" {
 		if invocationPath == "" {
@@ -487,7 +495,7 @@ func (self *Runtime) reattachToPipestance(psid string, pipestancePath string,
 	_, ast, pipestance, err := self.instantiatePipeline(
 		src, invocationPath,
 		psid, pipestancePath, mroPaths,
-		mroVersion, envs, readOnly)
+		mroVersion, envs, readOnly, ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -530,7 +538,7 @@ func (self *Runtime) reattachToPipestance(psid string, pipestancePath string,
 	// mrp process died (on OSes where pdeathsig is supported).
 	if !readOnly {
 		util.PrintInfo("runtime", "Reattaching in %s mode.", self.Config.JobMode)
-		if err = pipestance.RestartRunningNodes(self.Config.JobMode); err != nil {
+		if err = pipestance.RestartRunningNodes(self.Config.JobMode, ctx); err != nil {
 			pipestance.Unlock()
 			return nil, err
 		}

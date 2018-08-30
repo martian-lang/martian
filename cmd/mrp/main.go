@@ -19,6 +19,7 @@ import (
 	"path"
 	"path/filepath"
 	"runtime"
+	"runtime/trace"
 	"strconv"
 	"strings"
 	"sync"
@@ -75,29 +76,31 @@ func (self *pipestanceHolder) consumeRetry() bool {
 }
 
 // Restart the pipestance and set remaining retries back to maximum.
-func (self *pipestanceHolder) reset() error {
+func (self *pipestanceHolder) reset(ctx context.Context) error {
 	self.lock.Lock()
 	self.remainingRetries = self.maxRetries
 	self.showedFailed = false
 	self.lock.Unlock()
-	return self.restart()
+	return self.restart(ctx)
 }
 
 // Restart the pipestance.
-func (self *pipestanceHolder) restart() error {
+func (self *pipestanceHolder) restart(outerCtx context.Context) error {
+	ctx, task := trace.NewTask(outerCtx, "restart")
+	defer task.End()
 	if self.readOnly {
 		return fmt.Errorf("mrp instances started with --inspect cannot restart pipelines.")
 	}
 	self.lock.Lock()
 	defer self.lock.Unlock()
-	ps, err := self.factory.ReattachToPipestance()
+	ps, err := self.factory.ReattachToPipestance(ctx)
 	if err == nil {
 		err = ps.Reset()
 		if err != nil {
 			ps.Unlock()
 			return err
 		}
-		ps.LoadMetadata()
+		ps.LoadMetadata(ctx)
 		self.setPipestance(ps)
 	}
 	return err
@@ -176,41 +179,10 @@ const WAIT_SECS = 6
 //=============================================================================
 func runLoop(pipestanceBox *pipestanceHolder, stepSecs int, vdrMode string,
 	noExit bool) {
-	pipestanceBox.getPipestance().LoadMetadata()
+	pipestanceBox.getPipestance().LoadMetadata(context.Background())
 
 	for {
-		pipestance := pipestanceBox.getPipestance()
-		pipestance.RefreshState()
-
-		// Check for completion states.
-		state := pipestance.GetState()
-		hadProgress := false
-		if state == core.Complete || state == core.DisabledState {
-			pipestanceBox.UpdateState(state.Prefixed(core.CleanupPrefix))
-			cleanupCompleted(pipestance, pipestanceBox, vdrMode, noExit)
-			return
-		} else if state == core.Failed {
-			if pipestanceBox.showedFailed {
-				pipestanceBox.UpdateState(state)
-			} else {
-				pipestanceBox.UpdateState(state.Prefixed(core.CleanupPrefix))
-			}
-			if !attemptRetry(pipestance, pipestanceBox) {
-				pipestance.Unlock()
-				cleanupFailed(pipestance, pipestanceBox, noExit)
-			}
-		} else {
-			pipestanceBox.UpdateState(state)
-			// If we went from failed to something else, allow the failure message to
-			// be shown once if we fail again.
-			pipestanceBox.showedFailed = false
-
-			// Check job heartbeats.
-			pipestance.CheckHeartbeats()
-
-			// Step all nodes.
-			hadProgress = pipestance.StepNodes()
-		}
+		hadProgress := loopBody(pipestanceBox, vdrMode, noExit)
 
 		if !hadProgress {
 			// Wait for a bit.
@@ -226,7 +198,48 @@ func runLoop(pipestanceBox *pipestanceHolder, stepSecs int, vdrMode string,
 	}
 }
 
-func attemptRetry(pipestance *core.Pipestance, pipestanceBox *pipestanceHolder) bool {
+func loopBody(pipestanceBox *pipestanceHolder, vdrMode string, noExit bool) bool {
+	pipestance := pipestanceBox.getPipestance()
+	ctx, task := trace.NewTask(context.Background(), "update")
+	defer task.End()
+	pipestance.RefreshState(ctx)
+
+	// Check for completion states.
+	state := pipestance.GetState(ctx)
+	if state == core.Complete || state == core.DisabledState {
+		pipestanceBox.UpdateState(state.Prefixed(core.CleanupPrefix))
+		cleanupCompleted(pipestance, pipestanceBox, vdrMode, noExit)
+		return false
+	} else if state == core.Failed {
+		if pipestanceBox.showedFailed {
+			pipestanceBox.UpdateState(state)
+		} else {
+			pipestanceBox.UpdateState(state.Prefixed(core.CleanupPrefix))
+		}
+		if !attemptRetry(pipestance, pipestanceBox, ctx) {
+			pipestance.Unlock()
+			cleanupFailed(pipestance, pipestanceBox, noExit)
+		}
+		return false
+	} else {
+		pipestanceBox.UpdateState(state)
+		// If we went from failed to something else, allow the failure message to
+		// be shown once if we fail again.
+		pipestanceBox.showedFailed = false
+
+		// Check job heartbeats.
+		pipestance.CheckHeartbeats(ctx)
+
+		// Step all nodes.
+		return pipestance.StepNodes(ctx)
+	}
+}
+
+func attemptRetry(pipestance *core.Pipestance, pipestanceBox *pipestanceHolder,
+	outerCtx context.Context) bool {
+	ctx, task := trace.NewTask(outerCtx, "attemptRetry")
+	defer task.End()
+
 	if pipestanceBox.readOnly {
 		return false
 	}
@@ -249,8 +262,8 @@ func attemptRetry(pipestance *core.Pipestance, pipestanceBox *pipestanceHolder) 
 		// Heartbeat failures often come in clusters.  Look for any others
 		// which have come in since failure was detected so that all of
 		// those failures get batched up into a single retry.
-		pipestance.RefreshState()
-		pipestance.CheckHeartbeats()
+		pipestance.RefreshState(ctx)
+		pipestance.CheckHeartbeats(ctx)
 		// Check that no non-transient failures happend in the mean time.
 		canRetry, transient_log = pipestance.IsErrorTransient()
 		if !canRetry {
@@ -265,7 +278,7 @@ func attemptRetry(pipestance *core.Pipestance, pipestanceBox *pipestanceHolder) 
 			util.LogInfo("runtime", "Transient error detected.  Log content:\n\n%s\n", transient_log)
 		}
 		util.LogInfo("runtime", "Attempting retry.")
-		if err := pipestanceBox.restart(); err != nil {
+		if err := pipestanceBox.restart(ctx); err != nil {
 			util.LogInfo("runtime", "Retry failed:\n%v\n", err)
 			// Let the next loop around actually handle the failure.
 		}
@@ -825,7 +838,7 @@ Options:
 	pipestance, err := factory.InvokePipeline()
 	if err != nil {
 		if _, ok := err.(*core.PipestanceExistsError); ok {
-			if pipestance, err = factory.ReattachToPipestance(); err == nil {
+			if pipestance, err = factory.ReattachToPipestance(context.Background()); err == nil {
 				config.MartianVersion, mroVersion, _ = pipestance.GetVersions()
 				reattaching = true
 			} else {
@@ -922,7 +935,7 @@ Options:
 		Version:      config.MartianVersion,
 		Pname:        pipestance.GetPname(),
 		PsId:         psid,
-		State:        pipestance.GetState(),
+		State:        pipestance.GetState(context.Background()),
 		JobMode:      config.JobMode,
 		MaxCores:     rt.JobManager.GetMaxCores(),
 		MaxMemGB:     rt.JobManager.GetMaxMemGB(),

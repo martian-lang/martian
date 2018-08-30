@@ -6,6 +6,7 @@ package core
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
@@ -13,6 +14,7 @@ import (
 	"os/exec"
 	"path"
 	"runtime"
+	"runtime/trace"
 	"strconv"
 	"strings"
 	"syscall"
@@ -60,7 +62,7 @@ type JobManager interface {
 	// still queued or running, as well as the stderr output of the queue check.
 	// If this job manager doesn't know how to check the queue or the query
 	// fails, it simply returns the list it was given.
-	checkQueue([]string) ([]string, string)
+	checkQueue([]string, context.Context) ([]string, string)
 	// Returns true if checkQueue does something useful.
 	hasQueueCheck() bool
 	// Returns the amount of time to wait, after a job is found to be unknown
@@ -301,7 +303,8 @@ func (self *LocalJobManager) GetSystemReqs(threads int, memGB int) (int, int) {
 				self.maxMemGB)
 		}
 		util.LogInfo(
-			"jobmngr", "Job asked for %d GB but is being given %d.  This behavior is deprecated - jobs which can adapt their memory usage should ask for -%d.",
+			"jobmngr",
+			"Job asked for %d GB but is being given %d.  This behavior is deprecated - jobs which can adapt their memory usage should ask for -%d.",
 			memGB, self.maxMemGB, memGB)
 		memGB = self.maxMemGB
 	}
@@ -309,7 +312,7 @@ func (self *LocalJobManager) GetSystemReqs(threads int, memGB int) (int, int) {
 	return threads, memGB
 }
 
-func (self *LocalJobManager) checkQueue(ids []string) ([]string, string) {
+func (self *LocalJobManager) checkQueue(ids []string, _ context.Context) ([]string, string) {
 	return ids, ""
 }
 
@@ -327,6 +330,8 @@ func (self *LocalJobManager) Enqueue(shellCmd string, argv []string,
 
 	time.Sleep(time.Second * time.Duration(waitTime))
 	go func() {
+		r := trace.StartRegion(context.Background(), "queueLocal")
+		defer r.End()
 		// Exec the shell directly.
 		cmd := exec.Command(shellCmd, argv...)
 		cmd.Dir = metadata.curFilesPath
@@ -605,15 +610,18 @@ func (self *RemoteJobManager) GetSystemReqs(threads int, memGB int) (int, int) {
 func (self *RemoteJobManager) execJob(shellCmd string, argv []string,
 	envs map[string]string, metadata *Metadata, threads int, memGB int,
 	special string, fqname string, shellName string, localpreflight bool) {
+	ctx, task := trace.NewTask(context.Background(), "queueRemote")
 
 	// no limit, send the job
 	if self.maxJobs <= 0 {
-		self.sendJob(shellCmd, argv, envs, metadata, threads, memGB, special, fqname, shellName)
+		defer task.End()
+		self.sendJob(shellCmd, argv, envs, metadata, threads, memGB, special, fqname, shellName, ctx)
 		return
 	}
 
 	// grab job when ready, block until job state changes to a finalized state
 	go func() {
+		defer task.End()
 		if self.debug {
 			util.LogInfo("jobmngr", "Waiting for job: %s", fqname)
 		}
@@ -625,7 +633,7 @@ func (self *RemoteJobManager) execJob(shellCmd string, argv []string,
 		if self.debug {
 			util.LogInfo("jobmngr", "Job sent: %s", fqname)
 		}
-		self.sendJob(shellCmd, argv, envs, metadata, threads, memGB, special, fqname, shellName)
+		self.sendJob(shellCmd, argv, envs, metadata, threads, memGB, special, fqname, shellName, ctx)
 	}()
 }
 
@@ -650,7 +658,8 @@ func threadEnvs(self JobManager, threads int, envs map[string]string) map[string
 }
 
 func (self *RemoteJobManager) sendJob(shellCmd string, argv []string, envs map[string]string,
-	metadata *Metadata, threads int, memGB int, special string, fqname string, shellName string) {
+	metadata *Metadata, threads int, memGB int, special string, fqname string, shellName string,
+	ctx context.Context) {
 
 	if self.jobFreqMillis > 0 {
 		<-(self.limiter.C)
@@ -729,7 +738,7 @@ func (self *RemoteJobManager) sendJob(shellCmd string, argv []string, envs map[s
 	jobscript := r.Replace(template)
 	metadata.WriteRaw("jobscript", jobscript)
 
-	cmd := exec.Command(self.config.jobCmd, self.config.jobCmdArgs...)
+	cmd := exec.CommandContext(ctx, self.config.jobCmd, self.config.jobCmdArgs...)
 	cmd.Dir = metadata.curFilesPath
 	cmd.Stdin = strings.NewReader(jobscript)
 
@@ -749,12 +758,12 @@ func (self *RemoteJobManager) sendJob(shellCmd string, argv []string, envs map[s
 	}
 }
 
-func (self *RemoteJobManager) checkQueue(ids []string) ([]string, string) {
+func (self *RemoteJobManager) checkQueue(ids []string, ctx context.Context) ([]string, string) {
 	if self.config.queueQueryCmd == "" {
 		return ids, ""
 	}
 	jobPath := util.RelPath(path.Join("..", "jobmanagers"))
-	cmd := exec.Command(path.Join(jobPath, self.config.queueQueryCmd))
+	cmd := exec.CommandContext(ctx, path.Join(jobPath, self.config.queueQueryCmd))
 	cmd.Dir = jobPath
 	cmd.Stdin = strings.NewReader(strings.Join(ids, "\n"))
 	var stderr bytes.Buffer

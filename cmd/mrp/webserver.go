@@ -278,7 +278,7 @@ func (self *mrpWebServer) getInfo(w http.ResponseWriter, req *http.Request) {
 		return
 	}
 	pipestance := self.pipestanceBox.getPipestance()
-	st := pipestance.GetState()
+	st := pipestance.GetState(req.Context())
 	self.pipestanceBox.UpdateState(st)
 	self.mutex.Lock()
 	bytes, err := json.Marshal(self.pipestanceBox.info)
@@ -300,7 +300,7 @@ func (self *mrpWebServer) getState(w http.ResponseWriter, req *http.Request) {
 		Nodes: getFinalState(self.rt, pipestance),
 		Info:  self.pipestanceBox.info,
 	}
-	st := pipestance.GetState()
+	st := pipestance.GetState(req.Context())
 	self.pipestanceBox.UpdateState(st)
 	self.mutex.Lock()
 	bytes, err := json.Marshal(&state)
@@ -407,11 +407,11 @@ func (self *mrpWebServer) restart(w http.ResponseWriter, req *http.Request) {
 	}
 	self.pipestanceBox.cleanupLock.Lock()
 	defer self.pipestanceBox.cleanupLock.Unlock()
-	if st := self.pipestanceBox.getPipestance().GetState(); st != core.Failed {
+	if st := self.pipestanceBox.getPipestance().GetState(req.Context()); st != core.Failed {
 		http.Error(w, "Only failed pipestances can be restarted.", http.StatusBadRequest)
 		return
 	}
-	if err := self.pipestanceBox.reset(); err != nil {
+	if err := self.pipestanceBox.reset(req.Context()); err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 	}
 }

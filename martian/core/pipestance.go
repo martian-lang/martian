@@ -7,13 +7,16 @@
 package core
 
 import (
+	"context"
 	"fmt"
 	"os"
 	"os/exec"
 	"path"
 	"path/filepath"
+	"runtime/trace"
 	"strings"
 	"sync"
+	"syscall"
 	"time"
 
 	"github.com/martian-lang/martian/martian/syntax"
@@ -104,8 +107,6 @@ func (self *Stagestance) Callable() syntax.Callable {
 	return self.node.Callable()
 }
 
-func (self *Stagestance) GetState() MetadataState { return self.getNode().getState() }
-
 func (self *Stagestance) Step() bool {
 	if err := self.node.rt.JobManager.refreshResources(
 		self.node.rt.Config.JobMode == "local"); err != nil {
@@ -116,7 +117,6 @@ func (self *Stagestance) Step() bool {
 }
 
 func (self *Stagestance) CheckHeartbeats() { self.getNode().checkHeartbeats() }
-func (self *Stagestance) RefreshState()    { self.getNode().refreshState(false) }
 func (self *Stagestance) LoadMetadata()    { self.getNode().loadMetadata() }
 func (self *Stagestance) PostProcess()     { self.getNode().postProcess() }
 func (self *Stagestance) GetFatalError() (string, bool, string, string, MetadataFileName, []string) {
@@ -143,8 +143,9 @@ type Pipestance struct {
 
 /* Run a script whenever a pipestance finishes */
 func (self *Pipestance) OnFinishHook() {
-	exec_path := self.getNode().rt.Config.OnFinishHandler
-	if exec_path != "" {
+	if exec_path := self.getNode().rt.Config.OnFinishHandler; exec_path != "" {
+		ctx, task := trace.NewTask(context.Background(), "onfinish")
+		defer task.End()
 		util.Println("\nRunning onfinish handler...")
 
 		// Build command line arguments:
@@ -152,18 +153,14 @@ func (self *Pipestance) OnFinishHook() {
 		// $2 = {complete|failed}
 		// $3 = pipestance ID
 		// $4 = path to error file (if there was an error)
-		args := []string{exec_path, self.GetPath(), string(self.GetState()), self.getNode().name}
-		if self.GetState() == Failed {
+		args := []string{self.GetPath(), string(self.GetState(ctx)), self.getNode().name}
+		if self.GetState(ctx) == Failed {
 			_, _, _, _, _, err_paths := self.GetFatalError()
 			if len(err_paths) > 0 {
 				err_path, _ := filepath.Rel(filepath.Dir(self.GetPath()), err_paths[0])
 				args = append(args, err_path)
 			}
 		}
-
-		/* Set up attributes for exec */
-		var pa os.ProcAttr
-		pa.Files = []*os.File{os.Stdin, os.Stdout, os.Stderr}
 
 		/* Find the real path to the script */
 		real_path, err := exec.LookPath(exec_path)
@@ -172,20 +169,24 @@ func (self *Pipestance) OnFinishHook() {
 			return
 		}
 
-		/* Run it */
-		p, err := os.StartProcess(real_path, args, &pa)
-		if err != nil {
-			util.LogInfo("finishr", "Could not run %v: %v", real_path, err)
-			return
-		}
+		cmd := exec.CommandContext(ctx, real_path, args...)
+		cmd.Stdin = os.Stdin
+		cmd.Stdout = os.Stdout
+		cmd.Stderr = os.Stderr
 
-		/* Wait for it to finish */
-		res, err := p.Wait()
-		if err != nil {
-			util.LogInfo("finishr", "Error running %v: %v", real_path, err)
-		}
-		if !res.Success() {
-			util.LogInfo("finishr", "%v exited with non-zero status.", real_path)
+		if err := cmd.Run(); err != nil {
+			if ee, ok := err.(*exec.ExitError); ok &&
+				ee.ProcessState != nil && ee.ProcessState.Sys() != nil {
+				if ws, ok := ee.ProcessState.Sys().(*syscall.WaitStatus); ok && ws.Signaled() {
+					util.LogError(err, "finishr", "%s died with signal %v",
+						real_path, ws.Signal())
+				} else {
+					util.LogError(err, "finishr", "%v failed", real_path)
+				}
+			} else {
+				util.LogInfo("finishr", "Error running %v: %v",
+					real_path, err)
+			}
 		}
 	}
 }
@@ -292,8 +293,12 @@ func (self *Pipestance) getNode() *Node    { return self.node }
 func (self *Pipestance) GetPname() string  { return self.node.name }
 func (self *Pipestance) GetPsid() string   { return self.node.parent.getNode().name }
 func (self *Pipestance) GetFQName() string { return self.node.fqname }
-func (self *Pipestance) RefreshState()     { self.node.refreshState(self.readOnly()) }
-func (self *Pipestance) readOnly() bool    { return !self.metadata.exists(Lock) }
+func (self *Pipestance) RefreshState(ctx context.Context) {
+	r := trace.StartRegion(ctx, "refresh")
+	defer r.End()
+	self.node.refreshState(self.readOnly())
+}
+func (self *Pipestance) readOnly() bool { return !self.metadata.exists(Lock) }
 
 func (self *Pipestance) GetPrenodes() map[string]Nodable {
 	return self.node.GetPrenodes()
@@ -314,9 +319,11 @@ func (self *Pipestance) allNodes() []*Node {
 	return self.allNodesCache
 }
 
-func (self *Pipestance) LoadMetadata() {
+func (self *Pipestance) LoadMetadata(ctx context.Context) {
 	// We used to make this concurrent but ended up with too many
 	// goroutines (Pranav's 96-sample run).
+	r := trace.StartRegion(ctx, "LoadMetadata")
+	defer r.End()
 	for _, node := range self.allNodes() {
 		node.loadMetadata()
 	}
@@ -328,7 +335,9 @@ func (self *Pipestance) LoadMetadata() {
 	}
 }
 
-func (self *Pipestance) GetState() MetadataState {
+func (self *Pipestance) GetState(ctx context.Context) MetadataState {
+	r := trace.StartRegion(ctx, "pipestance.GetState")
+	defer r.End()
 	nodes := self.node.getFrontierNodes()
 	for _, node := range nodes {
 		if node.state == Failed {
@@ -377,11 +386,13 @@ func (self *Pipestance) KillWithMessage(message string) {
 	}
 }
 
-func (self *Pipestance) RestartRunningNodes(jobMode string) error {
+func (self *Pipestance) RestartRunningNodes(jobMode string, outerCtx context.Context) error {
+	ctx, task := trace.NewTask(outerCtx, "restartNodes")
+	defer task.End()
 	if self.readOnly() {
 		return &RuntimeError{"Pipestance is in read only mode."}
 	}
-	self.LoadMetadata()
+	self.LoadMetadata(ctx)
 	nodes := self.node.getFrontierNodes()
 	localNodes := []*Node{}
 	for _, node := range nodes {
@@ -424,11 +435,13 @@ func (self *Pipestance) RestartLocalJobs(jobMode string) error {
 	return nil
 }
 
-func (self *Pipestance) CheckHeartbeats() {
+func (self *Pipestance) CheckHeartbeats(ctx context.Context) {
+	r := trace.StartRegion(ctx, "heartbeat")
+	defer r.End()
 	if self.readOnly() {
 		return
 	}
-	self.queryQueue()
+	self.queryQueue(ctx)
 
 	nodes := self.node.getFrontierNodes()
 	for _, node := range nodes {
@@ -437,7 +450,14 @@ func (self *Pipestance) CheckHeartbeats() {
 }
 
 // Check that the queued jobs are actually queued.
-func (self *Pipestance) queryQueue() {
+func (self *Pipestance) queryQueue(outerCtx context.Context) {
+	prepDone := false
+	ctx, task := trace.NewTask(outerCtx, "queryQueue")
+	defer func() {
+		if !prepDone {
+			task.End()
+		}
+	}()
 	if self.node == nil || self.node.rt == nil ||
 		self.node.rt.JobManager == nil ||
 		!self.node.rt.JobManager.hasQueueCheck() {
@@ -484,8 +504,10 @@ func (self *Pipestance) queryQueue() {
 	for id := range needsQuery {
 		jobsIn = append(jobsIn, id)
 	}
-	go func() {
-		queued, raw := self.node.rt.JobManager.checkQueue(jobsIn)
+	prepDone = true
+	go func(ctx context.Context, task *trace.Task) {
+		defer task.End()
+		queued, raw := self.node.rt.JobManager.checkQueue(jobsIn, ctx)
 		for _, id := range queued {
 			delete(needsQuery, id)
 		}
@@ -505,7 +527,7 @@ func (self *Pipestance) queryQueue() {
 		self.queueCheckActive = false
 		self.lastQueueCheck = time.Now()
 		self.queueCheckLock.Unlock()
-	}()
+	}(ctx, task)
 }
 
 func (self *Pipestance) GetFailedNodes() []*Node {
@@ -548,7 +570,9 @@ func (self *Pipestance) IsErrorTransient() (bool, string) {
 
 // Process state updates for nodes.  Returns true if there was a change in
 // state which would make it productive to call StepNodes again immediately.
-func (self *Pipestance) StepNodes() bool {
+func (self *Pipestance) StepNodes(ctx context.Context) bool {
+	r := trace.StartRegion(ctx, "StepNodes")
+	defer r.End()
 	if self.readOnly() {
 		return false
 	}
@@ -911,7 +935,7 @@ func NewTopNode(rt *Runtime, psid string, p string, mroPaths []string, mroVersio
 // Encapsulates the information needed to instantiate a pipestance, either by
 // creating one or reattaching to an existing one.
 type PipestanceFactory interface {
-	ReattachToPipestance() (*Pipestance, error)
+	ReattachToPipestance(ctx context.Context) (*Pipestance, error)
 	InvokePipeline() (*Pipestance, error)
 }
 
@@ -945,12 +969,12 @@ func NewRuntimePipestanceFactory(rt *Runtime,
 		envs, checkSrc, readOnly, tags}
 }
 
-func (self runtimePipeFactory) ReattachToPipestance() (*Pipestance, error) {
+func (self runtimePipeFactory) ReattachToPipestance(ctx context.Context) (*Pipestance, error) {
 	return self.rt.ReattachToPipestance(
 		self.psid, self.pipestancePath,
 		self.invocationSrc, self.invocationPath,
 		self.mroPaths, self.mroVersion, self.envs,
-		self.checkSrc, self.readOnly)
+		self.checkSrc, self.readOnly, ctx)
 }
 
 func (self runtimePipeFactory) InvokePipeline() (*Pipestance, error) {

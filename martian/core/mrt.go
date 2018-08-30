@@ -7,6 +7,7 @@ package core
 // private internals.
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"io/ioutil"
@@ -310,7 +311,8 @@ func MRTBuildPipeline(newinfo *PipestanceSetup, oldinfo *PipestanceSetup, invali
 		oldinfo.MroVersion,
 		oldinfo.Envs,
 		false,
-		true)
+		true,
+		context.Background())
 
 	if err != nil {
 		util.Println("COULD NOT ATTACH TO PIPESTANCE: %v", err)
