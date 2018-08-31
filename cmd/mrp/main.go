@@ -208,7 +208,7 @@ func loopBody(pipestanceBox *pipestanceHolder, vdrMode string, noExit bool) bool
 	state := pipestance.GetState(ctx)
 	if state == core.Complete || state == core.DisabledState {
 		pipestanceBox.UpdateState(state.Prefixed(core.CleanupPrefix))
-		cleanupCompleted(pipestance, pipestanceBox, vdrMode, noExit)
+		cleanupCompleted(pipestance, pipestanceBox, vdrMode, noExit, ctx)
 		return false
 	} else if state == core.Failed {
 		if pipestanceBox.showedFailed {
@@ -218,7 +218,7 @@ func loopBody(pipestanceBox *pipestanceHolder, vdrMode string, noExit bool) bool
 		}
 		if !attemptRetry(pipestance, pipestanceBox, ctx) {
 			pipestance.Unlock()
-			cleanupFailed(pipestance, pipestanceBox, noExit)
+			cleanupFailed(pipestance, pipestanceBox, noExit, ctx)
 		}
 		return false
 	} else {
@@ -287,7 +287,9 @@ func attemptRetry(pipestance *core.Pipestance, pipestanceBox *pipestanceHolder,
 }
 
 func cleanupCompleted(pipestance *core.Pipestance, pipestanceBox *pipestanceHolder,
-	vdrMode string, noExit bool) {
+	vdrMode string, noExit bool, ctx context.Context) {
+	r := trace.StartRegion(ctx, "cleanupCompleted")
+	defer r.End()
 	if pipestanceBox.readOnly {
 		pipestanceBox.UpdateState(core.Complete)
 		util.Println("Pipestance completed successfully, staying alive because --inspect given.\n")
@@ -302,9 +304,9 @@ func cleanupCompleted(pipestance *core.Pipestance, pipestanceBox *pipestanceHold
 		util.LogInfo("runtime", "VDR killed %d files, %s.",
 			killReport.Count, humanize.Bytes(killReport.Size))
 	}
-	pipestance.PostProcess()
+	trace.WithRegion(ctx, "PostProcess", pipestance.PostProcess)
 	pipestance.Unlock()
-	pipestance.OnFinishHook()
+	pipestance.OnFinishHook(ctx)
 	updateComplete := pipestanceBox.UpdateState(core.Complete)
 	if noExit {
 		util.Println("Pipestance completed successfully, staying alive because --noexit given.\n")
@@ -324,7 +326,9 @@ func cleanupCompleted(pipestance *core.Pipestance, pipestanceBox *pipestanceHold
 }
 
 func cleanupFailed(pipestance *core.Pipestance, pipestanceBox *pipestanceHolder,
-	noExit bool) {
+	noExit bool, ctx context.Context) {
+	r := trace.StartRegion(ctx, "cleanupFailed")
+	defer r.End()
 	if pipestanceBox.readOnly {
 		pipestanceBox.UpdateState(core.Failed)
 		if !pipestanceBox.showedFailed {
@@ -338,7 +342,7 @@ func cleanupFailed(pipestance *core.Pipestance, pipestanceBox *pipestanceHolder,
 	defer func() { pipestanceBox.showedFailed = true }()
 	var serverUpdate chan struct{}
 	if !pipestanceBox.showedFailed {
-		pipestance.OnFinishHook()
+		pipestance.OnFinishHook(ctx)
 		if _, _, _, log, kind, errPaths := pipestance.GetFatalError(); kind == "assert" {
 			// Print preflight check failures.
 			util.Println("\n[%s] %s\n", "error", log)

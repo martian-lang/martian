@@ -142,9 +142,9 @@ type Pipestance struct {
 }
 
 /* Run a script whenever a pipestance finishes */
-func (self *Pipestance) OnFinishHook() {
+func (self *Pipestance) OnFinishHook(outerCtx context.Context) {
 	if exec_path := self.getNode().rt.Config.OnFinishHandler; exec_path != "" {
-		ctx, task := trace.NewTask(context.Background(), "onfinish")
+		ctx, task := trace.NewTask(outerCtx, "onfinish")
 		defer task.End()
 		util.Println("\nRunning onfinish handler...")
 
