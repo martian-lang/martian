@@ -7,7 +7,7 @@
   </p>
 </p>
 
-[![Build Status](https://travis-ci.org/martian-lang/martian.svg?branch=master)](https://travis-ci.org/martian-lang/martian)
+[![GoDoc](https://godoc.org/github.com/martian-lang/martian?status.svg)](https://godoc.org/github.com/martian-lang/martian) [![Build Status](https://travis-ci.org/martian-lang/martian.svg?branch=master)](https://travis-ci.org/martian-lang/martian)
 
 ## Getting Started
 Please see the [Martian Documentation](http://martian-lang.org).
