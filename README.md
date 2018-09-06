@@ -12,10 +12,17 @@
 ## Getting Started
 Please see the [Martian Documentation](http://martian-lang.org).
 
-This repo includes vendored third-party code as submodules, so it must be git cloned recursively:
-
+```sh
+$ go get github.com/martian-lang/martian/cmd/mrp
+$ go install github.com/martian-lang/martian/cmd/...
+$ cd ${GOPATH}/src/github.com/martian-lang/martian/web && npm install && gulp
 ```
+
+Alternatively,
+```sh
 $ git clone https://github.com/martian-lang/martian.git --recursive
+$ cd martian
+$ make
 ```
 
 ## Copyright and License
