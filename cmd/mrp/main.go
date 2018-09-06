@@ -311,6 +311,8 @@ func cleanupCompleted(pipestance *core.Pipestance, pipestanceBox *pipestanceHold
 	if noExit {
 		util.Println("Pipestance completed successfully, staying alive because --noexit given.\n")
 		runtime.GC()
+		// Don't return; otherwise we'll repeatedly try to clean up.
+		runtime.Goexit()
 	} else {
 		if pipestanceBox.enableUI {
 			// Give time for web ui client to get last update.
