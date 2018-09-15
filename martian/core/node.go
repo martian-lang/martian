@@ -992,6 +992,26 @@ func (self *Node) getJobReqs(jobDef *JobResources, stageType string) (int, int, 
 	return threads, memGB, special
 }
 
+func (self *Node) getProfileMode(stageType string) ProfileMode {
+	p := self.rt.overrides.GetOverride(self,
+		fmt.Sprintf("%s.profile", stageType),
+		nil)
+	if p == nil {
+		return self.rt.Config.ProfileMode
+	} else if ps, ok := p.(string); ok {
+		if ps == "" {
+			return self.rt.Config.ProfileMode
+		} else {
+			return ProfileMode(ps)
+		}
+	} else {
+		util.PrintInfo("runtime",
+			"Invalid value for %s %s.profile: %v",
+			self.fqname, stageType, p)
+		return self.rt.Config.ProfileMode
+	}
+}
+
 func (self *Node) setJobReqs(jobDef *JobResources, stageType string) (int, int, string) {
 	// Get values and possibly modify them
 	threads, memGB, special := self.getJobReqs(jobDef, stageType)
@@ -1019,18 +1039,18 @@ func (self *Node) setJoinJobReqs(jobDef *JobResources) (int, int, string) {
 
 func (self *Node) runSplit(fqname string, metadata *Metadata) {
 	threads, memGB, special := self.setSplitJobReqs()
-	self.runJob("split", fqname, metadata, threads, memGB, special)
+	self.runJob("split", fqname, STAGE_TYPE_SPLIT, metadata, threads, memGB, special)
 }
 
 func (self *Node) runJoin(fqname string, metadata *Metadata, threads int, memGB int, special string) {
-	self.runJob("join", fqname, metadata, threads, memGB, special)
+	self.runJob("join", fqname, STAGE_TYPE_JOIN, metadata, threads, memGB, special)
 }
 
 func (self *Node) runChunk(fqname string, metadata *Metadata, threads int, memGB int, special string) {
-	self.runJob("main", fqname, metadata, threads, memGB, special)
+	self.runJob("main", fqname, STAGE_TYPE_CHUNK, metadata, threads, memGB, special)
 }
 
-func (self *Node) runJob(shellName string, fqname string, metadata *Metadata,
+func (self *Node) runJob(shellName string, fqname, stageType string, metadata *Metadata,
 	threads int, memGB int, special string) {
 
 	// Configure local variable dumping.
@@ -1104,13 +1124,14 @@ func (self *Node) runJob(shellName string, fqname string, metadata *Metadata,
 	} else {
 		util.PrintInfo("runtime", msg)
 	}
+	profileMode := self.getProfileMode(stageType)
 	jobInfo := JobInfo{
 		Name:          fqname,
 		Type:          jobMode,
 		Threads:       threads,
 		MemGB:         memGB,
-		ProfileConfig: self.rt.ProfileConfig(),
-		ProfileMode:   self.rt.Config.ProfileMode,
+		ProfileConfig: self.rt.ProfileConfig(profileMode),
+		ProfileMode:   profileMode,
 		Stackvars:     stackVars,
 		Monitor:       monitor,
 		Invocation:    self.invocation,

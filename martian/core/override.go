@@ -65,10 +65,13 @@ var LegalOverrideTypes map[string]reflect.Kind = map[string]reflect.Kind{
 	"force_volatile": reflect.Bool,
 	"join.threads":   reflect.Float64,
 	"join.mem_gb":    reflect.Float64,
+	"join.profile":   reflect.String,
 	"chunk.threads":  reflect.Float64,
 	"chunk.mem_gb":   reflect.Float64,
+	"chunk.profile":  reflect.String,
 	"split.threads":  reflect.Float64,
 	"split.mem_gb":   reflect.Float64,
+	"split.profile":  reflect.String,
 }
 
 // Read the overrides file and produce a pipestance overrides object.

@@ -261,6 +261,7 @@ type Runtime struct {
 	JobManager      JobManager
 	LocalJobManager *LocalJobManager
 	overrides       *PipestanceOverrides
+	jobConfig       *JobManagerJson
 }
 
 // Deprecated: use RuntimeConfig.NewRuntime() instead
@@ -306,16 +307,17 @@ func (c *RuntimeOptions) NewRuntime() *Runtime {
 		mrjob:        util.RelPath("mrjob"),
 	}
 
+	self.jobConfig = getJobConfig(c.ProfileMode)
 	self.MroCache = NewMroCache()
 	self.LocalJobManager = NewLocalJobManager(c.LocalCores, c.LocalMem, c.Debug,
 		c.LimitLoadavg,
 		c.JobMode != "local",
-		c.ProfileMode)
+		self.jobConfig)
 	if c.JobMode == "local" {
 		self.JobManager = self.LocalJobManager
 	} else {
 		self.JobManager = NewRemoteJobManager(c.JobMode, c.MemPerCore, c.MaxJobs,
-			c.JobFreqMillis, c.ResourceSpecial, c.ProfileMode, c.Debug)
+			c.JobFreqMillis, c.ResourceSpecial, self.jobConfig, c.Debug)
 	}
 	VerifyVDRMode(c.VdrMode)
 
@@ -603,8 +605,14 @@ func (self *Runtime) freeMemMB() int64 {
 	}
 }
 
-func (self *Runtime) ProfileConfig() *ProfileConfig {
-	return self.LocalJobManager.prof
+func (self *Runtime) ProfileConfig(mode ProfileMode) *ProfileConfig {
+	if mode == "" {
+		mode = self.Config.ProfileMode
+	}
+	if mode == "" || mode == DisableProfile || len(self.jobConfig.ProfileMode) == 0 {
+		return nil
+	}
+	return self.jobConfig.ProfileMode[mode]
 }
 
 // FreeMemBytes returns the current amount of memory which the runtime may use

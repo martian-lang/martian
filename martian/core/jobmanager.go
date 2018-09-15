@@ -95,19 +95,16 @@ type LocalJobManager struct {
 	debug       bool
 	limitLoad   bool
 	highMem     ObservedMemory
-	prof        *ProfileConfig
 }
 
 func NewLocalJobManager(userMaxCores int, userMaxMemGB int,
 	debug bool, limitLoadavg bool, clusterMode bool,
-	profileMode ProfileMode) *LocalJobManager {
+	config *JobManagerJson) *LocalJobManager {
 	self := &LocalJobManager{
 		debug:     debug,
 		limitLoad: limitLoadavg,
 	}
-	config := verifyJobManager("local", profileMode, -1)
-	self.jobSettings = config.jobSettings
-	self.prof = config.profileMode
+	self.jobSettings = verifyJobManager("local", config, -1).jobSettings
 
 	// Set Max number of cores usable at one time.
 	if userMaxCores > 0 {
@@ -526,14 +523,14 @@ type RemoteJobManager struct {
 }
 
 func NewRemoteJobManager(jobMode string, memGBPerCore int, maxJobs int, jobFreqMillis int,
-	jobResources string, profileMode ProfileMode, debug bool) *RemoteJobManager {
+	jobResources string, config *JobManagerJson, debug bool) *RemoteJobManager {
 	self := &RemoteJobManager{}
 	self.jobMode = jobMode
 	self.memGBPerCore = memGBPerCore
 	self.maxJobs = maxJobs
 	self.jobFreqMillis = jobFreqMillis
 	self.debug = debug
-	self.config = verifyJobManager(jobMode, profileMode, memGBPerCore)
+	self.config = verifyJobManager(jobMode, config, memGBPerCore)
 
 	// Parse jobresources mappings
 	self.jobResourcesMappings = map[string]string{}
@@ -819,7 +816,6 @@ type JobManagerJson struct {
 
 type jobManagerConfig struct {
 	jobSettings      *JobManagerSettings
-	profileMode      *ProfileConfig
 	jobCmd           string
 	jobCmdArgs       []string
 	queueQueryCmd    string
@@ -829,7 +825,7 @@ type jobManagerConfig struct {
 	threadingEnabled bool
 }
 
-func verifyJobManager(jobMode string, profileMode ProfileMode, memGBPerCore int) jobManagerConfig {
+func getJobConfig(profileMode ProfileMode) *JobManagerJson {
 	jobPath := util.RelPath(path.Join("..", "jobmanagers"))
 
 	// Check for existence of job manager JSON file
@@ -839,11 +835,11 @@ func verifyJobManager(jobMode string, profileMode ProfileMode, memGBPerCore int)
 		os.Exit(1)
 	}
 	util.LogInfo("jobmngr", "Job config = %s", jobJsonFile)
-	bytes, _ := ioutil.ReadFile(jobJsonFile)
+	b, _ := ioutil.ReadFile(jobJsonFile)
 
 	// Parse job manager JSON file
 	var jobJson *JobManagerJson
-	if err := json.Unmarshal(bytes, &jobJson); err != nil {
+	if err := json.Unmarshal(b, &jobJson); err != nil {
 		util.PrintInfo("jobmngr",
 			"Job manager config file %s does not contain valid JSON.",
 			jobJsonFile)
@@ -871,23 +867,22 @@ func verifyJobManager(jobMode string, profileMode ProfileMode, memGBPerCore int)
 		os.Exit(1)
 	}
 
-	var profileDef *ProfileConfig
 	if profileMode != "" && profileMode != DisableProfile {
-		if def, ok := jobJson.ProfileMode[profileMode]; !ok {
+		if _, ok := jobJson.ProfileMode[profileMode]; !ok {
 			util.PrintInfo("jobmngr",
 				"Invalid profile mode: %s. Valid profile modes: %s",
 				profileMode, allProfileModes(jobJson.ProfileMode))
 			os.Exit(1)
-		} else {
-			profileDef = def
 		}
 	}
+	return jobJson
+}
 
+func verifyJobManager(jobMode string, jobJson *JobManagerJson, memGBPerCore int) jobManagerConfig {
 	if jobMode == "local" {
 		// Local job mode only needs to verify settings parameters
 		return jobManagerConfig{
-			jobSettings: jobSettings,
-			profileMode: profileDef,
+			jobSettings: jobJson.JobSettings,
 		}
 	}
 
@@ -896,6 +891,7 @@ func verifyJobManager(jobMode string, profileMode ProfileMode, memGBPerCore int)
 
 	jobModeJson, ok := jobJson.JobModes[jobMode]
 	if ok {
+		jobPath := util.RelPath(path.Join("..", "jobmanagers"))
 		jobTemplateFile = path.Join(jobPath, jobMode+".template")
 		exampleJobTemplateFile := jobTemplateFile + ".example"
 		jobErrorMsg = fmt.Sprintf("Job manager template file %s does not exist.\n\nTo set up a job manager template, please follow instructions in %s.",
@@ -928,8 +924,8 @@ func verifyJobManager(jobMode string, profileMode ProfileMode, memGBPerCore int)
 		os.Exit(1)
 	}
 	util.LogInfo("jobmngr", "Job template = %s", jobTemplateFile)
-	bytes, _ = ioutil.ReadFile(jobTemplateFile)
-	jobTemplate := string(bytes)
+	b, _ := ioutil.ReadFile(jobTemplateFile)
+	jobTemplate := string(b)
 
 	// Check if template includes threading.
 	jobThreadingEnabled := false
@@ -967,8 +963,7 @@ func verifyJobManager(jobMode string, profileMode ProfileMode, memGBPerCore int)
 	}
 
 	return jobManagerConfig{
-		jobSettings,
-		profileDef,
+		jobJson.JobSettings,
 		jobCmd,
 		jobModeJson.Args,
 		jobModeJson.QueueQuery,
