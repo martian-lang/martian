@@ -309,15 +309,15 @@ func (c *RuntimeOptions) NewRuntime() *Runtime {
 	self.MroCache = NewMroCache()
 	self.LocalJobManager = NewLocalJobManager(c.LocalCores, c.LocalMem, c.Debug,
 		c.LimitLoadavg,
-		c.JobMode != "local")
+		c.JobMode != "local",
+		c.ProfileMode)
 	if c.JobMode == "local" {
 		self.JobManager = self.LocalJobManager
 	} else {
 		self.JobManager = NewRemoteJobManager(c.JobMode, c.MemPerCore, c.MaxJobs,
-			c.JobFreqMillis, c.ResourceSpecial, c.Debug)
+			c.JobFreqMillis, c.ResourceSpecial, c.ProfileMode, c.Debug)
 	}
 	VerifyVDRMode(c.VdrMode)
-	VerifyProfileMode(c.ProfileMode)
 
 	if c.Overrides == nil {
 		self.overrides, _ = ReadOverrides("")
@@ -601,6 +601,10 @@ func (self *Runtime) freeMemMB() int64 {
 	} else {
 		return 1024
 	}
+}
+
+func (self *Runtime) ProfileConfig() *ProfileConfig {
+	return self.LocalJobManager.prof
 }
 
 // FreeMemBytes returns the current amount of memory which the runtime may use

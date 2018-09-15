@@ -271,6 +271,11 @@ func (self *runner) StartJob(args []string) error {
 	cmd.SysProcAttr = util.Pdeathsig(&syscall.SysProcAttr{}, syscall.SIGKILL)
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
+	if pc := self.jobInfo.ProfileConfig; pc != nil && len(pc.Env) > 0 {
+		cmd.Env = pc.MakeEnv(
+			self.metadata.MetadataFilePath(core.PerfData),
+			self.metadata.MetadataFilePath(core.ProfileOut))
+	}
 	if err := func() error {
 		util.EnterCriticalSection()
 		defer util.ExitCriticalSection()
@@ -289,57 +294,28 @@ func (self *runner) StartJob(args []string) error {
 func (self *runner) startProfile() error {
 	var cmd *exec.Cmd
 	var journaledFiles []core.MetadataFileName
-	switch self.jobInfo.ProfileMode {
-	case core.PyflameProfile:
-		journaledFiles = []core.MetadataFileName{
-			core.ProfileOut,
-			"profile.out.html",
-		}
-		cmd = exec.Command("pyflame",
-			"-s", "-1",
-			"-o", self.metadata.MetadataFilePath(journaledFiles[0]),
-			"-H", self.metadata.MetadataFilePath(journaledFiles[1]),
-			strconv.Itoa(self.job.Process.Pid),
-		)
-	case core.PerfRecordProfile:
+	if perfArgs := os.Getenv("MRO_PERF_ARGS"); perfArgs != "" &&
+		self.jobInfo.ProfileMode == core.PerfRecordProfile {
+		// For backwards compatibility, ignore the custom config.
 		journaledFiles = []core.MetadataFileName{core.PerfData}
-		if perfArgs := os.Getenv("MRO_PERF_ARGS"); perfArgs != "" {
-			if args, err := shlex.Split(perfArgs); err != nil {
-				util.PrintError(err, "profile", "Error parsing perf args")
-				return nil
-			} else {
-				baseArgs := []string{
-					"record",
-					"-p", strconv.Itoa(self.job.Process.Pid),
-					"-o", self.metadata.MetadataFilePath(journaledFiles[0]),
-				}
-				cmd = exec.Command("perf", append(baseArgs, args...)...)
-			}
+		if args, err := shlex.Split(perfArgs); err != nil {
+			util.PrintError(err, "profile", "Error parsing perf args")
+			return nil
 		} else {
-			events := os.Getenv("MRO_PERF_EVENTS")
-			if events == "" {
-				events = "task-clock"
-			}
-			freq := os.Getenv("MRO_PERF_FREQ")
-			if freq == "" {
-				freq = "200"
-			}
-			duration := os.Getenv("MRO_PERF_DURATION")
-			if duration == "" {
-				duration = "2400"
-			}
-			// Running perf record for 2400 seconds (40 minutes) with these default
-			// settings will produce about 26MB per thread/process.
-			cmd = exec.Command("perf",
-				"record", "-g", "-F", freq,
-				"-o", self.metadata.MetadataFilePath(journaledFiles[0]),
-				"-e", events,
+			baseArgs := []string{
+				"record",
 				"-p", strconv.Itoa(self.job.Process.Pid),
-				"sleep", duration,
-			)
+				"-o", self.metadata.MetadataFilePath(journaledFiles[0]),
+			}
+			cmd = exec.Command("perf", append(baseArgs, args...)...)
 		}
-	default:
+	} else if pc := self.jobInfo.ProfileConfig; pc == nil || pc.Command == "" {
 		return nil
+	} else {
+		cmd = exec.Command(pc.Command, pc.ExpandedArgs(
+			self.metadata.MetadataFilePath(core.PerfData),
+			self.metadata.MetadataFilePath(core.ProfileOut),
+			self.job.Process.Pid)...)
 	}
 	cmd.SysProcAttr = util.Pdeathsig(&syscall.SysProcAttr{}, syscall.SIGINT)
 	cmd.Stdout = os.Stderr

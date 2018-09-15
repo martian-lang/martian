@@ -17,6 +17,7 @@ type JobInfo struct {
 	WallClockInfo *WallClockInfo    `json:"wallclock,omitempty"`
 	Threads       int               `json:"threads,omitempty"`
 	MemGB         int               `json:"memGB,omitempty"`
+	ProfileConfig *ProfileConfig    `json:"profile_config,omitempty"`
 	ProfileMode   ProfileMode       `json:"profile_mode,omitempty"`
 	Stackvars     string            `json:"stackvars_flag,omitempty"`
 	Monitor       string            `json:"monitor_flag,omitempty"`

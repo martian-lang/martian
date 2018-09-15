@@ -95,15 +95,19 @@ type LocalJobManager struct {
 	debug       bool
 	limitLoad   bool
 	highMem     ObservedMemory
+	prof        *ProfileConfig
 }
 
 func NewLocalJobManager(userMaxCores int, userMaxMemGB int,
-	debug bool, limitLoadavg bool, clusterMode bool) *LocalJobManager {
+	debug bool, limitLoadavg bool, clusterMode bool,
+	profileMode ProfileMode) *LocalJobManager {
 	self := &LocalJobManager{
 		debug:     debug,
 		limitLoad: limitLoadavg,
 	}
-	self.jobSettings = verifyJobManager("local", -1).jobSettings
+	config := verifyJobManager("local", profileMode, -1)
+	self.jobSettings = config.jobSettings
+	self.prof = config.profileMode
 
 	// Set Max number of cores usable at one time.
 	if userMaxCores > 0 {
@@ -522,14 +526,14 @@ type RemoteJobManager struct {
 }
 
 func NewRemoteJobManager(jobMode string, memGBPerCore int, maxJobs int, jobFreqMillis int,
-	jobResources string, debug bool) *RemoteJobManager {
+	jobResources string, profileMode ProfileMode, debug bool) *RemoteJobManager {
 	self := &RemoteJobManager{}
 	self.jobMode = jobMode
 	self.memGBPerCore = memGBPerCore
 	self.maxJobs = maxJobs
 	self.jobFreqMillis = jobFreqMillis
 	self.debug = debug
-	self.config = verifyJobManager(jobMode, memGBPerCore)
+	self.config = verifyJobManager(jobMode, profileMode, memGBPerCore)
 
 	// Parse jobresources mappings
 	self.jobResourcesMappings = map[string]string{}
@@ -808,12 +812,14 @@ type JobManagerSettings struct {
 }
 
 type JobManagerJson struct {
-	JobSettings *JobManagerSettings     `json:"settings"`
-	JobModes    map[string]*JobModeJson `json:"jobmodes"`
+	JobSettings *JobManagerSettings            `json:"settings"`
+	JobModes    map[string]*JobModeJson        `json:"jobmodes"`
+	ProfileMode map[ProfileMode]*ProfileConfig `json:"profiles"`
 }
 
 type jobManagerConfig struct {
 	jobSettings      *JobManagerSettings
+	profileMode      *ProfileConfig
 	jobCmd           string
 	jobCmdArgs       []string
 	queueQueryCmd    string
@@ -823,7 +829,7 @@ type jobManagerConfig struct {
 	threadingEnabled bool
 }
 
-func verifyJobManager(jobMode string, memGBPerCore int) jobManagerConfig {
+func verifyJobManager(jobMode string, profileMode ProfileMode, memGBPerCore int) jobManagerConfig {
 	jobPath := util.RelPath(path.Join("..", "jobmanagers"))
 
 	// Check for existence of job manager JSON file
@@ -838,28 +844,51 @@ func verifyJobManager(jobMode string, memGBPerCore int) jobManagerConfig {
 	// Parse job manager JSON file
 	var jobJson *JobManagerJson
 	if err := json.Unmarshal(bytes, &jobJson); err != nil {
-		util.PrintInfo("jobmngr", "Job manager config file %s does not contain valid JSON.", jobJsonFile)
+		util.PrintInfo("jobmngr",
+			"Job manager config file %s does not contain valid JSON.",
+			jobJsonFile)
 		os.Exit(1)
 	}
 
 	// Validate settings fields
 	jobSettings := jobJson.JobSettings
 	if jobSettings == nil {
-		util.PrintInfo("jobmngr", "Job manager config file %s should contain 'settings' field.", jobJsonFile)
+		util.PrintInfo("jobmngr",
+			"Job manager config file %s should contain 'settings' field.",
+			jobJsonFile)
 		os.Exit(1)
 	}
 	if jobSettings.ThreadsPerJob <= 0 {
-		util.PrintInfo("jobmngr", "Job manager config %s contains invalid default threads per job.", jobJsonFile)
+		util.PrintInfo("jobmngr",
+			"Job manager config %s contains invalid default threads per job.",
+			jobJsonFile)
 		os.Exit(1)
 	}
 	if jobSettings.MemGBPerJob <= 0 {
-		util.PrintInfo("jobmngr", "Job manager config %s contains invalid default memory (GB) per job.", jobJsonFile)
+		util.PrintInfo("jobmngr",
+			"Job manager config %s contains invalid default memory (GB) per job.",
+			jobJsonFile)
 		os.Exit(1)
+	}
+
+	var profileDef *ProfileConfig
+	if profileMode != "" && profileMode != DisableProfile {
+		if def, ok := jobJson.ProfileMode[profileMode]; !ok {
+			util.PrintInfo("jobmngr",
+				"Invalid profile mode: %s. Valid profile modes: %s",
+				profileMode, allProfileModes(jobJson.ProfileMode))
+			os.Exit(1)
+		} else {
+			profileDef = def
+		}
 	}
 
 	if jobMode == "local" {
 		// Local job mode only needs to verify settings parameters
-		return jobManagerConfig{jobSettings: jobSettings}
+		return jobManagerConfig{
+			jobSettings: jobSettings,
+			profileMode: profileDef,
+		}
 	}
 
 	var jobTemplateFile string
@@ -939,6 +968,7 @@ func verifyJobManager(jobMode string, memGBPerCore int) jobManagerConfig {
 
 	return jobManagerConfig{
 		jobSettings,
+		profileDef,
 		jobCmd,
 		jobModeJson.Args,
 		jobModeJson.QueueQuery,

@@ -682,8 +682,6 @@ Options:
 	if value := opts["--profile"]; value != nil {
 		config.ProfileMode = core.ProfileMode(value.(string))
 	}
-	util.LogInfo("options", "--profile=%s", config.ProfileMode)
-	core.VerifyProfileMode(config.ProfileMode)
 
 	// Compute UI port.
 	requireAuth := true

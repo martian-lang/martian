@@ -78,5 +78,46 @@
           "cmd": "qsub",
           "envs": [ ]
       }
+  },
+  "profiles": {
+    "cpu": {
+      "adapter": "cpu"
+    },
+    "line": {
+      "adapter": "line"
+    },
+    "mem": {
+      "env": {
+        "MALLOC_CONF": "prof:true,prof_prefix:${RAW_PERF_DEST}.jeprof,lg_prof_sample:21",
+        "HEAPPROFILE": "${RAW_PERF_DEST}.tcmalloc.pprof"
+      },
+      "adapter": "mem"
+    },
+    "perf": {
+      "cmd": "perf",
+      "args": [
+        "record",
+        "-g",
+        "-F", "${MRO_PERF_FREQ}",
+        "-o", "${RAW_PERF_DEST}",
+        "-e", "${MRO_PERF_EVENTS}",
+        "-p", "${STAGE_PID}",
+        "sleep", "${MRO_PERF_DURATION}"
+      ],
+      "defaults": {
+        "MRO_PERF_FREQ": "200",
+        "MRO_PERF_EVENTS": "task-clock",
+        "MRO_PERF_DURATION": "2400"
+      }
+    },
+    "pyflame": {
+      "cmd": "pyflame",
+      "args": [
+        "-s", "-1",
+        "-o", "${PROFILE_DEST}",
+        "-H", "${PROFILE_DEST}.html",
+        "${STAGE_PID}"
+      ]
+    }
   }
 }

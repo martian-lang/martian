@@ -1,11 +1,13 @@
 package adapter
 
 import (
-	"github.com/martian-lang/martian/martian/core"
-	"github.com/martian-lang/martian/martian/util"
 	"os"
 	"runtime"
 	"runtime/pprof"
+	"strings"
+
+	"github.com/martian-lang/martian/martian/core"
+	"github.com/martian-lang/martian/martian/util"
 )
 
 func openMemProfile(metadata *core.Metadata) *os.File {
@@ -76,23 +78,53 @@ func profileSplit(split SplitFunc) SplitFunc {
 }
 
 func profileMain(main MainFunc) MainFunc {
-	if jobinfo.ProfileMode == core.MemProfile {
-		return func(metadata *core.Metadata) (interface{}, error) {
-			if profDest := openMemProfile(metadata); profDest != nil {
-				defer writeMemProfile(profDest)
-			}
-			runtime.GC()
-			return main(metadata)
-		}
-	} else if jobinfo.ProfileMode == core.CpuProfile ||
-		jobinfo.ProfileMode == core.LineProfile {
-		return func(metadata *core.Metadata) (interface{}, error) {
-			if profDest := openCpuProfile(metadata); profDest != nil {
-				defer writeCpuProfile(profDest)
-			}
-			return main(metadata)
-		}
-	} else {
+	if pm := jobinfo.ProfileMode; pm == "" || pm == core.DisableProfile {
 		return main
+	} else {
+		var cpu, mem bool
+		if strings.ContainsRune(string(pm), ',') {
+			// multiple profiles enabled.
+			for _, m := range strings.Split(string(pm), ",") {
+				pmm := core.ProfileMode(m)
+				if pmm == core.CpuProfile || pmm == core.LineProfile {
+					cpu = true
+				} else if pmm == core.MemProfile {
+					mem = true
+				}
+			}
+		} else if pm == core.CpuProfile || pm == core.LineProfile {
+			cpu = true
+		} else if pm == core.MemProfile {
+			mem = true
+		}
+		if mem && cpu {
+			return func(metadata *core.Metadata) (interface{}, error) {
+				if profDest := openCpuProfile(metadata); profDest != nil {
+					defer writeCpuProfile(profDest)
+				}
+				if profDest := openMemProfile(metadata); profDest != nil {
+					defer writeMemProfile(profDest)
+				}
+				runtime.GC()
+				return main(metadata)
+			}
+		} else if mem {
+			return func(metadata *core.Metadata) (interface{}, error) {
+				if profDest := openMemProfile(metadata); profDest != nil {
+					defer writeMemProfile(profDest)
+				}
+				runtime.GC()
+				return main(metadata)
+			}
+		} else if cpu {
+			return func(metadata *core.Metadata) (interface{}, error) {
+				if profDest := openCpuProfile(metadata); profDest != nil {
+					defer writeCpuProfile(profDest)
+				}
+				return main(metadata)
+			}
+		} else {
+			return main
+		}
 	}
 }
