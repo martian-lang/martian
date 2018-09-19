@@ -169,10 +169,16 @@ func (self *Pipestance) OnFinishHook(outerCtx context.Context) {
 			return
 		}
 
-		cmd := exec.CommandContext(ctx, real_path, args...)
+		ectx, cancel := context.WithTimeout(ctx, time.Hour)
+		defer cancel()
+
+		cmd := exec.CommandContext(ectx, real_path, args...)
 		cmd.Stdin = os.Stdin
 		cmd.Stdout = os.Stdout
 		cmd.Stderr = os.Stderr
+		cmd.SysProcAttr = util.Pdeathsig(
+			new(syscall.SysProcAttr),
+			syscall.SIGINT)
 
 		if err := cmd.Run(); err != nil {
 			if ee, ok := err.(*exec.ExitError); ok &&
