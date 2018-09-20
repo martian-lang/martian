@@ -1,0 +1,5 @@
+{
+    "SUM_SQUARE_PIPELINE.SUM_SQUARES": {
+        "join.profile": "mem"
+    }
+}

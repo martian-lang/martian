@@ -7,7 +7,6 @@
 
 Includes logic to ignore differences we expect from pipeline outputs,
 such as timestamps, versions, and perf information.
-
 """
 
 import itertools
@@ -50,7 +49,6 @@ def expand_glob(root, pattern):
 
     This would be unnessessary in python3 because glob understands the
     ** recursive wildcard syntax, but in python 2 it is needed.
-
     """
     for cur, dirnames, filenames in os.walk(root):
         for name in filenames:
@@ -226,7 +224,6 @@ def compare_jobinfo(output, expect, filename):
     In particular we do not compare rusage, various version, host, cwd,
     and time-related keys, or invocation (which can contain absolute
     paths).
-
     """
     return compare_json(output, expect, filename, ['name',
                                                    'threads',
@@ -241,7 +238,6 @@ def compare_final_state(output, expect, filename):
 
     In particular, we do not compare path, metadata, sweepbindings, or
     forks, all of which may contain absolute paths.
-
     """
     actual, expected, loaded = load_json(output, expect, filename)
     if not loaded:
@@ -300,11 +296,34 @@ def compare_lines(output, expect, filename):
     return True
 
 
+_PPROF_LINE_REGEX = re.compile(r'^(?:# )?(\S+)')
+
+
+def pprof_keys(lines):
+    """Get the sequence of pprof keys in a file."""
+    for line in lines:
+        match = _PPROF_LINE_REGEX.match(line)
+        if match and match.group(1):
+            yield match.group(1)
+
+
+def compare_pprof(output, expect, filename):
+    """Compare two pprof files, only paying attention to keys."""
+    with open(os.path.join(output, filename)) as act:
+        with open(os.path.join(expect, filename)) as exp:
+            for actual, expected in itertools.izip_longest(pprof_keys(act), pprof_keys(exp)):
+                if actual != expected:
+                    sys.stderr.write(
+                        'Expected:\n%s\nActual:\n%s\n' %
+                        (clean_line(expected), clean_line(actual)))
+                    return False
+    return True
+
+
 def compare_file_content(output, expect, filename):
     """Compare two files.
 
     Return True if they match.
-
     """
     if filename in ['_perf', '_uuid', '_versions', '_log']:
         return True  # we never really expect these files to match.
@@ -318,6 +337,8 @@ def compare_file_content(output, expect, filename):
                                         '_vdrkill.partial',
                                         '_vdrkill']:
         return compare_json(output, expect, filename)
+    elif filename.endswith('.pprof'):
+        return compare_pprof(output, expect, filename)
     return compare_lines(output, expect, filename)
 
 
@@ -325,7 +346,6 @@ def compare_content(output, expect, filename):
     """Check that two paths contain the same content if they are files.
 
     Does not check anything about non-file objects.
-
     """
     if not os.path.isfile(os.path.join(expect, filename)):
         if os.path.isfile(os.path.join(output, filename)):
