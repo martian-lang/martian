@@ -25,7 +25,7 @@ stage ADD_KEY(
 # Takes two files containing json dictionaries and merges them.
 stage MERGE_JSON(
     in  json[] inputs,
-    out json   result,
+    out json   result  "The final merged result."  "merged.json",
     src py     "stages/merge_json",
 ) using (
     mem_gb = 1,

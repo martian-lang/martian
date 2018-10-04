@@ -33,12 +33,8 @@ func makeOutArgs(outParams *syntax.OutParams, filesPath string, nullAll bool) ma
 			(syntax.GetEnforcementLevel() == syntax.EnforceError &&
 				param.GetArrayDim() > 0) {
 			args[id] = nil
-		} else if param.IsFile() {
-			if t := param.GetTname(); t == "path" || t == "file" {
-				args[id] = path.Join(filesPath, param.GetId())
-			} else {
-				args[id] = path.Join(filesPath, param.GetId()+"."+param.GetTname())
-			}
+		} else if fn := param.GetOutFilename(); fn != "" {
+			args[id] = path.Join(filesPath, fn)
 		} else {
 			args[id] = nil
 		}
@@ -1101,19 +1097,7 @@ func (self *Fork) postProcess() {
 			}
 
 			// Generate the outs path for this param
-			outPath := ""
-			if len(param.GetOutName()) > 0 {
-				// If MRO explicitly specifies an out name
-				// override, just use that verbatim.
-				outPath = path.Join(outsPath, param.GetOutName())
-			} else {
-				// Otherwise, just use the parameter name, and
-				// append the type unless it is a path.
-				outPath = path.Join(outsPath, id)
-				if param.GetTname() != "path" {
-					outPath += "." + param.GetTname()
-				}
-			}
+			outPath := path.Join(outsPath, param.GetOutFilename())
 
 			// Only continue if path to be copied is inside the pipestance
 			if absFilePath, err := filepath.Abs(filePath); err == nil {

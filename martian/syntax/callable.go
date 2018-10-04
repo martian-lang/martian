@@ -311,6 +311,20 @@ func (s *OutParam) getSubnodes() []AstNodable {
 	return nil
 }
 
+// Returns the default base filename for this output parameter, or an
+// empty string if the parameter is not a file type.
+func (s *OutParam) GetOutFilename() string {
+	if !s.IsFile() {
+		return ""
+	} else if s.OutName != "" {
+		return s.OutName
+	} else if s.Tname == KindFile || s.Tname == KindPath {
+		return s.Id
+	} else {
+		return s.Id + "." + s.Tname
+	}
+}
+
 func (s *SrcParam) getNode() *AstNode         { return &s.Node }
 func (s *SrcParam) File() *SourceFile         { return s.Node.Loc.File }
 func (s *SrcParam) inheritComments() bool     { return false }
