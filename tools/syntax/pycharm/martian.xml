@@ -1,0 +1,22 @@
+<!--Syntax highlighting for Martian MRO files.  Add to ~/Library/Preferences/PyCharmX/filetypes/ to install.-->
+<filetype binary="false" description="Martian" name="MRO">
+  <highlighting>
+    <options>
+      <option name="LINE_COMMENT" value="#" />
+      <option name="COMMENT_START" value="" />
+      <option name="COMMENT_END" value="" />
+      <option name="HEX_PREFIX" value="" />
+      <option name="NUM_POSTFIXES" value="" />
+      <option name="HAS_BRACES" value="true" />
+      <option name="HAS_BRACKETS" value="true" />
+      <option name="HAS_PARENS" value="true" />
+    </options>
+    <keywords keywords="@include" ignore_case="false" />
+    <keywords2 keywords="pipeline;stage" />
+    <keywords3 keywords="call;local;preflight;return;split;using;volatile" />
+    <keywords4 keywords="in;local;out;preflight;src;volatile" />
+  </highlighting>
+  <extensionMap>
+    <mapping ext="mro" />
+  </extensionMap>
+</filetype>
