@@ -13,6 +13,6 @@
     "gulp-clean-css": "^3.9.4",
     "gulp-coffee": "^2.1.1",
     "gulp-pug": "^4.0.1",
-    "gulp-zopfli-green": "^2.0.4"
+    "gulp-zopfli-green": "^3.0.0"
   }
 }
