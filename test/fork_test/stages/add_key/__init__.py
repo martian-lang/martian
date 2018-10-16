@@ -15,14 +15,17 @@ stage ADD_KEY(
 """
 
 def main(args, outs):
-  failfile = os.path.abspath(os.path.join(
-      os.path.dirname(__file__), '..', '..', args.failfile))
-  if args.failfile and os.path.isfile(failfile):
-    s = ''
-    with open(failfile, 'r') as f:
-      s = f.read()
-    os.unlink(failfile)
-    os.kill(os.getpid(), int(s))
+  faildir = os.getenv('FAILFILE_DIR')
+  if faildir:
+    failfile = os.path.abspath(os.path.join(
+        faildir,
+        args.failfile))
+    if args.failfile and os.path.isfile(failfile):
+      s = ''
+      with open(failfile, 'r') as f:
+        s = f.read()
+      os.unlink(failfile)
+      os.kill(os.getpid(), int(s))
   if args.start:
     with open(args.start, 'r') as inpf:
       s = json.load(inpf)

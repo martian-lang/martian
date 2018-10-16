@@ -16,15 +16,7 @@ before_script:
 script:
 - "./.travis.gofmt.sh"
 - make test
-- test/martian_test.py test/split_test/split_test.json
-- test/martian_test.py test/split_test_go/split_test.json
-- test/martian_test.py test/split_test_go/disable_test.json
-- test/martian_test.py test/files_test/files_test.json
-- test/martian_test.py test/fork_test/fork_test.json
-- test/martian_test.py test/fork_test/fail1_test.json
-- test/martian_test.py test/fork_test/retry_test.json
-- test/martian_test.py test/fork_test/autoretry_pass.json
-- test/martian_test.py test/fork_test/autoretry_fail.json
+- make longtests
 - pylint adapters/python/martian_shell.py
 - pylint adapters/python/martian.py
 - pylint test/martian_test.py

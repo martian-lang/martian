@@ -1,7 +1,7 @@
 {
   "command": ["autoretry_pass_test.sh"],
   "expected_return": 0,
-  "output_dir": "pipeline_test",
+  "output_dir": "ar_pipeline_test",
   "contains_only_files": ["*"],
   "contents_match": ["*"]
 }

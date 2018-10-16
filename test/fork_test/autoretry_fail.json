@@ -1,7 +1,7 @@
 {
   "command": ["autoretry_fail_test.sh"],
   "expected_return": 1,
-  "output_dir": "pipeline_fail",
+  "output_dir": "ar_pipeline_fail",
   "expected_dir": "expected_fail1",
   "contains_only_files": ["*"],
   "contents_match": ["*"]

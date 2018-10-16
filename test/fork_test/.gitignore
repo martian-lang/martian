@@ -1,2 +1,5 @@
 pipeline_test
+ar_pipeline_test
+retry_pipeline_test
 pipeline_fail
+ar_pipeline_fail

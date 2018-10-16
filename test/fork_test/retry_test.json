@@ -1,7 +1,7 @@
 {
   "command": ["retry_test.sh"],
   "expected_return": 0,
-  "output_dir": "pipeline_test",
+  "output_dir": "retry_pipeline_test",
   "contains_only_files": ["*"],
   "contents_match": ["*"]
 }

@@ -7,6 +7,6 @@ Traceback (most recent call last):
     cmd()
   File "/Users/testuser/martian/adapters/python/martian_shell.py", line 519, in <lambda>
     self._run(lambda: self._module.main(args, outs))
-  File "/Users/testuser/martian/test/fork_test/stages/add_key/__init__.py", line 25, in main
+  File "/Users/testuser/martian/test/fork_test/stages/add_key/__init__.py", line 28, in main
     os.kill(os.getpid(), int(s))
 ValueError: invalid literal for int() with base 10: ''
