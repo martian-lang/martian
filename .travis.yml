@@ -14,7 +14,6 @@ before_script:
 - npm install -g npm@^6.4
 - pip install --user pylint
 script:
-- make all
 - "./.travis.gofmt.sh"
 - make test
 - test/martian_test.py test/split_test/split_test.json
@@ -29,7 +28,7 @@ script:
 - pylint adapters/python/martian_shell.py
 - pylint adapters/python/martian.py
 - pylint test/martian_test.py
-- make tarball
+- make all tarball
 deploy:
   skip_cleanup: true
   provider: releases
