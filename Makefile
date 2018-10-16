@@ -82,7 +82,7 @@ PRODUCT_NAME:=martian-$(VERSION)-$(shell uname -is | tr "A-Z " "a-z-")
 $(PRODUCT_NAME).tar.%: $(addprefix bin/, $(GOBINS)) $(ADAPTERS) $(JOBMANAGERS) $(WEB_FILES)
 	tar --owner=0 --group=0 --transform "s/^./$(PRODUCT_NAME)/" -caf $@ $(addprefix ./, $^)
 
-tarball: $(PRODUCT_NAME).tar.gz
+tarball: $(PRODUCT_NAME).tar.xz $(PRODUCT_NAME).tar.gz
 
 test-all:
 	go test -v $(addprefix $(REPO)/, $(wildcard martian/* cmd/*))

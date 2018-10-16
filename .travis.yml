@@ -36,7 +36,7 @@ deploy:
   api_key:
     secure: dBZPhakddKqoQhvJseeIHpbWyyrmZjdZ1oOsa+dR8v+yyIw1Lf9tVk4+3cearrbelxYf65ZqkQXQPWw2uZYvCQbNzMtU9hhzOwBi8/Wb8gWXlcNDjQso8iLP3Z77DeuyYg4CA7EiSbvIIFaFcUtucTAu5b0Wa0uPj7/PX37CT/6oGM9h4jdocSeI65XmB0YuraSNDAHaurWcwLZZG9PNeENTgbjvS218SUkg2HFFTeApLZCaNyxWYxEfsUcu5VXKCpSpsLm82u7XGuNVDhavMjxvH6SG1PgIdPf31N0ok5UocUVl0z4lrlT2/YEwLbI5XyLxFvqcdDN1MKvQREirPCOMMSdJivDTv87gLZGHev/C6+rEJaSXhqF158KN7VWSf9YCjNCiWgi5/E5RDdVDzmlGsLCWn+M1owWFbKAkdM0xCntcfN8Yx3jFCd2NxhKFsQOlpYZMCKmD0PWDqCUFIizkpli2jXeRJvm5NNu5iyjIJ5xJCfH56vBJMksQK9cdE4jqjz1ZuXo7AQrM8NHPOeAlp+GkfHkBdfja5kFvoP9mYANzViXinvYqxK/qnoo+Jd8XzVE+R/D0t6V9bHuoRDDc/nbvXJPxqSxhnPNUvzJpTkT5UYE3XC3Y5HicHBq09ulbMItKHWAu6J0nyefLNvnLmptTa0WqjSefPJv9kIo=
   file_glob: true
-  file: martian-$TRAVIS_TAG-*.tar.gz
+  file: martian-$TRAVIS_TAG-*.tar.*z
   on:
     repo: martian-lang/martian
     tags: true
