@@ -38,7 +38,7 @@ type runner struct {
 	jobInfo     *core.JobInfo
 	start       time.Time
 	isDone      chan struct{}
-	perfCmd     *exec.Cmd
+	perfDone    <-chan struct{}
 }
 
 func main() {
@@ -185,14 +185,9 @@ func (self *runner) Fail(err error, message string) {
 // terminate (if applicable).  Otherwise some cluster managers might kill perf
 // as soon as the head process for the job (mrjob, in this case) terminates.
 func (self *runner) waitForPerf() {
-	if c := self.perfCmd; c != nil {
-		done := make(chan struct{})
-		go func(c *exec.Cmd, done chan struct{}) {
-			c.Wait()
-			close(done)
-		}(c, done)
+	if c := self.perfDone; c != nil {
 		select {
-		case <-done:
+		case <-c:
 		case <-time.After(15 * time.Second):
 		}
 	}
@@ -320,10 +315,15 @@ func (self *runner) startProfile() error {
 	cmd.SysProcAttr = util.Pdeathsig(&syscall.SysProcAttr{}, syscall.SIGINT)
 	cmd.Stdout = os.Stderr
 	cmd.Stderr = os.Stderr
-	self.perfCmd = cmd
 	if err := cmd.Start(); err != nil {
 		return err
 	} else {
+		perfDone := make(chan struct{})
+		self.perfDone = perfDone
+		go func(cmd *exec.Cmd, c chan<- struct{}) {
+			cmd.Wait()
+			close(c)
+		}(cmd, perfDone)
 		for _, file := range journaledFiles {
 			self.metadata.UpdateJournal(file)
 		}
