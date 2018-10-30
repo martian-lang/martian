@@ -143,14 +143,20 @@ def compare_dicts(actual, expected, keys):
     if not expected:
         return not actual
     for key in keys:
-        if key in actual:
-            if key in expected:
-                return compare_objects(actual[key], expected[key])
-            sys.stderr.write('Missing key %s\n' % key)
-            return False
+        if key in actual and key in expected:
+            if not compare_objects(actual[key], expected[key]):
+                sys.stderr.write('{}: {} != {}\n'.format(
+                    key, actual[key], expected[key]))
+                return False
         elif key in expected:
-            sys.stderr.write('Extra key %s\n' % key)
+            sys.stderr.write('Missing key: %s\n' % key)
             return False
+        elif key in actual:
+            sys.stderr.write('Extra key: %s\n' % key)
+            return False
+        else:
+            # if the key is absent from both, we don't care!
+            pass
     return True
 
 
@@ -232,7 +238,7 @@ def compare_jobinfo(output, expect, filename):
                                                   ])
 
 
-def compare_final_state(output, expect, filename):
+def compare_finalstate(output, expect, filename):
     """Compare two _finalstate json files.  Only compares keys within each
     element which are expected to remain the same across runs.
 
@@ -252,6 +258,17 @@ def compare_final_state(output, expect, filename):
                                                           'error',
                                                          ]):
             return False
+    return True
+
+
+def compare_vdrkill(output, expect, filename):
+    """Compare two _vdrkill json files. We do not compare events or the timestamp"""
+    actual, expected, loaded = load_json(output, expect, filename)
+    if not loaded:
+        return False
+    # size can be different b/c of py2/3 json whitespace differences...
+    if not compare_dicts(actual, expected, ['count', 'paths', 'errors']):
+        return False
     return True
 
 
@@ -320,25 +337,40 @@ def compare_pprof(output, expect, filename):
     return True
 
 
+def _compare_true(*_):
+    """Sometimes we don't want to compare the actual contents of files."""
+    return True
+
+_SPECIAL_FILES = {
+    '_perf': _compare_true,
+    '_uuid': _compare_true,
+    '_versions': _compare_true,
+    '_log': _compare_true,
+    '_jobinfo': compare_jobinfo,
+    '_finalstate': compare_finalstate,
+    '_vdrkill': compare_vdrkill,
+    '_outs': compare_json,
+    '_args': compare_json,
+    '_stage_defs': compare_json,
+    '_vdrkill.partial': compare_json,
+}
+
+_SPECIAL_SUFFIXES = {
+    '.json': compare_json,
+    '.pprof': compare_pprof,
+}
+
 def compare_file_content(output, expect, filename):
     """Compare two files.
 
     Return True if they match.
     """
-    if filename in ['_perf', '_uuid', '_versions', '_log']:
-        return True  # we never really expect these files to match.
-    if os.path.basename(filename) == '_jobinfo':
-        return compare_jobinfo(output, expect, filename)
-    elif os.path.basename(filename) == '_finalstate':
-        return compare_final_state(output, expect, filename)
-    elif os.path.basename(filename) in ['_outs',
-                                        '_args',
-                                        '_stage_defs',
-                                        '_vdrkill.partial',
-                                        '_vdrkill']:
-        return compare_json(output, expect, filename)
-    elif filename.endswith('.pprof'):
-        return compare_pprof(output, expect, filename)
+    base = os.path.basename(filename)
+    if base in _SPECIAL_FILES:
+        return _SPECIAL_FILES[base](output, expect, filename)
+    _, base = os.path.splitext(base)
+    if base in _SPECIAL_SUFFIXES:
+        return _SPECIAL_SUFFIXES[base](output, expect, filename)
     return compare_lines(output, expect, filename)
 
 

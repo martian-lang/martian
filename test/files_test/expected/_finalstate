@@ -107,7 +107,12 @@
                 }
             }
         ],
-        "edges": [],
+        "edges": [
+            {
+                "from": "ID.pipeline_test.AWESOME.MERGE_JSON",
+                "to": "ID.pipeline_test.AWESOME"
+            }
+        ],
         "stagecodeLang": "",
         "stagecodeCmd": ""
     },
@@ -343,7 +348,12 @@
                 }
             }
         ],
-        "edges": [],
+        "edges": [
+            {
+                "from": "ID.pipeline_test.AWESOME.ADD_KEY1",
+                "to": "ID.pipeline_test.AWESOME.ADD_KEY2"
+            }
+        ],
         "stagecodeLang": "Python",
         "stagecodeCmd": "/user/test/files_test/stages/add_key"
     },
@@ -461,7 +471,12 @@
                 }
             }
         ],
-        "edges": [],
+        "edges": [
+            {
+                "from": "ID.pipeline_test.AWESOME.ADD_KEY2",
+                "to": "ID.pipeline_test.AWESOME.ADD_KEY3"
+            }
+        ],
         "stagecodeLang": "Python",
         "stagecodeCmd": "/user/test/files_test/stages/add_key"
     },
@@ -579,7 +594,12 @@
                 }
             }
         ],
-        "edges": [],
+        "edges": [
+            {
+                "from": "ID.pipeline_test.AWESOME.ADD_KEY2",
+                "to": "ID.pipeline_test.AWESOME.ADD_KEY4"
+            }
+        ],
         "stagecodeLang": "Python",
         "stagecodeCmd": "/user/test/files_test/stages/add_key"
     },
@@ -674,7 +694,16 @@
                 }
             }
         ],
-        "edges": [],
+        "edges": [
+            {
+                "from": "ID.pipeline_test.AWESOME.ADD_KEY3",
+                "to": "ID.pipeline_test.AWESOME.MERGE_JSON"
+            },
+            {
+                "from": "ID.pipeline_test.AWESOME.ADD_KEY4",
+                "to": "ID.pipeline_test.AWESOME.MERGE_JSON"
+            }
+        ],
         "stagecodeLang": "Python",
         "stagecodeCmd": "/user/test/files_test/stages/merge_json"
     }

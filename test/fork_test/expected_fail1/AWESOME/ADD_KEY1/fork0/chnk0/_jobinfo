@@ -19,7 +19,7 @@
         "pipelines": "2.1.0-7-gefe5541"
     }, 
     "threads": 1, 
-    "memGB": 6, 
+    "memGB": 1,
     "invocation": {
         "incpaths": [], 
         "args": {

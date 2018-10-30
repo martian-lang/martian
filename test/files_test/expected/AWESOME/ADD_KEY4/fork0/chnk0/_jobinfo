@@ -53,7 +53,7 @@
         "duration_seconds": 1.037724091
     },
     "threads": 1,
-    "memGB": 6,
+    "memGB": 1,
     "profile_mode": "disable",
     "stackvars_flag": "disable",
     "monitor_flag": "disable",

@@ -19,7 +19,7 @@
         "pipelines": "2ff8789-dirty"
     }, 
     "threads": 1, 
-    "memGB": 6, 
+    "memGB": 1,
     "invocation": {
         "incpaths": [], 
         "args": {

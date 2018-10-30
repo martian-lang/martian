@@ -79,8 +79,7 @@
             }
         ],
         "stagecodeLang": "",
-        "stagecodeCmd": "",
-        "error": null
+        "stagecodeCmd": ""
     },
     {
         "name": "REPORT",
@@ -132,7 +131,7 @@
                     {
                         "index": 0,
                         "chunkDef": {
-                            "__mem_gb": 6,
+                            "__mem_gb": 2,
                             "__threads": 1
                         },
                         "state": "complete",
@@ -196,8 +195,7 @@
             }
         ],
         "stagecodeLang": "Python",
-        "stagecodeCmd": "martian/test/split_test/stages/report",
-        "error": null
+        "stagecodeCmd": "martian/test/split_test/stages/report"
     },
     {
         "name": "SUM_SQUARES",
@@ -215,7 +213,7 @@
                 "index": 0,
                 "argPermute": {},
                 "joinDef": {
-                    "__mem_gb": 6,
+                    "__mem_gb": 2,
                     "__threads": 1
                 },
                 "state": "complete",
@@ -350,7 +348,6 @@
         ],
         "edges": [],
         "stagecodeLang": "Python",
-        "stagecodeCmd": "martian/test/split_test/stages/sum_squares",
-        "error": null
+        "stagecodeCmd": "martian/test/split_test/stages/sum_squares"
     }
 ]

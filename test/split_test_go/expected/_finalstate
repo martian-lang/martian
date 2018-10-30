@@ -79,8 +79,7 @@
             }
         ],
         "stagecodeLang": "",
-        "stagecodeCmd": "",
-        "error": null
+        "stagecodeCmd": ""
     },
     {
         "name": "REPORT",
@@ -196,8 +195,7 @@
             }
         ],
         "stagecodeLang": "Python",
-        "stagecodeCmd": "martian/test/split_test/stages/report",
-        "error": null
+        "stagecodeCmd": "martian/test/split_test/stages/report"
     },
     {
         "name": "SUM_SQUARES",
@@ -350,7 +348,6 @@
         ],
         "edges": [],
         "stagecodeLang": "Compiled",
-        "stagecodeCmd": "martian/test/split_test/stages/sum_squares",
-        "error": null
+        "stagecodeCmd": "martian/test/split_test/stages/sum_squares"
     }
 ]

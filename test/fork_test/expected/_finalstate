@@ -444,8 +444,7 @@
             }
         ],
         "stagecodeLang": "",
-        "stagecodeCmd": "",
-        "error": null
+        "stagecodeCmd": ""
     },
     {
         "name": "ADD_KEY1",
@@ -577,8 +576,7 @@
         ],
         "edges": [],
         "stagecodeLang": "Python",
-        "stagecodeCmd": "/Users/testuser/repos/martian/test/fail_test/stages/add_key",
-        "error": null
+        "stagecodeCmd": "/Users/testuser/repos/martian/test/fail_test/stages/add_key"
     },
     {
         "name": "ADD_KEY2",
@@ -851,8 +849,7 @@
             }
         ],
         "stagecodeLang": "Python",
-        "stagecodeCmd": "/Users/testuser/repos/martian/test/fail_test/stages/add_key",
-        "error": null
+        "stagecodeCmd": "/Users/testuser/repos/martian/test/fail_test/stages/add_key"
     },
     {
         "name": "ADD_KEY3",
@@ -1125,8 +1122,7 @@
             }
         ],
         "stagecodeLang": "Python",
-        "stagecodeCmd": "/Users/testuser/repos/martian/test/fail_test/stages/add_key",
-        "error": null
+        "stagecodeCmd": "/Users/testuser/repos/martian/test/fail_test/stages/add_key"
     },
     {
         "name": "ADD_KEY4",
@@ -1653,8 +1649,7 @@
             }
         ],
         "stagecodeLang": "Python",
-        "stagecodeCmd": "/Users/testuser/repos/martian/test/fail_test/stages/add_key",
-        "error": null
+        "stagecodeCmd": "/Users/testuser/repos/martian/test/fail_test/stages/add_key"
     },
     {
         "name": "MERGE_JSON",
@@ -2081,7 +2076,6 @@
             }
         ],
         "stagecodeLang": "Python",
-        "stagecodeCmd": "/Users/testuser/repos/martian/test/fail_test/stages/merge_json",
-        "error": null
+        "stagecodeCmd": "/Users/testuser/repos/martian/test/fail_test/stages/merge_json"
     }
 ]
