@@ -11,10 +11,11 @@ GOBINTESTS=$(addprefix test-, $(GOBINS))
 GOTESTS=$(GOLIBTESTS) $(GOBINTESTS) test-all
 VERSION=$(shell git describe --tags --always --dirty)
 RELEASE=false
-GO_FLAGS=-ldflags "-X $(REPO)/martian/util.__VERSION__='$(VERSION)' -X $(REPO)/martian/util.__RELEASE__='$(RELEASE)'"
+GO_FLAGS=-ldflags "-X $(REPO)/martian/util.__VERSION__='$(VERSION)' -X $(REPO)/martian/util.__RELEASE__='$(RELEASE)'" -mod=vendor
 
-export GOPATH=$(shell pwd)
-export GO111MODULE=off
+unexport GOPATH
+export GO111MODULE=on
+export GOBIN=$(shell pwd)/bin
 
 .PHONY: $(GOBINS) grammar web $(GOTESTS) govet all-bins bin/sum_squares longtests mrs integration_prereqs
 
@@ -24,12 +25,12 @@ export GO111MODULE=off
 all: grammar all-bins web test mrs
 
 bin/goyacc: vendor/golang.org/x/tools/cmd/goyacc/yacc.go
-	go install vendor/golang.org/x/tools/cmd/goyacc
+	go install -mod=vendor golang.org/x/tools/cmd/goyacc
 
 martian/syntax/grammar.go: bin/goyacc martian/syntax/grammar.y
-	PATH=$(GOPATH)/bin:$(PATH) go generate $(REPO)/martian/syntax
+	PATH=$(GOBIN):$(PATH) go generate $(REPO)/martian/syntax
 
-martian/test/sum_squares/types.go: PATH:=$(GOPATH)/bin:$(PATH)
+martian/test/sum_squares/types.go: PATH:=$(GOBIN):$(PATH)
 martian/test/sum_squares/types.go: test/split_test_go/pipeline_stages.mro mro2go
 	go generate $(REPO)/martian/test/sum_squares
 
@@ -88,7 +89,7 @@ test-all:
 	go test -v $(addprefix $(REPO)/, $(wildcard martian/* cmd/*))
 
 govet:
-	go tool vet martian
+	go vet ./martian/... ./cmd/...
 
 test: test-all govet bin/sum_squares
 
@@ -141,6 +142,6 @@ longtests: test/split_test/pipeline_test \
            test/fork_test/ar_fail/pipeline_fail
 
 clean:
-	rm -rf $(GOPATH)/bin
-	rm -rf $(GOPATH)/pkg
+	rm -rf $(GOBIN)
+	rm -rf $(dir $(GOBIN))pkg
 	rm -rf web/martian/node_modules
