@@ -730,11 +730,10 @@ func (self *Fork) printState(state MetadataState) {
 		fqname = self.fqname
 	}
 	self.lastPrint = time.Now()
-	msg := fmt.Sprintf("(%s)%s %s", state, statePad, fqname)
 	if self.node.preflight {
-		util.LogInfo("runtime", msg)
+		util.LogInfo("runtime", "(%s)%s %s", state, statePad, fqname)
 	} else {
-		util.PrintInfo("runtime", msg)
+		util.PrintInfo("runtime", "(%s)%s %s", state, statePad, fqname)
 	}
 }
 
@@ -925,12 +924,14 @@ func (self *Fork) step() {
 				}
 				self.metadata.WriteTime(CompleteFile)
 				// Print alerts
-				if alarms := self.getAlarms(); len(alarms) > 0 {
+				var alarms strings.Builder
+				self.getAlarms(&alarms)
+				if alarms.Len() > 0 {
 					self.lastPrint = time.Now()
 					if len(self.node.forks) > 1 {
-						util.Print("Alerts for %s.fork%d:\n%s\n", self.node.fqname, self.index, alarms)
+						util.Print("Alerts for %s.fork%d:\n%s\n", self.node.fqname, self.index, alarms.String())
 					} else {
-						util.Print("Alerts for %s:\n%s\n", self.node.fqname, alarms)
+						util.Print("Alerts for %s:\n%s\n", self.node.fqname, alarms.String())
 					}
 				}
 			} else {
@@ -1159,29 +1160,31 @@ func (self *Fork) postProcess() {
 	util.Print("\n")
 
 	// Print alerts
-	if alarms := self.getAlarms(); len(alarms) > 0 {
+	var alarms strings.Builder
+	self.getAlarms(&alarms)
+	if alarms.Len() > 0 {
 		self.lastPrint = time.Now()
 		if len(self.node.forks) > 1 {
 			util.Print("Alerts (fork%d):\n", self.index)
 		} else {
 			util.Print("Alerts:\n")
 		}
-		util.Print(alarms + "\n")
+		util.Print("%s\n", alarms.String())
 	}
 }
 
-func (self *Fork) getAlarms() string {
-	alarms := ""
+func (self *Fork) getAlarms(alarms *strings.Builder) {
 	for _, metadata := range self.collectMetadatas() {
 		if !metadata.exists(AlarmFile) {
 			continue
 		}
-		alarms += metadata.readRaw(AlarmFile)
+		if b, err := metadata.readRawBytes(AlarmFile); err == nil {
+			alarms.Write(b)
+		}
 	}
 	for _, subfork := range self.subforks {
-		alarms += subfork.getAlarms()
+		subfork.getAlarms(alarms)
 	}
-	return alarms
 }
 
 func (self *Fork) serializeState() *ForkInfo {

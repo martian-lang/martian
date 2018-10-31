@@ -1118,11 +1118,12 @@ func (self *Node) runJob(shellName string, fqname, stageType string, metadata *M
 	}
 	jobModeLabel := strings.Replace(jobMode, ".template", "", -1)
 	padding := strings.Repeat(" ", int(math.Max(0, float64(10-len(path.Base(jobModeLabel))))))
-	msg := fmt.Sprintf("(run:%s) %s %s.%s", path.Base(jobModeLabel), padding, fqname, shellName)
 	if self.preflight {
-		util.LogInfo("runtime", msg)
+		util.LogInfo("runtime", "(run:%s) %s %s.%s",
+			path.Base(jobModeLabel), padding, fqname, shellName)
 	} else {
-		util.PrintInfo("runtime", msg)
+		util.PrintInfo("runtime", "(run:%s) %s %s.%s",
+			path.Base(jobModeLabel), padding, fqname, shellName)
 	}
 	profileMode := self.getProfileMode(stageType)
 	jobInfo := JobInfo{

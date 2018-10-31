@@ -12,6 +12,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"html/template"
+	"io"
 	"io/ioutil"
 	"net"
 	"net/http"
@@ -287,6 +288,7 @@ func (self *mrpWebServer) getInfo(w http.ResponseWriter, req *http.Request) {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
+	w.Header().Set("Content-Type", "application/json")
 	w.Write(bytes)
 }
 
@@ -309,13 +311,19 @@ func (self *mrpWebServer) getState(w http.ResponseWriter, req *http.Request) {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
+	if err := req.Context().Err(); err != nil {
+		// Don't sending bytes if the request was canceled.
+		http.Error(w, err.Error(), http.StatusRequestTimeout)
+		return
+	}
 
 	w.Header().Set("Content-Encoding", "gzip")
 	w.Header().Set("Content-Type", "application/json")
 	zipper, _ := gzip.NewWriterLevel(w, gzip.BestSpeed)
 	zipper.Write(bytes)
 	if err := zipper.Close(); err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		// Can't use http.Error since the header was already set.
+		fmt.Fprintf(w, "\nzip error: %v", err)
 	}
 }
 
@@ -334,12 +342,19 @@ func (self *mrpWebServer) getPerf(w http.ResponseWriter, req *http.Request) {
 		return
 	}
 
+	if err := req.Context().Err(); err != nil {
+		// Don't sending bytes if the request was canceled.
+		http.Error(w, err.Error(), http.StatusRequestTimeout)
+		return
+	}
+
 	w.Header().Set("Content-Encoding", "gzip")
 	w.Header().Set("Content-Type", "application/json")
 	zipper, _ := gzip.NewWriterLevel(w, gzip.BestSpeed)
 	zipper.Write(bytes)
 	if err := zipper.Close(); err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		// Can't use http.Error since the header was already set.
+		fmt.Fprintf(w, "\nzip error: %v", err)
 	}
 }
 
@@ -369,12 +384,13 @@ func (self *mrpWebServer) getMetadata(w http.ResponseWriter, req *http.Request) 
 		return
 	}
 	data, err := self.rt.GetMetadata(pipestance.GetPath(),
-		path.Join(p, "_"+name))
+		path.Join(p, core.MetadataFilePrefix+name))
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusNotFound)
 		return
 	}
-	w.Write([]byte(data))
+	defer data.Close()
+	io.Copy(w, data)
 }
 
 // Get the list of metadata files from the pipestance top-level.  This is a

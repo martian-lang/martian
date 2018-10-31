@@ -9,12 +9,14 @@ package core
 import (
 	"bytes"
 	"encoding/json"
+	"errors"
 	"fmt"
-	"github.com/martian-lang/martian/martian/syntax"
 	"reflect"
 	"strings"
 	"unicode"
 	"unicode/utf8"
+
+	"github.com/martian-lang/martian/martian/syntax"
 )
 
 // Mapping from argument or output names to values.
@@ -42,7 +44,7 @@ func (self *ArgumentMap) UnmarshalJSON(b []byte) error {
 // Returns true if the given value has the correct mro type.
 // Non-fatal errors are written to alarms.
 func checkType(val json.RawMessage, typename string, arrayDim int,
-	alarms *bytes.Buffer) (bool, string) {
+	alarms *strings.Builder) (bool, string) {
 	truncateMessage := func(val json.RawMessage, expect string) (bool, string) {
 		if len(val) > 35 {
 			tr := append(val[:15:15], "..."...)
@@ -153,7 +155,7 @@ var nullBytes = []byte("null")
 //
 // then in the outputs from the chunks, d is required but b is optional.
 func (self LazyArgumentMap) ValidateInputs(expected *syntax.InParams, optional ...*syntax.InParams) (error, string) {
-	var result, alarms bytes.Buffer
+	var result, alarms strings.Builder
 	tname := func(param syntax.Param) string {
 		return param.GetTname() + strings.Repeat("[]", param.GetArrayDim())
 	}
@@ -201,7 +203,7 @@ func (self LazyArgumentMap) ValidateInputs(expected *syntax.InParams, optional .
 	if result.Len() == 0 {
 		return nil, alarms.String()
 	} else {
-		return fmt.Errorf(result.String()), alarms.String()
+		return errors.New(result.String()), alarms.String()
 	}
 }
 
@@ -226,7 +228,7 @@ func (self LazyArgumentMap) ValidateInputs(expected *syntax.InParams, optional .
 //
 // then in the outputs from the chunks, d is required but b is optional.
 func (self LazyArgumentMap) ValidateOutputs(expected *syntax.OutParams, optional ...*syntax.OutParams) (error, string) {
-	var result, alarms bytes.Buffer
+	var result, alarms strings.Builder
 	tname := func(param syntax.Param) string {
 		return param.GetTname() + strings.Repeat("[]", param.GetArrayDim())
 	}
@@ -274,7 +276,7 @@ func (self LazyArgumentMap) ValidateOutputs(expected *syntax.OutParams, optional
 	if result.Len() == 0 {
 		return nil, alarms.String()
 	} else {
-		return fmt.Errorf(result.String()), alarms.String()
+		return errors.New(result.String()), alarms.String()
 	}
 }
 

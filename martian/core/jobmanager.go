@@ -920,7 +920,7 @@ func verifyJobManager(jobMode string, jobJson *JobManagerJson, memGBPerCore int)
 
 	// Check for existence of job manager template file
 	if _, err := os.Stat(jobTemplateFile); os.IsNotExist(err) {
-		util.PrintInfo("jobmngr", jobErrorMsg)
+		util.PrintInfo("jobmngr", "%s", jobErrorMsg)
 		os.Exit(1)
 	}
 	util.LogInfo("jobmngr", "Job template = %s", jobTemplateFile)

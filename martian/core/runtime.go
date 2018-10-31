@@ -9,6 +9,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"io"
 	"io/ioutil"
 	"os"
 	"os/exec"
@@ -567,12 +568,12 @@ func (self *Runtime) GetSerialization(pipestancePath string, name MetadataFileNa
 	return nil, false
 }
 
-func (self *Runtime) GetMetadata(pipestancePath string, metadataPath string) (string, error) {
+func (self *Runtime) GetMetadata(pipestancePath string, metadataPath string) (io.ReadCloser, error) {
 	metadata := NewMetadata("", pipestancePath)
 	metadata.loadCache()
 	if mdf := MetadataFileName(
 		strings.TrimPrefix(metadataPath, MetadataFilePrefix)); metadata.exists(mdf) {
-		return metadata.readRawSafe(mdf)
+		return metadata.openFile(mdf)
 	}
 	if !filepath.IsAbs(metadataPath) {
 		metadataPath = path.Join(pipestancePath, metadataPath)
@@ -582,16 +583,16 @@ func (self *Runtime) GetMetadata(pipestancePath string, metadataPath string) (st
 
 		// Relative paths outside the pipestance directory will be ignored.
 		if !strings.Contains(relPath, "..") {
-			if data, err := util.ReadZip(metadata.MetadataFilePath(MetadataZip), relPath); err == nil {
+			if data, err := util.ReadZipFile(metadata.MetadataFilePath(MetadataZip), relPath); err == nil {
 				return data, nil
 			}
 		}
 	}
-	data, err := ioutil.ReadFile(metadataPath)
+	data, err := os.Open(metadataPath)
 	if err != nil {
-		return "", err
+		return nil, err
 	}
-	return string(data), nil
+	return data, nil
 }
 
 func (self *Runtime) freeMemMB() int64 {

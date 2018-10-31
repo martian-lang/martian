@@ -56,28 +56,77 @@ func findFileInZip(zr *zip.ReadCloser, filePath string) *zip.File {
 	return nil
 }
 
-func ReadZip(zipPath string, filePath string) (string, error) {
+// Wraps a file within a zip archive, along with the archive itself,
+// as an io.ReadCloser
+type zipFileReader struct {
+	zr   *zip.ReadCloser
+	file io.ReadCloser
+}
+
+func (zr *zipFileReader) Read(p []byte) (int, error) {
+	return zr.file.Read(p)
+}
+
+func (zr *zipFileReader) Close() error {
+	var err error
+	if f := zr.file; f != nil {
+		err = f.Close()
+	}
+	if z := zr.zr; z != nil {
+		if ze := z.Close(); ze != nil {
+			err = ze
+		}
+	}
+	return err
+}
+
+// Opens a file within a zip archive for reading.
+func ReadZipFile(zipPath, filePath string) (io.ReadCloser, error) {
 	zr, err := zip.OpenReader(zipPath)
 	if err != nil {
-		return "", err
+		return nil, err
+	}
+	found := false
+	defer func() {
+		if !found {
+			zr.Close()
+		}
+	}()
+
+	if f := findFileInZip(zr, filePath); f != nil {
+		in, err := f.Open()
+		if err != nil {
+			return nil, err
+		}
+		found = true
+		return &zipFileReader{zr: zr, file: in}, nil
+	}
+
+	return nil, &ZipError{zipPath, filePath}
+}
+
+func ReadZip(zipPath string, filePath string) ([]byte, error) {
+	zr, err := zip.OpenReader(zipPath)
+	if err != nil {
+		return nil, err
 	}
 	defer zr.Close()
 
 	if f := findFileInZip(zr, filePath); f != nil {
 		in, err := f.Open()
 		if err != nil {
-			return "", err
+			return nil, err
 		}
 		defer in.Close()
 
 		var buf bytes.Buffer
 		if _, err := io.Copy(&buf, in); err != nil {
-			return "", err
+			return nil, err
 		}
-		return buf.String(), nil
+		return buf.Bytes(), nil
 	}
 
-	return "", &ZipError{zipPath, filePath}
+	return nil, &ZipError{zipPath, filePath}
 }
 
 func unzipLink(filePath string, f *zip.File) error {

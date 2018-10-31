@@ -164,7 +164,7 @@ func (self *runner) Fail(err error, message string) {
 	target := core.Errors
 	if _, ok := err.(*stageReturnedError); !ok {
 		errStr = fmt.Sprintf("%s\n\n%s\n", message, err.Error())
-		fmt.Fprintf(os.Stderr, errStr)
+		fmt.Fprint(os.Stderr, errStr)
 	} else {
 		if strings.HasPrefix(errStr, "ASSERT:") {
 			errStr = errStr[len("ASSERT:"):]

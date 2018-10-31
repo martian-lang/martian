@@ -545,13 +545,13 @@ Options:
 	opts, _ := docopt.Parse(doc, nil, true, config.MartianVersion, false)
 	util.Println("Martian Runtime - %s", config.MartianVersion)
 	util.LogInfo("build  ", "Built with Go version %s", runtime.Version())
-	util.LogInfo("cmdline", strings.Join(os.Args, " "))
-	util.LogInfo("pid    ", strconv.Itoa(os.Getpid()))
+	util.LogInfo("cmdline", "%s", strings.Join(os.Args, " "))
+	util.LogInfo("pid    ", "%d", os.Getpid())
 
 	for _, env := range os.Environ() {
 		pair := strings.Split(env, "=")
 		if len(pair) == 2 && logEnv(pair[0]) {
-			util.LogInfo("environ", env)
+			util.LogInfo("environ", "%s", env)
 		}
 	}
 

@@ -508,6 +508,10 @@ func (self *Metadata) saveToCache(name MetadataFileName, value LazyArgumentMap) 
 	self.mutex.Unlock()
 }
 
+func (self *Metadata) openFile(name MetadataFileName) (*os.File, error) {
+	return os.Open(self.MetadataFilePath(name))
+}
+
 func (self *Metadata) read(name MetadataFileName, limit int64) (LazyArgumentMap, error) {
 	v, ok := self.readFromCache(name)
 	if ok {
