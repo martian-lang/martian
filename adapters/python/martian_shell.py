@@ -3,6 +3,12 @@
 # Copyright (c) 2014 10X Genomics, Inc. All rights reserved.
 #
 
+# We roll our own six-like py2+3 compatibility to avoid external dependencies.
+
+# This pylint prevents py3 lint from complaining about inheriting from object,
+#   and py2 lint from complaining about the "bad" pylint disable option
+# pylint: disable=bad-option-value, useless-object-inheritance
+
 """Martian stage code wrapper.
 
 This module contains infrastructure to load python stage code, possibly
@@ -10,6 +16,8 @@ in a python profiling tool, and execute it with appropriate arguments.
 Stage code should use the 'martian' module to interface with the
 infrastructure.
 """
+
+from __future__ import absolute_import, division, print_function
 
 import os
 import sys
@@ -19,9 +27,14 @@ import datetime
 import errno
 import threading
 import pstats
-import StringIO
 import cProfile
 import traceback
+
+try:
+    from cStringIO import StringIO
+except ImportError:
+    # Python 3 moved (c)StringIO to the io module
+    from io import StringIO
 
 try:
     import line_profiler
@@ -30,6 +43,28 @@ except ImportError:
     pass
 
 import martian
+
+
+#################################################
+# Python 2 and 3 compatibility                  #
+#################################################
+
+
+try:
+    # py2
+    # this pylint disable is because it wants one of these to be UPPERCASE_SNAKE
+    #   .. and the other PascalCase, which defeats the purpose of this alias
+    # pylint: disable=invalid-name
+    _text_type = unicode
+    _string_type = basestring
+    _PYTHON2, _PYTHON3 = True, False
+except NameError:
+    # py3
+    # pylint: disable=invalid-name
+    _text_type = str
+    _string_type = str
+    _PYTHON2, _PYTHON3 = False, True
+
 
 #################################################
 # Job running infrastructure.                   #
@@ -70,10 +105,10 @@ class _MemoryProfile(object):
 
     def _dispatcher(self, frame, event, arg):
         """Callback to collect profile information."""
-        if event == 'call' or event == 'c_call':
+        if event in ('call', 'c_call'):
             key = self._key(frame, event, arg)
             self.stack.append((key, martian.get_mem_kb()))
-        elif event == 'return' or event == 'c_return':
+        elif event in ('return', 'c_return'):
             key, init_mem_kb = self.stack.pop()
             call_mem_kb = martian.get_mem_kb() - init_mem_kb
             mframe = self.frames.get(key, None)
@@ -134,7 +169,7 @@ class _MemoryProfile(object):
 
     def print_stats(self):
         """Prints the profile information to standard out."""
-        print self.format_stats()
+        print(self.format_stats())
 
     def dump_stats(self, filename):
         """Prints the profilie information to a file with the given name."""
@@ -191,9 +226,9 @@ class _Metadata(object):
 
     def write_raw(self, name, text, force=False):
         """Write the given text to the given metadata file."""
-        if isinstance(text, unicode):
+        if isinstance(text, _text_type):
             text = text.encode('utf-8')
-        with open(self.make_path(name), 'w') as dest:
+        with open(self.make_path(name), 'wb') as dest:
             dest.write(text)
         self.update_journal(name, force)
 
@@ -207,11 +242,11 @@ class _Metadata(object):
         """Write the given text to the given metadata file, by creating a
         temporary file and then moving it, in order to prevent corruption
         of the existing file if the proces of writing is interupted."""
-        if isinstance(text, unicode):
+        if isinstance(text, _text_type):
             text = text.encode('utf-8')
         fname = self.make_path(name)
         fname_tmp = fname + '.tmp'
-        with open(fname_tmp, 'w') as dest:
+        with open(fname_tmp, 'wb') as dest:
             dest.write(text)
         try:
             os.rename(fname_tmp, fname)
@@ -237,23 +272,27 @@ class _Metadata(object):
 
     def _append(self, message, filename):
         """Append to the given metadata file."""
-        if isinstance(message, unicode):
+        if isinstance(message, _text_type):
             message = message.encode('utf-8')
         with open(self.make_path(filename), 'a') as dest:
             dest.write(message + '\n')
         self.update_journal(filename)
 
-    def log(self, level, message):
-        """Write a log line to the log file."""
-        if not isinstance(message, basestring):
+    @staticmethod
+    def _to_string_type(message):
+        if _PYTHON3 and isinstance(message, bytes):
+            message = message.decode('utf-8', errors='ignore')
+        elif not isinstance(message, _string_type):
             # If not a basestring (str or unicode), convert to string here
             message = str(message)
-        elif isinstance(message, unicode):
+        elif _PYTHON2 and isinstance(message, unicode):  # pylint: disable=undefined-variable
             message = message.encode('utf-8')
-        self._logfile.write('%s [%s] %s\n' %
-                            (self.make_timestamp_now(),
-                             level,
-                             message))
+        return message
+
+    def log(self, level, message):
+        """Write a log line to the log file."""
+        self._logfile.write('{} [{}] {}\n'.format(
+            self.make_timestamp_now(), level, self._to_string_type(message)))
         self._logfile.flush()
 
     def alarm(self, message):
@@ -264,19 +303,16 @@ class _Metadata(object):
         """Report a progress update."""
         self.write_raw_atomic('progress', message, True)
 
-    @staticmethod
-    def write_errors(message):
+    @classmethod
+    def write_errors(cls, message):
         """Write to the errors file."""
-        if isinstance(message, unicode):
-            message = message.encode('utf-8')
         with os.fdopen(4, 'w') as error_out:
-            error_out.write(message)
+            error_out.write(cls._to_string_type(message))
 
-    def write_assert(self, message):
+    @classmethod
+    def write_assert(cls, message):
         """Write to the assert file."""
-        if isinstance(message, unicode):
-            message = message.encode('utf-8')
-        self.write_errors('ASSERT:' + message)
+        cls.write_errors('ASSERT:' + cls._to_string_type(message))
 
     def update_journal(self, name, force=False):
         """Write a journal entry notifying the parent mrp process of changes to
@@ -470,13 +506,13 @@ class StageWrapper(object):
             for func in self.funcs:
                 profiler.add_function(func)
             self._run_profiler(cmd, profiler, 'profile_line_bin')
-            iostr = StringIO.StringIO()
+            iostr = StringIO()
             profiler.print_stats(stream=iostr)
             self.metadata.write_raw('profile_line_txt', iostr.getvalue())
         elif self.jobinfo.profile_mode == 'cpu':
             profiler = cProfile.Profile()
             self._run_profiler(cmd, profiler, 'profile_cpu_bin')
-            iostr = StringIO.StringIO()
+            iostr = StringIO()
             stats = pstats.Stats(
                 profiler, stream=iostr).sort_stats('cumulative')
             stats.print_stats()

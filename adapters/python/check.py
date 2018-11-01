@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 #
 # Copyright (c) 2014 10X Genomics, Inc. All rights reserved.
+#
 
 """
 check code for an individual stage
@@ -11,12 +12,15 @@ import sys
 import json
 import traceback
 
+
 if __name__ == '__main__':
+    # pylint: disable=invalid-name, bare-except, broad-except
+
     # Parse json from STDIN.
-    input = json.loads(sys.stdin.read())
+    input_ = json.load(sys.stdin)
 
     # Import the stage code.
-    code_path = input['codePath']
+    code_path = input_['codePath']
     sys.path.append(os.path.dirname(code_path))
 
     try:

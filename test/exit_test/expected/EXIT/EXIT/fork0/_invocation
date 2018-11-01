@@ -1,0 +1,5 @@
+@include "pipeline.mro"
+
+call EXIT(
+    message = "Hello World!",
+)

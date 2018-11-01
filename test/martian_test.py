@@ -3,15 +3,18 @@
 # Copyright (c) 2016 10x Genomics, Inc. All rights reserved.
 #
 
+# We roll our own six-like py2+3 compatibility to avoid external dependencies.
+
 """Script to run a test script and compare the output to an expected result.
 
 Includes logic to ignore differences we expect from pipeline outputs,
 such as timestamps, versions, and perf information.
 """
 
-import itertools
+from __future__ import absolute_import, division, print_function
+
 import json
-import optparse
+import argparse
 import os
 import re
 import shutil
@@ -19,6 +22,25 @@ import subprocess
 import sys
 
 from fnmatch import fnmatchcase
+
+try:
+    # py2
+    from itertools import izip_longest as zip_longest
+except ImportError:
+    # py3
+    from itertools import zip_longest
+
+
+try:
+    # py2
+    # this pylint disable is because it wants one of these to be UPPERCASE_SNAKE
+    #   .. and the other PascalCase, which defeats the purpose of this alias
+    # pylint: disable=invalid-name
+    text_type = unicode
+except NameError:
+    # py3
+    # pylint: disable=invalid-name
+    text_type = str
 
 
 def get_expectation_dir(config_filename, config):
@@ -126,7 +148,7 @@ def check_exists(output, expect, filename, reverse=False):
         return True  # git does not preserve empty directories
     if os.path.isfile(os.path.join(expect, filename)):
         return check_exists_file(output, expect, filename, reverse)
-    elif os.path.islink(os.path.join(expect, filename)):
+    if os.path.islink(os.path.join(expect, filename)):
         if not os.path.islink(os.path.join(output, filename)):
             report_missing('link', output, expect, filename, reverse)
             return False
@@ -160,6 +182,18 @@ def compare_dicts(actual, expected, keys):
     return True
 
 
+def mysorted(lst):
+    """Just like sorted, but can also sorts dicts."""
+    if not lst:
+        return lst
+    try:
+        return sorted(lst)
+    except TypeError:
+        if isinstance(lst[0], dict):
+            return sorted(lst, key=lambda x: list(x.items()))
+        raise
+
+
 def compare_objects(actual, expected):
     """Compares two objects."""
     if not isinstance(actual, type(expected)):
@@ -167,10 +201,10 @@ def compare_objects(actual, expected):
                          (type(actual),
                           type(expected)))
         return False
-    elif (isinstance(actual, unicode) and
-          isinstance(expected, unicode) or
-          isinstance(actual, str) and
-          isinstance(expected, str)):
+    if (isinstance(actual, text_type) and
+            isinstance(expected, text_type) or
+            isinstance(actual, str) and
+            isinstance(expected, str)):
         if (clean_value(actual) !=
                 clean_value(expected)):
             sys.stderr.write('Different strings: %s != %s\n' %
@@ -182,8 +216,8 @@ def compare_objects(actual, expected):
                 compare_dicts(actual, expected, expected.keys()))
     elif (isinstance(actual, list) and
           isinstance(expected, list)):
-        for actual_item, expected_item in itertools.izip_longest(
-                sorted(actual), sorted(expected)):
+        for actual_item, expected_item in zip_longest(
+                mysorted(actual), mysorted(expected)):
             if not compare_objects(actual_item, expected_item):
                 return False
     elif actual != expected:
@@ -248,7 +282,7 @@ def compare_finalstate(output, expect, filename):
     actual, expected, loaded = load_json(output, expect, filename)
     if not loaded:
         return False
-    for actual_info, expected_info in itertools.izip_longest(actual, expected):
+    for actual_info, expected_info in zip_longest(actual, expected):
         if not compare_dicts(actual_info, expected_info, ['name',
                                                           'fqname',
                                                           'type',
@@ -303,7 +337,7 @@ def compare_lines(output, expect, filename):
     with the base path, and timestamps with __TIMESTAMP__."""
     with open(os.path.join(output, filename)) as act:
         with open(os.path.join(expect, filename)) as exp:
-            for actual, expected in itertools.izip_longest(act, exp):
+            for actual, expected in zip_longest(act, exp):
                 if actual and expected:
                     if clean_line(actual) != clean_line(expected):
                         sys.stderr.write(
@@ -318,7 +352,15 @@ _PPROF_LINE_REGEX = re.compile(r'^(?:# )?(\S+)')
 
 def pprof_keys(lines):
     """Get the sequence of pprof keys in a file."""
+    # there are some header lines that may or may not appear
+    #   depending on the duration of the stage, skip over these
+    skip = True
     for line in lines:
+        # after the first empty line begins the section of interest
+        if line.strip() == '':
+            skip = False
+        elif skip:
+            continue
         match = _PPROF_LINE_REGEX.match(line)
         if match and match.group(1):
             yield match.group(1)
@@ -328,7 +370,7 @@ def compare_pprof(output, expect, filename):
     """Compare two pprof files, only paying attention to keys."""
     with open(os.path.join(output, filename)) as act:
         with open(os.path.join(expect, filename)) as exp:
-            for actual, expected in itertools.izip_longest(pprof_keys(act), pprof_keys(exp)):
+            for actual, expected in zip_longest(pprof_keys(act), pprof_keys(exp)):
                 if actual != expected:
                     sys.stderr.write(
                         'Expected:\n%s\nActual:\n%s\n' %
@@ -337,15 +379,41 @@ def compare_pprof(output, expect, filename):
     return True
 
 
+_TRACEBACK_REGEX = re.compile(r', line \d+, in')
+
+
+def clean_errors(line):
+    """As clean_line, but also blur out traceback line numbers"""
+    line = line.decode('utf-8', errors='ignore')
+    return _TRACEBACK_REGEX.sub(', line LINENO, in', clean_line(line))
+
+
+def compare_errors(output, expect, filename):
+    """As compare_lines, but we also ignore traceback line-numbers"""
+    with open(os.path.join(output, filename), 'rb') as act:
+        with open(os.path.join(expect, filename), 'rb') as exp:
+            for actual, expected in zip_longest(act, exp):
+                if actual and expected:
+                    if clean_errors(actual) != clean_errors(expected):
+                        sys.stderr.write(
+                            'Expected:\n%s\nActual:\n%s\n' %
+                            (clean_errors(expected), clean_errors(actual)))
+                        return False
+    return True
+
+
 def _compare_true(*_):
     """Sometimes we don't want to compare the actual contents of files."""
     return True
+
 
 _SPECIAL_FILES = {
     '_perf': _compare_true,
     '_uuid': _compare_true,
     '_versions': _compare_true,
     '_log': _compare_true,
+    '_assert': compare_errors,
+    '_errors': compare_errors,
     '_jobinfo': compare_jobinfo,
     '_finalstate': compare_finalstate,
     '_vdrkill': compare_vdrkill,
@@ -355,10 +423,12 @@ _SPECIAL_FILES = {
     '_vdrkill.partial': compare_json,
 }
 
+
 _SPECIAL_SUFFIXES = {
     '.json': compare_json,
     '.pprof': compare_pprof,
 }
+
 
 def compare_file_content(output, expect, filename):
     """Compare two files.
@@ -429,20 +499,18 @@ def check_result(output_dir, expectation_dir, config):
 
 def main(argv):
     """Execute the test case."""
-    parser = optparse.OptionParser(usage='usage: %prog [options] <config>')
-    _, argv = parser.parse_args(argv)
-    if len(argv) != 2:
-        parser.print_help()
-        return 1
-    with open(argv[1], 'r') as configfile:
+    parser = argparse.ArgumentParser()
+    parser.add_argument('config')
+    config_filename = parser.parse_args(argv[1:]).config
+    with open(config_filename, 'r') as configfile:
         config = json.load(configfile)
     if not 'command' in config or not config['command']:
-        sys.stderr.write('No command specified in %s\n' % argv[1])
+        sys.stderr.write('No command specified in %s\n' % config_filename)
     if not 'work_dir' in config:
-        config['work_dir'] = os.path.dirname(argv[1])
+        config['work_dir'] = os.path.dirname(config_filename)
     config['work_dir'] = os.path.abspath(config['work_dir'])
     config['command'][0] = os.path.abspath(os.path.join(
-        os.path.dirname(argv[1]), config['command'][0]))
+        os.path.dirname(config_filename), config['command'][0]))
     output_dir = get_output_dir(config)
     if output_dir and os.path.isdir(output_dir):
         shutil.rmtree(output_dir)
@@ -456,7 +524,7 @@ def main(argv):
     elif return_code != 0:
         sys.stderr.write('Command returned %d\n' % return_code)
         return 2
-    expectation_dir = get_expectation_dir(argv[1], config)
+    expectation_dir = get_expectation_dir(config_filename, config)
     if output_dir and expectation_dir:
         correct = check_result(output_dir, expectation_dir, config)
         if correct:

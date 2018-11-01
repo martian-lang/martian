@@ -3,12 +3,19 @@
 # Copyright (c) 2014 10X Genomics, Inc. All rights reserved.
 #
 
+# We roll our own six-like py2+3 compatibility to avoid external dependencies.
+
+# This pylint prevents py3 lint from complaining about inheriting from object,
+#   and py2 lint from complaining about the "bad" pylint disable option
+# pylint: disable=bad-option-value, useless-object-inheritance
+
 """Martian stage code API and common utility methods.
 
 This module contains an API for python stage code to use to interact
 with the higher-level martian logic, plus common utility methods.
 """
 
+from __future__ import absolute_import, division, print_function
 
 import json
 import math
@@ -16,6 +23,19 @@ import os
 import resource
 import subprocess
 import sys
+
+
+try:
+    # py2
+    # this pylint disable is because it wants one of these to be UPPERCASE_SNAKE
+    #   .. and the other PascalCase, which defeats the purpose of this alias
+    # pylint: disable=invalid-name
+    _string_type = basestring
+except NameError:
+    # py3
+    # pylint: disable=invalid-name
+    _string_type = str
+
 
 # Singleton instance object.
 if not '_INSTANCE' in globals():
@@ -59,30 +79,38 @@ class Record(object):
     # Hack for pysam, which can't handle unicode.
     def coerce_strings(self):
         """Convert all basestring values into str values."""
+        # Only required for Python 2
+        if _string_type == str:
+            return
         for field_name in self.slots:
             value = getattr(self, field_name)
-            if isinstance(value, basestring):
+            if isinstance(value, _string_type):
                 setattr(self, field_name, str(value))
 
 
 def json_sanitize(data):
-    """Converts NaN values into None values."""
+    """Converts NaN values into None values, and decode raw bytes."""
+    retval = data
     if isinstance(data, float):
         # Handle exceptional floats.
         if math.isnan(data) or data == float('+Inf') or data == float('-Inf'):
-            return None
-        return data
+            retval = None
     elif isinstance(data, dict):
         # Recurse on dictionaries.
-        new_data = {}
+        retval = {}
         for k in data.keys():
-            new_data[k] = json_sanitize(data[k])
-        return new_data
+            retval[k] = json_sanitize(data[k])
+    elif isinstance(data, _string_type):
+        # py3: pass on string types before they're caught by hasattr __iter__
+        pass
+    elif isinstance(data, bytes):
+        # in py2, bytes == str, which is caught by above
+        #   so this branch is never taken in py2
+        retval = data.decode('utf-8', errors='ignore')
     elif hasattr(data, '__iter__'):
         # Recurse on lists.
-        return [json_sanitize(d) for d in data]
-    else:
-        return data
+        retval = [json_sanitize(d) for d in data]
+    return retval
 
 
 def json_dumps_safe(data, indent=None):
@@ -147,6 +175,7 @@ def Popen(args, bufsize=0, executable=None,
           startupinfo=None, creationflags=0):
     """Log opening of a subprocess."""
     _INSTANCE.metadata.log('exec', ' '.join(args))
+    # pylint: disable=bad-option-value, subprocess-popen-preexec-fn
     return subprocess.Popen(args, bufsize=bufsize, executable=executable,
                             stdin=stdin, stdout=stdout, stderr=stderr,
                             preexec_fn=preexec_fn, close_fds=close_fds,

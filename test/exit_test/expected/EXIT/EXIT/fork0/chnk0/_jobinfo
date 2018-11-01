@@ -1,0 +1,105 @@
+{
+    "name": "ID.pipeline_test.EXIT.EXIT.fork0.chnk0",
+    "pid": 103665,
+    "host": "bespin1.fuzzplex.com",
+    "type": "local",
+    "cwd": "/user/test/exit_test/pipeline_test/EXIT/EXIT/fork0/chnk0-u94e0db3e80/files",
+    "python": {
+        "binpath": "/usr/bin/python",
+        "version": "3.6.4 (default, Mar 23 2018, 21:13:16) \n[GCC 4.8.3 20140911 (Red Hat 4.8.3-9)]"
+    },
+    "rusage": {
+        "self": {
+            "ru_maxrss": 13128,
+            "ru_ixrss": 0,
+            "ru_idrss": 0,
+            "ru_minflt": 631,
+            "ru_majflt": 0,
+            "ru_nswap": 0,
+            "ru_utime": 0,
+            "ru_stime": 0.004,
+            "ru_inblock": 8,
+            "ru_oublock": 48,
+            "ru_msgsnd": 0,
+            "ru_msgrcv": 0,
+            "ru_nsignals": 0
+        },
+        "children": {
+            "ru_maxrss": 15028,
+            "ru_ixrss": 0,
+            "ru_idrss": 0,
+            "ru_minflt": 3608,
+            "ru_majflt": 0,
+            "ru_nswap": 0,
+            "ru_utime": 0.06,
+            "ru_stime": 0.02,
+            "ru_inblock": 40,
+            "ru_oublock": 16,
+            "ru_msgsnd": 0,
+            "ru_msgrcv": 0,
+            "ru_nsignals": 0
+        }
+    },
+    "used_bytes": {
+        "rss": 13443072,
+        "shared": 0,
+        "vmem": 335872,
+        "text": 24576,
+        "stack": 163840,
+        "proc_count": 1
+    },
+    "io": {
+        "total": {
+            "read": {
+                "sysc": 7,
+                "bytes": 0
+            },
+            "write": {
+                "sysc": 0,
+                "bytes": 0
+            }
+        },
+        "max": {
+            "read": {
+                "sysc": 685.1534107426181,
+                "bytes": 0
+            },
+            "write": {
+                "sysc": 0,
+                "bytes": 0
+            }
+        },
+        "dev": {
+            "read": {
+                "sysc": 0,
+                "bytes": 0
+            },
+            "write": {
+                "sysc": 0,
+                "bytes": 0
+            }
+        }
+    },
+    "wallclock": {
+        "start": "2018-11-01 10:57:20",
+        "end": "2018-11-01 10:57:20",
+        "duration_seconds": 0.150422347
+    },
+    "threads": 1,
+    "memGB": 1,
+    "profile_mode": "disable",
+    "stackvars_flag": "disable",
+    "monitor_flag": "disable",
+    "invocation": {
+        "call": "EXIT",
+        "args": {
+            "message": "Hello World!"
+        },
+        "sweepargs": [],
+        "incpaths": []
+    },
+    "version": {
+        "martian": "'v3.1.0-17-g67e1d623-dirty'",
+        "pipelines": "v3.1.0-17-g67e1d623-dirty"
+    }
+}

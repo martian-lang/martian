@@ -1,0 +1,10 @@
+# A super-simple test pipeline that exits with an assertion.
+
+# A stage that just exits
+stage EXIT(
+    in  string message,
+    out string empty,
+    src py     "stages/exit",
+)
+
+call EXIT(message = "Hello World!",)

@@ -1,0 +1,55 @@
+Martian Runtime - 'v3.1.0-17-g67e1d623-dirty'
+2018-11-01 10:57:20 [build  ] Built with Go version go1.11
+2018-11-01 10:57:20 [cmdline] mrp pipeline.mro pipeline_test
+2018-11-01 10:57:20 [pid    ] 103648
+2018-11-01 10:57:20 [environ] SSH_AGENT_PID=118019
+2018-11-01 10:57:20 [environ] HOSTNAME=bespin1.fuzzplex.com
+2018-11-01 10:57:20 [environ] TERM=xterm-256color
+2018-11-01 10:57:20 [environ] SHELL=/bin/bash
+2018-11-01 10:57:20 [environ] EC2_AMITOOL_HOME=/opt/aws/amitools/ec2
+2018-11-01 10:57:20 [environ] SSH_CLIENT=10.111.15.87 50919 22
+2018-11-01 10:57:20 [environ] HYDRA_ROOT=/mnt/hydra/hydra/spool
+2018-11-01 10:57:20 [environ] PYTHON_INSTALL_LAYOUT=amzn
+2018-11-01 10:57:20 [environ] SSH_TTY=/dev/pts/21
+2018-11-01 10:57:20 [environ] USER=mario
+2018-11-01 10:57:20 [environ] EC2_HOME=/opt/aws/apitools/ec2
+2018-11-01 10:57:20 [environ] SSH_AUTH_SOCK=/tmp/ssh-gDm71hts4UUR/agent.118016
+2018-11-01 10:57:20 [environ] PATH=../../bin:/usr/local/bin:/bin:/usr/bin:/usr/local/sbin:/usr/sbin:/sbin:/opt/aws/bin
+2018-11-01 10:57:20 [environ] LD=/mnt/build/toolchains/versions/2.1.2/bin/ld.gold
+2018-11-01 10:57:20 [environ] PWD=/user/test/exit_test
+2018-11-01 10:57:20 [environ] JAVA_HOME=/usr/lib/jvm/java
+2018-11-01 10:57:20 [environ] LANG=en_US.UTF-8
+2018-11-01 10:57:20 [environ] SHLVL=3
+2018-11-01 10:57:20 [environ] HOME=/user
+2018-11-01 10:57:20 [environ] LOGNAME=mario
+2018-11-01 10:57:20 [environ] SSH_CONNECTION=10.111.15.112 51076 10.113.15.180 22
+2018-11-01 10:57:20 [environ] _=../../bin/mrp
+2018-11-01 10:57:20 [environ] MROFLAGS=--disable-ui
+2018-11-01 10:57:20 [environ] MROPATH=/user/test/exit_test
+2018-11-01 10:57:20 [version] MRO Version=v3.1.0-17-g67e1d623-dirty
+2018-11-01 10:57:20 [options] --jobmode=local
+2018-11-01 10:57:20 [options] --maxjobs=0
+2018-11-01 10:57:20 [options] --jobinterval=0
+2018-11-01 10:57:20 [options] --vdrmode=rolling
+2018-11-01 10:57:20 [options] --disable-ui
+2018-11-01 10:57:20 [options] --stackvars=false
+2018-11-01 10:57:20 [options] --zip=false
+2018-11-01 10:57:20 [options] --limit-loadavg=false
+2018-11-01 10:57:20 [options] --noexit=false
+2018-11-01 10:57:20 [options] --nopreflight=false
+2018-11-01 10:57:20 [jobmngr] Job config = /user/jobmanagers/config.json
+2018-11-01 10:57:20 [jobmngr] Using 64 logical cores available on system.
+2018-11-01 10:57:20 [jobmngr] Using 226 GB, 90% of system memory.
+2018-11-01 10:57:20 [filesys] Pipestance path /user/test/exit_test/pipeline_test
+2018-11-01 10:57:20 [filesys] Filesystem type nfs
+2018-11-01 10:57:20 [filesys] 909 GB and 18,700,752 inodes available.
+2018-11-01 10:57:20 [webserv] UI disabled.
+Running preflight checks (please wait)...
+2018-11-01 10:57:20 [runtime] (ready)           ID.pipeline_test.EXIT.EXIT
+2018-11-01 10:57:20 [runtime] (run:local)       ID.pipeline_test.EXIT.EXIT.fork0.chnk0.main
+2018-11-01 10:57:23 [runtime] (failed)          ID.pipeline_test.EXIT.EXIT
+
+[error] Goodbye  World!
+
+2018-11-01 10:57:23 Shutting down.
+2018-11-01 10:57:23 Shutting down.

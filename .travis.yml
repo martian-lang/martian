@@ -9,7 +9,17 @@ cache:
 before_cache:
 - rm -f $HOME/.npm/anonymous-cli-metrics.json
 sudo: false
+matrix:
+  include:
+  - name: "python2"
+    before_install:
+    - pyenv global 2.7
+  - name: "python3"
+    before_install:
+    - pyenv global 3.6
 before_script:
+- python --version
+- pip --version
 - nvm install --lts node
 - npm install -g npm@^6.4
 - pip install --user pylint

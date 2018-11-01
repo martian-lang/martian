@@ -107,6 +107,10 @@ test/split_test_go/disable_pipeline_test: test/split_test_go/disable_test.json \
                                           integration_prereqs bin/sum_squares
 	test/martian_test.py $<
 
+test/exit_test/pipeline_test: test/exit_test/exit_test.json \
+                              integration_prereqs
+	test/martian_test.py $<
+
 test/files_test/pipeline_test: test/files_test/files_test.json \
                                integration_prereqs
 	test/martian_test.py $<
@@ -134,6 +138,7 @@ test/fork_test/ar_pass/pipeline_test: test/fork_test/autoretry_pass.json \
 longtests: test/split_test/pipeline_test \
            test/split_test_go/pipeline_test \
            test/split_test_go/disable_pipeline_test \
+           test/exit_test/pipeline_test \
            test/files_test/pipeline_test \
            test/fork_test/pass/pipeline_test \
            test/fork_test/retry/pipeline_test \
