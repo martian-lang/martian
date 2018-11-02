@@ -17,40 +17,40 @@ unexport GOPATH
 export GO111MODULE=on
 export GOBIN=$(shell pwd)/bin
 
-.PHONY: $(GOBINS) grammar web $(GOTESTS) govet all-bins bin/sum_squares longtests mrs integration_prereqs
+.PHONY: $(GOBINS) grammar web $(GOTESTS) govet all-bins $(GOBIN)/sum_squares longtests mrs integration_prereqs
 
 #
 # Targets for development builds.
 #
 all: grammar all-bins web test mrs
 
-bin/goyacc: vendor/golang.org/x/tools/cmd/goyacc/yacc.go
+$(GOBIN)/goyacc: vendor/golang.org/x/tools/cmd/goyacc/yacc.go
 	go install -mod=vendor golang.org/x/tools/cmd/goyacc
 
-martian/syntax/grammar.go: bin/goyacc martian/syntax/grammar.y
-	PATH=$(GOBIN):$(PATH) go generate $(REPO)/martian/syntax
+martian/syntax/grammar.go: $(GOBIN)/goyacc martian/syntax/grammar.y
+	PATH=$(GOBIN):$(PATH) go generate ./martian/syntax
 
 martian/test/sum_squares/types.go: PATH:=$(GOBIN):$(PATH)
 martian/test/sum_squares/types.go: test/split_test_go/pipeline_stages.mro mro2go
-	go generate $(REPO)/martian/test/sum_squares
+	go generate ./martian/test/sum_squares
 
-bin/sum_squares: martian/test/sum_squares/sum_squares.go \
-                 martian/test/sum_squares/types.go
-	go install $(GO_FLAGS) $(REPO)/martian/test/sum_squares
+$(GOBIN)/sum_squares: martian/test/sum_squares/sum_squares.go \
+                      martian/test/sum_squares/types.go
+	go install $(GO_FLAGS) ./martian/test/sum_squares
 
 grammar: martian/syntax/grammar.go
 
 $(GOBINS):
-	go install $(GO_FLAGS) $(REPO)/cmd/$@
+	go install $(GO_FLAGS) ./cmd/$@
 
-mrs: bin/mrs
+mrs: $(GOBIN)/mrs
 
-bin/mrs: mrp
-	rm -f bin/mrs && ln -s mrp bin/mrs
+$(GOBIN)/mrs: mrp
+	rm -f $(GOBIN)/mrs && ln -s mrp $(GOBIN)/mrs
 
 
 all-bins:
-	go install $(GO_FLAGS) $(addprefix $(REPO)/, $(wildcard cmd/*))
+	go install $(GO_FLAGS) ./cmd/...
 
 NPM_CMD=install
 ifeq ($(CI),true)
@@ -61,13 +61,13 @@ web:
 	(cd web/martian && npm $(NPM_CMD) && node_modules/gulp/bin/gulp.js)
 
 mrt:
-	cp scripts/mrt bin/mrt
+	cp scripts/mrt $(GOBIN)/mrt
 
 $(GOLIBTESTS): test-%:
-	go test -v $(REPO)/martian/$*
+	go test -v ./martian/$*
 
 $(GOBINTESTS): test-%:
-	go test -v $(REPO)/cmd/$*
+	go test -v ./cmd/$*
 
 WEB_FILES=web/martian/serve web/martian/templates/graph.html
 
@@ -86,12 +86,12 @@ $(PRODUCT_NAME).tar.%: $(addprefix bin/, $(GOBINS)) $(ADAPTERS) $(JOBMANAGERS) $
 tarball: $(PRODUCT_NAME).tar.xz $(PRODUCT_NAME).tar.gz
 
 test-all:
-	go test -v $(addprefix $(REPO)/, $(wildcard martian/* cmd/*))
+	go test -v ./martian/... ./cmd/...
 
 govet:
 	go vet ./martian/... ./cmd/...
 
-test: test-all govet bin/sum_squares
+test: test-all govet $(GOBIN)/sum_squares
 
 integration_prereqs: mrp mrjob $(ADAPTERS) test/martian_test.py $(JOBMANAGERS)
 
@@ -100,11 +100,11 @@ test/split_test/pipeline_test: test/split_test/split_test.json \
 	test/martian_test.py $<
 
 test/split_test_go/pipeline_test: test/split_test_go/split_test.json \
-                                  integration_prereqs bin/sum_squares
+                                  integration_prereqs $(GOBIN)/sum_squares
 	test/martian_test.py $<
 
 test/split_test_go/disable_pipeline_test: test/split_test_go/disable_test.json \
-                                          integration_prereqs bin/sum_squares
+                                          integration_prereqs $(GOBIN)/sum_squares
 	test/martian_test.py $<
 
 test/exit_test/pipeline_test: test/exit_test/exit_test.json \
