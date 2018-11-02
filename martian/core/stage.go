@@ -713,10 +713,9 @@ func (self *Fork) writeInvocation() {
 	if !self.metadata.exists(InvocationFile) {
 		argBindings, _ := resolveBindings(self.node.argbindings, self.argPermute,
 			self.node.rt.FreeMemBytes()/int64(1+len(self.node.prenodes)))
-		incpaths := self.node.invocation.IncludePaths
-		invocation, _ := BuildCallSource(incpaths,
+		invocation, _ := BuildCallSource(
 			self.node.name,
-			MakeArgumentMap(argBindings), nil,
+			MakeLazyArgumentMap(argBindings), nil,
 			self.node.callable)
 		self.metadata.WriteRaw(InvocationFile, invocation)
 	}
@@ -850,9 +849,9 @@ func (self *Fork) step() {
 				self.stageDefs.JoinDef = &JobResources{}
 			}
 			threads, memGB, special := self.node.setJoinJobReqs(self.stageDefs.JoinDef)
-			resolvedBindings := ChunkDef{
+			resolvedBindings := LazyChunkDef{
 				Resources: self.stageDefs.JoinDef,
-				Args:      MakeArgumentMap(getBindings()),
+				Args:      MakeLazyArgumentMap(getBindings()),
 			}
 			self.join_metadata.Write(ArgsFile, &resolvedBindings)
 			self.join_metadata.Write(ChunkDefsFile, self.stageDefs.ChunkDefs)

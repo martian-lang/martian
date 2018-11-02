@@ -38,10 +38,9 @@ type WallClockInfo struct {
 }
 
 type InvocationData struct {
-	Call         string                 `json:"call"`
-	Args         map[string]interface{} `json:"args"`
-	SweepArgs    []string               `json:"sweepargs"`
-	IncludePaths []string               `json:"incpaths"`
+	Call      string          `json:"call"`
+	Args      LazyArgumentMap `json:"args"`
+	SweepArgs []string        `json:"sweepargs"`
 }
 
 type VersionInfo struct {

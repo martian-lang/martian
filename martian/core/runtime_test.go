@@ -24,13 +24,13 @@ func MockRuntime() *Runtime {
 }
 
 func ExampleBuildCallSource() {
-	src, _ := BuildCallSource([]string{"bar1.mro, bar2.mro"},
+	src, _ := BuildCallSource(
 		"STAGE_NAME",
-		map[string]interface{}{
+		MakeLazyArgumentMap(map[string]interface{}{
 			"input1": []int{1, 2},
 			"input2": "foo",
 			"input3": json.RawMessage(`{"foo":"bar"}`),
-		},
+		}),
 		nil,
 		&syntax.Stage{
 			Node: syntax.NewAstNode(15, &syntax.SourceFile{

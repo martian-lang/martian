@@ -43,35 +43,24 @@ Options:
 	// Read and parse JSON from stdin.
 	dec := json.NewDecoder(os.Stdin)
 	dec.UseNumber()
-	var input map[string]interface{}
+	var input core.InvocationData
 	if err := dec.Decode(&input); err == nil {
-		incpaths := []string{}
-		if ilist, ok := input["incpaths"].([]interface{}); ok {
-			incpaths = util.ArrayToString(ilist)
-		}
-		name, ok := input["call"].(string)
-		if !ok {
+		if input.Call == "" {
 			fmt.Println("No pipeline or stage specified.")
 			os.Exit(1)
 		}
-		callable, err := core.GetCallable(mroPaths, name)
+		callable, err := core.GetCallable(mroPaths, input.Call)
 		if err != nil {
-			fmt.Printf("Could not find %s: %v\n", name, err)
+			fmt.Printf("Could not find %s: %v\n", input.Call, err)
 		}
 
-		args, ok := input["args"].(map[string]interface{})
-		if !ok {
+		if input.Args == nil {
 			fmt.Println("No args given.")
 			os.Exit(1)
 		}
 
-		sweepargs := []string{}
-		if sweeplist, ok := input["sweepargs"].([]interface{}); ok {
-			sweepargs = util.ArrayToString(sweeplist)
-		}
-
 		src, bldErr := core.BuildCallSource(
-			incpaths, name, args, sweepargs,
+			input.Call, input.Args, input.SweepArgs,
 			callable)
 
 		if bldErr == nil {

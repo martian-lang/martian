@@ -6,6 +6,7 @@ package core // import "github.com/martian-lang/martian/martian/core"
 // pipestances.
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"fmt"
@@ -360,7 +361,7 @@ func (self *Runtime) instantiatePipeline(src string, srcPath string, psid string
 	r := trace.StartRegion(ctx, "instantiatePipeline")
 	defer r.End()
 	// Parse the invocation source.
-	postsrc, incpaths, ast, err := syntax.ParseSource(src, srcPath, mroPaths, !readOnly)
+	postsrc, _, ast, err := syntax.ParseSource(src, srcPath, mroPaths, !readOnly)
 	if err != nil {
 		return "", nil, nil, err
 	}
@@ -374,7 +375,7 @@ func (self *Runtime) instantiatePipeline(src string, srcPath string, psid string
 		return "", nil, nil, &RuntimeError{fmt.Sprintf("'%s' is not a declared pipeline", ast.Call.DecId)}
 	}
 
-	invocationData, _ := BuildDataForAst(incpaths, ast)
+	invocationData, _ := BuildDataForAst(ast)
 
 	// Instantiate the pipeline.
 	if !readOnly {
@@ -750,28 +751,29 @@ func GetCallable(mroPaths []string, name string) (syntax.Callable, error) {
 	return nil, &RuntimeError{fmt.Sprintf("'%s' is not a declared pipeline or stage", name)}
 }
 
-func buildVal(param syntax.Param, val interface{}) string {
-	indent := "    "
-	if data, err := json.MarshalIndent(val, indent, indent); err == nil {
-		// Indent multi-line values (but not first line).
-		return string(data)
+func buildVal(param syntax.Param, val json.RawMessage) string {
+	const indent = "    "
+	var buf bytes.Buffer
+	buf.Grow(len(val))
+	if json.Indent(&buf, val, indent, indent) != nil {
+		return fmt.Sprintf("<ParseError: %v>", val)
 	}
-	return fmt.Sprintf("<ParseError: %v>", val)
+	return buf.String()
 }
 
-func (self *Runtime) BuildCallSource(incpaths []string, name string, args map[string]interface{},
+func (self *Runtime) BuildCallSource(name string, args LazyArgumentMap,
 	sweepargs []string, mroPaths []string) (string, error) {
 	callable, err := self.MroCache.GetCallable(mroPaths, name)
 	if err != nil {
 		util.LogInfo("package", "Could not get callable: %s", name)
 		return "", err
 	}
-	return BuildCallSource(incpaths, name, args, sweepargs, callable)
+	return BuildCallSource(name, args, sweepargs, callable)
 }
 
-func BuildCallSource(incpaths []string,
+func BuildCallSource(
 	name string,
-	args map[string]interface{},
+	args LazyArgumentMap,
 	sweepargs []string,
 	callable syntax.Callable) (string, error) {
 	// Build @include statements.
@@ -787,7 +789,8 @@ func BuildCallSource(incpaths []string,
 
 		for _, id := range sweepargs {
 			if id == param.GetId() {
-				valstr = fmt.Sprintf("sweep(%s)", strings.Trim(valstr, "[]"))
+				valstr = fmt.Sprintf("sweep(%s)",
+					strings.TrimSuffix(strings.TrimPrefix(valstr, "["), "]"))
 				break
 			}
 		}
@@ -804,30 +807,34 @@ func BuildCallSource(incpaths []string,
 }
 
 func BuildCallData(src string, srcPath string, mroPaths []string) (*InvocationData, error) {
-	_, incpaths, ast, err := syntax.ParseSource(src, srcPath, mroPaths, false)
+	_, _, ast, err := syntax.ParseSource(src, srcPath, mroPaths, false)
 	if err != nil {
 		return nil, err
 	}
-	return BuildDataForAst(incpaths, ast)
+	return BuildDataForAst(ast)
 }
 
-func BuildDataForAst(incpaths []string, ast *syntax.Ast) (*InvocationData, error) {
+func BuildDataForAst(ast *syntax.Ast) (*InvocationData, error) {
 	if ast.Call == nil {
 		return nil, &RuntimeError{"cannot jsonify a pipeline without a call statement"}
 	}
 
-	args := map[string]interface{}{}
+	args := make(LazyArgumentMap, len(ast.Call.Bindings.List))
 	sweepargs := []string{}
 	for _, binding := range ast.Call.Bindings.List {
-		args[binding.Id] = binding.Exp.ToInterface()
+		var err error
+		args[binding.Id], err = json.Marshal(binding.Exp.ToInterface())
+		if err != nil {
+			return nil, fmt.Errorf("error serializing argument %s: %v",
+				binding.Id, err)
+		}
 		if binding.Sweep {
 			sweepargs = append(sweepargs, binding.Id)
 		}
 	}
 	return &InvocationData{
-		Call:         ast.Call.DecId,
-		Args:         args,
-		SweepArgs:    sweepargs,
-		IncludePaths: incpaths,
+		Call:      ast.Call.DecId,
+		Args:      args,
+		SweepArgs: sweepargs,
 	}, nil
 }
