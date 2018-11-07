@@ -756,7 +756,7 @@ func buildVal(param syntax.Param, val json.RawMessage) string {
 	var buf bytes.Buffer
 	buf.Grow(len(val))
 	if json.Indent(&buf, val, indent, indent) != nil {
-		return fmt.Sprintf("<ParseError: %v>", val)
+		return fmt.Sprintf("<ParseError: %q>", val)
 	}
 	return buf.String()
 }
@@ -785,7 +785,10 @@ func BuildCallSource(
 	// whether the args bag has a value for it not.
 	lines := []string{}
 	for _, param := range callable.GetInParams().List {
-		valstr := buildVal(param, args[param.GetId()])
+		valstr := "null"
+		if val, ok := args[param.GetId()]; ok {
+			valstr = buildVal(param, val)
+		}
 
 		for _, id := range sweepargs {
 			if id == param.GetId() {
