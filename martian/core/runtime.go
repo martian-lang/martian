@@ -412,8 +412,12 @@ func (self *Runtime) InvokePipeline(src string, srcPath string, psid string,
 	}
 	if fileNames, err := util.Readdirnames(pipestancePath); err != nil {
 		return nil, err
-	} else if len(fileNames) > 0 {
-		return nil, &PipestanceExistsError{psid}
+	} else {
+		for _, name := range fileNames {
+			if len(name) > 0 && name[0] != '.' {
+				return nil, &PipestanceExistsError{psid}
+			}
+		}
 	}
 
 	// Expand env vars in invocation source and instantiate.
