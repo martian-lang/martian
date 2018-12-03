@@ -44,7 +44,6 @@ if not '_INSTANCE' in globals():
 
 class StageException(Exception):
     """Base exception type for stage code."""
-    pass
 
 
 class Record(object):
