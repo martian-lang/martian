@@ -174,19 +174,42 @@ func (self *pipestanceHolder) HandleSignal(os.Signal) {
 
 const WAIT_SECS = 6
 
+// Remove any buffered items from the channel.
+func flushChannel(c <-chan struct{}) {
+	for {
+		select {
+		case <-c:
+		default:
+			return
+		}
+	}
+}
+
 //=============================================================================
 // Pipestance runner.
 //=============================================================================
-func runLoop(pipestanceBox *pipestanceHolder, stepSecs int, vdrMode string,
-	noExit bool) {
+func runLoop(pipestanceBox *pipestanceHolder, stepSecs time.Duration, vdrMode string,
+	noExit bool, localJobDone <-chan struct{}) {
 	pipestanceBox.getPipestance().LoadMetadata(context.Background())
 
+	t := time.NewTimer(0)
+	if !t.Stop() {
+		<-t.C
+	}
 	for {
+		flushChannel(localJobDone)
 		hadProgress := loopBody(pipestanceBox, vdrMode, noExit)
 
 		if !hadProgress {
-			// Wait for a bit.
-			time.Sleep(time.Second * time.Duration(stepSecs))
+			// Wait for a either stepSecs or until a local job finishes.
+			t.Reset(stepSecs)
+			select {
+			case <-t.C:
+			case <-localJobDone:
+				if !t.Stop() {
+					<-t.C
+				}
+			}
 			// During the idle portion of the run loop is a good time to
 			// run the GC.  We do this after the sleep because StepNodes
 			// launches jobs on goroutines, and it's better to give them
@@ -769,7 +792,7 @@ Options:
 			}
 		}
 	}
-	stepSecs := 3
+	stepSecs := 3 * time.Second
 	checkSrc := true
 	config.Monitor = opts["--monitor"].(bool)
 	readOnly := opts["--inspect"].(bool)
@@ -975,7 +998,8 @@ Options:
 	//=========================================================================
 	// Start run loop.
 	//=========================================================================
-	go runLoop(&pipestanceBox, stepSecs, config.VdrMode, noExit)
+	go runLoop(&pipestanceBox, stepSecs, config.VdrMode, noExit,
+		rt.LocalJobManager.Done())
 
 	// Let daemons take over.
 	runtime.Goexit()

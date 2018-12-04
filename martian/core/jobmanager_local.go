@@ -55,6 +55,7 @@ type LocalJobManager struct {
 	debug       bool
 	limitLoad   bool
 	highMem     ObservedMemory
+	jobDone     chan struct{}
 }
 
 func NewLocalJobManager(userMaxCores int, userMaxMemGB int,
@@ -63,6 +64,10 @@ func NewLocalJobManager(userMaxCores int, userMaxMemGB int,
 	self := &LocalJobManager{
 		debug:     debug,
 		limitLoad: limitLoadavg,
+
+		// Buffer up to 1 notification, in case a job finishes while the
+		// runloop processing is in progress.
+		jobDone: make(chan struct{}, 1),
 	}
 	self.jobSettings = verifyJobManager("local", config, -1).jobSettings
 
@@ -323,6 +328,15 @@ func (self *LocalJobManager) Enqueue(shellCmd string, argv []string,
 			metadata.WriteRaw(Errors, err.Error())
 			return
 		}
+		defer func(threads int) {
+			// Release cores.
+			self.coreSem.Release(int64(threads))
+			if self.debug {
+				util.LogInfo("jobmngr", "Released %d core%s (%d/%d in use)", threads,
+					util.Pluralize(threads), self.coreSem.InUse(), self.maxCores)
+			}
+		}(threads)
+
 		if self.debug {
 			util.LogInfo("jobmngr", "Acquired %d core%s (%d/%d in use)", threads,
 				util.Pluralize(threads), self.coreSem.InUse(), self.maxCores)
@@ -336,10 +350,18 @@ func (self *LocalJobManager) Enqueue(shellCmd string, argv []string,
 			util.LogError(err, "jobmngr",
 				"%s requested %d GB of memory, but the job manager was only configured to use %d.",
 				metadata.fqname, memGB, self.maxMemGB)
-			self.coreSem.Release(int64(threads))
 			metadata.WriteRaw(Errors, err.Error())
 			return
 		}
+		defer func(memGB int) {
+			// Release memory.
+			self.memMBSem.Release(int64(memGB) * 1024)
+			if self.debug {
+				util.LogInfo("jobmngr", "Released %d GB (%.1f/%d in use)", memGB,
+					float64(self.memMBSem.InUse())/1024, self.maxMemGB)
+			}
+		}(memGB)
+
 		if self.debug {
 			util.LogInfo("jobmngr", "Acquired %d GB (%.1f/%d in use)", memGB,
 				float64(self.memMBSem.InUse())/1024, self.maxMemGB)
@@ -358,11 +380,18 @@ func (self *LocalJobManager) Enqueue(shellCmd string, argv []string,
 				util.LogError(err, "jobmngr",
 					"%s estimated to require %d processes, but the process ulimit is %d.",
 					metadata.fqname, procEstimate, self.procsSem.CurrentSize())
-				self.coreSem.Release(int64(threads))
-				self.memMBSem.Release(int64(memGB) * 1024)
 				metadata.WriteRaw(Errors, err.Error())
 				return
 			}
+
+			defer func(procEstimate int64) {
+				// Release processes.
+				self.procsSem.Release(procEstimate)
+				if self.debug {
+					util.LogInfo("jobmngr", "Released %d processes (%d/%d in use)",
+						procEstimate, self.procsSem.InUse(), self.procsSem.CurrentSize())
+				}
+			}(procEstimate)
 			if self.debug {
 				util.LogInfo("jobmngr", "Acquired %d processes (%d/%d in use)",
 					procEstimate, self.procsSem.InUse(), self.procsSem.CurrentSize())
@@ -371,39 +400,7 @@ func (self *LocalJobManager) Enqueue(shellCmd string, argv []string,
 				util.LogInfo("jobmngr", "%d goroutines", runtime.NumGoroutine())
 			}
 		}
-
-		// Set up _stdout and _stderr for the job.
-		if stdoutFile, err := os.Create(stdoutPath); err == nil {
-			stdoutFile.WriteString("[stdout]\n")
-			// If local preflight stage, let stdout go to the console
-			if localpreflight {
-				cmd.Stdout = os.Stdout
-			} else {
-				cmd.Stdout = stdoutFile
-			}
-			defer stdoutFile.Close()
-		}
-		cmd.SysProcAttr = util.Pdeathsig(&syscall.SysProcAttr{}, syscall.SIGTERM)
-		if stderrFile, err := os.Create(stderrPath); err == nil {
-			stderrFile.WriteString("[stderr]\n")
-			cmd.Stderr = stderrFile
-			defer stderrFile.Close()
-		}
-
-		// Run the command and wait for completion.
-		err := func(metadata *Metadata, cmd *exec.Cmd) error {
-			util.EnterCriticalSection()
-			defer util.ExitCriticalSection()
-			err := cmd.Start()
-			if err == nil {
-				metadata.remove("queued_locally")
-			}
-			return err
-		}(metadata, cmd)
-		if err == nil {
-			err = cmd.Wait()
-		}
-
+		err := executeLocal(cmd, stdoutPath, stderrPath, localpreflight, metadata)
 		// CentOS < 5.5 workaround
 		if err != nil {
 			if strings.Contains(err.Error(), exitCodeString) {
@@ -424,33 +421,60 @@ func (self *LocalJobManager) Enqueue(shellCmd string, argv []string,
 					metadata.WriteRaw(Errors, err.Error())
 				}
 			} else {
-				util.LogInfo("jobmngr", "Job failed: %s. Retrying job %s in %d seconds", err.Error(), fqname, waitTime)
+				util.LogInfo("jobmngr",
+					"Job failed: %s. Retrying job %s in %d seconds",
+					err.Error(), fqname, waitTime)
 				self.Enqueue(shellCmd, argv, envs, metadata, threads, memGB, fqname, retries,
 					waitTime, localpreflight)
 			}
-		}
-
-		// Release cores.
-		self.coreSem.Release(int64(threads))
-		if self.debug {
-			util.LogInfo("jobmngr", "Released %d core%s (%d/%d in use)", threads,
-				util.Pluralize(threads), self.coreSem.InUse(), self.maxCores)
-		}
-		// Release memory.
-		self.memMBSem.Release(int64(memGB) * 1024)
-		if self.debug {
-			util.LogInfo("jobmngr", "Released %d GB (%.1f/%d in use)", memGB,
-				float64(self.memMBSem.InUse())/1024, self.maxMemGB)
-		}
-		if self.procsSem != nil {
-			// Release processes.
-			self.procsSem.Release(procEstimate)
-			if self.debug {
-				util.LogInfo("jobmngr", "Released %d processes (%d/%d in use)",
-					procEstimate, self.procsSem.InUse(), self.procsSem.CurrentSize())
+		} else {
+			// Notify
+			select {
+			case self.jobDone <- struct{}{}:
+			default:
 			}
 		}
 	}()
+}
+
+func executeLocal(cmd *exec.Cmd, stdoutPath, stderrPath string,
+	localpreflight bool, metadata *Metadata) error {
+	// Set up _stdout and _stderr for the job.
+	if stdoutFile, err := os.Create(stdoutPath); err == nil {
+		stdoutFile.WriteString("[stdout]\n")
+		// If local preflight stage, let stdout go to the console
+		if localpreflight {
+			cmd.Stdout = os.Stdout
+		} else {
+			cmd.Stdout = stdoutFile
+		}
+		defer stdoutFile.Close()
+	}
+	cmd.SysProcAttr = util.Pdeathsig(&syscall.SysProcAttr{}, syscall.SIGTERM)
+	if stderrFile, err := os.Create(stderrPath); err == nil {
+		stderrFile.WriteString("[stderr]\n")
+		cmd.Stderr = stderrFile
+		defer stderrFile.Close()
+	}
+
+	// Run the command and wait for completion.
+	if err := func(metadata *Metadata, cmd *exec.Cmd) error {
+		util.EnterCriticalSection()
+		defer util.ExitCriticalSection()
+		err := cmd.Start()
+		if err == nil {
+			metadata.remove("queued_locally")
+		}
+		return err
+	}(metadata, cmd); err != nil {
+		return err
+	}
+	return cmd.Wait()
+}
+
+// Done returns a channel which gets notified when a local job exits.
+func (self *LocalJobManager) Done() <-chan struct{} {
+	return self.jobDone
 }
 
 func (self *LocalJobManager) GetMaxCores() int {
