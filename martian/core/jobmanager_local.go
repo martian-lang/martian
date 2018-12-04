@@ -5,7 +5,6 @@ package core
 import (
 	"context"
 	"encoding/json"
-	"fmt"
 	"os"
 	"os/exec"
 	"runtime"
@@ -18,24 +17,31 @@ import (
 	"github.com/martian-lang/martian/martian/util"
 )
 
-const maxRetries = 5
-const retryExitCode = 513
+const (
+	// These constants deal with a bug in the linux kernel used by certain
+	// versions of RHEL 5 and 6, specifically
+	// https://access.redhat.com/solutions/53258
+	maxRetries     = 5
+	exitCodeString = "errno 513"
+)
 
-// The following constants are used to estimate process (thread) counts.
-// In local mode, these are used to estimate the number of processes spawned,
-// to avoid bumping into the process ulimit.  This is all very rough approximation.
+const (
+	// The following constants are used to estimate process (thread) counts.
+	// In local mode, these are used to estimate the number of processes spawned,
+	// to avoid bumping into the process ulimit.  This is all very rough approximation.
 
-// The approximate number of physical threads assumed used by the user at
-// startup, including those used by mrp.  The actual value is used as well in
-// real time, but this amount is reserved in the semaphore regardless.
-const startingThreadCount = 45
+	// The approximate number of physical threads assumed used by the user at
+	// startup, including those used by mrp.  The actual value is used as well in
+	// real time, but this amount is reserved in the semaphore regardless.
+	startingThreadCount = 45
 
-// The base number of threads assumed per job.  This includes the threads used
-// by the mrjob process and whatever threads the spawned process uses for
-// runtime management.  Very approximate since it depends on many details of
-// the stage code langauge and implementation.  The number of threads reserved
-// by the job will be added to this number.
-const procsPerJob = 15
+	// The base number of threads assumed per job.  This includes the threads used
+	// by the mrjob process and whatever threads the spawned process uses for
+	// runtime management.  Very approximate since it depends on many details of
+	// the stage code langauge and implementation.  The number of threads reserved
+	// by the job will be added to this number.
+	procsPerJob = 15
+)
 
 type LocalJobManager struct {
 	maxCores    int
@@ -400,7 +406,6 @@ func (self *LocalJobManager) Enqueue(shellCmd string, argv []string,
 
 		// CentOS < 5.5 workaround
 		if err != nil {
-			exitCodeString := fmt.Sprintf("errno %d", retryExitCode)
 			if strings.Contains(err.Error(), exitCodeString) {
 				retries += 1
 				if waitTime == 0 {
