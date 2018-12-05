@@ -101,8 +101,6 @@ func (mods *Modifiers) compile(global *Ast, parent Callable, call *CallStm) erro
 			"modifiers in more than one way."
 		UnsupportedTagError = "UnsupportedTagError: Pipeline '%s' " +
 			"cannot be called with "
-		DisabledPreflightError = "UnsupportedTagError: Preflight " +
-			"stages cannot be declared disabled."
 		PreflightBindingError = "PreflightBindingError: Preflight stage " +
 			"'%s' cannot have input parameter bound to output " +
 			"parameter of another stage or pipeline"
@@ -166,10 +164,6 @@ func (mods *Modifiers) compile(global *Ast, parent Callable, call *CallStm) erro
 	}
 
 	if mods.Preflight {
-		if mods.Bindings != nil && mods.Bindings.Table[disabled] != nil {
-			errs = append(errs, global.err(call,
-				DisabledPreflightError))
-		}
 		for _, binding := range call.Bindings.List {
 			if binding.Exp.getKind() == KindCall {
 				errs = append(errs, global.err(call,

@@ -253,6 +253,16 @@ func NewPipestance(parent Nodable, callStm *syntax.CallStm, callables *syntax.Ca
 				return nil, err
 			} else {
 				self.node.subnodes[subcallStm.Id] = s
+
+				// check if the stage is a preflight.  Preflights have no
+				// outputs, cannot take a dependency on another stage in the
+				// pipeline, and are a dependency for all other stages in the
+				// pipeline.
+				//
+				// Only stages can be preflight.
+				if s.getNode().preflight {
+					preflightNodes = append(preflightNodes, self.node.subnodes[subcallStm.Id])
+				}
 			}
 		case *syntax.Pipeline:
 			if p, err := NewPipestance(self.node, subcallStm, callables); err != nil {
@@ -262,9 +272,6 @@ func NewPipestance(parent Nodable, callStm *syntax.CallStm, callables *syntax.Ca
 			}
 		default:
 			return nil, fmt.Errorf("Unsupported callable type %v", callable)
-		}
-		if self.node.subnodes[subcallStm.Id].getNode().preflight {
-			preflightNodes = append(preflightNodes, self.node.subnodes[subcallStm.Id])
 		}
 	}
 

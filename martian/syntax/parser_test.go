@@ -16,6 +16,7 @@ func TestMain(m *testing.M) {
 	os.Exit(m.Run())
 }
 
+// Checks that the source can be parsed and compiled
 func testGood(t *testing.T, src string) *Ast {
 	t.Helper()
 	if ast, err := yaccParse([]byte(src), new(SourceFile),
@@ -30,6 +31,7 @@ func testGood(t *testing.T, src string) *Ast {
 	}
 }
 
+// Checks that the source cannot be parsed.
 func testBadGrammar(t *testing.T, src string) string {
 	t.Helper()
 	if _, err := yaccParse([]byte(src), new(SourceFile), makeStringIntern()); err == nil {
@@ -40,6 +42,7 @@ func testBadGrammar(t *testing.T, src string) string {
 	}
 }
 
+// Checks that the source can be parsed but does not compile.
 func testBadCompile(t *testing.T, src string) string {
 	t.Helper()
 	if ast, err := yaccParse([]byte(src), new(SourceFile), makeStringIntern()); err != nil {
@@ -1001,6 +1004,62 @@ pipeline QUARTIC(
 `)
 }
 
+// Check that there is an error if pipeline calls itself (infinite recursion).
+func TestPipelineRecursion(t *testing.T) {
+	t.Parallel()
+	testBadCompile(t, `
+pipeline QUARTIC(
+    in  float value,
+    out float quart,
+)
+{
+    call QUARTIC as SQUARES(
+        value = self.value,
+    )
+    return (
+        quart = SQUARES.square,
+    )
+}
+`)
+}
+
+// Check that there is an error if pipeline calls itself indirectly.
+func TestPipelineIndirectRecursion(t *testing.T) {
+	t.Parallel()
+	testBadCompile(t, `
+pipeline QUARTIC(
+    in  float value,
+    out float quart,
+)
+{
+    call CUBIC as SQUARES(
+        value = self.value,
+    )
+    return (
+        quart = SQUARES.cube,
+    )
+}
+
+pipeline CUBIC(
+    in  float value,
+    out float cube,
+)
+{
+    call QUARTIC as SQUARES(
+        value = self.value,
+    )
+
+    return (
+        cube = SQUARES.quart,
+    )
+}
+
+call QUARTIC(
+    value = 1.0,
+)
+`)
+}
+
 // Check that binding inside an array works.
 func TestGoodBindArray(t *testing.T) {
 	t.Parallel()
@@ -1448,6 +1507,88 @@ pipeline SQ_PIPE()
 `)
 }
 
+// Tests that preflights accept pipeline input values.
+func TestPreflightDepends(t *testing.T) {
+	t.Parallel()
+	testGood(t, `
+stage PREFLIGHT(
+    in  int value,
+    src py  "stages/preflight",
+)
+
+stage COMPUTE(
+    in  int value,
+    out int result,
+    src py  "stages/compute",
+)
+
+pipeline THING(
+    in  int  value,
+    out int  result,
+)
+{
+    call PREFLIGHT(
+        value = self.value,
+    ) using (
+        preflight = true,
+    )
+
+    call COMPUTE(
+        value = self.value,
+    )
+
+    return (
+        result = COMPUTE.result,
+    )
+}
+
+call THING(
+    value        = 1,
+)
+`)
+}
+
+// Tests that preflight inputs cannot be bound to other calls in the pipeline.
+func TestPreflightBadDepends(t *testing.T) {
+	t.Parallel()
+	testBadCompile(t, `
+stage PREFLIGHT(
+    in  int value,
+    src py  "stages/preflight",
+)
+
+stage COMPUTE(
+    in  int value,
+    out int result,
+    src py  "stages/compute",
+)
+
+pipeline THING(
+    in  int  value,
+    out int  result,
+)
+{
+    call COMPUTE(
+        value = self.value,
+    )
+
+    call PREFLIGHT(
+        value = COMPUTE.value,
+    ) using (
+        preflight = true,
+    )
+
+    return (
+        result = COMPUTE.result,
+    )
+}
+
+call THING(
+    value        = 1,
+)
+`)
+}
+
 func TestTopCall(t *testing.T) {
 	t.Parallel()
 	testGood(t, `
@@ -1494,6 +1635,103 @@ call SQ_PIPE(
     value = 1,
 ) using (
     disabled = true,
+)
+`)
+}
+
+// Tests that one cannot disable a preflight based on the output of
+// another stage.
+func TestDisablePreflightBad(t *testing.T) {
+	t.Parallel()
+	testBadCompile(t, `
+stage PICK_DISABLE(
+    in  int  value,
+    out bool result,
+    src py   "stages/pick",
+)
+
+stage PREFLIGHT(
+    in  int value,
+    src py  "stages/preflight",
+)
+
+stage COMPUTE(
+    in  int value,
+    out int result,
+    src py  "stages/compute",
+)
+
+pipeline THING(
+    in  int value,
+    out int result,
+)
+{
+    call PICK_DISABLE(
+        value = self.value,
+    )
+
+    call PREFLIGHT(
+        value = self.value,
+    ) using (
+        disabled  = PICK_DISABLE.result,
+        preflight = true,
+    )
+
+    call COMPUTE(
+        value = self.value,
+    )
+
+    return (
+        result = COMPUTE.result,
+    )
+}
+
+call THING(
+    value = 1,
+)
+`)
+}
+
+// Tests that one can disable a preflight based on a static value.
+func TestDisablePreflightGood(t *testing.T) {
+	t.Parallel()
+	testGood(t, `
+stage PREFLIGHT(
+    in  int value,
+    src py  "stages/preflight",
+)
+
+stage COMPUTE(
+    in  int value,
+    out int result,
+    src py  "stages/compute",
+)
+
+pipeline THING(
+    in  int  value,
+    in  bool no_preflight,
+    out int  result,
+)
+{
+    call PREFLIGHT(
+        value = self.value,
+    ) using (
+        disabled  = self.no_preflight,
+        preflight = true,
+    )
+    
+    call COMPUTE(
+        value = self.value,
+    )
+
+    return (
+        result = COMPUTE.result,
+    )
+}
+
+call THING(
+    no_preflight = true,
+    value        = 1,
 )
 `)
 }

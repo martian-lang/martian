@@ -5,12 +5,12 @@ pipeline MY_PIPELINE(
     out bam result,
 )
 {
-    call MY_PIPELINE(
+    call MY_STAGE(
         info = self.info,
     )
 
     return (
-        result = MY_PIPELINE.result,
+        result = MY_STAGE.result,
     )
 }
 

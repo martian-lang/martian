@@ -24,6 +24,14 @@ func (pipeline *Pipeline) topoSort() error {
 
 		callMap := make(map[string]*CallStm, len(calls))
 		for _, call := range calls {
+			if call.DecId == pipeline.Id {
+				return deps, &wrapError{
+					innerError: fmt.Errorf(
+						"Pipeline %s calls itself.",
+						pipeline.Id),
+					loc: call.getNode().Loc,
+				}
+			}
 			callMap[call.Id] = call
 		}
 		var findDeps func(*CallStm, Exp) error
