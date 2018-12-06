@@ -31,31 +31,6 @@ func testGood(t *testing.T, src string) *Ast {
 	}
 }
 
-// Checks that the source cannot be parsed.
-func testBadGrammar(t *testing.T, src string) string {
-	t.Helper()
-	if _, err := yaccParse([]byte(src), new(SourceFile), makeStringIntern()); err == nil {
-		t.Error("Expected failure to parse, but got success.")
-		return ""
-	} else {
-		return err.Error()
-	}
-}
-
-// Checks that the source can be parsed but does not compile.
-func testBadCompile(t *testing.T, src string) string {
-	t.Helper()
-	if ast, err := yaccParse([]byte(src), new(SourceFile), makeStringIntern()); err != nil {
-		t.Fatal(err.Error())
-		return ""
-	} else if err := ast.compile(); err == nil {
-		t.Error("Expected failure to compile.")
-		return ""
-	} else {
-		return err.Error()
-	}
-}
-
 func TestSimplePipe(t *testing.T) {
 	t.Parallel()
 	if ast := testGood(t, `
@@ -290,156 +265,6 @@ call SUM_SQUARE_PIPELINE(
 `)
 }
 
-func TestBadSyntax(t *testing.T) {
-	testBadGrammar(t, `
-# File comment
-
-# Stage comment
-# This describes the stage.
-stage SUM_SQUARES(
-    in  float[] values,
-    # sum comment
-    osut float   sum,
-    src py      "stages/sum_squares",
-)
-
-pipeline SUM_SQUARE_PIPELINE(
-    in  float[] values,
-    out float   sum,
-)
-{
-    call SUM_SQUARES(
-        values = self.values,
-    )
-    return (
-        sum = SUM_SQUARES.sum,
-    )
-}
-
-call SUM_SQUARE_PIPELINE(
-    values = [10.0, 2.0e1, 3.0e+1, 400.0e-1, 5e1, 6e+1, 700e-1],
-)
-`)
-}
-
-func TestUnusedParam(t *testing.T) {
-	t.Parallel()
-	testBadCompile(t, `
-stage SUM_SQUARES(
-	in  int     unused,
-    in  float[] values,
-    out float   sum,
-    src py      "stages/sum_squares",
-)
-
-pipeline SUM_SQUARE_PIPELINE(
-    in  float[] values,
-    out float   sum,
-)
-{
-    call SUM_SQUARES(
-        values = self.values,
-    )
-
-    return (
-        sum = SUM_SQUARES.sum,
-    )
-}
-
-call SUM_SQUARE_PIPELINE(
-    values = [1.0, 2.0, 3.0],
-)
-`)
-}
-
-func TestMissingReturn(t *testing.T) {
-	t.Parallel()
-	testBadCompile(t, `
-stage SUM_SQUARES(
-    in  float[] values,
-    out float   sum,
-    src py      "stages/sum_squares",
-)
-
-pipeline SUM_SQUARE_PIPELINE(
-    in  float[] values,
-    out float   sum,
-    out float   sum2,
-)
-{
-    call SUM_SQUARES(
-        values = self.values,
-    )
-
-    return (
-        sum = SUM_SQUARES.sum,
-    )
-}
-
-call SUM_SQUARE_PIPELINE(
-    values = [1.0, 2.0, 3.0],
-)
-`)
-}
-
-func TestInvalidReturnBinding(t *testing.T) {
-	testBadCompile(t, `
-stage SUM_SQUARES(
-    in  float[] values,
-    out float   sum,
-    src py      "stages/sum_squares",
-)
-
-pipeline SUM_SQUARE_PIPELINE(
-    in  float[] values,
-    out float   sum,
-    out float   sum2,
-)
-{
-    call SUM_SQUARES(
-        values = self.values,
-    )
-
-    return (
-        sum = STUFF.sum,
-    )
-}
-
-call SUM_SQUARE_PIPELINE(
-    values = [1.0, 2.0, 3.0],
-)
-`)
-}
-
-func TestSelfReturnBinding(t *testing.T) {
-	t.Parallel()
-	testBadCompile(t, `
-stage SUM_SQUARES(
-    in  float[] values,
-    out float   sum,
-    src py      "stages/sum_squares",
-)
-
-pipeline SUM_SQUARE_PIPELINE(
-    in  float[] values,
-    out float   sum,
-)
-{
-    call SUM_SQUARES(
-        values = self.values,
-    )
-
-    return (
-        sum = self.sum,
-    )
-}
-
-call SUM_SQUARE_PIPELINE(
-    values = [1.0, 2.0, 3.0],
-)
-`)
-}
-
 func TestTopoSort(t *testing.T) {
 	t.Parallel()
 	if ast := testGood(t, `
@@ -632,7 +457,7 @@ stage SUM_SQUARES(
 `)
 }
 
-func TestFileAsUserType(t *testing.T) {
+func TestUserTypeAsFile(t *testing.T) {
 	t.Parallel()
 	testGood(t, `
 filetype goodness;
@@ -658,21 +483,20 @@ pipeline PIPE(
 `)
 }
 
-func TestIncompatibleUserType(t *testing.T) {
+func TestFileAsUserType(t *testing.T) {
 	t.Parallel()
-	testBadCompile(t, `
+	testGood(t, `
 filetype goodness;
-filetype badness;
 
 stage SUM_SQUARES(
-    in  float[]  values,
-    out goodness sum,
-    src py       "stages/sum_squares",
+    in  float[] values,
+    out file    sum,
+    src py      "stages/sum_squares",
 )
 
 pipeline PIPE(
-    in  float[] values,
-    out badness sum,
+    in  float[]  values,
+    out goodness sum,
 )
 {
     call SUM_SQUARES(
@@ -685,27 +509,6 @@ pipeline PIPE(
 `)
 }
 
-func TestInvalidInType(t *testing.T) {
-	testBadCompile(t, `
-stage SUM_SQUARES(
-    in  badness[] values,
-    out float     sum,
-    src py        "stages/sum_squares",
-)
-`)
-}
-
-func TestInvalidOutType(t *testing.T) {
-	t.Parallel()
-	testBadCompile(t, `
-stage SUM_SQUARES(
-    in  float[] values,
-    out badness sum,
-    src py      "stages/sum_squares",
-)
-`)
-}
-
 func TestResources(t *testing.T) {
 	t.Parallel()
 	testGood(t, `
@@ -715,34 +518,6 @@ stage SUM_SQUARES(
     src py      "stages/sum_squares",
 ) using (
     threads = 2,
-    mem_gb = 1,
-)
-`)
-}
-
-func TestBadMemGB(t *testing.T) {
-	t.Parallel()
-	testBadGrammar(t, `
-stage SUM_SQUARES(
-    in  float[] values,
-    out float   sum,
-    src py      "stages/sum_squares",
-) using (
-    threads = 2,
-    mem_gb = 1.5,
-)
-`)
-}
-
-func TestBadThreads(t *testing.T) {
-	t.Parallel()
-	testBadGrammar(t, `
-stage SUM_SQUARES(
-    in  float[] values,
-    out float   sum,
-    src py      "stages/sum_squares",
-) using (
-    threads = 2.2,
     mem_gb = 1,
 )
 `)
@@ -809,10 +584,13 @@ stage SUM_SQUARES(
 func TestRetain(t *testing.T) {
 	t.Parallel()
 	if ast := testGood(t, `
+filetype json;
+
 stage SUM_SQUARES(
     in  float[] values,
     out float   sum,
     out file    report,
+    out json    report2,
     src py      "stages/sum_squares",
 ) using (
     threads = 2,
@@ -824,8 +602,9 @@ stage SUM_SQUARES(
 `); ast != nil {
 		if len(ast.Stages) != 1 {
 			t.Fatalf("Incorrect stage count %d", len(ast.Stages))
-		} else if ret := ast.Stages[0].Retain; ret == nil {
-			t.Fatal("No retain.")
+		}
+		if ret := ast.Stages[0].Retain; ret == nil {
+			t.Error("No retain.")
 		} else if len(ret.Params) != 1 {
 			t.Errorf("Expected 1 retain, found %d",
 				len(ret.Params))
@@ -833,25 +612,20 @@ stage SUM_SQUARES(
 			t.Errorf("Expected to retain 'report'.  Saw '%s' instead.",
 				ret.Params[0].Id)
 		}
+		if outs := ast.Stages[0].OutParams.List; len(outs) != 3 {
+			t.Errorf("Incorrect output count: expected 3, got %d", len(outs))
+		} else {
+			if fname := outs[0].GetOutFilename(); fname != "" {
+				t.Errorf("Expected no filename for float output, got %q", fname)
+			}
+			if fname := outs[1].GetOutFilename(); fname != "report" {
+				t.Errorf("Expected file named 'report', got %q", fname)
+			}
+			if fname := outs[2].GetOutFilename(); fname != "report2.json" {
+				t.Errorf("Expected file named 'report2.json', got %q", fname)
+			}
+		}
 	}
-}
-
-func TestRetainNonFile(t *testing.T) {
-	t.Parallel()
-	testBadCompile(t, `
-stage SUM_SQUARES(
-    in  float[] values,
-    out float   sum,
-    out file    report,
-    src py      "stages/sum_squares",
-) using (
-    threads = 2,
-    mem_gb = 1,
-    volatile = strict,
-) retain (
-    sum,
-)
-`)
 }
 
 func TestSplit(t *testing.T) {
@@ -864,198 +638,6 @@ stage SUM_SQUARES(
 ) split (
     in  int     foo,
     out int     bar,
-)
-`)
-}
-
-func TestSplitDuplicateIn(t *testing.T) {
-	t.Parallel()
-	testBadCompile(t, `
-stage SUM_SQUARES(
-    in  float[] values,
-    out float   sum,
-    src py      "stages/sum_squares",
-) split (
-    in  int     values,
-    out int     bar,
-)
-`)
-}
-
-func TestSplitDuplicateOut(t *testing.T) {
-	t.Parallel()
-	testBadCompile(t, `
-stage SUM_SQUARES(
-    in  float[] values,
-    out float   sum,
-    src py      "stages/sum_squares",
-) split (
-    in  int     foo,
-    out int     sum,
-)
-`)
-}
-
-// Check that there is an error if a call depends on itself directly.
-func TestSelfBind(t *testing.T) {
-	t.Parallel()
-	testBadCompile(t, `
-stage SQUARES(
-    in  float value,
-    out float square,
-    src py    "stages/square",
-)
-
-pipeline QUARTIC(
-    out float quart,
-)
-{
-    call SQUARES(
-        value = SQUARES.square,
-    )
-    return (
-        quart = SQUARES.square,
-    )
-}
-`)
-}
-
-// Check that there is an error if a call depends on itself with one level of
-// indirection.
-func TestTransDep(t *testing.T) {
-	t.Parallel()
-	testBadCompile(t, `
-stage SQUARES(
-    in  float value,
-    out float square,
-    src py    "stages/square",
-)
-
-pipeline POLY(
-    out float quart,
-)
-{
-    call SQUARES as S1(
-        value = S2.square,
-    )
-    call SQUARES as S2(
-        value = S1.square,
-    )
-    return (
-        quart = S2.square,
-    )
-}
-`)
-}
-
-// Check that there is an error if a call depends on itself with two levels of
-// indirection.
-func TestTransDep2(t *testing.T) {
-	t.Parallel()
-	testBadCompile(t, `
-stage SQUARES(
-    in  float value,
-    out float square,
-    src py    "stages/square",
-)
-
-pipeline POLY(
-    out float quart,
-)
-{
-    call SQUARES as S1(
-        value = S3.square,
-    )
-    call SQUARES as S2(
-        value = S1.square,
-    )
-    call SQUARES as S3(
-        value = S2.square,
-    )
-    return (
-        quart = S3.square,
-    )
-}
-`)
-}
-
-// Check that there is an error if a call depends on itself directly in an
-// array.
-func TestSelfBindArray(t *testing.T) {
-	t.Parallel()
-	testBadCompile(t, `
-stage SQUARES(
-    in  float[][] values,
-    out float     square,
-    src py        "stages/square",
-)
-
-pipeline QUARTIC(
-    out float quart,
-)
-{
-    call SQUARES(
-        values = [[1], [2, 3], [1, SQUARES.square]],
-    )
-    return (
-        quart = SQUARES.square,
-    )
-}
-`)
-}
-
-// Check that there is an error if pipeline calls itself (infinite recursion).
-func TestPipelineRecursion(t *testing.T) {
-	t.Parallel()
-	testBadCompile(t, `
-pipeline QUARTIC(
-    in  float value,
-    out float quart,
-)
-{
-    call QUARTIC as SQUARES(
-        value = self.value,
-    )
-    return (
-        quart = SQUARES.square,
-    )
-}
-`)
-}
-
-// Check that there is an error if pipeline calls itself indirectly.
-func TestPipelineIndirectRecursion(t *testing.T) {
-	t.Parallel()
-	testBadCompile(t, `
-pipeline QUARTIC(
-    in  float value,
-    out float quart,
-)
-{
-    call CUBIC as SQUARES(
-        value = self.value,
-    )
-    return (
-        quart = SQUARES.cube,
-    )
-}
-
-pipeline CUBIC(
-    in  float value,
-    out float cube,
-)
-{
-    call QUARTIC as SQUARES(
-        value = self.value,
-    )
-
-    return (
-        cube = SQUARES.quart,
-    )
-}
-
-call QUARTIC(
-    value = 1.0,
 )
 `)
 }
@@ -1077,6 +659,30 @@ pipeline QUARTIC(
 {
     call SQUARES(
         values = [[1], [2, 3], [1, self.value]],
+    )
+    return (
+        quart = SQUARES.square,
+    )
+}
+`)
+}
+
+// Check that null as an array value works.
+func TestBindArrayNull(t *testing.T) {
+	t.Parallel()
+	testGood(t, `
+stage SQUARES(
+    in  float[][] values,
+    out float     square,
+    src py        "stages/square",
+)
+
+pipeline QUARTIC(
+    out float quart,
+)
+{
+    call SQUARES(
+        values = null,
     )
     return (
         quart = SQUARES.square,
@@ -1108,99 +714,6 @@ pipeline QUARTIC(
 `)
 }
 
-func TestInconsistentArray(t *testing.T) {
-	t.Parallel()
-	testBadCompile(t, `
-stage SQUARES(
-    in  int[][] values,
-    out float   square,
-    src py      "stages/square",
-)
-
-pipeline QUARTIC(
-    out float quart,
-)
-{
-    call SQUARES(
-        values = [1, [2, 3], [1, 4]],
-    )
-    return (
-        quart = SQUARES.square,
-    )
-}
-`)
-}
-
-func TestWrongArrayDim(t *testing.T) {
-	t.Parallel()
-	testBadCompile(t, `
-stage SQUARES(
-    in  int[][] values,
-    out float   square,
-    src py      "stages/square",
-)
-
-pipeline QUARTIC(
-    out float quart,
-)
-{
-    call SQUARES(
-        values = [1, 2, 3],
-    )
-    return (
-        quart = SQUARES.square,
-    )
-}
-`)
-}
-
-func TestArrayType(t *testing.T) {
-	t.Parallel()
-	testBadCompile(t, `
-stage SQUARES(
-    in  int[][] values,
-    out float   square,
-    src py      "stages/square",
-)
-
-pipeline QUARTIC(
-    out float quart,
-)
-{
-    call SQUARES(
-        values = [[2, 3], [1, 4.2]],
-    )
-    return (
-        quart = SQUARES.square,
-    )
-}
-`)
-}
-
-func TestDuplicateInParam(t *testing.T) {
-	t.Parallel()
-	testBadCompile(t, `
-stage SUM_SQUARES(
-    in  float[] values,
-    in  string  values,
-    out float   sum,
-    src py      "stages/sum_squares",
-)
-`)
-}
-
-func TestDuplicateOutParam(t *testing.T) {
-	t.Parallel()
-	testBadCompile(t, `
-stage SUM_SQUARES(
-    in  float[] values,
-    out float   sum,
-    out string  sum,
-    src py      "stages/sum_squares",
-)
-`)
-}
-
 func TestSplitOut(t *testing.T) {
 	t.Parallel()
 	testGood(t, `
@@ -1212,73 +725,6 @@ stage SUM_SQUARES(
     in  float value,
     out float square,
 )
-`)
-}
-
-func TestDuplicateSplitOut(t *testing.T) {
-	t.Parallel()
-	testBadCompile(t, `
-stage SUM_SQUARES(
-    in  float[] values,
-    out string  sum,
-    src py      "stages/sum_squares",
-) split using (
-    in  float value,
-    out float square,
-    out int   square,
-)
-`)
-	testBadCompile(t, `
-stage SUM_SQUARES(
-    in  float[] values,
-    out string  sum,
-    src py      "stages/sum_squares",
-) split using (
-    in  float value,
-    out float sum,
-)
-`)
-}
-
-func TestDuplicateCallable(t *testing.T) {
-	t.Parallel()
-	testBadCompile(t, `
-stage SUM_SQUARES(
-    in  float[] values,
-    out float   sum,
-    src py      "stages/sum_squares",
-)
-
-pipeline SUM_SQUARES(
-    in  float[] values,
-    out float   sum,
-)
-{
-    call SUM_SQUARES(
-        values = self.values,
-    )
-    return (
-        sum = SUM_SQUARES.sum,
-    )
-}
-`)
-}
-
-func TestMissingCallable(t *testing.T) {
-	t.Parallel()
-	testBadCompile(t, `
-pipeline SUM_SQUARES_PIPE(
-    in  float[] values,
-    out float   sum,
-)
-{
-    call SUM_SQUARES(
-        values = self.values,
-    )
-    return (
-        sum = SUM_SQUARES.sum,
-    )
-}
 `)
 }
 
@@ -1461,52 +907,6 @@ pipeline SQ_PIPE(
 	}
 }
 
-func TestBadDisable(t *testing.T) {
-	t.Parallel()
-	testBadCompile(t, `
-stage SQUARE(
-    in  int   value,
-    src py    "stages/square",
-)
-
-pipeline SQ_PIPE(
-    in int disable_square,
-)
-{
-    call SQUARE(
-        value = 1,
-    ) using (
-        disabled  = self.disable_square,
-        volatile  = true,
-        preflight = false,
-    )
-    return ()
-}
-`)
-}
-
-func TestBadDisable2(t *testing.T) {
-	t.Parallel()
-	testBadGrammar(t, `
-stage SQUARE(
-    in  int   value,
-    src py    "stages/square",
-)
-
-pipeline SQ_PIPE()
-{
-    call SQUARE(
-        value = 1,
-    ) using (
-        disabled  = true,
-        volatile  = true,
-        preflight = false,
-    )
-    return ()
-}
-`)
-}
-
 // Tests that preflights accept pipeline input values.
 func TestPreflightDepends(t *testing.T) {
 	t.Parallel()
@@ -1548,47 +948,6 @@ call THING(
 `)
 }
 
-// Tests that preflight inputs cannot be bound to other calls in the pipeline.
-func TestPreflightBadDepends(t *testing.T) {
-	t.Parallel()
-	testBadCompile(t, `
-stage PREFLIGHT(
-    in  int value,
-    src py  "stages/preflight",
-)
-
-stage COMPUTE(
-    in  int value,
-    out int result,
-    src py  "stages/compute",
-)
-
-pipeline THING(
-    in  int  value,
-    out int  result,
-)
-{
-    call COMPUTE(
-        value = self.value,
-    )
-
-    call PREFLIGHT(
-        value = COMPUTE.value,
-    ) using (
-        preflight = true,
-    )
-
-    return (
-        result = COMPUTE.result,
-    )
-}
-
-call THING(
-    value        = 1,
-)
-`)
-}
-
 func TestTopCall(t *testing.T) {
 	t.Parallel()
 	testGood(t, `
@@ -1608,85 +967,6 @@ pipeline SQ_PIPE(
 }
 
 call SQ_PIPE(
-    value = 1,
-)
-`)
-}
-
-func TestDisableTopCall(t *testing.T) {
-	t.Parallel()
-	testBadGrammar(t, `
-stage SQUARE(
-    in  int   value,
-    src py    "stages/square",
-)
-
-pipeline SQ_PIPE(
-    in int value,
-)
-{
-    call SQUARE(
-        value = self.value,
-    )
-    return ()
-}
-
-call SQ_PIPE(
-    value = 1,
-) using (
-    disabled = true,
-)
-`)
-}
-
-// Tests that one cannot disable a preflight based on the output of
-// another stage.
-func TestDisablePreflightBad(t *testing.T) {
-	t.Parallel()
-	testBadCompile(t, `
-stage PICK_DISABLE(
-    in  int  value,
-    out bool result,
-    src py   "stages/pick",
-)
-
-stage PREFLIGHT(
-    in  int value,
-    src py  "stages/preflight",
-)
-
-stage COMPUTE(
-    in  int value,
-    out int result,
-    src py  "stages/compute",
-)
-
-pipeline THING(
-    in  int value,
-    out int result,
-)
-{
-    call PICK_DISABLE(
-        value = self.value,
-    )
-
-    call PREFLIGHT(
-        value = self.value,
-    ) using (
-        disabled  = PICK_DISABLE.result,
-        preflight = true,
-    )
-
-    call COMPUTE(
-        value = self.value,
-    )
-
-    return (
-        result = COMPUTE.result,
-    )
-}
-
-call THING(
     value = 1,
 )
 `)

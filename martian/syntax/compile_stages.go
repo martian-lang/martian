@@ -94,7 +94,7 @@ var modParams = InParams{
 	},
 }
 
-func (mods *Modifiers) compile(global *Ast, parent Callable, call *CallStm) error {
+func (mods *Modifiers) compile(global *Ast, parent *Pipeline, call *CallStm) error {
 	// Error message strings
 	const (
 		ConflictingModifiers = "ConflictingModifiers: Cannot specify " +

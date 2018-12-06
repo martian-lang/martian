@@ -44,7 +44,7 @@ type (
 		getExp()
 		AstNodable
 		getKind() ExpKind
-		resolveType(*Ast, Callable) ([]string, int, error)
+		resolveType(*Ast, *Pipeline) ([]string, int, error)
 		format(w stringWriter, prefix string)
 		equal(other Exp) bool
 

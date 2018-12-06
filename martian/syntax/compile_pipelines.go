@@ -27,7 +27,7 @@ func (pipeline *Pipeline) topoSort() error {
 			if call.DecId == pipeline.Id {
 				return deps, &wrapError{
 					innerError: fmt.Errorf(
-						"Pipeline %s calls itself.",
+						"RecursiveCallError: Pipeline %s calls itself.",
 						pipeline.Id),
 					loc: call.getNode().Loc,
 				}
@@ -48,7 +48,7 @@ func (pipeline *Pipeline) topoSort() error {
 					if dep == src {
 						return &wrapError{
 							innerError: fmt.Errorf(
-								"Call %s input bound to its own output in pipeline %s.",
+								"CyclicDependencyError: call %s input bound to its own output in pipeline %s.",
 								src.Id, pipeline.Id),
 							loc: exp.getNode().Loc,
 						}
@@ -97,7 +97,7 @@ func (pipeline *Pipeline) topoSort() error {
 					if transDep == src {
 						return nil, &wrapError{
 							innerError: fmt.Errorf(
-								"Call depends transitively on itself (%s -> ... -> %s -> %s) in pipeline %s.",
+								"CyclicDependencyError: Call depends transitively on itself (%s -> ... -> %s -> %s) in pipeline %s.",
 								src.Id, dep.Id, transDep.Id, pipeline.Id),
 							loc: src.getNode().Loc,
 						}
@@ -235,15 +235,6 @@ func (pipeline *Pipeline) compile(global *Ast) error {
 			errs = append(errs, err)
 			continue
 		}
-
-		// Check that all input params of the callable are bound.
-		for _, param := range callable.GetInParams().List {
-			if _, ok := call.Bindings.Table[param.GetId()]; !ok {
-				errs = append(errs, global.err(call,
-					"ArgumentNotSuppliedError: no argument supplied for parameter '%s'",
-					param.GetId()))
-			}
-		}
 	}
 	if err := errs.If(); err != nil {
 		return err
@@ -295,13 +286,6 @@ func (global *Ast) compilePipelineArgs() error {
 		returnedParamIds := map[string]bool{}
 		for _, binding := range pipeline.Ret.Bindings.List {
 			returnedParamIds[binding.Id] = true
-		}
-		for _, param := range pipeline.OutParams.List {
-			if _, ok := returnedParamIds[param.GetId()]; !ok {
-				return global.err(pipeline.Ret,
-					"ReturnError: pipeline output parameter '%s' is not returned",
-					param.GetId())
-			}
 		}
 
 		// Check return bindings.

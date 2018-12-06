@@ -60,7 +60,7 @@ func (params *OutParams) compile(global *Ast) error {
 	return errs.If()
 }
 
-func (exp *ValExp) resolveType(global *Ast, callable Callable) ([]string, int, error) {
+func (exp *ValExp) resolveType(global *Ast, pipeline *Pipeline) ([]string, int, error) {
 	switch exp.getKind() {
 
 	// Handle scalar types.
@@ -81,7 +81,7 @@ func (exp *ValExp) resolveType(global *Ast, callable Callable) ([]string, int, e
 		commonArrayDim := -1
 		var errs ErrorList
 		for _, subexp := range subexps {
-			arrayKind, arrayDim, err := subexp.resolveType(global, callable)
+			arrayKind, arrayDim, err := subexp.resolveType(global, pipeline)
 			if err != nil {
 				errs = append(errs, err)
 				continue
@@ -91,7 +91,7 @@ func (exp *ValExp) resolveType(global *Ast, callable Callable) ([]string, int, e
 				commonArrayDim = arrayDim
 			} else if commonArrayDim != arrayDim {
 				errs = append(errs, global.err(exp,
-					"Inconsistent array dimensions %d vs %d",
+					"TypeMismatchError: inconsistent array dimensions %d vs %d",
 					commonArrayDim, arrayDim))
 			}
 		}
@@ -107,8 +107,8 @@ func (exp *ValExp) resolveType(global *Ast, callable Callable) ([]string, int, e
 	return []string{"unknown"}, 0, nil
 }
 
-func (exp *RefExp) resolveType(global *Ast, callable Callable) ([]string, int, error) {
-	if callable == nil {
+func (exp *RefExp) resolveType(global *Ast, pipeline *Pipeline) ([]string, int, error) {
+	if pipeline == nil {
 		return []string{""}, 0, global.err(exp,
 			"ReferenceError: this binding cannot be resolved outside of a stage or pipeline.")
 	}
@@ -117,44 +117,36 @@ func (exp *RefExp) resolveType(global *Ast, callable Callable) ([]string, int, e
 
 	// Param: self.myparam
 	case KindSelf:
-		param, ok := callable.GetInParams().Table[exp.Id]
+		param, ok := pipeline.GetInParams().Table[exp.Id]
 		if !ok {
 			return []string{""}, 0, global.err(exp,
 				"ScopeNameError: '%s' is not an input parameter of pipeline '%s'",
-				exp.Id, callable.GetId())
+				exp.Id, pipeline.GetId())
 		}
 		return []string{param.GetTname()}, param.GetArrayDim(), nil
 
 	// Call: STAGE.myoutparam or STAGE
 	case KindCall:
-		// Check referenced callable is acutally called in this scope.
-		pipeline, ok := callable.(*Pipeline)
+		callable, ok := pipeline.Callables.Table[exp.Id]
 		if !ok {
 			return []string{""}, 0, global.err(exp,
 				"ScopeNameError: '%s' is not called in pipeline '%s'",
-				exp.Id, callable.GetId())
-		} else {
-			callable, ok := pipeline.Callables.Table[exp.Id]
-			if !ok {
-				return []string{""}, 0, global.err(exp,
-					"ScopeNameError: '%s' is not called in pipeline '%s'",
-					exp.Id, pipeline.Id)
-			}
-			// Check referenced output is actually an output of the callable.
-			param, ok := callable.GetOutParams().Table[exp.OutputId]
-			if !ok {
-				return []string{""}, 0, global.err(exp,
-					"NoSuchOutputError: '%s' is not an output parameter of '%s'",
-					exp.OutputId, callable.GetId())
-			}
-
-			return []string{param.GetTname()}, param.GetArrayDim(), nil
+				exp.Id, pipeline.Id)
 		}
+		// Check referenced output is actually an output of the callable.
+		param, ok := callable.GetOutParams().Table[exp.OutputId]
+		if !ok {
+			return []string{""}, 0, global.err(exp,
+				"NoSuchOutputError: '%s' is not an output parameter of '%s'",
+				exp.OutputId, callable.GetId())
+		}
+
+		return []string{param.GetTname()}, param.GetArrayDim(), nil
 	}
 	return []string{"unknown"}, 0, nil
 }
 
-func (bindings *BindStms) compile(global *Ast, callable Callable, params *InParams) error {
+func (bindings *BindStms) compile(global *Ast, pipeline *Pipeline, params *InParams) error {
 	// Check the bindings
 	var errs ErrorList
 	for _, binding := range bindings.List {
@@ -169,7 +161,7 @@ func (bindings *BindStms) compile(global *Ast, callable Callable, params *InPara
 		// doing right above this comment. So leave this here.
 		bindings.Table[binding.Id] = binding
 
-		if err := binding.compile(global, callable, params); err != nil {
+		if err := binding.compile(global, pipeline, params); err != nil {
 			errs = append(errs, err)
 		}
 	}
@@ -187,7 +179,7 @@ func (bindings *BindStms) compile(global *Ast, callable Callable, params *InPara
 	return errs.If()
 }
 
-func (binding *BindStm) compile(global *Ast, callable Callable, params *InParams) error {
+func (binding *BindStm) compile(global *Ast, pipeline *Pipeline, params *InParams) error {
 	// Make sure the bound-to id is a declared parameter of the callable.
 	param, ok := params.Table[binding.Id]
 	if !ok {
@@ -196,7 +188,7 @@ func (binding *BindStm) compile(global *Ast, callable Callable, params *InParams
 	}
 
 	// Typecheck the binding and cache the type.
-	valueTypes, arrayDim, err := binding.Exp.resolveType(global, callable)
+	valueTypes, arrayDim, err := binding.Exp.resolveType(global, pipeline)
 	if err != nil {
 		return err
 	}
@@ -240,7 +232,7 @@ func (binding *BindStm) compile(global *Ast, callable Callable, params *InParams
 	return nil
 }
 
-func (bindings *BindStms) compileReturns(global *Ast, callable Callable, params *OutParams) error {
+func (bindings *BindStms) compileReturns(global *Ast, pipeline *Pipeline, params *OutParams) error {
 	// Check the bindings
 	var errs ErrorList
 	for _, binding := range bindings.List {
@@ -255,7 +247,7 @@ func (bindings *BindStms) compileReturns(global *Ast, callable Callable, params 
 		// doing right above this comment. So leave this here.
 		bindings.Table[binding.Id] = binding
 
-		if err := binding.compileReturns(global, callable, params); err != nil {
+		if err := binding.compileReturns(global, pipeline, params); err != nil {
 			errs = append(errs, err)
 		}
 	}
@@ -273,7 +265,7 @@ func (bindings *BindStms) compileReturns(global *Ast, callable Callable, params 
 	return errs.If()
 }
 
-func (binding *BindStm) compileReturns(global *Ast, callable Callable, params *OutParams) error {
+func (binding *BindStm) compileReturns(global *Ast, pipeline *Pipeline, params *OutParams) error {
 	// Make sure the bound-to id is a declared parameter of the callable.
 	param, ok := params.Table[binding.Id]
 	if !ok {
@@ -282,7 +274,7 @@ func (binding *BindStm) compileReturns(global *Ast, callable Callable, params *O
 	}
 
 	// Typecheck the binding and cache the type.
-	valueTypes, arrayDim, err := binding.Exp.resolveType(global, callable)
+	valueTypes, arrayDim, err := binding.Exp.resolveType(global, pipeline)
 	if err != nil {
 		return err
 	}
