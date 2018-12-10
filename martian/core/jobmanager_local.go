@@ -154,17 +154,23 @@ func NewLocalJobManager(userMaxCores int, userMaxMemGB int,
 		if self.procsSem.Available()/(procsPerJob+1) < int64(self.maxCores) {
 			if rlim.Max > rlim.Cur {
 				util.PrintInfo("jobmngr",
-					"WARNING: The current process count limit %d is low. To increase parallelism, set ulimit -u %d.",
+					"WARNING: The current process count limit %d is low. "+
+						"To increase parallelism, set ulimit -u %d.",
 					rlim.Cur, rlim.Max)
 			} else {
 				util.PrintInfo("jobmngr",
-					"WARNING: The current process count limit %d is low. Contact your system administrator to increase it.",
+					"WARNING: The current process count limit %d is low. "+
+						"Contact your system administrator to increase it.",
 					rlim.Cur)
 			}
 		}
 	}
 	self.queue = []*exec.Cmd{}
 	util.RegisterSignalHandler(self)
+	if usedMem, err := GetProcessTreeMemory(os.Getpid(), true, nil); err == nil {
+		self.highMem.IncreaseTo(usedMem)
+	}
+	CheckMaxVmem(uint64(1+self.maxMemGB) * uint64(self.highMem.Vmem+1024*1024*1024))
 	return self
 }
 

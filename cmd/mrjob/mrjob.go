@@ -92,6 +92,12 @@ func (self *runner) Init() {
 		util.PrintError(jErr, "monitor",
 			"Could not update log journal file.  Continuing, hoping for the best.")
 	}
+	// Check that the vmem limit is enough for the parent process plus
+	// the a half gigabyte of margin over the job's physical memory
+	// requirement.
+	mem, _ := core.GetProcessTreeMemory(self.jobInfo.Pid, true, nil)
+	core.CheckMaxVmem(
+		uint64(self.jobInfo.MemGB*1024+512)*1024*1024 + uint64(mem.Vmem))
 	self.setRlimit()
 }
 
