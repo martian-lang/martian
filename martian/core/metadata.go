@@ -132,7 +132,7 @@ type Metadata struct {
 	fqname        string
 	path          string
 	finalPath     string
-	contents      map[MetadataFileName]bool
+	contents      map[MetadataFileName]struct{}
 	readCache     map[MetadataFileName]LazyArgumentMap
 	curFilesPath  string
 	finalFilePath string
@@ -166,7 +166,7 @@ func NewMetadata(fqname string, p string) *Metadata {
 		fqname:        fqname,
 		path:          p,
 		finalPath:     p,
-		contents:      make(map[MetadataFileName]bool),
+		contents:      make(map[MetadataFileName]struct{}),
 		readCache:     make(map[MetadataFileName]LazyArgumentMap),
 		curFilesPath:  path.Join(p, "files"),
 		finalFilePath: path.Join(p, "files"),
@@ -333,7 +333,7 @@ func (self *Metadata) removeAll() error {
 	self.mutex.Lock()
 	defer self.mutex.Unlock()
 	if len(self.contents) > 0 {
-		self.contents = make(map[MetadataFileName]bool)
+		self.contents = make(map[MetadataFileName]struct{})
 	}
 	if len(self.readCache) > 0 {
 		self.readCache = make(map[MetadataFileName]LazyArgumentMap)
@@ -391,7 +391,7 @@ func (self *Metadata) getState() (MetadataState, bool) {
 }
 
 func (self *Metadata) _cacheNoLock(name MetadataFileName) {
-	self.contents[name] = true
+	self.contents[name] = struct{}{}
 	// cache is usually called on write or update
 	delete(self.readCache, name)
 }
@@ -402,7 +402,8 @@ func (self *Metadata) cache(name MetadataFileName, uniquifier string) {
 		self._cacheNoLock(name)
 	} else if self.uniquifier != "" {
 		util.LogInfo("runtime",
-			"There appears to be more than one instance of %s running (Saw ID '%s', expected '%s').",
+			"There appears to be more than one instance of %s running "+
+				"(Saw ID '%s', expected '%s').",
 			self.fqname, uniquifier, self.uniquifier)
 	}
 	self.mutex.Unlock()
@@ -446,16 +447,28 @@ func (self *Metadata) loadCache() {
 	paths := self.glob()
 	self.mutex.Lock()
 	if len(self.contents) > 0 {
-		self.contents = make(map[MetadataFileName]bool)
+		self.contents = make(map[MetadataFileName]struct{})
 	}
 	if len(self.readCache) > 0 {
 		self.readCache = make(map[MetadataFileName]LazyArgumentMap)
 	}
 	for _, p := range paths {
-		self.contents[metadataFileNameFromPath(p)] = true
+		self.contents[metadataFileNameFromPath(p)] = struct{}{}
 	}
 	self.notRunningSince = time.Time{}
 	self.lastRefresh = time.Time{}
+	self.mutex.Unlock()
+}
+
+// Looks for new files in the metadata directory and updates the cache
+// accordingly.  It does not remove files from the cache, because for
+// example heartbeat files aren't expected to be seen there anyway.
+func (self *Metadata) poll() {
+	paths := self.glob()
+	self.mutex.Lock()
+	for _, p := range paths {
+		self.contents[metadataFileNameFromPath(p)] = struct{}{}
+	}
 	self.mutex.Unlock()
 }
 
@@ -730,29 +743,32 @@ func (self *Metadata) failNotRunning(jobid string) {
 	if st, _ := self.getState(); st != Running && st != Queued {
 		return
 	}
+	// Check whether the job has changed state but we just didn't see the
+	// journal update for whatever reason.
+	self.poll()
+	if st, _ := self.getState(); st != Running && st != Queued {
+		return
+	}
 	self.mutex.Lock()
+	defer self.mutex.Unlock()
 	if !self.notRunningSince.IsZero() {
-		self.mutex.Unlock()
 		return
 	}
 	if self.readRaw(JobId) != jobid {
-		self.mutex.Unlock()
 		return
 	}
 	// Double-check that the job wasn't reset while jobid was being read.
 	if !self._existsNoLock(JobId) {
-		self.mutex.Unlock()
 		return
 	}
 	self.notRunningSince = time.Now()
-	self.mutex.Unlock()
 }
 
 func (self *Metadata) checkedReset() error {
 	self.mutex.Lock()
 	if state, _ := self._getStateNoLock(); state == Failed {
 		if len(self.contents) > 0 {
-			self.contents = make(map[MetadataFileName]bool)
+			self.contents = make(map[MetadataFileName]struct{})
 		}
 		self.mutex.Unlock()
 		if err := self.uncheckedReset(); err == nil {
@@ -780,7 +796,11 @@ func (self *Metadata) uncheckedReset() error {
 		}
 	}
 	if err := self.removeAll(); err != nil {
-		util.PrintInfo("runtime", "Cannot reset the stage because some folder contents could not be deleted.\n\nPlease resolve this error in order to continue running the pipeline: %v", err)
+		util.PrintInfo("runtime",
+			"Cannot reset the stage because some folder contents could not "+
+				"be deleted.\n\nPlease resolve this error in order to "+
+				"continue running the pipeline:\n\t%v",
+			err)
 		return err
 	}
 	if self.uniquifier == "" {
@@ -857,9 +877,16 @@ func (self *Metadata) checkHeartbeat() {
 			self.lastHeartbeat = time.Now()
 		}
 		if self.lastRefresh.Sub(self.lastHeartbeat) > time.Minute*heartbeatTimeout {
+			// Check if the state changed but we just missed the journal.
+			self.poll()
+			if state, _ := self.getState(); state != Running {
+				return
+			}
 			self.WriteRaw("errors", fmt.Sprintf(
-				"%s: No heartbeat detected for %d minutes. Assuming job has failed. This may be "+
-					"due to a user manually terminating the job, or the operating system or cluster "+
+				"%s: No heartbeat detected for %d minutes. "+
+					"Assuming job has failed. This may be "+
+					"due to a user manually terminating the job, "+
+					"or the operating system or cluster "+
 					"terminating it due to resource or time limits.",
 				util.Timestamp(), heartbeatTimeout))
 		}

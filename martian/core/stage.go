@@ -794,6 +794,11 @@ func (self *Fork) step() {
 			// split_complete could be detected but _stage_defs is not
 			// written yet or is corrupted. Check that stage_defs exists
 			// before attempting to read and unmarshal it.
+			if !self.split_metadata.exists(StageDefsFile) {
+				// We might have missed the journal update.  Check if
+				// the file exists in the directory.
+				self.split_metadata.poll()
+			}
 			if self.split_metadata.exists(StageDefsFile) {
 				if err := self.split_metadata.ReadInto(StageDefsFile, &self.stageDefs); err != nil {
 					errstring := "none"
