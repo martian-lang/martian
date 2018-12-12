@@ -230,13 +230,14 @@ func getChildTreeMemory(procFd, tfd int, mem *ObservedMemory, io map[int]*IoAmou
 	}
 }
 
+var sysPagesize = int64(syscall.Getpagesize())
+
 func (self *ObservedMemory) pagesToBytes() {
-	pagesize := int64(syscall.Getpagesize())
-	self.Rss *= pagesize
-	self.Vmem *= pagesize
-	self.Shared *= pagesize
-	self.Text *= pagesize
-	self.Stack *= pagesize
+	self.Rss *= sysPagesize
+	self.Vmem *= sysPagesize
+	self.Shared *= sysPagesize
+	self.Text *= sysPagesize
+	self.Stack *= sysPagesize
 }
 
 type unexpectedContentError struct {

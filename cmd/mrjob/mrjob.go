@@ -36,6 +36,7 @@ type runner struct {
 	metadata    *core.Metadata
 	runType     string
 	jobInfo     *core.JobInfo
+	monitoring  bool
 	start       time.Time
 	isDone      chan struct{}
 	perfDone    <-chan struct{}
@@ -92,12 +93,8 @@ func (self *runner) Init() {
 		util.PrintError(jErr, "monitor",
 			"Could not update log journal file.  Continuing, hoping for the best.")
 	}
-	// Check that the vmem limit is enough for the parent process plus
-	// the a half gigabyte of margin over the job's physical memory
-	// requirement.
-	mem, _ := core.GetProcessTreeMemory(self.jobInfo.Pid, true, nil)
 	core.CheckMaxVmem(
-		uint64(self.jobInfo.MemGB*1024+512)*1024*1024 + uint64(mem.Vmem))
+		uint64(self.jobInfo.VMemGB) * 1024 * 1024 * 1024)
 	self.setRlimit()
 }
 
@@ -123,6 +120,7 @@ func (self *runner) writeJobinfo() {
 		self.Fail(err, "Error reading jobInfo.")
 	} else {
 		self.jobInfo = jobInfo
+		self.monitoring = jobInfo.Monitor == "monitor"
 	}
 	self.jobInfo.Cwd = self.metadata.FilesPath()
 	self.jobInfo.Host, _ = os.Hostname()
@@ -216,7 +214,7 @@ func totalCpu(ru *core.RusageInfo) float64 {
 func (self *runner) Complete() {
 	self.done()
 	target := core.CompleteFile
-	if self.jobInfo.Monitor == "monitor" {
+	if self.monitoring {
 		if t := time.Since(self.start); t > time.Minute*15 {
 			if threads := totalCpu(self.jobInfo.RusageInfo) /
 				t.Seconds(); threads > 1.5*float64(self.jobInfo.Threads) {
@@ -227,6 +225,14 @@ func (self *runner) Complete() {
 					self.jobInfo.Threads)); writeError != nil {
 					util.PrintError(writeError, "monitor", "Could not write errors file.")
 				}
+			}
+		} else if self.jobInfo.RusageInfo.Children.MaxRss > self.jobInfo.MemGB*1024*1024 {
+			target = core.Errors
+			if writeError := self.metadata.WriteRaw(target, fmt.Sprintf(
+				"Stage exceeded its memory quota (using %.1f, allowed %d)",
+				float64(self.jobInfo.RusageInfo.Children.MaxRss)/(1024*1024),
+				self.jobInfo.MemGB)); writeError != nil {
+				util.PrintError(writeError, "monitor", "Could not write errors file.")
 			}
 		}
 	}
@@ -276,6 +282,18 @@ func (self *runner) StartJob(args []string) error {
 		cmd.Env = pc.MakeEnv(
 			self.metadata.MetadataFilePath(core.PerfData),
 			self.metadata.MetadataFilePath(core.ProfileOut))
+	}
+	if self.monitoring && self.jobInfo.VMemGB > 0 {
+		// Exclude mrjob's vmem usage from the rlimit.
+		mem, _ := core.GetProcessTreeMemory(self.jobInfo.Pid, true, nil)
+		amount := int64(self.jobInfo.VMemGB)*1024*1024*1024 - mem.Vmem
+		if amount < mem.Vmem+1024*1024 {
+			amount = mem.Vmem + 1024*1024
+		}
+		if err := core.SetVMemRLimit(uint64(amount)); err != nil {
+			util.LogError(err, "monitor",
+				"Could not set VM rlimit.")
+		}
 	}
 	if err := func() error {
 		util.EnterCriticalSection()
@@ -481,13 +499,19 @@ func (self *runner) WaitLoop() {
 	}
 }
 
-func (self *runner) getChildMemGB() float64 {
+func (self *runner) getChildMemGB() (rss, vmem float64) {
 	proc := self.job.Process
 	if proc == nil {
-		return 0
+		return 0, 0
 	}
 	io := make(map[int]*core.IoAmount)
 	mem, err := core.GetProcessTreeMemory(proc.Pid, true, io)
+	if selfMem, err := core.GetRunningMemory(self.jobInfo.Pid); err == nil {
+		// Do this rather than just calling core.GetProcessTreeMemory,
+		// above, because we don't want to include the profiling child
+		// process (if any).
+		mem.Add(selfMem)
+	}
 	mem.IncreaseRusage(core.GetRusage())
 	self.highMem.IncreaseTo(mem)
 	if err != nil {
@@ -495,19 +519,32 @@ func (self *runner) getChildMemGB() float64 {
 	} else {
 		self.ioStats.Update(io, time.Now())
 	}
-	return float64(mem.Rss) / (1024 * 1024 * 1024)
+	return float64(mem.Rss) / (1024 * 1024 * 1024),
+		float64(mem.Vmem) / (1024 * 1024 * 1024)
 }
 
 func (self *runner) monitor(lastHeartbeat *time.Time) error {
-	if mem := self.getChildMemGB(); mem > float64(self.jobInfo.MemGB) {
-		if self.jobInfo.Monitor == "monitor" {
+	if rss, vmem := self.getChildMemGB(); rss > float64(self.jobInfo.MemGB) {
+		if self.monitoring {
 			self.job.Process.Kill()
-			return fmt.Errorf("Stage exceeded its memory quota (using %.1f, allowed %dG)",
-				mem, self.jobInfo.MemGB)
+			return fmt.Errorf(
+				"Stage exceeded its memory quota (using %.1f, allowed %dG)",
+				rss, self.jobInfo.MemGB)
 		} else {
 			util.LogInfo("monitor",
 				"Stage exceeded its memory quota (using %.1f, allowed %dG)",
-				mem, self.jobInfo.MemGB)
+				rss, self.jobInfo.MemGB)
+		}
+	} else if self.jobInfo.VMemGB > 0 && vmem > float64(self.jobInfo.VMemGB) {
+		if self.monitoring {
+			self.job.Process.Kill()
+			return fmt.Errorf(
+				"Stage exceeded its address space quota (using %.1f, allowed %dG)",
+				vmem, self.jobInfo.VMemGB)
+		} else {
+			util.LogInfo("monitor",
+				"Stage exceeded its address space quota (using %.1f, allowed %dG)",
+				vmem, self.jobInfo.MemGB)
 		}
 	}
 	if time.Since(*lastHeartbeat) > HeartbeatInterval {

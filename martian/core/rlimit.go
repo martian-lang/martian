@@ -6,6 +6,8 @@ package core
 
 import (
 	// syscall package lacks RLIMIT_NPROC
+	"fmt"
+
 	"github.com/martian-lang/martian/martian/util"
 	"golang.org/x/sys/unix"
 )
@@ -110,4 +112,16 @@ func CheckMaxVmem(amount uint64) uint64 {
 		}
 	}
 	return min
+}
+
+func SetVMemRLimit(amount uint64) error {
+	var rlim unix.Rlimit
+	if err := unix.Getrlimit(unix.RLIMIT_AS, &rlim); err != nil {
+		return err
+	} else if rlim.Max != unix.RLIM_INFINITY && rlim.Max < amount {
+		return fmt.Errorf("could not set RLIMIT_AS %d > %d",
+			amount, rlim.Max)
+	}
+	rlim.Cur = amount
+	return unix.Setrlimit(unix.RLIMIT_AS, &rlim)
 }
