@@ -19,6 +19,7 @@ import (
 type JobResources struct {
 	Threads int    `json:"__threads,omitempty"`
 	MemGB   int    `json:"__mem_gb,omitempty"`
+	VMemGB  int    `json:"__vmem_gb,omitempty"`
 	Special string `json:"__special,omitempty"`
 }
 
@@ -29,6 +30,9 @@ func (self *JobResources) ToMap() ArgumentMap {
 	}
 	if self.MemGB != 0 {
 		r["__mem_gb"] = self.MemGB
+	}
+	if self.VMemGB != 0 {
+		r["__vmem_gb"] = self.VMemGB
 	}
 	if self.Special != "" {
 		r["__special"] = self.Special
@@ -43,6 +47,9 @@ func (self *JobResources) ToLazyMap() LazyArgumentMap {
 	}
 	if self.MemGB != 0 {
 		r["__mem_gb"] = json.RawMessage(strconv.Itoa(self.MemGB))
+	}
+	if self.VMemGB != 0 {
+		r["__vmem_gb"] = json.RawMessage(strconv.Itoa(self.VMemGB))
 	}
 	if self.Special != "" {
 		r["__special"], _ = json.Marshal(self.Special)
@@ -91,6 +98,14 @@ func (self *JobResources) updateFromLazyArgs(args LazyArgumentMap) error {
 			self.MemGB = n
 		}
 		delete(args, "__mem_gb")
+	}
+	if v, ok := args["__vmem_gb"]; ok {
+		if n, err := getInt(v, "__vmem_gb"); err != nil {
+			return err
+		} else {
+			self.VMemGB = n
+		}
+		delete(args, "__vmem_gb")
 	}
 	if v, ok := args["__special"]; ok {
 		var s string
@@ -160,6 +175,14 @@ func (self *JobResources) updateFromArgs(args ArgumentMap) error {
 			self.MemGB = n
 		}
 		delete(args, "__mem_gb")
+	}
+	if v, ok := args["__vmem_gb"]; ok {
+		if n, err := getInt(v, "__vmem_gb"); err != nil {
+			return err
+		} else {
+			self.VMemGB = n
+		}
+		delete(args, "__vmem_gb")
 	}
 	if v, ok := args["__special"]; ok {
 		if s, ok := v.(string); !ok {
@@ -266,7 +289,7 @@ func (self *LazyChunkDef) UnmarshalJSON(b []byte) error {
 		if err := res.updateFromLazyArgs(self.Args); err != nil {
 			return err
 		}
-		if res.Threads != 0 || res.MemGB != 0 || res.Special != "" {
+		if res.Threads != 0 || res.MemGB != 0 || res.VMemGB != 0 || res.Special != "" {
 			self.Resources = &res
 		}
 	}
@@ -414,7 +437,7 @@ func (self *ChunkDef) UnmarshalJSON(b []byte) error {
 		if err := res.updateFromArgs(self.Args); err != nil {
 			return err
 		}
-		if res.Threads != 0 || res.MemGB != 0 || res.Special != "" {
+		if res.Threads != 0 || res.MemGB != 0 || res.VMemGB != 0 || res.Special != "" {
 			self.Resources = &res
 		}
 	}

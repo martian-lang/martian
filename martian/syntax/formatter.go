@@ -525,7 +525,9 @@ func (self *Resources) format(printer *printer) {
 	if self.VolatileNode != nil {
 		memPad = "  "
 		threadPad = " "
-	} else if self.SpecialNode != nil || self.ThreadNode != nil {
+	} else if self.VMemNode != nil ||
+		self.SpecialNode != nil ||
+		self.ThreadNode != nil {
 		memPad = " "
 	}
 	if self.MemNode != nil {
@@ -542,6 +544,11 @@ func (self *Resources) format(printer *printer) {
 		printer.printComments(self.ThreadNode, INDENT)
 		printer.WriteString(INDENT)
 		printer.Printf("threads%s = %d,\n", threadPad, self.Threads)
+	}
+	if self.VMemNode != nil {
+		printer.printComments(self.VMemNode, INDENT)
+		printer.WriteString(INDENT)
+		printer.Printf("vmem_gb%s = %d,\n", threadPad, self.MemGB)
 	}
 	if self.VolatileNode != nil {
 		printer.printComments(self.VolatileNode, INDENT)

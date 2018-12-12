@@ -2,6 +2,7 @@
   "settings": {
     "threads_per_job": 1,
     "memGB_per_job": 1,
+    "extra_vmem_per_job": 3,
     "thread_envs": [
         "GOMAXPROCS",
         "MKL_NUM_THREADS",
@@ -13,6 +14,7 @@
       "sge": {
           "cmd": "qsub",
           "args": [ "-terse" ],
+          "mem_is_vmem": true,
           "queue_query": "sge_queue.py",
           "queue_query_grace_secs": 3000,
           "resopt": "#$ -l __RESOURCES__",
@@ -72,10 +74,12 @@
       },
       "pbspro": {
           "cmd": "qsub",
+          "mem_is_vmem": true,
           "envs": [ ]
       },
       "torque": {
           "cmd": "qsub",
+          "mem_is_vmem": true,
           "envs": [ ]
       }
   },

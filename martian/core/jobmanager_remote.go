@@ -5,11 +5,11 @@ package core
 import (
 	"bytes"
 	"context"
-	"fmt"
 	"os"
 	"os/exec"
 	"path"
 	"runtime/trace"
+	"strconv"
 	"strings"
 	"time"
 
@@ -91,46 +91,52 @@ func (self *RemoteJobManager) GetSettings() *JobManagerSettings {
 	return self.config.jobSettings
 }
 
-func (self *RemoteJobManager) GetSystemReqs(threads int, memGB int) (int, int) {
+func (self *RemoteJobManager) GetSystemReqs(resRequest *JobResources) JobResources {
+	res := *resRequest
 	// Sanity check the thread count.
-	if threads == 0 {
-		threads = self.config.jobSettings.ThreadsPerJob
-	} else if threads < 0 {
-		threads = -threads
+	if res.Threads == 0 {
+		res.Threads = self.config.jobSettings.ThreadsPerJob
+	} else if res.Threads < 0 {
+		res.Threads = -res.Threads
 	}
 
 	// Sanity check memory requirements.
-	if memGB < 0 {
+	if res.MemGB < 0 {
 		// Negative request is a sentinel value requesting as much as possible.
 		// For remote jobs, at least for now, give reserve the minimum usable.
-		memGB = -memGB
+		res.MemGB = -res.MemGB
 	}
-	if memGB < 1 {
-		memGB = self.config.jobSettings.MemGBPerJob
+	if res.MemGB < 1 {
+		res.MemGB = self.config.jobSettings.MemGBPerJob
+	}
+	if res.VMemGB < 1 {
+		res.VMemGB = res.MemGB + self.config.jobSettings.ExtraVmemGB
 	}
 
 	// Compute threads needed based on memory requirements.
 	if self.memGBPerCore > 0 {
-		threads = max(threads, (memGB+self.memGBPerCore-1)/self.memGBPerCore)
+		res.Threads = max(res.Threads, (res.MemGB+self.memGBPerCore-1)/self.memGBPerCore)
 	}
 
 	// If threading is disabled, use only 1 thread.
 	if !self.config.threadingEnabled {
-		threads = 1
+		res.Threads = 1
 	}
 
-	return threads, memGB
+	return res
 }
 
 func (self *RemoteJobManager) execJob(shellCmd string, argv []string,
-	envs map[string]string, metadata *Metadata, threads int, memGB int,
-	special string, fqname string, shellName string, localpreflight bool) {
+	envs map[string]string, metadata *Metadata, resRequest *JobResources,
+	fqname string, shellName string, localpreflight bool) {
 	ctx, task := trace.NewTask(context.Background(), "queueRemote")
 
 	// no limit, send the job
 	if self.maxJobs <= 0 {
 		defer task.End()
-		self.sendJob(shellCmd, argv, envs, metadata, threads, memGB, special, fqname, shellName, ctx)
+		self.sendJob(shellCmd, argv, envs,
+			metadata, resRequest,
+			fqname, shellName, ctx)
 		return
 	}
 
@@ -148,7 +154,9 @@ func (self *RemoteJobManager) execJob(shellCmd string, argv []string,
 		if self.debug {
 			util.LogInfo("jobmngr", "Job sent: %s", fqname)
 		}
-		self.sendJob(shellCmd, argv, envs, metadata, threads, memGB, special, fqname, shellName, ctx)
+		self.sendJob(shellCmd, argv, envs,
+			metadata, resRequest,
+			fqname, shellName, ctx)
 	}()
 }
 
@@ -159,7 +167,7 @@ func (self *RemoteJobManager) endJob(metadata *Metadata) {
 }
 
 func (self *RemoteJobManager) sendJob(shellCmd string, argv []string, envs map[string]string,
-	metadata *Metadata, threads int, memGB int, special string, fqname string, shellName string,
+	metadata *Metadata, resRequest *JobResources, fqname string, shellName string,
 	ctx context.Context) {
 
 	if self.jobFreqMillis > 0 {
@@ -168,18 +176,21 @@ func (self *RemoteJobManager) sendJob(shellCmd string, argv []string, envs map[s
 			util.LogInfo("jobmngr", "Job rate-limit released: %s", fqname)
 		}
 	}
-	threads, memGB = self.GetSystemReqs(threads, memGB)
+	res := self.GetSystemReqs(resRequest)
 
-	// figure out per-thread memory requirements for the template.  If
-	// mempercore is specified, use that as what we send.
-	memGBPerThread := memGB
-	if self.memGBPerCore > 0 {
-		memGBPerThread = self.memGBPerCore
+	// figure out per-thread memory requirements for the template.
+	// ceil to make sure that we're not starving a job.
+	vmemGBPerThread := (res.VMemGB + res.Threads - 1) / res.Threads
+	if self.memGBPerCore > vmemGBPerThread {
+		vmemGBPerThread = self.memGBPerCore
+	}
+	memGBPerThread := vmemGBPerThread
+	if self.config.alwaysVmem && res.VMemGB > res.MemGB {
+		res.MemGB = res.VMemGB
 	} else {
-		// ceil to make sure that we're not starving a job
-		memGBPerThread = memGB / threads
-		if memGB%threads > 0 {
-			memGBPerThread += 1
+		memGBPerThread = (res.MemGB + res.Threads - 1) / res.Threads
+		if self.memGBPerCore > memGBPerThread {
+			memGBPerThread = self.memGBPerCore
 		}
 	}
 
@@ -188,8 +199,8 @@ func (self *RemoteJobManager) sendJob(shellCmd string, argv []string, envs map[s
 	// with MRO_JOBRESOURCES defining a mapping from __special to a complex value
 	// expression, then populate the resources option into the template. Otherwise,
 	// leave it blank to revert to default behavior.
-	if len(special) > 0 {
-		if resources, ok := self.jobResourcesMappings[special]; ok {
+	if len(res.Special) > 0 {
+		if resources, ok := self.jobResourcesMappings[res.Special]; ok {
 			mappedJobResourcesOpt = strings.Replace(
 				self.config.jobResourcesOpt,
 				"__RESOURCES__", resources, 1)
@@ -197,40 +208,49 @@ func (self *RemoteJobManager) sendJob(shellCmd string, argv []string, envs map[s
 	}
 
 	argv = append(
-		util.FormatEnv(threadEnvs(self, threads, envs)),
+		util.FormatEnv(threadEnvs(self, res.Threads, envs)),
 		append([]string{shellCmd},
 			argv...)...,
 	)
 	params := map[string]string{
-		"JOB_NAME":          fqname + "." + shellName,
-		"THREADS":           fmt.Sprintf("%d", threads),
-		"STDOUT":            metadata.MetadataFilePath("stdout"),
-		"STDERR":            metadata.MetadataFilePath("stderr"),
-		"JOB_WORKDIR":       metadata.curFilesPath,
-		"CMD":               strings.Join(argv, " "),
-		"MEM_GB":            fmt.Sprintf("%d", memGB),
-		"MEM_MB":            fmt.Sprintf("%d", memGB*1024),
-		"MEM_KB":            fmt.Sprintf("%d", memGB*1024*1024),
-		"MEM_B":             fmt.Sprintf("%d", memGB*1024*1024*1024),
-		"MEM_GB_PER_THREAD": fmt.Sprintf("%d", memGBPerThread),
-		"MEM_MB_PER_THREAD": fmt.Sprintf("%d", memGBPerThread*1024),
-		"MEM_KB_PER_THREAD": fmt.Sprintf("%d", memGBPerThread*1024*1024),
-		"MEM_B_PER_THREAD":  fmt.Sprintf("%d", memGBPerThread*1024*1024*1024),
-		"ACCOUNT":           os.Getenv("MRO_ACCOUNT"),
-		"RESOURCES":         mappedJobResourcesOpt,
+		"JOB_NAME":           fqname + "." + shellName,
+		"THREADS":            strconv.Itoa(res.Threads),
+		"STDOUT":             metadata.MetadataFilePath("stdout"),
+		"STDERR":             metadata.MetadataFilePath("stderr"),
+		"JOB_WORKDIR":        metadata.curFilesPath,
+		"CMD":                strings.Join(argv, " \\\n  "),
+		"MEM_GB":             strconv.Itoa(res.MemGB),
+		"MEM_MB":             strconv.Itoa(res.MemGB * 1024),
+		"MEM_KB":             strconv.Itoa(res.MemGB * 1024 * 1024),
+		"MEM_B":              strconv.Itoa(res.MemGB * 1024 * 1024 * 1024),
+		"MEM_GB_PER_THREAD":  strconv.Itoa(memGBPerThread),
+		"MEM_MB_PER_THREAD":  strconv.Itoa(memGBPerThread * 1024),
+		"MEM_KB_PER_THREAD":  strconv.Itoa(memGBPerThread * 1024 * 1024),
+		"MEM_B_PER_THREAD":   strconv.Itoa(memGBPerThread * 1024 * 1024 * 1024),
+		"VMEM_GB":            strconv.Itoa(res.VMemGB),
+		"VMEM_MB":            strconv.Itoa(res.VMemGB * 1024),
+		"VMEM_KB":            strconv.Itoa(res.VMemGB * 1024 * 1024),
+		"VMEM_B":             strconv.Itoa(res.VMemGB * 1024 * 1024 * 1024),
+		"VMEM_GB_PER_THREAD": strconv.Itoa(vmemGBPerThread),
+		"VMEM_MB_PER_THREAD": strconv.Itoa(vmemGBPerThread * 1024),
+		"VMEM_KB_PER_THREAD": strconv.Itoa(vmemGBPerThread * 1024 * 1024),
+		"VMEM_B_PER_THREAD":  strconv.Itoa(vmemGBPerThread * 1024 * 1024 * 1024),
+		"ACCOUNT":            os.Getenv("MRO_ACCOUNT"),
+		"RESOURCES":          mappedJobResourcesOpt,
 	}
 
-	// Replace template annotations with actual values
-	args := []string{}
 	template := self.config.jobTemplate
+	// Replace template annotations with actual values
+	args := make([]string, 0, 2*len(params))
 	for key, val := range params {
+		rkey := "__MRO_" + key + "__"
 		if len(val) > 0 {
-			args = append(args, fmt.Sprintf("__MRO_%s__", key), val)
+			args = append(args, rkey, val)
 		} else {
-			// Remove line containing parameter from template
+			// Remove lines containing parameter from template
 			for _, line := range strings.Split(template, "\n") {
-				if strings.Contains(line, fmt.Sprintf("__MRO_%s__", key)) {
-					template = strings.Replace(template, line, "", 1)
+				if strings.Contains(line, rkey) {
+					args = append(args, line, "")
 				}
 			}
 		}

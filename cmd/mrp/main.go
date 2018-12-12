@@ -529,7 +529,11 @@ Options:
                             Only applies to local jobs.
     --localmem=NUM      Set max GB the pipeline may request at one time.
                             Only applies to local jobs.
-    --mempercore=NUM    Specify min GB per core on your cluster.
+    --localvmem=NUM     Set max virtual address space in GB for the pipeline.
+                            Only applies to local jobs.
+    --mempercore=NUM    Reserve enough threads for each job to ensure enough
+                        memory will be available, assuming each core on your
+                        cluster has at least this much memory available.
                             Only applies in cluster jobmodes.
     --maxjobs=NUM       Set max jobs submitted to cluster at one time.
                             Only applies in cluster jobmodes.
@@ -619,6 +623,16 @@ Options:
 		} else {
 			util.PrintError(err, "options",
 				"Could not parse --localmem value \"%s\"", opts["--localmem"].(string))
+			os.Exit(1)
+		}
+	}
+	if value := opts["--localvmem"]; value != nil {
+		if value, err := strconv.Atoi(value.(string)); err == nil {
+			config.LocalVMem = value
+			util.LogInfo("options", "--localvmem=%d", config.LocalVMem)
+		} else {
+			util.PrintError(err, "options",
+				"Could not parse --localvmem value \"%s\"", opts["--localvmem"].(string))
 			os.Exit(1)
 		}
 	}

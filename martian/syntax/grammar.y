@@ -82,7 +82,7 @@ import (
 %token <val> FILETYPE STAGE PIPELINE CALL SPLIT USING RETAIN
 %token <val> LOCAL PREFLIGHT VOLATILE DISABLED STRICT
 %token IN OUT SRC AS
-%token <val> THREADS MEM_GB SPECIAL
+%token <val> THREADS MEM_GB VMEM_GB SPECIAL
 %token <val> ID LITSTRING NUM_FLOAT NUM_INT DOT
 %token <val> PY EXEC COMPILED
 %token <val> MAP INT STRING FLOAT PATH BOOL TRUE FALSE NULL DEFAULT
@@ -216,6 +216,14 @@ resource_list
             $1.MemNode = &n
             i := parseInt($4)
             $1.MemGB = int16(i)
+            $$ = $1
+        }}
+    | resource_list VMEM_GB EQUALS NUM_INT COMMA
+        {{
+            n := NewAstNode($<loc>2, $<srcfile>2)
+            $1.VMemNode = &n
+            i := parseInt($4)
+            $1.VMemGB = int16(i)
             $$ = $1
         }}
     | resource_list SPECIAL EQUALS LITSTRING COMMA
@@ -713,6 +721,7 @@ id
     | FILETYPE
     | LOCAL
     | MEM_GB
+    | VMEM_GB
     | PREFLIGHT
     | RETAIN
     | SPECIAL

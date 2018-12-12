@@ -129,12 +129,14 @@ type (
 		Node         AstNode
 		ThreadNode   *AstNode
 		MemNode      *AstNode
+		VMemNode     *AstNode
 		SpecialNode  *AstNode
 		VolatileNode *AstNode
 
 		Special        string
 		Threads        int16
 		MemGB          int16
+		VMemGB         int16
 		StrictVolatile bool
 	}
 
@@ -242,6 +244,9 @@ func (s *Resources) getSubnodes() []AstNodable {
 	}
 	if s.MemNode != nil {
 		subs = append(subs, s.MemNode)
+	}
+	if s.VMemNode != nil {
+		subs = append(subs, s.VMemNode)
 	}
 	if s.SpecialNode != nil {
 		subs = append(subs, s.SpecialNode)

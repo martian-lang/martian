@@ -153,6 +153,7 @@ type RuntimeOptions struct {
 	ProfileMode     ProfileMode
 	MartianVersion  string
 	LocalMem        int
+	LocalVMem       int
 	LocalCores      int
 	MemPerCore      int
 	MaxJobs         int
@@ -196,6 +197,10 @@ func (config *RuntimeOptions) ToFlags() []string {
 	if config.LocalMem != 0 {
 		flags = append(flags, fmt.Sprintf("--localmem=%d",
 			config.LocalMem))
+	}
+	if config.LocalVMem != 0 {
+		flags = append(flags, fmt.Sprintf("--localvmem=%d",
+			config.LocalVMem))
 	}
 	if config.LocalCores != 0 {
 		flags = append(flags, fmt.Sprintf("--localcores=%d",
@@ -311,7 +316,9 @@ func (c *RuntimeOptions) NewRuntime() *Runtime {
 
 	self.jobConfig = getJobConfig(c.ProfileMode)
 	self.MroCache = NewMroCache()
-	self.LocalJobManager = NewLocalJobManager(c.LocalCores, c.LocalMem, c.Debug,
+	self.LocalJobManager = NewLocalJobManager(c.LocalCores,
+		c.LocalMem, c.LocalVMem,
+		c.Debug,
 		c.LimitLoadavg,
 		c.JobMode != "local",
 		self.jobConfig)

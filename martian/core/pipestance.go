@@ -66,6 +66,7 @@ func NewStagestance(parent Nodable, callStm *syntax.CallStm, callables *syntax.C
 		self.node.resources = &JobResources{
 			Threads: int(stage.Resources.Threads),
 			MemGB:   int(stage.Resources.MemGB),
+			VMemGB:  int(stage.Resources.VMemGB),
 			Special: stage.Resources.Special,
 		}
 		self.node.strictVolatile = stage.Resources.StrictVolatile

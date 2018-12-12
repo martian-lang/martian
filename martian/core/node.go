@@ -935,36 +935,35 @@ func (self *Node) serializePerf() (*NodePerfInfo, []*VdrEvent) {
 //=============================================================================
 // Job Runners
 //=============================================================================
-func (self *Node) getJobReqs(jobDef *JobResources, stageType string) (int, int, string) {
-	threads := 0
-	memGB := 0
-	special := ""
+func (self *Node) getJobReqs(jobDef *JobResources, stageType string) JobResources {
+	var res JobResources
 
 	if self.resources != nil {
-		threads = self.resources.Threads
-		memGB = self.resources.MemGB
-		special = self.resources.Special
+		res = *self.resources
 	}
 
 	// Get values passed from the stage code
 	if jobDef != nil {
 		if jobDef.Threads != 0 {
-			threads = jobDef.Threads
+			res.Threads = jobDef.Threads
 		}
 		if jobDef.MemGB != 0 {
-			memGB = jobDef.MemGB
+			res.MemGB = jobDef.MemGB
+		}
+		if jobDef.VMemGB != 0 {
+			res.VMemGB = jobDef.VMemGB
 		}
 		if jobDef.Special != "" {
-			special = jobDef.Special
+			res.Special = jobDef.Special
 		}
 	}
 
 	// Override with job manager caps specified from commandline
 	overrideThreads := self.rt.overrides.GetOverride(self,
 		fmt.Sprintf("%s.threads", stageType),
-		float64(threads))
+		float64(res.Threads))
 	if overrideThreadsNum, ok := overrideThreads.(float64); ok {
-		threads = int(overrideThreadsNum)
+		res.Threads = int(overrideThreadsNum)
 	} else {
 		util.PrintInfo("runtime",
 			"Invalid value for %s %s.threads: %v",
@@ -973,23 +972,31 @@ func (self *Node) getJobReqs(jobDef *JobResources, stageType string) (int, int, 
 
 	overrideMem := self.rt.overrides.GetOverride(self,
 		fmt.Sprintf("%s.mem_gb", stageType),
-		float64(memGB))
+		float64(res.MemGB))
 	if overrideMemFloat, ok := overrideMem.(float64); ok {
-		memGB = int(overrideMemFloat)
+		res.MemGB = int(overrideMemFloat)
 	} else {
 		util.PrintInfo("runtime",
 			"Invalid value for %s %s.mem_gb: %v",
 			self.fqname, stageType, overrideMem)
 	}
 
-	if self.local {
-		threads, memGB = self.rt.LocalJobManager.GetSystemReqs(threads, memGB)
+	overrideVMem := self.rt.overrides.GetOverride(self,
+		fmt.Sprintf("%s.vmem_gb", stageType),
+		float64(res.VMemGB))
+	if overrideVMemFloat, ok := overrideVMem.(float64); ok {
+		res.VMemGB = int(overrideVMemFloat)
 	} else {
-		threads, memGB = self.rt.JobManager.GetSystemReqs(threads, memGB)
+		util.PrintInfo("runtime",
+			"Invalid value for %s %s.vmem_gb: %v",
+			self.fqname, stageType, overrideVMem)
 	}
 
-	// Return modified values
-	return threads, memGB, special
+	if self.local {
+		return self.rt.LocalJobManager.GetSystemReqs(&res)
+	} else {
+		return self.rt.JobManager.GetSystemReqs(&res)
+	}
 }
 
 func (self *Node) getProfileMode(stageType string) ProfileMode {
@@ -1012,46 +1019,45 @@ func (self *Node) getProfileMode(stageType string) ProfileMode {
 	}
 }
 
-func (self *Node) setJobReqs(jobDef *JobResources, stageType string) (int, int, string) {
+func (self *Node) setJobReqs(jobDef *JobResources, stageType string) JobResources {
 	// Get values and possibly modify them
-	threads, memGB, special := self.getJobReqs(jobDef, stageType)
+	res := self.getJobReqs(jobDef, stageType)
 
 	// Write modified values back
 	if jobDef != nil {
-		jobDef.Threads = threads
-		jobDef.MemGB = memGB
+		*jobDef = res
 	}
 
-	return threads, memGB, special
+	return res
 }
 
-func (self *Node) setSplitJobReqs() (int, int, string) {
+func (self *Node) setSplitJobReqs() JobResources {
 	return self.setJobReqs(nil, STAGE_TYPE_SPLIT)
 }
 
-func (self *Node) setChunkJobReqs(jobDef *JobResources) (int, int, string) {
+func (self *Node) setChunkJobReqs(jobDef *JobResources) JobResources {
 	return self.setJobReqs(jobDef, STAGE_TYPE_CHUNK)
 }
 
-func (self *Node) setJoinJobReqs(jobDef *JobResources) (int, int, string) {
+func (self *Node) setJoinJobReqs(jobDef *JobResources) JobResources {
 	return self.setJobReqs(jobDef, STAGE_TYPE_JOIN)
 }
 
 func (self *Node) runSplit(fqname string, metadata *Metadata) {
-	threads, memGB, special := self.setSplitJobReqs()
-	self.runJob("split", fqname, STAGE_TYPE_SPLIT, metadata, threads, memGB, special)
+	res := self.setSplitJobReqs()
+	self.runJob("split", fqname, STAGE_TYPE_SPLIT, metadata, &res)
 }
 
-func (self *Node) runJoin(fqname string, metadata *Metadata, threads int, memGB int, special string) {
-	self.runJob("join", fqname, STAGE_TYPE_JOIN, metadata, threads, memGB, special)
+func (self *Node) runJoin(fqname string, metadata *Metadata, res *JobResources) {
+	self.runJob("join", fqname, STAGE_TYPE_JOIN, metadata, res)
 }
 
-func (self *Node) runChunk(fqname string, metadata *Metadata, threads int, memGB int, special string) {
-	self.runJob("main", fqname, STAGE_TYPE_CHUNK, metadata, threads, memGB, special)
+func (self *Node) runChunk(fqname string, metadata *Metadata, res *JobResources) {
+	self.runJob("main", fqname, STAGE_TYPE_CHUNK, metadata, res)
 }
 
 func (self *Node) runJob(shellName string, fqname, stageType string, metadata *Metadata,
-	threads int, memGB int, special string) {
+	res *JobResources) {
 
 	// Configure local variable dumping.
 	stackVars := "disable"
@@ -1129,8 +1135,9 @@ func (self *Node) runJob(shellName string, fqname, stageType string, metadata *M
 	jobInfo := JobInfo{
 		Name:          fqname,
 		Type:          jobMode,
-		Threads:       threads,
-		MemGB:         memGB,
+		Threads:       res.Threads,
+		MemGB:         res.MemGB,
+		VMemGB:        res.VMemGB,
 		ProfileConfig: self.rt.ProfileConfig(profileMode),
 		ProfileMode:   profileMode,
 		Stackvars:     stackVars,
@@ -1148,6 +1155,6 @@ func (self *Node) runJob(shellName string, fqname, stageType string, metadata *M
 		metadata.WriteTime(QueuedLocally)
 		metadata.Write(JobInfoFile, &jobInfo)
 	}()
-	jobManager.execJob(shellCmd, argv, envs, metadata, threads, memGB, special, fqname,
+	jobManager.execJob(shellCmd, argv, envs, metadata, res, fqname,
 		shellName, self.preflight && self.local)
 }

@@ -44,6 +44,7 @@ var rules = [...]rule{
 	{regexp.MustCompile(`^` + strict + `\b`), STRICT},
 	{regexp.MustCompile(`^threads\b`), THREADS},
 	{regexp.MustCompile(`^mem_?gb\b`), MEM_GB},
+	{regexp.MustCompile(`^vmem_?gb\b`), VMEM_GB},
 	{regexp.MustCompile(`^special\b`), SPECIAL},
 	{regexp.MustCompile(`^retain\b`), RETAIN},
 	{regexp.MustCompile(`^sweep\b`), SWEEP},

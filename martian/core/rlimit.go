@@ -64,12 +64,14 @@ func MaximizeMaxFiles() error {
 	return unix.Setrlimit(unix.RLIMIT_NOFILE, &rlim)
 }
 
-func CheckMaxVmem(amount uint64) {
+func CheckMaxVmem(amount uint64) uint64 {
+	var min uint64
 	var rlim unix.Rlimit
 	if err := unix.Getrlimit(unix.RLIMIT_AS, &rlim); err != nil {
 		util.LogError(err, "jobmngr", "Could not get address space rlimit")
 	} else {
 		if rlim.Cur != unix.RLIM_INFINITY {
+			min = rlim.Cur
 			util.LogInfo("jobmngr", "ulimit -v: %dMB (minimum required %dMB)",
 				rlim.Cur/(1024*1024), amount/(1024*1024))
 			if rlim.Cur < amount {
@@ -89,6 +91,9 @@ func CheckMaxVmem(amount uint64) {
 		util.LogError(err, "jobmngr", "Could not get data segment size rlimit")
 	} else {
 		if rlim.Cur != unix.RLIM_INFINITY {
+			if rlim.Cur < min {
+				min = rlim.Cur
+			}
 			util.LogInfo("jobmngr", "ulimit -d: %dMB (minimum required %dMB)",
 				rlim.Cur/(1024*1024), amount/(1024*1024))
 			if rlim.Cur < amount {
@@ -104,4 +109,5 @@ func CheckMaxVmem(amount uint64) {
 			}
 		}
 	}
+	return min
 }

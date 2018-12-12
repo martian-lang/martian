@@ -22,7 +22,13 @@ import (
 // Job managers
 //
 type JobManager interface {
-	execJob(string, []string, map[string]string, *Metadata, int, int, string, string, string, bool)
+	execJob(shellCmd string,
+		args []string,
+		env map[string]string,
+		md *Metadata,
+		res *JobResources,
+		fqname, shellName string,
+		preflight bool)
 	endJob(*Metadata)
 
 	// Given a list of candidate job IDs, returns a list of jobIds which may be
@@ -44,7 +50,7 @@ type JobManager interface {
 	//
 	// For remote job managers, this means maxjobs.
 	refreshResources(localMode bool) error
-	GetSystemReqs(int, int) (int, int)
+	GetSystemReqs(*JobResources) JobResources
 	GetMaxCores() int
 	GetMaxMemGB() int
 	GetSettings() *JobManagerSettings
@@ -76,6 +82,7 @@ type JobModeEnv struct {
 type JobModeJson struct {
 	Cmd             string        `json:"cmd"`
 	Args            []string      `json:"args,omitempty"`
+	AlwaysVmem      bool          `json:"mem_is_vmem,omitempty"`
 	QueueQuery      string        `json:"queue_query,omitempty"`
 	QueueQueryGrace int           `json:"queue_query_grace_secs,omitempty"`
 	ResourcesOpt    string        `json:"resopt"`
@@ -85,6 +92,7 @@ type JobModeJson struct {
 type JobManagerSettings struct {
 	ThreadsPerJob int      `json:"threads_per_job"`
 	MemGBPerJob   int      `json:"memGB_per_job"`
+	ExtraVmemGB   int      `json:"extra_vmem_per_job,omitempty"`
 	ThreadEnvs    []string `json:"thread_envs"`
 }
 
@@ -98,6 +106,7 @@ type jobManagerConfig struct {
 	jobSettings      *JobManagerSettings
 	jobCmd           string
 	jobCmdArgs       []string
+	alwaysVmem       bool
 	queueQueryCmd    string
 	queueQueryGrace  time.Duration
 	jobResourcesOpt  string
@@ -243,13 +252,14 @@ func verifyJobManager(jobMode string, jobJson *JobManagerJson, memGBPerCore int)
 	}
 
 	return jobManagerConfig{
-		jobJson.JobSettings,
-		jobCmd,
-		jobModeJson.Args,
-		jobModeJson.QueueQuery,
-		queueGrace,
-		jobResourcesOpt,
-		jobTemplate,
-		jobThreadingEnabled,
+		jobSettings:      jobJson.JobSettings,
+		jobCmd:           jobCmd,
+		jobCmdArgs:       jobModeJson.Args,
+		alwaysVmem:       jobModeJson.AlwaysVmem,
+		queueQueryCmd:    jobModeJson.QueueQuery,
+		queueQueryGrace:  queueGrace,
+		jobResourcesOpt:  jobResourcesOpt,
+		jobTemplate:      jobTemplate,
+		threadingEnabled: jobThreadingEnabled,
 	}
 }

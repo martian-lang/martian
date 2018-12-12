@@ -217,7 +217,7 @@ func (self *Chunk) step(bindings LazyArgumentMap) {
 	if self.chunkDef.Resources == nil {
 		self.chunkDef.Resources = &JobResources{}
 	}
-	threads, memGB, special := self.fork.node.setChunkJobReqs(self.chunkDef.Resources)
+	res := self.fork.node.setChunkJobReqs(self.chunkDef.Resources)
 
 	// Resolve input argument bindings and merge in the chunk defs.
 	resolvedBindings := self.chunkDef.Merge(bindings)
@@ -235,7 +235,7 @@ func (self *Chunk) step(bindings LazyArgumentMap) {
 
 	// Run the chunk.
 	self.fork.lastPrint = time.Now()
-	self.fork.node.runChunk(self.fqname, self.metadata, threads, memGB, special)
+	self.fork.node.runChunk(self.fqname, self.metadata, &res)
 }
 
 func (self *Chunk) serializeState() *ChunkInfo {
@@ -248,8 +248,8 @@ func (self *Chunk) serializeState() *ChunkInfo {
 }
 
 func (self *Chunk) serializePerf() *ChunkPerfInfo {
-	numThreads, _, _ := self.fork.node.getJobReqs(self.chunkDef.Resources, STAGE_TYPE_CHUNK)
-	stats := self.metadata.serializePerf(numThreads)
+	res := self.fork.node.getJobReqs(self.chunkDef.Resources, STAGE_TYPE_CHUNK)
+	stats := self.metadata.serializePerf(res.Threads)
 	return &ChunkPerfInfo{
 		Index:      self.index,
 		ChunkStats: stats,
@@ -853,7 +853,7 @@ func (self *Fork) step() {
 			if self.stageDefs.JoinDef == nil {
 				self.stageDefs.JoinDef = &JobResources{}
 			}
-			threads, memGB, special := self.node.setJoinJobReqs(self.stageDefs.JoinDef)
+			res := self.node.setJoinJobReqs(self.stageDefs.JoinDef)
 			resolvedBindings := LazyChunkDef{
 				Resources: self.stageDefs.JoinDef,
 				Args:      MakeLazyArgumentMap(getBindings()),
@@ -883,7 +883,7 @@ func (self *Fork) step() {
 				if !self.join_has_run {
 					self.join_has_run = true
 					self.lastPrint = time.Now()
-					self.node.runJoin(self.fqname, self.join_metadata, threads, memGB, special)
+					self.node.runJoin(self.fqname, self.join_metadata, &res)
 				}
 			} else {
 				if b, err := self.chunks[0].metadata.readRawBytes(OutsFile); err == nil {
@@ -1267,13 +1267,13 @@ func (self *Fork) serializePerf() (*ForkPerfInfo, *VDRKillReport) {
 		}
 	}
 
-	numThreads, _, _ := self.node.getJobReqs(nil, STAGE_TYPE_SPLIT)
+	numThreads := self.node.getJobReqs(nil, STAGE_TYPE_SPLIT).Threads
 	splitStats := self.split_metadata.serializePerf(numThreads)
 	if splitStats != nil {
 		stats = append(stats, splitStats)
 	}
 
-	numThreads, _, _ = self.node.getJobReqs(self.stageDefs.JoinDef, STAGE_TYPE_JOIN)
+	numThreads = self.node.getJobReqs(self.stageDefs.JoinDef, STAGE_TYPE_JOIN).Threads
 	joinStats := self.join_metadata.serializePerf(numThreads)
 	if joinStats != nil {
 		stats = append(stats, joinStats)
