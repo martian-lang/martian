@@ -1,6 +1,7 @@
 {
     "__mem_gb": 2,
     "__threads": 1,
+    "__vmem_gb": 5,
     "values": [
         1,
         2,
