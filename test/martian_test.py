@@ -265,11 +265,12 @@ def compare_jobinfo(output, expect, filename):
     and time-related keys, or invocation (which can contain absolute
     paths).
     """
-    return compare_json(output, expect, filename, ['name',
-                                                   'threads',
-                                                   'memGB',
-                                                   'type',
-                                                  ])
+    return compare_json(output, expect, filename, [
+        'name',
+        'threads',
+        'memGB',
+        'type',
+    ])
 
 
 def compare_finalstate(output, expect, filename):
@@ -283,14 +284,16 @@ def compare_finalstate(output, expect, filename):
     if not loaded:
         return False
     for actual_info, expected_info in zip_longest(actual, expected):
-        if not compare_dicts(actual_info, expected_info, ['name',
-                                                          'fqname',
-                                                          'type',
-                                                          'state',
-                                                          'edges',
-                                                          'stagecodeLang',
-                                                          'error',
-                                                         ]):
+        if not compare_dicts(actual_info, expected_info,
+                             [
+                                 'name',
+                                 'fqname',
+                                 'type',
+                                 'state',
+                                 'edges',
+                                 'stagecodeLang',
+                                 'error',
+                             ]):
             return False
     return True
 
@@ -347,20 +350,12 @@ def compare_lines(output, expect, filename):
     return True
 
 
-_PPROF_LINE_REGEX = re.compile(r'^(?:# )?(\S+)')
+_PPROF_LINE_REGEX = re.compile(r'^# (\S+)')
 
 
 def pprof_keys(lines):
     """Get the sequence of pprof keys in a file."""
-    # there are some header lines that may or may not appear
-    #   depending on the duration of the stage, skip over these
-    skip = True
     for line in lines:
-        # after the first empty line begins the section of interest
-        if line.strip() == '':
-            skip = False
-        elif skip:
-            continue
         match = _PPROF_LINE_REGEX.match(line)
         if match and match.group(1):
             yield match.group(1)
