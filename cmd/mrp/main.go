@@ -161,7 +161,17 @@ func (self *pipestanceHolder) Register() chan struct{} {
 
 func (self *pipestanceHolder) HandleSignal(os.Signal) {
 	if self.enableUI && !self.readOnly {
-		if ps := self.getPipestance(); ps != nil {
+		// Don't use getPipestance() here, because that can result in
+		// a deadlock.  getPipestance takes the lock protecting
+		// self.pipestance so you don't get a stale pointer if it's in
+		// the process of being switched out.  However, the pipestance
+		// is changed only when it is restarted during auto-restart.
+		// Part of instantiation involves the pipestance registering a
+		// signal handler, which takes a lock on the signal handler
+		// mutex, which this method executes inside, so that restart
+		// will never complete.  Also, it won't matter for what we then
+		// use the pipestance for.
+		if ps := self.pipestance; ps != nil {
 			ps.ClearUiPort()
 		}
 	}
