@@ -128,8 +128,10 @@ func getRequiredIncludes(source *Ast) (map[string]*SourceFile,
 			for _, param := range params.List {
 				tName := param.GetTname()
 				if t := source.UserTypeTable[tName]; t != nil {
-					if _, ok := required[t.getNode().Loc.File.FileName]; !ok {
-						unknownTypes[tName] = t
+					if srcFile := t.getNode().Loc.File; srcFile != param.File() {
+						if _, ok := required[srcFile.FileName]; !ok {
+							unknownTypes[tName] = t
+						}
 					}
 				} else if _, ok := source.TypeTable[tName]; !ok {
 					unknownTypes[tName] = &UserType{
@@ -145,8 +147,10 @@ func getRequiredIncludes(source *Ast) (map[string]*SourceFile,
 			for _, param := range params.List {
 				tName := param.GetTname()
 				if t := source.UserTypeTable[tName]; t != nil {
-					if _, ok := required[t.getNode().Loc.File.FileName]; !ok {
-						unknownTypes[tName] = t
+					if srcFile := t.getNode().Loc.File; srcFile != param.File() {
+						if _, ok := required[srcFile.FileName]; !ok {
+							unknownTypes[tName] = t
+						}
 					}
 				} else if _, ok := source.TypeTable[tName]; !ok {
 					unknownTypes[tName] = &UserType{
