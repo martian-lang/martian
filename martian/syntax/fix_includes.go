@@ -110,7 +110,7 @@ func getRequiredIncludes(source *Ast) (map[string]*SourceFile,
 	}
 	for _, pipeline := range source.Pipelines {
 		for _, call := range pipeline.Calls {
-			if c := source.Callables.Table[call.DecId]; call != nil {
+			if c := source.Callables.Table[call.DecId]; c != nil {
 				required[c.getNode().Loc.File.FileName] = c.getNode().Loc.File
 			} else {
 				unknownCallables[call.DecId] = struct{}{}

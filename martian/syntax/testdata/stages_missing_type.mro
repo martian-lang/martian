@@ -1,0 +1,7 @@
+# This tests mrf --includes fixing type definitions.
+
+stage MY_BROKEN_STAGE(
+    in  int info,
+    out bam result,
+    src py  "nope.py",
+)
