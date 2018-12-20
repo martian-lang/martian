@@ -201,6 +201,8 @@ stage MAP_EXAMPLE(
     mem_gb   = 2,
     # This stage always uses 4 threads!
     threads  = 4,
+    # This stage uses 2TB of vmem.
+    vmem_gb  = 1024,
     volatile = strict,
 )
 
@@ -439,7 +441,10 @@ func diffLines(src, formatted string, t *testing.T) {
 		}
 		if len(formatted_lines) > i+offset {
 			if line == formatted_lines[i+offset] {
-				t.Logf("%3d: %s %s= %s", i, line, pad, formatted_lines[i+offset])
+				if len(line) > 30 {
+					line = line[:27] + "..."
+				}
+				t.Logf("%3d: %s %s= %s", i, line, pad, line)
 			} else if strings.TrimSpace(line) == strings.TrimSpace(formatted_lines[i+offset]) {
 				t.Errorf("%3d: %s %s| %s", i, line, pad, formatted_lines[i+offset])
 			} else {

@@ -548,7 +548,7 @@ func (self *Resources) format(printer *printer) {
 	if self.VMemNode != nil {
 		printer.printComments(self.VMemNode, INDENT)
 		printer.WriteString(INDENT)
-		printer.Printf("vmem_gb%s = %d,\n", threadPad, self.MemGB)
+		printer.Printf("vmem_gb%s = %d,\n", threadPad, self.VMemGB)
 	}
 	if self.VolatileNode != nil {
 		printer.printComments(self.VolatileNode, INDENT)
