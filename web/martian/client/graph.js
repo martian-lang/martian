@@ -1,7 +1,7 @@
 (function() {
   var _humanizeBytes, _humanizeTime, _humanizeUnits, _humanizeWithSuffix, addColumns, addRow, app, humanize, renderChart, renderGraph;
 
-  app = angular.module('app', ['ui.bootstrap', 'ngClipboard', 'googlechart']);
+  app = angular.module('app', ['ui.bootstrap', 'googlechart']);
 
   app.filter('shorten', function() {
     return function(s, expand) {
@@ -16,12 +16,24 @@
 
   renderGraph = function($scope, $compile) {
     var edge, g, j, k, len, len1, len2, m, maxX, maxY, node, ref, ref1, ref2, scale;
-    g = new dagreD3.Digraph();
+    g = new dagreD3.graphlib.Graph({
+      directed: true
+    }).setGraph({});
+    g.ranker = 'tight-tree';
+    g.edgesep = 0;
+    g.nodeSep = 30;
+    g.marginx = 10;
+    g.setDefaultEdgeLabel(function() {
+      return {
+        minlen: 1,
+        curve: d3.curveBasis
+      };
+    });
     ref = _.values($scope.nodes);
     for (j = 0, len = ref.length; j < len; j++) {
       node = ref[j];
       node.label = node.name;
-      g.addNode(node.fqname, node);
+      g.setNode(node.fqname, node);
     }
     ref1 = _.values($scope.nodes);
     for (k = 0, len1 = ref1.length; k < len1; k++) {
@@ -29,10 +41,10 @@
       ref2 = node.edges;
       for (m = 0, len2 = ref2.length; m < len2; m++) {
         edge = ref2[m];
-        g.addEdge(null, edge.from, edge.to, {});
+        g.setEdge(edge.from, edge.to);
       }
     }
-    (new dagreD3.Renderer()).zoom(false).run(g, d3.select("g"));
+    $scope.render($scope.graph, g);
     maxX = 0.0;
     maxY = 0.0;
     d3.selectAll("g.node").each(function(id) {
@@ -52,16 +64,20 @@
       }
     });
     maxX += 100;
-    if (maxX < 750.0) {
-      maxX = 750.0;
+    if (maxX < 720.0) {
+      maxX = 720.0;
     }
-    scale = 750.0 / maxX;
+    scale = 720.0 / maxX;
     maxY += 100;
-    d3.selectAll("svg").attr('width', '750px').attr('height', maxY.toString() + "px");
-    d3.selectAll("g#top").attr('transform', 'translate(5,5) scale(' + scale + ')');
-    d3.selectAll("g.node.stage rect").attr('rx', 20).attr('ry', 20);
-    d3.selectAll("g.node.pipeline rect").attr('rx', 0).attr('ry', 0);
-    return $compile(angular.element(document.querySelector('#top')).contents())($scope);
+    if (maxY < 700) {
+      maxY = 700;
+    }
+    $scope.svg.attr('width', '750px').attr('height', maxY.toString() + "px");
+    $scope.graph.attr('transform', 'translate(5,5) scale(' + scale + ')');
+    $scope.graph.selectAll("g.node.stage rect").attr('rx', 20).attr('ry', 20);
+    $scope.graph.selectAll("g.node.pipeline rect").attr('rx', 0).attr('ry', 0);
+    $scope.zoom(g, 750, maxY, scale);
+    return $compile($scope.top.contents())($scope);
   };
 
   addRow = function(chart, columns, name, units, stats) {
@@ -187,7 +203,7 @@
   };
 
   app.controller('MartianGraphCtrl', function($scope, $compile, $http, $interval) {
-    var auth, j, len, ref, ref1, selected, tab, v;
+    var auth, j, len, ref, ref1, selected, tab, v, zoom;
     $scope.pname = pname;
     $scope.psid = psid;
     $scope.admin = admin;
@@ -204,14 +220,27 @@
         break;
       }
     }
-    $http.get("/api/get-state/" + container + "/" + pname + "/" + psid + auth).success(function(state) {
+    $scope.top = angular.element(document.querySelector('#top'));
+    $scope.svg = d3.select("div svg");
+    $scope.graph = $scope.svg.select("g");
+    $scope.render = dagreD3.render();
+    zoom = d3.zoom().on("zoom", function() {
+      return $scope.graph.attr("transform", d3.event.transform);
+    });
+    $scope.svg.call(zoom);
+    $scope.zoom = function(g, width, height, scale) {
+      return $scope.svg.call(zoom.transform, d3.zoomIdentity.translate(5, 5).scale(scale));
+    };
+    $http.get("/api/get-state/" + container + "/" + pname + "/" + psid + auth).then(function(r) {
+      var state;
+      state = r.data;
       $scope.topnode = state.nodes[0];
-      $scope.nodes = _.indexBy(state.nodes, 'fqname');
+      $scope.nodes = _.keyBy(state.nodes, 'fqname');
       $scope.info = state.info;
       return renderGraph($scope, $compile);
     });
-    $http.get("/api/list-metadata-top/" + container + "/" + pname + "/" + psid + auth).success(function(files) {
-      return $scope.files = files;
+    $http.get("/api/list-metadata-top/" + container + "/" + pname + "/" + psid + auth).then(function(r) {
+      return $scope.files = r.data;
     });
     $scope.id = null;
     $scope.forki = 0;
@@ -276,8 +305,8 @@
     }
     $scope.$watch('perf', function() {
       if ($scope.perf) {
-        return $http.get("/api/get-perf/" + container + "/" + pname + "/" + psid + auth).success(function(state) {
-          $scope.pnodes = _.indexBy(state.nodes, 'fqname');
+        return $http.get("/api/get-perf/" + container + "/" + pname + "/" + psid + auth).then(function(state) {
+          $scope.pnodes = _.keyBy(state.data.nodes, 'fqname');
           return $scope.pnode = $scope.pnodes[$scope.topnode.fqname];
         });
       }
@@ -353,11 +382,11 @@
     };
     $scope.restart = function() {
       $scope.showRestart = false;
-      return $http.post("/api/restart/" + container + "/" + pname + "/" + psid + auth).success(function(data) {
+      return $http.post("/api/restart/" + container + "/" + pname + "/" + psid + auth).then(function(data) {
         return $scope.stopRefresh = $interval(function() {
           return $scope.refresh();
         }, 3000);
-      }).error(function(data, error) {
+      }, function(data, error) {
         $scope.showRestart = true;
         return alert("Restart failed: error " + status + " (" + data + ").  mrp may no longer be running.\n\nPlease run mrp again with the --noexit option to continue running the pipeline.");
       });
@@ -376,8 +405,8 @@
         transformResponse: function(d) {
           return d;
         }
-      }).success(function(metadata) {
-        return $scope.mdviews[view][index] = metadata;
+      }).then(function(r) {
+        return $scope.mdviews[view][index] = r.data;
       });
     };
     $scope.filterMetadata = function(name) {
@@ -388,19 +417,21 @@
       return !found;
     };
     return $scope.refresh = function() {
-      $http.get("/api/get-state/" + container + "/" + pname + "/" + psid + auth).success(function(state) {
-        $scope.nodes = _.indexBy(state.nodes, 'fqname');
+      $http.get("/api/get-state/" + container + "/" + pname + "/" + psid + auth).then(function(r) {
+        var state;
+        state = r.data;
+        $scope.nodes = _.keyBy(state.nodes, 'fqname');
         if ($scope.id) {
           $scope.node = $scope.nodes[$scope.id];
         }
         $scope.info = state.info;
         return $scope.showRestart = true;
-      }).error(function(data, status) {
+      }, function(data, status) {
         console.log("Server responded with error " + status + ": " + data + " for /api/get-state, so stopping auto-refresh.");
         return $interval.cancel($scope.stopRefresh);
       });
-      return $http.get("/api/list-metadata-top/" + container + "/" + pname + "/" + psid + auth).success(function(files) {
-        return $scope.files = files;
+      return $http.get("/api/list-metadata-top/" + container + "/" + pname + "/" + psid + auth).then(function(files) {
+        return $scope.files = files.data;
       });
     };
   });

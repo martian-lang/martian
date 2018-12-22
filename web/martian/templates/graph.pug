@@ -4,23 +4,23 @@
     Main UI for martian runner.
 
 doctype html
-html(ng-app="app" ng-controller="MartianGraphCtrl")
+html(ng-app="app" ng-controller="MartianGraphCtrl" lang="en")
     head
         title [[.InstanceName]] / [[.Psid]] [[.Pname]]
         meta(name="apple-mobile-web-app-capable" content="yes")
         meta(name="apple-mobile-web-app-status-bar-style" content="black-translucent")
-        link(rel="stylesheet" href="/css/bootstrap.min.css")
         link(rel="stylesheet" href="/css/main.css")
         link(rel="icon" type="image/x-icon" href="/favicon.ico")
-        script(src="/js/d3.v3.min.js")
-        script(src="/js/dagre-d3.min.js")
-        script(src="/js/angular.min.js")
-        script(src="/js/ui-bootstrap-tpls-0.10.0.min.js")
-        script(src="/js/lodash.min.js")
-        script(src="/js/moment.min.js")
-        script(src="/js/ngClip.js")
-        script(src="/js/ZeroClipboard.min.js")
-        script(src="/js/ng-google-chart.js")
+
+        script
+            | container = '[[.Container]]';
+            | pname = '[[.Pname]]';
+            | psid = '[[.Psid]]';
+            | admin = [[.Admin]];
+            | adminstyle = [[.AdminStyle]];
+            | release = [[.Release]];
+            | files = { "files": [ "log" ] }
+        script(src="/graph.js")
 
     body
         header.navbar.navbar-inverse.navbar-fixed-top(class="[[if .AdminStyle]]admin[[end]]")
@@ -46,7 +46,7 @@ html(ng-app="app" ng-controller="MartianGraphCtrl")
             svg(width="750px" height="1000px" ng-click="alert('l')")
                 g#top(transform="translate(5,5) scale(1.0)")
         .details#info(ng-show="!perf && !node")
-            h4#stagename
+            h4.stagename
                 a(href="#") Pipestance Details
             h5 Runtime
             table.table
@@ -102,7 +102,7 @@ html(ng-app="app" ng-controller="MartianGraphCtrl")
             #invokesrc
                 pre {{info.invokesrc}}
         .details#perf(ng-if="perf && pnode")
-            h4#stagename
+            h4.stagename
                 a(href="#" ng-click="selectNode(topnode.fqname)" ng-show="pnode.fqname!=topnode.fqname") &larr;
                 span(ng-show="pnode.fqname!=topnode.fqname") &nbsp;
                 a(href="#") Pipestance Performance
@@ -114,7 +114,7 @@ html(ng-app="app" ng-controller="MartianGraphCtrl")
                             button.btn.btn-default(type="button" ng-model="$parent.$parent.forki" ng-repeat="fork in pnode.forks" btn-radio="fork.index") {{fork.index}}
             tabset.tbs-hor
                 tab(heading="Summary" active="tabs.summary")
-                    table.table#info(style="float:left; position: relative; top: 5px")
+                    table.table.info(style="float:left; position: relative; top: 5px")
                         tr
                             td(style="border: 0px") Walltime
                             td(style="border: 0px") {{ humanize('walltime', 'seconds') }}
@@ -167,7 +167,7 @@ html(ng-app="app" ng-controller="MartianGraphCtrl")
                     tab(heading="Table" ng-click="setChartType('Table')")
                 div(google-chart chart="charts[forki]" ng-if="charts[forki]")
         .details#stage(ng-show="!perf && node")
-            h4#stagename
+            h4.stagename
                 a(href="#" ng-click="node=null;id=null") &larr;
                 | &nbsp;
                 a(href="#") {{node.name}}
@@ -182,12 +182,12 @@ html(ng-app="app" ng-controller="MartianGraphCtrl")
                     br
                     a(ng-show="showLog==false" ng-click="showLog=true") show details
                     a(ng-show="showLog==true" ng-click="showLog=false") hide details
-                    pre#metadata(ng-show="showLog")
+                    pre(ng-show="showLog")
                         button.close(type="button" ng-click="showLog=false") &times;
                         | {{node.error.log}}
 
             h5 Details
-            table.table#info
+            table.table.info
                 tr
                     td(style="width: 85px") State
                     td
@@ -201,15 +201,11 @@ html(ng-app="app" ng-controller="MartianGraphCtrl")
                 tr
                     td Path
                     td
-                        button.btn.btn-default.btn-xs(type="button" clip-copy="copyToClipboard()")
-                            span.glyphicon.glyphicon-paperclip
                         span.copyable {{node.path}}
                         span.copyable-display.hover(ng-click="expand.path=true") {{node.path | shorten:expand.path}}
                 tr(ng-if="node.type=='stage'")
                     td {{node.stagecodeLang}}
                     td
-                        button.btn.btn-default.btn-xs(type="button" clip-copy="copyToClipboard()")
-                            span.glyphicon.glyphicon-paperclip
                         span.copyable {{node.stagecodeCmd}}
                         span.copyable-display.hover(ng-click="expand.stagecodeCmd=true") {{node.stagecodeCmd | shorten:expand.stagecodeCmd}}
                 tr
@@ -219,7 +215,11 @@ html(ng-app="app" ng-controller="MartianGraphCtrl")
                             tr(ng-repeat="binding in node.sweepbindings")
                                 td {{binding.id}}&nbsp;&nbsp;
                                 td
-                                    span.glyphicon.glyphicon-transfer &nbsp;
+                                    span.glyphicon.glyphicon-transfer
+                                        svg(preserveAspectRatio viewbox="0 0 24 24" height="12px")
+                                           g
+                                               path(d="M14 4l2.29 2.29-2.88 2.88 1.42 1.42 2.88-2.88L20 10V4zm-4 0H4v6l2.29-2.29 4.71 4.7V20h2v-8.41l-5.29-5.3z")
+                                        | &nbsp;
                                 td.hover(ng-click="expandString('node', 'sweepbindings', binding.id)") {{binding.value | shorten:expand.node.sweepbindings[binding.id]}}
 
             h5 Sweeping
@@ -247,7 +247,7 @@ html(ng-app="app" ng-controller="MartianGraphCtrl")
                         span(ng-repeat="name in node.forks[forki].metadata.names | filter:filterMetadata")
                             a(ng-click="selectMetadata('forks', forki, name, node.forks[forki].metadata.path)") {{name}}
                             | &nbsp;&nbsp;
-                        pre#metadata(ng-show="mdviews.forks[forki].length")
+                        pre(ng-show="mdviews.forks[forki].length")
                             button.close(type="button" ng-click="mdviews.forks[forki]=''") &times;
                             | {{mdviews.forks[forki]}}
 
@@ -257,7 +257,7 @@ html(ng-app="app" ng-controller="MartianGraphCtrl")
                         span(ng-repeat="name in node.forks[forki].split_metadata.names | filter:filterMetadata")
                             a(ng-click="selectMetadata('split', forki, name, node.forks[forki].split_metadata.path)") {{name}}
                             | &nbsp;&nbsp;
-                        pre#metadata(ng-show="mdviews.split[forki].length")
+                        pre(ng-show="mdviews.split[forki].length")
                             button.close(type="button" ng-click="mdviews.split[forki]=''") &times;
                             | {{mdviews.split[forki]}}
 
@@ -267,7 +267,7 @@ html(ng-app="app" ng-controller="MartianGraphCtrl")
                         span(ng-repeat="name in node.forks[forki].join_metadata.names | filter:filterMetadata")
                             a(ng-click="selectMetadata('join', forki, name, node.forks[forki].join_metadata.path)") {{name}}
                             | &nbsp;&nbsp;
-                        pre#metadata(ng-show="mdviews.join[forki].length")
+                        pre(ng-show="mdviews.join[forki].length")
                             button.close(type="button" ng-click="mdviews.join[forki]=''") &times;
                             | {{mdviews.join[forki]}}
 
@@ -287,8 +287,6 @@ html(ng-app="app" ng-controller="MartianGraphCtrl")
                         span(ng-if="bnd.waiting")
                             i.pending waiting
                         span(ng-if="!bnd.waiting && bnd.value==null") null
-                        button.btn.btn-default.btn-xs(ng-if="bnd.value!=null" type="button" clip-copy="copyToClipboard()" style="vertical-align: top")
-                            span.glyphicon.glyphicon-paperclip
                         span.copyable(ng-if="bnd.value!=null") {{bnd.value}}
                         span.copyable-display.hover(ng-if="bnd.value!=null" ng-click="expandString('forks', forki, bnd.id)") {{bnd.value | shorten:expand.forks[forki][bnd.id]}}
                 tr(ng-repeat-end)
@@ -312,8 +310,6 @@ html(ng-app="app" ng-controller="MartianGraphCtrl")
                                 td {{key}}
                                 td &nbsp;=&nbsp;
                                 td
-                                    button.btn.btn-default.btn-xs(type="button" clip-copy="copyToClipboard()")
-                                        span.glyphicon.glyphicon-paperclip
                                     span.copyable {{value}}
                                     span.copyable-display.hover(ng-click="expandString('chunks', chunki, key)") {{value | shorten:expand.chunks[chunki][key]}}
                 tr
@@ -322,16 +318,6 @@ html(ng-app="app" ng-controller="MartianGraphCtrl")
                         span(ng-repeat="name in node.forks[forki].chunks[chunki].metadata.names | filter:filterMetadata")
                             a(ng-click="selectMetadata('chunks', chunki, name, node.forks[forki].chunks[chunki].metadata.path)") {{name}}
                             | &nbsp;&nbsp;
-                        pre#metadata(ng-show="mdviews.chunks[chunki].length")
+                        pre(ng-show="mdviews.chunks[chunki].length")
                             button.close(type="button" ng-click="mdviews.chunks[chunki]=''") &times;
                             | {{mdviews.chunks[chunki]}}
-
-    script
-        | container = '[[.Container]]';
-        | pname = '[[.Pname]]';
-        | psid = '[[.Psid]]';
-        | admin = [[.Admin]];
-        | adminstyle = [[.AdminStyle]];
-        | release = [[.Release]];
-        | files = { "files": [ "log" ] }
-    script(src="/graph.js")

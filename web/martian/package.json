@@ -4,7 +4,10 @@
   "description": "Martian UI",
   "private": true,
   "main": "",
-  "dependencies": {},
+  "dependencies": {
+    "angular": "^1.7.5",
+    "dagre-d3": "^0.6.3"
+  },
   "scripts": {},
   "author": "",
   "license": "",
@@ -12,6 +15,7 @@
     "gulp": "^4.0.0",
     "gulp-clean-css": "^3.9.4",
     "gulp-coffee": "^2.1.1",
+    "gulp-concat": "^2.6.1",
     "gulp-pug": "^4.0.1",
     "gulp-zopfli-green": "^3.0.0"
   }

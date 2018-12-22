@@ -4,7 +4,7 @@
 # Angular controllers for martian editor main UI.
 #
 
-app = angular.module('app', ['ui.bootstrap','ngClipboard', 'googlechart'])
+app = angular.module('app', ['ui.bootstrap', 'googlechart'])
 app.filter('shorten',  () -> (s, expand) ->
     s = s + ""
     if s.length < 71 || expand then return s
@@ -12,14 +12,25 @@ app.filter('shorten',  () -> (s, expand) ->
 )
 
 renderGraph = ($scope, $compile) ->
-    g = new dagreD3.Digraph()
+    g = new dagreD3.graphlib.Graph({
+        directed: true,
+    }).setGraph({})
+    g.ranker = 'tight-tree'
+    g.edgesep = 0
+    g.nodeSep = 30
+    g.marginx = 10
+    g.setDefaultEdgeLabel(() -> {
+        minlen: 1,
+        curve: d3.curveBasis,
+    })
     for node in _.values($scope.nodes)
         node.label = node.name
-        g.addNode(node.fqname, node)
+        g.setNode(node.fqname, node)
     for node in _.values($scope.nodes)
         for edge in node.edges
-            g.addEdge(null, edge.from, edge.to, {})
-    (new dagreD3.Renderer()).zoom(false).run(g, d3.select("g"));
+            g.setEdge(edge.from, edge.to)
+
+    $scope.render($scope.graph, g)
     maxX = 0.0
     maxY = 0.0
     d3.selectAll("g.node").each((id) ->
@@ -37,17 +48,20 @@ renderGraph = ($scope, $compile) ->
             maxY = yCoord
     )
     maxX += 100
-    if maxX < 750.0
-        maxX = 750.0
-    scale = 750.0 / maxX
+    if maxX < 720.0
+        maxX = 720.0
+    scale = 720.0 / maxX
     maxY += 100
-    d3.selectAll("svg").attr(
+    if maxY < 700
+        maxY = 700
+    $scope.svg.attr(
         'width', '750px').attr(
         'height', maxY.toString() + "px")
-    d3.selectAll("g#top").attr('transform', 'translate(5,5) scale('+scale+')')
-    d3.selectAll("g.node.stage rect").attr('rx', 20).attr('ry', 20)
-    d3.selectAll("g.node.pipeline rect").attr('rx', 0).attr('ry', 0)
-    $compile(angular.element(document.querySelector('#top')).contents())($scope)
+    $scope.graph.attr('transform', 'translate(5,5) scale('+scale+')')
+    $scope.graph.selectAll("g.node.stage rect").attr('rx', 20).attr('ry', 20)
+    $scope.graph.selectAll("g.node.pipeline rect").attr('rx', 0).attr('ry', 0)
+    $scope.zoom(g, 750, maxY, scale)
+    $compile($scope.top.contents())($scope)
 
 addRow = (chart, columns, name, units, stats) ->
     row = [name]
@@ -139,14 +153,28 @@ app.controller('MartianGraphCtrl', ($scope, $compile, $http, $interval) ->
             auth = '?' + v
             break
 
-    $http.get("/api/get-state/#{container}/#{pname}/#{psid}#{auth}").success((state) ->
+    $scope.top = angular.element(document.querySelector('#top'))
+    $scope.svg = d3.select("div svg")
+    $scope.graph = $scope.svg.select("g")
+    $scope.render = dagreD3.render()
+
+    zoom = d3.zoom().on("zoom", () ->
+      $scope.graph.attr("transform", d3.event.transform)
+    )
+    $scope.svg.call(zoom)
+    $scope.zoom = (g, width, height, scale) -> $scope.svg.call(
+        zoom.transform,
+        d3.zoomIdentity.translate(5, 5).scale(scale))
+
+    $http.get("/api/get-state/#{container}/#{pname}/#{psid}#{auth}").then((r) ->
+        state = r.data
         $scope.topnode = state.nodes[0]
-        $scope.nodes = _.indexBy(state.nodes, 'fqname')
+        $scope.nodes = _.keyBy(state.nodes, 'fqname')
         $scope.info = state.info
         renderGraph($scope, $compile)
     )
-    $http.get("/api/list-metadata-top/#{container}/#{pname}/#{psid}#{auth}").success((files) ->
-        $scope.files = files
+    $http.get("/api/list-metadata-top/#{container}/#{pname}/#{psid}#{auth}").then((r) ->
+        $scope.files = r.data
     )
 
     $scope.id = null
@@ -180,8 +208,8 @@ app.controller('MartianGraphCtrl', ($scope, $compile, $http, $interval) ->
 
     $scope.$watch('perf', () ->
         if $scope.perf
-            $http.get("/api/get-perf/#{container}/#{pname}/#{psid}#{auth}").success((state) ->
-                $scope.pnodes = _.indexBy(state.nodes, 'fqname')
+            $http.get("/api/get-perf/#{container}/#{pname}/#{psid}#{auth}").then((state) ->
+                $scope.pnodes = _.keyBy(state.data.nodes, 'fqname')
                 $scope.pnode = $scope.pnodes[$scope.topnode.fqname]
             )
     )
@@ -235,11 +263,11 @@ app.controller('MartianGraphCtrl', ($scope, $compile, $http, $interval) ->
 
     $scope.restart = () ->
         $scope.showRestart = false
-        $http.post("/api/restart/#{container}/#{pname}/#{psid}#{auth}").success((data) ->
+        $http.post("/api/restart/#{container}/#{pname}/#{psid}#{auth}").then((data) ->
             $scope.stopRefresh = $interval(() ->
                 $scope.refresh()
             , 3000)
-        ).error((data, error) ->
+        , (data, error) ->
             $scope.showRestart = true
             alert("Restart failed: error #{status} (#{data}).  mrp may no longer be running.\n\nPlease run mrp again with the --noexit option to continue running the pipeline.")
         )
@@ -250,8 +278,8 @@ app.controller('MartianGraphCtrl', ($scope, $compile, $http, $interval) ->
         $scope.expand[view][index][name] = true
 
     $scope.selectMetadata = (view, index, name, path) ->
-        $http.post("/api/get-metadata/#{container}/#{pname}/#{psid}#{auth}", { path:path, name:name }, { transformResponse: (d) -> d }).success((metadata) ->
-            $scope.mdviews[view][index] = metadata
+        $http.post("/api/get-metadata/#{container}/#{pname}/#{psid}#{auth}", { path:path, name:name }, { transformResponse: (d) -> d }).then((r) ->
+            $scope.mdviews[view][index] = r.data
         )
 
     $scope.filterMetadata = (name) ->
@@ -261,16 +289,17 @@ app.controller('MartianGraphCtrl', ($scope, $compile, $http, $interval) ->
         return !found
 
     $scope.refresh = () ->
-        $http.get("/api/get-state/#{container}/#{pname}/#{psid}#{auth}").success((state) ->
-            $scope.nodes = _.indexBy(state.nodes, 'fqname')
+        $http.get("/api/get-state/#{container}/#{pname}/#{psid}#{auth}").then((r) ->
+            state = r.data
+            $scope.nodes = _.keyBy(state.nodes, 'fqname')
             if $scope.id then $scope.node = $scope.nodes[$scope.id]
             $scope.info = state.info
             $scope.showRestart = true
-        ).error((data, status) ->
+        , (data, status) ->
             console.log("Server responded with error #{status}: #{data} for /api/get-state, so stopping auto-refresh.")
             $interval.cancel($scope.stopRefresh)
         )
-        $http.get("/api/list-metadata-top/#{container}/#{pname}/#{psid}#{auth}").success((files) ->
-            $scope.files = files
+        $http.get("/api/list-metadata-top/#{container}/#{pname}/#{psid}#{auth}").then((files) ->
+            $scope.files = files.data
         )
 )

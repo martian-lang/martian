@@ -151,8 +151,6 @@ func (self *mrpWebServer) handleStatic(sm *http.ServeMux) {
 	sm.HandleFunc("/graph.js", contentGzip)
 	sm.HandleFunc("/favicon.ico", contentGzip)
 	sm.HandleFunc("/css/", contentGzip)
-	sm.HandleFunc("/js/", contentGzip)
-	sm.Handle("/fonts/", res)
 }
 
 func (self *mrpWebServer) graphTemplate() (*template.Template, error) {
