@@ -60,3 +60,20 @@ func parseFloat(s []byte) float64 {
 	}
 	return f
 }
+
+func unhex(c byte) byte {
+	switch {
+	case '0' <= c && c <= '9':
+		return c - '0'
+	case 'a' <= c && c <= 'f':
+		return c - 'a' + 10
+	case 'A' <= c && c <= 'F':
+		return c - 'A' + 10
+	default:
+		panic(string(append([]byte("Invalid character "), c)))
+	}
+}
+
+func parseHexByte(c0, c1 byte) byte {
+	return (unhex(c0) << 4) + unhex(c1)
+}

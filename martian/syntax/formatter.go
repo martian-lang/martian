@@ -14,6 +14,7 @@ import (
 	"path/filepath"
 	"sort"
 	"strings"
+	"unicode/utf8"
 )
 
 const (
@@ -109,6 +110,91 @@ func (self *printer) String() string {
 	return self.buf.String()
 }
 
+// QuoteString writes a string, quoted and escaped as json.
+//
+// The reason we don't just use json.Marshal here is because the default
+// encoder html-escapes strings, and disabling that by using json.Encoder
+// puts carriage returns at the end of the string, which is also bad for
+// this use case.  Plus this way we can bypass a lot of reflection junk.
+//
+// This method is mostly copy/pasted from unexported go standard library
+// json encoder implementation (see
+// https://github.com/golang/go/blob/release-branch.go1.11/src/encoding/json/encode.go#L884)
+func quoteString(w stringWriter, s string) {
+	w.WriteByte('"')
+	const hex = "0123456789abcdef"
+	start := 0
+	for i := 0; i < len(s); {
+		// Single-byte code points.
+		if b := s[i]; b < utf8.RuneSelf {
+			if b >= ' ' && b != '"' && b != '\\' {
+				i++
+				continue
+			}
+			if start < i {
+				w.WriteString(s[start:i])
+			}
+			switch b {
+			case '\\', '"':
+				w.WriteByte('\\')
+				w.WriteByte(b)
+			case '\n':
+				w.WriteByte('\\')
+				w.WriteByte('n')
+			case '\r':
+				w.WriteByte('\\')
+				w.WriteByte('r')
+			case '\t':
+				w.WriteByte('\\')
+				w.WriteByte('t')
+			default:
+				// This encodes bytes < 0x20 except for \t, \n and \r.
+				w.WriteString(`\u00`)
+				w.WriteByte(hex[b>>4])
+				w.WriteByte(hex[b&0xF])
+			}
+			i++
+			start = i
+			continue
+		}
+		// Multi-byte code points.
+		c, size := utf8.DecodeRuneInString(s[i:])
+		if c == utf8.RuneError && size == 1 {
+			// Transform invalid code points into unicode
+			// "replacement character".
+			if start < i {
+				w.WriteString(s[start:i])
+			}
+			w.WriteString(`\ufffd`)
+			i += size
+			start = i
+			continue
+		}
+		// U+2028 is LINE SEPARATOR.
+		// U+2029 is PARAGRAPH SEPARATOR.
+		// They are both technically valid characters in JSON strings,
+		// but don't work in JSONP, which has to be evaluated as JavaScript,
+		// and can lead to security holes there. It is valid JSON to
+		// escape them, so we do so unconditionally.
+		// See http://timelessrepo.com/json-isnt-a-javascript-subset for discussion.
+		if c == '\u2028' || c == '\u2029' {
+			if start < i {
+				w.WriteString(s[start:i])
+			}
+			w.WriteString(`\u202`)
+			w.WriteByte(hex[c&0xF])
+			i += size
+			start = i
+			continue
+		}
+		i += size
+	}
+	if start < len(s) {
+		w.WriteString(s[start:])
+	}
+	w.WriteByte('"')
+}
+
 //
 // Expression
 //
@@ -120,7 +206,12 @@ func (self *ValExp) format(w stringWriter, prefix string) {
 	} else if self.Kind == KindFloat {
 		fmt.Fprintf(w, "%g", self.Value)
 	} else if self.Kind == KindString {
-		fmt.Fprintf(w, "\"%s\"", self.Value)
+		switch s := self.Value.(type) {
+		case string:
+			quoteString(w, s)
+		default:
+			fmt.Fprintf(w, "%q", self.Value)
+		}
 	} else if self.Kind == KindMap {
 		self.formatMap(w, prefix)
 	} else if self.Kind == KindArray {

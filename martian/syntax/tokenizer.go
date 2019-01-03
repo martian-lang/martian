@@ -32,7 +32,8 @@ var rules = [...]rule{
 	{regexp.MustCompile(`^;`), SEMICOLON},
 	{regexp.MustCompile(`^,`), COMMA},
 	{regexp.MustCompile(`^\.`), DOT},
-	{regexp.MustCompile(`^"[^\"]*"`), LITSTRING}, // double-quoted strings. escapes not supported
+	// double-quoted strings with escaping.
+	{regexp.MustCompile(`^"(?:[^\\"]|\\[abfnrtv\\"]|\\[0-7]{3}|\\x[0-9a-fA-f]{2}|\\u[0-9a-fA-F]{4}|\\U[0-9a-fA-F]{8})*"`), LITSTRING},
 	{regexp.MustCompile(`^filetype\b`), FILETYPE},
 	{regexp.MustCompile(`^stage\b`), STAGE},
 	{regexp.MustCompile(`^pipeline\b`), PIPELINE},

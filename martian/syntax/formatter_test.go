@@ -92,9 +92,9 @@ func TestFormatValueExpression(t *testing.T) {
 	Equal(t, buff.String(), "\"blah\"", "Double quote a string.")
 	buff.Reset()
 
-	ve.Value = "\"blah\""
+	ve.Value = `"blah"`
 	ve.format(&buff, "")
-	Equal(t, buff.String(), "\"\"blah\"\"", "Double quote a double-quoted string.")
+	Equal(t, buff.String(), `"\"blah\""`, "Double quote a double-quoted string.")
 	buff.Reset()
 
 	//
@@ -218,7 +218,7 @@ pipeline AWESOME(
     call ADD_KEY1(
         key      = self.key1,
         value    = self.value1,
-        failfile = "fail1",
+        failfile = "fail \n\"1\"",
         start    = null,
     ) using (
         local = true,
