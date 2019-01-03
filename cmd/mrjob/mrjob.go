@@ -544,7 +544,7 @@ func (self *runner) monitor(lastHeartbeat *time.Time) error {
 		} else {
 			util.LogInfo("monitor",
 				"Stage exceeded its address space quota (using %.1f, allowed %dG)",
-				vmem, self.jobInfo.MemGB)
+				vmem, self.jobInfo.VMemGB)
 		}
 	}
 	if time.Since(*lastHeartbeat) > HeartbeatInterval {
