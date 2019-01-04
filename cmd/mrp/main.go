@@ -943,7 +943,6 @@ Options:
 				os.Exit(1)
 			} else {
 				util.PrintError(err, "webserv", "UI disabled")
-				enableUI = false
 				listener = nil
 			}
 		} else {

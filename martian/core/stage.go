@@ -88,7 +88,8 @@ func NewChunk(fork *Fork, index int,
 		if legacyPath != chunkPath {
 			if info, err := os.Stat(legacyPath); err == nil && info != nil {
 				if info.IsDir() {
-					self.metadata = NewMetadataWithJournalPath(self.fqname, legacyPath, self.fork.node.journalPath)
+					self.metadata = NewMetadataWithJournalPath(
+						self.fqname, legacyPath, self.fork.node.journalPath)
 				}
 			}
 		}
@@ -190,9 +191,13 @@ func (self *Chunk) updateState(state MetadataFileName, uniquifier string) {
 	if state == ProgressFile {
 		self.fork.lastPrint = time.Now()
 		if msg, err := self.metadata.readRawSafe(state); err == nil {
-			util.PrintInfo("runtime", "(progress)        %s: %s", self.fqname, msg)
+			util.PrintInfo("runtime",
+				"(progress)        %s: %s",
+				self.fqname, msg)
 		} else {
-			util.LogError(err, "progres", "Error reading progress file for %s", self.fqname)
+			util.LogError(err, "progres",
+				"Error reading progress file for %s",
+				self.fqname)
 		}
 	}
 	if beginState == Running || beginState == Queued {
@@ -222,7 +227,7 @@ func (self *Chunk) step(bindings LazyArgumentMap) {
 	// Resolve input argument bindings and merge in the chunk defs.
 	resolvedBindings := self.chunkDef.Merge(bindings)
 
-	// Write out input and ouput args for the chunk.
+	// Write out input and output args for the chunk.
 	self.metadata.Write(ArgsFile, resolvedBindings)
 	outs := makeOutArgs(self.fork.OutParams(), self.metadata.curFilesPath, false)
 	if self.fork.Split() {
@@ -332,8 +337,10 @@ func NewFork(nodable Nodable, index int, argPermute map[string]interface{}) *For
 	self.path = path.Join(self.node.path, fmt.Sprintf("fork%d", index))
 	self.fqname = self.node.fqname + fmt.Sprintf(".fork%d", index)
 	self.metadata = NewMetadata(self.fqname, self.path)
-	self.split_metadata = NewMetadata(self.fqname+".split", path.Join(self.path, "split"))
-	self.join_metadata = NewMetadata(self.fqname+".join", path.Join(self.path, "join"))
+	self.split_metadata = NewMetadata(self.fqname+".split",
+		path.Join(self.path, "split"))
+	self.join_metadata = NewMetadata(self.fqname+".join",
+		path.Join(self.path, "join"))
 	if self.Split() {
 		self.split_metadata.discoverUniquify()
 		self.join_metadata.finalFilePath = self.metadata.finalFilePath
@@ -674,9 +681,13 @@ func (self *Fork) updateState(state, uniquifier string) {
 	if state == string(ProgressFile) {
 		self.lastPrint = time.Now()
 		if msg, err := self.metadata.readRawSafe(MetadataFileName(state)); err == nil {
-			util.PrintInfo("runtime", "(progress)        %s: %s", self.fqname, msg)
+			util.PrintInfo("runtime",
+				"(progress)        %s: %s",
+				self.fqname, msg)
 		} else {
-			util.LogError(err, "progres", "Error reading progress file for %s", self.fqname)
+			util.LogError(err, "progres",
+				"Error reading progress file for %s",
+				self.fqname)
 		}
 	}
 	if strings.HasPrefix(state, SplitPrefix) {
@@ -801,12 +812,10 @@ func (self *Fork) step() {
 			}
 			if self.split_metadata.exists(StageDefsFile) {
 				if err := self.split_metadata.ReadInto(StageDefsFile, &self.stageDefs); err != nil {
-					errstring := "none"
-					if err != nil {
-						errstring = err.Error()
-					}
-					self.split_metadata.WriteRaw(Errors,
-						fmt.Sprintf("The split method did not return a dictionary {'chunks': [{}], 'join': {}}.\nError: %s\nChunk count: %d", errstring, len(self.stageDefs.ChunkDefs)))
+					errstring := err.Error()
+					self.split_metadata.WriteRaw(Errors, fmt.Sprintf(
+						"The split method did not return a dictionary {'chunks': [{}], 'join': {}}.\nError: %s\nChunk count: %d",
+						errstring, len(self.stageDefs.ChunkDefs)))
 				} else if len(self.stageDefs.ChunkDefs) == 0 {
 					// Skip the chunk phase.
 					state = Complete.Prefixed(ChunksPrefix)
@@ -933,9 +942,11 @@ func (self *Fork) step() {
 				if alarms.Len() > 0 {
 					self.lastPrint = time.Now()
 					if len(self.node.forks) > 1 {
-						util.Print("Alerts for %s.fork%d:\n%s\n", self.node.fqname, self.index, alarms.String())
+						util.Print("Alerts for %s.fork%d:\n%s\n",
+							self.node.fqname, self.index, alarms.String())
 					} else {
-						util.Print("Alerts for %s:\n%s\n", self.node.fqname, alarms.String())
+						util.Print("Alerts for %s:\n%s\n",
+							self.node.fqname, alarms.String())
 					}
 				}
 			} else {
@@ -962,7 +973,8 @@ func (self *Fork) step() {
 		self.writeInvocation()
 		if outs, err := resolveBindings(self.node.retbindings, self.argPermute,
 			self.node.rt.FreeMemBytes()/int64(len(self.node.prenodes)+1)); err != nil {
-			util.PrintError(err, "runtime", "Error resolving output argument bindings.")
+			util.PrintError(err, "runtime",
+				"Error resolving output argument bindings.")
 			self.metadata.WriteRaw(Errors, err.Error())
 		} else {
 			self.metadata.Write(OutsFile, outs)

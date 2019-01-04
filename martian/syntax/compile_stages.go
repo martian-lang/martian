@@ -87,10 +87,10 @@ const (
 // only the list is set.
 var modParams = InParams{
 	Table: map[string]*InParam{
-		disabled:  &InParam{Id: disabled, Tname: "bool"},
-		local:     &InParam{Id: local, Tname: "bool"},
-		preflight: &InParam{Id: preflight, Tname: "bool"},
-		volatile:  &InParam{Id: volatile, Tname: "bool"},
+		disabled:  {Id: disabled, Tname: "bool"},
+		local:     {Id: local, Tname: "bool"},
+		preflight: {Id: preflight, Tname: "bool"},
+		volatile:  {Id: volatile, Tname: "bool"},
 	},
 }
 

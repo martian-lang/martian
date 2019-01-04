@@ -102,7 +102,7 @@ func ReadOverrides(path string) (*PipestanceOverrides, error) {
 	 * cast the return value to the expected type. We'll catch any type
 	 * errors here and prevent mrp from starting. We also want to keep the
 	 * overrides untypes so that GetOverride can operate as a generic
-	 * funciton for all possible types.
+	 * function for all possible types.
 	 */
 
 	for _, stage_override_data := range pse.overridesbystage {

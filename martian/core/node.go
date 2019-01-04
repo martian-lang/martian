@@ -224,7 +224,7 @@ func (self *Node) attachBindings(bindingList []*Binding) {
 			for arg := range boundArgs {
 				if nodes := pArgs[arg]; nodes == nil {
 					pArgs[arg] = map[Nodable]struct{}{
-						setNode: struct{}{},
+						setNode: {},
 					}
 				} else {
 					nodes[setNode] = struct{}{}
@@ -241,7 +241,7 @@ func maybeFileType(tname string) bool {
 	return tname != "int" && tname != "float" && tname != "bool"
 }
 
-// Get the set of distinct precurser nodes and direct precurser nodes based on
+// Get the set of distinct precursor nodes and direct precursor nodes based on
 // the given binding set.
 func recurseBoundNodes(bindingList []*Binding) (prenodes map[string]Nodable,
 	parents []Nodable,
@@ -271,7 +271,7 @@ func recurseBoundNodes(bindingList []*Binding) (prenodes map[string]Nodable,
 			if maybeFileType(binding.tname) {
 				if par := fileParents[binding.boundNode]; par == nil {
 					fileParents[binding.boundNode] = map[string]struct{}{
-						binding.output: struct{}{},
+						binding.output: {},
 					}
 				} else {
 					par[binding.output] = struct{}{}
@@ -859,7 +859,7 @@ func (self *Node) refreshState(readOnly bool) {
 			meta.endRefresh(startTime)
 		}
 	}
-	for fork, _ := range updatedForks {
+	for fork := range updatedForks {
 		fork.printUpdateIfNeeded()
 	}
 }

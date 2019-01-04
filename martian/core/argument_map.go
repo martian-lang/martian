@@ -106,8 +106,8 @@ func checkType(val json.RawMessage, typename string, arrayDim int,
 				return true, ""
 			}
 		default:
-			// User defined file types.  For backwards compatiblity we need
-			// to accept everything here.
+			// User defined file types.  For backwards compatibility we
+			// need to accept everything here.
 			var v string
 			if err := json.Unmarshal(val, &v); err != nil {
 				trunc := val

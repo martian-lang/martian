@@ -24,19 +24,19 @@ func TestArgumentMapValidateInputs(t *testing.T) {
 		t.Errorf("Unmarshal failure: %v", err)
 	}
 	plist := []*syntax.InParam{
-		&syntax.InParam{
+		{
 			Id:    "foo",
 			Tname: "int",
 		},
-		&syntax.InParam{
+		{
 			Id:    "bar",
 			Tname: "float",
 		},
-		&syntax.InParam{
+		{
 			Id:    "baz",
 			Tname: "map",
 		},
-		&syntax.InParam{
+		{
 			Id:       "bing",
 			Tname:    "int",
 			ArrayDim: 1,
@@ -120,19 +120,19 @@ func TestArgumentMapValidateOutputs(t *testing.T) {
 		t.Errorf("Unmarshal failure: %v", err)
 	}
 	plist := []*syntax.OutParam{
-		&syntax.OutParam{
+		{
 			Id:    "foo",
 			Tname: "int",
 		},
-		&syntax.OutParam{
+		{
 			Id:    "bar",
 			Tname: "float",
 		},
-		&syntax.OutParam{
+		{
 			Id:    "baz",
 			Tname: "map",
 		},
-		&syntax.OutParam{
+		{
 			Id:       "bing",
 			Tname:    "int",
 			ArrayDim: 1,

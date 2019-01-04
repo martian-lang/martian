@@ -241,11 +241,11 @@ func (pipestance *Pipestance) retain(ref *syntax.RefExp) {
 							if children := fileArgs[ref.OutputId]; children != nil {
 								children[nil] = struct{}{}
 							} else {
-								fileArgs[ref.OutputId] = map[Nodable]struct{}{nil: struct{}{}}
+								fileArgs[ref.OutputId] = map[Nodable]struct{}{nil: {}}
 							}
 						} else {
 							fork.fileArgs = map[string]map[Nodable]struct{}{
-								ref.OutputId: map[Nodable]struct{}{nil: struct{}{}},
+								ref.OutputId: {nil: {}},
 							}
 						}
 					}
@@ -261,11 +261,11 @@ func (pipestance *Pipestance) retain(ref *syntax.RefExp) {
 						if children := fileArgs[ref.OutputId]; children != nil {
 							children[nil] = struct{}{}
 						} else {
-							fileArgs[ref.OutputId] = map[Nodable]struct{}{nil: struct{}{}}
+							fileArgs[ref.OutputId] = map[Nodable]struct{}{nil: {}}
 						}
 					} else {
 						fork.fileArgs = map[string]map[Nodable]struct{}{
-							ref.OutputId: map[Nodable]struct{}{nil: struct{}{}},
+							ref.OutputId: {nil: {}},
 						}
 					}
 				}

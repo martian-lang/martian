@@ -82,7 +82,7 @@ func NewStagestance(parent Nodable, callStm *syntax.CallStm, callables *syntax.C
 				}
 				if arg := fork.fileArgs[param.Id]; arg == nil {
 					fork.fileArgs[param.Id] = map[Nodable]struct{}{
-						nil: struct{}{},
+						nil: {},
 					}
 				} else {
 					arg[nil] = struct{}{}

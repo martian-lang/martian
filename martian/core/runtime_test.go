@@ -40,16 +40,16 @@ func ExampleBuildCallSource() {
 			Id: "STAGE_NAME",
 			InParams: &syntax.InParams{
 				List: []*syntax.InParam{
-					&syntax.InParam{
+					{
 						Tname:    "int",
 						ArrayDim: 1,
 						Id:       "input1",
 					},
-					&syntax.InParam{
+					{
 						Tname: "string",
 						Id:    "input2",
 					},
-					&syntax.InParam{
+					{
 						Tname: "map",
 						Id:    "input3",
 					},

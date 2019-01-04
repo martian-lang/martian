@@ -357,7 +357,7 @@ func getArgsToFilesMap(fileArgs map[string]map[Nodable]struct{},
 			for _, fullName := range getLogicalFileNames(name) {
 				fileSet := argToFiles[arg]
 				if fileSet == nil {
-					fileSet = map[string]struct{}{fullName: struct{}{}}
+					fileSet = map[string]struct{}{fullName: {}}
 					argToFiles[arg] = fileSet
 				} else {
 					fileSet[fullName] = struct{}{}
@@ -413,7 +413,7 @@ func addFilesToArgsMappings(fpath string, debug bool, fqname string,
 						}
 
 						if entry.args == nil {
-							entry.args = map[string]struct{}{arg: struct{}{}}
+							entry.args = map[string]struct{}{arg: {}}
 						} else {
 							entry.args[arg] = struct{}{}
 						}

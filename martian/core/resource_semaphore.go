@@ -59,7 +59,7 @@ func (self *ResourceSemaphore) Acquire(n int64) error {
 	if n > self.maxSize {
 		// This can never be served.
 		self.mu.Unlock()
-		return fmt.Errorf("Tried to aquire %d %s, when the maximum is %d.",
+		return fmt.Errorf("Tried to acquire %d %s, when the maximum is %d.",
 			n, self.Name, self.maxSize)
 	}
 

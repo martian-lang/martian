@@ -38,7 +38,7 @@ const (
 	// The base number of threads assumed per job.  This includes the threads used
 	// by the mrjob process and whatever threads the spawned process uses for
 	// runtime management.  Very approximate since it depends on many details of
-	// the stage code langauge and implementation.  The number of threads reserved
+	// the stage code language and implementation.  The number of threads reserved
 	// by the job will be added to this number.
 	procsPerJob = 15
 )

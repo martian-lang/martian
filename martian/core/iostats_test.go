@@ -19,31 +19,31 @@ func ExampleIoStatsBuilder() {
 	// 11, 9, and 10 syscalls in the first, second, and third
 	// 10-second period, respectively.
 	sb.Update(map[int]*IoAmount{
-		1: &IoAmount{
+		1: {
 			Read:  IoValues{Syscalls: 1, BlockBytes: 1024},
 			Write: IoValues{},
 		},
-		2: &IoAmount{
+		2: {
 			Read:  IoValues{Syscalls: 10, BlockBytes: 1024},
 			Write: IoValues{},
 		},
 	}, t.Add(time.Second*10))
 	sb.Update(map[int]*IoAmount{
-		1: &IoAmount{
+		1: {
 			Read:  IoValues{Syscalls: 10, BlockBytes: 3072},
 			Write: IoValues{},
 		},
-		2: &IoAmount{
+		2: {
 			Read:  IoValues{Syscalls: 10, BlockBytes: 1024},
 			Write: IoValues{},
 		},
 	}, t.Add(time.Second*20))
 	sb.Update(map[int]*IoAmount{
-		1: &IoAmount{
+		1: {
 			Read:  IoValues{Syscalls: 10, BlockBytes: 4096},
 			Write: IoValues{},
 		},
-		3: &IoAmount{
+		3: {
 			Read:  IoValues{Syscalls: 10, BlockBytes: 1024},
 			Write: IoValues{},
 		},

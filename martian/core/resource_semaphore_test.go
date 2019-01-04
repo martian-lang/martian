@@ -239,7 +239,7 @@ func TestResourceSemaphoreActualRelease(t *testing.T) {
 			t.Errorf("Expected 80 in use, got %d", sem.InUse())
 		}
 		if acq {
-			t.Errorf("Should not have been able to aquire yet.")
+			t.Errorf("Should not have been able to acquire yet.")
 		}
 		if diff := sem.UpdateActual(25); diff != -75 {
 			t.Errorf("Expected -75 diff, got %d", diff)
