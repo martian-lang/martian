@@ -299,6 +299,10 @@ func (self *Fork) vdrKillSome(partial *PartialVdrKillReport, done bool) (*VDRKil
 }
 
 func pathIsInside(test, parent string) bool {
+	// Early abort in the common case.
+	if test == parent {
+		return true
+	}
 	parent = filepath.Clean(parent)
 	for name := filepath.Clean(test); len(name) >= len(parent); name = path.Dir(name) {
 		if name == parent {
