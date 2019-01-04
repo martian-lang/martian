@@ -374,6 +374,14 @@ func (self *Fork) Split() bool {
 	}
 }
 
+func (self *Fork) ChunkOutParams() *syntax.OutParams {
+	if stage, ok := self.node.callable.(*syntax.Stage); ok {
+		return stage.ChunkOuts
+	} else {
+		return nil
+	}
+}
+
 // Get the fork's output parameter list.
 func (self *Fork) OutParams() *syntax.OutParams {
 	return self.node.callable.GetOutParams()
@@ -871,24 +879,45 @@ func (self *Fork) step() {
 			self.join_metadata.Write(ChunkDefsFile, self.stageDefs.ChunkDefs)
 			if self.Split() {
 				ok := true
-				chunkOuts := make([]interface{}, 0, len(self.chunks))
 				if len(self.chunks) > 0 {
-					readSize := self.node.rt.FreeMemBytes() / int64(2*len(self.chunks))
-					for _, chunk := range self.chunks {
-						if outs, err := chunk.metadata.read(OutsFile, readSize); err != nil {
-							chunk.metadata.WriteRaw(Errors, err.Error())
-							ok = false
-						} else {
-							chunkOuts = append(chunkOuts, outs)
-							ok = chunk.verifyOutput(outs) && ok
+					if co := self.ChunkOutParams(); len(self.OutParams().List) > 0 ||
+						(co != nil && len(co.List) > 0) {
+						chunkOuts := make([]LazyArgumentMap, 0, len(self.chunks))
+						readSize := self.node.rt.FreeMemBytes() / int64(2*len(self.chunks))
+						for _, chunk := range self.chunks {
+							if outs, err := chunk.metadata.read(OutsFile, readSize); err != nil {
+								chunk.metadata.WriteRaw(Errors, err.Error())
+								ok = false
+							} else {
+								chunkOuts = append(chunkOuts, outs)
+								ok = chunk.verifyOutput(outs) && ok
+							}
 						}
+						self.join_metadata.Write(ChunkOutsFile, chunkOuts)
+					} else {
+						// Write a list of empty outs.
+						var buf bytes.Buffer
+						buf.Grow(1 + 3*len(self.chunks))
+						buf.WriteByte('[')
+						for i := range self.chunks {
+							if i != 0 {
+								buf.WriteByte(',')
+							}
+							buf.WriteString("{}")
+						}
+						buf.WriteByte(']')
+						self.join_metadata.WriteRawBytes(ChunkOutsFile, buf.Bytes())
 					}
+					if !ok {
+						return
+					}
+				} else {
+					self.join_metadata.WriteRaw(ChunkOutsFile, "[]")
 				}
-				if !ok {
-					return
-				}
-				self.join_metadata.Write(ChunkOutsFile, chunkOuts)
-				self.join_metadata.Write(OutsFile, makeOutArgs(self.OutParams(), self.join_metadata.curFilesPath, false))
+				self.join_metadata.Write(
+					OutsFile,
+					makeOutArgs(self.OutParams(),
+						self.join_metadata.curFilesPath, false))
 				if !self.join_has_run {
 					self.join_has_run = true
 					self.lastPrint = time.Now()
