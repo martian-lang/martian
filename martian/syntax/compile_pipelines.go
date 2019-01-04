@@ -8,6 +8,120 @@ import (
 	"fmt"
 )
 
+func (pipeline *Pipeline) directDepsMap() (map[*CallStm]map[*CallStm]struct{}, error) {
+	calls := pipeline.Calls
+	deps := make(map[*CallStm]map[*CallStm]struct{}, len(calls))
+
+	callMap := make(map[string]*CallStm, len(calls))
+	for _, call := range calls {
+		if call.DecId == pipeline.Id {
+			return deps, &wrapError{
+				innerError: fmt.Errorf(
+					"RecursiveCallError: Pipeline %s calls itself.",
+					pipeline.Id),
+				loc: call.getNode().Loc,
+			}
+		}
+		callMap[call.Id] = call
+	}
+	var findDeps func(*CallStm, Exp) error
+	findDeps = func(src *CallStm, uexp Exp) error {
+		switch exp := uexp.(type) {
+		case *RefExp:
+			if exp.Kind == KindCall {
+				depSet := deps[src]
+				if depSet == nil {
+					depSet = make(map[*CallStm]struct{})
+					deps[src] = depSet
+				}
+				dep := callMap[exp.Id]
+				if dep == src {
+					return &wrapError{
+						innerError: fmt.Errorf(
+							"CyclicDependencyError: call %s input bound to its own output in pipeline %s.",
+							src.Id, pipeline.Id),
+						loc: exp.getNode().Loc,
+					}
+				}
+				depSet[dep] = struct{}{}
+			}
+		case *ValExp:
+			if exp.Kind == KindArray {
+				for _, subExp := range exp.Value.([]Exp) {
+					if err := findDeps(src, subExp); err != nil {
+						return err
+					}
+				}
+			}
+		}
+		return nil
+	}
+	var errs ErrorList
+	for _, call := range calls {
+		for _, bind := range call.Bindings.List {
+			if err := findDeps(call, bind.Exp); err != nil {
+				errs = append(errs, err)
+			}
+		}
+		if call.Modifiers.Bindings != nil {
+			for _, bind := range call.Modifiers.Bindings.List {
+				if err := findDeps(call, bind.Exp); err != nil {
+					errs = append(errs, err)
+				}
+			}
+		}
+	}
+	return deps, errs.If()
+}
+
+// Finds dependencies of src which aren't in depsMap
+func (pipeline *Pipeline) findMissingDeps(src *CallStm, deps map[*CallStm]struct{},
+	depsMap map[*CallStm]map[*CallStm]struct{}) ([]*CallStm, error) {
+	var missing []*CallStm
+	for dep := range deps {
+		for transDep := range depsMap[dep] {
+			if _, ok := deps[transDep]; !ok {
+				if transDep == src {
+					return nil, &wrapError{
+						innerError: fmt.Errorf(
+							"CyclicDependencyError: Call depends transitively on itself (%s -> ... -> %s -> %s) in pipeline %s.",
+							src.Id, dep.Id, transDep.Id, pipeline.Id),
+						loc: src.getNode().Loc,
+					}
+				}
+				missing = append(missing, transDep)
+			}
+		}
+	}
+	return missing, nil
+}
+
+// Add the breadth-first next level of transitive dependencies to depsMap.
+func (pipeline *Pipeline) addNextDeps(depsMap map[*CallStm]map[*CallStm]struct{}) error {
+	changes := true
+	for changes {
+		extraDeps := make(map[*CallStm][]*CallStm)
+		var errs ErrorList
+		for src, deps := range depsMap {
+			if missing, err := pipeline.findMissingDeps(src, deps, depsMap); err != nil {
+				errs = append(errs, err)
+			} else if len(missing) > 0 {
+				extraDeps[src] = missing
+			}
+		}
+		if err := errs.If(); err != nil {
+			return err
+		}
+		for src, deps := range extraDeps {
+			for _, dep := range deps {
+				depsMap[src][dep] = struct{}{}
+			}
+		}
+		changes = len(extraDeps) > 0
+	}
+	return nil
+}
+
 // Do a stable sort of the calls in topological order.  Returns an error
 // if there is a dependency cycle or self-dependency.
 func (pipeline *Pipeline) topoSort() error {
@@ -19,119 +133,13 @@ func (pipeline *Pipeline) topoSort() error {
 	}
 
 	// Find the direct dependencies of each call.
-	depsMap, err := func(calls []*CallStm) (map[*CallStm]map[*CallStm]struct{}, error) {
-		deps := make(map[*CallStm]map[*CallStm]struct{}, len(calls))
-
-		callMap := make(map[string]*CallStm, len(calls))
-		for _, call := range calls {
-			if call.DecId == pipeline.Id {
-				return deps, &wrapError{
-					innerError: fmt.Errorf(
-						"RecursiveCallError: Pipeline %s calls itself.",
-						pipeline.Id),
-					loc: call.getNode().Loc,
-				}
-			}
-			callMap[call.Id] = call
-		}
-		var findDeps func(*CallStm, Exp) error
-		findDeps = func(src *CallStm, uexp Exp) error {
-			switch exp := uexp.(type) {
-			case *RefExp:
-				if exp.Kind == KindCall {
-					depSet := deps[src]
-					if depSet == nil {
-						depSet = make(map[*CallStm]struct{})
-						deps[src] = depSet
-					}
-					dep := callMap[exp.Id]
-					if dep == src {
-						return &wrapError{
-							innerError: fmt.Errorf(
-								"CyclicDependencyError: call %s input bound to its own output in pipeline %s.",
-								src.Id, pipeline.Id),
-							loc: exp.getNode().Loc,
-						}
-					}
-					depSet[dep] = struct{}{}
-				}
-			case *ValExp:
-				if exp.Kind == KindArray {
-					for _, subExp := range exp.Value.([]Exp) {
-						if err := findDeps(src, subExp); err != nil {
-							return err
-						}
-					}
-				}
-			}
-			return nil
-		}
-		var errs ErrorList
-		for _, call := range calls {
-			for _, bind := range call.Bindings.List {
-				if err := findDeps(call, bind.Exp); err != nil {
-					errs = append(errs, err)
-				}
-			}
-			if call.Modifiers.Bindings != nil {
-				for _, bind := range call.Modifiers.Bindings.List {
-					if err := findDeps(call, bind.Exp); err != nil {
-						errs = append(errs, err)
-					}
-				}
-			}
-		}
-		return deps, errs.If()
-	}(pipeline.Calls)
+	depsMap, err := pipeline.directDepsMap()
 	if err != nil {
 		return err
 	}
 
 	// Find the next level of transitive dependencies.
-	missingDeps := func(src *CallStm, deps map[*CallStm]struct{},
-		depsMap map[*CallStm]map[*CallStm]struct{}) ([]*CallStm, error) {
-		var missing []*CallStm
-		for dep := range deps {
-			for transDep := range depsMap[dep] {
-				if _, ok := deps[transDep]; !ok {
-					if transDep == src {
-						return nil, &wrapError{
-							innerError: fmt.Errorf(
-								"CyclicDependencyError: Call depends transitively on itself (%s -> ... -> %s -> %s) in pipeline %s.",
-								src.Id, dep.Id, transDep.Id, pipeline.Id),
-							loc: src.getNode().Loc,
-						}
-					}
-					missing = append(missing, transDep)
-				}
-			}
-		}
-		return missing, nil
-	}
-	if err := func(depsMap map[*CallStm]map[*CallStm]struct{}) error {
-		changes := true
-		for changes {
-			extraDeps := make(map[*CallStm][]*CallStm)
-			var errs ErrorList
-			for src, deps := range depsMap {
-				if missing, err := missingDeps(src, deps, depsMap); err != nil {
-					errs = append(errs, err)
-				} else if len(missing) > 0 {
-					extraDeps[src] = missing
-				}
-			}
-			if err := errs.If(); err != nil {
-				return err
-			}
-			for src, deps := range extraDeps {
-				for _, dep := range deps {
-					depsMap[src][dep] = struct{}{}
-				}
-			}
-			changes = len(extraDeps) > 0
-		}
-		return nil
-	}(depsMap); err != nil {
+	if err := pipeline.addNextDeps(depsMap); err != nil {
 		return err
 	}
 	// checkIndex is the last index known to be in the sorted region.

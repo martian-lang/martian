@@ -755,6 +755,252 @@ func (self *Fork) printState(state MetadataState) {
 	}
 }
 
+func (self *Fork) doSplit(getBindings func() LazyArgumentMap) MetadataState {
+	if self.disabled() {
+		self.writeDisable()
+		return DisabledState
+	}
+	self.writeInvocation()
+	self.split_metadata.Write(ArgsFile, getBindings())
+	if self.Split() {
+		if !self.split_has_run {
+			self.split_has_run = true
+			self.lastPrint = time.Now()
+			self.node.runSplit(self.fqname, self.split_metadata)
+		}
+	} else {
+		self.split_metadata.Write(StageDefsFile, self.stageDefs)
+		self.split_metadata.WriteTime(CompleteFile)
+		return Complete.Prefixed(SplitPrefix)
+	}
+	return Ready
+}
+
+func (self *Fork) doChunks(state MetadataState, getBindings func() LazyArgumentMap) MetadataState {
+	self.node.rt.JobManager.endJob(self.split_metadata)
+	if self.node.volatile {
+		lockAquired := make(chan struct{}, 1)
+		go func() {
+			self.storageLock.Lock()
+			defer self.storageLock.Unlock()
+			lockAquired <- struct{}{}
+			self.cleanSplitTemp(nil)
+		}()
+		<-lockAquired
+	}
+	// MARTIAN-395 We have observed a possible race condition where
+	// split_complete could be detected but _stage_defs is not
+	// written yet or is corrupted. Check that stage_defs exists
+	// before attempting to read and unmarshal it.
+	if !self.split_metadata.exists(StageDefsFile) {
+		// We might have missed the journal update.  Check if
+		// the file exists in the directory.
+		self.split_metadata.poll()
+	}
+	if self.split_metadata.exists(StageDefsFile) {
+		if err := self.split_metadata.ReadInto(StageDefsFile, &self.stageDefs); err != nil {
+			errstring := err.Error()
+			self.split_metadata.WriteRaw(Errors, fmt.Sprintf(
+				"The split method did not return a dictionary {'chunks': [{}], 'join': {}}.\nError: %s\nChunk count: %d",
+				errstring, len(self.stageDefs.ChunkDefs)))
+		} else if len(self.stageDefs.ChunkDefs) == 0 {
+			// Skip the chunk phase.
+			state = Complete.Prefixed(ChunksPrefix)
+		} else {
+			if len(self.chunks) == 0 {
+				self.chunks = make([]*Chunk, 0, len(self.stageDefs.ChunkDefs))
+				width := util.WidthForInt(len(self.stageDefs.ChunkDefs))
+				for i, chunkDef := range self.stageDefs.ChunkDefs {
+					chunk := NewChunk(self, i, chunkDef, width)
+					self.chunks = append(self.chunks, chunk)
+					chunk.mkdirs()
+					chunk.verifyDef()
+				}
+				self.metadatasCache = nil
+			}
+			if len(self.chunks) > 0 {
+				bindings := getBindings()
+				for _, chunk := range self.chunks {
+					chunk.step(bindings)
+				}
+			}
+		}
+	} else {
+		// If the stage "succeeded" without writing _stage_defs,
+		// don't wait forever for the file to show up. Normal
+		// heartbeat checks only happen when "running" but this
+		// replicates much of the logic of metadata.checkHeartbeat()
+		if self.split_metadata.lastHeartbeat.IsZero() ||
+			self.split_metadata.exists(Heartbeat) {
+			self.split_metadata.uncache(Heartbeat)
+			self.split_metadata.lastHeartbeat = time.Now()
+		}
+		if time.Since(self.split_metadata.lastHeartbeat) >
+			time.Minute*heartbeatTimeout {
+			// Pretend we do see it, so it will try to read next time
+			// around.  If it succeeds, that means we missed a journal
+			// update.  If it doesn't, the split will be errored out.
+			self.split_metadata.cache(StageDefsFile, self.split_metadata.uniquifier)
+		}
+	}
+	return state
+}
+
+func (self *Fork) doJoin(state MetadataState, getBindings func() LazyArgumentMap) MetadataState {
+	go self.partialVdrKill()
+	if self.stageDefs.JoinDef == nil {
+		self.stageDefs.JoinDef = &JobResources{}
+	}
+	res := self.node.setJoinJobReqs(self.stageDefs.JoinDef)
+	resolvedBindings := LazyChunkDef{
+		Resources: self.stageDefs.JoinDef,
+		Args:      getBindings(),
+	}
+	self.join_metadata.Write(ArgsFile, &resolvedBindings)
+	self.join_metadata.Write(ChunkDefsFile, self.stageDefs.ChunkDefs)
+	if self.Split() {
+		ok := true
+		if len(self.chunks) > 0 {
+			if co := self.ChunkOutParams(); len(self.OutParams().List) > 0 ||
+				(co != nil && len(co.List) > 0) {
+				chunkOuts := make([]LazyArgumentMap, 0, len(self.chunks))
+				readSize := self.node.rt.FreeMemBytes() / int64(2*len(self.chunks))
+				for _, chunk := range self.chunks {
+					if outs, err := chunk.metadata.read(OutsFile, readSize); err != nil {
+						chunk.metadata.WriteRaw(Errors, err.Error())
+						ok = false
+					} else {
+						chunkOuts = append(chunkOuts, outs)
+						ok = chunk.verifyOutput(outs) && ok
+					}
+				}
+				self.join_metadata.Write(ChunkOutsFile, chunkOuts)
+			} else {
+				// Write a list of empty outs.
+				var buf bytes.Buffer
+				buf.Grow(1 + 3*len(self.chunks))
+				buf.WriteByte('[')
+				for i := range self.chunks {
+					if i != 0 {
+						buf.WriteByte(',')
+					}
+					buf.WriteString("{}")
+				}
+				buf.WriteByte(']')
+				self.join_metadata.WriteRawBytes(ChunkOutsFile, buf.Bytes())
+			}
+			if !ok {
+				return Failed
+			}
+		} else {
+			self.join_metadata.WriteRaw(ChunkOutsFile, "[]")
+		}
+		self.join_metadata.Write(
+			OutsFile,
+			makeOutArgs(self.OutParams(),
+				self.join_metadata.curFilesPath, false))
+		if !self.join_has_run {
+			self.join_has_run = true
+			self.lastPrint = time.Now()
+			self.node.runJoin(self.fqname, self.join_metadata, &res)
+		}
+	} else {
+		if b, err := self.chunks[0].metadata.readRawBytes(OutsFile); err == nil {
+			self.join_metadata.WriteRawBytes(OutsFile, b)
+		} else {
+			util.LogError(err, "runtime", "Could not read stage outs file.")
+		}
+		self.join_metadata.WriteTime(CompleteFile)
+		state = Complete.Prefixed(JoinPrefix)
+	}
+	return state
+}
+
+func (self *Fork) doComplete() {
+	self.node.rt.JobManager.endJob(self.join_metadata)
+	var joinOut LazyArgumentMap
+	if len(self.OutParams().List) > 0 {
+		var err error
+		joinOut, err = self.join_metadata.read(OutsFile, self.node.rt.FreeMemBytes()/3)
+		if err != nil {
+			self.join_metadata.WriteRaw(Errors, err.Error())
+			return
+		} else if joinOut == nil {
+			self.metadata.WriteRaw(OutsFile, "{}")
+		} else {
+			self.metadata.Write(OutsFile, joinOut)
+		}
+	} else {
+		self.metadata.WriteRaw(OutsFile, "{}")
+	}
+	if self.node.rt.Config.VdrMode == "post" {
+		// Still clean up tmp, but run before we've declared
+		// the stage maybe complete.
+		func() {
+			self.storageLock.Lock()
+			defer self.storageLock.Unlock()
+			self.cacheParamFileMap(joinOut)
+		}()
+		self.partialVdrKill()
+	}
+	if ok, msg := self.verifyOutput(joinOut); ok {
+		if msg != "" {
+			self.metadata.AppendAlarm(msg)
+		}
+		self.metadata.WriteTime(CompleteFile)
+		// Print alerts
+		var alarms strings.Builder
+		self.getAlarms(&alarms)
+		if alarms.Len() > 0 {
+			self.lastPrint = time.Now()
+			if len(self.node.forks) > 1 {
+				util.Print("Alerts for %s.fork%d:\n%s\n",
+					self.node.fqname, self.index, alarms.String())
+			} else {
+				util.Print("Alerts for %s:\n%s\n",
+					self.node.fqname, alarms.String())
+			}
+		}
+	} else {
+		self.metadata.WriteRaw(Errors, msg)
+	}
+	self.removeEmptyFileArgs(joinOut)
+	if self.node.rt.Config.VdrMode != "post" {
+		go func() {
+			func() {
+				self.storageLock.Lock()
+				defer self.storageLock.Unlock()
+				self.cacheParamFileMap(joinOut)
+			}()
+			self.partialVdrKill()
+		}()
+	}
+}
+
+func (self *Fork) stepPipeline() {
+	if self.disabled() {
+		self.writeDisable()
+		return
+	}
+	self.writeInvocation()
+	if outs, err := resolveBindings(self.node.retbindings, self.argPermute,
+		self.node.rt.FreeMemBytes()/int64(len(self.node.prenodes)+1)); err != nil {
+		util.PrintError(err, "runtime",
+			"Error resolving output argument bindings.")
+		self.metadata.WriteRaw(Errors, err.Error())
+	} else {
+		self.metadata.Write(OutsFile, outs)
+		if ok, msg := self.verifyOutput(outs); ok {
+			if msg != "" {
+				self.metadata.AppendAlarm(msg)
+			}
+			self.metadata.WriteTime(CompleteFile)
+		} else {
+			self.metadata.WriteRaw(Errors, msg)
+		}
+	}
+}
+
 func (self *Fork) step() {
 	if self.node.kind == "stage" {
 		state := self.getState()
@@ -779,243 +1025,22 @@ func (self *Fork) step() {
 			return
 		}
 		if state == Ready {
-			if self.disabled() {
-				self.writeDisable()
+			state = self.doSplit(getBindings)
+			if state == DisabledState {
 				return
-			}
-			self.writeInvocation()
-			self.split_metadata.Write(ArgsFile, getBindings())
-			if self.Split() {
-				if !self.split_has_run {
-					self.split_has_run = true
-					self.lastPrint = time.Now()
-					self.node.runSplit(self.fqname, self.split_metadata)
-				}
-			} else {
-				self.split_metadata.Write(StageDefsFile, self.stageDefs)
-				self.split_metadata.WriteTime(CompleteFile)
-				state = Complete.Prefixed(SplitPrefix)
 			}
 		}
 		if state == Complete.Prefixed(SplitPrefix) {
-			self.node.rt.JobManager.endJob(self.split_metadata)
-			if self.node.volatile {
-				lockAquired := make(chan struct{}, 1)
-				go func() {
-					self.storageLock.Lock()
-					defer self.storageLock.Unlock()
-					lockAquired <- struct{}{}
-					self.cleanSplitTemp(nil)
-				}()
-				<-lockAquired
-			}
-			// MARTIAN-395 We have observed a possible race condition where
-			// split_complete could be detected but _stage_defs is not
-			// written yet or is corrupted. Check that stage_defs exists
-			// before attempting to read and unmarshal it.
-			if !self.split_metadata.exists(StageDefsFile) {
-				// We might have missed the journal update.  Check if
-				// the file exists in the directory.
-				self.split_metadata.poll()
-			}
-			if self.split_metadata.exists(StageDefsFile) {
-				if err := self.split_metadata.ReadInto(StageDefsFile, &self.stageDefs); err != nil {
-					errstring := err.Error()
-					self.split_metadata.WriteRaw(Errors, fmt.Sprintf(
-						"The split method did not return a dictionary {'chunks': [{}], 'join': {}}.\nError: %s\nChunk count: %d",
-						errstring, len(self.stageDefs.ChunkDefs)))
-				} else if len(self.stageDefs.ChunkDefs) == 0 {
-					// Skip the chunk phase.
-					state = Complete.Prefixed(ChunksPrefix)
-				} else {
-					if len(self.chunks) == 0 {
-						self.chunks = make([]*Chunk, 0, len(self.stageDefs.ChunkDefs))
-						width := util.WidthForInt(len(self.stageDefs.ChunkDefs))
-						for i, chunkDef := range self.stageDefs.ChunkDefs {
-							chunk := NewChunk(self, i, chunkDef, width)
-							self.chunks = append(self.chunks, chunk)
-							chunk.mkdirs()
-							chunk.verifyDef()
-						}
-						self.metadatasCache = nil
-					}
-					if len(self.chunks) > 0 {
-						bindings := getBindings()
-						for _, chunk := range self.chunks {
-							chunk.step(bindings)
-						}
-					}
-				}
-			} else {
-				// If the stage "succeeded" without writing _stage_defs,
-				// don't wait forever for the file to show up. Normal
-				// heartbeat checks only happen when "running" but this
-				// replicates much of the logic of metadata.checkHeartbeat()
-				if self.split_metadata.lastHeartbeat.IsZero() ||
-					self.split_metadata.exists(Heartbeat) {
-					self.split_metadata.uncache(Heartbeat)
-					self.split_metadata.lastHeartbeat = time.Now()
-				}
-				if time.Since(self.split_metadata.lastHeartbeat) >
-					time.Minute*heartbeatTimeout {
-					// Pretend we do see it, so it will try to read next time
-					// around.  If it succeeds, that means we missed a journal
-					// update.  If it doesn't, the split will be errored out.
-					self.split_metadata.cache(StageDefsFile, self.split_metadata.uniquifier)
-				}
-			}
+			state = self.doChunks(state, getBindings)
 		}
 		if state == Complete.Prefixed(ChunksPrefix) {
-			go self.partialVdrKill()
-			if self.stageDefs.JoinDef == nil {
-				self.stageDefs.JoinDef = &JobResources{}
-			}
-			res := self.node.setJoinJobReqs(self.stageDefs.JoinDef)
-			resolvedBindings := LazyChunkDef{
-				Resources: self.stageDefs.JoinDef,
-				Args:      MakeLazyArgumentMap(getBindings()),
-			}
-			self.join_metadata.Write(ArgsFile, &resolvedBindings)
-			self.join_metadata.Write(ChunkDefsFile, self.stageDefs.ChunkDefs)
-			if self.Split() {
-				ok := true
-				if len(self.chunks) > 0 {
-					if co := self.ChunkOutParams(); len(self.OutParams().List) > 0 ||
-						(co != nil && len(co.List) > 0) {
-						chunkOuts := make([]LazyArgumentMap, 0, len(self.chunks))
-						readSize := self.node.rt.FreeMemBytes() / int64(2*len(self.chunks))
-						for _, chunk := range self.chunks {
-							if outs, err := chunk.metadata.read(OutsFile, readSize); err != nil {
-								chunk.metadata.WriteRaw(Errors, err.Error())
-								ok = false
-							} else {
-								chunkOuts = append(chunkOuts, outs)
-								ok = chunk.verifyOutput(outs) && ok
-							}
-						}
-						self.join_metadata.Write(ChunkOutsFile, chunkOuts)
-					} else {
-						// Write a list of empty outs.
-						var buf bytes.Buffer
-						buf.Grow(1 + 3*len(self.chunks))
-						buf.WriteByte('[')
-						for i := range self.chunks {
-							if i != 0 {
-								buf.WriteByte(',')
-							}
-							buf.WriteString("{}")
-						}
-						buf.WriteByte(']')
-						self.join_metadata.WriteRawBytes(ChunkOutsFile, buf.Bytes())
-					}
-					if !ok {
-						return
-					}
-				} else {
-					self.join_metadata.WriteRaw(ChunkOutsFile, "[]")
-				}
-				self.join_metadata.Write(
-					OutsFile,
-					makeOutArgs(self.OutParams(),
-						self.join_metadata.curFilesPath, false))
-				if !self.join_has_run {
-					self.join_has_run = true
-					self.lastPrint = time.Now()
-					self.node.runJoin(self.fqname, self.join_metadata, &res)
-				}
-			} else {
-				if b, err := self.chunks[0].metadata.readRawBytes(OutsFile); err == nil {
-					self.join_metadata.WriteRawBytes(OutsFile, b)
-				} else {
-					util.LogError(err, "runtime", "Could not read stage outs file.")
-				}
-				self.join_metadata.WriteTime(CompleteFile)
-				state = Complete.Prefixed(JoinPrefix)
-			}
+			state = self.doJoin(state, getBindings)
 		}
 		if state == Complete.Prefixed(JoinPrefix) {
-			self.node.rt.JobManager.endJob(self.join_metadata)
-			var joinOut LazyArgumentMap
-			if len(self.OutParams().List) > 0 {
-				var err error
-				joinOut, err = self.join_metadata.read(OutsFile, self.node.rt.FreeMemBytes()/3)
-				if err != nil {
-					self.join_metadata.WriteRaw(Errors, err.Error())
-					return
-				} else if joinOut == nil {
-					self.metadata.WriteRaw(OutsFile, "{}")
-				} else {
-					self.metadata.Write(OutsFile, joinOut)
-				}
-			} else {
-				self.metadata.WriteRaw(OutsFile, "{}")
-			}
-			if self.node.rt.Config.VdrMode == "post" {
-				// Still clean up tmp, but run before we've declared
-				// the stage maybe complete.
-				func() {
-					self.storageLock.Lock()
-					defer self.storageLock.Unlock()
-					self.cacheParamFileMap(joinOut)
-				}()
-				self.partialVdrKill()
-			}
-			if ok, msg := self.verifyOutput(joinOut); ok {
-				if msg != "" {
-					self.metadata.AppendAlarm(msg)
-				}
-				self.metadata.WriteTime(CompleteFile)
-				// Print alerts
-				var alarms strings.Builder
-				self.getAlarms(&alarms)
-				if alarms.Len() > 0 {
-					self.lastPrint = time.Now()
-					if len(self.node.forks) > 1 {
-						util.Print("Alerts for %s.fork%d:\n%s\n",
-							self.node.fqname, self.index, alarms.String())
-					} else {
-						util.Print("Alerts for %s:\n%s\n",
-							self.node.fqname, alarms.String())
-					}
-				}
-			} else {
-				self.metadata.WriteRaw(Errors, msg)
-			}
-			self.removeEmptyFileArgs(joinOut)
-			if self.node.rt.Config.VdrMode != "post" {
-				go func() {
-					func() {
-						self.storageLock.Lock()
-						defer self.storageLock.Unlock()
-						self.cacheParamFileMap(joinOut)
-					}()
-					self.partialVdrKill()
-				}()
-			}
+			self.doComplete()
 		}
-
 	} else if self.node.kind == "pipeline" {
-		if self.disabled() {
-			self.writeDisable()
-			return
-		}
-		self.writeInvocation()
-		if outs, err := resolveBindings(self.node.retbindings, self.argPermute,
-			self.node.rt.FreeMemBytes()/int64(len(self.node.prenodes)+1)); err != nil {
-			util.PrintError(err, "runtime",
-				"Error resolving output argument bindings.")
-			self.metadata.WriteRaw(Errors, err.Error())
-		} else {
-			self.metadata.Write(OutsFile, outs)
-			if ok, msg := self.verifyOutput(outs); ok {
-				if msg != "" {
-					self.metadata.AppendAlarm(msg)
-				}
-				self.metadata.WriteTime(CompleteFile)
-			} else {
-				self.metadata.WriteRaw(Errors, msg)
-			}
-		}
+		self.stepPipeline()
 	}
 }
 
@@ -1098,8 +1123,25 @@ func (self *Fork) postProcess() {
 	outs := make(map[string]interface{}, len(paramList))
 	self.metadata.ReadInto(OutsFile, &outs)
 
+	errors := self.handleOuts(paramList, outs, pipestancePath, outsPath)
+
+	// Print errors
+	if len(errors) > 0 {
+		util.Print("\nCould not move output files:\n")
+		for _, err := range errors {
+			util.Print("%s\n", err.Error())
+		}
+	}
+	util.Print("\n")
+
+	self.printAlarms()
+}
+
+func (self *Fork) handleOuts(paramList []*syntax.OutParam,
+	outs map[string]interface{},
+	pipestancePath, outsPath string) []error {
 	// Error message accumulator
-	errors := []error{}
+	var errors []error
 
 	// Calculate longest key name for alignment
 	keyWidth := 0
@@ -1124,66 +1166,16 @@ func (self *Fork) postProcess() {
 			value = "null"
 		}
 
-		// Handle file and path params
-		for {
-			if !param.IsFile() {
-				break
-			}
+		if param.IsFile() {
 			// Make sure value is a string
 			filePath, ok := value.(string)
-			if !ok {
-				break
-			}
-
-			// If file doesn't exist (e.g. stage just didn't create it)
-			// then report null
-			if _, err := os.Stat(filePath); os.IsNotExist(err) {
-				value = "null"
-				break
-			}
-
-			// Generate the outs path for this param
-			outPath := path.Join(outsPath, param.GetOutFilename())
-
-			// Only continue if path to be copied is inside the pipestance
-			if absFilePath, err := filepath.Abs(filePath); err == nil {
-				if absPipestancePath, err := filepath.Abs(pipestancePath); err == nil {
-					if !strings.Contains(absFilePath, absPipestancePath) {
-						// But we still want a symlink
-						if err := os.Symlink(absFilePath, outPath); err != nil {
-							errors = append(errors, err)
-						}
-						break
-					}
+			if ok {
+				filePath, err := moveOutFile(param, filePath, pipestancePath, outsPath)
+				if err != nil {
+					errors = append(errors, err)
 				}
+				value = filePath
 			}
-
-			// If this param has already been moved to outs/, we're done
-			if _, err := os.Stat(outPath); err == nil {
-				break
-			}
-
-			// If source file exists, move it to outs/
-			if err := os.Rename(filePath, outPath); err != nil {
-				errors = append(errors, err)
-				break
-			}
-
-			// Generate the relative path from files/ to outs/
-			relPath, err := filepath.Rel(filepath.Dir(filePath), outPath)
-			if err != nil {
-				errors = append(errors, err)
-				break
-			}
-
-			// Symlink it back to the original files/ folder
-			if err := os.Symlink(relPath, filePath); err != nil {
-				errors = append(errors, err)
-				break
-			}
-
-			value = outPath
-			break
 		}
 
 		// Print out the param help and value
@@ -1194,16 +1186,55 @@ func (self *Fork) postProcess() {
 		keyPad := strings.Repeat(" ", keyWidth-len(key))
 		util.Print("- %s:%s %v\n", key, keyPad, value)
 	}
+	return errors
+}
 
-	// Print errors
-	if len(errors) > 0 {
-		util.Print("\nCould not move output files:\n")
-		for _, err := range errors {
-			util.Print("%s\n", err.Error())
+// Move files to the top-level pipestance outs directory.
+func moveOutFile(param *syntax.OutParam, filePath, pipestancePath, outsPath string) (string, error) {
+	// If file doesn't exist (e.g. stage just didn't create it)
+	// then report null
+	if _, err := os.Stat(filePath); os.IsNotExist(err) {
+		return "null", nil
+	}
+
+	// Generate the outs path for this param
+	outPath := path.Join(outsPath, param.GetOutFilename())
+
+	// Only continue if path to be copied is inside the pipestance
+	if absFilePath, err := filepath.Abs(filePath); err == nil {
+		if absPipestancePath, err := filepath.Abs(pipestancePath); err == nil {
+			if !strings.Contains(absFilePath, absPipestancePath) {
+				// But we still want a symlink
+				return filePath, os.Symlink(absFilePath, outPath)
+			}
 		}
 	}
-	util.Print("\n")
 
+	// If this param has already been moved to outs/, we're done
+	if _, err := os.Stat(outPath); err == nil {
+		return filePath, nil
+	}
+
+	// If source file exists, move it to outs/
+	if err := os.Rename(filePath, outPath); err != nil {
+		return filePath, err
+	}
+
+	// Generate the relative path from files/ to outs/
+	relPath, err := filepath.Rel(filepath.Dir(filePath), outPath)
+	if err != nil {
+		return filePath, err
+	}
+
+	// Symlink it back to the original files/ folder
+	if err := os.Symlink(relPath, filePath); err != nil {
+		return filePath, err
+	}
+
+	return outPath, err
+}
+
+func (self *Fork) printAlarms() {
 	// Print alerts
 	var alarms strings.Builder
 	self.getAlarms(&alarms)
