@@ -933,7 +933,7 @@ func NewTopNode(rt *Runtime, psid string, p string, mroPaths []string, mroVersio
 	// Since we must set other required Martian environment variables,
 	// we must make a copy of envs so as not to overwrite envs for
 	// other pipestances / stagestances.
-	self.node.envs = map[string]string{}
+	self.node.envs = make(map[string]string, len(envs))
 	for key, value := range envs {
 		self.node.envs[key] = value
 	}

@@ -509,9 +509,25 @@ func logEnv(env string) bool {
 	}
 }
 
-func main() {
-	util.SetupSignalHandlers()
+type mrpConfiguration struct {
+	psid           string
+	invocationPath string
+	pipestancePath string
+	tags           []string
+	readOnly       bool
+	retries        int
+	retryWait      time.Duration
+	enableUI       bool
+	config         core.RuntimeOptions
+	mroPaths       []string
+	mroVersion     string
+	uiport         string
+	authKey        string
+	requireAuth    bool
+	noExit         bool
+}
 
+func configure() mrpConfiguration {
 	//=========================================================================
 	// Commandline argument and environment variables.
 	//=========================================================================
@@ -578,7 +594,11 @@ Options:
 
     -h --help           Show this message.
     --version           Show version.`
-	config := core.DefaultRuntimeOptions()
+	c := mrpConfiguration{
+		config:  core.DefaultRuntimeOptions(),
+		retries: core.DefaultRetries(),
+	}
+	config := &c.config
 	opts, _ := docopt.Parse(doc, nil, true, config.MartianVersion, false)
 	util.Println("Martian Runtime - %s", config.MartianVersion)
 	util.LogInfo("build  ", "Built with Go version %s", runtime.Version())
@@ -660,15 +680,14 @@ Options:
 	}
 
 	// Compute MRO path.
-	cwd, _ := os.Getwd()
 	mro_dir, _ := filepath.Abs(path.Dir(os.Args[1]))
-	mroPaths := util.ParseMroPath(mro_dir)
+	c.mroPaths = util.ParseMroPath(mro_dir)
 	if value := os.Getenv("MROPATH"); len(value) > 0 {
-		mroPaths = util.ParseMroPath(value)
+		c.mroPaths = util.ParseMroPath(value)
 	}
-	mroVersion, _ := util.GetMroVersion(mroPaths)
-	util.LogInfo("environ", "MROPATH=%s", util.FormatMroPath(mroPaths))
-	util.LogInfo("version", "MRO Version=%s", mroVersion)
+	c.mroVersion, _ = util.GetMroVersion(c.mroPaths)
+	util.LogInfo("environ", "MROPATH=%s", util.FormatMroPath(c.mroPaths))
+	util.LogInfo("version", "MRO Version=%s", c.mroVersion)
 
 	// Compute job manager.
 	if value := opts["--jobmode"]; value != nil {
@@ -691,7 +710,9 @@ Options:
 		if value, err := strconv.Atoi(value.(string)); err == nil {
 			config.MaxJobs = value
 		} else {
-			util.PrintError(err, "options", "Could not parse --maxjobs value \"%s\"", opts["--maxjobs"].(string))
+			util.PrintError(err, "options",
+				"Could not parse --maxjobs value \"%s\"",
+				opts["--maxjobs"].(string))
 			os.Exit(1)
 		}
 	}
@@ -706,7 +727,9 @@ Options:
 		if value, err := strconv.Atoi(value.(string)); err == nil {
 			config.JobFreqMillis = value
 		} else {
-			util.PrintError(err, "options", "Could not parse --jobinterval value \"%s\"", opts["--jobinterval"].(string))
+			util.PrintError(err, "options",
+				"Could not parse --jobinterval value \"%s\"",
+				opts["--jobinterval"].(string))
 			os.Exit(1)
 		}
 	}
@@ -731,49 +754,46 @@ Options:
 	}
 
 	// Compute UI port.
-	requireAuth := true
-	uiport := ""
 	if value := opts["--uiport"]; value != nil {
-		uiport = value.(string)
-		requireAuth = false
-	} else if os.Getenv("MRVHOST") != "" {
-		requireAuth = false
+		c.uiport = value.(string)
+	} else {
+		c.requireAuth = true
 	}
-	if len(uiport) > 0 {
-		util.LogInfo("options", "--uiport=%s", uiport)
+	if len(c.uiport) > 0 {
+		util.LogInfo("options", "--uiport=%s", c.uiport)
 	}
 
-	enableUI := (opts["--disable-ui"] == nil || !opts["--disable-ui"].(bool))
-	if !enableUI {
+	c.enableUI = (opts["--disable-ui"] == nil || !opts["--disable-ui"].(bool))
+	if !c.enableUI {
 		util.LogInfo("options", "--disable-ui")
 	}
 	if value := opts["--disable-auth"]; value != nil && value.(bool) {
-		requireAuth = false
+		c.requireAuth = false
 		util.LogInfo("options", "--disable-auth")
 	}
 	if value := opts["--require-auth"]; value != nil && value.(bool) {
-		requireAuth = true
+		c.requireAuth = true
 		util.LogInfo("options", "--require-auth")
 	}
-	var authKey string
 	if value := opts["--auth-key"]; value != nil {
-		authKey = value.(string)
-		util.LogInfo("options", "--auth-key=%s", authKey)
-	} else if enableUI {
+		c.authKey = value.(string)
+		util.LogInfo("options", "--auth-key=%s", c.authKey)
+	} else if c.enableUI {
 		key := make([]byte, 32)
 		if _, err := rand.Read(key); err != nil {
 			util.PrintError(err, "webserv", "Failed to generate an authentication key.")
 			os.Exit(1)
 		}
-		authKey = base64.RawURLEncoding.EncodeToString(key)
+		c.authKey = base64.RawURLEncoding.EncodeToString(key)
 	}
 
 	// Parse tags.
-	tags := []string{}
 	if value := opts["--tags"]; value != nil {
-		tags = util.ParseTagsOpt(value.(string))
+		c.tags = util.ParseTagsOpt(value.(string))
+	} else {
+		c.tags = []string{}
 	}
-	for _, tag := range tags {
+	for _, tag := range c.tags {
 		util.LogInfo("options", "--tag='%s'", tag)
 	}
 
@@ -798,54 +818,51 @@ Options:
 	config.LimitLoadavg = opts["--limit-loadavg"].(bool)
 	util.LogInfo("options", "--limit-loadavg=%v", config.LimitLoadavg)
 
-	noExit := opts["--noexit"].(bool)
-	util.LogInfo("options", "--noexit=%v", noExit)
+	c.noExit = opts["--noexit"].(bool)
+	util.LogInfo("options", "--noexit=%v", c.noExit)
 
 	config.SkipPreflight = opts["--nopreflight"].(bool)
 	util.LogInfo("options", "--nopreflight=%v", config.SkipPreflight)
 
-	psid := opts["<pipestance_name>"].(string)
-	invocationPath := opts["<call.mro>"].(string)
-	pipestancePath := path.Join(cwd, psid)
+	c.psid = opts["<pipestance_name>"].(string)
+	c.invocationPath = opts["<call.mro>"].(string)
+	cwd, _ := os.Getwd()
+	c.pipestancePath = path.Join(cwd, c.psid)
 	if value := opts["--psdir"]; value != nil {
 		if p, ok := value.(string); ok && p != "" {
 			if filepath.IsAbs(p) {
-				pipestancePath = p
+				c.pipestancePath = p
 			} else {
-				pipestancePath = path.Join(cwd, p)
+				c.pipestancePath = path.Join(cwd, p)
 			}
 		}
 	}
-	stepSecs := 3 * time.Second
-	checkSrc := true
 	config.Monitor = opts["--monitor"].(bool)
-	readOnly := opts["--inspect"].(bool)
+	c.readOnly = opts["--inspect"].(bool)
 	config.Debug = opts["--debug"].(bool)
 	config.StressTest = opts["--stest"].(bool)
-	envs := map[string]string{}
-	retries := core.DefaultRetries()
 	if value := opts["--autoretry"]; value != nil {
 		if value, err := strconv.Atoi(value.(string)); err == nil {
-			retries = value
-			util.LogInfo("options", "--autoretry=%d", retries)
+			c.retries = value
+			util.LogInfo("options", "--autoretry=%d", c.retries)
 		} else {
 			util.PrintError(err, "options",
 				"Could not parse --autoretry value \"%s\"", opts["--autoretry"].(string))
 			os.Exit(1)
 		}
 	}
-	if retries > 0 && config.FullStageReset {
-		retries = 0
+	if c.retries > 0 && config.FullStageReset {
+		c.retries = 0
 		util.Println(
 			"\nWARNING: ignoring autoretry when MRO_FULLSTAGERESET is set.\n")
 		util.LogInfo("options", "autoretry disabled due to MRO_FULLSTAGERESET.\n")
 	}
-	retryWait := time.Second
-	if retries > 0 {
+	c.retryWait = time.Second
+	if c.retries > 0 {
 		if value := opts["--retry-wait"]; value != nil {
 			if value, err := strconv.Atoi(value.(string)); err == nil {
-				retryWait = time.Duration(value) * time.Second
-				util.LogInfo("options", "--retry-wait=%d", retries)
+				c.retryWait = time.Duration(value) * time.Second
+				util.LogInfo("options", "--retry-wait=%d", c.retries)
 			} else {
 				util.PrintError(err, "options",
 					"Could not parse --retry-wait value \"%s\"", opts["--retry-wait"].(string))
@@ -853,8 +870,112 @@ Options:
 			}
 		}
 	}
+	return c
+}
+
+func (pipestanceBox *pipestanceHolder) Configure(c *mrpConfiguration, invocationSrc string) (
+	bool, *core.Runtime) {
+	//=========================================================================
+	// Configure Martian runtime.
+	//=========================================================================
+	rt := c.config.NewRuntime()
+
+	factory := core.NewRuntimePipestanceFactory(rt,
+		invocationSrc, c.invocationPath, c.psid, c.mroPaths, c.pipestancePath, c.mroVersion,
+		nil, true, c.readOnly, c.tags)
+	reattaching := false
+	pipestance, err := factory.InvokePipeline()
+	if err != nil {
+		if _, ok := err.(*core.PipestanceExistsError); ok {
+			if pipestance, err = factory.ReattachToPipestance(context.Background()); err == nil {
+				c.config.MartianVersion, c.mroVersion, _ = pipestance.GetVersions()
+				reattaching = true
+			} else {
+				util.DieIf(err)
+			}
+		} else {
+			util.DieIf(err)
+		}
+	}
+	pipestanceBox.pipestance = pipestance
+	pipestanceBox.factory = factory
+	pipestanceBox.maxRetries = c.retries
+	pipestanceBox.remainingRetries = c.retries
+	pipestanceBox.readOnly = c.readOnly
+	pipestanceBox.retryWait = c.retryWait
+
+	return reattaching, rt
+}
+
+func (c *mrpConfiguration) checkSpace() {
+	if bSize, inodes, fstype, err := core.GetAvailableSpace(c.pipestancePath); err != nil {
+		util.PrintError(err, "filesys", "Error reading filesystem information.")
+	} else {
+		util.LogInfo("filesys", "Pipestance path %s",
+			c.pipestancePath)
+		util.LogInfo("filesys", "Filesystem type %s",
+			fstype)
+		util.LogInfo("filesys", "%s and %s inodes available.",
+			humanize.Bytes(bSize), humanize.Comma(int64(inodes)))
+	}
+}
+
+func (c *mrpConfiguration) getListener(hostname string, pipestanceBox *pipestanceHolder) net.Listener {
+	// Attempt to open the UI port.  If the port was not automatically
+	// assigned, fail mrp if it cannot be opened.  Otherwise, log a message
+	// and continue.
+	var listener net.Listener
+	if c.enableUI {
+		var err error
+		dieWithoutUi := true
+		if c.uiport == "" {
+			c.uiport = "0"
+			dieWithoutUi = false
+		}
+		if listener, err = net.Listen("tcp",
+			fmt.Sprintf(":%s", c.uiport)); err != nil {
+			util.PrintError(err, "webserv", "Cannot open port %s", c.uiport)
+			if dieWithoutUi {
+				os.Exit(1)
+			} else {
+				util.PrintError(err, "webserv", "UI disabled")
+				listener = nil
+			}
+		} else {
+			u := url.URL{
+				Scheme: "http",
+				Host:   listener.Addr().String(),
+			}
+			c.uiport = u.Port()
+			u.Host = net.JoinHostPort(hostname, c.uiport)
+			if c.authKey != "" {
+				q := u.Query()
+				q.Set("auth", c.authKey)
+				u.RawQuery = q.Encode()
+			}
+			// Print this here because the log makes more sense when this appears before
+			// the runloop messages start to appear.
+			util.Println("Serving UI at %s\n", u.String())
+			pipestanceBox.enableUI = true
+			pipestanceBox.authKey = c.authKey
+			util.RegisterSignalHandler(pipestanceBox)
+			if !c.readOnly {
+				pipestanceBox.pipestance.RecordUiPort(u.String())
+			}
+		}
+	} else {
+		util.LogInfo("webserv", "UI disabled.")
+	}
+
+	return listener
+}
+
+func main() {
+	util.SetupSignalHandlers()
+	c := configure()
+
 	// Validate psid.
-	util.DieIf(util.ValidateID(psid))
+	util.DieIf(util.ValidateID(c.psid))
 
 	// Get hostname and username.
 	hostname, err := os.Hostname()
@@ -868,112 +989,30 @@ Options:
 	}
 
 	//=========================================================================
-	// Configure Martian runtime.
-	//=========================================================================
-	rt := config.NewRuntime()
-
-	//=========================================================================
 	// Invoke pipestance or Reattach if exists.
 	//=========================================================================
-	data, err := ioutil.ReadFile(invocationPath)
+	data, err := ioutil.ReadFile(c.invocationPath)
 	util.DieIf(err)
 	invocationSrc := string(data)
-	executingPreflight := !config.SkipPreflight
-
-	factory := core.NewRuntimePipestanceFactory(rt,
-		invocationSrc, invocationPath, psid, mroPaths, pipestancePath, mroVersion,
-		envs, checkSrc, readOnly, tags)
 
 	// Attempt to reattach to the pipestance.
-	reattaching := false
-	pipestance, err := factory.InvokePipeline()
-	if err != nil {
-		if _, ok := err.(*core.PipestanceExistsError); ok {
-			if pipestance, err = factory.ReattachToPipestance(context.Background()); err == nil {
-				config.MartianVersion, mroVersion, _ = pipestance.GetVersions()
-				reattaching = true
-			} else {
-				util.DieIf(err)
-			}
-		} else {
-			util.DieIf(err)
-		}
-	}
-	pipestanceBox := pipestanceHolder{
-		pipestance:       pipestance,
-		factory:          factory,
-		maxRetries:       retries,
-		remainingRetries: retries,
-		readOnly:         readOnly,
-		retryWait:        retryWait,
-	}
+	var pipestanceBox pipestanceHolder
+	reattaching, rt := pipestanceBox.Configure(&c, invocationSrc)
+	pipestance := pipestanceBox.pipestance
 
-	if !readOnly {
+	if !c.readOnly {
 		// Start writing (including cached entries) to log file.
-		util.LogTee(path.Join(pipestancePath, "_log"))
+		util.LogTee(path.Join(c.pipestancePath, "_log"))
 	}
-	if bSize, inodes, fstype, err := core.GetAvailableSpace(pipestancePath); err != nil {
-		util.PrintError(err, "filesys", "Error reading filesystem information.")
-	} else {
-		util.LogInfo("filesys", "Pipestance path %s",
-			pipestancePath)
-		util.LogInfo("filesys", "Filesystem type %s",
-			fstype)
-		util.LogInfo("filesys", "%s and %s inodes available.",
-			humanize.Bytes(bSize), humanize.Comma(int64(inodes)))
-	}
+	c.checkSpace()
 
-	uuid, _ := pipestance.GetUuid()
-
-	// Attempt to open the UI port.  If the port was not automatically
-	// assigned, fail mrp if it cannot be opened.  Otherwise, log a message
-	// and continue.
-	var listener net.Listener
-	if enableUI {
-		var err error
-		dieWithoutUi := true
-		if uiport == "" {
-			uiport = "0"
-			dieWithoutUi = false
-		}
-		if listener, err = net.Listen("tcp",
-			fmt.Sprintf(":%s", uiport)); err != nil {
-			util.PrintError(err, "webserv", "Cannot open port %s", uiport)
-			if dieWithoutUi {
-				os.Exit(1)
-			} else {
-				util.PrintError(err, "webserv", "UI disabled")
-				listener = nil
-			}
-		} else {
-			u := url.URL{
-				Scheme: "http",
-				Host:   listener.Addr().String(),
-			}
-			uiport = u.Port()
-			u.Host = net.JoinHostPort(hostname, uiport)
-			if authKey != "" {
-				q := u.Query()
-				q.Set("auth", authKey)
-				u.RawQuery = q.Encode()
-			}
-			// Print this here because the log makes more sense when this appears before
-			// the runloop messages start to appear.
-			util.Println("Serving UI at %s\n", u.String())
-			pipestanceBox.enableUI = true
-			pipestanceBox.authKey = authKey
-			util.RegisterSignalHandler(&pipestanceBox)
-			if !readOnly {
-				pipestance.RecordUiPort(u.String())
-			}
-		}
-	} else {
-		util.LogInfo("webserv", "UI disabled.")
-	}
+	uuid, _ := pipestanceBox.pipestance.GetUuid()
+	listener := c.getListener(hostname, &pipestanceBox)
 
 	//=========================================================================
 	// Collect pipestance static info.
 	//=========================================================================
+	cwd, _ := os.Getwd()
 	pipestanceBox.info = &api.PipestanceInfo{
 		Hostname:     hostname,
 		Username:     username,
@@ -982,32 +1021,32 @@ Options:
 		Cmdline:      strings.Join(os.Args, " "),
 		Pid:          os.Getpid(),
 		Start:        pipestance.GetTimestamp(),
-		Version:      config.MartianVersion,
+		Version:      c.config.MartianVersion,
 		Pname:        pipestance.GetPname(),
-		PsId:         psid,
+		PsId:         c.psid,
 		State:        pipestance.GetState(context.Background()),
-		JobMode:      config.JobMode,
+		JobMode:      c.config.JobMode,
 		MaxCores:     rt.JobManager.GetMaxCores(),
 		MaxMemGB:     rt.JobManager.GetMaxMemGB(),
-		InvokePath:   invocationPath,
+		InvokePath:   c.invocationPath,
 		InvokeSource: invocationSrc,
-		MroPath:      util.FormatMroPath(mroPaths),
-		ProfileMode:  config.ProfileMode,
-		Port:         uiport,
-		MroVersion:   mroVersion,
+		MroPath:      util.FormatMroPath(c.mroPaths),
+		ProfileMode:  c.config.ProfileMode,
+		Port:         c.uiport,
+		MroVersion:   c.mroVersion,
 		Uuid:         uuid,
-		PsPath:       pipestancePath,
+		PsPath:       c.pipestancePath,
 	}
 
 	if reattaching {
 		// If it already exists, try to reattach to it.
-		if !readOnly {
+		if !c.readOnly {
 			if err = pipestance.Reset(); err == nil {
-				err = pipestance.RestartLocalJobs(config.JobMode)
+				err = pipestance.RestartLocalJobs(c.config.JobMode)
 			}
 			util.DieIf(err)
 		}
-	} else if executingPreflight && !readOnly {
+	} else if !c.config.SkipPreflight && !c.readOnly {
 		util.Println("Running preflight checks (please wait)...")
 	}
 
@@ -1015,13 +1054,14 @@ Options:
 	// Start web server.
 	//=========================================================================
 	if listener != nil {
-		go runWebServer(listener, rt, &pipestanceBox, requireAuth)
+		go runWebServer(listener, rt, &pipestanceBox, c.requireAuth)
 	}
 
 	//=========================================================================
 	// Start run loop.
 	//=========================================================================
-	go runLoop(&pipestanceBox, stepSecs, config.VdrMode, noExit,
+	stepSecs := 3 * time.Second
+	go runLoop(&pipestanceBox, stepSecs, c.config.VdrMode, c.noExit,
 		rt.LocalJobManager.Done())
 
 	// Let daemons take over.
