@@ -8,7 +8,6 @@ package core
 
 import (
 	"os"
-	"path"
 	"path/filepath"
 	"sort"
 	"strings"
@@ -304,12 +303,8 @@ func pathIsInside(test, parent string) bool {
 		return true
 	}
 	parent = filepath.Clean(parent)
-	for name := filepath.Clean(test); len(name) >= len(parent); name = path.Dir(name) {
-		if name == parent {
-			return true
-		}
-	}
-	return false
+	name := filepath.Clean(test)
+	return name == parent || strings.HasPrefix(name, parent+"/")
 }
 
 // Returns all of the logical file names which may refer to the same file as
