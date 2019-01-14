@@ -35,7 +35,7 @@ func EnableDebug(sm *http.ServeMux, verifyAuth AuthFunction) {
 	sm.HandleFunc("/debug/pprof/trace", pprof.Trace)
 
 	// Turn on block and mutex profiling at the rate/fractions given by
-	// the "block" and "mutex" form paramters.  Returns the previous
+	// the "block" and "mutex" form parameters.  Returns the previous
 	// mutex sampling rate.  Requires authentication.
 	sm.HandleFunc("/debug/enable_profile", authorizeThenRun(verifyAuth, enableProf))
 }

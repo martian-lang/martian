@@ -15,7 +15,7 @@ type stringIntern struct {
 
 // makeStringIntern creates a stringIntern object, prepopulated with string
 // constants which are expected to be frequently used.  The use of such
-// constants is desireable because they don't need to be allocated on the
+// constants is desirable because they don't need to be allocated on the
 // heap.
 func makeStringIntern() (v *stringIntern) {
 	v = &stringIntern{

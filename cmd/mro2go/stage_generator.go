@@ -35,7 +35,7 @@ type %sJoinArgs struct {
 	}
 }
 
-// Convert mro stage and variable names into appropraite exported go names.
+// Convert mro stage and variable names into appropriate exported go names.
 func GoName(stageName string) string {
 	parts := strings.Split(stageName, "_")
 	var result bytes.Buffer

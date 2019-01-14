@@ -100,7 +100,7 @@ func (self *PipestanceInfo) StripMro() *PipestanceInfo {
 	}
 }
 
-// Get the absoulte path to the pipestance directory
+// Get the absolute path to the pipestance directory
 func (self *PipestanceInfo) FullPipestancePath() string {
 	if self.PsPath != "" {
 		if filepath.IsAbs(self.PsPath) {

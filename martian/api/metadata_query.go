@@ -4,7 +4,7 @@
 
 package api
 
-// Information requred to query metadata for a specific pipestance.
+// Information required to query metadata for a specific pipestance.
 type MetadataForm struct {
 	Path string `json:"path"`
 	Name string `json:"name"`

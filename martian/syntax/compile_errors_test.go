@@ -1284,7 +1284,7 @@ call SQUARE(
 `, "UnsupportedTagError")
 }
 
-// Checks that there is an error when calling a non-existant pipeline.
+// Checks that there is an error when calling a non-existent pipeline.
 func TestMissingTopCall(t *testing.T) {
 	t.Parallel()
 	testBadCompile(t, `

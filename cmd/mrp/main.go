@@ -297,7 +297,7 @@ func attemptRetry(pipestance *core.Pipestance, pipestanceBox *pipestanceHolder,
 		// those failures get batched up into a single retry.
 		pipestance.RefreshState(ctx)
 		pipestance.CheckHeartbeats(ctx)
-		// Check that no non-transient failures happend in the mean time.
+		// Check that no non-transient failures happened in the mean time.
 		canRetry, transient_log = pipestance.IsErrorTransient()
 		if !canRetry {
 			if transient_log != "" && !pipestanceBox.showedFailed {
