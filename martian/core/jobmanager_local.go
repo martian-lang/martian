@@ -612,7 +612,7 @@ func executeLocal(cmd *exec.Cmd, stdoutPath, stderrPath string,
 		defer util.ExitCriticalSection()
 		err := cmd.Start()
 		if err == nil {
-			metadata.remove("queued_locally")
+			metadata.remove(QueuedLocally)
 		}
 		return err
 	}(metadata, cmd); err != nil {
