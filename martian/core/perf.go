@@ -33,6 +33,7 @@ type Rusage struct {
 	MessagesSent int     `json:"ru_msgsnd"`
 	MessagesRcvd int     `json:"ru_msgrcv"`
 	SignalsRcvd  int     `json:"ru_nsignals"`
+	CtxSwitches  int     `json:"ru_nivcsw"`
 }
 
 // Current observed memory usage.

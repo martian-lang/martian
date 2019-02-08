@@ -37,6 +37,7 @@ func getRusage(who int) *Rusage {
 			MessagesSent: int(ru.Msgsnd),
 			MessagesRcvd: int(ru.Msgrcv),
 			SignalsRcvd:  int(ru.Nsignals),
+			CtxSwitches:  int(ru.Nivcsw),
 		}
 	} else {
 		return nil
