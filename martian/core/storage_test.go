@@ -5,6 +5,7 @@ import (
 	"io/ioutil"
 	"os"
 	"path"
+	"strconv"
 	"testing"
 )
 
@@ -121,13 +122,13 @@ func TestGetArgsToFilesMap(t *testing.T) {
 	}
 }
 
-func TestAddFilesToArgsMappings(t *testing.T) {
-	forkDir, err := ioutil.TempDir("", "testAddFilesToArgsMappings")
-	if err != nil {
-		t.Skip(err)
-	}
-	defer os.RemoveAll(forkDir)
-
+func makeStorageTestDir(forkDir string) (
+	map[string]map[Nodable]struct{},
+	[]string,
+	LazyArgumentMap,
+	string,
+	[]string,
+	error) {
 	fileArgs := map[string]map[Nodable]struct{}{
 		"thing1":      nil,
 		"thing2":      nil,
@@ -135,6 +136,7 @@ func TestAddFilesToArgsMappings(t *testing.T) {
 		"what":        nil,
 		"link":        nil,
 		"otherThings": nil,
+		"dir":         nil,
 	}
 	realPaths := []string{
 		path.Join(forkDir, "thing", "thing1"),
@@ -143,6 +145,11 @@ func TestAddFilesToArgsMappings(t *testing.T) {
 		path.Join(forkDir, "what"),
 		path.Join(forkDir, "unreferenced"),
 	}
+	pathsList := make([]string, 200)
+	for i := range pathsList {
+		pathsList[i] = path.Join(forkDir, "dir", strconv.Itoa(i))
+	}
+	realPaths = append(realPaths, pathsList...)
 	link := path.Join(forkDir, "thing1link")
 	for _, p := range realPaths {
 		os.MkdirAll(path.Dir(p), 0755)
@@ -158,12 +165,27 @@ func TestAddFilesToArgsMappings(t *testing.T) {
 			"otherThings": path.Join(forkDir, "not", "a", "path"),
 			"what":        realPaths[3],
 			"link":        link,
+			"dir":         pathsList,
 		}
 		if b, err := json.Marshal(outsFrom); err != nil {
-			t.Fatal(err)
+			return nil, nil, nil, "", nil, err
 		} else if err := json.Unmarshal(b, &outs); err != nil {
-			t.Fatal(err)
+			return nil, nil, nil, "", nil, err
 		}
+	}
+	return fileArgs, realPaths, outs, link, pathsList, nil
+}
+
+func TestAddFilesToArgsMappings(t *testing.T) {
+	t.Parallel()
+	forkDir, err := ioutil.TempDir("", "testAddFilesToArgsMappings")
+	if err != nil {
+		t.Skip(err)
+	}
+	defer os.RemoveAll(forkDir)
+	fileArgs, realPaths, outs, link, pathsList, err := makeStorageTestDir(forkDir)
+	if err != nil {
+		t.Fatal(err)
 	}
 	argToFiles := getArgsToFilesMap(fileArgs, outs, true, "test")
 	if argToFiles == nil {
@@ -172,6 +194,15 @@ func TestAddFilesToArgsMappings(t *testing.T) {
 	filesToArgs := make(map[string]*vdrFileCache, len(fileArgs))
 	addFilesToArgsMappings(forkDir, true, "test",
 		filesToArgs, argToFiles)
+	checkFileToArgMappings(t, filesToArgs, realPaths, forkDir, link, pathsList)
+}
+
+type errorReporter interface {
+	Errorf(format string, args ...interface{})
+}
+
+func checkFileToArgMappings(t errorReporter, filesToArgs map[string]*vdrFileCache,
+	realPaths []string, forkDir, link string, pathsList []string) {
 	if args := filesToArgs[realPaths[0]]; args == nil {
 		t.Errorf("%s had no results.", realPaths[0])
 	} else {
@@ -234,5 +265,42 @@ func TestAddFilesToArgsMappings(t *testing.T) {
 			t.Errorf("Expected ref to %s from link",
 				link)
 		}
+	}
+	for _, p := range pathsList {
+		if args := filesToArgs[p]; args == nil {
+			t.Errorf("%s had no results.", p)
+		} else if len(args.args) != 1 {
+			t.Errorf("Expected 1 ref for %s, got %d",
+				p, len(args.args))
+		}
+	}
+}
+
+func BenchmarkAddFilesToArgsMappings(b *testing.B) {
+	forkDir, err := ioutil.TempDir("", "benchAddFilesToArgsMappings")
+	if err != nil {
+		b.Skip(err)
+	}
+	defer os.RemoveAll(forkDir)
+	fileArgs, realPaths, outs, link, pathsList, err := makeStorageTestDir(forkDir)
+	if err != nil {
+		b.Fatal(err)
+	}
+	argToFiles := getArgsToFilesMap(fileArgs, outs, true, "test")
+	if argToFiles == nil {
+		b.Fatal("No argToFiles map")
+	}
+	filesToArgs := make(map[string]*vdrFileCache, len(fileArgs))
+	addFilesToArgsMappings(forkDir, true, "test",
+		filesToArgs, argToFiles)
+	checkFileToArgMappings(b, filesToArgs, realPaths, forkDir, link, pathsList)
+	b.ReportAllocs()
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		for key := range filesToArgs {
+			delete(filesToArgs, key)
+		}
+		addFilesToArgsMappings(forkDir, true, "test",
+			filesToArgs, argToFiles)
 	}
 }
