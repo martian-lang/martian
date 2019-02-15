@@ -304,23 +304,93 @@ func pathIsInside(test, parent string) bool {
 	}
 	parent = filepath.Clean(parent)
 	name := filepath.Clean(test)
-	return name == parent || strings.HasPrefix(name, parent+"/")
+	return name == parent ||
+		(len(parent) < len(name) && strings.HasPrefix(name, parent+"/"))
 }
 
-// Returns all of the logical file names which may refer to the same file as
-// the give path name.
+// Returns (almost) all of the logical file names which may refer to the same
+// file as the given path name.
+//
+// If name refers to a symlink, this will return the path the symlink refers
+// to, and continue on if that is also a symlink.  It will also return the
+// fully resolved path (with all parent-directory symlinks resolved).  It
+// will not, however, return paths for partially-resolved parent directory
+// symlinks.  For example, imagine this directory structure:
+//
+//   /root1
+//      foo -> /root2
+//      bar
+//         baz
+//         foobar -> /root1/foo/bar/baz
+//   /root2
+//      bar -> /root1/bar
+//
+// In this case, getLogicalFileNames("/root1/foo/bar/foobar") will return
+//
+//   /root1/foo/bar/foobar
+//   /root1/bar/baz
+//   /root1/foo/bar/baz
+//
+// but not for example
+//
+//   /root1/bar/foobar
+//   /root2/bar/baz
+//   /root2/bar/foobar
+//
+// all of which resolve to the same file.  These cases are, however, relatively
+// uncommon compared to the cases which are handled.  By contrast, python in
+// particular will regularly fully-resolve symlinks.
+//
+// The only cases where this could get us into trouble for VDR would be if a
+// stage did something like
+//
+//   /files
+//       refdata
+//           data -> /home/data
+//       refdir -> refdata
+//
+// and then returned /files/refdir/data/file as an output.  In this case, the
+// method will return /files/refdir/data/file and /home/data/file only.  This
+// should be ok, however, as /files/refdata/data will also expand to /home/data
+// which will be seen as a possible path for /home/data/file and so be blocked
+// from removal.
 func getLogicalFileNames(name string) []string {
 	var names []string
 	if info, err := os.Lstat(name); err == nil {
 		names = append(names, name)
+		cleanName := filepath.Clean(name)
+		if cleanName != name {
+			names = append(names, cleanName)
+		}
 		if resolved, err := filepath.EvalSymlinks(name); err == nil &&
-			name != resolved {
+			cleanName != resolved {
 			names = append(names, resolved)
 		}
+		var seenNames map[string]struct{}
 		for info.Mode()&os.ModeSymlink != 0 {
 			if dest, err := os.Readlink(name); err != nil {
 				break
 			} else {
+				// Only return unique names.
+				if seenNames == nil {
+					seenNames = make(map[string]struct{}, len(names)+1)
+					for _, n := range names {
+						seenNames[n] = struct{}{}
+					}
+				}
+				if !filepath.IsAbs(dest) {
+					dest = filepath.Clean(filepath.Join(filepath.Dir(name), dest))
+				} else if c := filepath.Clean(dest); c != dest {
+					if _, ok := seenNames[c]; !ok {
+						seenNames[c] = struct{}{}
+						names = append(names, c)
+					}
+				}
+
+				if _, ok := seenNames[dest]; ok {
+					break
+				}
+				seenNames[dest] = struct{}{}
 				names = append(names, dest)
 				if destInfo, err := os.Lstat(dest); err != nil {
 					break
@@ -374,6 +444,20 @@ func addFilesToArgsMappings(fpath string, debug bool, fqname string,
 	filesToArgs map[string]*vdrFileCache,
 	argToFiles map[string]map[string]struct{}) {
 	util.Walk(fpath, func(fpath string, info os.FileInfo, err error) error {
+		// We can't just short-circuit directories here, because
+		// for example an argument might refer to files/foo which
+		// is a symlink to files/bar/baz/foo.  While we do
+		// partially expand based on symlinks (so that argument
+		// would be considered to also refer to files/bar/baz/foo),
+		// we don't expand based on symlinks at every level of the
+		// path, so if files/bar was a symlink to files/baz and
+		// the argument referred to files/bar/foo, we wouldn't
+		// treat it as referring to files/baz/foo.
+		//
+		// Even if we could short-circuit the path checking logic,
+		// we'd still need to descend into the directory to total
+		// the size up.
+
 		if err != nil {
 			return nil
 		}
@@ -389,31 +473,22 @@ func addFilesToArgsMappings(fpath string, debug bool, fqname string,
 			count: 1,
 		}
 		filesToArgs[fpath] = entry
-		seenNames := make(map[string]struct{})
-		for _, name := range getLogicalFileNames(fpath) {
-			if _, ok := seenNames[name]; ok {
-				return nil
-			}
-			seenNames[name] = struct{}{}
-			for arg, files := range argToFiles {
-				for file := range files {
-					if pathIsInside(file, name) || pathIsInside(name, file) {
-						if debug {
-							util.LogInfo("storage",
-								"Argument %s of %s references file\n%s",
-								arg, fqname, fpath)
-							util.LogInfo("storage",
-								"The direct reference is to\n%s\ncontained by\n%s",
-								file, name)
-						}
+		names := getLogicalFileNames(fpath)
+		for arg, files := range argToFiles {
+			if file, name := anyOverlap(names, files); file != "" {
+				if debug {
+					util.LogInfo("storage",
+						"Argument %s of %s references file\n%s",
+						arg, fqname, fpath)
+					util.LogInfo("storage",
+						"The direct reference is to\n%s\ncontained by\n%s",
+						file, name)
+				}
 
-						if entry.args == nil {
-							entry.args = map[string]struct{}{arg: {}}
-						} else {
-							entry.args[arg] = struct{}{}
-						}
-						break
-					}
+				if entry.args == nil {
+					entry.args = map[string]struct{}{arg: {}}
+				} else {
+					entry.args[arg] = struct{}{}
 				}
 			}
 		}
@@ -424,6 +499,43 @@ func addFilesToArgsMappings(fpath string, debug bool, fqname string,
 		}
 		return nil
 	})
+}
+
+// Tests if any file in files refers directly to any file in names,
+// or name is a parent directory of any file in files, or any file
+// in files is a parent directory of a file in names.  If a match is found,
+// returns the matched file name and the name it matched.
+//
+// Both name and filepath.Clean(name) should be tested, and files
+// should include the cleaned versions of all of the file names as well,
+// as those are not checked in this version.
+func anyOverlap(names []string, files map[string]struct{}) (string, string) {
+	if len(files) == 0 || len(names) == 0 {
+		return "", ""
+	}
+	// In the common case of an exact match, avoid the O(N) search
+	for _, name := range names {
+		if _, ok := files[name]; ok {
+			return name, name
+		}
+	}
+	// Only look for parent-directory matches after checking all forms
+	// of name for an exact match
+	for _, name := range names {
+		dir := name + "/"
+		for file := range files {
+			if len(name) > len(file)+1 {
+				if strings.HasPrefix(name, file+"/") {
+					return file, name
+				}
+			} else if len(dir) < len(file) {
+				if strings.HasPrefix(file, dir) {
+					return file, name
+				}
+			}
+		}
+	}
+	return "", ""
 }
 
 // Gets the set of files generated by this stage, and the set of arguments
