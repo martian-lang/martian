@@ -27,10 +27,9 @@ import (
 	"github.com/martian-lang/docopt.go"
 )
 
-func RelPath(p string) string {
-	base := os.Getenv("MARTIAN_BASE")
-	if base != "" {
-		return path.Join(base, p)
+func getExeBasePath() string {
+	if base := os.Getenv("MARTIAN_BASE"); base != "" {
+		return base
 	} else {
 		if exe, err := os.Executable(); err != nil {
 			panic(err)
@@ -38,10 +37,19 @@ func RelPath(p string) string {
 			if exe, err := filepath.EvalSymlinks(exe); err != nil {
 				panic(err)
 			} else {
-				return path.Join(path.Dir(exe), p)
+				return path.Dir(exe)
 			}
 		}
 	}
+}
+
+var exeBasePath string
+
+func RelPath(p string) string {
+	if exeBasePath == "" {
+		exeBasePath = getExeBasePath()
+	}
+	return path.Join(exeBasePath, p)
 }
 
 func Mkdir(p string) error {
