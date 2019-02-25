@@ -7,6 +7,7 @@
 package api
 
 import (
+	"expvar"
 	"net/http"
 	"net/http/pprof"
 	"runtime"
@@ -38,6 +39,10 @@ func EnableDebug(sm *http.ServeMux, verifyAuth AuthFunction) {
 	// the "block" and "mutex" form parameters.  Returns the previous
 	// mutex sampling rate.  Requires authentication.
 	sm.HandleFunc("/debug/enable_profile", authorizeThenRun(verifyAuth, enableProf))
+
+	// Expose exported variables, but require authorization.
+	sm.HandleFunc("/debug/vars",
+		authorizeThenRun(verifyAuth, expvar.Handler().ServeHTTP))
 }
 
 func authorizeThenRun(auth AuthFunction, then http.HandlerFunc) http.HandlerFunc {
