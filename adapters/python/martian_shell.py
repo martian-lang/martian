@@ -134,12 +134,11 @@ class _MemoryProfile(object):
                 func_name_str = '%s.%s' % (filename, name)
             return martian.padded_print(
                 func_field_name, '{%s} <--- %s' % (func_name_str, func_caller_str))
-        else:
-            return martian.padded_print(func_field_name,
-                                        '%s:%d(%s) <--- %s' % (filename,
-                                                               lineno,
-                                                               name,
-                                                               func_caller_str))
+        return martian.padded_print(func_field_name,
+                                    '%s:%d(%s) <--- %s' % (filename,
+                                                           lineno,
+                                                           name,
+                                                           func_caller_str))
 
     @staticmethod
     def _format_row(key, val):
