@@ -214,7 +214,7 @@ func FsTypeString(fsType int64) string {
 		return "xenfs"
 	case 0x012ff7b4:
 		return "xenix"
-	case 0x58465342:
+	case unix.XFS_SUPER_MAGIC:
 		return "xfs"
 	case 0x012fd16d:
 		return "xiafs"
