@@ -9,9 +9,12 @@ package core
 // - Get arguments and compute file sizes (if they exist)
 
 import (
-	"github.com/martian-lang/martian/martian/util"
+	"fmt"
 	"math"
+	"strings"
 	"time"
+
+	"github.com/martian-lang/martian/martian/util"
 )
 
 type RusageInfo struct {
@@ -110,6 +113,51 @@ func (self *ObservedMemory) RssKb() int {
 
 func (self *ObservedMemory) VmemKb() int {
 	return int((self.Vmem + 512) / 1024)
+}
+
+type ProcessStats struct {
+	Pid    int
+	Memory ObservedMemory
+	IO     IoAmount
+	// The command executed for this process
+	Cmdline []string
+	// The depth in the process tree.
+	Depth int
+}
+
+type ProcessTree []ProcessStats
+
+func (tree ProcessTree) Format(indent string) string {
+	if len(tree) == 0 {
+		return ""
+	}
+	var builder strings.Builder
+	builder.WriteString(indent)
+	builder.WriteString(
+		"   PID VSZ(mb) RSS(mb) Procs  Read(mb) (calls) Write(mb) (calls) COMMAND\n")
+	for i, proc := range tree {
+		if i > 0 {
+			builder.WriteRune('\n')
+		}
+		builder.WriteString(indent)
+		fmt.Fprintf(&builder, "%6d %7.f %7.f %5d %9.f %7d %9.f %7d",
+			proc.Pid,
+			float64(proc.Memory.Vmem)/(1024*1024),
+			float64(proc.Memory.Rss)/(1024*1024),
+			proc.Memory.Procs,
+			float64(proc.IO.Read.BlockBytes)/(1024*1024),
+			proc.IO.Read.Syscalls,
+			float64(proc.IO.Write.BlockBytes)/(1024*1024),
+			proc.IO.Write.Syscalls)
+		for i := 0; i < proc.Depth; i++ {
+			builder.WriteString("  ")
+		}
+		for _, arg := range proc.Cmdline {
+			builder.WriteRune(' ')
+			builder.WriteString(arg)
+		}
+	}
+	return builder.String()
 }
 
 type PerfInfo struct {

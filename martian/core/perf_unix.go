@@ -9,6 +9,7 @@ package core
 
 import (
 	"bytes"
+	"errors"
 	"io/ioutil"
 	"os"
 	"strconv"
@@ -157,6 +158,22 @@ func GetProcessTreeMemory(pid int, includeParent bool, io map[int]*IoAmount) (me
 	}
 }
 
+// GetProcessTreeMemoryList returns the memory usage and other stats for all
+// processes in the tree rooted with pid.
+func GetProcessTreeMemoryList(pid int) (ProcessTree, error) {
+	procFd, err := unix.Openat(unix.AT_FDCWD, "/proc",
+		os.O_RDONLY|unix.O_DIRECTORY|unix.O_CLOEXEC|unix.O_PATH,
+		0)
+	if err != nil {
+		return nil, err
+	}
+	defer unix.Close(procFd)
+	var stats ProcessTree
+	var buf [10]byte
+	return stats, getProcessTreeMemoryList(procFd, pid,
+		itob(&buf, uint32(pid)), 0, &stats)
+}
+
 func openDirAsPathAt(fd int, path string) (int, error) {
 	return unix.Openat(fd, path,
 		os.O_RDONLY|unix.O_DIRECTORY|unix.O_CLOEXEC|unix.O_PATH|unix.O_NOFOLLOW,
@@ -228,6 +245,74 @@ func getChildTreeMemory(procFd, tfd int, mem *ObservedMemory, io map[int]*IoAmou
 			}
 		}
 		return nil
+	}
+}
+
+func getProcessTreeMemoryList(procFd int, pid int, spid []byte, depth int, stats *ProcessTree) error {
+	var pidBuf strings.Builder
+	pidBuf.Grow(11)
+	pidBuf.Write(spid)
+	fd, err := openDirAsPathAt(procFd, pidBuf.String())
+	if err != nil {
+		return errors.New("error opening process directory: " + err.Error())
+	}
+	closed := false
+	defer func() {
+		if !closed {
+			unix.Close(fd)
+		}
+	}()
+	mem, err := getRunningMemoryAt(fd)
+	if err != nil {
+		return err
+	}
+	stat := ProcessStats{
+		Pid:    pid,
+		Memory: mem,
+		Depth:  depth,
+	}
+	stat.IO, _ = getRunningIoAt(fd)
+	stat.Cmdline = getRunningCommandLine(fd)
+	*stats = append(*stats, stat)
+	if tfd, err := openDirForReadAt(fd, "task"); err != nil {
+		return errors.New("error opening tid directory: " + err.Error())
+	} else {
+		closed = true
+		unix.Close(fd)
+		return getChildTreeMemoryList(procFd, tfd, depth+1, stats)
+	}
+}
+
+func getChildTreeMemoryList(procFd, tfd, depth int, stats *ProcessTree) error {
+	f := os.NewFile(uintptr(tfd), "task")
+	defer f.Close()
+	if threads, err := f.Readdirnames(-1); err != nil {
+		return errors.New("error reading tid list: " + err.Error())
+	} else {
+		(*stats)[len(*stats)-1].Memory.Procs = len(threads)
+		for _, tid := range threads {
+			if childrenBytes, err := util.ReadFileAt(tfd, tid+"/children"); err == nil {
+				for _, child := range bytes.Fields(childrenBytes) {
+					if ichild, err := util.Atoi(child); err == nil {
+						getProcessTreeMemoryList(procFd, int(ichild), child, depth, stats)
+					}
+				}
+			}
+		}
+		return nil
+	}
+}
+
+func getRunningCommandLine(fd int) []string {
+	if b, err := util.ReadFileAt(fd, "cmdline"); err != nil {
+		return nil
+	} else {
+		args := bytes.Split(b, []byte{0})
+		result := make([]string, len(args))
+		for i, a := range args {
+			result[i] = string(a)
+		}
+		return result
 	}
 }
 

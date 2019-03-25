@@ -523,9 +523,25 @@ func (self *runner) getChildMemGB() (rss, vmem float64) {
 		float64(mem.Vmem) / (1024 * 1024 * 1024)
 }
 
+func (self *runner) logProcessTree() {
+	tree, _ := core.GetProcessTreeMemoryList(os.Getpid())
+	if len(tree) > 0 {
+		util.LogInfo("monitor", "Process tree:\n%s",
+			tree.Format("                              "))
+	}
+}
+
 func (self *runner) monitor(lastHeartbeat *time.Time) error {
 	if rss, vmem := self.getChildMemGB(); rss > float64(self.jobInfo.MemGB) {
+		self.logProcessTree()
 		if self.monitoring {
+			if proc := self.job.Process; proc != nil {
+				tree, _ := core.GetProcessTreeMemoryList(proc.Pid)
+				if len(tree) > 0 {
+					util.LogInfo("monitor", "Process tree:\n%s",
+						tree.Format("                              "))
+				}
+			}
 			self.job.Process.Kill()
 			return fmt.Errorf(
 				"Stage exceeded its memory quota (using %.1f, allowed %dG)",
@@ -536,6 +552,7 @@ func (self *runner) monitor(lastHeartbeat *time.Time) error {
 				rss, self.jobInfo.MemGB)
 		}
 	} else if self.jobInfo.VMemGB > 0 && vmem > float64(self.jobInfo.VMemGB) {
+		self.logProcessTree()
 		if self.monitoring {
 			self.job.Process.Kill()
 			return fmt.Errorf(
