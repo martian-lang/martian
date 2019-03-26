@@ -34,6 +34,7 @@ Options:
     --json          Output abstract syntax tree as JSON.
     --strict        Strict syntax validation
     --no-check-src  Do not check that stage source paths exist.
+    --dot           Render the top-level pipeline to graphviz dot format.
 
     -h --help       Show this message.
     --version       Show version.`
@@ -62,6 +63,7 @@ Options:
 		}
 	}
 	mkjson := opts["--json"].(bool)
+	mkdot := opts["--dot"].(bool)
 
 	count := 0
 	wasErr := false
@@ -76,6 +78,14 @@ Options:
 
 		if mkjson {
 			fmt.Printf("%s", syntax.JsonDumpAsts(asts))
+		}
+		if mkdot {
+			for _, ast := range asts {
+				if len(ast.Pipelines) > 0 {
+					p := ast.Pipelines[len(ast.Pipelines)-1]
+					fmt.Println(p.RenderDot(p.Id, ast.Callables.Table, "", "  "))
+				}
+			}
 		}
 
 		count += num
@@ -93,6 +103,10 @@ Options:
 			} else {
 				if mkjson {
 					asts = append(asts, ast)
+				}
+				if mkdot && len(ast.Pipelines) > 0 {
+					p := ast.Pipelines[len(ast.Pipelines)-1]
+					fmt.Println(p.RenderDot(p.Id, ast.Callables.Table, "", "  "))
 				}
 				count++
 			}
