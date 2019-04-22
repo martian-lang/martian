@@ -4,6 +4,7 @@
 # Build a Go package with git version embedding.
 #
 
+PWD=$(shell pwd)
 GOBINS=$(notdir $(wildcard cmd/*))
 REPO=github.com/martian-lang/martian
 GOLIBTESTS=$(addprefix test-, $(notdir $(wildcard martian/*)))
@@ -11,11 +12,12 @@ GOBINTESTS=$(addprefix test-, $(GOBINS))
 GOTESTS=$(GOLIBTESTS) $(GOBINTESTS) test-all
 VERSION=$(shell git describe --tags --always --dirty)
 RELEASE=false
-GO_FLAGS=-ldflags "-X $(REPO)/martian/util.__VERSION__='$(VERSION)' -X $(REPO)/martian/util.__RELEASE__='$(RELEASE)'" -mod=vendor
+SRC_ROOT=$(abspath $(dir $(PWD))../..)
+GO_FLAGS=-ldflags "-X $(REPO)/martian/util.__VERSION__='$(VERSION)' -X $(REPO)/martian/util.__RELEASE__='$(RELEASE)'" -gcflags "-trimpath $(SRC_ROOT)" -mod=vendor
 
 unexport GOPATH
 export GO111MODULE=on
-export GOBIN=$(shell pwd)/bin
+export GOBIN=$(PWD)/bin
 
 .PHONY: $(GOBINS) grammar web $(GOTESTS) govet all-bins $(GOBIN)/sum_squares longtests mrs integration_prereqs
 

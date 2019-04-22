@@ -17,9 +17,6 @@ import (
 	"syscall"
 )
 
-var __VERSION__ string = "<version not embedded>"
-var __RELEASE__ string = "false"
-
 // Get the build version for this binary, as embedded by the build system.
 func GetVersion() string {
 	return __VERSION__
