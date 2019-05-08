@@ -7,18 +7,7 @@
 
 package core
 
-import (
-	"bytes"
-	"io/ioutil"
-	"os"
-	"strconv"
-	"strings"
-	"syscall"
-	"time"
-
-	"github.com/martian-lang/martian/martian/util"
-	"golang.org/x/sys/unix"
-)
+import "errors"
 
 func getRusage(who int) *Rusage {
 	return nil
@@ -49,5 +38,5 @@ func GetRunningMemory(pid int) (ObservedMemory, error) {
 
 // Gets IO statistics for a running process by pid.
 func GetRunningIo(pid int) (*IoAmount, error) {
-	return nil, err
+	return nil, errors.New("not supported")
 }
