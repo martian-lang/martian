@@ -909,14 +909,23 @@ func (pipestanceBox *pipestanceHolder) Configure(c *mrpConfiguration, invocation
 
 func (c *mrpConfiguration) checkSpace() {
 	if bSize, inodes, fstype, err := core.GetAvailableSpace(c.pipestancePath); err != nil {
-		util.PrintError(err, "filesys", "Error reading filesystem information.")
+		util.PrintError(err, "filesys", "Error reading pipestance filesystem information.")
 	} else {
 		util.LogInfo("filesys", "Pipestance path %s",
 			c.pipestancePath)
-		util.LogInfo("filesys", "Filesystem type %s",
+		util.LogInfo("filesys", "Pipestance filesystem type %s",
 			fstype)
 		util.LogInfo("filesys", "%s and %s inodes available.",
 			humanize.Bytes(bSize), humanize.Comma(int64(inodes)))
+	}
+
+	binPath := util.RelPath("")
+	if _, _, fstype, err := core.GetAvailableSpace(binPath); err != nil {
+		util.PrintError(err, "filesys", "Error reading source filesystem information.")
+	} else {
+		util.LogInfo("filesys", "Bin path %s", binPath)
+		util.LogInfo("filesys", "Bin filesystem type %s",
+			fstype)
 	}
 }
 
