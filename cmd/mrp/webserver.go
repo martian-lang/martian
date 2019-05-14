@@ -276,9 +276,6 @@ func (self *mrpWebServer) getInfo(w http.ResponseWriter, req *http.Request) {
 	if self.readAuth && !self.verifyAuth(w, req) {
 		return
 	}
-	pipestance := self.pipestanceBox.getPipestance()
-	st := pipestance.GetState(req.Context())
-	self.pipestanceBox.UpdateState(st)
 	self.mutex.Lock()
 	bytes, err := json.Marshal(self.pipestanceBox.info)
 	self.mutex.Unlock()
@@ -300,8 +297,6 @@ func (self *mrpWebServer) getState(w http.ResponseWriter, req *http.Request) {
 		Nodes: getFinalState(self.rt, pipestance),
 		Info:  self.pipestanceBox.info,
 	}
-	st := pipestance.GetState(req.Context())
-	self.pipestanceBox.UpdateState(st)
 	self.mutex.Lock()
 	bytes, err := json.Marshal(&state)
 	self.mutex.Unlock()
