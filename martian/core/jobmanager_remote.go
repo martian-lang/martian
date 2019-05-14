@@ -11,6 +11,7 @@ import (
 	"runtime/trace"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/martian-lang/martian/martian/util"
@@ -34,6 +35,7 @@ type RemoteJobManager struct {
 	jobSem               *MaxJobsSemaphore
 	limiter              *time.Ticker
 	debug                bool
+	queueMutex           sync.Mutex
 }
 
 func NewRemoteJobManager(jobMode string, memGBPerCore int, maxJobs int, jobFreqMillis int,
@@ -166,16 +168,12 @@ func (self *RemoteJobManager) endJob(metadata *Metadata) {
 	}
 }
 
-func (self *RemoteJobManager) sendJob(shellCmd string, argv []string, envs map[string]string,
-	metadata *Metadata, resRequest *JobResources, fqname string, shellName string,
-	ctx context.Context) {
+func (self *RemoteJobManager) jobScript(
+	shellCmd string, argv []string, envs map[string]string,
+	metadata *Metadata,
+	resRequest *JobResources,
+	fqname, shellName string) string {
 
-	if self.jobFreqMillis > 0 {
-		<-(self.limiter.C)
-		if self.debug {
-			util.LogInfo("jobmngr", "Job rate-limit released: %s", fqname)
-		}
-	}
 	res := self.GetSystemReqs(resRequest)
 
 	// figure out per-thread memory requirements for the template.
@@ -256,12 +254,32 @@ func (self *RemoteJobManager) sendJob(shellCmd string, argv []string, envs map[s
 		}
 	}
 	r := strings.NewReplacer(args...)
-	jobscript := r.Replace(template)
+	return r.Replace(template)
+}
+
+func (self *RemoteJobManager) sendJob(shellCmd string, argv []string, envs map[string]string,
+	metadata *Metadata, resRequest *JobResources, fqname string, shellName string,
+	ctx context.Context) {
+	jobscript := self.jobScript(shellCmd, argv, envs, metadata,
+		resRequest, fqname, shellName)
 	metadata.WriteRaw("jobscript", jobscript)
 
 	cmd := exec.CommandContext(ctx, self.config.jobCmd, self.config.jobCmdArgs...)
 	cmd.Dir = metadata.curFilesPath
 	cmd.Stdin = strings.NewReader(jobscript)
+
+	// Regardless of the limiter rate, only allow one pending submission to the queue
+	// at a time.  Otherwise there's a risk that if the submit command takes longer
+	// than jobFreqMillis, commands will still pile up.  It's also a more "natural"
+	// way to limit the submit rate if the submit server can't keep up.
+	self.queueMutex.Lock()
+	defer self.queueMutex.Unlock()
+	if self.jobFreqMillis > 0 {
+		<-(self.limiter.C)
+		if self.debug {
+			util.LogInfo("jobmngr", "Job rate-limit released: %s", fqname)
+		}
+	}
 
 	util.EnterCriticalSection()
 	defer util.ExitCriticalSection()
