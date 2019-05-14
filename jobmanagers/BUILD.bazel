@@ -1,0 +1,81 @@
+filegroup(
+    name = "config",
+    srcs =
+        [
+            "config.json",
+            "retry.json",
+        ],
+    visibility = [
+        "//:__pkg__",
+        "//cmd/mrp:__pkg__",
+    ],
+)
+
+filegroup(
+    name = "templates",
+    srcs = glob(["*.template"]),
+    visibility = [
+        "//:__pkg__",
+        "//cmd/mrp:__pkg__",
+    ],
+)
+
+filegroup(
+    name = "examples",
+    srcs = glob(["*.template.example"]),
+    visibility = ["//visibility:public"],
+)
+
+py_library(
+    name = "sge_queue",
+    srcs = ["sge_queue.py"],
+)
+
+filegroup(
+    name = "queue_checks",
+    srcs = [":sge_queue"],
+    visibility = [
+        "//:__pkg__",
+        "//cmd/mrp:__pkg__",
+    ],
+)
+
+filegroup(
+    name = "jobmanagers",
+    srcs = [
+        ":config",
+        ":queue_checks",
+        ":templates",
+    ],
+    visibility = [
+        "//:__pkg__",
+        "//cmd/mrp:__pkg__",
+    ],
+)
+
+load("@bazel_tools//tools/build_defs/pkg:pkg.bzl", "pkg_tar")
+
+pkg_tar(
+    name = "pkg_cs",
+    srcs = [
+        ":config",
+        ":examples",
+        ":queue_checks",
+    ],
+    include_runfiles = 1,
+    package_dir = "jobmanagers",
+    visibility = ["//:__pkg__"],
+)
+
+pkg_tar(
+    name = "pkg",
+    srcs = [
+        ":templates",
+    ],
+    include_runfiles = 1,
+    package_dir = "jobmanagers",
+    visibility = ["//:__pkg__"],
+    deps = [
+        ":pkg_cs",
+    ],
+)

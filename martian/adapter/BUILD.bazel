@@ -1,0 +1,15 @@
+load("@io_bazel_rules_go//go:def.bzl", "go_library")
+
+go_library(
+    name = "go_default_library",
+    srcs = [
+        "adapter.go",
+        "profile.go",
+    ],
+    importpath = "github.com/martian-lang/martian/martian/adapter",
+    visibility = ["//visibility:public"],
+    deps = [
+        "//martian/core:go_default_library",
+        "//martian/util:go_default_library",
+    ],
+)

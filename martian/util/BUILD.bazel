@@ -1,0 +1,45 @@
+load("@io_bazel_rules_go//go:def.bzl", "go_library", "go_test")
+
+_importpath = "github.com/martian-lang/martian/martian/util"
+
+go_library(
+    name = "go_default_library",
+    srcs = [
+        "directory.go",
+        "directory_linux.go",
+        "errors.go",
+        "exec.go",
+        "exec_linux.go",
+        "file_linux.go",
+        "log.go",
+        "signal.go",
+        "stamp.go",
+        "util.go",
+        "version.go",
+        "walk.go",
+        "walk_linux.go",
+        "zip.go",
+    ],
+    importpath = _importpath,
+    visibility = ["//visibility:public"],
+    x_defs = {
+        _importpath + ".__VERSION__": "{STABLE_MARTIAN_VERSION}",
+    },
+    deps = [
+        "@com_github_martian_lang_docopt_go//:go_default_library",
+    ] + select({
+        "@io_bazel_rules_go//go/platform:linux": [
+            "@org_golang_x_sys//unix:go_default_library",
+        ],
+        "//conditions:default": [],
+    }),
+)
+
+go_test(
+    name = "go_default_test",
+    srcs = [
+        "directory_linux_test.go",
+        "walk_linux_test.go",
+    ],
+    embed = [":go_default_library"],
+)

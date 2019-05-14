@@ -1,0 +1,151 @@
+load("@build_bazel_rules_nodejs//:defs.bzl", "nodejs_binary")
+
+genrule(
+    name = "clean_css",
+    srcs = [
+        "res/css/main.css",
+    ],
+    outs = [
+        "build/main.css",
+    ],
+    cmd = "$(execpath @martian_npm//clean-css-cli/bin:cleancss) " +
+          "-o $(execpath build/main.css) " +
+          "$(execpath res/css/main.css)",
+    tools = [
+        "@martian_npm//clean-css-cli/bin:cleancss",
+    ],
+)
+
+genrule(
+    name = "pug",
+    srcs = [
+        "templates/graph.pug",
+    ],
+    outs = [
+        "templates/graph.html",
+    ],
+    cmd = "$(execpath @martian_npm//node_modules/pug-cli:pug__bin) -o $$(readlink -f $(@D)/) $$(readlink -f $<)",
+    tools = [
+        "@martian_npm//node_modules/pug-cli:pug__bin",
+    ],
+)
+
+genrule(
+    name = "coffee",
+    srcs = [
+        "client/graph.coffee",
+    ],
+    outs = [
+        "client/graph.js",
+    ],
+    cmd = "$(execpath @martian_npm//coffeescript/bin:coffee) --no-header -o $(@D) $<",
+    tools = [
+        "@martian_npm//coffeescript/bin:coffee",
+    ],
+)
+
+# Pick out the one file we need from the npm package.
+EXTRACT_FILE = """
+for f in $(SRCS); do
+    if [[ $$(basename \"$$f\") == $$(basename \"$@\") ]]; then
+        cp \"$$f\" \"$@\"
+    fi
+done
+"""
+
+genrule(
+    name = "d3",
+    srcs = [
+        "@martian_npm//d3:d3__files",
+    ],
+    outs = [
+        "build/d3.min.js",
+    ],
+    cmd = EXTRACT_FILE,
+)
+
+genrule(
+    name = "dagre_d3",
+    srcs = [
+        "@martian_npm//dagre-d3:dagre-d3__files",
+    ],
+    outs = [
+        "build/dagre-d3.min.js",
+    ],
+    cmd = EXTRACT_FILE,
+)
+
+genrule(
+    name = "angular",
+    srcs = [
+        "@martian_npm//angular:angular__files",
+    ],
+    outs = [
+        "build/angular.min.js",
+    ],
+    cmd = EXTRACT_FILE,
+)
+
+genrule(
+    name = "lodash",
+    srcs = [
+        "@martian_npm//lodash:lodash__files",
+    ],
+    outs = [
+        "build/lodash.min.js",
+    ],
+    cmd = EXTRACT_FILE,
+)
+
+# Merge the js together.
+genrule(
+    name = "merged_js",
+    srcs = [
+        ":d3",
+        ":dagre_d3",
+        ":angular",
+        "res/js/ui-bootstrap-tpls-0.10.0.min.js",
+        ":lodash",
+        "res/js/ng-google-chart.js",
+        ":coffee",
+    ],
+    outs = [
+        "serve/graph.js",
+    ],
+    cmd = "cat $(SRCS) | gzip --best > \"$@\"",
+)
+
+COMPRESS = "gzip --best -c $$(readlink -f $<) > $@"
+
+genrule(
+    name = "compress_css",
+    srcs = [
+        ":clean_css",
+    ],
+    outs = [
+        "serve/css/main.css",
+    ],
+    cmd = COMPRESS,
+)
+
+genrule(
+    name = "compress_favicon",
+    srcs = [
+        "res/favicon.ico",
+    ],
+    outs = [
+        "serve/favicon.ico",
+    ],
+    cmd = COMPRESS,
+)
+
+filegroup(
+    name = "martian",
+    srcs = [
+        ":compress_css",
+        ":compress_favicon",
+        ":merged_js",
+        ":pug",
+    ],
+    visibility = ["//visibility:public"],
+)

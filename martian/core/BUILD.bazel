@@ -1,0 +1,63 @@
+load("@io_bazel_rules_go//go:def.bzl", "go_library", "go_test")
+
+go_library(
+    name = "go_default_library",
+    srcs = [
+        "argument_map.go",
+        "binding.go",
+        "cpuinfo_linux.go",
+        "errors.go",
+        "iostats.go",
+        "jobdef.go",
+        "jobinfo.go",
+        "jobmanager.go",
+        "jobmanager_local.go",
+        "jobmanager_remote.go",
+        "maxjobs_semaphore.go",
+        "metadata.go",
+        "mrt.go",
+        "node.go",
+        "override.go",
+        "perf.go",
+        "perf_generic.go",
+        "perf_unix.go",
+        "pipestance.go",
+        "profile_mode.go",
+        "resource_semaphore.go",
+        "rlimit.go",
+        "runtime.go",
+        "stage.go",
+        "statfs_unix.go",
+        "storage.go",
+    ],
+    importpath = "github.com/martian-lang/martian/martian/core",
+    visibility = ["//visibility:public"],
+    deps = [
+        "//martian/syntax:go_default_library",
+        "//martian/util:go_default_library",
+        "@com_github_cloudfoundry_gosigar//:go_default_library",
+        "@com_github_satori_go_uuid//:go_default_library",
+        "@org_golang_x_sys//unix:go_default_library",
+    ],
+)
+
+go_test(
+    name = "go_default_test",
+    srcs = [
+        "argument_map_test.go",
+        "iostats_test.go",
+        "jobdef_test.go",
+        "perf_unix_subprocess_test.go",
+        "perf_unix_test.go",
+        "resource_semaphore_test.go",
+        "runtime_test.go",
+        "stage_test.go",
+        "storage_test.go",
+    ],
+    data = ["testdata/vsize.py"],
+    embed = [":go_default_library"],
+    deps = [
+        "//martian/syntax:go_default_library",
+        "//martian/util:go_default_library",
+    ],
+)

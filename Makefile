@@ -5,7 +5,7 @@
 #
 
 PWD=$(shell pwd)
-GOBINS=$(notdir $(wildcard cmd/*))
+GOBINS=$(notdir $(wildcard cmd/m*))
 REPO=github.com/martian-lang/martian
 GOLIBTESTS=$(addprefix test-, $(notdir $(wildcard martian/*)))
 GOBINTESTS=$(addprefix test-, $(GOBINS))

@@ -1,0 +1,33 @@
+load("@io_bazel_rules_go//go:def.bzl", "go_binary", "go_library", "go_test")
+
+go_library(
+    name = "go_default_library",
+    srcs = [
+        "chunk_generator.go",
+        "codegen.go",
+        "main.go",
+        "stage_generator.go",
+    ],
+    importpath = "github.com/martian-lang/martian/cmd/mro2go",
+    visibility = ["//visibility:private"],
+    deps = [
+        "//martian/syntax:go_default_library",
+        "//martian/util:go_default_library",
+    ],
+)
+
+go_binary(
+    name = "mro2go",
+    embed = [":go_default_library"],
+    visibility = ["//:__pkg__"],
+)
+
+go_test(
+    name = "go_default_test",
+    srcs = [
+        "codegen_test.go",
+        "split_test.go",
+    ],
+    embed = [":go_default_library"],
+    deps = ["//martian/core:go_default_library"],
+)

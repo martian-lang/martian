@@ -1,0 +1,51 @@
+load("@io_bazel_rules_go//go:def.bzl", "go_library", "go_test")
+
+go_library(
+    name = "go_default_library",
+    srcs = [
+        "ast.go",
+        "call.go",
+        "callable.go",
+        "compile_calls.go",
+        "compile_params.go",
+        "compile_pipelines.go",
+        "compile_stages.go",
+        "compile_types.go",
+        "dot.go",
+        "enforcement_level.go",
+        "equivalence.go",
+        "errors.go",
+        "expression.go",
+        "fix_includes.go",
+        "formatter.go",
+        "grammar.go",
+        "lexer.go",
+        "parsenum.go",
+        "parser.go",
+        "stage_language.go",
+        "string_intern.go",
+        "tokenizer.go",
+        "types.go",
+        "util.go",
+    ],
+    importpath = "github.com/martian-lang/martian/martian/syntax",
+    visibility = ["//visibility:public"],
+    deps = ["//martian/util:go_default_library"],
+)
+
+go_test(
+    name = "go_default_test",
+    srcs = [
+        "compile_errors_test.go",
+        "equivalence_test.go",
+        "formatter_test.go",
+        "include_test.go",
+        "parsenum_test.go",
+        "parser_errors_test.go",
+        "parser_test.go",
+        "string_intern_test.go",
+        "tokenizer_test.go",
+    ],
+    data = glob(["testdata/**"]),
+    embed = [":go_default_library"],
+)

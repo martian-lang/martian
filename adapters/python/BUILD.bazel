@@ -1,0 +1,36 @@
+filegroup(
+    name = "python",
+    srcs = [":martian_shell"],
+    visibility = ["//:__pkg__"],
+)
+
+py_library(
+    name = "martian_shell",
+    srcs = ["martian_shell.py"],
+    visibility = [
+        "//:__pkg__",
+        "//cmd/mrjob:__pkg__",
+        "//cmd/mrp:__pkg__",
+    ],
+    deps = [":martian"],
+)
+
+py_library(
+    name = "martian",
+    srcs = ["martian.py"],
+    imports = ["."],
+    visibility = ["//visibility:public"],
+)
+
+load("@bazel_tools//tools/build_defs/pkg:pkg.bzl", "pkg_tar")
+
+pkg_tar(
+    name = "pkg",
+    srcs = [
+        ":martian",
+        ":martian_shell",
+    ],
+    include_runfiles = 1,
+    package_dir = "adapters/python",
+    visibility = ["//:__pkg__"],
+)
