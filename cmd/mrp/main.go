@@ -51,6 +51,7 @@ type pipestanceHolder struct {
 	readOnly         bool
 	retryWait        time.Duration
 	server           *http.Server
+	lastLogCheck     time.Time
 }
 
 func (self *pipestanceHolder) getPipestance() *core.Pipestance {
@@ -218,6 +219,13 @@ func runLoop(pipestanceBox *pipestanceHolder, stepSecs time.Duration, vdrMode st
 			case <-localJobDone:
 				if !t.Stop() {
 					<-t.C
+				}
+			}
+			if !pipestanceBox.lastLogCheck.IsZero() && time.Since(pipestanceBox.lastLogCheck) > time.Minute {
+				if err := util.VerifyLogFile(); err != nil {
+					util.PrintError(err, "runtime",
+						"Pipestance directory seems to have disappeared.")
+					util.Suicide(false)
 				}
 			}
 			// During the idle portion of the run loop is a good time to
@@ -1012,6 +1020,7 @@ func main() {
 	if !c.readOnly {
 		// Start writing (including cached entries) to log file.
 		util.LogTee(path.Join(c.pipestancePath, "_log"))
+		pipestanceBox.lastLogCheck = time.Now()
 	}
 	c.checkSpace()
 

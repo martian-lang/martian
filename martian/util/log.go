@@ -136,6 +136,38 @@ func SetPrintLogger(w StringWriter) {
 	}
 }
 
+// If the logger has an open file, check that the file exists at the expected
+// location on disk, and that the file that is at that location is the same as
+// the one that is open.
+func VerifyLogFile() error {
+	if LOGGER == nil {
+		return nil
+	}
+	w := LOGGER.fileWriter
+	if w == nil {
+		return nil
+	}
+	f, ok := w.(*os.File)
+	if !ok {
+		return nil
+	}
+	if f.Name() == "" {
+		return nil
+	}
+	info, err := f.Stat()
+	if err != nil {
+		return err
+	}
+	if currentInfo, err := os.Stat(f.Name()); err != nil {
+		return err
+	} else if !os.SameFile(info, currentInfo) {
+		return fmt.Errorf(
+			"file %q is not the same file as was previously opened.",
+			f.Name())
+	}
+	return nil
+}
+
 // Sets up the logging methods to log to the given file.
 func LogTee(filename string) {
 	if logInit() {
