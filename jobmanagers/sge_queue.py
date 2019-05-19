@@ -8,7 +8,7 @@ of jobs which are queued, running, or on hold."""
 
 import subprocess
 import sys
-from xml.etree import ElementTree
+from xml.etree import cElementTree as ElementTree
 
 
 def get_ids():
