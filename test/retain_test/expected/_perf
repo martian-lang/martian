@@ -1,0 +1,661 @@
+[
+    {
+        "name": "WRAP",
+        "fqname": "ID.pipeline_test.WRAP",
+        "type": "pipeline",
+        "forks": [
+            {
+                "stages": [
+                    {
+                        "name": "ADD_KEY1",
+                        "fqname": "ID.pipeline_test.WRAP.AWESOME.ADD_KEY1",
+                        "forki": 0
+                    },
+                    {
+                        "name": "ADD_KEY2",
+                        "fqname": "ID.pipeline_test.WRAP.AWESOME.ADD_KEY2",
+                        "forki": 0
+                    },
+                    {
+                        "name": "ADD_KEY3",
+                        "fqname": "ID.pipeline_test.WRAP.AWESOME.ADD_KEY3",
+                        "forki": 0
+                    },
+                    {
+                        "name": "ADD_KEY4",
+                        "fqname": "ID.pipeline_test.WRAP.AWESOME.ADD_KEY4",
+                        "forki": 0
+                    },
+                    {
+                        "name": "MERGE_JSON",
+                        "fqname": "ID.pipeline_test.WRAP.AWESOME.MERGE_JSON",
+                        "forki": 0
+                    }
+                ],
+                "index": 0,
+                "chunks": [],
+                "split_stats": null,
+                "join_stats": null,
+                "fork_stats": {
+                    "num_jobs": 5,
+                    "num_threads": 5,
+                    "duration": 0.431402687,
+                    "core_hours": 0.00011983407972222224,
+                    "maxrss": 13640,
+                    "maxvmem": 293684,
+                    "in_blocks": 8856,
+                    "out_blocks": 480,
+                    "total_blocks": 9336,
+                    "in_blocks_rate": 20528.383959741077,
+                    "out_blocks_rate": 1112.6495371133374,
+                    "total_blocks_rate": 21641.033496854412,
+                    "in_bytes": 0,
+                    "out_bytes": 0,
+                    "in_bytes_rate": 0,
+                    "out_bytes_rate": 0,
+                    "in_bytes_peak": 0,
+                    "out_bytes_peak": 0,
+                    "start": "2019-05-23T13:58:38Z",
+                    "end": "2019-05-23T13:58:38Z",
+                    "walltime": 0,
+                    "usertime": 0.14400000000000002,
+                    "systemtime": 0.052000000000000005,
+                    "total_files": 9,
+                    "total_bytes": 304,
+                    "output_files": 6,
+                    "output_bytes": 268,
+                    "vdr_files": 3,
+                    "vdr_bytes": 36,
+                    "in_bytes_dev": 0,
+                    "out_bytes_dev": 0
+                }
+            }
+        ],
+        "maxbytes": 56441,
+        "bytehist": [
+            {
+                "ts": "2019-05-23T13:58:38-07:00",
+                "bytes": 38976,
+                "desc": "ID.pipeline_test.WRAP.AWESOME.ADD_KEY1 alloc"
+            },
+            {
+                "ts": "2019-05-23T13:58:38-07:00",
+                "bytes": 43326,
+                "desc": "ID.pipeline_test.WRAP.AWESOME.MERGE_JSON alloc"
+            },
+            {
+                "ts": "2019-05-23T13:58:38-07:00",
+                "bytes": 47685,
+                "desc": "ID.pipeline_test.WRAP.AWESOME.ADD_KEY2 alloc"
+            },
+            {
+                "ts": "2019-05-23T13:58:38-07:00",
+                "bytes": 52064,
+                "desc": "ID.pipeline_test.WRAP.AWESOME.ADD_KEY3 alloc"
+            },
+            {
+                "ts": "2019-05-23T13:58:38-07:00",
+                "bytes": 56441,
+                "desc": "ID.pipeline_test.WRAP.AWESOME.ADD_KEY4 alloc"
+            },
+            {
+                "ts": "2019-05-23T13:58:38.526538716-07:00",
+                "bytes": 56381,
+                "desc": "ID.pipeline_test.WRAP.AWESOME.ADD_KEY1 delete"
+            },
+            {
+                "ts": "2019-05-23T13:58:38.663672699-07:00",
+                "bytes": 56369,
+                "desc": "ID.pipeline_test.WRAP.AWESOME.ADD_KEY2 delete"
+            },
+            {
+                "ts": "2019-05-23T13:58:38.808345741-07:00",
+                "bytes": 56357,
+                "desc": "ID.pipeline_test.WRAP.AWESOME.ADD_KEY3 delete"
+            }
+        ],
+        "highmem": {
+            "rss": 12419072,
+            "shared": 8949760,
+            "vmem": 375902208,
+            "text": 4587520,
+            "stack": 165232640,
+            "proc_count": 24
+        }
+    },
+    {
+        "name": "AWESOME",
+        "fqname": "ID.pipeline_test.WRAP.AWESOME",
+        "type": "pipeline",
+        "forks": [
+            {
+                "stages": [
+                    {
+                        "name": "ADD_KEY1",
+                        "fqname": "ID.pipeline_test.WRAP.AWESOME.ADD_KEY1",
+                        "forki": 0
+                    },
+                    {
+                        "name": "ADD_KEY2",
+                        "fqname": "ID.pipeline_test.WRAP.AWESOME.ADD_KEY2",
+                        "forki": 0
+                    },
+                    {
+                        "name": "ADD_KEY3",
+                        "fqname": "ID.pipeline_test.WRAP.AWESOME.ADD_KEY3",
+                        "forki": 0
+                    },
+                    {
+                        "name": "ADD_KEY4",
+                        "fqname": "ID.pipeline_test.WRAP.AWESOME.ADD_KEY4",
+                        "forki": 0
+                    },
+                    {
+                        "name": "MERGE_JSON",
+                        "fqname": "ID.pipeline_test.WRAP.AWESOME.MERGE_JSON",
+                        "forki": 0
+                    }
+                ],
+                "index": 0,
+                "chunks": [],
+                "split_stats": null,
+                "join_stats": null,
+                "fork_stats": {
+                    "num_jobs": 5,
+                    "num_threads": 5,
+                    "duration": 0.431402687,
+                    "core_hours": 0.00011983407972222224,
+                    "maxrss": 13640,
+                    "maxvmem": 293684,
+                    "in_blocks": 8856,
+                    "out_blocks": 480,
+                    "total_blocks": 9336,
+                    "in_blocks_rate": 20528.383959741077,
+                    "out_blocks_rate": 1112.6495371133374,
+                    "total_blocks_rate": 21641.033496854412,
+                    "in_bytes": 0,
+                    "out_bytes": 0,
+                    "in_bytes_rate": 0,
+                    "out_bytes_rate": 0,
+                    "in_bytes_peak": 0,
+                    "out_bytes_peak": 0,
+                    "start": "2019-05-23T13:58:38Z",
+                    "end": "2019-05-23T13:58:38Z",
+                    "walltime": 0,
+                    "usertime": 0.14400000000000002,
+                    "systemtime": 0.052000000000000005,
+                    "total_files": 9,
+                    "total_bytes": 304,
+                    "output_files": 6,
+                    "output_bytes": 268,
+                    "vdr_files": 3,
+                    "vdr_bytes": 36,
+                    "in_bytes_dev": 0,
+                    "out_bytes_dev": 0
+                }
+            }
+        ],
+        "maxbytes": 0,
+        "bytehist": null
+    },
+    {
+        "name": "ADD_KEY1",
+        "fqname": "ID.pipeline_test.WRAP.AWESOME.ADD_KEY1",
+        "type": "stage",
+        "forks": [
+            {
+                "stages": [
+                    {
+                        "name": "ADD_KEY1",
+                        "fqname": "ID.pipeline_test.WRAP.AWESOME.ADD_KEY1",
+                        "forki": 0
+                    }
+                ],
+                "index": 0,
+                "chunks": [
+                    {
+                        "index": 0,
+                        "chunk_stats": {
+                            "num_jobs": 1,
+                            "num_threads": 1,
+                            "duration": 0.179452133,
+                            "core_hours": 0.00004984781472222223,
+                            "maxrss": 13332,
+                            "maxvmem": 293684,
+                            "in_blocks": 8784,
+                            "out_blocks": 104,
+                            "total_blocks": 8888,
+                            "in_blocks_rate": 48948.98630154482,
+                            "out_blocks_rate": 579.5417321676528,
+                            "total_blocks_rate": 49528.52803371247,
+                            "in_bytes": 0,
+                            "out_bytes": 0,
+                            "in_bytes_rate": 0,
+                            "out_bytes_rate": 0,
+                            "in_bytes_peak": 0,
+                            "out_bytes_peak": 0,
+                            "start": "2019-05-23T13:58:38Z",
+                            "end": "2019-05-23T13:58:38Z",
+                            "walltime": 0,
+                            "usertime": 0.02,
+                            "systemtime": 0.028,
+                            "total_files": 1,
+                            "total_bytes": 26,
+                            "output_files": 0,
+                            "output_bytes": 0,
+                            "vdr_files": 0,
+                            "vdr_bytes": 0,
+                            "in_bytes_dev": 0,
+                            "out_bytes_dev": 0
+                        }
+                    }
+                ],
+                "split_stats": null,
+                "join_stats": null,
+                "fork_stats": {
+                    "num_jobs": 1,
+                    "num_threads": 1,
+                    "duration": 0.179452133,
+                    "core_hours": 0.00004984781472222223,
+                    "maxrss": 13332,
+                    "maxvmem": 293684,
+                    "in_blocks": 8784,
+                    "out_blocks": 104,
+                    "total_blocks": 8888,
+                    "in_blocks_rate": 48948.98630154482,
+                    "out_blocks_rate": 579.5417321676528,
+                    "total_blocks_rate": 49528.52803371247,
+                    "in_bytes": 0,
+                    "out_bytes": 0,
+                    "in_bytes_rate": 0,
+                    "out_bytes_rate": 0,
+                    "in_bytes_peak": 0,
+                    "out_bytes_peak": 0,
+                    "start": "2019-05-23T13:58:38Z",
+                    "end": "2019-05-23T13:58:38Z",
+                    "walltime": 0,
+                    "usertime": 0.02,
+                    "systemtime": 0.028,
+                    "total_files": 2,
+                    "total_bytes": 38,
+                    "output_files": 1,
+                    "output_bytes": 26,
+                    "vdr_files": 1,
+                    "vdr_bytes": 12,
+                    "in_bytes_dev": 0,
+                    "out_bytes_dev": 0
+                }
+            }
+        ],
+        "maxbytes": 0,
+        "bytehist": null
+    },
+    {
+        "name": "ADD_KEY2",
+        "fqname": "ID.pipeline_test.WRAP.AWESOME.ADD_KEY2",
+        "type": "stage",
+        "forks": [
+            {
+                "stages": [
+                    {
+                        "name": "ADD_KEY2",
+                        "fqname": "ID.pipeline_test.WRAP.AWESOME.ADD_KEY2",
+                        "forki": 0
+                    }
+                ],
+                "index": 0,
+                "chunks": [
+                    {
+                        "index": 0,
+                        "chunk_stats": {
+                            "num_jobs": 1,
+                            "num_threads": 1,
+                            "duration": 0.062368393,
+                            "core_hours": 0.000017324553611111112,
+                            "maxrss": 13640,
+                            "maxvmem": 226480,
+                            "in_blocks": 16,
+                            "out_blocks": 96,
+                            "total_blocks": 112,
+                            "in_blocks_rate": 256.54019977715313,
+                            "out_blocks_rate": 1539.2411986629188,
+                            "total_blocks_rate": 1795.781398440072,
+                            "in_bytes": 0,
+                            "out_bytes": 0,
+                            "in_bytes_rate": 0,
+                            "out_bytes_rate": 0,
+                            "in_bytes_peak": 0,
+                            "out_bytes_peak": 0,
+                            "start": "2019-05-23T13:58:38Z",
+                            "end": "2019-05-23T13:58:38Z",
+                            "walltime": 0,
+                            "usertime": 0.032,
+                            "systemtime": 0.004,
+                            "total_files": 1,
+                            "total_bytes": 41,
+                            "output_files": 0,
+                            "output_bytes": 0,
+                            "vdr_files": 0,
+                            "vdr_bytes": 0,
+                            "in_bytes_dev": 0,
+                            "out_bytes_dev": 0
+                        }
+                    }
+                ],
+                "split_stats": null,
+                "join_stats": null,
+                "fork_stats": {
+                    "num_jobs": 1,
+                    "num_threads": 1,
+                    "duration": 0.062368393,
+                    "core_hours": 0.000017324553611111112,
+                    "maxrss": 13640,
+                    "maxvmem": 226480,
+                    "in_blocks": 16,
+                    "out_blocks": 96,
+                    "total_blocks": 112,
+                    "in_blocks_rate": 256.54019977715313,
+                    "out_blocks_rate": 1539.2411986629188,
+                    "total_blocks_rate": 1795.781398440072,
+                    "in_bytes": 0,
+                    "out_bytes": 0,
+                    "in_bytes_rate": 0,
+                    "out_bytes_rate": 0,
+                    "in_bytes_peak": 0,
+                    "out_bytes_peak": 0,
+                    "start": "2019-05-23T13:58:38Z",
+                    "end": "2019-05-23T13:58:38Z",
+                    "walltime": 0,
+                    "usertime": 0.032,
+                    "systemtime": 0.004,
+                    "total_files": 2,
+                    "total_bytes": 53,
+                    "output_files": 1,
+                    "output_bytes": 41,
+                    "vdr_files": 1,
+                    "vdr_bytes": 12,
+                    "in_bytes_dev": 0,
+                    "out_bytes_dev": 0
+                }
+            }
+        ],
+        "maxbytes": 0,
+        "bytehist": null
+    },
+    {
+        "name": "ADD_KEY3",
+        "fqname": "ID.pipeline_test.WRAP.AWESOME.ADD_KEY3",
+        "type": "stage",
+        "forks": [
+            {
+                "stages": [
+                    {
+                        "name": "ADD_KEY3",
+                        "fqname": "ID.pipeline_test.WRAP.AWESOME.ADD_KEY3",
+                        "forki": 0
+                    }
+                ],
+                "index": 0,
+                "chunks": [
+                    {
+                        "index": 0,
+                        "chunk_stats": {
+                            "num_jobs": 1,
+                            "num_threads": 1,
+                            "duration": 0.06011728,
+                            "core_hours": 0.000016699244444444447,
+                            "maxrss": 13640,
+                            "maxvmem": 230648,
+                            "in_blocks": 16,
+                            "out_blocks": 96,
+                            "total_blocks": 112,
+                            "in_blocks_rate": 266.14643909371813,
+                            "out_blocks_rate": 1596.878634562309,
+                            "total_blocks_rate": 1863.025073656027,
+                            "in_bytes": 0,
+                            "out_bytes": 0,
+                            "in_bytes_rate": 0,
+                            "out_bytes_rate": 0,
+                            "in_bytes_peak": 0,
+                            "out_bytes_peak": 0,
+                            "start": "2019-05-23T13:58:38Z",
+                            "end": "2019-05-23T13:58:38Z",
+                            "walltime": 0,
+                            "usertime": 0.028,
+                            "systemtime": 0.008,
+                            "total_files": 1,
+                            "total_bytes": 58,
+                            "output_files": 0,
+                            "output_bytes": 0,
+                            "vdr_files": 0,
+                            "vdr_bytes": 0,
+                            "in_bytes_dev": 0,
+                            "out_bytes_dev": 0
+                        }
+                    }
+                ],
+                "split_stats": null,
+                "join_stats": null,
+                "fork_stats": {
+                    "num_jobs": 1,
+                    "num_threads": 1,
+                    "duration": 0.06011728,
+                    "core_hours": 0.000016699244444444447,
+                    "maxrss": 13640,
+                    "maxvmem": 230648,
+                    "in_blocks": 16,
+                    "out_blocks": 96,
+                    "total_blocks": 112,
+                    "in_blocks_rate": 266.14643909371813,
+                    "out_blocks_rate": 1596.878634562309,
+                    "total_blocks_rate": 1863.025073656027,
+                    "in_bytes": 0,
+                    "out_bytes": 0,
+                    "in_bytes_rate": 0,
+                    "out_bytes_rate": 0,
+                    "in_bytes_peak": 0,
+                    "out_bytes_peak": 0,
+                    "start": "2019-05-23T13:58:38Z",
+                    "end": "2019-05-23T13:58:38Z",
+                    "walltime": 0,
+                    "usertime": 0.028,
+                    "systemtime": 0.008,
+                    "total_files": 2,
+                    "total_bytes": 70,
+                    "output_files": 1,
+                    "output_bytes": 58,
+                    "vdr_files": 1,
+                    "vdr_bytes": 12,
+                    "in_bytes_dev": 0,
+                    "out_bytes_dev": 0
+                }
+            }
+        ],
+        "maxbytes": 0,
+        "bytehist": null
+    },
+    {
+        "name": "ADD_KEY4",
+        "fqname": "ID.pipeline_test.WRAP.AWESOME.ADD_KEY4",
+        "type": "stage",
+        "forks": [
+            {
+                "stages": [
+                    {
+                        "name": "ADD_KEY4",
+                        "fqname": "ID.pipeline_test.WRAP.AWESOME.ADD_KEY4",
+                        "forki": 0
+                    }
+                ],
+                "index": 0,
+                "chunks": [
+                    {
+                        "index": 0,
+                        "chunk_stats": {
+                            "num_jobs": 1,
+                            "num_threads": 1,
+                            "duration": 0.060184621,
+                            "core_hours": 0.00001671795027777778,
+                            "maxrss": 13640,
+                            "maxvmem": 292016,
+                            "in_blocks": 16,
+                            "out_blocks": 96,
+                            "total_blocks": 112,
+                            "in_blocks_rate": 265.84864595226077,
+                            "out_blocks_rate": 1595.0918757135648,
+                            "total_blocks_rate": 1860.9405216658256,
+                            "in_bytes": 0,
+                            "out_bytes": 0,
+                            "in_bytes_rate": 0,
+                            "out_bytes_rate": 0,
+                            "in_bytes_peak": 0,
+                            "out_bytes_peak": 0,
+                            "start": "2019-05-23T13:58:38Z",
+                            "end": "2019-05-23T13:58:38Z",
+                            "walltime": 0,
+                            "usertime": 0.028,
+                            "systemtime": 0.008,
+                            "total_files": 2,
+                            "total_bytes": 69,
+                            "output_files": 0,
+                            "output_bytes": 0,
+                            "vdr_files": 0,
+                            "vdr_bytes": 0,
+                            "in_bytes_dev": 0,
+                            "out_bytes_dev": 0
+                        }
+                    }
+                ],
+                "split_stats": null,
+                "join_stats": null,
+                "fork_stats": {
+                    "num_jobs": 1,
+                    "num_threads": 1,
+                    "duration": 0.060184621,
+                    "core_hours": 0.00001671795027777778,
+                    "maxrss": 13640,
+                    "maxvmem": 292016,
+                    "in_blocks": 16,
+                    "out_blocks": 96,
+                    "total_blocks": 112,
+                    "in_blocks_rate": 265.84864595226077,
+                    "out_blocks_rate": 1595.0918757135648,
+                    "total_blocks_rate": 1860.9405216658256,
+                    "in_bytes": 0,
+                    "out_bytes": 0,
+                    "in_bytes_rate": 0,
+                    "out_bytes_rate": 0,
+                    "in_bytes_peak": 0,
+                    "out_bytes_peak": 0,
+                    "start": "2019-05-23T13:58:38Z",
+                    "end": "2019-05-23T13:58:38Z",
+                    "walltime": 0,
+                    "usertime": 0.028,
+                    "systemtime": 0.008,
+                    "total_files": 2,
+                    "total_bytes": 69,
+                    "output_files": 2,
+                    "output_bytes": 69,
+                    "vdr_files": 0,
+                    "vdr_bytes": 0,
+                    "in_bytes_dev": 0,
+                    "out_bytes_dev": 0
+                }
+            }
+        ],
+        "maxbytes": 0,
+        "bytehist": null
+    },
+    {
+        "name": "MERGE_JSON",
+        "fqname": "ID.pipeline_test.WRAP.AWESOME.MERGE_JSON",
+        "type": "stage",
+        "forks": [
+            {
+                "stages": [
+                    {
+                        "name": "MERGE_JSON",
+                        "fqname": "ID.pipeline_test.WRAP.AWESOME.MERGE_JSON",
+                        "forki": 0
+                    }
+                ],
+                "index": 0,
+                "chunks": [
+                    {
+                        "index": 0,
+                        "chunk_stats": {
+                            "num_jobs": 1,
+                            "num_threads": 1,
+                            "duration": 0.06928026,
+                            "core_hours": 0.000019244516666666665,
+                            "maxrss": 13640,
+                            "maxvmem": 226480,
+                            "in_blocks": 24,
+                            "out_blocks": 88,
+                            "total_blocks": 112,
+                            "in_blocks_rate": 346.41902325424303,
+                            "out_blocks_rate": 1270.2030852655578,
+                            "total_blocks_rate": 1616.6221085198006,
+                            "in_bytes": 0,
+                            "out_bytes": 0,
+                            "in_bytes_rate": 0,
+                            "out_bytes_rate": 0,
+                            "in_bytes_peak": 0,
+                            "out_bytes_peak": 0,
+                            "start": "2019-05-23T13:58:38Z",
+                            "end": "2019-05-23T13:58:38Z",
+                            "walltime": 0,
+                            "usertime": 0.036000000000000004,
+                            "systemtime": 0.004,
+                            "total_files": 1,
+                            "total_bytes": 74,
+                            "output_files": 0,
+                            "output_bytes": 0,
+                            "vdr_files": 0,
+                            "vdr_bytes": 0,
+                            "in_bytes_dev": 0,
+                            "out_bytes_dev": 0
+                        }
+                    }
+                ],
+                "split_stats": null,
+                "join_stats": null,
+                "fork_stats": {
+                    "num_jobs": 1,
+                    "num_threads": 1,
+                    "duration": 0.06928026,
+                    "core_hours": 0.000019244516666666665,
+                    "maxrss": 13640,
+                    "maxvmem": 226480,
+                    "in_blocks": 24,
+                    "out_blocks": 88,
+                    "total_blocks": 112,
+                    "in_blocks_rate": 346.41902325424303,
+                    "out_blocks_rate": 1270.2030852655578,
+                    "total_blocks_rate": 1616.6221085198006,
+                    "in_bytes": 0,
+                    "out_bytes": 0,
+                    "in_bytes_rate": 0,
+                    "out_bytes_rate": 0,
+                    "in_bytes_peak": 0,
+                    "out_bytes_peak": 0,
+                    "start": "2019-05-23T13:58:38Z",
+                    "end": "2019-05-23T13:58:38Z",
+                    "walltime": 0,
+                    "usertime": 0.036000000000000004,
+                    "systemtime": 0.004,
+                    "total_files": 1,
+                    "total_bytes": 74,
+                    "output_files": 1,
+                    "output_bytes": 74,
+                    "vdr_files": 0,
+                    "vdr_bytes": 0,
+                    "in_bytes_dev": 0,
+                    "out_bytes_dev": 0
+                }
+            }
+        ],
+        "maxbytes": 0,
+        "bytehist": null
+    }
+]

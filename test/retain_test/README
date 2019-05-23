@@ -1,0 +1,11 @@
+Tests for a pipeline with files.  The pipeline looks like
+      ADD_KEY1
+         |
+      ADD_KEY2
+      /      \
+ADD_KEY3    ADD_KEY4
+      \      /
+     MERGE_JSON
+
+retain_test.json tests that ADD_KEY2.extra and ADD_KEY4.extra are
+retained from VDR.

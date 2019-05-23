@@ -1,0 +1,7 @@
+@include "pipeline.mro"
+
+call ADD_KEY as ADD_KEY1(
+    key = "1",
+    value = "première",
+    start = null,
+)

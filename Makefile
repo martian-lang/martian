@@ -117,6 +117,10 @@ test/files_test/pipeline_test: test/files_test/files_test.json \
                                integration_prereqs
 	test/martian_test.py $<
 
+test/retain_test/pipeline_test: test/retain_test/retain_test.json \
+                                integration_prereqs
+	test/martian_test.py $<
+
 test/fork_test/fail/pipeline_fail: test/fork_test/fail1_test.json \
                                    integration_prereqs
 	test/martian_test.py $<
@@ -142,6 +146,7 @@ longtests: test/split_test/pipeline_test \
            test/split_test_go/disable_pipeline_test \
            test/exit_test/pipeline_test \
            test/files_test/pipeline_test \
+           test/retain_test/pipeline_test \
            test/fork_test/pass/pipeline_test \
            test/fork_test/retry/pipeline_test \
            test/fork_test/ar_pass/pipeline_test \

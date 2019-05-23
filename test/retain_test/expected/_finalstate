@@ -1,0 +1,854 @@
+[
+    {
+        "name": "WRAP",
+        "fqname": "ID.pipeline_test.WRAP",
+        "type": "pipeline",
+        "path": "/user/test/retain_test/pipeline_test/WRAP",
+        "state": "complete",
+        "metadata": {
+            "path": "/user/test/retain_test/pipeline_test/WRAP",
+            "names": []
+        },
+        "sweepbindings": [],
+        "forks": [
+            {
+                "index": 0,
+                "argPermute": {},
+                "joinDef": null,
+                "state": "complete",
+                "metadata": {
+                    "path": "/user/test/retain_test/pipeline_test/WRAP/fork0",
+                    "names": [
+                        "complete",
+                        "invocation",
+                        "outs",
+                        "vdrkill"
+                    ]
+                },
+                "split_metadata": {
+                    "path": "/user/test/retain_test/pipeline_test/WRAP/fork0/split",
+                    "names": []
+                },
+                "join_metadata": {
+                    "path": "/user/test/retain_test/pipeline_test/WRAP/fork0/join",
+                    "names": []
+                },
+                "chunks": [],
+                "bindings": {
+                    "Argument": [
+                        {
+                            "id": "key1",
+                            "type": "string",
+                            "valexp": "",
+                            "mode": "value",
+                            "output": "",
+                            "sweep": false,
+                            "sweepRootId": "key1",
+                            "node": "WRAP",
+                            "matchedFork": 0,
+                            "value": "1",
+                            "waiting": false
+                        },
+                        {
+                            "id": "value1",
+                            "type": "string",
+                            "valexp": "",
+                            "mode": "value",
+                            "output": "",
+                            "sweep": false,
+                            "sweepRootId": "value1",
+                            "node": "WRAP",
+                            "matchedFork": 0,
+                            "value": "première",
+                            "waiting": false
+                        },
+                        {
+                            "id": "key2",
+                            "type": "string",
+                            "valexp": "",
+                            "mode": "value",
+                            "output": "",
+                            "sweep": false,
+                            "sweepRootId": "key2",
+                            "node": "WRAP",
+                            "matchedFork": 0,
+                            "value": "2",
+                            "waiting": false
+                        },
+                        {
+                            "id": "value2",
+                            "type": "string",
+                            "valexp": "",
+                            "mode": "value",
+                            "output": "",
+                            "sweep": false,
+                            "sweepRootId": "value2",
+                            "node": "WRAP",
+                            "matchedFork": 0,
+                            "value": "two",
+                            "waiting": false
+                        }
+                    ],
+                    "Return": [
+                        {
+                            "id": "final_output",
+                            "type": "json",
+                            "valexp": "AWESOME.outfile",
+                            "mode": "reference",
+                            "output": "result",
+                            "sweep": false,
+                            "sweepRootId": "final_output",
+                            "node": "MERGE_JSON",
+                            "matchedFork": 0,
+                            "value": "/user/test/retain_test/pipeline_test/WRAP/AWESOME/MERGE_JSON/fork0/chnk0-u9ba9e7097e/files/merged.json",
+                            "waiting": false
+                        }
+                    ]
+                }
+            }
+        ],
+        "edges": [
+            {
+                "from": "ID.pipeline_test.WRAP.AWESOME",
+                "to": "ID.pipeline_test.WRAP"
+            }
+        ],
+        "stagecodeLang": "",
+        "stagecodeCmd": ""
+    },
+    {
+        "name": "AWESOME",
+        "fqname": "ID.pipeline_test.WRAP.AWESOME",
+        "type": "pipeline",
+        "path": "/user/test/retain_test/pipeline_test/WRAP/AWESOME",
+        "state": "complete",
+        "metadata": {
+            "path": "/user/test/retain_test/pipeline_test/WRAP/AWESOME",
+            "names": []
+        },
+        "sweepbindings": [],
+        "forks": [
+            {
+                "index": 0,
+                "argPermute": {},
+                "joinDef": null,
+                "state": "complete",
+                "metadata": {
+                    "path": "/user/test/retain_test/pipeline_test/WRAP/AWESOME/fork0",
+                    "names": [
+                        "complete",
+                        "invocation",
+                        "outs",
+                        "vdrkill"
+                    ]
+                },
+                "split_metadata": {
+                    "path": "/user/test/retain_test/pipeline_test/WRAP/AWESOME/fork0/split",
+                    "names": []
+                },
+                "join_metadata": {
+                    "path": "/user/test/retain_test/pipeline_test/WRAP/AWESOME/fork0/join",
+                    "names": []
+                },
+                "chunks": [],
+                "bindings": {
+                    "Argument": [
+                        {
+                            "id": "key2",
+                            "type": "string",
+                            "valexp": "self.key2",
+                            "mode": "value",
+                            "output": "",
+                            "sweep": false,
+                            "sweepRootId": "key2",
+                            "node": "WRAP",
+                            "matchedFork": 0,
+                            "value": "2",
+                            "waiting": false
+                        },
+                        {
+                            "id": "value2",
+                            "type": "string",
+                            "valexp": "self.value2",
+                            "mode": "value",
+                            "output": "",
+                            "sweep": false,
+                            "sweepRootId": "value2",
+                            "node": "WRAP",
+                            "matchedFork": 0,
+                            "value": "two",
+                            "waiting": false
+                        },
+                        {
+                            "id": "key1",
+                            "type": "string",
+                            "valexp": "self.key1",
+                            "mode": "value",
+                            "output": "",
+                            "sweep": false,
+                            "sweepRootId": "key1",
+                            "node": "WRAP",
+                            "matchedFork": 0,
+                            "value": "1",
+                            "waiting": false
+                        },
+                        {
+                            "id": "value1",
+                            "type": "string",
+                            "valexp": "self.value1",
+                            "mode": "value",
+                            "output": "",
+                            "sweep": false,
+                            "sweepRootId": "value1",
+                            "node": "WRAP",
+                            "matchedFork": 0,
+                            "value": "première",
+                            "waiting": false
+                        }
+                    ],
+                    "Return": [
+                        {
+                            "id": "outfile",
+                            "type": "json",
+                            "valexp": "MERGE_JSON.result",
+                            "mode": "reference",
+                            "output": "result",
+                            "sweep": false,
+                            "sweepRootId": "outfile",
+                            "node": "MERGE_JSON",
+                            "matchedFork": 0,
+                            "value": "/user/test/retain_test/pipeline_test/WRAP/AWESOME/MERGE_JSON/fork0/chnk0-u9ba9e7097e/files/merged.json",
+                            "waiting": false
+                        },
+                        {
+                            "id": "extra_stuff",
+                            "type": "file",
+                            "valexp": "ADD_KEY2.extra",
+                            "mode": "reference",
+                            "output": "extra",
+                            "sweep": false,
+                            "sweepRootId": "extra_stuff",
+                            "node": "ADD_KEY2",
+                            "matchedFork": 0,
+                            "value": "/user/test/retain_test/pipeline_test/WRAP/AWESOME/ADD_KEY2/fork0/chnk0-u9ba9e7097e/files/extra",
+                            "waiting": false
+                        }
+                    ]
+                }
+            }
+        ],
+        "edges": [
+            {
+                "from": "ID.pipeline_test.WRAP.AWESOME.MERGE_JSON",
+                "to": "ID.pipeline_test.WRAP.AWESOME"
+            },
+            {
+                "from": "ID.pipeline_test.WRAP.AWESOME.ADD_KEY2",
+                "to": "ID.pipeline_test.WRAP.AWESOME"
+            }
+        ],
+        "stagecodeLang": "",
+        "stagecodeCmd": ""
+    },
+    {
+        "name": "ADD_KEY1",
+        "fqname": "ID.pipeline_test.WRAP.AWESOME.ADD_KEY1",
+        "type": "stage",
+        "path": "/user/test/retain_test/pipeline_test/WRAP/AWESOME/ADD_KEY1",
+        "state": "complete",
+        "metadata": {
+            "path": "/user/test/retain_test/pipeline_test/WRAP/AWESOME/ADD_KEY1",
+            "names": []
+        },
+        "sweepbindings": [],
+        "forks": [
+            {
+                "index": 0,
+                "argPermute": {},
+                "joinDef": {
+                    "__threads": 1,
+                    "__mem_gb": 1,
+                    "__vmem_gb": 4
+                },
+                "state": "complete",
+                "metadata": {
+                    "path": "/user/test/retain_test/pipeline_test/WRAP/AWESOME/ADD_KEY1/fork0",
+                    "names": [
+                        "complete",
+                        "invocation",
+                        "outs",
+                        "vdrkill"
+                    ]
+                },
+                "split_metadata": {
+                    "path": "/user/test/retain_test/pipeline_test/WRAP/AWESOME/ADD_KEY1/fork0/split",
+                    "names": [
+                        "args",
+                        "complete",
+                        "stage_defs"
+                    ]
+                },
+                "join_metadata": {
+                    "path": "/user/test/retain_test/pipeline_test/WRAP/AWESOME/ADD_KEY1/fork0/join",
+                    "names": [
+                        "args",
+                        "chunk_defs",
+                        "complete",
+                        "outs"
+                    ]
+                },
+                "chunks": [
+                    {
+                        "index": 0,
+                        "chunkDef": {
+                            "__mem_gb": 1,
+                            "__threads": 1,
+                            "__vmem_gb": 4
+                        },
+                        "state": "complete",
+                        "metadata": {
+                            "path": "/user/test/retain_test/pipeline_test/WRAP/AWESOME/ADD_KEY1/fork0/chnk0",
+                            "names": [
+                                "args",
+                                "complete",
+                                "jobinfo",
+                                "log",
+                                "outs",
+                                "stderr",
+                                "stdout"
+                            ]
+                        }
+                    }
+                ],
+                "bindings": {
+                    "Argument": [
+                        {
+                            "id": "key",
+                            "type": "string",
+                            "valexp": "self.key1",
+                            "mode": "value",
+                            "output": "",
+                            "sweep": false,
+                            "sweepRootId": "key1",
+                            "node": "WRAP",
+                            "matchedFork": 0,
+                            "value": "1",
+                            "waiting": false
+                        },
+                        {
+                            "id": "value",
+                            "type": "string",
+                            "valexp": "self.value1",
+                            "mode": "value",
+                            "output": "",
+                            "sweep": false,
+                            "sweepRootId": "value1",
+                            "node": "WRAP",
+                            "matchedFork": 0,
+                            "value": "première",
+                            "waiting": false
+                        },
+                        {
+                            "id": "start",
+                            "type": "json",
+                            "valexp": "",
+                            "mode": "value",
+                            "output": "",
+                            "sweep": false,
+                            "sweepRootId": "start",
+                            "node": "ADD_KEY1",
+                            "matchedFork": 0,
+                            "value": null,
+                            "waiting": false
+                        }
+                    ],
+                    "Return": []
+                }
+            }
+        ],
+        "edges": [],
+        "stagecodeLang": "Python",
+        "stagecodeCmd": "/user/test/retain_test/stages/add_key"
+    },
+    {
+        "name": "ADD_KEY2",
+        "fqname": "ID.pipeline_test.WRAP.AWESOME.ADD_KEY2",
+        "type": "stage",
+        "path": "/user/test/retain_test/pipeline_test/WRAP/AWESOME/ADD_KEY2",
+        "state": "complete",
+        "metadata": {
+            "path": "/user/test/retain_test/pipeline_test/WRAP/AWESOME/ADD_KEY2",
+            "names": []
+        },
+        "sweepbindings": [],
+        "forks": [
+            {
+                "index": 0,
+                "argPermute": {},
+                "joinDef": {
+                    "__threads": 1,
+                    "__mem_gb": 1,
+                    "__vmem_gb": 4
+                },
+                "state": "complete",
+                "metadata": {
+                    "path": "/user/test/retain_test/pipeline_test/WRAP/AWESOME/ADD_KEY2/fork0",
+                    "names": [
+                        "complete",
+                        "invocation",
+                        "outs",
+                        "vdrkill"
+                    ]
+                },
+                "split_metadata": {
+                    "path": "/user/test/retain_test/pipeline_test/WRAP/AWESOME/ADD_KEY2/fork0/split",
+                    "names": [
+                        "args",
+                        "complete",
+                        "stage_defs"
+                    ]
+                },
+                "join_metadata": {
+                    "path": "/user/test/retain_test/pipeline_test/WRAP/AWESOME/ADD_KEY2/fork0/join",
+                    "names": [
+                        "args",
+                        "chunk_defs",
+                        "complete",
+                        "outs"
+                    ]
+                },
+                "chunks": [
+                    {
+                        "index": 0,
+                        "chunkDef": {
+                            "__mem_gb": 1,
+                            "__threads": 1,
+                            "__vmem_gb": 4
+                        },
+                        "state": "complete",
+                        "metadata": {
+                            "path": "/user/test/retain_test/pipeline_test/WRAP/AWESOME/ADD_KEY2/fork0/chnk0",
+                            "names": [
+                                "args",
+                                "complete",
+                                "jobinfo",
+                                "log",
+                                "outs",
+                                "stderr",
+                                "stdout"
+                            ]
+                        }
+                    }
+                ],
+                "bindings": {
+                    "Argument": [
+                        {
+                            "id": "key",
+                            "type": "string",
+                            "valexp": "self.key2",
+                            "mode": "value",
+                            "output": "",
+                            "sweep": false,
+                            "sweepRootId": "key2",
+                            "node": "WRAP",
+                            "matchedFork": 0,
+                            "value": "2",
+                            "waiting": false
+                        },
+                        {
+                            "id": "value",
+                            "type": "string",
+                            "valexp": "self.value2",
+                            "mode": "value",
+                            "output": "",
+                            "sweep": false,
+                            "sweepRootId": "value2",
+                            "node": "WRAP",
+                            "matchedFork": 0,
+                            "value": "two",
+                            "waiting": false
+                        },
+                        {
+                            "id": "start",
+                            "type": "json",
+                            "valexp": "ADD_KEY1.result",
+                            "mode": "reference",
+                            "output": "result",
+                            "sweep": false,
+                            "sweepRootId": "start",
+                            "node": "ADD_KEY1",
+                            "matchedFork": 0,
+                            "value": "/user/test/retain_test/pipeline_test/WRAP/AWESOME/ADD_KEY1/fork0/chnk0-u9ba9e7097e/files/result.json",
+                            "waiting": false
+                        }
+                    ],
+                    "Return": []
+                }
+            }
+        ],
+        "edges": [
+            {
+                "from": "ID.pipeline_test.WRAP.AWESOME.ADD_KEY1",
+                "to": "ID.pipeline_test.WRAP.AWESOME.ADD_KEY2"
+            }
+        ],
+        "stagecodeLang": "Python",
+        "stagecodeCmd": "/user/test/retain_test/stages/add_key"
+    },
+    {
+        "name": "ADD_KEY3",
+        "fqname": "ID.pipeline_test.WRAP.AWESOME.ADD_KEY3",
+        "type": "stage",
+        "path": "/user/test/retain_test/pipeline_test/WRAP/AWESOME/ADD_KEY3",
+        "state": "complete",
+        "metadata": {
+            "path": "/user/test/retain_test/pipeline_test/WRAP/AWESOME/ADD_KEY3",
+            "names": []
+        },
+        "sweepbindings": [],
+        "forks": [
+            {
+                "index": 0,
+                "argPermute": {},
+                "joinDef": {
+                    "__threads": 1,
+                    "__mem_gb": 1,
+                    "__vmem_gb": 4
+                },
+                "state": "complete",
+                "metadata": {
+                    "path": "/user/test/retain_test/pipeline_test/WRAP/AWESOME/ADD_KEY3/fork0",
+                    "names": [
+                        "complete",
+                        "invocation",
+                        "outs",
+                        "vdrkill"
+                    ]
+                },
+                "split_metadata": {
+                    "path": "/user/test/retain_test/pipeline_test/WRAP/AWESOME/ADD_KEY3/fork0/split",
+                    "names": [
+                        "args",
+                        "complete",
+                        "stage_defs"
+                    ]
+                },
+                "join_metadata": {
+                    "path": "/user/test/retain_test/pipeline_test/WRAP/AWESOME/ADD_KEY3/fork0/join",
+                    "names": [
+                        "args",
+                        "chunk_defs",
+                        "complete",
+                        "outs"
+                    ]
+                },
+                "chunks": [
+                    {
+                        "index": 0,
+                        "chunkDef": {
+                            "__mem_gb": 1,
+                            "__threads": 1,
+                            "__vmem_gb": 4
+                        },
+                        "state": "complete",
+                        "metadata": {
+                            "path": "/user/test/retain_test/pipeline_test/WRAP/AWESOME/ADD_KEY3/fork0/chnk0",
+                            "names": [
+                                "args",
+                                "complete",
+                                "jobinfo",
+                                "log",
+                                "outs",
+                                "stderr",
+                                "stdout"
+                            ]
+                        }
+                    }
+                ],
+                "bindings": {
+                    "Argument": [
+                        {
+                            "id": "key",
+                            "type": "string",
+                            "valexp": "",
+                            "mode": "value",
+                            "output": "",
+                            "sweep": false,
+                            "sweepRootId": "key",
+                            "node": "ADD_KEY3",
+                            "matchedFork": 0,
+                            "value": "3",
+                            "waiting": false
+                        },
+                        {
+                            "id": "value",
+                            "type": "string",
+                            "valexp": "",
+                            "mode": "value",
+                            "output": "",
+                            "sweep": false,
+                            "sweepRootId": "value",
+                            "node": "ADD_KEY3",
+                            "matchedFork": 0,
+                            "value": "three",
+                            "waiting": false
+                        },
+                        {
+                            "id": "start",
+                            "type": "json",
+                            "valexp": "ADD_KEY2.result",
+                            "mode": "reference",
+                            "output": "result",
+                            "sweep": false,
+                            "sweepRootId": "start",
+                            "node": "ADD_KEY2",
+                            "matchedFork": 0,
+                            "value": "/user/test/retain_test/pipeline_test/WRAP/AWESOME/ADD_KEY2/fork0/chnk0-u9ba9e7097e/files/result.json",
+                            "waiting": false
+                        }
+                    ],
+                    "Return": []
+                }
+            }
+        ],
+        "edges": [
+            {
+                "from": "ID.pipeline_test.WRAP.AWESOME.ADD_KEY2",
+                "to": "ID.pipeline_test.WRAP.AWESOME.ADD_KEY3"
+            }
+        ],
+        "stagecodeLang": "Python",
+        "stagecodeCmd": "/user/test/retain_test/stages/add_key"
+    },
+    {
+        "name": "ADD_KEY4",
+        "fqname": "ID.pipeline_test.WRAP.AWESOME.ADD_KEY4",
+        "type": "stage",
+        "path": "/user/test/retain_test/pipeline_test/WRAP/AWESOME/ADD_KEY4",
+        "state": "complete",
+        "metadata": {
+            "path": "/user/test/retain_test/pipeline_test/WRAP/AWESOME/ADD_KEY4",
+            "names": []
+        },
+        "sweepbindings": [],
+        "forks": [
+            {
+                "index": 0,
+                "argPermute": {},
+                "joinDef": {
+                    "__threads": 1,
+                    "__mem_gb": 1,
+                    "__vmem_gb": 4
+                },
+                "state": "complete",
+                "metadata": {
+                    "path": "/user/test/retain_test/pipeline_test/WRAP/AWESOME/ADD_KEY4/fork0",
+                    "names": [
+                        "complete",
+                        "invocation",
+                        "outs",
+                        "vdrkill"
+                    ]
+                },
+                "split_metadata": {
+                    "path": "/user/test/retain_test/pipeline_test/WRAP/AWESOME/ADD_KEY4/fork0/split",
+                    "names": [
+                        "args",
+                        "complete",
+                        "stage_defs"
+                    ]
+                },
+                "join_metadata": {
+                    "path": "/user/test/retain_test/pipeline_test/WRAP/AWESOME/ADD_KEY4/fork0/join",
+                    "names": [
+                        "args",
+                        "chunk_defs",
+                        "complete",
+                        "outs"
+                    ]
+                },
+                "chunks": [
+                    {
+                        "index": 0,
+                        "chunkDef": {
+                            "__mem_gb": 1,
+                            "__threads": 1,
+                            "__vmem_gb": 4
+                        },
+                        "state": "complete",
+                        "metadata": {
+                            "path": "/user/test/retain_test/pipeline_test/WRAP/AWESOME/ADD_KEY4/fork0/chnk0",
+                            "names": [
+                                "args",
+                                "complete",
+                                "jobinfo",
+                                "log",
+                                "outs",
+                                "stderr",
+                                "stdout"
+                            ]
+                        }
+                    }
+                ],
+                "bindings": {
+                    "Argument": [
+                        {
+                            "id": "key",
+                            "type": "string",
+                            "valexp": "",
+                            "mode": "value",
+                            "output": "",
+                            "sweep": false,
+                            "sweepRootId": "key",
+                            "node": "ADD_KEY4",
+                            "matchedFork": 0,
+                            "value": "4",
+                            "waiting": false
+                        },
+                        {
+                            "id": "value",
+                            "type": "string",
+                            "valexp": "",
+                            "mode": "value",
+                            "output": "",
+                            "sweep": false,
+                            "sweepRootId": "value",
+                            "node": "ADD_KEY4",
+                            "matchedFork": 0,
+                            "value": "four",
+                            "waiting": false
+                        },
+                        {
+                            "id": "start",
+                            "type": "json",
+                            "valexp": "ADD_KEY2.result",
+                            "mode": "reference",
+                            "output": "result",
+                            "sweep": false,
+                            "sweepRootId": "start",
+                            "node": "ADD_KEY2",
+                            "matchedFork": 0,
+                            "value": "/user/test/retain_test/pipeline_test/WRAP/AWESOME/ADD_KEY2/fork0/chnk0-u9ba9e7097e/files/result.json",
+                            "waiting": false
+                        }
+                    ],
+                    "Return": []
+                }
+            }
+        ],
+        "edges": [
+            {
+                "from": "ID.pipeline_test.WRAP.AWESOME.ADD_KEY2",
+                "to": "ID.pipeline_test.WRAP.AWESOME.ADD_KEY4"
+            }
+        ],
+        "stagecodeLang": "Python",
+        "stagecodeCmd": "/user/test/retain_test/stages/add_key"
+    },
+    {
+        "name": "MERGE_JSON",
+        "fqname": "ID.pipeline_test.WRAP.AWESOME.MERGE_JSON",
+        "type": "stage",
+        "path": "/user/test/retain_test/pipeline_test/WRAP/AWESOME/MERGE_JSON",
+        "state": "complete",
+        "metadata": {
+            "path": "/user/test/retain_test/pipeline_test/WRAP/AWESOME/MERGE_JSON",
+            "names": []
+        },
+        "sweepbindings": [],
+        "forks": [
+            {
+                "index": 0,
+                "argPermute": {},
+                "joinDef": {
+                    "__threads": 1,
+                    "__mem_gb": 1,
+                    "__vmem_gb": 4
+                },
+                "state": "complete",
+                "metadata": {
+                    "path": "/user/test/retain_test/pipeline_test/WRAP/AWESOME/MERGE_JSON/fork0",
+                    "names": [
+                        "complete",
+                        "invocation",
+                        "outs",
+                        "vdrkill"
+                    ]
+                },
+                "split_metadata": {
+                    "path": "/user/test/retain_test/pipeline_test/WRAP/AWESOME/MERGE_JSON/fork0/split",
+                    "names": [
+                        "args",
+                        "complete",
+                        "stage_defs"
+                    ]
+                },
+                "join_metadata": {
+                    "path": "/user/test/retain_test/pipeline_test/WRAP/AWESOME/MERGE_JSON/fork0/join",
+                    "names": [
+                        "args",
+                        "chunk_defs",
+                        "complete",
+                        "outs"
+                    ]
+                },
+                "chunks": [
+                    {
+                        "index": 0,
+                        "chunkDef": {
+                            "__mem_gb": 1,
+                            "__threads": 1,
+                            "__vmem_gb": 4
+                        },
+                        "state": "complete",
+                        "metadata": {
+                            "path": "/user/test/retain_test/pipeline_test/WRAP/AWESOME/MERGE_JSON/fork0/chnk0",
+                            "names": [
+                                "args",
+                                "complete",
+                                "jobinfo",
+                                "log",
+                                "outs",
+                                "stderr",
+                                "stdout"
+                            ]
+                        }
+                    }
+                ],
+                "bindings": {
+                    "Argument": [
+                        {
+                            "id": "inputs",
+                            "type": "json",
+                            "valexp": "",
+                            "mode": "array",
+                            "output": "",
+                            "sweep": false,
+                            "sweepRootId": "inputs",
+                            "node": "MERGE_JSON",
+                            "matchedFork": 0,
+                            "value": [
+                                "/user/test/retain_test/pipeline_test/WRAP/AWESOME/ADD_KEY3/fork0/chnk0-u9ba9e7097e/files/result.json",
+                                "/user/test/retain_test/pipeline_test/WRAP/AWESOME/ADD_KEY4/fork0/chnk0-u9ba9e7097e/files/result.json"
+                            ],
+                            "waiting": false
+                        }
+                    ],
+                    "Return": []
+                }
+            }
+        ],
+        "edges": [
+            {
+                "from": "ID.pipeline_test.WRAP.AWESOME.ADD_KEY3",
+                "to": "ID.pipeline_test.WRAP.AWESOME.MERGE_JSON"
+            },
+            {
+                "from": "ID.pipeline_test.WRAP.AWESOME.ADD_KEY4",
+                "to": "ID.pipeline_test.WRAP.AWESOME.MERGE_JSON"
+            }
+        ],
+        "stagecodeLang": "Python",
+        "stagecodeCmd": "/user/test/retain_test/stages/merge_json"
+    }
+]

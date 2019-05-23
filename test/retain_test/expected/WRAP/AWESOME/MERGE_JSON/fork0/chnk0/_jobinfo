@@ -1,0 +1,110 @@
+{
+    "name": "ID.pipeline_test.WRAP.AWESOME.MERGE_JSON.fork0.chnk0",
+    "pid": 39923,
+    "host": "bespin1.fuzzplex.com",
+    "type": "local",
+    "cwd": "/user/test/retain_test/pipeline_test/WRAP/AWESOME/MERGE_JSON/fork0/chnk0-u9ba9e7097e/files",
+    "python": {
+        "binpath": "/usr/bin/python",
+        "version": "2.7.12 (default, Sep  1 2016, 22:14:00) \n[GCC 4.8.3 20140911 (Red Hat 4.8.3-9)]"
+    },
+    "rusage": {
+        "self": {
+            "ru_maxrss": 13640,
+            "ru_ixrss": 0,
+            "ru_idrss": 0,
+            "ru_minflt": 590,
+            "ru_majflt": 0,
+            "ru_nswap": 0,
+            "ru_utime": 0.004,
+            "ru_stime": 0,
+            "ru_inblock": 8,
+            "ru_oublock": 48,
+            "ru_msgsnd": 0,
+            "ru_msgrcv": 0,
+            "ru_nsignals": 0,
+            "ru_nivcsw": 1
+        },
+        "children": {
+            "ru_maxrss": 12300,
+            "ru_ixrss": 0,
+            "ru_idrss": 0,
+            "ru_minflt": 2961,
+            "ru_majflt": 0,
+            "ru_nswap": 0,
+            "ru_utime": 0.032,
+            "ru_stime": 0.004,
+            "ru_inblock": 16,
+            "ru_oublock": 40,
+            "ru_msgsnd": 0,
+            "ru_msgrcv": 0,
+            "ru_nsignals": 0,
+            "ru_nivcsw": 5
+        }
+    },
+    "used_bytes": {
+        "rss": 13967360,
+        "shared": 4071424,
+        "vmem": 231915520,
+        "text": 1765376,
+        "stack": 154710016,
+        "proc_count": 1
+    },
+    "io": {
+        "total": {
+            "read": {
+                "sysc": 6,
+                "bytes": 0
+            },
+            "write": {
+                "sysc": 0,
+                "bytes": 0
+            }
+        },
+        "max": {
+            "read": {
+                "sysc": 696.2164119094779,
+                "bytes": 0
+            },
+            "write": {
+                "sysc": 0,
+                "bytes": 0
+            }
+        },
+        "dev": {
+            "read": {
+                "sysc": 0,
+                "bytes": 0
+            },
+            "write": {
+                "sysc": 0,
+                "bytes": 0
+            }
+        }
+    },
+    "wallclock": {
+        "start": "2019-05-23 13:58:38",
+        "end": "2019-05-23 13:58:38",
+        "duration_seconds": 0.06928026
+    },
+    "threads": 1,
+    "memGB": 1,
+    "vmemGB": 4,
+    "profile_mode": "disable",
+    "stackvars_flag": "disable",
+    "monitor_flag": "disable",
+    "invocation": {
+        "call": "WRAP",
+        "args": {
+            "key1": "1",
+            "key2": "2",
+            "value1": "premi\u00e8re",
+            "value2": "two"
+        },
+        "sweepargs": []
+    },
+    "version": {
+        "martian": "'v3.2.2-5-gaf2f2842-dirty'",
+        "pipelines": "v3.2.2-5-gaf2f2842-dirty"
+    }
+}

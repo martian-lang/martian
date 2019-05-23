@@ -1,0 +1,81 @@
+# A super-simple test pipeline with forks.
+# Files storing json.
+filetype json;
+
+# Adds a key to the json in a file.
+stage ADD_KEY(
+    # The key to add
+    in  string key,
+    # The value to add for this key.
+    in  string value,
+    # The file to read the initial dictionary from.
+    in  json   start,
+    # The output file.
+    out json   result,
+    out file   extra,
+    # The source file.
+    src py     "stages/add_key",
+) using (
+    mem_gb   = 1,
+    volatile = strict,
+)
+
+# Takes two files containing json dictionaries and merges them.
+stage MERGE_JSON(
+    in  json[] inputs,
+    out json   result  "The final merged result."  "merged.json",
+    src py     "stages/merge_json",
+) using (
+    mem_gb = 1,
+)
+
+# Adds some keys to some json files and then merges them.
+pipeline AWESOME(
+    in  string key1,
+    in  string value1,
+    in  string key2,
+    in  string value2,
+    out json   outfile,
+    out file   extra_stuff,
+)
+{
+    call ADD_KEY as ADD_KEY1(
+        key   = self.key1,
+        value = self.value1,
+        start = null,
+    )
+
+    call ADD_KEY as ADD_KEY2(
+        key   = self.key2,
+        value = self.value2,
+        start = ADD_KEY1.result,
+    )
+
+    call ADD_KEY as ADD_KEY3(
+        key   = "3",
+        value = "three",
+        start = ADD_KEY2.result,
+    )
+
+    call ADD_KEY as ADD_KEY4(
+        key   = "4",
+        value = "four",
+        start = ADD_KEY2.result,
+    )
+
+    call MERGE_JSON(
+        inputs = [
+            ADD_KEY3.result,
+            ADD_KEY4.result,
+        ],
+    )
+
+    return (
+        outfile     = MERGE_JSON.result,
+        extra_stuff = ADD_KEY2.extra,
+    )
+
+    retain (
+        ADD_KEY4.extra,
+    )
+}

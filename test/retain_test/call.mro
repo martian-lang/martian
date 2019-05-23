@@ -1,0 +1,33 @@
+@include "pipeline.mro"
+
+pipeline WRAP(
+    in  string key1,
+    in  string value1,
+    in  string key2,
+    in  string value2,
+    out json   final_output,
+)
+{
+    call AWESOME(
+        key1   = self.key1,
+        value1 = self.value1,
+        key2   = self.key2,
+        value2 = self.value2,
+    )
+
+    return (
+        final_output = AWESOME.outfile,
+    )
+
+    retain (
+        AWESOME.extra_stuff,
+    )
+}
+
+# Calls the pipelines, sweeping over two forks.
+call WRAP(
+    key1   = "1",
+    value1 = "première",
+    key2   = "2",
+    value2 = "two",
+)
