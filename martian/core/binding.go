@@ -253,19 +253,19 @@ func (pipestance *Pipestance) retain(ref *syntax.RefExp) {
 			}
 		}
 	} else if ref.Kind == syntax.KindCall {
-		if boundNode, _, _, _ := pipestance.node.findBoundNode(
+		if boundNode, outputId, _, _ := pipestance.node.findBoundNode(
 			ref.Id, ref.OutputId, "reference", nil); boundNode != nil {
 			if node := boundNode.getNode(); node != nil {
 				for _, fork := range node.forks {
 					if fileArgs := fork.fileArgs; fileArgs != nil {
-						if children := fileArgs[ref.OutputId]; children != nil {
+						if children := fileArgs[outputId]; children != nil {
 							children[nil] = struct{}{}
 						} else {
-							fileArgs[ref.OutputId] = map[Nodable]struct{}{nil: {}}
+							fileArgs[outputId] = map[Nodable]struct{}{nil: {}}
 						}
 					} else {
 						fork.fileArgs = map[string]map[Nodable]struct{}{
-							ref.OutputId: {nil: {}},
+							outputId: {nil: {}},
 						}
 					}
 				}
