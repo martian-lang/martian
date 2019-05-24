@@ -102,15 +102,32 @@ func (self *LocalJobManager) setMaxCores(userMaxCores int, clusterMode bool) {
 func (self *LocalJobManager) setMaxMem(userMaxMemGB, userMaxVMemGB int, clusterMode bool) {
 	sysMem := sigar.Mem{}
 	sysMem.Get()
+	cgMem, cgSoftLimit, cgUse := util.GetCgroupMemoryLimit()
+
 	// Set Max GB of memory usable at one time.
 	if userMaxMemGB > 0 {
 		// If user specified --localmem, use that value for Max usable GB.
 		self.maxMemGB = userMaxMemGB
 		util.LogInfo("jobmngr", "Using %d GB, per --localmem option.", self.maxMemGB)
+		if cgMem > 0 && int64(userMaxMemGB)*1024*1024*1024 > cgMem {
+			util.PrintInfo("jobmngr",
+				"WARNING: User-supplied amount %d GB is higher than the detected cgroup memory limit of %0.1f GB",
+				userMaxMemGB, float64(cgMem)/(1024*1024*1024))
+		}
 	} else {
+		MAXMEM_FRACTION := 0.9
+		if cgMem > 0 && cgMem < int64(sysMem.Total) {
+			util.LogInfo("jobmngr",
+				"Detected cgroup memory limit of %d bytes.  Using it instead of total system memory %d",
+				cgMem, sysMem.Total)
+			sysMem.Total = uint64(cgMem)
+			if cgUse < cgMem && cgMem-cgUse < int64(sysMem.ActualFree) {
+				sysMem.ActualFree = uint64(cgMem - cgUse)
+				MAXMEM_FRACTION = 0.96
+			}
+		}
 		// Otherwise, set Max usable GB to MAXMEM_FRACTION * GB of total
 		// memory reported by the system.
-		MAXMEM_FRACTION := 0.9
 		if clusterMode {
 			sysMemGB := int((sysMem.ActualFree + (1024*1024 - 1)) / (1024 * 1024 * 1024))
 			if self.jobSettings.MemGBPerJob < sysMemGB {
@@ -143,6 +160,12 @@ func (self *LocalJobManager) setMaxMem(userMaxMemGB, userMaxVMemGB int, clusterM
 		util.PrintInfo("jobmngr",
 			"WARNING: configured to use %dGB of local memory, but only %.1fGB is currently available.",
 			self.maxMemGB, float64(sysMem.ActualFree+(1024*1024-1))/(1024*1024*1024))
+	}
+	if cgSoftLimit != 0 && int64(self.maxMemGB)*1024*1024*1024 > cgSoftLimit {
+		util.PrintInfo("jobmngr",
+			"WARNING: detected a cgroup soft memory limit of %.1fGB. If the system runs low on memory, jobs may get killed.",
+			float64(cgSoftLimit)/(1024*1024*1024))
+
 	}
 	self.maxVmemMB = int64(CheckMaxVmem(
 		uint64(1+self.maxMemGB)*uint64(self.highMem.Vmem+1024*1024*1024)) /
@@ -246,6 +269,20 @@ func (self *LocalJobManager) refreshResources(localMode bool) error {
 				float64(usedMem.Rss)/(1024*1024*1024),
 				float64(usedMem.Vmem)/(1024*1024*1024),
 				float64(self.memMBSem.Reserved())/1024)
+		}
+		cgLim, softLimit, cgUse := util.GetCgroupMemoryLimit()
+		if cgLim > 0 && cgUse > self.memMBSem.Reserved()*1024*1024 {
+			if softLimit > 0 && softLimit < cgLim {
+				util.LogInfo("jobmngr",
+					"cgroup rss usage is %.1fGB, vs. soft limit of %.1f",
+					float64(cgUse)/(1024*1024*1024),
+					float64(softLimit)/(1024*1024*1024))
+			} else {
+				util.LogInfo("jobmngr",
+					"cgroup rss usage is %.1fGB, vs. limit of %.1f",
+					float64(cgUse)/(1024*1024*1024),
+					float64(cgLim)/(1024*1024*1024))
+			}
 		}
 	}
 	self.lastMemDiff = memDiff / 128

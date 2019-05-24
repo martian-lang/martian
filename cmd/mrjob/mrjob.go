@@ -96,6 +96,21 @@ func (self *runner) Init() {
 	core.CheckMaxVmem(
 		uint64(self.jobInfo.VMemGB) * 1024 * 1024 * 1024)
 	self.setRlimit()
+	if cgLim, cgSoftLim, _ := util.GetCgroupMemoryLimit(); cgLim > 0 {
+		if int(cgLim/(1024*1024*1024)) < self.jobInfo.MemGB {
+			util.LogInfo("monitor",
+				"WARNING: cgroup memory limit of %d bytes is less than the requested %d GB",
+				cgLim, self.jobInfo.MemGB)
+		} else {
+			util.LogInfo("monitor",
+				"cgroup memory limit of %d bytes detected", cgLim)
+		}
+		if cgSoftLim != 0 && cgSoftLim < int64(self.jobInfo.MemGB)*1024*1024*1024 {
+			util.LogInfo("monitor",
+				"WARNING: cgroup soft memory limit of %d bytes is less than the requested %d GB",
+				cgSoftLim, self.jobInfo.MemGB)
+		}
+	}
 }
 
 func getClusterEnv() map[string]string {

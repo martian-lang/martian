@@ -5,6 +5,7 @@ _importpath = "github.com/martian-lang/martian/martian/util"
 go_library(
     name = "go_default_library",
     srcs = [
+        "cgroups_linux.go",
         "directory.go",
         "directory_linux.go",
         "errors.go",
