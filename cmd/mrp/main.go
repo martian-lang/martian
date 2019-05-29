@@ -926,6 +926,12 @@ func (c *mrpConfiguration) checkSpace() {
 		util.LogInfo("filesys", "%s and %s inodes available.",
 			humanize.Bytes(bSize), humanize.Comma(int64(inodes)))
 	}
+	if fstype, opts, err := core.GetMountOptions(c.pipestancePath); err != nil {
+		util.LogError(err, "filesys", "Could not read pipestance filesystem mount options.")
+	} else {
+		util.LogInfo("filesys", "Pipestance filesystem %s mount options: %s",
+			fstype, opts)
+	}
 
 	binPath := util.RelPath("")
 	if _, _, fstype, err := core.GetAvailableSpace(binPath); err != nil {
@@ -935,6 +941,13 @@ func (c *mrpConfiguration) checkSpace() {
 		util.LogInfo("filesys", "Bin filesystem type %s",
 			fstype)
 	}
+	if fstype, opts, err := core.GetMountOptions(binPath); err != nil {
+		util.LogError(err, "filesys", "Could not read source filesystem mount options.")
+	} else {
+		util.LogInfo("filesys", "Bin filesystem %s mount options: %s",
+			fstype, opts)
+	}
+
 }
 
 func (c *mrpConfiguration) getListener(hostname string, pipestanceBox *pipestanceHolder) net.Listener {

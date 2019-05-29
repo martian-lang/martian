@@ -7,8 +7,11 @@ package core
 //
 
 import (
+	"bufio"
+	"bytes"
 	"fmt"
 	"os"
+	"strconv"
 	"syscall"
 
 	"golang.org/x/sys/unix"
@@ -223,7 +226,7 @@ func FsTypeString(fsType int64) string {
 	case unix.ZSMALLOC_MAGIC:
 		return "zsmalloc"
 	default:
-		return "unknown"
+		return fmt.Sprintf("unknown (%#x)", fsType)
 	}
 }
 
@@ -281,4 +284,74 @@ func CheckMinimalSpace(path string) error {
 			path, inodes)}
 	}
 	return nil
+}
+
+// GetMountOptions returns the mount type and options for the mount on
+// which the given path exists.
+func GetMountOptions(path string) (fstype, opts string, err error) {
+	mountId := make([]byte, 0, 21)
+	if info, err := os.Stat(path); err != nil || info == nil {
+		return "", "", err
+	} else if sysInfo, ok := info.Sys().(*syscall.Stat_t); !ok {
+		return "", "", fmt.Errorf("Incorrect stat type %T", info.Sys())
+	} else {
+		itoa := func(i uint32) {
+			if i == 0 {
+				mountId = append(mountId, '0')
+			} else {
+				mountId = append(mountId, strconv.Itoa(int(i))...)
+			}
+		}
+		itoa(unix.Major(sysInfo.Dev))
+		mountId = append(mountId, ':')
+		itoa(unix.Minor(sysInfo.Dev))
+	}
+	m, err := os.Open("/proc/self/mountinfo")
+	if err != nil {
+		return "", "", err
+	}
+	defer m.Close()
+	// Abbreviated from the `proc` man page:
+	//
+	// The file contains lines of the form:
+	//
+	//  36 35 98:0 /mnt1 /mnt2 rw,noatime master:1 - ext3 /dev/root rw,errors=continue
+	//  (1)(2)(3)   (4)   (5)      (6)      (7)   (8) (9)   (10)         (11)
+	//
+	//  (3)  major:minor: the value of st_dev for files on this filesystem (see stat(2)).
+	//
+	//  (6)  mount options: per-mount options.
+	//
+	//  (7)  optional fields: zero or more fields of the form "tag[:value]"; see below.
+	//
+	//  (8)  separator: the end of the optional fields is marked by a single hyphen.
+	//
+	//  (9)  filesystem type: the filesystem type in the form "type[.subtype]".
+	//
+	//  (10) mount source: filesystem-specific information or "none".
+	//
+	//  (11) super options: per-superblock options.
+	scanner := bufio.NewScanner(m)
+	for scanner.Scan() {
+		fields := bytes.Fields(scanner.Bytes())
+		if len(fields) >= 8 && bytes.Equal(mountId, fields[2]) {
+			var fsType string
+			opts := fields[5][0:len(fields[5]):len(fields[5])]
+			for i, f := range fields[6:] {
+				if len(f) == 1 && f[0] == '-' {
+					if len(fields) >= i+7 {
+						fsType = string(fields[i+7])
+						if len(fields) >= i+9 && len(fields[i+9]) > 0 {
+							opts = append(opts, ',')
+							opts = append(opts, fields[i+9]...)
+						}
+					}
+					return fsType, string(opts), nil
+				}
+			}
+			return fsType, string(opts), nil
+		}
+	}
+	return "", "", fmt.Errorf(
+		"failed to find mount ID %s", string(mountId))
 }
