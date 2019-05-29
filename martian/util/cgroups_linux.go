@@ -12,6 +12,19 @@ import (
 	"path"
 )
 
+// Get the cgroup types from the mount options of a mount.
+func getCgTypes(fields [][]byte) []byte {
+	for i, f := range fields {
+		if len(f) == 1 && f[0] == '-' {
+			if len(fields) < i+4 || string(fields[i+1]) != "cgroup" {
+				return nil
+			}
+			return fields[i+3]
+		}
+	}
+	return nil
+}
+
 // Find out where the memory cgroup controller is mounted.
 func findCgroupMount(cgType []byte) string {
 	m, err := os.Open("/proc/self/mountinfo")
@@ -22,8 +35,10 @@ func findCgroupMount(cgType []byte) string {
 	scanner := bufio.NewScanner(m)
 	for scanner.Scan() {
 		fields := bytes.Fields(scanner.Bytes())
-		if len(fields) >= 10 && string(fields[8]) == "cgroup" && bytes.Contains(fields[9], cgType) {
-			return string(fields[4])
+		if len(fields) >= 10 {
+			if bytes.Contains(getCgTypes(fields[6:]), cgType) {
+				return string(fields[4])
+			}
 		}
 	}
 	return ""
