@@ -21,6 +21,7 @@ files are written, and should also be the working directory.
 ### Open file descriptors
 In addition to standard output and standard error (standard in is null), the
 monitor will leave two file handles open:
+
 3. The stage log file.  Generally this contains timestamps for progress stage
 process.  This should not be closed by the adapter.
 4. The error reporting pipe.  In the event of a fatal error, write the error
