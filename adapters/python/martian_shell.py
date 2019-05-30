@@ -425,7 +425,7 @@ class StageWrapper(object):
 
         if not test:
             # Load the stage code as a module.
-            sys.path.append(os.path.dirname(stagecode_path))
+            sys.path[0] = os.path.dirname(stagecode_path)
             self._module = __import__(os.path.basename(stagecode_path))
 
     @staticmethod
