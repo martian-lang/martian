@@ -28,6 +28,10 @@ go_test(
         "codegen_test.go",
         "split_test.go",
     ],
+    data = [
+        "split_test.go",
+        "testdata/pipeline_stages.mro",
+    ],
     embed = [":go_default_library"],
     deps = ["//martian/core:go_default_library"],
 )

@@ -8,20 +8,56 @@ cache:
   - "$HOME/.local"
 before_cache:
 - rm -f $HOME/.npm/anonymous-cli-metrics.json
-sudo: false
 matrix:
   include:
   - name: "python2"
+    sudo: false
     before_install:
     - pyenv global 2.7
   - name: "python3"
     before_install:
     - pyenv global 3.6
-before_script:
+  - name: "bazel"
+    sudo: true
+    before_install:
+    - pyenv global 3.6
+    - |
+      BAZEL_VERSION=0.26.0
+      OS="${TRAVIS_OS_NAME}"
+      if [[ "${OS}" == "osx" ]]; then
+        OS=darwin
+      else
+        sysctl kernel.unprivileged_userns_clone=1
+      fi
+      URL="https://github.com/bazelbuild/bazel/releases/download/${BAZEL_VERSION}/bazel-${BAZEL_VERSION}-installer-${OS}-x86_64.sh"
+      wget -O install.sh "${URL}"
+      chmod +x install.sh
+      ./install.sh --user
+      rm -f install.sh
+    script:
+    - |
+      bazel \
+        --output_base=$HOME/.cache/bazel \
+        --host_jvm_args=-Xmx500m \
+        --host_jvm_args=-Xms500m \
+        test \
+        --local_resources=400,1,1.0 \
+        //...
+    - |
+      bazel \
+        --output_base=$HOME/.cache/bazel \
+        --host_jvm_args=-Xmx500m \
+        --host_jvm_args=-Xms500m \
+        build \
+        --local_resources=400,1,1.0 \
+        -c opt \
+        //:martian
+before_install:
 - python --version
 - pip --version
+before_script:
 - nvm install --lts node
-- npm install -g npm@^6.4
+- npm install -g npm@^6.9
 - pip install --user pylint
 script:
 - "./.travis.gofmt.sh"
