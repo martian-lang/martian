@@ -194,6 +194,15 @@ func quoteString(w stringWriter, s string) {
 	w.WriteByte('"')
 }
 
+// Format returns an mro-formatted representation of an expression.
+//
+// Each line of formatted text will begin with the given prefix.
+func (self *ValExp) Format(prefix string) string {
+	var buf strings.Builder
+	self.format(&buf, prefix)
+	return buf.String()
+}
+
 //
 // Expression
 //
@@ -685,6 +694,11 @@ func (self *Callables) format(printer *printer) {
 func (self *UserType) format(printer *printer) {
 	printer.printComments(&self.Node, "")
 	printer.Printf("filetype %s;\n", self.Id)
+}
+
+// Format returns mro source code for the AST.
+func (self *Ast) Format() string {
+	return self.format(len(self.Files) <= 1)
 }
 
 //
