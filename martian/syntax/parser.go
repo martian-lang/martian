@@ -185,6 +185,33 @@ func (parser *Parser) ParseSourceBytes(src []byte, srcPath string,
 	}
 }
 
+// UncheckedParse loads an Ast from source bytes, but does not follow includes
+// or perform any semantic verification.
+func (parser *Parser) UncheckedParse(src []byte, srcPath string) (*Ast, error) {
+	fname := filepath.Base(srcPath)
+	absPath, _ := filepath.Abs(srcPath)
+	srcFile := SourceFile{
+		FileName: fname,
+		FullPath: absPath,
+	}
+	return yaccParse(src, &srcFile, parser.getIntern())
+}
+
+// UncheckedParseIncludes loads an Ast from source bytes, including processing
+// include directives, but does not perform any further semantic verification.
+func (parser *Parser) UncheckedParseIncludes(src []byte,
+	srcPath string, incPaths []string) (*Ast, error) {
+	fname := filepath.Base(srcPath)
+	absPath, _ := filepath.Abs(srcPath)
+	srcFile := SourceFile{
+		FileName: fname,
+		FullPath: absPath,
+	}
+	return parseSource(src, &srcFile, incPaths,
+		map[string]*SourceFile{absPath: &srcFile},
+		parser.getIntern())
+}
+
 func parseSource(src []byte, srcFile *SourceFile, incPaths []string,
 	processedIncludes map[string]*SourceFile, intern *stringIntern) (*Ast, error) {
 	// Add the source file's own folder to the include path for
@@ -308,4 +335,9 @@ func (parser *Parser) Compile(fpath string,
 	} else {
 		return parser.ParseSourceBytes(data, fpath, mroPaths, checkSrcPath)
 	}
+}
+
+// Parse a byte string to a *ValExp object.
+func (parser *Parser) ParseValExp(data []byte) (*ValExp, error) {
+	return parseExp(data, &SourceFile{FileName: "[]byte"}, parser.getIntern())
 }

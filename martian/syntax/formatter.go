@@ -11,7 +11,6 @@ import (
 	"fmt"
 	"io"
 	"io/ioutil"
-	"path/filepath"
 	"sort"
 	"strings"
 	"unicode/utf8"
@@ -786,13 +785,7 @@ func FormatSrcBytes(src []byte, filename string, fixIncludes bool, mropath []str
 }
 
 func (parser *Parser) FormatSrcBytes(src []byte, filename string, fixIncludes bool, mropath []string) (string, error) {
-	absPath, _ := filepath.Abs(filename)
-	// Parse and generate the AST.
-	srcFile := SourceFile{
-		FileName: filename,
-		FullPath: absPath,
-	}
-	global, mmli := yaccParse(src, &srcFile, parser.getIntern())
+	global, mmli := parser.UncheckedParse(src, filename)
 	if mmli != nil { // mmli is an mmLexInfo struct
 		return "", mmli
 	}
