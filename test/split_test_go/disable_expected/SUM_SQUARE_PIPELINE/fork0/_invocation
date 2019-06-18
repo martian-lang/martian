@@ -1,10 +1,10 @@
 @include "pipeline_stages.mro"
 
 call SUM_SQUARE_PIPELINE(
-    values = [
+    values     = [
         1,
         2,
-        3
+        3,
     ],
     disable_sq = true,
 )

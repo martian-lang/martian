@@ -1,8 +1,8 @@
 @include "call.mro"
 
 call WRAP(
-    key1 = "1",
+    key1   = "1",
     value1 = "première",
-    key2 = "2",
+    key2   = "2",
     value2 = "two",
 )

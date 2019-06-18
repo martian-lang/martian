@@ -6,7 +6,6 @@ package core // import "github.com/martian-lang/martian/martian/core"
 // pipestances.
 
 import (
-	"bytes"
 	"context"
 	"encoding/json"
 	"fmt"
@@ -25,7 +24,7 @@ import (
 	"github.com/martian-lang/martian/martian/syntax"
 	"github.com/martian-lang/martian/martian/util"
 
-	"github.com/satori/go.uuid"
+	uuid "github.com/satori/go.uuid"
 )
 
 const STAGE_TYPE_SPLIT = "split"
@@ -762,16 +761,6 @@ func GetCallable(mroPaths []string, name string) (syntax.Callable, error) {
 	return nil, &RuntimeError{fmt.Sprintf("'%s' is not a declared pipeline or stage", name)}
 }
 
-func buildVal(param syntax.Param, val json.RawMessage) string {
-	const indent = "    "
-	var buf bytes.Buffer
-	buf.Grow(len(val))
-	if json.Indent(&buf, val, indent, indent) != nil {
-		return fmt.Sprintf("<ParseError: %q>", val)
-	}
-	return buf.String()
-}
-
 func (self *Runtime) BuildCallSource(name string, args LazyArgumentMap,
 	sweepargs []string, mroPaths []string) (string, error) {
 	callable, err := self.MroCache.GetCallable(mroPaths, name)
@@ -787,37 +776,45 @@ func BuildCallSource(
 	args LazyArgumentMap,
 	sweepargs []string,
 	callable syntax.Callable) (string, error) {
-	// Build @include statements.
-	var includes string
-	if f := callable.File(); f != nil && f.FileName != "" {
-		includes = fmt.Sprintf("@include \"%s\"\n", f.FileName)
+	ast := syntax.Ast{
+		Call: &syntax.CallStm{
+			Id:    name,
+			DecId: callable.GetId(),
+			Bindings: &syntax.BindStms{
+				List: make([]*syntax.BindStm,
+					0, len(callable.GetInParams().List)),
+			},
+		},
 	}
-	// Loop over the pipeline's in params and print a binding
-	// whether the args bag has a value for it not.
-	lines := []string{}
+	if f := callable.File(); f != nil && f.FileName != "" {
+		ast.Includes = []*syntax.Include{{Value: f.FileName}}
+	}
+	var parser syntax.Parser
+	null := syntax.ValExp{Kind: syntax.KindNull}
+	// for each parameter, either provide the value or null.
 	for _, param := range callable.GetInParams().List {
-		valstr := "null"
-		if val, ok := args[param.GetId()]; ok {
-			valstr = buildVal(param, val)
+		binding := syntax.BindStm{
+			Id:    param.GetId(),
+			Tname: param.GetTname(),
 		}
-
+		if val, ok := args[param.GetId()]; ok {
+			var err error
+			binding.Exp, err = parser.ParseValExp(val)
+			if err != nil {
+				return "", err
+			}
+		} else {
+			binding.Exp = &null
+		}
 		for _, id := range sweepargs {
 			if id == param.GetId() {
-				valstr = fmt.Sprintf("sweep(%s)",
-					strings.TrimSuffix(strings.TrimPrefix(valstr, "["), "]"))
+				binding.Sweep = true
 				break
 			}
 		}
-
-		lines = append(lines, fmt.Sprintf("    %s = %s,", param.GetId(), valstr))
+		ast.Call.Bindings.List = append(ast.Call.Bindings.List, &binding)
 	}
-	if callId := callable.GetId(); callId == name {
-		return fmt.Sprintf("%s\ncall %s(\n%s\n)", includes,
-			name, strings.Join(lines, "\n")), nil
-	} else {
-		return fmt.Sprintf("%s\ncall %s as %s(\n%s\n)", includes,
-			callId, name, strings.Join(lines, "\n")), nil
-	}
+	return ast.Format(), nil
 }
 
 func BuildCallData(src string, srcPath string, mroPaths []string) (*InvocationData, error) {

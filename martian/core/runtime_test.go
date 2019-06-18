@@ -63,11 +63,11 @@ func ExampleBuildCallSource() {
 	// call STAGE_NAME(
 	//     input1 = [
 	//         1,
-	//         2
+	//         2,
 	//     ],
 	//     input2 = "foo",
 	//     input3 = {
-	//         "foo": "bar"
+	//         "foo": "bar",
 	//     },
 	// )
 }

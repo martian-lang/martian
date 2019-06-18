@@ -43,7 +43,7 @@ type printer struct {
 }
 
 func (self *printer) printComments(node *AstNode, prefix string) {
-	if self.lastComment.File != nil &&
+	if self.lastComment.File != nil && node.Loc.File != nil &&
 		self.lastComment.File.FullPath != node.Loc.File.FullPath {
 		for _, comment := range self.comments[self.lastComment.File.FullPath] {
 			self.buf.WriteString(comment.Value)
@@ -501,8 +501,9 @@ func (self *CallStm) format(printer *printer, prefix string) {
 	self.Bindings.format(printer, prefix)
 	printer.WriteString(prefix)
 
-	if self.Modifiers.Bindings != nil && len(self.Modifiers.Bindings.List) > 0 ||
-		self.Modifiers.Local || self.Modifiers.Preflight || self.Modifiers.Volatile {
+	if self.Modifiers != nil && (self.Modifiers.Bindings != nil &&
+		len(self.Modifiers.Bindings.List) > 0 ||
+		self.Modifiers.Local || self.Modifiers.Preflight || self.Modifiers.Volatile) {
 		if self.Modifiers.Bindings == nil {
 			self.Modifiers.Bindings = &BindStms{
 				Node: self.Node,
@@ -680,6 +681,9 @@ func (self *SrcParam) format(printer *printer, modeWidth int, typeWidth int, idW
 // Callable
 //
 func (self *Callables) format(printer *printer) {
+	if self == nil {
+		return
+	}
 	for i, callable := range self.List {
 		if i != 0 {
 			printer.WriteString(NEWLINE)
@@ -698,7 +702,8 @@ func (self *UserType) format(printer *printer) {
 
 // Format returns mro source code for the AST.
 func (self *Ast) Format() string {
-	return self.format(len(self.Files) <= 1)
+	includesProcessed := len(self.Files) > 1
+	return self.format(!includesProcessed)
 }
 
 //
@@ -753,14 +758,14 @@ func (self *Ast) format(writeIncludes bool) string {
 	}
 
 	// callables.
-	if needSpacer && len(self.Callables.List) > 0 {
+	if needSpacer && self.Callables != nil && len(self.Callables.List) > 0 {
 		printer.WriteString(NEWLINE)
 	}
 	self.Callables.format(&printer)
 
 	// call.
 	if self.Call != nil {
-		if len(self.Callables.List) > 0 || needSpacer {
+		if self.Callables != nil && len(self.Callables.List) > 0 || needSpacer {
 			printer.WriteString(NEWLINE)
 		}
 		self.Call.format(&printer, "")
