@@ -89,16 +89,13 @@ type (
 )
 
 func NewAst(decs []Dec, call *CallStm, srcFile *SourceFile) *Ast {
-	self := &Ast{}
-	self.UserTypes = []*UserType{}
-	self.UserTypeTable = map[string]*UserType{}
-	self.TypeTable = map[string]Type{}
-	self.Stages = []*Stage{}
-	self.Pipelines = []*Pipeline{}
-	self.Callables = &Callables{[]Callable{}, map[string]Callable{}}
-	self.Call = call
-	self.Errors = []error{}
-	self.Files = map[string]*SourceFile{srcFile.FullPath: srcFile}
+	self := &Ast{
+		Callables: new(Callables),
+		Call:      call,
+		Files: map[string]*SourceFile{
+			srcFile.FullPath: srcFile,
+		},
+	}
 
 	for _, dec := range decs {
 		switch dec := dec.(type) {

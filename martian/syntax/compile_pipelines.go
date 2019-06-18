@@ -208,6 +208,9 @@ func (pipeline *Pipeline) compile(global *Ast) error {
 	}
 
 	// Check calls.
+	if len(pipeline.Calls) > 0 && pipeline.Callables.Table == nil {
+		pipeline.Callables.Table = make(map[string]Callable, len(pipeline.Calls))
+	}
 	for _, call := range pipeline.Calls {
 		// Check for duplicate calls.
 		if _, ok := pipeline.Callables.Table[call.Id]; ok {

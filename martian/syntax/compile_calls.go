@@ -11,6 +11,9 @@ import (
 
 func (callables *Callables) compile(global *Ast) error {
 	var errs ErrorList
+	if len(callables.List) > 0 && callables.Table == nil {
+		callables.Table = make(map[string]Callable, len(callables.List))
+	}
 	for _, callable := range callables.List {
 		// Check for duplicates
 		if existing, ok := callables.Table[callable.GetId()]; ok {

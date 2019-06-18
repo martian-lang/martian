@@ -123,6 +123,12 @@ file
             global := NewAst(nil, $1, $<srcfile>1)
             mmlex.(*mmLexInfo).global = global
         }}
+    | val_exp
+        {{
+            global := NewAst(nil, nil, $<srcfile>1)
+            mmlex.(*mmLexInfo).global = global
+            mmlex.(*mmLexInfo).exp = $1
+        }}
     ;
 
 includes

@@ -6,6 +6,13 @@ package syntax
 
 // Build type table, starting with builtins. Duplicates allowed.
 func (global *Ast) compileTypes() error {
+	if global.TypeTable == nil {
+		global.TypeTable = make(map[string]Type,
+			len(builtinTypes)+len(global.UserTypes))
+	}
+	if global.UserTypeTable == nil && len(global.UserTypes) > 0 {
+		global.UserTypeTable = make(map[string]*UserType, len(global.UserTypes))
+	}
 	for _, builtinType := range builtinTypes {
 		global.TypeTable[builtinType.Id] = builtinType
 	}

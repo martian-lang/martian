@@ -11,6 +11,7 @@ package syntax
 
 import (
 	"bytes"
+	"errors"
 	"strings"
 )
 
@@ -21,6 +22,7 @@ type mmLexInfo struct {
 	previous []byte //
 	token    []byte // Cache the last token for error messaging
 	global   *Ast
+	exp      *ValExp // If parsing an expression, rather than an AST.
 	srcfile  *SourceFile
 	comments []*commentBlock
 	// for many byte->string conversions, the same string is expected
@@ -135,7 +137,7 @@ func (self *mmLexError) Error() string {
 
 func (self *mmLexInfo) Error(string) {}
 
-func yaccParse(src []byte, file *SourceFile, intern *stringIntern) (*Ast, error) {
+func yaccParseAny(src []byte, file *SourceFile, intern *stringIntern) (int, mmLexError) {
 	lexinfo := mmLexError{
 		info: mmLexInfo{
 			src:     src,
@@ -145,13 +147,36 @@ func yaccParse(src []byte, file *SourceFile, intern *stringIntern) (*Ast, error)
 			intern:  intern,
 		},
 	}
-	if mmParse(&lexinfo.info) != 0 {
-		return nil, &lexinfo // return lex on error to provide loc and token info
+	result := mmParse(&lexinfo.info)
+	if result == 0 {
+		lexinfo.info.global.comments = lexinfo.info.comments
+		lexinfo.info.global.comments = compileComments(
+			lexinfo.info.global.comments, lexinfo.info.global)
 	}
-	lexinfo.info.global.comments = lexinfo.info.comments
-	lexinfo.info.global.comments = compileComments(
-		lexinfo.info.global.comments, lexinfo.info.global)
-	return lexinfo.info.global, nil // success
+	return result, lexinfo
+}
+
+// yaccParse parses an Ast from a byte array.
+func yaccParse(src []byte, file *SourceFile, intern *stringIntern) (*Ast, error) {
+	if result, info := yaccParseAny(src, file, intern); result != 0 {
+		return nil, &info // return lex on error to provide loc and token info
+	} else if info.info.exp != nil {
+		return info.info.global, errors.New(
+			"Expected: includes or stage or pipeline or call.")
+	} else {
+		return info.info.global, nil // success
+	}
+}
+
+// parseExp parses a ValExp from a byte array.
+func parseExp(src []byte, file *SourceFile, intern *stringIntern) (*ValExp, error) {
+	if result, info := yaccParseAny(src, file, intern); result != 0 {
+		return nil, &info // return lex on error to provide loc and token info
+	} else if info.info.exp == nil {
+		return nil, errors.New("Expected: expression, got mro instead")
+	} else {
+		return info.info.exp, nil
+	}
 }
 
 func attachComments(comments []*commentBlock, node *AstNode) []*commentBlock {
