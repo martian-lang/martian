@@ -87,7 +87,18 @@ Options:
 				}
 			}
 		}
-
+		for _, ast := range asts {
+			if ast.Callables != nil {
+				for _, callable := range ast.Callables.List {
+					if err := callable.GetOutParams().CheckFilenames(); err != nil {
+						fmt.Fprintln(os.Stderr, err.Error())
+						if syntax.GetEnforcementLevel() >= syntax.EnforceAlarm {
+							wasErr = true
+						}
+					}
+				}
+			}
+		}
 		count += num
 	} else {
 		// Compile just the specified MRO files.
@@ -101,6 +112,17 @@ Options:
 				fmt.Fprintln(os.Stderr, err.Error())
 				wasErr = true
 			} else {
+				if ast.Callables != nil {
+					for _, callable := range ast.Callables.List {
+						if err := callable.GetOutParams().CheckFilenames(); err != nil {
+							fmt.Fprintln(os.Stderr, err.Error())
+							if syntax.GetEnforcementLevel() >= syntax.EnforceAlarm {
+								wasErr = true
+							}
+						}
+					}
+				}
+
 				if mkjson {
 					asts = append(asts, ast)
 				}

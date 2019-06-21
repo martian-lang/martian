@@ -37,6 +37,7 @@ go_test(
     name = "go_default_test",
     srcs = [
         "compile_errors_test.go",
+        "compile_params_test.go",
         "equivalence_test.go",
         "formatter_test.go",
         "include_test.go",
