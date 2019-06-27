@@ -12,6 +12,7 @@ def _copy_binary_impl(ctx):
             ctx.executable.src.path,
             ctx.outputs.dest.path,
         ],
+        tools = [],
         mnemonic = "CopyBinary",
         progress_message = "Copying {} to {}.".format(
             ctx.executable.src.short_path,

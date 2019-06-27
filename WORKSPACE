@@ -5,9 +5,9 @@ load("@bazel_tools//tools/build_defs/repo:http.bzl", "http_archive")
 
 git_repository(
     name = "io_bazel_rules_go",
-    commit = "3c34e66b0507056e83bcbd9c963ab9d7e6cb049f",
+    commit = "6fc21c78143ff1d4ea98100e8fd7a928d45abd00",
     remote = "https://github.com/bazelbuild/rules_go.git",
-    shallow_since = "1555072240 -0400",
+    shallow_since = "1560353609 -0400",
 )
 
 http_archive(
