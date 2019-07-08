@@ -22,17 +22,17 @@ type AstError struct {
 	Msg    string
 }
 
-func (self *AstError) writeTo(w stringWriter) {
+func (err *AstError) writeTo(w stringWriter) {
 	w.WriteString("MRO ")
-	w.WriteString(self.Msg)
+	w.WriteString(err.Msg)
 	w.WriteString("\n    at ")
-	self.Node.Loc.writeTo(w, "        ")
+	err.Node.Loc.writeTo(w, "        ")
 }
 
-func (self *AstError) Error() string {
+func (err *AstError) Error() string {
 	var buff strings.Builder
-	buff.Grow(len("MRO \n    at sourcename.mro:100 included from sourcename.mro:10") + len(self.Msg))
-	self.writeTo(&buff)
+	buff.Grow(len("MRO \n    at sourcename.mro:100 included from sourcename.mro:10") + len(err.Msg))
+	err.writeTo(&buff)
 	return buff.String()
 }
 
@@ -83,6 +83,13 @@ func (err *DuplicateCallError) Error() string {
 type wrapError struct {
 	innerError error
 	loc        SourceLoc
+}
+
+func (err *wrapError) Unwrap() error {
+	if err == nil {
+		return nil
+	}
+	return err.innerError
 }
 
 func (err *wrapError) writeTo(w stringWriter) {
@@ -145,17 +152,17 @@ func (err *ParseError) writeTo(w stringWriter) {
 	err.loc.writeTo(w, "")
 }
 
-func (self *ParseError) Error() string {
+func (err *ParseError) Error() string {
 	var buff strings.Builder
-	self.writeTo(&buff)
+	err.writeTo(&buff)
 	return buff.String()
 }
 
 type ErrorList []error
 
-func (self ErrorList) Error() string {
+func (errList ErrorList) Error() string {
 	var buf strings.Builder
-	for i, err := range self {
+	for i, err := range errList {
 		if i != 0 {
 			buf.WriteRune('\n')
 		}
@@ -170,10 +177,10 @@ func (self ErrorList) Error() string {
 
 // Collapse the error list down, and remove any nil errors.
 // Returns nil if the list is empty.
-func (self ErrorList) If() error {
-	if len(self) > 0 {
-		errs := make(ErrorList, 0, len(self))
-		for _, err := range self {
+func (errList ErrorList) If() error {
+	if len(errList) > 0 {
+		errs := make(ErrorList, 0, len(errList))
+		for _, err := range errList {
 			if err != nil {
 				if list, ok := err.(ErrorList); ok {
 					err = list.If()
