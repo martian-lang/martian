@@ -1,0 +1,405 @@
+[
+    {
+        "name": "OUTER",
+        "fqname": "ID.pipeline_test.OUTER",
+        "type": "pipeline",
+        "forks": [
+            {
+                "stages": [],
+                "index": 0,
+                "chunks": [],
+                "split_stats": null,
+                "join_stats": null,
+                "fork_stats": {
+                    "num_jobs": 0,
+                    "num_threads": 0,
+                    "duration": 0,
+                    "core_hours": 0,
+                    "maxrss": 0,
+                    "maxvmem": 0,
+                    "in_blocks": 0,
+                    "out_blocks": 0,
+                    "total_blocks": 0,
+                    "in_blocks_rate": 0,
+                    "out_blocks_rate": 0,
+                    "total_blocks_rate": 0,
+                    "in_bytes": 0,
+                    "out_bytes": 0,
+                    "in_bytes_rate": 0,
+                    "out_bytes_rate": 0,
+                    "in_bytes_peak": 0,
+                    "out_bytes_peak": 0,
+                    "start": "0001-01-01T00:00:00Z",
+                    "end": "0001-01-01T00:00:00Z",
+                    "walltime": 0,
+                    "usertime": 0,
+                    "systemtime": 0,
+                    "total_files": 0,
+                    "total_bytes": 0,
+                    "output_files": 0,
+                    "output_bytes": 0,
+                    "vdr_files": 0,
+                    "vdr_bytes": 0,
+                    "in_bytes_dev": 0,
+                    "out_bytes_dev": 0
+                }
+            }
+        ],
+        "maxbytes": 12576,
+        "bytehist": [
+            {
+                "ts": "2019-09-17T13:19:14-07:00",
+                "bytes": 4197,
+                "desc": "ID.pipeline_test.OUTER.INNER.C1 alloc"
+            },
+            {
+                "ts": "2019-09-17T13:19:14-07:00",
+                "bytes": 7683,
+                "desc": "ID.pipeline_test.OUTER.INNER.C2 alloc"
+            },
+            {
+                "ts": "2019-09-17T13:19:15-07:00",
+                "bytes": 8388,
+                "desc": "ID.pipeline_test.OUTER.INNER.C2 alloc"
+            },
+            {
+                "ts": "2019-09-17T13:19:15-07:00",
+                "bytes": 12576,
+                "desc": "ID.pipeline_test.OUTER.INNER.C3 alloc"
+            }
+        ],
+        "highmem": {
+            "rss": 6938624,
+            "shared": 4194304,
+            "vmem": 580243456,
+            "text": 4820992,
+            "stack": 567218176,
+            "proc_count": 11
+        }
+    },
+    {
+        "name": "INNER",
+        "fqname": "ID.pipeline_test.OUTER.INNER",
+        "type": "pipeline",
+        "forks": [
+            {
+                "stages": [],
+                "index": 0,
+                "chunks": [],
+                "split_stats": null,
+                "join_stats": null,
+                "fork_stats": {
+                    "num_jobs": 0,
+                    "num_threads": 0,
+                    "duration": 0,
+                    "core_hours": 0,
+                    "maxrss": 0,
+                    "maxvmem": 0,
+                    "in_blocks": 0,
+                    "out_blocks": 0,
+                    "total_blocks": 0,
+                    "in_blocks_rate": 0,
+                    "out_blocks_rate": 0,
+                    "total_blocks_rate": 0,
+                    "in_bytes": 0,
+                    "out_bytes": 0,
+                    "in_bytes_rate": 0,
+                    "out_bytes_rate": 0,
+                    "in_bytes_peak": 0,
+                    "out_bytes_peak": 0,
+                    "start": "0001-01-01T00:00:00Z",
+                    "end": "0001-01-01T00:00:00Z",
+                    "walltime": 0,
+                    "usertime": 0,
+                    "systemtime": 0,
+                    "total_files": 0,
+                    "total_bytes": 0,
+                    "output_files": 0,
+                    "output_bytes": 0,
+                    "vdr_files": 0,
+                    "vdr_bytes": 0,
+                    "in_bytes_dev": 0,
+                    "out_bytes_dev": 0
+                }
+            }
+        ],
+        "maxbytes": 0,
+        "bytehist": null
+    },
+    {
+        "name": "C1",
+        "fqname": "ID.pipeline_test.OUTER.INNER.C1",
+        "type": "stage",
+        "forks": [
+            {
+                "stages": [
+                    {
+                        "name": "C1",
+                        "fqname": "ID.pipeline_test.OUTER.INNER.C1",
+                        "forki": 0
+                    }
+                ],
+                "index": 0,
+                "chunks": [
+                    {
+                        "index": 0,
+                        "chunk_stats": {
+                            "num_jobs": 1,
+                            "num_threads": 1,
+                            "duration": 0.143809,
+                            "core_hours": 0.000039946944444444444,
+                            "maxrss": 9124,
+                            "maxvmem": 567440,
+                            "in_blocks": 0,
+                            "out_blocks": 0,
+                            "total_blocks": 0,
+                            "in_blocks_rate": 0,
+                            "out_blocks_rate": 0,
+                            "total_blocks_rate": 0,
+                            "in_bytes": 0,
+                            "out_bytes": 0,
+                            "in_bytes_rate": 0,
+                            "out_bytes_rate": 0,
+                            "in_bytes_peak": 0,
+                            "out_bytes_peak": 0,
+                            "start": "2019-09-17T13:19:14Z",
+                            "end": "2019-09-17T13:19:14Z",
+                            "walltime": 0,
+                            "usertime": 0.046875,
+                            "systemtime": 0.125,
+                            "total_files": 3,
+                            "total_bytes": 3,
+                            "output_files": 0,
+                            "output_bytes": 0,
+                            "vdr_files": 0,
+                            "vdr_bytes": 0,
+                            "in_bytes_dev": 0,
+                            "out_bytes_dev": 0
+                        }
+                    }
+                ],
+                "split_stats": null,
+                "join_stats": null,
+                "fork_stats": {
+                    "num_jobs": 1,
+                    "num_threads": 1,
+                    "duration": 0.143809,
+                    "core_hours": 0.000039946944444444444,
+                    "maxrss": 9124,
+                    "maxvmem": 567440,
+                    "in_blocks": 0,
+                    "out_blocks": 0,
+                    "total_blocks": 0,
+                    "in_blocks_rate": 0,
+                    "out_blocks_rate": 0,
+                    "total_blocks_rate": 0,
+                    "in_bytes": 0,
+                    "out_bytes": 0,
+                    "in_bytes_rate": 0,
+                    "out_bytes_rate": 0,
+                    "in_bytes_peak": 0,
+                    "out_bytes_peak": 0,
+                    "start": "2019-09-17T13:19:14Z",
+                    "end": "2019-09-17T13:19:14Z",
+                    "walltime": 0,
+                    "usertime": 0.046875,
+                    "systemtime": 0.125,
+                    "total_files": 3,
+                    "total_bytes": 3,
+                    "output_files": 3,
+                    "output_bytes": 3,
+                    "vdr_files": 0,
+                    "vdr_bytes": 0,
+                    "in_bytes_dev": 0,
+                    "out_bytes_dev": 0
+                }
+            }
+        ],
+        "maxbytes": 0,
+        "bytehist": null
+    },
+    {
+        "name": "C2",
+        "fqname": "ID.pipeline_test.OUTER.INNER.C2",
+        "type": "stage",
+        "forks": [
+            {
+                "stages": [
+                    {
+                        "name": "C2",
+                        "fqname": "ID.pipeline_test.OUTER.INNER.C2",
+                        "forki": 0
+                    }
+                ],
+                "index": 0,
+                "chunks": [
+                    {
+                        "index": 0,
+                        "chunk_stats": {
+                            "num_jobs": 1,
+                            "num_threads": 1,
+                            "duration": 0.139496,
+                            "core_hours": 0.00003874888888888889,
+                            "maxrss": 9128,
+                            "maxvmem": 641428,
+                            "in_blocks": 0,
+                            "out_blocks": 0,
+                            "total_blocks": 0,
+                            "in_blocks_rate": 0,
+                            "out_blocks_rate": 0,
+                            "total_blocks_rate": 0,
+                            "in_bytes": 0,
+                            "out_bytes": 0,
+                            "in_bytes_rate": 0,
+                            "out_bytes_rate": 0,
+                            "in_bytes_peak": 0,
+                            "out_bytes_peak": 0,
+                            "start": "2019-09-17T13:19:14Z",
+                            "end": "2019-09-17T13:19:14Z",
+                            "walltime": 0,
+                            "usertime": 0.0625,
+                            "systemtime": 0.078125,
+                            "total_files": 3,
+                            "total_bytes": 3,
+                            "output_files": 0,
+                            "output_bytes": 0,
+                            "vdr_files": 0,
+                            "vdr_bytes": 0,
+                            "in_bytes_dev": 0,
+                            "out_bytes_dev": 0
+                        }
+                    }
+                ],
+                "split_stats": null,
+                "join_stats": null,
+                "fork_stats": {
+                    "num_jobs": 1,
+                    "num_threads": 1,
+                    "duration": 0.139496,
+                    "core_hours": 0.00003874888888888889,
+                    "maxrss": 9128,
+                    "maxvmem": 641428,
+                    "in_blocks": 0,
+                    "out_blocks": 0,
+                    "total_blocks": 0,
+                    "in_blocks_rate": 0,
+                    "out_blocks_rate": 0,
+                    "total_blocks_rate": 0,
+                    "in_bytes": 0,
+                    "out_bytes": 0,
+                    "in_bytes_rate": 0,
+                    "out_bytes_rate": 0,
+                    "in_bytes_peak": 0,
+                    "out_bytes_peak": 0,
+                    "start": "2019-09-17T13:19:14Z",
+                    "end": "2019-09-17T13:19:14Z",
+                    "walltime": 0,
+                    "usertime": 0.0625,
+                    "systemtime": 0.078125,
+                    "total_files": 3,
+                    "total_bytes": 3,
+                    "output_files": 3,
+                    "output_bytes": 3,
+                    "vdr_files": 0,
+                    "vdr_bytes": 0,
+                    "in_bytes_dev": 0,
+                    "out_bytes_dev": 0
+                }
+            }
+        ],
+        "maxbytes": 0,
+        "bytehist": null
+    },
+    {
+        "name": "C3",
+        "fqname": "ID.pipeline_test.OUTER.INNER.C3",
+        "type": "stage",
+        "forks": [
+            {
+                "stages": [
+                    {
+                        "name": "C3",
+                        "fqname": "ID.pipeline_test.OUTER.INNER.C3",
+                        "forki": 0
+                    }
+                ],
+                "index": 0,
+                "chunks": [
+                    {
+                        "index": 0,
+                        "chunk_stats": {
+                            "num_jobs": 1,
+                            "num_threads": 1,
+                            "duration": 0.141266,
+                            "core_hours": 0.000039240555555555556,
+                            "maxrss": 9128,
+                            "maxvmem": 569104,
+                            "in_blocks": 0,
+                            "out_blocks": 0,
+                            "total_blocks": 0,
+                            "in_blocks_rate": 0,
+                            "out_blocks_rate": 0,
+                            "total_blocks_rate": 0,
+                            "in_bytes": 0,
+                            "out_bytes": 0,
+                            "in_bytes_rate": 0,
+                            "out_bytes_rate": 0,
+                            "in_bytes_peak": 0,
+                            "out_bytes_peak": 0,
+                            "start": "2019-09-17T13:19:15Z",
+                            "end": "2019-09-17T13:19:15Z",
+                            "walltime": 0,
+                            "usertime": 0,
+                            "systemtime": 0.140625,
+                            "total_files": 3,
+                            "total_bytes": 3,
+                            "output_files": 0,
+                            "output_bytes": 0,
+                            "vdr_files": 0,
+                            "vdr_bytes": 0,
+                            "in_bytes_dev": 0,
+                            "out_bytes_dev": 0
+                        }
+                    }
+                ],
+                "split_stats": null,
+                "join_stats": null,
+                "fork_stats": {
+                    "num_jobs": 1,
+                    "num_threads": 1,
+                    "duration": 0.141266,
+                    "core_hours": 0.000039240555555555556,
+                    "maxrss": 9128,
+                    "maxvmem": 569104,
+                    "in_blocks": 0,
+                    "out_blocks": 0,
+                    "total_blocks": 0,
+                    "in_blocks_rate": 0,
+                    "out_blocks_rate": 0,
+                    "total_blocks_rate": 0,
+                    "in_bytes": 0,
+                    "out_bytes": 0,
+                    "in_bytes_rate": 0,
+                    "out_bytes_rate": 0,
+                    "in_bytes_peak": 0,
+                    "out_bytes_peak": 0,
+                    "start": "2019-09-17T13:19:15Z",
+                    "end": "2019-09-17T13:19:15Z",
+                    "walltime": 0,
+                    "usertime": 0,
+                    "systemtime": 0.140625,
+                    "total_files": 3,
+                    "total_bytes": 3,
+                    "output_files": 3,
+                    "output_bytes": 3,
+                    "vdr_files": 0,
+                    "vdr_bytes": 0,
+                    "in_bytes_dev": 0,
+                    "out_bytes_dev": 0
+                }
+            }
+        ],
+        "maxbytes": 0,
+        "bytehist": null
+    }
+]

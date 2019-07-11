@@ -1,3 +1,5 @@
+// Copyright (c) 2019 10X Genomics, Inc. All rights reserved.
+
 package syntax
 
 import "testing"

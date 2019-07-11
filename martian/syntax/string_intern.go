@@ -21,10 +21,10 @@ func makeStringIntern() (v *stringIntern) {
 	v = &stringIntern{
 		internSet: make(map[string]string, 64),
 	}
-	v.internSet[local] = strict
-	v.internSet[preflight] = strict
-	v.internSet[volatile] = strict
-	v.internSet[disabled] = strict
+	v.internSet[local] = local
+	v.internSet[preflight] = preflight
+	v.internSet[volatile] = volatile
+	v.internSet[disabled] = disabled
 	v.internSet[strict] = strict
 	v.internSet[default_out_name] = default_out_name
 	v.internSet[abr_python] = abr_python

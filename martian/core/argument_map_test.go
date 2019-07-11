@@ -3,15 +3,16 @@
 package core
 
 import (
+	"bytes"
 	"encoding/json"
-	"github.com/martian-lang/martian/martian/syntax"
-	"reflect"
 	"strings"
 	"testing"
+
+	"github.com/martian-lang/martian/martian/syntax"
 )
 
 func TestArgumentMapValidateInputs(t *testing.T) {
-	var def LazyChunkDef
+	var def ChunkDef
 	if err := json.Unmarshal([]byte(`{
 		"__threads": 4,
 		"__mem_gb": 3,
@@ -26,20 +27,22 @@ func TestArgumentMapValidateInputs(t *testing.T) {
 	plist := []*syntax.InParam{
 		{
 			Id:    "foo",
-			Tname: "int",
+			Tname: syntax.TypeId{Tname: syntax.KindInt},
 		},
 		{
 			Id:    "bar",
-			Tname: "float",
+			Tname: syntax.TypeId{Tname: syntax.KindFloat},
 		},
 		{
 			Id:    "baz",
-			Tname: "map",
+			Tname: syntax.TypeId{Tname: syntax.KindMap},
 		},
 		{
-			Id:       "bing",
-			Tname:    "int",
-			ArrayDim: 1,
+			Id: "bing",
+			Tname: syntax.TypeId{
+				Tname:    syntax.KindInt,
+				ArrayDim: 1,
+			},
 		},
 	}
 	ptable := make(map[string]*syntax.InParam, len(plist))
@@ -50,7 +53,8 @@ func TestArgumentMapValidateInputs(t *testing.T) {
 		Table: ptable,
 		List:  plist,
 	}
-	if err, msg := def.Args.ValidateInputs(&params); err == nil {
+	lookup := syntax.NewTypeLookup()
+	if err, msg := def.Args.ValidateInputs(lookup, &params); err == nil {
 		t.Errorf("Expected error from extra param, got none.")
 	} else if strings.TrimSpace(err.Error()) != "Unexpected parameter 'bath'" {
 		t.Errorf(
@@ -64,36 +68,35 @@ func TestArgumentMapValidateInputs(t *testing.T) {
 
 	bath := &syntax.InParam{
 		Id:    "bath",
-		Tname: "string",
+		Tname: syntax.TypeId{Tname: syntax.KindString},
 	}
 	params.Table[bath.Id] = bath
 	params.List = append(params.List, bath)
-	if err, msg := def.Args.ValidateInputs(&params); err != nil {
+	if err, msg := def.Args.ValidateInputs(lookup, &params); err != nil {
 		t.Errorf("Validation error: expected success, got %v", err)
 	} else if msg != "" {
 		t.Errorf("Didn't expect a soft error message, got %s", msg)
 	}
-	params.Table["bar"].Tname = "int"
-	if err, msg := def.Args.ValidateInputs(&params); err == nil {
+	params.Table["bar"].Tname.Tname = syntax.KindInt
+	if err, msg := def.Args.ValidateInputs(lookup, &params); err == nil {
 		t.Errorf("Expected error from float, got none.")
-	} else if strings.TrimSpace(err.Error()) !=
-		"Expected int input parameter 'bar' with value \"1.2\" cannot be parsed as an integer." {
+	} else if e := "Expected int input parameter 'bar' value '1.2' " +
+		"cannot be parsed as an integer"; strings.TrimSpace(err.Error()) != e {
 		t.Errorf(
-			"Validation error: expected \""+
-				"Expected int input parameter 'bar' with value \"1.2\" cannot be parsed as an integer."+
-				"\", got \"%v\"",
+			"Validation error: expected\n\""+e+
+				"\"\ngot\n\"%v\"",
 			err)
 	} else if msg != "" {
 		t.Errorf("Didn't expect a soft error message, got %s", msg)
 	}
-	params.Table["bar"].Tname = "float"
+	params.Table["bar"].Tname.Tname = syntax.KindFloat
 	missing := &syntax.InParam{
 		Id:    "miss",
-		Tname: "string",
+		Tname: syntax.TypeId{Tname: syntax.KindString},
 	}
 	params.Table[missing.Id] = missing
 	params.List = append(params.List, missing)
-	if err, msg := def.Args.ValidateInputs(&params); err == nil {
+	if err, msg := def.Args.ValidateInputs(lookup, &params); err == nil {
 		t.Errorf("Expected error from missing parameter, got none.")
 	} else if strings.TrimSpace(err.Error()) != "Missing input parameter 'miss'" {
 		t.Errorf(
@@ -107,7 +110,7 @@ func TestArgumentMapValidateInputs(t *testing.T) {
 }
 
 func TestArgumentMapValidateOutputs(t *testing.T) {
-	var def LazyChunkDef
+	var def ChunkDef
 	if err := json.Unmarshal([]byte(`{
 		"__threads": 4,
 		"__mem_gb": 3,
@@ -121,21 +124,31 @@ func TestArgumentMapValidateOutputs(t *testing.T) {
 	}
 	plist := []*syntax.OutParam{
 		{
-			Id:    "foo",
-			Tname: "int",
+			StructMember: syntax.StructMember{
+				Id:    "foo",
+				Tname: syntax.TypeId{Tname: syntax.KindInt},
+			},
 		},
 		{
-			Id:    "bar",
-			Tname: "float",
+			StructMember: syntax.StructMember{
+				Id:    "bar",
+				Tname: syntax.TypeId{Tname: syntax.KindFloat},
+			},
 		},
 		{
-			Id:    "baz",
-			Tname: "map",
+			StructMember: syntax.StructMember{
+				Id:    "baz",
+				Tname: syntax.TypeId{Tname: syntax.KindMap},
+			},
 		},
 		{
-			Id:       "bing",
-			Tname:    "int",
-			ArrayDim: 1,
+			StructMember: syntax.StructMember{
+				Id: "bing",
+				Tname: syntax.TypeId{
+					Tname:    syntax.KindInt,
+					ArrayDim: 1,
+				},
+			},
 		},
 	}
 	ptable := make(map[string]*syntax.OutParam, len(plist))
@@ -147,7 +160,8 @@ func TestArgumentMapValidateOutputs(t *testing.T) {
 		List:  plist,
 	}
 
-	if err, alarms := def.Args.ValidateOutputs(&params); err != nil {
+	lookup := syntax.NewTypeLookup()
+	if err, alarms := def.Args.ValidateOutputs(lookup, &params); err != nil {
 		t.Errorf("Expected pass from extra out param, got %v.",
 			err)
 	} else if strings.TrimSpace(alarms) != "Unexpected output 'bath'" {
@@ -158,37 +172,43 @@ func TestArgumentMapValidateOutputs(t *testing.T) {
 			alarms)
 	}
 	bath := &syntax.OutParam{
-		Id:    "bath",
-		Tname: "string",
+		StructMember: syntax.StructMember{
+			Id:    "bath",
+			Tname: syntax.TypeId{Tname: syntax.KindString},
+		},
 	}
 	params.Table[bath.Id] = bath
 	params.List = append(params.List, bath)
-	if err, msg := def.Args.ValidateOutputs(&params); err != nil {
+	if err, msg := def.Args.ValidateOutputs(lookup, &params); err != nil {
 		t.Errorf("Validation error: expected success, got %v", err)
 	} else if msg != "" {
 		t.Errorf("Didn't expect a soft error message, got %s", msg)
 	}
-	params.Table["bar"].Tname = "int"
-	if err, msg := def.Args.ValidateOutputs(&params); err == nil {
-		t.Errorf("Expected error from float, got none.")
-	} else if strings.TrimSpace(err.Error()) !=
-		"Expected int output value 'bar' with value \"1.2\" cannot be parsed as an integer." {
+	params.Table["bar"].Tname.Tname = syntax.KindInt
+	if err, msg := def.Args.ValidateOutputs(lookup, &params); err == nil {
+		t.Error("Expected error from float, got none.")
+		if msg != "" {
+			t.Log(msg)
+		}
+	} else if e := "Expected int output value 'bar' value '1.2' " +
+		"cannot be parsed as an integer"; strings.TrimSpace(err.Error()) != e {
 		t.Errorf(
-			"Validation error: expected \""+
-				"Expected int output value 'bar' with value \"1.2\" cannot be parsed as an integer."+
-				"\", got \"%v\"",
+			"Validation error: expected\n\""+e+
+				"\"\ngot\n\"%v\"",
 			err)
 	} else if msg != "" {
 		t.Errorf("Didn't expect a soft error message, got %s", msg)
 	}
-	params.Table["bar"].Tname = "float"
+	params.Table["bar"].Tname.Tname = syntax.KindFloat
 	missing := &syntax.OutParam{
-		Id:    "miss",
-		Tname: "string",
+		StructMember: syntax.StructMember{
+			Id:    "miss",
+			Tname: syntax.TypeId{Tname: syntax.KindString},
+		},
 	}
 	params.Table[missing.Id] = missing
 	params.List = append(params.List, missing)
-	if err, msg := def.Args.ValidateOutputs(&params); err == nil {
+	if err, msg := def.Args.ValidateOutputs(lookup, &params); err == nil {
 		t.Errorf("Expected error from missing parameter, got none.")
 	} else if strings.TrimSpace(err.Error()) != "Missing output value 'miss'" {
 		t.Errorf(
@@ -201,6 +221,105 @@ func TestArgumentMapValidateOutputs(t *testing.T) {
 	}
 }
 
+func TestUnmarshalMarshallerMap(t *testing.T) {
+	sb := []byte(`{
+		"__threads": 4,
+		"__mem_gb": 3,
+		"foo": 12,
+		"bar": 1.2,
+		"baz": {
+			"fooz": "bars"
+		},
+		"bing": [
+			1
+		],
+		"bzzoot": "thing"
+	}`)
+	var m1 LazyArgumentMap
+	var m2 MarshalerMap
+	if err := json.Unmarshal(sb, &m1); err != nil {
+		t.Fatal(err)
+	}
+	if err := json.Unmarshal(sb, &m2); err != nil {
+		t.Fatal(err)
+	}
+	if len(m1) != len(m2) {
+		t.Errorf("len %d != len %d", len(m1), len(m2))
+	}
+	for k, v := range m2 {
+		if b, ok := v.(json.RawMessage); !ok {
+			t.Errorf("unexpected type %T", v)
+		} else if !bytes.Equal(m1[k], b) {
+			t.Errorf("%s != %s", string([]byte(b)), string([]byte(m1[k])))
+		}
+	}
+	if err := json.Unmarshal(nullBytes, &m2); err != nil {
+		t.Error(err)
+	} else if m2 != nil {
+		t.Error("expected nil")
+	}
+}
+
+func TestLazyArgumentMapMarshal(t *testing.T) {
+	var m LazyArgumentMap
+	if b, err := json.Marshal(m); err != nil {
+		t.Error(err)
+	} else if !bytes.Equal(b, nullBytes) {
+		t.Error("expected null")
+	}
+	m = make(LazyArgumentMap)
+	if b, err := json.Marshal(m); err != nil {
+		t.Error(err)
+	} else if !bytes.Equal(b, []byte("{}")) {
+		t.Error("expected null")
+	}
+	m["foo"] = nil
+	if b, err := json.Marshal(m); err != nil {
+		t.Error(err)
+	} else if !bytes.Equal(b, []byte(`{"foo":null}`)) {
+		t.Errorf(`%q != "{\"foo\":null}"`, string(b))
+	}
+}
+
+func TestMarshalerMapMarshal(t *testing.T) {
+	var m MarshalerMap
+	if b, err := json.Marshal(m); err != nil {
+		t.Error(err)
+	} else if !bytes.Equal(b, nullBytes) {
+		t.Error("expected null")
+	}
+	m = make(MarshalerMap)
+	if b, err := json.Marshal(m); err != nil {
+		t.Error(err)
+	} else if !bytes.Equal(b, []byte("{}")) {
+		t.Error("expected null")
+	}
+	m["foo"] = LazyArgumentMap{"bar": nullBytes}
+	m["arr"] = nil
+	if b, err := json.MarshalIndent(m, "\t", "\t"); err != nil {
+		t.Error(err)
+	} else if !bytes.Equal(b, []byte(`{
+		"arr": null,
+		"foo": {
+			"bar": null
+		}
+	}`)) {
+		t.Error("unexpected value", string(b))
+	}
+	if lm, err := m.ToLazyArgumentMap(); err != nil {
+		t.Error(err)
+	} else if b, err := json.MarshalIndent(lm, "\t", "\t"); err != nil {
+		t.Error(err)
+	} else if !bytes.Equal(b, []byte(`{
+		"arr": null,
+		"foo": {
+			"bar": null
+		}
+	}`)) {
+		t.Error("unexpected value", string(b))
+	}
+}
+
 type toyStruct struct {
 	Iface  interface{}
 	Map    map[string]int
@@ -210,23 +329,32 @@ type toyStruct struct {
 	IntP   *int
 }
 
-func TestMakeArgumentMap(t *testing.T) {
+func TestMakeMarshalerMap(t *testing.T) {
 	s := toyStruct{
 		Int:   5,
 		Float: 6,
 	}
-	m := MakeArgumentMap(s)
+	m := MakeMarshalerMap(s)
 	if len(m) != 5 {
 		t.Errorf("Expected 5 elements, got %d", len(m))
 	}
-	check := func(m ArgumentMap, key string, value interface{}) {
+	check := func(m MarshalerMap, key string, value interface{}) {
 		t.Helper()
-		b, _ := json.Marshal(m)
+		eb, err := json.Marshal(value)
+		if err != nil {
+			t.Fatal(err)
+		}
+		b, err := json.Marshal(m)
+		if err != nil {
+			t.Fatal(err)
+		}
 		if v, ok := m[key]; !ok {
 			t.Errorf("Missing key %s\t%s", key, string(b))
-		} else if !reflect.DeepEqual(v, value) {
-			t.Errorf("Incorrect value for %s: expected %v actual %v\n%s",
-				key, value, v, string(b))
+		} else if vb, err := v.MarshalJSON(); err != nil {
+			t.Error(err)
+		} else if !bytes.Equal(vb, eb) {
+			t.Errorf("Incorrect value for %s: expected %s actual %s",
+				key, string(eb), string(vb))
 		}
 	}
 	check(m, "Iface", s.Iface)
@@ -235,56 +363,10 @@ func TestMakeArgumentMap(t *testing.T) {
 	check(m, "n", s.Float)
 	check(m, "IntP", s.IntP)
 	s.String = "foo"
-	m = MakeArgumentMap(s)
+	m = MakeMarshalerMap(s)
 	check(m, "s", s.String)
-	m = MakeArgumentMap(map[string]string{
+	m = MakeMarshalerMap(map[string]string{
 		"foo": "bar",
 	})
 	check(m, "foo", "bar")
-}
-
-func TestArgumentMapDecode(t *testing.T) {
-	check := func(expected ArgumentMap, actual interface{}) {
-		t.Helper()
-		if err := expected.Decode(actual); err != nil {
-			t.Errorf("Error decoding: %v", err)
-		}
-	}
-	s := toyStruct{}
-	check(ArgumentMap{
-		"Iface": map[string]string{"foo": "bar"},
-		"s":     "baz",
-	}, &s)
-	if (s.Iface.(map[string]string))["foo"] != "bar" {
-		t.Errorf("Incorrect foo in iface: %v", (s.Iface.(map[string]interface{}))["foo"])
-	}
-	if s.String != "baz" {
-		t.Errorf("Incorrect String: %s", s.String)
-	}
-	checkMap := func(expected ArgumentMap, actual interface{}) {
-		t.Helper()
-		check(expected, actual)
-		if be, err := json.Marshal(expected); err != nil {
-			t.Errorf("Error encoding: %v", err)
-		} else if ba, err := json.Marshal(actual); err != nil {
-			t.Errorf("Error encoding: %v", err)
-		} else if string(be) != string(ba) {
-			t.Errorf("Incorrect decode: expected %s got %s", string(be), string(ba))
-		}
-	}
-	checkMap(ArgumentMap{
-		"foo": "bar",
-	}, make(map[string]string))
-	checkMap(ArgumentMap{
-		"foo": 1,
-	}, make(map[string]int))
-	checkMap(ArgumentMap{
-		"foo": 1,
-	}, make(map[string]interface{}))
-	m := ArgumentMap{
-		"foo": "bar",
-	}
-	if err := m.Decode(make(map[string]int)); err == nil {
-		t.Errorf("Expected error.")
-	}
 }

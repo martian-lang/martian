@@ -1,0 +1,490 @@
+{
+  "fqid": "POINT_MAPPER",
+  "inputs": {
+    "disable4": {
+      "expression": true,
+      "type": "bool"
+    },
+    "disable_user": {
+      "expression": false,
+      "type": "bool"
+    },
+    "mp": {
+      "expression": {
+        "three": {
+          "extra": null,
+          "point": {
+            "x": 9,
+            "y": 10.2
+          },
+          "points": [
+            {
+              "x": 11,
+              "y": 3
+            }
+          ]
+        }
+      },
+      "type": "map<POINT_SET>"
+    },
+    "one": {
+      "expression": {
+        "x": 5,
+        "y": 6
+      },
+      "type": "POINT"
+    },
+    "two": {
+      "expression": {
+        "x": 7,
+        "y": 8
+      },
+      "type": "POINT"
+    }
+  },
+  "outputs": {
+    "expression": {
+      "result": {
+        "1": {
+          "__reference__": "POINT_MAPPER.PIPE1.POINT_MAKER"
+        },
+        "2": {
+          "__reference__": "POINT_MAPPER.PIPE2.POINT_MAKER"
+        },
+        "3": {
+          "__reference__": "POINT_MAPPER.PIPE3.POINT_MAKER"
+        }
+      },
+      "xs": {
+        "1": [
+          {
+            "__reference__": "POINT_MAPPER.PIPE1.POINT_MAKER.point.x"
+          },
+          5
+        ],
+        "2": [
+          {
+            "__reference__": "POINT_MAPPER.PIPE2.POINT_MAKER.point.x"
+          },
+          7
+        ],
+        "3": [
+          {
+            "__reference__": "POINT_MAPPER.PIPE3.POINT_MAKER.point.x"
+          },
+          3
+        ]
+      }
+    },
+    "type": "POINT_MAPPER"
+  },
+  "children": [
+    {
+      "fqid": "POINT_MAPPER.PIPE1",
+      "inputs": {
+        "x": {
+          "expression": 5,
+          "type": "int"
+        },
+        "y": {
+          "expression": 6,
+          "type": "float"
+        }
+      },
+      "outputs": {
+        "expression": {
+          "disable_user": {
+            "__reference__": "POINT_MAPPER.PIPE1.POINT_MAKER.disable_user"
+          },
+          "w": {
+            "extra": "nope",
+            "point": {
+              "x": 5,
+              "y": 6
+            },
+            "points": [
+              {
+                "__reference__": "POINT_MAPPER.PIPE1.POINT_MAKER.point"
+              },
+              {
+                "x": 5,
+                "y": 6
+              }
+            ]
+          },
+          "z": {
+            "__reference__": "POINT_MAPPER.PIPE1.POINT_MAKER"
+          }
+        },
+        "type": "POINT_PIPE"
+      },
+      "children": [
+        {
+          "fqid": "POINT_MAPPER.PIPE1.POINT_MAKER",
+          "inputs": {
+            "points": {
+              "expression": [
+                {
+                  "x": 5,
+                  "y": 6
+                },
+                {
+                  "x": 1,
+                  "y": 2
+                }
+              ],
+              "type": "POINT[]"
+            }
+          },
+          "outputs": {
+            "expression": {
+              "__reference__": "POINT_MAPPER.PIPE1.POINT_MAKER"
+            },
+            "type": "POINT_MAKER"
+          }
+        }
+      ]
+    },
+    {
+      "fqid": "POINT_MAPPER.PIPE2",
+      "inputs": {
+        "x": {
+          "expression": 7,
+          "type": "int"
+        },
+        "y": {
+          "expression": 8,
+          "type": "float"
+        }
+      },
+      "outputs": {
+        "expression": {
+          "disable_user": {
+            "__reference__": "POINT_MAPPER.PIPE2.POINT_MAKER.disable_user"
+          },
+          "w": {
+            "extra": "nope",
+            "point": {
+              "x": 7,
+              "y": 8
+            },
+            "points": [
+              {
+                "__reference__": "POINT_MAPPER.PIPE2.POINT_MAKER.point"
+              },
+              {
+                "x": 7,
+                "y": 8
+              }
+            ]
+          },
+          "z": {
+            "__reference__": "POINT_MAPPER.PIPE2.POINT_MAKER"
+          }
+        },
+        "type": "POINT_PIPE"
+      },
+      "children": [
+        {
+          "fqid": "POINT_MAPPER.PIPE2.POINT_MAKER",
+          "inputs": {
+            "points": {
+              "expression": [
+                {
+                  "x": 7,
+                  "y": 8
+                },
+                {
+                  "x": 1,
+                  "y": 2
+                }
+              ],
+              "type": "POINT[]"
+            }
+          },
+          "outputs": {
+            "expression": {
+              "__reference__": "POINT_MAPPER.PIPE2.POINT_MAKER"
+            },
+            "type": "POINT_MAKER"
+          }
+        }
+      ]
+    },
+    {
+      "fqid": "POINT_MAPPER.PIPE3",
+      "inputs": {
+        "x": {
+          "expression": 3,
+          "type": "int"
+        },
+        "y": {
+          "expression": 4,
+          "type": "float"
+        }
+      },
+      "outputs": {
+        "expression": {
+          "disable_user": {
+            "__reference__": "POINT_MAPPER.PIPE3.POINT_MAKER.disable_user"
+          },
+          "w": {
+            "extra": "nope",
+            "point": {
+              "x": 3,
+              "y": 4
+            },
+            "points": [
+              {
+                "__reference__": "POINT_MAPPER.PIPE3.POINT_MAKER.point"
+              },
+              {
+                "x": 3,
+                "y": 4
+              }
+            ]
+          },
+          "z": {
+            "__reference__": "POINT_MAPPER.PIPE3.POINT_MAKER"
+          }
+        },
+        "type": "POINT_PIPE"
+      },
+      "children": [
+        {
+          "fqid": "POINT_MAPPER.PIPE3.POINT_MAKER",
+          "inputs": {
+            "points": {
+              "expression": [
+                {
+                  "x": 3,
+                  "y": 4
+                },
+                {
+                  "x": 1,
+                  "y": 2
+                }
+              ],
+              "type": "POINT[]"
+            }
+          },
+          "outputs": {
+            "expression": {
+              "__reference__": "POINT_MAPPER.PIPE3.POINT_MAKER"
+            },
+            "type": "POINT_MAKER"
+          }
+        }
+      ]
+    },
+    {
+      "fqid": "POINT_MAPPER.PIPE4",
+      "inputs": {
+        "x": {
+          "expression": 18,
+          "type": "int"
+        },
+        "y": {
+          "expression": 19,
+          "type": "float"
+        }
+      },
+      "outputs": {
+        "expression": null,
+        "type": "POINT_PIPE"
+      },
+      "disabled": [
+        true
+      ],
+      "children": [
+        {
+          "fqid": "POINT_MAPPER.PIPE4.POINT_MAKER",
+          "inputs": {
+            "points": {
+              "expression": [
+                {
+                  "x": 18,
+                  "y": 19
+                },
+                {
+                  "x": 1,
+                  "y": 2
+                }
+              ],
+              "type": "POINT[]"
+            }
+          },
+          "outputs": {
+            "expression": null,
+            "type": "POINT_MAKER"
+          },
+          "disabled": [
+            true
+          ]
+        }
+      ]
+    },
+    {
+      "fqid": "POINT_MAPPER.PIPE5",
+      "inputs": {
+        "x": {
+          "expression": 20,
+          "type": "int"
+        },
+        "y": {
+          "expression": 21,
+          "type": "float"
+        }
+      },
+      "outputs": {
+        "expression": {
+          "disable_user": {
+            "__reference__": "POINT_MAPPER.PIPE5.POINT_MAKER.disable_user"
+          },
+          "w": {
+            "extra": "nope",
+            "point": {
+              "x": 20,
+              "y": 21
+            },
+            "points": [
+              {
+                "__reference__": "POINT_MAPPER.PIPE5.POINT_MAKER.point"
+              },
+              {
+                "x": 20,
+                "y": 21
+              }
+            ]
+          },
+          "z": {
+            "__reference__": "POINT_MAPPER.PIPE5.POINT_MAKER"
+          }
+        },
+        "type": "POINT_PIPE"
+      },
+      "disabled": [
+        {
+          "__reference__": "POINT_MAPPER.PIPE1.POINT_MAKER.disable_user"
+        }
+      ],
+      "children": [
+        {
+          "fqid": "POINT_MAPPER.PIPE5.POINT_MAKER",
+          "inputs": {
+            "points": {
+              "expression": [
+                {
+                  "x": 20,
+                  "y": 21
+                },
+                {
+                  "x": 1,
+                  "y": 2
+                }
+              ],
+              "type": "POINT[]"
+            }
+          },
+          "outputs": {
+            "expression": {
+              "__reference__": "POINT_MAPPER.PIPE5.POINT_MAKER"
+            },
+            "type": "POINT_MAKER"
+          },
+          "disabled": [
+            {
+              "__reference__": "POINT_MAPPER.PIPE1.POINT_MAKER.disable_user"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "fqid": "POINT_MAPPER.POINT_USER",
+      "inputs": {
+        "extra": {
+          "expression": "frob\nlate",
+          "type": "string"
+        },
+        "mpset": {
+          "expression": {
+            "foo": {
+              "extra": "nope",
+              "point": {
+                "x": 3,
+                "y": 4
+              },
+              "points": [
+                {
+                  "__reference__": "POINT_MAPPER.PIPE3.POINT_MAKER.point"
+                },
+                {
+                  "x": 3,
+                  "y": 4
+                }
+              ]
+            }
+          },
+          "type": "map<POINT_SET>"
+        },
+        "point": {
+          "expression": {
+            "x": 5,
+            "y": 6
+          },
+          "type": "POINT"
+        },
+        "points": {
+          "expression": [
+            {
+              "x": 5,
+              "y": 6
+            }
+          ],
+          "type": "POINT[]"
+        },
+        "set": {
+          "expression": {
+            "extra": "nope",
+            "point": {
+              "x": 3,
+              "y": 4
+            },
+            "points": [
+              {
+                "__reference__": "POINT_MAPPER.PIPE3.POINT_MAKER.point"
+              },
+              {
+                "x": 3,
+                "y": 4
+              }
+            ]
+          },
+          "type": "POINT_SET"
+        },
+        "xs": {
+          "expression": [
+            {
+              "__reference__": "POINT_MAPPER.PIPE1.POINT_MAKER.point.x"
+            },
+            5
+          ],
+          "type": "int[]"
+        },
+        "ys": {
+          "expression": {
+            "three": 10.2
+          },
+          "type": "map<float>"
+        }
+      },
+      "outputs": {
+        "expression": {
+          "__reference__": "POINT_MAPPER.POINT_USER"
+        },
+        "type": "POINT_USER"
+      }
+    }
+  ]
+}

@@ -1,0 +1,84 @@
+#
+# @include "pipeline.mro"
+#
+
+# Copyright (c) 2019 10X Genomics, Inc. All rights reserved.
+
+# This pipeline is used to test the runtime's ability to move files into
+# correct locations.
+
+filetype txt;
+
+struct STUFF(
+    int  bar,
+    file file1,
+    txt  file2,
+)
+
+stage CREATOR(
+    in  int   foo,
+    out STUFF bar,
+    out txt   file3  "help text"  "output_name.file",
+    src py    "creator",
+) using (
+    volatile = strict,
+)
+
+pipeline INNER(
+    in  int          foo,
+    out CREATOR      bar,
+    out txt          out_file  "description"  "another_file.txt",
+    out map<CREATOR> results1,
+    out map<CREATOR> results2  "help text"    "output_name",
+)
+{
+    call CREATOR as C1(
+        foo = self.foo,
+    )
+
+    call CREATOR as C2(
+        foo = C1.bar.bar,
+    )
+
+    call CREATOR as C3(
+        foo = C2.bar.bar,
+    )
+
+    return (
+        bar      = C2,
+        out_file = C3.bar.file2,
+        results1 = {
+            "c1": C1,
+            "c2": C2,
+        },
+        results2 = {
+            "c1": C1,
+            "c2": null,
+        },
+    )
+}
+
+pipeline OUTER(
+    in  int   foo,
+    out txt   text,
+    out INNER inner,
+)
+{
+    call INNER(
+        foo = self.foo,
+    )
+
+    return (
+        text  = INNER.bar.bar.file1,
+        inner = INNER,
+    )
+}
+
+#
+# @include "call.mro"
+#
+
+# Calls the pipeline
+call OUTER(
+    foo = 1,
+)

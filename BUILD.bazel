@@ -1,5 +1,9 @@
 load("@bazel_gazelle//:def.bzl", "gazelle")
 
+# gazelle:resolve go github.com/martian-lang/martian/martian/api @martian//martian/api:go_default_library
+# gazelle:resolve go github.com/martian-lang/martian/martian/core @martian//martian/core:go_default_library
+# gazelle:resolve go github.com/martian-lang/martian/martian/syntax @martian//martian/syntax:go_default_library
+# gazelle:resolve go github.com/martian-lang/martian/martian/util @martian//martian/util:go_default_library
 # gazelle:prefix github.com/martian-lang/martian
 # gazelle:exclude vendor
 gazelle(name = "gazelle")

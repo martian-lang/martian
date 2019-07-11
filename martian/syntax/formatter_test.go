@@ -11,100 +11,6 @@ import (
 	"testing"
 )
 
-func Equal(t *testing.T, value, expected, message string) {
-	t.Helper()
-	if value != expected {
-		t.Errorf("%s\nExpected: %q\nActual: %q",
-			message, expected, value)
-	}
-}
-
-func TestFormatValueExpression(t *testing.T) {
-	ve := ValExp{
-		Node:  AstNode{SourceLoc{0, new(SourceFile)}, nil, nil},
-		Kind:  "float",
-		Value: 0,
-	}
-
-	//
-	// Format float ValExps.
-	//
-	var buff strings.Builder
-	ve.Kind = "float"
-
-	ve.Value = 10.0
-	ve.format(&buff, "")
-	Equal(t, buff.String(), "10", "Preserve single zero after decimal.")
-	buff.Reset()
-
-	ve.Value = 10.05
-	ve.format(&buff, "")
-	Equal(t, buff.String(), "10.05", "Do not strip numbers ending in non-zero digit.")
-	buff.Reset()
-
-	ve.Value = 10.050
-	ve.format(&buff, "")
-	Equal(t, buff.String(), "10.05", "Strip single trailing zero.")
-	buff.Reset()
-
-	ve.Value = 10.050000000
-	ve.format(&buff, "")
-	Equal(t, buff.String(), "10.05", "Strip multiple trailing zeroes.")
-	buff.Reset()
-
-	ve.Value = 0.0000000005
-	ve.format(&buff, "")
-	Equal(t, buff.String(), "5e-10", "Handle exponential notation.")
-	buff.Reset()
-
-	ve.Value = 0.0005
-	ve.format(&buff, "")
-	Equal(t, buff.String(), "0.0005", "Handle low decimal floats.")
-	buff.Reset()
-
-	//
-	// Format int ValExps.
-	//
-	ve.Kind = "int"
-
-	ve.Value = 0
-	ve.format(&buff, "")
-	Equal(t, buff.String(), "0", "Format zero integer.")
-	buff.Reset()
-
-	ve.Value = 10
-	ve.format(&buff, "")
-	Equal(t, buff.String(), "10", "Format non-zero integer.")
-	buff.Reset()
-
-	ve.Value = 1000000
-	ve.format(&buff, "")
-	Equal(t, buff.String(), "1000000", "Preserve integer trailing zeroes.")
-	buff.Reset()
-
-	//
-	// Format string ValExps.
-	//
-	ve.Kind = "string"
-
-	ve.Value = "blah"
-	ve.format(&buff, "")
-	Equal(t, buff.String(), "\"blah\"", "Double quote a string.")
-	buff.Reset()
-
-	ve.Value = `"blah"`
-	ve.format(&buff, "")
-	Equal(t, buff.String(), `"\"blah\""`, "Double quote a double-quoted string.")
-	buff.Reset()
-
-	//
-	// Format nil ValExps.
-	//
-	ve.Value = nil
-	ve.format(&buff, "")
-	Equal(t, buff.String(), "null", "Nil value is 'null'.")
-}
-
 const fmtTestSrc = `# A super-simple test pipeline with forks.
 
 # I am good at documenting my code with useful headers.
@@ -115,6 +21,20 @@ const fmtTestSrc = `# A super-simple test pipeline with forks.
 # Files storing json.
 filetype json;
 filetype txt;
+
+struct POINT(
+    # x coordinate
+    float x,
+    # y coordinate
+    int[] y,
+)
+
+# A thing with coordinates.
+struct POINTALISM(
+    POINT point,
+    # output file
+    json  dest  "dest.xml",
+)
 
 # Adds a key to the json in a file.
 stage ADD_KEY1(
@@ -206,13 +126,53 @@ stage MAP_EXAMPLE(
     volatile = strict,
 )
 
+# This stage takes a struct input
+stage STRUCT_CONSUMER(
+    in  POINTALISM foo,
+    in  int[]      y,
+    in  float[]    xarr,
+    in  POINT      point,
+    # x coordinate
+    out float      x,
+    # y coordinate
+    out int[]      y,
+    out POINT      point,
+    # output file
+    out json       dest   "outname.json",
+    out POINTALISM extra,
+    out POINT[]    arr,
+    src comp       "stages/structy",
+)
+
+stage MAP_PRODUCER(
+    in  STRUCT_CONSUMER          input,
+    out map<STRUCT_CONSUMER>     flat_map,
+    out map<STRUCT_CONSUMER>[]   array_of_map,
+    out map<STRUCT_CONSUMER[]>   map_of_array,
+    out map<STRUCT_CONSUMER[]>[] array_of_map_of_array,
+    out STRUCT_CONSUMER[]        array,
+    src comp                     "stages/structy",
+)
+
+stage MAP_CONSUMER(
+    in  map<STRUCT_CONSUMER> foo1,
+    in  map<STRUCT_CONSUMER> foo2,
+    in  POINT[]              point_array,
+    in  map<int[]>           map_of_array,
+    in  int[][]              array_2d,
+    in  map<float[]>         map_of_float_array,
+    in  map<float>[]         array_of_float_map,
+    src comp                 "stages/structy",
+)
+
 # Adds some keys to some json files and then merges them.
 pipeline AWESOME(
-    in  string key1,
-    in  string value1,
-    in  string key2,
-    in  string value2,
-    out json   outfile  "The json file containing all of the keys and values."  "all_keys",
+    in  string     key1       "help text",
+    in  string     value1,
+    in  string     key2,
+    in  string     value2,
+    in  POINTALISM struct_in,
+    out json       outfile    "The json file containing all of the keys and values."  "all_keys",
 )
 {
     call ADD_KEY1(
@@ -310,6 +270,43 @@ pipeline AWESOME(
         input = [],
     )
 
+    call STRUCT_CONSUMER(
+        foo   = self.struct_in,
+        y     = self.struct_in.point.y,
+        xarr  = null,
+        point = self.struct_in.point,
+    )
+
+    call STRUCT_CONSUMER as CANIBAL_1(
+        foo   = STRUCT_CONSUMER,
+        y     = STRUCT_CONSUMER.y,
+        xarr  = STRUCT_CONSUMER.arr.x,
+        point = STRUCT_CONSUMER.point,
+    )
+
+    call STRUCT_CONSUMER as CANIBAL_2(
+        foo   = STRUCT_CONSUMER.extra,
+        y     = STRUCT_CONSUMER.extra.point.y,
+        xarr  = STRUCT_CONSUMER.arr.x,
+        point = STRUCT_CONSUMER.extra.point,
+    )
+
+    call MAP_PRODUCER(
+        input = STRUCT_CONSUMER,
+    )
+
+    call MAP_CONSUMER(
+        foo1               = {
+            "item": STRUCT_CONSUMER,
+        },
+        foo2               = MAP_PRODUCER.flat_map,
+        point_array        = MAP_PRODUCER.array.point,
+        map_of_array       = MAP_PRODUCER.flat_map.y,
+        array_2d           = MAP_PRODUCER.array.y,
+        map_of_float_array = MAP_PRODUCER.map_of_array.x,
+        array_of_float_map = MAP_PRODUCER.array_of_map.x,
+    )
+
     return (
         outfile = MERGE_JSON.result,
     )
@@ -321,13 +318,23 @@ pipeline AWESOME(
 
 # Calls the pipelines, sweeping over two forks.
 call AWESOME(
-    key1   = "1",
-    value1 = "one",
-    key2   = "2",
-    value2 = sweep(
+    key1      = "1",
+    value1    = "one",
+    key2      = "2",
+    value2    = sweep(
         "two",
         "deux",
     ),
+    struct_in = {
+        dest: "foo.json",
+        point: {
+            x: 1.5,
+            y: [
+                2,
+                3,
+            ],
+        },
+    },
 )
 `
 

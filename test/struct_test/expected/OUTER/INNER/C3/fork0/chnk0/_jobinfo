@@ -1,0 +1,108 @@
+{
+    "name": "ID.pipeline_test.OUTER.INNER.C3.fork0.chnk0",
+    "pid": 8941,
+    "host": "fpx-l-us0154",
+    "type": "local",
+    "cwd": "/github.com/martian-lang/martian/test/struct_test/pipeline_test/OUTER/INNER/C3/fork0/chnk0/files",
+    "python": {
+        "binpath": "/usr/bin/python",
+        "version": "2.7.15+ (default, Jul  9 2019, 16:51:35) \n[GCC 7.4.0]"
+    },
+    "rusage": {
+        "self": {
+            "ru_maxrss": 8876,
+            "ru_ixrss": 0,
+            "ru_idrss": 0,
+            "ru_minflt": 1058,
+            "ru_majflt": 0,
+            "ru_nswap": 0,
+            "ru_utime": 0,
+            "ru_stime": 0.03125,
+            "ru_inblock": 0,
+            "ru_oublock": 0,
+            "ru_msgsnd": 0,
+            "ru_msgrcv": 0,
+            "ru_nsignals": 0,
+            "ru_nivcsw": 0
+        },
+        "children": {
+            "ru_maxrss": 9128,
+            "ru_ixrss": 0,
+            "ru_idrss": 0,
+            "ru_minflt": 2710,
+            "ru_majflt": 0,
+            "ru_nswap": 0,
+            "ru_utime": 0,
+            "ru_stime": 0.109375,
+            "ru_inblock": 0,
+            "ru_oublock": 0,
+            "ru_msgsnd": 0,
+            "ru_msgrcv": 0,
+            "ru_nsignals": 0,
+            "ru_nivcsw": 0
+        }
+    },
+    "used_bytes": {
+        "rss": 9089024,
+        "shared": 2703360,
+        "vmem": 582762496,
+        "text": 2248704,
+        "stack": 575311872,
+        "proc_count": 1
+    },
+    "io": {
+        "total": {
+            "read": {
+                "sysc": 0,
+                "bytes": 0
+            },
+            "write": {
+                "sysc": 0,
+                "bytes": 0
+            }
+        },
+        "max": {
+            "read": {
+                "sysc": 0,
+                "bytes": 0
+            },
+            "write": {
+                "sysc": 0,
+                "bytes": 0
+            }
+        },
+        "dev": {
+            "read": {
+                "sysc": 0,
+                "bytes": 0
+            },
+            "write": {
+                "sysc": 0,
+                "bytes": 0
+            }
+        }
+    },
+    "wallclock": {
+        "start": "2019-09-17 13:19:15",
+        "end": "2019-09-17 13:19:15",
+        "duration_seconds": 0.141266
+    },
+    "threads": 1,
+    "memGB": 1,
+    "vmemGB": 4,
+    "profile_mode": "disable",
+    "stackvars_flag": "disable",
+    "monitor_flag": "disable",
+    "invocation": {
+        "call": "OUTER",
+        "args": {
+            "foo": 1
+        },
+        "sweepargs": [],
+        "mro_file": "pipeline.mro"
+    },
+    "version": {
+        "martian": "'v3.2.5-pre1-72-g61dbe6a3-dirty'",
+        "pipelines": "v3.2.5-pre1-72-g61dbe6a3-dirty"
+    }
+}

@@ -14,7 +14,6 @@ import (
 	"path"
 	"path/filepath"
 	"runtime/trace"
-	"strings"
 	"sync"
 	"syscall"
 	"time"
@@ -33,29 +32,20 @@ type Stagestance struct {
 	node *Node
 }
 
-func NewStagestance(parent Nodable, callStm *syntax.CallStm, callables *syntax.Callables) (*Stagestance, error) {
+func NewStagestance(parent Nodable, call *syntax.CallGraphStage) (*Stagestance, error) {
 	self := &Stagestance{}
-	self.node = NewNode(parent, "stage", callStm, callables)
-	stage, ok := callables.Table[callStm.DecId].(*syntax.Stage)
-	if !ok {
-		return nil, &RuntimeError{fmt.Sprintf("'%s' is not a declared stage", callStm.DecId)}
-	}
+	self.node = NewNode(parent, call)
+	stage := call.Callable().(*syntax.Stage)
 
-	stagecodePath, err := stage.Src.FindPath(append(self.node.mroPaths, filepath.SplitList(os.Getenv("PATH"))...))
+	stagecodePath, err := stage.Src.FindPath(append(self.node.top.mroPaths, filepath.SplitList(os.Getenv("PATH"))...))
 	if err != nil {
 		util.PrintError(err, "runtime", "WARNING: stage code not found")
 	}
-	// While it should have been checked at compile time (at least for
-	// python stages), it's better to have a relative path here than
-	// an empty string if the path no longer resolves.
-	self.node.stagecodeCmd = strings.Join(append([]string{stagecodePath}, stage.Src.Args...), " ")
-	if self.node.stagecodeLang, err = stage.Src.Lang.Parse(); err != nil {
-		return self, fmt.Errorf("Unsupported language in stage %s: %v", callStm.DecId, stage.Src.Lang)
-	}
-	if self.node.rt.Config.StressTest {
-		switch self.node.stagecodeLang {
+	self.node.resolvedCmd = stagecodePath
+	if self.node.top.rt.Config.StressTest {
+		switch self.node.stagecode.Type {
 		case syntax.PythonStage:
-			self.node.stagecodeCmd = util.RelPath(path.Join("..", "adapters", "python", "tester"))
+			self.node.stagecode.Path = util.RelPath(path.Join("..", "adapters", "python", "tester"))
 		default:
 			return self, fmt.Errorf("Unsupported stress test language: %v", stage.Src.Lang)
 		}
@@ -67,9 +57,17 @@ func NewStagestance(parent Nodable, callStm *syntax.CallStm, callables *syntax.C
 			VMemGB:  int(stage.Resources.VMemGB),
 			Special: stage.Resources.Special,
 		}
-		self.node.strictVolatile = stage.Resources.StrictVolatile
 	}
-	self.node.buildForks(self.node.argbindingList)
+
+	var finder expSetBuilder
+	finder.AddPrenodes(self.node.prenodes)
+	finder.AddBindings(call.ResolvedInputs())
+	for _, exp := range self.node.call.Disabled() {
+		finder.AddForkRoots(exp)
+	}
+	self.node.forkRoots = finder.Exps
+	self.node.buildForks()
+
 	if stage.Retain != nil {
 		for _, param := range stage.Retain.Params {
 			for _, fork := range self.node.forks {
@@ -92,7 +90,7 @@ func NewStagestance(parent Nodable, callStm *syntax.CallStm, callables *syntax.C
 }
 
 func (self *Stagestance) getNode() *Node    { return self.node }
-func (self *Stagestance) GetFQName() string { return self.node.fqname }
+func (self *Stagestance) GetFQName() string { return self.node.GetFQName() }
 
 func (self *Stagestance) GetPrenodes() map[string]Nodable {
 	return self.node.GetPrenodes()
@@ -107,8 +105,8 @@ func (self *Stagestance) Callable() syntax.Callable {
 }
 
 func (self *Stagestance) Step() bool {
-	if err := self.node.rt.JobManager.refreshResources(
-		self.node.rt.Config.JobMode == "local"); err != nil {
+	if err := self.node.top.rt.JobManager.refreshResources(
+		self.node.top.rt.Config.JobMode == "local"); err != nil {
 		util.LogError(err, "runtime",
 			"Error refreshing resources: %s", err.Error())
 	}
@@ -142,7 +140,7 @@ type Pipestance struct {
 
 /* Run a script whenever a pipestance finishes */
 func (self *Pipestance) OnFinishHook(outerCtx context.Context) {
-	if exec_path := self.getNode().rt.Config.OnFinishHandler; exec_path != "" {
+	if exec_path := self.getNode().top.rt.Config.OnFinishHandler; exec_path != "" {
 		ctx, task := trace.NewTask(outerCtx, "onfinish")
 		defer task.End()
 		util.Println("\nRunning onfinish handler...")
@@ -152,7 +150,7 @@ func (self *Pipestance) OnFinishHook(outerCtx context.Context) {
 		// $2 = {complete|failed}
 		// $3 = pipestance ID
 		// $4 = path to error file (if there was an error)
-		args := []string{self.GetPath(), string(self.GetState(ctx)), self.getNode().name}
+		args := []string{self.GetPath(), string(self.GetState(ctx)), self.node.top.GetPsid()}
 		if self.GetState(ctx) == Failed {
 			_, _, _, _, _, err_paths := self.GetFatalError()
 			if len(err_paths) > 0 {
@@ -196,62 +194,21 @@ func (self *Pipestance) OnFinishHook(outerCtx context.Context) {
 	}
 }
 
-// If the top-level call is a stage, not a pipeline, create a "fake" pipeline
-// which wraps that stage.
-func wrapStageAsPipeline(call *syntax.CallStm, stage *syntax.Stage) *syntax.Pipeline {
-	returns := &syntax.BindStms{
-		List:  make([]*syntax.BindStm, 0, len(stage.OutParams.List)),
-		Table: make(map[string]*syntax.BindStm, len(stage.OutParams.List)),
-	}
-	for _, param := range stage.OutParams.List {
-		binding := &syntax.BindStm{
-			Id:    param.Id,
-			Tname: param.Tname,
-			Exp: &syntax.RefExp{
-				Kind:     syntax.KindCall,
-				Id:       stage.Id,
-				OutputId: param.Id,
-			},
-		}
-		returns.List = append(returns.List, binding)
-		returns.Table[param.Id] = binding
-	}
-	return &syntax.Pipeline{
-		Node:  stage.Node,
-		Calls: []*syntax.CallStm{call},
-		Ret:   &syntax.ReturnStm{Bindings: returns},
-	}
-}
-
-func NewPipestance(parent Nodable, callStm *syntax.CallStm, callables *syntax.Callables) (*Pipestance, error) {
+func NewPipestance(parent Nodable, call *syntax.CallGraphPipeline) (*Pipestance, error) {
 	self := &Pipestance{}
-	self.node = NewNode(parent, "pipeline", callStm, callables)
-	self.metadata = NewMetadata(self.node.parent.getNode().fqname, self.GetPath())
+	self.node = NewNode(parent, call)
+	self.metadata = NewMetadata(self.node.parent.GetFQName(), self.GetPath())
 
 	// Build subcall tree.
-	var pipeline *syntax.Pipeline
-	if callable := callables.Table[callStm.DecId]; callable == nil {
-		return nil, &RuntimeError{fmt.Sprintf(
-			"'%s' is not a declared stage or pipeline",
-			callStm.DecId)}
-	} else if p, ok := callable.(*syntax.Pipeline); ok {
-		pipeline = p
-	} else if s, ok := callable.(*syntax.Stage); ok {
-		pipeline = wrapStageAsPipeline(callStm, s)
-	} else {
-		return nil, &RuntimeError{fmt.Sprintf(
-			"'%s' of type %T is not a declared stage or pipeline",
-			callStm.DecId, callable)}
-	}
+	pipeline := call.Callable().(*syntax.Pipeline)
 	preflightNodes := []Nodable{}
-	for _, subcallStm := range pipeline.Calls {
-		callable := callables.Table[subcallStm.DecId]
-		switch callable.(type) {
-		case *syntax.Stage:
-			if s, err := NewStagestance(self.node, subcallStm, callables); err != nil {
+	for _, subcall := range call.Children {
+		switch subcall := subcall.(type) {
+		case *syntax.CallGraphStage:
+			if s, err := NewStagestance(self.node, subcall); err != nil {
 				return nil, err
 			} else {
-				self.node.subnodes[subcallStm.Id] = s
+				self.node.subnodes[subcall.Call().Id] = s
 
 				// check if the stage is a preflight.  Preflights have no
 				// outputs, cannot take a dependency on another stage in the
@@ -259,52 +216,75 @@ func NewPipestance(parent Nodable, callStm *syntax.CallStm, callables *syntax.Ca
 				// pipeline.
 				//
 				// Only stages can be preflight.
-				if s.getNode().preflight {
-					preflightNodes = append(preflightNodes, self.node.subnodes[subcallStm.Id])
+				if subcall.Call().Modifiers.Preflight {
+					preflightNodes = append(preflightNodes, s)
 				}
 			}
-		case *syntax.Pipeline:
-			if p, err := NewPipestance(self.node, subcallStm, callables); err != nil {
+		case *syntax.CallGraphPipeline:
+			if p, err := NewPipestance(self.node, subcall); err != nil {
 				return nil, err
 			} else {
-				self.node.subnodes[subcallStm.Id] = p
+				self.node.subnodes[subcall.Call().Id] = p
 			}
 		default:
-			return nil, fmt.Errorf("Unsupported callable type %v", callable)
+			return nil, fmt.Errorf("Unsupported callable type %v", subcall)
 		}
 	}
 
 	// Also depends on stages bound to return values.
-	self.node.retbindings = map[string]*Binding{}
-	for id, bindStm := range pipeline.Ret.Bindings.Table {
-		binding := NewReturnBinding(self.node, bindStm)
-		self.node.retbindings[id] = binding
-		self.node.retbindingList = append(self.node.retbindingList, binding)
-	}
-	self.node.attachBindings(self.node.retbindingList)
-	if pipeline.Retain != nil {
-		for _, retain := range pipeline.Retain.Refs {
-			self.retain(retain)
-		}
+	if r := pipeline.Ret; r != nil && r.Bindings != nil && len(r.Bindings.List) > 0 {
+		self.node.makeReturnBindings(r.Bindings.List)
 	}
 
 	// Add preflight dependencies if preflight stages exist.
 	for _, preflightNode := range preflightNodes {
 		for _, subnode := range self.node.subnodes {
-			if !subnode.getNode().preflight {
+			if !subnode.getNode().call.Call().Modifiers.Preflight {
 				subnode.getNode().setPrenode(preflightNode)
 			}
 		}
 	}
+	var finder expSetBuilder
+	finder.AddPrenodes(self.node.prenodes)
+	finder.AddBindings(call.ResolvedInputs())
+	finder.AddForkRoots(call.ResolvedOutputs().Exp)
+	for _, exp := range self.node.call.Disabled() {
+		finder.AddForkRoots(exp)
+	}
+	self.node.forkRoots = finder.Exps
 
-	self.node.buildForks(self.node.retbindingList)
+	self.node.buildForks()
+
+	if rs := call.Retained(); len(rs) > 0 {
+		for _, r := range rs {
+			node := self.node.top.allNodes[r.Id]
+			if node == nil {
+				return self, fmt.Errorf("Retaining unknown node %s", r.Id)
+			}
+			for _, fork := range node.forks {
+				if fork.fileArgs == nil {
+					fork.fileArgs = make(
+						map[string]map[Nodable]struct{},
+						len(rs))
+				}
+				if arg := fork.fileArgs[r.OutputId]; arg == nil {
+					fork.fileArgs[r.OutputId] = map[Nodable]struct{}{
+						nil: {},
+					}
+				} else {
+					arg[nil] = struct{}{}
+				}
+			}
+		}
+	}
+
 	return self, nil
 }
 
 func (self *Pipestance) getNode() *Node    { return self.node }
-func (self *Pipestance) GetPname() string  { return self.node.name }
-func (self *Pipestance) GetPsid() string   { return self.node.parent.getNode().name }
-func (self *Pipestance) GetFQName() string { return self.node.fqname }
+func (self *Pipestance) GetPname() string  { return self.node.call.Call().Id }
+func (self *Pipestance) GetPsid() string   { return self.node.top.GetPsid() }
+func (self *Pipestance) GetFQName() string { return self.node.GetFQName() }
 func (self *Pipestance) RefreshState(ctx context.Context) {
 	r := trace.StartRegion(ctx, "refresh")
 	defer r.End()
@@ -409,7 +389,7 @@ func (self *Pipestance) RestartRunningNodes(jobMode string, outerCtx context.Con
 	localNodes := []*Node{}
 	for _, node := range nodes {
 		if node.state == Running {
-			util.PrintInfo("runtime", "Found orphaned stage: %s", node.fqname)
+			util.PrintInfo("runtime", "Found orphaned stage: %s", node.GetFQName())
 			if jobMode == "local" || node.local {
 				localNodes = append(localNodes, node)
 			}
@@ -438,7 +418,7 @@ func (self *Pipestance) RestartLocalJobs(jobMode string) error {
 			}
 		}
 		if node.state == Running && (jobMode == "local" || node.local) {
-			util.PrintInfo("runtime", "Found orphaned local stage: %s", node.fqname)
+			util.PrintInfo("runtime", "Found orphaned local stage: %s", node.GetFQName())
 			if err := node.restartLocalJobs(); err != nil {
 				return err
 			}
@@ -470,9 +450,9 @@ func (self *Pipestance) queryQueue(outerCtx context.Context) {
 			task.End()
 		}
 	}()
-	if self.node == nil || self.node.rt == nil ||
-		self.node.rt.JobManager == nil ||
-		!self.node.rt.JobManager.hasQueueCheck() {
+	if self.node == nil || self.node.top == nil || self.node.top.rt == nil ||
+		self.node.top.rt.JobManager == nil ||
+		!self.node.top.rt.JobManager.hasQueueCheck() {
 		return
 	}
 	QUEUE_CHECK_LIMIT := 5 * time.Minute
@@ -519,7 +499,7 @@ func (self *Pipestance) queryQueue(outerCtx context.Context) {
 	prepDone = true
 	go func(ctx context.Context, task *trace.Task) {
 		defer task.End()
-		queued, raw := self.node.rt.JobManager.checkQueue(jobsIn, ctx)
+		queued, raw := self.node.top.rt.JobManager.checkQueue(jobsIn, ctx)
 		for _, id := range queued {
 			delete(needsQuery, id)
 		}
@@ -596,13 +576,13 @@ func (self *Pipestance) StepNodes(ctx context.Context) bool {
 			return false
 		}
 	}
-	if err := self.node.rt.LocalJobManager.refreshResources(
-		self.node.rt.Config.JobMode == "local"); err != nil {
+	if err := self.node.top.rt.LocalJobManager.refreshResources(
+		self.node.top.rt.Config.JobMode == "local"); err != nil {
 		util.LogError(err, "runtime",
 			"Error refreshing local resources: %s", err.Error())
 	}
-	if self.node.rt.LocalJobManager != self.node.rt.JobManager {
-		if err := self.node.rt.JobManager.refreshResources(false); err != nil {
+	if self.node.top.rt.LocalJobManager != self.node.top.rt.JobManager {
+		if err := self.node.top.rt.JobManager.refreshResources(false); err != nil {
 			util.LogError(err, "runtime",
 				"Error refreshing cluster resources: %s", err.Error())
 		}
@@ -653,7 +633,7 @@ func (self *Pipestance) SerializePerf() []*NodePerfInfo {
 	if len(ser) > 0 {
 		overallPerf := ser[0]
 		self.ComputeDiskUsage(overallPerf)
-		overallPerf.HighMem = &self.node.rt.LocalJobManager.highMem
+		overallPerf.HighMem = &self.node.top.rt.LocalJobManager.highMem
 	}
 	return ser
 }
@@ -684,7 +664,7 @@ func (self *Pipestance) ComputeDiskUsage(nodePerf *NodePerfInfo) *NodePerfInfo {
 						} else {
 							return fmt.Sprintf("%s delete", name)
 						}
-					}(node.fqname, ev)))
+					}(node.GetFQName(), ev)))
 			}
 		}
 	}
@@ -708,7 +688,7 @@ func (self *Pipestance) ComputeDiskUsage(nodePerf *NodePerfInfo) *NodePerfInfo {
 }
 
 func (self *Pipestance) ZipMetadata(zipPath string) error {
-	if !self.node.rt.Config.Zip {
+	if !self.node.top.rt.Config.Zip {
 		return nil
 	}
 
@@ -753,14 +733,14 @@ func (self *Pipestance) GetPath() string {
 }
 
 func (self *Pipestance) GetInvocation() interface{} {
-	return self.node.parent.getNode().invocation
+	return self.node.parent.getNode().top.invocation
 }
 
 func (self *Pipestance) VerifyJobMode() error {
 	self.metadata.loadCache()
 	if self.metadata.exists(JobModeFile) {
 		jobMode := self.metadata.readRaw(JobModeFile)
-		if jobMode != self.node.rt.Config.JobMode {
+		if jobMode != self.node.top.rt.Config.JobMode {
 			return &PipestanceJobModeError{self.GetPsid(), jobMode}
 		}
 	}
@@ -838,7 +818,7 @@ func (self *Pipestance) SetUuid(uuid string) error {
 func (self *Pipestance) Lock() error {
 	self.metadata.loadCache()
 	if self.metadata.exists(Lock) {
-		return &PipestanceLockedError{self.node.parent.getNode().name, self.GetPath()}
+		return &PipestanceLockedError{self.node.top.GetPsid(), self.GetPath()}
 	}
 	util.RegisterSignalHandler(self)
 	self.metadata.WriteTime(Lock)
@@ -892,13 +872,27 @@ func (self *threadSafeNodeMap) GetNodes() []*Node {
 
 // The top-level node for a pipestance.
 type TopNode struct {
-	node *Node
+	node        Node
+	fqname      string
+	rt          *Runtime
+	types       *syntax.TypeLookup
+	journalPath string
+	tmpPath     string
+	mroPaths    []string
+	envs        map[string]string
+	invocation  *InvocationData
+	version     VersionInfo
+	allNodes    map[string]*Node
 }
 
-func (self *TopNode) getNode() *Node { return self.node }
+func (self *TopNode) getNode() *Node { return &self.node }
 
 func (self *TopNode) GetFQName() string {
-	return self.node.fqname
+	return self.fqname
+}
+
+func (self *TopNode) GetPsid() string {
+	return self.fqname[3:]
 }
 
 func (self *TopNode) GetPrenodes() map[string]Nodable {
@@ -913,29 +907,39 @@ func (self *TopNode) Callable() syntax.Callable {
 	return nil
 }
 
-func NewTopNode(rt *Runtime, psid string, p string, mroPaths []string, mroVersion string,
-	envs map[string]string, j *InvocationData) *TopNode {
-	self := &TopNode{}
-	self.node = &Node{}
-	self.node.frontierNodes = &threadSafeNodeMap{nodes: make(map[string]Nodable)}
-	self.node.path = p
-	self.node.mroPaths = mroPaths
-	self.node.mroVersion = mroVersion
-	self.node.invocation = j
-	self.node.rt = rt
-	self.node.journalPath = path.Join(self.node.path, "journal")
-	self.node.tmpPath = path.Join(self.node.path, "tmp")
-	self.node.fqname = "ID." + psid
-	self.node.name = psid
+func (self *TopNode) Types() *syntax.TypeLookup {
+	return self.types
+}
 
-	// Since we must set other required Martian environment variables,
-	// we must make a copy of envs so as not to overwrite envs for
-	// other pipestances / stagestances.
-	self.node.envs = make(map[string]string, len(envs))
-	for key, value := range envs {
-		self.node.envs[key] = value
+func NewTopNode(rt *Runtime, fqname string, p string,
+	mroPaths []string, mroVersion string,
+	envs map[string]string, j *InvocationData,
+	types *syntax.TypeLookup) *TopNode {
+	self := &TopNode{
+		fqname:     fqname,
+		rt:         rt,
+		types:      types,
+		invocation: j,
+		mroPaths:   mroPaths,
+		version: VersionInfo{
+			Pipelines: mroVersion,
+			Martian:   rt.Config.MartianVersion,
+		},
+		node: Node{
+			frontierNodes: &threadSafeNodeMap{nodes: make(map[string]Nodable)},
+			path:          p,
+		},
+		journalPath: path.Join(p, "journal"),
+		tmpPath:     path.Join(p, "tmp"),
+		envs:        make(map[string]string, len(envs)+1),
+		allNodes:    make(map[string]*Node),
 	}
-	self.node.envs["TMPDIR"] = self.node.tmpPath
+	self.node.top = self
+
+	for key, value := range envs {
+		self.envs[key] = value
+	}
+	self.envs["TMPDIR"] = self.tmpPath
 
 	return self
 }

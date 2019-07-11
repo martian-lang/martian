@@ -432,6 +432,6 @@ func (parser *Parser) Compile(fpath string,
 }
 
 // Parse a byte string to a *ValExp object.
-func (parser *Parser) ParseValExp(data []byte) (*ValExp, error) {
+func (parser *Parser) ParseValExp(data []byte) (ValExp, error) {
 	return parseExp(data, &SourceFile{FileName: "[]byte"}, parser.getIntern())
 }

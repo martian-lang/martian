@@ -1293,3 +1293,469 @@ call SQUARE(
 )
 `, "ScopeNameError")
 }
+
+func TestDuplicateStructOutNames(t *testing.T) {
+	t.Parallel()
+	const src = `
+struct X(
+    file foo "foo.txt",
+	file bar "foo.%s",
+)
+`
+	testGood(t, fmt.Sprintf(src, "csv"))
+	testBadCompile(t, fmt.Sprintf(src, "txt"),
+		"DuplicateNameError")
+}
+
+func TestBadStructBinding(t *testing.T) {
+	t.Parallel()
+	testBadCompile(t, `
+struct DEST(
+    int x,
+)
+
+stage SOURCE(
+    in  int x,
+    out int y,
+    src py "foo",
+)
+
+pipeline CALLING(
+    in  int x,
+    out DEST result,
+)
+{
+    call SOURCE(
+        x = self.x,
+    )
+
+    return (
+        result = {
+            x: SOURCE.x,
+        },
+    )
+}
+`, "NoSuchOutputError")
+	testBadCompile(t, `
+struct DEST(
+    int x,
+)
+
+stage SOURCE(
+    in  int x,
+    out int y,
+    src py "foo",
+)
+
+pipeline CALLING(
+    in  int x,
+    out DEST result,
+)
+{
+    call SOURCE(
+        x = self.x,
+    )
+
+    return (
+        result = SOURCE,
+    )
+}
+`, "no member x")
+	testGood(t, `
+struct DEST(
+    int y,
+)
+
+stage SOURCE(
+    in  int x,
+    out int y,
+    src py "foo",
+)
+
+pipeline CALLING(
+    in  int x,
+    out DEST result,
+)
+{
+    call SOURCE(
+        x = self.x,
+    )
+
+    return (
+        result = SOURCE,
+    )
+}
+`)
+	testBadCompile(t, `
+struct DEST(
+    int[] y,
+)
+
+stage SOURCE(
+    in  int x,
+    out int y,
+    src py "foo",
+)
+
+pipeline CALLING(
+    in  int x,
+    out DEST result,
+)
+{
+    call SOURCE(
+        x = self.x,
+    )
+
+    return (
+        result = SOURCE,
+    )
+}
+`, "differing array dimensions")
+	testBadCompile(t, `
+struct DEST(
+    map<int> y,
+)
+
+stage SOURCE(
+    in  int x,
+    out int y,
+    src py "foo",
+)
+
+pipeline CALLING(
+    in  int x,
+    out DEST result,
+)
+{
+    call SOURCE(
+        x = self.x,
+    )
+
+    return (
+        result = SOURCE,
+    )
+}
+`, "not a map")
+	testBadCompile(t, `
+struct DEST(
+    map<int[]> y,
+)
+
+stage SOURCE(
+    in  int      x,
+    out map<int> y,
+    src py       "foo",
+)
+
+pipeline CALLING(
+    in  int x,
+    out DEST result,
+)
+{
+    call SOURCE(
+        x = self.x,
+    )
+
+    return (
+        result = SOURCE,
+    )
+}
+`, "differing inner array dimensions")
+	testBadCompile(t, `
+struct DEST(
+    int y,
+)
+
+stage SOURCE(
+    in  int   x,
+    out int[] y,
+    src py    "foo",
+)
+
+pipeline CALLING(
+    in  int x,
+    out DEST result,
+)
+{
+    call SOURCE(
+        x = self.x,
+    )
+
+    return (
+        result = SOURCE,
+    )
+}
+`, "differing array dimensions")
+	testBadCompile(t, `
+struct DEST(
+    int y,
+)
+
+stage SOURCE(
+    in  int      x,
+    out map<int> y,
+    src py       "foo",
+)
+
+pipeline CALLING(
+    in  int x,
+    out DEST result,
+)
+{
+    call SOURCE(
+        x = self.x,
+    )
+
+    return (
+        result = SOURCE,
+    )
+}
+`, "unexpected map")
+	testBadCompile(t, `
+struct DEST(
+    int y,
+)
+
+stage SOURCE(
+    in  int    x,
+    out DEST[] y,
+    src py     "foo",
+)
+
+pipeline CALLING(
+    in  int x,
+    out DEST result,
+)
+{
+    call SOURCE(
+        x = self.x,
+    )
+
+    return (
+        result = SOURCE.y,
+    )
+}
+`, "binding is an array")
+	testBadCompile(t, `
+struct DEST(
+    int y,
+)
+
+stage SOURCE(
+    in  int       x,
+    out map<DEST> y,
+    src py        "foo",
+)
+
+pipeline CALLING(
+    in  int x,
+    out DEST result,
+)
+{
+    call SOURCE(
+        x = self.x,
+    )
+
+    return (
+        result = SOURCE.y,
+    )
+}
+`, "binding is a map")
+	testBadCompile(t, `
+struct DEST(
+    int y,
+)
+
+stage SOURCE(
+    in  int  x,
+    out DEST y,
+    src py   "foo",
+)
+
+pipeline CALLING(
+    in  int x,
+    out int result,
+)
+{
+    call SOURCE(
+        x = self.x,
+    )
+
+    return (
+        result = SOURCE.y.x,
+    )
+}
+`, "could not evaluate SOURCE.y.x")
+	testBadCompile(t, `
+struct DEST(
+    int y,
+)
+
+stage SOURCE(
+    in  int  x,
+    out DEST y,
+    src py   "foo",
+)
+
+pipeline CALLING(
+    in  DEST x,
+    out int  result,
+)
+{
+    call SOURCE(
+        x = self.x.x,
+    )
+
+    return (
+        result = SOURCE.y.y,
+    )
+}
+`, "could not evaluate self.x.x")
+}
+
+func TestBadArrayBinding(t *testing.T) {
+	t.Parallel()
+	testBadCompile(t, `
+stage SOURCE(
+    in  int     x,
+    out float[] y,
+    src py "foo",
+)
+
+pipeline CALLING(
+    in  int   x,
+    out int[] result,
+)
+{
+    call SOURCE(
+        x = self.x,
+    )
+
+    return (
+        result = SOURCE.y,
+    )
+}
+`, "float cannot be assigned to int")
+}
+
+func TestBadMapBinding(t *testing.T) {
+	t.Parallel()
+	testBadCompile(t, `
+stage SOURCE(
+    in  int        x,
+    out map<float> y,
+    src py         "foo",
+)
+
+pipeline CALLING(
+    in  int      x,
+    out map<int> result,
+)
+{
+    call SOURCE(
+        x = self.x,
+    )
+
+    return (
+        result = SOURCE.y,
+    )
+}
+`, "float cannot be assigned to int")
+	testBadCompile(t, `
+stage SOURCE(
+    in  int x,
+    out int y,
+    src py  "foo",
+)
+
+pipeline CALLING(
+    in  int      x,
+    out map<int> result,
+)
+{
+    call SOURCE(
+        x = self.x,
+    )
+
+    return (
+        result = SOURCE.y,
+    )
+}
+`, "not a typed map")
+	testBadCompile(t, `
+stage SOURCE(
+    in  int   x,
+    out int   y,
+	out float z,
+    src py    "foo",
+)
+
+pipeline CALLING(
+    in  int      x,
+    out map<int> result,
+)
+{
+    call SOURCE(
+        x = self.x,
+    )
+
+    return (
+        result = {
+			"y": SOURCE.y,
+			"z": SOURCE.z,
+		},
+    )
+}
+`, "float cannot be assigned to int")
+}
+
+// Tests that typed maps which would be directories in final outs reject keys
+// which are not legal posix file names.
+func TestTypedMapKeys(t *testing.T) {
+	t.Parallel()
+	const pipeline = `
+filetype json;
+
+stage STAGE(
+    in  json i,
+    out json o,
+    src py   "foo.py",
+)
+
+pipeline BAR(
+    in  json      i,
+    out map<json> o,
+)
+{
+    call STAGE(
+        i = self.i,
+    )
+
+    return(
+        o = {
+            "%s": STAGE.o,
+        },
+    )
+}
+`
+	testGood(t, fmt.Sprintf(pipeline, "s2"))
+	testBadCompile(t,
+		fmt.Sprintf(pipeline, "a/s2"),
+		"'/' is not allowed")
+	testBadCompile(t,
+		fmt.Sprintf(pipeline, ""),
+		"empty string")
+	testBadCompile(t,
+		fmt.Sprintf(pipeline, ".."),
+		"reserved name")
+	testBadCompile(t,
+		fmt.Sprintf(pipeline, `\x00`),
+		"null character")
+	testBadCompile(t,
+		fmt.Sprintf(pipeline,
+			`0123456789012345678901234567890123456789012345678901234567890123`+
+				`0123456789012345678901234567890123456789012345678901234567890123`+
+				`0123456789012345678901234567890123456789012345678901234567890123`+
+				`0123456789012345678901234567890123456789012345678901234567890123`),
+		"too long")
+}

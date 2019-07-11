@@ -22,7 +22,7 @@ type mmLexInfo struct {
 	previous []byte //
 	token    []byte // Cache the last token for error messaging
 	global   *Ast
-	exp      *ValExp // If parsing an expression, rather than an AST.
+	exp      ValExp // If parsing an expression, rather than an AST.
 	srcfile  *SourceFile
 	comments []*commentBlock
 	// for many byte->string conversions, the same string is expected
@@ -169,7 +169,7 @@ func yaccParse(src []byte, file *SourceFile, intern *stringIntern) (*Ast, error)
 }
 
 // parseExp parses a ValExp from a byte array.
-func parseExp(src []byte, file *SourceFile, intern *stringIntern) (*ValExp, error) {
+func parseExp(src []byte, file *SourceFile, intern *stringIntern) (ValExp, error) {
 	if result, info := yaccParseAny(src, file, intern); result != 0 {
 		return nil, &info // return lex on error to provide loc and token info
 	} else if info.info.exp == nil {

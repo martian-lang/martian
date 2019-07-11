@@ -1,0 +1,2 @@
+Tests for a pipeline which runs a stage, twice, and returns
+its outputs as structures and typed maps.

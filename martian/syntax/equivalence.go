@@ -6,8 +6,6 @@ package syntax
 
 import (
 	"math"
-	"reflect"
-	"strings"
 
 	"github.com/martian-lang/martian/martian/util"
 )
@@ -150,7 +148,7 @@ func (params *InParams) Equals(other *InParams) bool {
 			return false
 		} else if arg.IsFile() != oa.IsFile() {
 			return false
-		} else if !arg.IsFile() && arg.GetTname() != oa.GetTname() {
+		} else if arg.IsFile() != KindIsFile && arg.GetTname() != oa.GetTname() {
 			return false
 		}
 	}
@@ -179,9 +177,11 @@ func (params *OutParams) Equals(other *OutParams, checkOutNames bool) bool {
 			return false
 		} else if arg.IsFile() != oa.IsFile() {
 			return false
-		} else if !arg.IsFile() && arg.GetTname() != oa.GetTname() {
+		} else if fk := arg.IsFile(); fk != KindIsFile &&
+			arg.GetTname() != oa.GetTname() {
 			return false
-		} else if checkOutNames && arg.GetOutName() != oa.GetOutName() {
+		} else if (fk == KindIsFile || fk == KindIsDirectory) &&
+			checkOutNames && arg.GetOutName() != oa.GetOutName() {
 			return false
 		}
 	}
@@ -297,144 +297,159 @@ func (binding *BindStm) Equals(other *BindStm) bool {
 	return true
 }
 
-func (exp *ValExp) equal(other Exp) bool {
-	if exp == nil {
-		return other == nil
-	} else if other == nil {
-		return false
-	} else if ov, ok := other.(*ValExp); !ok {
+func (exp *StringExp) equal(other Exp) bool {
+	if s, ok := other.(*StringExp); !ok {
 		util.PrintInfo("compare",
-			"Value are not both literals.")
+			"Values are not both strings.  Other is %T",
+			other)
+		return false
+	} else if s.Value != exp.Value {
+		util.PrintInfo("compare",
+			"%q != %q",
+			exp.Value, s.Value)
 		return false
 	} else {
-		return exp.equalVal(ov)
+		return true
 	}
 }
 
-func (exp *ValExp) equalVal(ov *ValExp) bool {
-	if exp.Kind == KindArray {
-		// unlike other types, empty array is equivalent to nil
-		return exp.equalArray(ov)
-	} else if exp.Value == nil {
-		return ov.Value == nil
-	} else if ov.Value == nil {
-		return false
-	} else if exp.Kind == KindInt {
-		return exp.equalInt(ov)
-	} else if exp.Kind == KindFloat {
-		return exp.equalFloat(ov)
-	} else if exp.Kind != ov.Kind {
+func (exp *BoolExp) equal(other Exp) bool {
+	if b, ok := other.(*BoolExp); !ok {
 		util.PrintInfo("compare",
-			"Value type %v != %v",
-			exp.Kind, ov.Kind)
+			"Values are not both boolean.  Other is %T",
+			b)
 		return false
-	} else if exp.Value == nil {
-		return ov.Value == nil
-	} else if reflect.DeepEqual(exp.Value, ov.Value) {
-		return true
+	} else if b.Value != exp.Value {
+		util.PrintInfo("compare",
+			"Differing boolean values")
+		return false
 	} else {
-		// Check format equivalence.  This is the most reliable
-		// way to compare two values without replicating a lot of
-		// code.
-		var buf1 strings.Builder
-		exp.format(&buf1, "")
-		var buf2 strings.Builder
-		buf2.Grow(buf1.Len())
-		ov.format(&buf2, "")
-		if buf1.String() != buf2.String() {
+		return true
+	}
+}
+
+func (exp *IntExp) equal(other Exp) bool {
+	switch other := other.(type) {
+	case *IntExp:
+		if other.Value != exp.Value {
 			util.PrintInfo("compare",
-				"Values do not match:\n%s\nvs\n%s",
-				buf1.String(), buf2.String())
+				"%d != %d",
+				other.Value, exp.Value)
+			return false
+		}
+		return true
+	case *FloatExp:
+		if other.Value != float64(exp.Value) {
+			util.PrintInfo("compare",
+				"%g != %d",
+				other.Value, exp.Value)
 			return false
 		}
 		return true
 	}
+	return false
 }
 
-func (exp *ValExp) equalArray(ov *ValExp) bool {
-	if ov.Kind != KindArray {
+func (exp *FloatExp) equal(other Exp) bool {
+	switch other := other.(type) {
+	case *IntExp:
+		if float64(other.Value) != exp.Value {
+			util.PrintInfo("compare",
+				"%d != %g",
+				other.Value, exp.Value)
+			return false
+		}
+		return true
+	case *FloatExp:
+		if math.Abs(other.Value-exp.Value) <= math.Abs(exp.Value)*1e-15 {
+			return true
+		}
+		util.PrintInfo("compare",
+			"%g != %g",
+			other.Value, exp.Value)
 		return false
 	}
-	var a1, a2 []Exp
-	if v, ok := exp.Value.([]Exp); ok {
-		a1 = v
+	return false
+}
+
+func (exp *NullExp) equal(other Exp) bool {
+	_, ok := other.(*NullExp)
+	if !ok {
+		util.PrintInfo("compare",
+			"Values are not both null.  Other is %T",
+			other)
 	}
-	if v, ok := ov.Value.([]Exp); ok {
-		a2 = v
+	return ok
+}
+
+func (exp *MapExp) equal(uother Exp) bool {
+	other, ok := uother.(*MapExp)
+	if !ok {
+		util.PrintInfo("compare",
+			"Values are not both %s.  Other is %T",
+			exp.Kind, other)
+		return false
 	}
-	if len(a1) != len(a2) {
-		util.PrintInfo("compare", "Lengths %d != %d",
-			len(a1), len(a2))
+	if len(exp.Value) != len(other.Value) {
+		util.PrintInfo("compare",
+			"Map sizes differ: %d != %d",
+			len(exp.Value), len(other.Value))
+		return false
 	}
-	for i, v := range a1 {
-		if !v.equal(a2[i]) {
+	for k, v := range exp.Value {
+		if ov, ok := other.Value[k]; !ok {
+			util.PrintInfo("compare",
+				"Missing map key %s",
+				k)
+			return false
+		} else if !v.equal(ov) {
 			return false
 		}
 	}
 	return true
 }
 
-func (exp *ValExp) equalInt(ov *ValExp) bool {
-	if ov.Kind == KindInt {
-		if i, ok := exp.Value.(int64); !ok {
-			if _, ok := ov.Value.(int64); ok {
-				util.PrintInfo("compare", "Inconsistent types %T != %T", exp.Value, ov.Value)
-				return false
-			}
-			return true
-		} else if i2, ok := ov.Value.(int64); !ok {
-			util.PrintInfo("compare", "Inconsistent types %T != %T", exp.Value, ov.Value)
-			return false
-		} else {
-			return i == i2
-		}
-	} else if ov.Kind == KindFloat {
-		if i, ok := exp.Value.(int64); !ok {
-			if _, ok := ov.Value.(float64); ok {
-				util.PrintInfo("compare",
-					"Inconsistent types %T != %T", exp.Value, ov.Value)
-				return false
-			}
-			return true
-		} else if f, ok := ov.Value.(float64); !ok {
-			util.PrintInfo("compare",
-				"Inconsistent types %T != %T", exp.Value, ov.Value)
-			return false
-		} else {
-			return math.Abs(float64(i)-f) < 1e-15
-		}
-	} else {
+func (exp *ArrayExp) equal(uother Exp) bool {
+	other, ok := uother.(*ArrayExp)
+	if !ok {
 		util.PrintInfo("compare",
-			"Value type %v != %v",
-			exp.Kind, ov.Kind)
+			"Values are not both arrays.  Other is %T",
+			other)
 		return false
 	}
+	if len(exp.Value) != len(other.Value) {
+		util.PrintInfo("compare",
+			"Array lengths differ: %d != %d",
+			len(exp.Value), len(other.Value))
+		return false
+	}
+	for i, v := range exp.Value {
+		if !v.equal(other.Value[i]) {
+			return false
+		}
+	}
+	return true
 }
-
-func (exp *ValExp) equalFloat(ov *ValExp) bool {
-	if ov.Kind == KindInt {
-		return ov.equalInt(exp)
-	} else if ov.Kind == KindFloat {
-		if f1, ok := exp.Value.(float64); !ok {
-			if _, ok := ov.Value.(float64); ok {
-				util.PrintInfo("compare",
-					"Inconsistent types %T != %T", exp.Value, ov.Value)
-				return false
-			}
-			return true
-		} else if f2, ok := ov.Value.(float64); !ok {
-			util.PrintInfo("compare",
-				"Inconsistent types %T != %T", exp.Value, ov.Value)
-			return false
-		} else {
-			return math.Abs(f1-f2) < f1*1e-15
-		}
-	} else {
+func (exp *SweepExp) equal(uother Exp) bool {
+	other, ok := uother.(*SweepExp)
+	if !ok {
 		util.PrintInfo("compare",
-			"Value type %v != %v",
-			exp.Kind, ov.Kind)
+			"Values are not both sweeps.  Other is %T",
+			other)
 		return false
 	}
+	if len(exp.Value) != len(other.Value) {
+		util.PrintInfo("compare",
+			"Array lengths differ: %d != %d",
+			len(exp.Value), len(other.Value))
+		return false
+	}
+	for i, v := range exp.Value {
+		if !v.equal(other.Value[i]) {
+			return false
+		}
+	}
+	return true
 }
 
 func (exp *RefExp) equal(other Exp) bool {

@@ -6,14 +6,16 @@
 package main
 
 import (
+	"encoding/json"
 	"fmt"
-	"github.com/martian-lang/martian/martian/core"
-	"github.com/martian-lang/martian/martian/syntax"
-	"github.com/martian-lang/martian/martian/util"
 	"os"
 	"path"
 	"path/filepath"
 	"regexp"
+
+	"github.com/martian-lang/martian/martian/core"
+	"github.com/martian-lang/martian/martian/syntax"
+	"github.com/martian-lang/martian/martian/util"
 
 	"github.com/martian-lang/docopt.go"
 )
@@ -31,6 +33,7 @@ Usage:
 
 Options:
     --all           Compile all files in $MROPATH.
+    --graph         Output the resolved call graph as json.
     --json          Output abstract syntax tree as JSON.
     --strict        Strict syntax validation
     --no-check-src  Do not check that stage source paths exist.
@@ -63,6 +66,7 @@ Options:
 		}
 	}
 	mkjson := opts["--json"].(bool)
+	callgraph := opts["--graph"].(bool)
 	mkdot := opts["--dot"].(bool)
 
 	count := 0
@@ -78,6 +82,9 @@ Options:
 
 		if mkjson {
 			fmt.Printf("%s", syntax.JsonDumpAsts(asts))
+		}
+		if callgraph {
+			printCallGraphs(asts)
 		}
 		if mkdot {
 			for _, ast := range asts {
@@ -123,7 +130,7 @@ Options:
 					}
 				}
 
-				if mkjson {
+				if mkjson || callgraph {
 					asts = append(asts, ast)
 				}
 				if mkdot && len(ast.Pipelines) > 0 {
@@ -136,10 +143,57 @@ Options:
 		if mkjson {
 			fmt.Printf("%s\n", syntax.JsonDumpAsts(asts))
 		}
+		if callgraph {
+			printCallGraphs(asts)
+		}
 	}
 	fmt.Fprintln(os.Stderr, "Successfully compiled", count, "mro files.")
 
 	if wasErr {
 		os.Exit(1)
 	}
+}
+
+func printCallGraphs(asts []*syntax.Ast) bool {
+	wasErr := false
+	graphs := make([]syntax.CallGraphNode, 0, len(asts))
+	for _, ast := range asts {
+		if c := getBestCall(ast); c != nil {
+			if cg, err := ast.MakeCallGraph("", c); err != nil {
+				fmt.Fprintln(os.Stderr, err.Error())
+				wasErr = true
+			} else {
+				graphs = append(graphs, cg)
+			}
+		}
+	}
+	enc := json.NewEncoder(os.Stdout)
+	enc.SetIndent("", "  ")
+	if len(graphs) == 1 {
+		enc.Encode(graphs[0])
+	} else {
+		enc.Encode(graphs)
+	}
+	return wasErr
+}
+
+// If the AST has a call, return it.  Otherwise, return the last
+// callable defined in the top-level file.
+func getBestCall(ast *syntax.Ast) *syntax.CallStm {
+	if ast.Call != nil {
+		return ast.Call
+	}
+	var found syntax.Callable
+	for _, c := range ast.Callables.List {
+		if f := c.File(); f == nil || len(f.IncludedFrom) == 0 {
+			found = c
+		}
+	}
+	if found == nil && len(ast.Callables.List) > 0 {
+		found = ast.Callables.List[len(ast.Callables.List)-1]
+	}
+	if found == nil {
+		return nil
+	}
+	return syntax.GenerateCall(found, nil)
 }

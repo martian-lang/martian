@@ -33,13 +33,22 @@ type SumSquaresChunkDef struct {
 	Value              float64 `json:"value"`
 }
 
-func (self *SumSquaresChunkDef) ToChunkDef() *core.ChunkDef {
-	return &core.ChunkDef{
-		Resources: self.JobResources,
-		Args: core.ArgumentMap{
-			"value": self.Value,
-		},
+func (def *SumSquaresChunkDef) ArgsMap() (core.LazyArgumentMap, error) {
+	m := make(core.LazyArgumentMap, 1)
+	if b, err := json.Marshal(def.Value); err != nil {
+		return m, err
+	} else {
+		m["value"] = b
 	}
+	return m, nil
+}
+
+func (def *SumSquaresChunkDef) ToChunkDef() (*core.ChunkDef, error) {
+	args, err := def.ArgsMap()
+	return &core.ChunkDef{
+		Resources: def.JobResources,
+		Args:      args,
+	}, err
 }
 
 // A structure to decode args to the chunks for SUM_SQUARES
@@ -60,16 +69,16 @@ type SumSquaresChunkOuts struct {
 	Square float64 `json:"square"`
 }
 
-func (self *SumSquaresChunkOuts) MarshalJSON() ([]byte, error) {
+func (def *SumSquaresChunkOuts) MarshalJSON() ([]byte, error) {
 	var buf bytes.Buffer
 	buf.WriteRune('{')
-	if b, err := json.Marshal(&self.Sum); err != nil {
+	if b, err := json.Marshal(&def.Sum); err != nil {
 		return nil, err
 	} else {
 		buf.WriteString("\"sum\":")
 		buf.Write(b)
 	}
-	if b, err := json.Marshal(&self.Square); err != nil {
+	if b, err := json.Marshal(&def.Square); err != nil {
 		return nil, err
 	} else {
 		buf.WriteString(",\"square\":")

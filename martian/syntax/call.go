@@ -30,7 +30,7 @@ type (
 		Node  AstNode
 		Id    string
 		Exp   Exp
-		Tname string
+		Tname TypeId
 
 		// If true, the expression is an array and the pipeline will
 		// fork into versions for each value in the array.

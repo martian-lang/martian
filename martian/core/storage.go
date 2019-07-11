@@ -13,6 +13,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/martian-lang/martian/martian/syntax"
 	"github.com/martian-lang/martian/martian/util"
 )
 
@@ -107,7 +108,7 @@ func (self *Fork) partialVdrKill() (*VDRKillReport, bool) {
 	} else if state == DisabledState {
 		return self.vdrKill(nil), true
 	} else if rep, ok := self.getVdrKillReport(); ok {
-		if self.node.rt.Config.Debug {
+		if self.node.top.rt.Config.Debug {
 			util.LogInfo("storage",
 				"%s is already VDRed",
 				self.node.GetFQName())
@@ -146,17 +147,18 @@ func (self *Fork) partialVdrKill() (*VDRKillReport, bool) {
 			}
 			self.removeFilePostNodes(doneNodes)
 			if len(self.filePostNodes) == 0 {
-				if self.node.rt.Config.Debug {
+				if self.node.top.rt.Config.Debug {
 					util.LogInfo("storage",
 						"Running full vdr on %s",
 						self.node.GetFQName())
 				}
-				if self.node.strictVolatile {
+				if stage, ok := self.node.call.Callable().(*syntax.Stage); ok &&
+					stage.Resources != nil && stage.Resources.StrictVolatile {
 					return self.vdrKillSome(partial, true)
 				}
 				return self.vdrKill(partial), true
 			} else {
-				if self.node.rt.Config.Debug {
+				if self.node.top.rt.Config.Debug {
 					for node, args := range self.filePostNodes {
 						a := make([]string, 0, len(args))
 						for arg := range args {
@@ -177,20 +179,21 @@ func (self *Fork) partialVdrKill() (*VDRKillReport, bool) {
 						}
 					}
 				}
-				if self.node.strictVolatile {
+				if stage, ok := self.node.call.Callable().(*syntax.Stage); ok &&
+					stage.Resources != nil && stage.Resources.StrictVolatile {
 					return self.vdrKillSome(partial, false)
 				}
 			}
 		}
 		if partial != nil {
-			if self.node.rt.Config.Debug {
+			if self.node.top.rt.Config.Debug {
 				util.LogInfo("storage",
 					"Partial vdr of %s in phase %v",
 					self.node.GetFQName(), state)
 			}
 			return &partial.VDRKillReport, false
 		} else {
-			if self.node.rt.Config.Debug {
+			if self.node.top.rt.Config.Debug {
 				util.LogInfo("storage",
 					"No partial vdr of %s in phase %v",
 					self.node.GetFQName(), state)
@@ -206,8 +209,9 @@ func (self *Fork) vdrKillSome(partial *PartialVdrKillReport, done bool) (*VDRKil
 	} else {
 		self.updateParamFileCache()
 	}
-	if self.node.rt.Config.VdrMode == "disable" ||
-		!self.node.rt.overrides.GetOverride(self.node, "force_volatile", true).(bool) {
+	if self.node.top.rt.Config.VdrMode == "disable" ||
+		!self.node.top.rt.overrides.GetOverride(
+			self.node, "force_volatile", true).(bool) {
 		if partial == nil {
 			return nil, false
 		} else {
@@ -275,14 +279,14 @@ func (self *Fork) vdrKillSome(partial *PartialVdrKillReport, done bool) (*VDRKil
 		partial.VDRKillReport.mergeEvents()
 		self.metadata.Write(VdrKill, &partial.VDRKillReport)
 		self.deletePartialKill()
-		if self.node.rt.Config.Debug {
+		if self.node.top.rt.Config.Debug {
 			util.LogInfo("storage", "VDR of %s complete",
 				self.node.GetFQName())
 		}
 		return &partial.VDRKillReport, true
 	} else {
 		self.writePartialKill(partial)
-		if self.node.rt.Config.Debug {
+		if self.node.top.rt.Config.Debug {
 			util.LogInfo("storage",
 				"VDR of %s still waiting on %d nodes, "+
 					"keeping %d files alive through %d arguments.",
@@ -417,7 +421,7 @@ func getArgsToFilesMap(fileArgs map[string]map[Nodable]struct{},
 	argToFiles := make(map[string]map[string]struct{}, len(fileArgs))
 	// Get the set of files each argument refers to.
 	for arg := range fileArgs {
-		for _, name := range getMaybeFileNames(outs[arg]) {
+		for _, name := range getMaybeFileNames(outs.jsonPath(arg)) {
 			for _, fullName := range getLogicalFileNames(name) {
 				fileSet := argToFiles[arg]
 				if fileSet == nil {
@@ -543,7 +547,7 @@ func anyOverlap(names []string, files map[string]struct{}) (string, string) {
 func (self *Fork) cacheParamFileMap(outs LazyArgumentMap) {
 	if outs == nil {
 		var err error
-		outs, err = self.metadata.read(OutsFile, self.node.rt.FreeMemBytes()/2)
+		outs, err = self.metadata.read(OutsFile, self.node.top.rt.FreeMemBytes()/2)
 		if err != nil {
 			util.LogError(err, "runtime", "Error reading stage outs.")
 		}
@@ -554,7 +558,7 @@ func (self *Fork) cacheParamFileMap(outs LazyArgumentMap) {
 	argToFiles := getArgsToFilesMap(
 		self.fileArgs,
 		outs,
-		self.node.rt.Config.Debug,
+		self.node.top.rt.Config.Debug,
 		self.node.GetFQName())
 	// Remove "file" args which don't actually refer to existing files.
 	for arg := range self.fileArgs {
@@ -567,7 +571,7 @@ func (self *Fork) cacheParamFileMap(outs LazyArgumentMap) {
 		files, _ := md.enumerateFiles()
 		for _, fpath := range files {
 			addFilesToArgsMappings(fpath,
-				self.node.rt.Config.Debug,
+				self.node.top.rt.Config.Debug,
 				self.node.GetFQName(),
 				filesToArgs, argToFiles)
 		}
@@ -602,7 +606,7 @@ func (self *Fork) updateParamFileCache() {
 			// things were cached.
 			for arg := range keepAliveArgs.args {
 				if _, ok := self.fileArgs[arg]; !ok {
-					if self.node.rt.Config.Debug {
+					if self.node.top.rt.Config.Debug {
 						util.LogInfo("storage",
 							"File %s of %s is no longer being kept alive by %s.",
 							file, self.node.GetFQName(), arg)
@@ -611,7 +615,7 @@ func (self *Fork) updateParamFileCache() {
 				}
 			}
 			if len(keepAliveArgs.args) == 0 {
-				if self.node.rt.Config.Debug {
+				if self.node.top.rt.Config.Debug {
 					util.LogInfo("storage",
 						"File %s of %s is no longer required.",
 						file, self.node.GetFQName())
@@ -683,7 +687,7 @@ func (self *Fork) cleanSplitTemp(partial *PartialVdrKillReport) *PartialVdrKillR
 				startEvent.DeltaBytes += int64(info.Size())
 			}
 		}
-		if self.node.rt.Config.Debug {
+		if self.node.top.rt.Config.Debug {
 			util.LogInfo("storage",
 				"%d bytes of split files for %s",
 				startEvent.DeltaBytes, self.node.GetFQName())
@@ -775,7 +779,7 @@ func (self *Fork) cleanChunkTemp(partial *PartialVdrKillReport) *PartialVdrKillR
 		}
 	}
 
-	if self.node.rt.Config.Debug {
+	if self.node.top.rt.Config.Debug {
 		util.LogInfo("storage",
 			"%d bytes of chunk files for %s",
 			startEvent.DeltaBytes, self.node.GetFQName())
@@ -855,7 +859,7 @@ func (self *Fork) cleanJoinTemp(partial *PartialVdrKillReport) *PartialVdrKillRe
 				partial.Errors = append(partial.Errors, err.Error())
 			}
 		}
-		if self.node.rt.Config.Debug {
+		if self.node.top.rt.Config.Debug {
 			util.LogInfo("storage",
 				"%d bytes of join files for %s",
 				startEvent.DeltaBytes, self.node.GetFQName())
@@ -890,7 +894,7 @@ func (self *Fork) cleanJoinTemp(partial *PartialVdrKillReport) *PartialVdrKillRe
 // through partialVdrKill in order to ensure accounting information is
 // correctly preserved.
 func (self *Fork) vdrKill(partialKill *PartialVdrKillReport) *VDRKillReport {
-	if self.node.rt.Config.VdrMode == "disable" {
+	if self.node.top.rt.Config.VdrMode == "disable" {
 		return nil
 	}
 	if killReport, ok := self.getVdrKillReport(); ok {
@@ -899,10 +903,10 @@ func (self *Fork) vdrKill(partialKill *PartialVdrKillReport) *VDRKillReport {
 
 	var killPaths []string
 	// For volatile nodes, kill fork-level files.
-	if self.node.rt.overrides.GetOverride(self.node, "force_volatile", self.node.volatile).(bool) {
+	if self.node.top.rt.overrides.GetOverride(self.node, "force_volatile", self.node.call.Call().Modifiers.Volatile).(bool) {
 		rep, _ := self.vdrKillSome(partialKill, true)
 		return rep
-	} else if self.Split() && self.node.rt.overrides.GetOverride(self.node, "force_volatile", true).(bool) {
+	} else if self.Split() && self.node.top.rt.overrides.GetOverride(self.node, "force_volatile", true).(bool) {
 		// If the node splits, kill chunk-level files.
 		// Must check for split here, otherwise we'll end up deleting
 		// output files of non-volatile nodes because single-chunk nodes
@@ -910,7 +914,7 @@ func (self *Fork) vdrKill(partialKill *PartialVdrKillReport) *VDRKillReport {
 		for _, chunk := range self.chunks {
 			if paths, err := chunk.metadata.enumerateFiles(); err == nil {
 				killPaths = append(killPaths, paths...)
-			} else if self.node.rt.Config.Debug {
+			} else if self.node.top.rt.Config.Debug {
 				util.LogError(err, "storage", "Error enumerating files.")
 			}
 		}
@@ -947,7 +951,7 @@ func (self *Fork) vdrKill(partialKill *PartialVdrKillReport) *VDRKillReport {
 		})
 	}
 	if partialKill != nil {
-		if self.node.rt.Config.Debug {
+		if self.node.top.rt.Config.Debug {
 			util.LogInfo("storage",
 				"VDR kill on %s with %d storage events in the partial report.",
 				self.node.GetFQName(), len(partialKill.Events))
@@ -955,7 +959,7 @@ func (self *Fork) vdrKill(partialKill *PartialVdrKillReport) *VDRKillReport {
 		killReport = mergeVDRKillReports([]*VDRKillReport{killReport, &partialKill.VDRKillReport})
 		self.deletePartialKill()
 	} else {
-		if self.node.rt.Config.Debug {
+		if self.node.top.rt.Config.Debug {
 			util.LogInfo("storage",
 				"VDR kill on %s with no partial report.",
 				self.node.GetFQName())
@@ -993,10 +997,12 @@ func (self *Node) vdrKill() (*VDRKillReport, bool) {
 	 * Refuse to VDR a node if it, or any of its ancestors are symlinked.
 	 */
 	if symlink, err := self.vdrCheckSymlink(); symlink != "" {
-		util.LogInfo("runtime", "Refuse to VDR across a symlink %s: %v", symlink, self.fqname)
+		util.LogInfo("runtime", "Refuse to VDR across a symlink %s: %v",
+			symlink, self.GetFQName())
 		return nil, true
 	} else if err != nil {
-		util.LogError(err, "runtime", "Error reading node directory: %v", self.fqname)
+		util.LogError(err, "runtime", "Error reading node directory: %v",
+			self.GetFQName())
 		return nil, false
 	}
 

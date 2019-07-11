@@ -45,14 +45,22 @@ func (pipeline *Pipeline) directDepsMap() (map[*CallStm]map[*CallStm]struct{}, e
 				}
 				depSet[dep] = struct{}{}
 			}
-		case *ValExp:
-			if exp.Kind == KindArray {
-				for _, subExp := range exp.Value.([]Exp) {
-					if err := findDeps(src, subExp); err != nil {
-						return err
-					}
+		case *ArrayExp:
+			var errs ErrorList
+			for _, subExp := range exp.Value {
+				if err := findDeps(src, subExp); err != nil {
+					errs = append(errs, err)
 				}
 			}
+			return errs.If()
+		case *MapExp:
+			var errs ErrorList
+			for _, subExp := range exp.Value {
+				if err := findDeps(src, subExp); err != nil {
+					errs = append(errs, err)
+				}
+			}
+			return errs.If()
 		}
 		return nil
 	}
@@ -175,21 +183,12 @@ func (pipeline *Pipeline) topoSort() error {
 func (retains *PipelineRetains) compile(global *Ast, pipeline *Pipeline) error {
 	var errs ErrorList
 	for _, param := range retains.Refs {
-		if types, _, err := param.resolveType(global, pipeline); err != nil {
+		if tName, err := param.resolveType(global, pipeline); err != nil {
 			errs = append(errs, err)
-		} else {
-			any := false
-			for _, tName := range types {
-				if t, ok := global.TypeTable[tName]; ok && t.IsFile() {
-					any = true
-					break
-				}
-			}
-			if !any {
-				errs = append(errs, global.err(param,
-					"RetainParamError: parameter %s of %s is not of file type.",
-					param.OutputId, param.Id))
-			}
+		} else if t := global.TypeTable.Get(tName); t == nil || t.IsFile() == KindIsNotFile {
+			errs = append(errs, global.err(param,
+				"RetainParamError: parameter %s of %s is not of file type.",
+				param.OutputId, param.Id))
 		}
 	}
 	return errs.If()

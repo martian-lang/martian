@@ -173,14 +173,18 @@ func resolveBindingExpression(exp Exp, resolved map[string]map[string][]string) 
 		} else {
 			return resolved[e.Id][e.OutputId]
 		}
-	case *ValExp:
-		if e.Kind == KindArray {
-			var result []string
-			for _, subExp := range e.Value.([]Exp) {
-				result = append(result, resolveBindingExpression(subExp, resolved)...)
-			}
-			return result
+	case *ArrayExp:
+		var result []string
+		for _, subExp := range e.Value {
+			result = append(result, resolveBindingExpression(subExp, resolved)...)
 		}
+		return result
+	case *MapExp:
+		var result []string
+		for _, subExp := range e.Value {
+			result = append(result, resolveBindingExpression(subExp, resolved)...)
+		}
+		return result
 	}
 	return nil
 }

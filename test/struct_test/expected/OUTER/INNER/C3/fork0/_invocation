@@ -1,0 +1,5 @@
+@include "pipeline.mro"
+
+call CREATOR as C3(
+    foo = 7,
+)

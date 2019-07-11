@@ -14,6 +14,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/martian-lang/martian/martian/syntax"
 	"github.com/martian-lang/martian/martian/util"
 )
 
@@ -238,13 +239,13 @@ type NodeByteStamp struct {
 }
 
 type NodePerfInfo struct {
-	Name      string           `json:"name"`
-	Fqname    string           `json:"fqname"`
-	Type      string           `json:"type"`
-	Forks     []*ForkPerfInfo  `json:"forks"`
-	MaxBytes  int64            `json:"maxbytes"`
-	BytesHist []*NodeByteStamp `json:"bytehist"`
-	HighMem   *ObservedMemory  `json:"highmem,omitempty"`
+	Name      string                   `json:"name"`
+	Fqname    string                   `json:"fqname"`
+	Type      syntax.CallGraphNodeType `json:"type"`
+	Forks     []*ForkPerfInfo          `json:"forks"`
+	MaxBytes  int64                    `json:"maxbytes"`
+	BytesHist []*NodeByteStamp         `json:"bytehist"`
+	HighMem   *ObservedMemory          `json:"highmem,omitempty"`
 }
 
 func reduceJobInfo(jobInfo *JobInfo, outputPaths []string, numThreads int) *PerfInfo {

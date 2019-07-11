@@ -23,22 +23,25 @@ func (params *InParams) compile(global *Ast) error {
 		}
 
 		// Check that types exist.
-		if _, ok := global.TypeTable[param.GetTname()]; !ok {
+		if t := global.TypeTable.Get(param.GetTname()); t == nil {
 			errs = append(errs, global.err(param,
 				"TypeError: undefined type '%s'",
-				param.GetTname()))
+				param.GetTname().Tname))
+		} else {
+			param.setIsFile(t.IsFile())
 		}
-
-		// Cache if param is file or path.
-		t, ok := global.TypeTable[param.GetTname()]
-		param.setIsFile(ok && t.IsFile())
 	}
 	return errs.If()
 }
 
-func checkLegalUnixFilename(name string) error {
+// IsLegalUnixFilename returns nil for legal file names, or an error
+// describing the reason why the file name is illegal.
+func IsLegalUnixFilename(name string) error {
 	if len(name) > 255 {
 		return fmt.Errorf("too long")
+	}
+	if name == "" {
+		return fmt.Errorf("empty string")
 	}
 	if name == "." || name == ".." {
 		return fmt.Errorf("reserved name")
@@ -56,18 +59,23 @@ func checkLegalUnixFilename(name string) error {
 func (param *OutParam) compile(global *Ast) error {
 	var errs ErrorList
 	// Check that types exist.
-	if _, ok := global.TypeTable[param.GetTname()]; !ok {
+	if t := global.TypeTable.Get(param.GetTname()); t == nil {
 		errs = append(errs, global.err(param,
 			"TypeError: undefined type '%s'",
-			param.GetTname()))
+			param.GetTname().Tname))
+	} else {
+		// Cache if param is file or path.
+		param.setIsFile(t.IsFile())
+		switch t.(type) {
+		case *BuiltinType, *UserType:
+			param.isComplex = false
+		default:
+			param.isComplex = true
+		}
 	}
-
-	// Cache if param is file or path.
-	t, ok := global.TypeTable[param.GetTname()]
-	param.setIsFile(ok && t.IsFile())
-	if param.IsFile() {
+	if fk := param.IsFile(); fk == KindIsFile || fk == KindIsDirectory {
 		if param.OutName != "" {
-			if err := checkLegalUnixFilename(param.OutName); err != nil {
+			if err := IsLegalUnixFilename(param.OutName); err != nil {
 				errs = append(errs, global.err(
 					param,
 					"OutName: illegal filename %q: %v",
@@ -124,7 +132,7 @@ func checkLegalFilename(name string) error {
 }
 
 func (param *OutParam) checkFilename() error {
-	if !param.IsFile() {
+	if fk := param.IsFile(); fk != KindIsFile && fk != KindIsDirectory {
 		return nil
 	}
 	if param.OutName != "" {
@@ -165,56 +173,9 @@ func (params *OutParams) CheckFilenames() error {
 	return errs.If()
 }
 
-func (exp *ValExp) resolveType(global *Ast, pipeline *Pipeline) ([]string, int, error) {
-	switch exp.getKind() {
-
-	// Handle scalar types.
-	case KindInt, KindFloat, KindBool, KindMap, KindNull, KindPath:
-		return []string{string(exp.getKind())}, 0, nil
-
-	// Handle strings (which could be files too).
-	case KindString:
-		return []string{"string"}, 0, nil
-
-	// Array: [ 1, 2 ]
-	case KindArray:
-		subexps := exp.Value.([]Exp)
-		if len(subexps) == 0 {
-			return []string{KindNull}, 1, nil
-		}
-		arrayTypes := make([]string, 0, len(subexps))
-		commonArrayDim := -1
-		var errs ErrorList
-		for _, subexp := range subexps {
-			arrayKind, arrayDim, err := subexp.resolveType(global, pipeline)
-			if err != nil {
-				errs = append(errs, err)
-				continue
-			}
-			arrayTypes = append(arrayTypes, arrayKind...)
-			if commonArrayDim == -1 {
-				commonArrayDim = arrayDim
-			} else if commonArrayDim != arrayDim {
-				errs = append(errs, global.err(exp,
-					"TypeMismatchError: inconsistent array dimensions %d vs %d",
-					commonArrayDim, arrayDim))
-			}
-		}
-		return arrayTypes, commonArrayDim + 1, errs.If()
-	// File: look for matching t in user/file type table
-	case KindFile:
-		for userType := range global.UserTypeTable {
-			if strings.HasSuffix(exp.Value.(string), userType) {
-				return []string{userType}, 0, nil
-			}
-		}
-	}
-	return []string{"unknown"}, 0, nil
-}
-
-func (exp *RefExp) resolveType(global *Ast, pipeline *Pipeline) ([]string, int, error) {
+func (exp *RefExp) resolveType(global *Ast, pipeline *Pipeline) (TypeId, error) {
 	if pipeline == nil {
-		return []string{""}, 0, global.err(exp,
+		return TypeId{}, global.err(exp,
 			"ReferenceError: this binding cannot be resolved outside of a stage or pipeline.")
 	}
 
@@ -224,31 +185,58 @@ func (exp *RefExp) resolveType(global *Ast, pipeline *Pipeline) ([]string, int, 
 	case KindSelf:
 		param, ok := pipeline.GetInParams().Table[exp.Id]
 		if !ok {
-			return []string{""}, 0, global.err(exp,
+			return TypeId{}, global.err(exp,
 				"ScopeNameError: '%s' is not an input parameter of pipeline '%s'",
 				exp.Id, pipeline.GetId())
 		}
-		return []string{param.GetTname()}, param.GetArrayDim(), nil
+		if t, err := fieldType(param.GetTname(), &global.TypeTable, exp.OutputId); err != nil {
+			return t, &StructFieldError{
+				Message: "could not evaluate self." + exp.Id + "." + exp.OutputId,
+				InnerError: &wrapError{
+					innerError: err,
+					loc:        exp.Node.Loc,
+				},
+			}
+		} else {
+			return t, nil
+		}
 
 	// Call: STAGE.myoutparam or STAGE
 	case KindCall:
 		callable, ok := pipeline.Callables.Table[exp.Id]
 		if !ok {
-			return []string{""}, 0, global.err(exp,
+			return TypeId{}, global.err(exp,
 				"ScopeNameError: '%s' is not called in pipeline '%s'",
 				exp.Id, pipeline.Id)
 		}
+		if exp.OutputId == "" {
+			return TypeId{Tname: callable.GetId()}, nil
+		}
 		// Check referenced output is actually an output of the callable.
-		param, ok := callable.GetOutParams().Table[exp.OutputId]
+		idParts := strings.SplitN(exp.OutputId, ".", 2)
+		param, ok := callable.GetOutParams().Table[idParts[0]]
 		if !ok {
-			return []string{""}, 0, global.err(exp,
+			return TypeId{}, global.err(exp,
 				"NoSuchOutputError: '%s' is not an output parameter of '%s'",
 				exp.OutputId, callable.GetId())
 		}
+		if len(idParts) == 1 {
+			return param.GetTname(), nil
+		} else if t, err := fieldType(param.GetTname(),
+			&global.TypeTable, idParts[1]); err != nil {
+			return t, &StructFieldError{
+				Message: "could not evaluate " + exp.Id + "." + exp.OutputId,
+				InnerError: &wrapError{
+					innerError: err,
+					loc:        exp.Node.Loc,
+				},
+			}
+		} else {
+			return t, nil
+		}
 
-		return []string{param.GetTname()}, param.GetArrayDim(), nil
 	}
-	return []string{"unknown"}, 0, nil
+	return TypeId{}, nil
 }
 
 func (bindings *BindStms) compile(global *Ast, pipeline *Pipeline, params *InParams) error {
@@ -291,49 +279,66 @@ func (binding *BindStm) compile(global *Ast, pipeline *Pipeline, params *InParam
 		return global.err(binding, "ArgumentError: '%s' is not a valid parameter",
 			binding.Id)
 	}
+	return binding.compileParam(global, pipeline, param)
+}
 
-	// Typecheck the binding and cache the type.
-	valueTypes, arrayDim, err := binding.Exp.resolveType(global, pipeline)
-	if err != nil {
-		return err
+func isBackwardsCompatibleType(t Type) bool {
+	switch t := t.(type) {
+	case *StructType, *TypedMapType:
+		return false
+	case *ArrayType:
+		return isBackwardsCompatibleType(t.Elem)
+	default:
+		return true
 	}
+}
 
-	// Check for array match
-	if binding.Sweep {
-		if arrayDim == 0 {
-			return global.err(binding,
-				"TypeMismatchError: got non-array value for sweep parameter '%s'",
-				param.GetId())
+// In martian 3 and below, a call binding like "arg = STAGE" was shorthand for
+// "arg = STAGE.default".  Now it means to bind all of the outputs of STAGE as
+// a struct.  However, for backwards compatibility here we check to see if
+// adding .default will work, though not for "complex" types like structs,
+// arrays, or typed maps.
+func (binding *BindStm) rewriteToDefaultOutput(global *Ast,
+	pipeline *Pipeline, t Type) bool {
+	if exp, ok := binding.Exp.(*RefExp); ok && exp.OutputId == "" {
+		if !isBackwardsCompatibleType(t) {
+			return false
 		}
-		arrayDim -= 1
-	}
-	if param.GetArrayDim() != arrayDim {
-		if param.GetArrayDim() == 0 && arrayDim > 0 {
-			return global.err(binding,
-				"TypeMismatchError: got array value for non-array parameter '%s'",
-				param.GetId())
-		} else if param.GetArrayDim() > 0 && arrayDim == 0 {
-			// Allow an array-decorated parameter to accept null values.
-			if len(valueTypes) < 1 || valueTypes[0] != KindNull {
-				return global.err(binding,
-					"TypeMismatchError: expected array of '%s' for '%s'",
-					param.GetTname(), param.GetId())
+		defExp := *exp
+		defExp.OutputId = default_out_name
+		if tname, err := defExp.resolveType(global, pipeline); err == nil {
+			if tname.MapDim == 0 {
+				if rt := global.TypeTable.Get(tname); rt != nil &&
+					t.IsAssignableFrom(rt, &global.TypeTable) == nil {
+					binding.Exp = &defExp
+					return true
+				}
 			}
-		} else {
-			return global.err(binding,
-				"TypeMismatchError: got %d-dimensional array value for %d-dimensional array parameter '%s'",
-				arrayDim, param.GetArrayDim(), param.GetId())
 		}
 	}
+	return false
+}
 
-	for _, valueType := range valueTypes {
-		if !global.checkTypeMatch(param.GetTname(), valueType) {
-			return global.err(binding,
-				"TypeMismatchError: expected type '%s' for '%s' but got '%s' instead",
-				param.GetTname(), param.GetId(), valueType)
+func (binding *BindStm) compileParam(global *Ast, pipeline *Pipeline, param Param) error {
+	binding.Tname = param.GetTname()
+	t := global.TypeTable.Get(binding.Tname)
+	if t == nil {
+		return global.err(binding, fmt.Sprintf(
+			"BindingError: invalid type %q for parameter %q",
+			binding.Tname, binding.Id))
+	}
+	if err := t.IsValidExpression(binding.Exp, pipeline, global); err != nil {
+		if !binding.rewriteToDefaultOutput(global, pipeline, t) {
+			return &wrapError{
+				innerError: &IncompatibleTypeError{
+					Message: "TypeMismatchError: binding parameter " +
+						binding.Id + " to value " + binding.Exp.GoString(),
+					Reason: err,
+				},
+				loc: binding.getNode().Loc,
+			}
 		}
 	}
-	binding.Tname = param.GetTname()
 	return nil
 }
 
@@ -377,66 +382,27 @@ func (binding *BindStm) compileReturns(global *Ast, pipeline *Pipeline, params *
 		return global.err(binding, "ArgumentError: '%s' is not a valid parameter",
 			binding.Id)
 	}
-
-	// Typecheck the binding and cache the type.
-	valueTypes, arrayDim, err := binding.Exp.resolveType(global, pipeline)
-	if err != nil {
-		return err
-	}
-
-	// Check for array match
-	if binding.Sweep {
-		if arrayDim == 0 {
-			return global.err(binding,
-				"TypeMismatchError: got non-array value for sweep parameter '%s'",
-				param.GetId())
-		}
-		arrayDim -= 1
-	}
-	if param.GetArrayDim() != arrayDim {
-		if param.GetArrayDim() == 0 && arrayDim > 0 {
-			return global.err(binding,
-				"TypeMismatchError: got array value for non-array parameter '%s'",
-				param.GetId())
-		} else if param.GetArrayDim() > 0 && arrayDim == 0 {
-			// Allow an array-decorated parameter to accept null values.
-			if len(valueTypes) < 1 || valueTypes[0] != KindNull {
-				return global.err(binding,
-					"TypeMismatchError: expected array of '%s' for '%s'",
-					param.GetTname(), param.GetId())
-			}
-		} else {
-			return global.err(binding,
-				"TypeMismatchError: got %d-dimensional array value for %d-dimensional array parameter '%s'",
-				arrayDim, param.GetArrayDim(), param.GetId())
-		}
-	}
-
-	for _, valueType := range valueTypes {
-		if !global.checkTypeMatch(param.GetTname(), valueType) {
-			return global.err(binding,
-				"TypeMismatchError: expected type '%s' for '%s' but got '%s' instead",
-				param.GetTname(), param.GetId(), valueType)
-		}
-	}
-	binding.Tname = param.GetTname()
-	return nil
+	return binding.compileParam(global, pipeline, param)
 }
 
-func getBoundParamIds(uexp Exp) []string {
-	switch exp := uexp.(type) {
+func getBoundParamIds(exp Exp) []string {
+	switch exp := exp.(type) {
 	case *RefExp:
 		if exp.Kind == KindSelf {
 			return []string{exp.Id}
 		}
-	case *ValExp:
-		if exp.Kind == KindArray {
-			var ids []string
-			for _, subExp := range exp.Value.([]Exp) {
-				ids = append(ids, getBoundParamIds(subExp)...)
-			}
-			return ids
+	case *ArrayExp:
+		ids := make([]string, 0, len(exp.Value))
+		for _, subExp := range exp.Value {
+			ids = append(ids, getBoundParamIds(subExp)...)
 		}
+		return ids
+	case *MapExp:
+		ids := make([]string, 0, len(exp.Value))
+		for _, subExp := range exp.Value {
+			ids = append(ids, getBoundParamIds(subExp)...)
+		}
+		return ids
 	}
 	return nil
 }

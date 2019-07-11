@@ -1,0 +1,29 @@
+stage PROCESS_FASTQS(
+    in  map[] sample_def,
+    in  map   downsample,
+    src py    "process_fastqs",
+)
+
+stage USE_UNUSED(
+    in  int unused,
+    src py  "process_fastqs",
+)
+
+pipeline MOCK_PHASER_SVCALLER(
+    in map[] sample_def,
+    in map   downsample,
+    in int   unused,
+)
+{
+    call PROCESS_FASTQS(
+        sample_def = self.sample_def,
+        downsample = self.downsample,
+    )
+
+    call USE_UNUSED(
+        unused = self.unused,
+    )
+
+    return (
+    )
+}

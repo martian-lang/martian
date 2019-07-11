@@ -1,0 +1,6 @@
+@include "pipeline.mro"
+
+# Calls the pipeline
+call OUTER(
+    foo = 1,
+)

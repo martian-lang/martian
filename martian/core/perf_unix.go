@@ -209,11 +209,12 @@ func getProcessTreeMemoryAt(procFd int, pid int, spid []byte, io map[int]*IoAmou
 		} else {
 			errString := err.Error()
 			var buf bytes.Buffer
-			buf.Grow(len("Error fetching io for : ") + len(spid) + len(errString))
+			buf.Grow(len("Error fetching io for : \n") + len(spid) + len(errString))
 			buf.WriteString("Error fetching io for ")
 			buf.Write(spid)
 			buf.WriteString(": ")
 			buf.WriteString(errString)
+			buf.WriteRune('\n')
 			buf.WriteTo(os.Stdout)
 		}
 	}

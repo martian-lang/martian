@@ -285,7 +285,8 @@ func (self *RemoteJobManager) sendJob(shellCmd string, argv []string, envs map[s
 	defer util.ExitCriticalSection()
 	metadata.remove("queued_locally")
 	if output, err := cmd.CombinedOutput(); err != nil {
-		metadata.WriteRaw(Errors, "jobcmd error ("+err.Error()+"):\n"+string(output))
+		metadata.WriteErrorString(
+			"jobcmd error (" + err.Error() + "):\n" + string(output))
 	} else {
 		trimmed := bytes.TrimSpace(output)
 		// jobids should not have spaces in them.  This is the most general way to

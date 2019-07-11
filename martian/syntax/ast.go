@@ -67,14 +67,14 @@ type (
 	}
 
 	Ast struct {
-		// All types found in the source.
+		// All user-defined file types found in the source.
 		UserTypes []*UserType
 
-		// All unique types found the the source.  Populated during compile.
-		UserTypeTable map[string]*UserType
+		// All struct types found in the source.
+		StructTypes []*StructType
 
 		// All valid types, both user-defined and builtin.
-		TypeTable map[string]Type
+		TypeTable TypeLookup
 
 		// The source file object for each named include.
 		Files     map[string]*SourceFile
@@ -101,6 +101,8 @@ func NewAst(decs []Dec, call *CallStm, srcFile *SourceFile) *Ast {
 		switch dec := dec.(type) {
 		case *UserType:
 			self.UserTypes = append(self.UserTypes, dec)
+		case *StructType:
+			self.StructTypes = append(self.StructTypes, dec)
 		case *Stage:
 			self.Stages = append(self.Stages, dec)
 			self.Callables.List = append(self.Callables.List, dec)
@@ -130,12 +132,16 @@ func (s *Ast) inheritComments() bool { return false }
 func (s *Ast) getSubnodes() []AstNodable {
 	subs := make([]AstNodable, 0,
 		1+len(s.UserTypes)+
+			len(s.StructTypes)+
 			len(s.Callables.List)+
 			len(s.Includes))
 	for _, n := range s.Includes {
 		subs = append(subs, n)
 	}
 	for _, n := range s.UserTypes {
+		subs = append(subs, n)
+	}
+	for _, n := range s.StructTypes {
 		subs = append(subs, n)
 	}
 	for _, n := range s.Callables.List {
@@ -159,6 +165,7 @@ func (s *Include) File() *SourceFile         { return s.Node.Loc.File }
 
 func (ast *Ast) merge(other *Ast) error {
 	ast.UserTypes = append(other.UserTypes, ast.UserTypes...)
+	ast.StructTypes = append(other.StructTypes, ast.StructTypes...)
 	ast.Stages = append(other.Stages, ast.Stages...)
 	ast.Pipelines = append(other.Pipelines, ast.Pipelines...)
 	if ast.Call == nil {

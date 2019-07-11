@@ -1,0 +1,8 @@
+{
+    "bar": {
+        "file2": "/github.com/martian-lang/martian/test/struct_test/pipeline_test/OUTER/INNER/C2/fork0/chnk0/files/file2",
+        "file1": "/github.com/martian-lang/martian/test/struct_test/pipeline_test/OUTER/INNER/C2/fork0/chnk0/files/file1",
+        "bar": 7
+    },
+    "file3": "/github.com/martian-lang/martian/test/struct_test/pipeline_test/OUTER/INNER/C2/fork0/chnk0/files/output_name.file"
+}

@@ -389,8 +389,16 @@ func (self *Runtime) instantiatePipeline(src string, srcPath string, psid string
 			return "", nil, nil, err
 		}
 	}
-	pipestance, err := NewPipestance(NewTopNode(self, psid, pipestancePath, mroPaths, mroVersion, envs, invocationData),
-		ast.Call, ast.Callables)
+	callGraph, err := ast.MakePipelineCallGraph("ID."+psid+".", ast.Call)
+	if err != nil {
+		return "", nil, nil, err
+	}
+	pipestance, err := NewPipestance(
+		NewTopNode(self, callGraph.GetFqid()[:3+len(psid)], pipestancePath,
+			mroPaths, mroVersion,
+			envs, invocationData,
+			&ast.TypeTable),
+		callGraph)
 	if err != nil {
 		return "", nil, nil, err
 	}
@@ -438,21 +446,47 @@ func (self *Runtime) InvokePipeline(src string, srcPath string, psid string,
 	}
 
 	// Write top-level metadata files.
-	pipestance.metadata.WriteRaw(InvocationFile, src)
-	pipestance.metadata.WriteRaw(JobModeFile, self.Config.JobMode)
-	pipestance.metadata.WriteRaw(MroSourceFile, postsrc)
-	pipestance.metadata.Write(VersionsFile, &VersionInfo{
+	if err := pipestance.metadata.WriteRaw(InvocationFile, src); err != nil {
+		os.RemoveAll(pipestancePath)
+		return pipestance, err
+	}
+	if err := pipestance.metadata.WriteRaw(JobModeFile,
+		self.Config.JobMode); err != nil {
+		os.RemoveAll(pipestancePath)
+		return pipestance, err
+	}
+	if err := pipestance.metadata.WriteRaw(MroSourceFile, postsrc); err != nil {
+		os.RemoveAll(pipestancePath)
+		return pipestance, err
+	}
+	if err := pipestance.metadata.Write(VersionsFile, &VersionInfo{
 		Martian:   self.Config.MartianVersion,
 		Pipelines: mroVersion,
-	})
-	pipestance.metadata.Write(TagsFile, tags)
+	}); err != nil {
+		os.RemoveAll(pipestancePath)
+		return pipestance, err
+	}
+	if err := pipestance.metadata.Write(TagsFile, tags); err != nil {
+		os.RemoveAll(pipestancePath)
+		return pipestance, err
+	}
 	if uid := os.Getenv("MRO_FORCE_UUID"); uid == "" {
-		pipestance.SetUuid(uuid.NewV4().String())
+		if err := pipestance.SetUuid(uuid.NewV4().String()); err != nil {
+			os.RemoveAll(pipestancePath)
+			return pipestance, err
+		}
 	} else {
 		util.LogInfo("runtime", "UUID forced to %s by environment", uid)
-		pipestance.SetUuid(uid)
+		if err := pipestance.SetUuid(uid); err != nil {
+			os.RemoveAll(pipestancePath)
+			return pipestance, err
+		}
 	}
-	pipestance.metadata.WriteRaw(TimestampFile, "start: "+util.Timestamp())
+	if err := pipestance.metadata.WriteRaw(TimestampFile,
+		"start: "+util.Timestamp()); err != nil {
+		os.RemoveAll(pipestancePath)
+		return pipestance, err
+	}
 
 	return pipestance, nil
 }
@@ -799,7 +833,7 @@ func GetCallable(mroPaths []string, name string, compile bool) (syntax.Callable,
 	return nil, &RuntimeError{fmt.Sprintf("'%s' is not a declared pipeline or stage", name)}
 }
 
-func (self *Runtime) BuildCallSource(name string, args LazyArgumentMap,
+func (self *Runtime) BuildCallSource(name string, args MarshalerMap,
 	sweepargs []string, mroPaths []string) (string, error) {
 	callable, err := self.MroCache.GetCallable(mroPaths, name)
 	if err != nil {
@@ -809,9 +843,81 @@ func (self *Runtime) BuildCallSource(name string, args LazyArgumentMap,
 	return BuildCallSource(name, args, sweepargs, callable, mroPaths)
 }
 
+func convertToExp(parser *syntax.Parser, sweep bool, val json.Marshaler) (syntax.ValExp, error) {
+	switch val := val.(type) {
+	case syntax.ValExp:
+		return val, nil
+	case json.RawMessage:
+		if sweep {
+			var jv struct {
+				Sweep []json.RawMessage `json:"sweep"`
+			}
+			if err := json.Unmarshal(val, &jv); err != nil {
+				return nil, err
+			}
+			sweepVal := make([]syntax.Exp, len(jv.Sweep))
+			for i, v := range jv.Sweep {
+				var err error
+				sweepVal[i], err = convertToExp(parser, false, v)
+				if err != nil {
+					return nil, err
+				}
+			}
+			return &syntax.SweepExp{
+				Value: sweepVal,
+			}, nil
+		}
+		return parser.ParseValExp(val)
+	case LazyArgumentMap:
+		res := syntax.MapExp{
+			Kind:  syntax.KindMap,
+			Value: make(map[string]syntax.Exp, len(val)),
+		}
+		for k, v := range val {
+			if e, err := parser.ParseValExp(v); err != nil {
+				return &res, err
+			} else {
+				res.Value[k] = e
+			}
+		}
+		return &res, nil
+	case MarshalerMap:
+		res := syntax.MapExp{
+			Kind:  syntax.KindMap,
+			Value: make(map[string]syntax.Exp, len(val)),
+		}
+		for k, v := range val {
+			if e, err := convertToExp(parser, false, v); err != nil {
+				return &res, err
+			} else {
+				res.Value[k] = e
+			}
+		}
+		return &res, nil
+	case marshallerArray:
+		res := syntax.ArrayExp{
+			Value: make([]syntax.Exp, 0, len(val)),
+		}
+		for _, v := range val {
+			if e, err := convertToExp(parser, false, v); err != nil {
+				return &res, err
+			} else {
+				res.Value = append(res.Value, e)
+			}
+		}
+		return &res, nil
+	default:
+		if b, err := val.MarshalJSON(); err != nil {
+			return nil, err
+		} else {
+			return parser.ParseValExp(b)
+		}
+	}
+}
+
 func BuildCallSource(
 	name string,
-	args LazyArgumentMap,
+	args MarshalerMap,
 	sweepargs []string,
 	callable syntax.Callable,
 	mroPaths []string) (string, error) {
@@ -833,21 +939,12 @@ func BuildCallSource(
 		ast.Includes = []*syntax.Include{{Value: rel}}
 	}
 	var parser syntax.Parser
-	null := syntax.ValExp{Kind: syntax.KindNull}
+	var null syntax.NullExp
 	// for each parameter, either provide the value or null.
 	for _, param := range callable.GetInParams().List {
 		binding := syntax.BindStm{
 			Id:    param.GetId(),
 			Tname: param.GetTname(),
-		}
-		if val, ok := args[param.GetId()]; ok {
-			var err error
-			binding.Exp, err = parser.ParseValExp(val)
-			if err != nil {
-				return "", err
-			}
-		} else {
-			binding.Exp = &null
 		}
 		for _, id := range sweepargs {
 			if id == param.GetId() {
@@ -855,9 +952,50 @@ func BuildCallSource(
 				break
 			}
 		}
+		if val := args[param.GetId()]; val != nil {
+			var err error
+			binding.Exp, err = convertToExp(&parser, binding.Sweep, val)
+			if err != nil {
+				return "", err
+			}
+		} else {
+			binding.Exp = &null
+		}
 		ast.Call.Bindings.List = append(ast.Call.Bindings.List, &binding)
 	}
 	return ast.Format(), nil
+}
+
+func (invocation *InvocationData) BuildCallSource(mroPaths []string) (string, error) {
+	if invocation.Call == "" {
+		return "", fmt.Errorf("no pipeline or stage specified")
+	}
+	var callable syntax.Callable
+	if invocation.Include != "" {
+		c, err := GetCallableFrom(
+			invocation.Call, invocation.Include, mroPaths)
+		if err != nil {
+			return "", err
+		}
+		callable = c
+	} else {
+		c, err := GetCallable(mroPaths, invocation.Call, false)
+		if err != nil {
+			return "", err
+		}
+		callable = c
+	}
+
+	if invocation.Args == nil {
+		return "", fmt.Errorf("no args given")
+	}
+
+	return BuildCallSource(
+		invocation.Call,
+		invocation.Args.ToMarshalerMap(),
+		invocation.SweepArgs,
+		callable,
+		mroPaths)
 }
 
 func BuildCallData(src string, srcPath string, mroPaths []string) (*InvocationData, error) {
@@ -877,7 +1015,7 @@ func BuildDataForAst(ast *syntax.Ast) (*InvocationData, error) {
 	sweepargs := []string{}
 	for _, binding := range ast.Call.Bindings.List {
 		var err error
-		args[binding.Id], err = json.Marshal(binding.Exp.ToInterface())
+		args[binding.Id], err = binding.Exp.MarshalJSON()
 		if err != nil {
 			return nil, fmt.Errorf("error serializing argument %s: %v",
 				binding.Id, err)

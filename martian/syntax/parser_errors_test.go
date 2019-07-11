@@ -163,3 +163,18 @@ call THING(
 )
 `)
 }
+
+// Check ban on nested maps.
+func TestBadMapSyntax(t *testing.T) {
+	t.Parallel()
+	testBadGrammar(t, `
+struct STRUCT_1(
+    map<map<int>>   i1,
+)
+`)
+	testBadGrammar(t, `
+struct STRUCT_1(
+    map<map>   i1,
+)
+`)
+}

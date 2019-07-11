@@ -24,17 +24,20 @@ import (
     decs      []Dec
     inparam   *InParam
     outparam  *OutParam
+    s_member  *StructMember
     retains   []*RetainParam
     stretains *RetainParams
     i_params  *InParams
     o_params  *OutParams
+    s_members []*StructMember
     res       *Resources
     par_tuple paramsTuple
     src       *SrcParam
+    type_id   TypeId
     exp       Exp
     exps      []Exp
     rexp      *RefExp
-    vexp      *ValExp
+    vexp      ValExp
     kvpairs   map[string]Exp
     call      *CallStm
     calls     []*CallStm
@@ -48,26 +51,29 @@ import (
 }
 
 %type <includes>  includes
-%type <val>       id id_list type help type src_lang type outname
+%type <val>       id id_list nonmap_type type help src_lang outname
 %type <modifiers> modifiers
 %type <arr>       arr_list
-%type <dec>       dec stage pipeline
+%type <dec>       dec stage pipeline struct
 %type <decs>      dec_list
 %type <inparam>   in_param
 %type <outparam>  out_param
+%type <s_member>  struct_field
 %type <retains>   stage_retain_list
 %type <stretains> stage_retain
 %type <reflist>   pipeline_retain_list
 %type <plretains> pipeline_retain
 %type <i_params>  in_param_list
 %type <o_params>  out_param_list
+%type <s_members> struct_field_list
 %type <par_tuple> split_param_list
 %type <src>       src_stm
+%type <type_id>   type_id
 %type <exp>       exp
 %type <rexp>      ref_exp
-%type <vexp>      val_exp bool_exp
+%type <vexp>      val_exp bool_exp array_exp map_exp
 %type <exps>      exp_list
-%type <kvpairs>   kvpair_list
+%type <kvpairs>   kvpair_list struct_vals_list
 %type <call>      call_stm
 %type <calls>     call_stm_list
 %type <binding>   bind_stm modifier_stm
@@ -77,10 +83,10 @@ import (
 
 %token SKIP COMMENT INVALID
 %token SEMICOLON COLON COMMA EQUALS
-%token LBRACKET RBRACKET LPAREN RPAREN LBRACE RBRACE
+%token LBRACKET RBRACKET LPAREN RPAREN LBRACE RBRACE LANGLE RANGLE
 %token SWEEP RETURN SELF
 %token <val> FILETYPE STAGE PIPELINE CALL SPLIT USING RETAIN
-%token <val> LOCAL PREFLIGHT VOLATILE DISABLED STRICT
+%token <val> LOCAL PREFLIGHT VOLATILE DISABLED STRICT STRUCT
 %token IN OUT SRC AS
 %token <val> THREADS MEM_GB VMEM_GB SPECIAL
 %token <val> ID LITSTRING NUM_FLOAT NUM_INT DOT
@@ -162,6 +168,7 @@ dec
         } }}
     | stage
     | pipeline
+    | struct
     ;
 
 pipeline
@@ -194,6 +201,15 @@ stage
            }
         }}
    ;
+
+struct
+   : STRUCT id LPAREN struct_field_list RPAREN
+        {{ $$ = &StructType{
+                Node: NewAstNode($<loc>2, $<srcfile>2),
+                Id: $<intern>2.Get($2),
+                Members: $4,
+           }
+        }}
 
 resources
     :
@@ -276,8 +292,7 @@ stage_retain_list
 id_list
     : id_list DOT id
         {{
-            idd := append($1, '.')
-            $$ = append(idd, $3...)
+            $$ = append(append($1, '.'), $3...)
         }}
     | id
         {{
@@ -305,20 +320,18 @@ in_param_list
     ;
 
 in_param
-    : IN type arr_list id help COMMA
+    : IN type_id id help COMMA
         {{ $$ = &InParam{
             Node: NewAstNode($<loc>1, $<srcfile>1),
-            Tname: $<intern>2.Get($2),
-            ArrayDim: $3,
-            Id: $<intern>4.Get($4),
-            Help: unquote($5),
+            Tname: $2,
+            Id: $<intern>3.Get($3),
+            Help: unquote($4),
         } }}
-    | IN type arr_list id COMMA
+    | IN type_id id COMMA
         {{ $$ = &InParam{
             Node: NewAstNode($<loc>1, $<srcfile>1),
-            Tname: $<intern>2.Get($2),
-            ArrayDim: $3,
-            Id: $<intern>4.Get($4),
+            Tname: $2,
+            Id: $<intern>3.Get($3),
         } }}
     ;
 
@@ -333,53 +346,84 @@ out_param_list
     ;
 
 out_param
-    : OUT type arr_list COMMA
+    : OUT type_id COMMA
         {{ $$ = &OutParam{
-            Node: NewAstNode($<loc>1, $<srcfile>1),
-            Tname: $<intern>2.Get($2),
-            ArrayDim: $3,
-            Id: default_out_name,
+            StructMember: StructMember{
+                Node: NewAstNode($<loc>1, $<srcfile>1),
+                Tname: $2,
+                Id: default_out_name,
+            },
         } }}
-    | OUT type arr_list help COMMA
+    | OUT type_id help COMMA
         {{ $$ = &OutParam{
+            StructMember: StructMember{
+                Node: NewAstNode($<loc>1, $<srcfile>1),
+                Tname: $2,
+                Id: default_out_name,
+            },
+            Help: unquote($3),
+        } }}
+    | OUT type_id help outname COMMA
+        {{ $$ = &OutParam{
+            StructMember: StructMember{
             Node: NewAstNode($<loc>1, $<srcfile>1),
-            Tname: $<intern>2.Get($2),
-            ArrayDim: $3,
-            Id: default_out_name,
+                Tname: $2,
+                Id: default_out_name,
+                OutName: $<intern>5.unquote($4),
+            },
+            Help: unquote($3),
+        } }}
+    | OUT type_id id COMMA
+        {{ $$ = &OutParam{
+            StructMember: StructMember{
+                Node: NewAstNode($<loc>1, $<srcfile>1),
+                Tname: $2,
+                Id: $<intern>3.Get($3),
+            },
+        } }}
+    | OUT type_id id help COMMA
+        {{ $$ = &OutParam{
+            StructMember: StructMember{
+                Node: NewAstNode($<loc>1, $<srcfile>1),
+                Tname: $2,
+                Id: $<intern>3.Get($3),
+            },
             Help: unquote($4),
         } }}
-    | OUT type arr_list help outname COMMA
+    | OUT type_id id help outname COMMA
         {{ $$ = &OutParam{
-            Node: NewAstNode($<loc>1, $<srcfile>1),
-            Tname: $<intern>2.Get($2),
-            ArrayDim: $3,
-            Id: default_out_name,
+            StructMember: StructMember{
+                Node: NewAstNode($<loc>1, $<srcfile>1),
+                Tname: $2,
+                Id: $<intern>3.Get($3),
+                OutName: $<intern>5.unquote($5),
+            },
             Help: unquote($4),
-            OutName: $<intern>5.unquote($5),
         } }}
-    | OUT type arr_list id COMMA
-        {{ $$ = &OutParam{
+    ;
+
+struct_field_list
+    : struct_field
+        {{ $$ = []*StructMember{$1} }}
+    | struct_field_list struct_field
+        {{
+            $$ = append($1, $2)
+        }}
+    ;
+
+struct_field
+    : type_id id COMMA
+        {{ $$ = &StructMember{
             Node: NewAstNode($<loc>1, $<srcfile>1),
-            Tname: $<intern>2.Get($2),
-            ArrayDim: $3,
-            Id: $<intern>4.Get($4),
+            Tname: $1,
+            Id: $<intern>2.Get($2),
         } }}
-    | OUT type arr_list id help COMMA
-        {{ $$ = &OutParam{
+    | type_id id outname COMMA
+        {{ $$ = &StructMember{
             Node: NewAstNode($<loc>1, $<srcfile>1),
-            Tname: $<intern>2.Get($2),
-            ArrayDim: $3,
-            Id: $<intern>4.Get($4),
-            Help: unquote($5),
-        } }}
-    | OUT type arr_list id help outname COMMA
-        {{ $$ = &OutParam{
-            Node: NewAstNode($<loc>1, $<srcfile>1),
-            Tname: $<intern>2.Get($2),
-            ArrayDim: $3,
-            Id: $<intern>4.Get($4),
-            Help: unquote($5),
-            OutName: $<intern>6.unquote($6),
+            Tname: $1,
+            Id: $<intern>2.Get($2),
+            OutName: $<intern>3.unquote($3),
         } }}
     ;
 
@@ -405,13 +449,31 @@ outname
     ;
 
 type
+    : nonmap_type
+    | MAP
+    ;
+
+nonmap_type
     : INT
     | STRING
     | PATH
     | FLOAT
     | BOOL
-    | MAP
     | id_list
+    ;
+ 
+type_id
+    : MAP LANGLE nonmap_type arr_list RANGLE arr_list
+        {{ $$ = TypeId{
+            Tname: $<intern>3.Get($3),
+            ArrayDim: $6,
+            MapDim: 1 + $4,
+        } }}
+    | type arr_list
+        {{ $$ = TypeId{
+            Tname: $<intern>1.Get($1),
+            ArrayDim: $2,
+        } }}
     ;
 
 src_lang
@@ -572,9 +634,8 @@ bind_stm
         {{ $$ = &BindStm{
             Node: NewAstNode($<loc>1, $<srcfile>1),
             Id: $<intern>1.Get($1),
-            Exp: &ValExp{
-                Node: NewAstNode($<loc>1, $<srcfile>1),
-                Kind: KindArray,
+            Exp: &SweepExp{
+                valExp: valExp{Node: NewAstNode($<loc>1, $<srcfile>1)},
                 Value: $5,
             },
             Sweep: true,
@@ -583,9 +644,8 @@ bind_stm
         {{ $$ = &BindStm{
             Node: NewAstNode($<loc>1, $<srcfile>1),
             Id: $<intern>1.Get($1),
-            Exp: &ValExp{
-                Node: NewAstNode($<loc>1, $<srcfile>1),
-                Kind: KindArray,
+            Exp: &SweepExp{
+                valExp: valExp{Node: NewAstNode($<loc>1, $<srcfile>1)},
                 Value: $5,
             },
             Sweep: true,
@@ -609,6 +669,16 @@ kvpair_list
         {{ $$ = map[string]Exp{unquote($1): $3} }}
     ;
 
+struct_vals_list
+    : struct_vals_list COMMA id COLON exp
+        {{
+            $1[$<intern>3.Get($3)] = $5
+            $$ = $1
+        }}
+    | id COLON exp
+        {{ $$ = map[string]Exp{$<intern>1.Get($1): $3} }}
+    ;
+
 exp
     : val_exp
         {{ $$ = $1 }}
@@ -616,108 +686,132 @@ exp
         {{ $$ = $1 }}
 
 val_exp
-    : LBRACKET exp_list RBRACKET
-        {{ $$ = &ValExp{
-            Node: NewAstNode($<loc>1, $<srcfile>1),
-            Kind: KindArray,
-            Value: $2,
-        } }}
-    | LBRACKET exp_list COMMA RBRACKET
-        {{ $$ = &ValExp{
-            Node: NewAstNode($<loc>1, $<srcfile>1),
-            Kind: KindArray,
-            Value: $2,
-        } }}
-    | LBRACKET RBRACKET
-        {{ $$ = &ValExp{
-            Node: NewAstNode($<loc>1, $<srcfile>1),
-            Kind: KindArray,
-            Value: make([]Exp, 0),
-        } }}
-    | LBRACE RBRACE
-        {{ $$ = &ValExp{
-            Node: NewAstNode($<loc>1, $<srcfile>1),
-            Kind: KindMap,
-            Value: make(map[string]interface{}, 0),
-        } }}
-    | LBRACE kvpair_list RBRACE
-        {{ $$ = &ValExp{
-            Node: NewAstNode($<loc>1, $<srcfile>1),
-            Kind: KindMap,
-            Value: $2,
-        } }}
-    | LBRACE kvpair_list COMMA RBRACE
-        {{ $$ = &ValExp{
-            Node: NewAstNode($<loc>1, $<srcfile>1),
-            Kind: KindMap,
-            Value: $2,
-        } }}
-    | NUM_FLOAT
+    : NUM_FLOAT
         {{  // Lexer guarantees parseable float strings.
             f := parseFloat($1)
-            $$ = &ValExp{
-                Node: NewAstNode($<loc>1, $<srcfile>1),
-                Kind: KindFloat,
+            $$ = &FloatExp{
+                valExp: valExp{Node: NewAstNode($<loc>1, $<srcfile>1)},
                 Value: f,
             }
         }}
     | NUM_INT
         {{  // Lexer guarantees parseable int strings.
             i := parseInt($1)
-            $$ = &ValExp{
-                Node: NewAstNode($<loc>1, $<srcfile>1),
-                Kind: KindInt,
+            $$ = &IntExp{
+                valExp: valExp{Node: NewAstNode($<loc>1, $<srcfile>1)},
                 Value: i,
             }
         }}
     | LITSTRING
-        {{ $$ = &ValExp{
-            Node: NewAstNode($<loc>1, $<srcfile>1),
+        {{ $$ = &StringExp{
+            valExp: valExp{Node: NewAstNode($<loc>1, $<srcfile>1)},
             Kind: KindString,
             Value: unquote($1),
         } }}
+    | array_exp
+    | map_exp
     | bool_exp
     | NULL
-        {{ $$ = &ValExp{
-            Node: NewAstNode($<loc>1, $<srcfile>1),
-            Kind: KindNull,
+        {{ $$ = &NullExp{
+            valExp: valExp{Node: NewAstNode($<loc>1, $<srcfile>1)},
         } }}
     ;
 
+array_exp
+    : LBRACKET exp_list RBRACKET
+        {{ $$ = &ArrayExp{
+            valExp: valExp{Node: NewAstNode($<loc>1, $<srcfile>1)},
+            Value: $2,
+        } }}
+    | LBRACKET exp_list COMMA RBRACKET
+        {{ $$ = &ArrayExp{
+            valExp: valExp{Node: NewAstNode($<loc>1, $<srcfile>1)},
+            Value: $2,
+        } }}
+    | LBRACKET RBRACKET
+        {{ $$ = &ArrayExp{
+            valExp: valExp{Node: NewAstNode($<loc>1, $<srcfile>1)},
+            Value: make([]Exp, 0),
+        } }}
+
+map_exp
+    : LBRACE RBRACE
+        {{ $$ = &MapExp{
+            valExp: valExp{Node: NewAstNode($<loc>1, $<srcfile>1)},
+            Kind: KindMap,
+            Value: make(map[string]Exp, 0),
+        } }}
+    | LBRACE kvpair_list RBRACE
+        {{ $$ = &MapExp{
+            valExp: valExp{Node: NewAstNode($<loc>1, $<srcfile>1)},
+            Kind: KindMap,
+            Value: $2,
+        } }}
+    | LBRACE kvpair_list COMMA RBRACE
+        {{ $$ = &MapExp{
+            valExp: valExp{Node: NewAstNode($<loc>1, $<srcfile>1)},
+            Kind: KindMap,
+            Value: $2,
+        } }}
+    | LBRACE struct_vals_list RBRACE
+        {{ $$ = &MapExp{
+            valExp: valExp{Node: NewAstNode($<loc>1, $<srcfile>1)},
+            Kind: KindStruct,
+            Value: $2,
+        } }}
+    | LBRACE struct_vals_list COMMA RBRACE
+        {{ $$ = &MapExp{
+            valExp: valExp{Node: NewAstNode($<loc>1, $<srcfile>1)},
+            Kind: KindStruct,
+            Value: $2,
+        } }}
+
 bool_exp
     : TRUE
-        {{ $$ = &ValExp{
-            Node: NewAstNode($<loc>1, $<srcfile>1),
-            Kind: KindBool,
+        {{ $$ = &BoolExp{
+            valExp: valExp{Node: NewAstNode($<loc>1, $<srcfile>1)},
             Value: true,
         } }}
     | FALSE
-        {{ $$ = &ValExp{
-            Node: NewAstNode($<loc>1, $<srcfile>1),
-            Kind: KindBool,
+        {{ $$ = &BoolExp{
+            valExp: valExp{Node: NewAstNode($<loc>1, $<srcfile>1)},
             Value: false,
         } }}
 
 ref_exp
-    : id DOT id
+    : id DOT id_list
         {{ $$ = &RefExp{
             Node: NewAstNode($<loc>1, $<srcfile>1),
             Kind: KindCall,
             Id: $<intern>1.Get($1),
             OutputId: $<intern>3.Get($3),
         } }}
+    | id DOT DEFAULT
+        {{
+            $$ = &RefExp{
+            Node: NewAstNode($<loc>1, $<srcfile>1),
+            Kind: KindCall,
+            Id: $<intern>1.Get($1),
+            OutputId: default_out_name,
+        } }}
     | id
         {{ $$ = &RefExp{
             Node: NewAstNode($<loc>1, $<srcfile>1),
             Kind: KindCall,
             Id: $<intern>1.Get($1),
-            OutputId: default_out_name,
         } }}
     | SELF DOT id
         {{ $$ = &RefExp{
             Node: NewAstNode($<loc>1, $<srcfile>1),
             Kind: KindSelf,
             Id: $<intern>3.Get($3),
+        } }}
+    | SELF DOT id DOT id_list
+        {{ $$ = &RefExp{
+            Node: NewAstNode($<loc>1, $<srcfile>1),
+            Kind: KindSelf,
+            Id: $<intern>3.Get($3),
+            OutputId: $<intern>5.Get($5),
         } }}
     ;
 
@@ -735,6 +829,7 @@ id
     | SPECIAL
     | SPLIT
     | STRICT
+    | STRUCT
     | THREADS
     | USING
     | VOLATILE

@@ -1,0 +1,107 @@
+# Copyright (c) 2019 10X Genomics, Inc. All rights reserved.
+
+# This pipeline is used to test the runtime's ability to move files into
+# correct locations.
+
+filetype txt;
+
+struct FOO(
+    string file1,
+)
+
+struct BAR(
+    int bar,
+    txt file1,
+)
+
+stage CREATOR(
+    in  int  foo,
+    out int  bar,
+    out txt  file1,
+    out file file2,
+    out txt  file3  "help text"  "output_name.file",
+    src py   "struct_pipeline.mro",
+)
+
+stage CONSUMER(
+    in  BAR       c1,
+    in  file[]    files1,
+    in  map<file> files2,
+    src py        "struct_pipeline.mro",
+)
+
+pipeline INNER(
+    in  int          foo,
+    out CREATOR      bar,
+    out map<CREATOR> results1,
+    out map<CREATOR> results2  "help text"  "output_name",
+)
+{
+    call CREATOR as C1(
+        foo = self.foo,
+    )
+
+    call CREATOR as C2(
+        foo = C1.bar,
+    )
+
+    return (
+        bar      = C2,
+        results1 = {
+            "c1": C1,
+            "c2": C2,
+        },
+        results2 = {
+            "c1": C1,
+            "c2": null,
+        },
+    )
+}
+
+pipeline OUTER(
+    in  int        foo,
+    out txt        text,
+    out INNER      inner,
+    out map<txt>[] files1,
+    out int[]      bars,
+    out FOO[]      strs,
+    out txt[]      texts,
+)
+{
+    call INNER(
+        foo = self.foo,
+    )
+
+    call CONSUMER(
+        c1     = INNER.bar,
+        files1 = [
+            INNER.bar.file2,
+            "/some/path",
+        ],
+        files2 = INNER.results1.file2,
+    )
+
+    return (
+        text   = INNER.bar.file1,
+        inner  = INNER,
+        files1 = [
+            INNER.results1.file1,
+            INNER.results2.file1,
+        ],
+        bars   = [
+            INNER.bar.bar,
+            3,
+        ],
+        strs   = [
+            INNER.bar,
+            {
+                file1: "foo",
+            },
+        ],
+        texts  = [INNER.bar.file2],
+    )
+}
+
+call OUTER(
+    foo = 1,
+)

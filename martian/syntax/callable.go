@@ -27,7 +27,7 @@ type (
 
 	// An ordered set of parameters.
 	InParams struct {
-		List []*InParam
+		List []*InParam `json:"-"`
 
 		// Lookup table of params by Id.  Populated during compile.
 		Table map[string]*InParam
@@ -35,7 +35,7 @@ type (
 
 	// An ordered set of parameters.
 	OutParams struct {
-		List []*OutParam
+		List []*OutParam `json:"-"`
 
 		// Lookup table of params by Id.  Populated during compile.
 		Table map[string]*OutParam
@@ -44,32 +44,26 @@ type (
 	Param interface {
 		AstNodable
 		getMode() string
-		GetTname() string
+		GetTname() TypeId
 		GetArrayDim() int
 		GetId() string
 		GetHelp() string
 		GetOutName() string
-		IsFile() bool
-		setIsFile(bool)
+		IsFile() FileKind
+		setIsFile(FileKind)
 	}
 
 	InParam struct {
-		Node     AstNode
-		Tname    string
-		Id       string
-		Help     string
-		ArrayDim int16
-		Isfile   bool
+		Node   AstNode
+		Tname  TypeId
+		Id     string
+		Help   string
+		Isfile FileKind
 	}
 
 	OutParam struct {
-		Node     AstNode
-		Tname    string
-		Id       string
-		Help     string
-		OutName  string
-		ArrayDim int16
-		Isfile   bool
+		StructMember
+		Help string
 	}
 
 	Stage struct {
@@ -121,6 +115,7 @@ type (
 		Node AstNode
 		Lang StageLanguage
 		cmd  string
+		Type StageCodeType
 		Path string
 		Args []string
 	}
@@ -285,50 +280,33 @@ func (s *Pipeline) getSubnodes() []AstNodable {
 	return subs
 }
 
-func (s *InParam) getNode() *AstNode  { return &s.Node }
-func (s *InParam) File() *SourceFile  { return s.Node.Loc.File }
-func (s *InParam) getMode() string    { return "in" }
-func (s *InParam) GetTname() string   { return s.Tname }
-func (s *InParam) GetArrayDim() int   { return int(s.ArrayDim) }
-func (s *InParam) GetId() string      { return s.Id }
-func (s *InParam) GetHelp() string    { return s.Help }
-func (s *InParam) GetOutName() string { return "" }
-func (s *InParam) IsFile() bool       { return s.Isfile }
-func (s *InParam) setIsFile(b bool)   { s.Isfile = b }
+func (s *InParam) getNode() *AstNode    { return &s.Node }
+func (s *InParam) File() *SourceFile    { return s.Node.Loc.File }
+func (s *InParam) getMode() string      { return "in" }
+func (s *InParam) GetTname() TypeId     { return s.Tname }
+func (s *InParam) GetArrayDim() int     { return int(s.Tname.ArrayDim) }
+func (s *InParam) GetId() string        { return s.Id }
+func (s *InParam) GetHelp() string      { return s.Help }
+func (s *InParam) GetOutName() string   { return "" }
+func (s *InParam) IsFile() FileKind     { return s.Isfile }
+func (s *InParam) setIsFile(b FileKind) { s.Isfile = b }
 
 func (s *InParam) inheritComments() bool { return false }
 func (s *InParam) getSubnodes() []AstNodable {
 	return nil
 }
 
-func (s *OutParam) getNode() *AstNode  { return &s.Node }
-func (s *OutParam) File() *SourceFile  { return s.Node.Loc.File }
-func (s *OutParam) getMode() string    { return "out" }
-func (s *OutParam) GetTname() string   { return s.Tname }
-func (s *OutParam) GetArrayDim() int   { return int(s.ArrayDim) }
-func (s *OutParam) GetId() string      { return s.Id }
-func (s *OutParam) GetHelp() string    { return s.Help }
-func (s *OutParam) GetOutName() string { return s.OutName }
-func (s *OutParam) IsFile() bool       { return s.Isfile }
-func (s *OutParam) setIsFile(b bool)   { s.Isfile = b }
+func (s *OutParam) getNode() *AstNode { return &s.Node }
+func (s *OutParam) File() *SourceFile { return s.Node.Loc.File }
+func (s *OutParam) getMode() string   { return "out" }
+func (s *OutParam) GetTname() TypeId  { return s.Tname }
+func (s *OutParam) GetArrayDim() int  { return int(s.Tname.ArrayDim) }
+func (s *OutParam) GetId() string     { return s.Id }
+func (s *OutParam) GetHelp() string   { return s.Help }
 
 func (s *OutParam) inheritComments() bool { return false }
 func (s *OutParam) getSubnodes() []AstNodable {
 	return nil
-}
-
-// Returns the default base filename for this output parameter, or an
-// empty string if the parameter is not a file type.
-func (s *OutParam) GetOutFilename() string {
-	if !s.IsFile() {
-		return ""
-	} else if s.OutName != "" {
-		return s.OutName
-	} else if s.Tname == KindFile || s.Tname == KindPath {
-		return s.Id
-	} else {
-		return s.Id + "." + s.Tname
-	}
 }
 
 func (s *SrcParam) getNode() *AstNode         { return &s.Node }

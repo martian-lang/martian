@@ -7,4 +7,6 @@ stage EXIT(
     src py     "stages/exit",
 )
 
-call EXIT(message = "Hello World!",)
+call EXIT(
+    message = "Hello World!",
+)

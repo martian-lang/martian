@@ -24,21 +24,31 @@ type %sChunkDef struct {`,
 		}
 		fmt.Fprintf(buffer, `}
 
-func (self *%sChunkDef) ToChunkDef() *core.ChunkDef {
-	return &core.ChunkDef{
-		Resources: self.JobResources,
-		Args: core.ArgumentMap{
-`, prefix)
+func (def *%sChunkDef) ArgsMap() (core.LazyArgumentMap, error) {
+	m := make(core.LazyArgumentMap, %d)`,
+			prefix, len(stage.ChunkIns.List))
 		for _, param := range stage.ChunkIns.List {
-			fmt.Fprintf(buffer,
-				"\t\t\t\"%s\": self.%s,\n",
-				param.GetId(),
-				GoName(param.GetId()))
-		}
-		fmt.Fprintf(buffer, `		},
+			fmt.Fprintf(buffer, `
+	if b, err := json.Marshal(def.%s); err != nil {
+		return m, err
+	} else {
+		m["%s"] = b
 	}
+	return m, nil`, GoName(param.GetId()), param.GetId())
+		}
+		fmt.Fprintf(buffer, `
 }
 
+func (def *%sChunkDef) ToChunkDef() (*core.ChunkDef, error) {
+    args, err := def.ArgsMap()
+	return &core.ChunkDef{
+		Resources: def.JobResources,
+		Args: args,
+	}, err
+}
+`, prefix)
+
+		fmt.Fprintf(buffer, `
 // A structure to decode args to the chunks for %s
 type %sChunkArgs struct {
 	%sChunkDef
@@ -50,22 +60,25 @@ type %sChunkArgs struct {
 // %s chunks have no extra inputs.
 type %sChunkDef core.JobResources
 
-func (self *%sChunkDef) ToChunkDef() *core.ChunkDef {
+func (def *%sChunkDef) ArgsMap() (core.LazyArgumentMap, error) {
+	return make(core.LazyArgumentMap, 0), nil
+}
+
+func (def *%sChunkDef) ToChunkDef() (*core.ChunkDef, error) {
 	return &core.ChunkDef{
-		Resources: self.JobResources,
-		Args: make(core.ArgumentMap),
-	}
+		Resources: def.JobResources,
+	}, nil
 }
 
 // %s chunks have no extra inputs.
 type %sChunkArgs %sArgs
-`, stage.Id, prefix, prefix, stage.Id, prefix, prefix)
+`, stage.Id, prefix, prefix, prefix, stage.Id, prefix, prefix)
 	}
 }
 
 func writeKeyMarshaller(buffer *bytes.Buffer, param syntax.Param, i int) {
 	fmt.Fprintf(buffer, `
-	if b, err := json.Marshal(&self.%s); err != nil {
+	if b, err := json.Marshal(&def.%s); err != nil {
 		return nil, err
 	} else {`, GoName(param.GetId()))
 	if i == 0 {
@@ -93,7 +106,7 @@ type %sChunkOuts struct {
 		}
 		fmt.Fprintf(buffer, `}
 
-func (self *%sChunkOuts) MarshalJSON() ([]byte, error) {
+func (def *%sChunkOuts) MarshalJSON() ([]byte, error) {
 	var buf bytes.Buffer
 	buf.WriteRune('{')`, prefix)
 		for i, param := range stage.OutParams.List {

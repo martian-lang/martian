@@ -14,7 +14,6 @@ import (
 
 	"github.com/martian-lang/docopt.go"
 	"github.com/martian-lang/martian/martian/core"
-	"github.com/martian-lang/martian/martian/syntax"
 	"github.com/martian-lang/martian/martian/util"
 )
 
@@ -47,35 +46,7 @@ Options:
 	dec.UseNumber()
 	var input core.InvocationData
 	if err := dec.Decode(&input); err == nil {
-		if input.Call == "" {
-			fmt.Println("No pipeline or stage specified.")
-			os.Exit(1)
-		}
-		var callable syntax.Callable
-		if input.Include != "" {
-			c, err := core.GetCallableFrom(input.Call, input.Include, mroPaths)
-			if err != nil {
-				fmt.Printf("Could not find %s: %v\n", input.Call, err)
-				os.Exit(1)
-			}
-			callable = c
-		} else {
-			c, err := core.GetCallable(mroPaths, input.Call, false)
-			if err != nil {
-				fmt.Printf("Could not find %s: %v\n", input.Call, err)
-				os.Exit(1)
-			}
-			callable = c
-		}
-
-		if input.Args == nil {
-			fmt.Println("No args given.")
-			os.Exit(1)
-		}
-
-		src, bldErr := core.BuildCallSource(
-			input.Call, input.Args, input.SweepArgs,
-			callable, mroPaths)
+		src, bldErr := input.BuildCallSource(mroPaths)
 
 		if bldErr == nil {
 			fmt.Print(src)

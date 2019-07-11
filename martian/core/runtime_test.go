@@ -23,7 +23,7 @@ import (
 func ExampleBuildCallSource() {
 	src, _ := BuildCallSource(
 		"STAGE_NAME",
-		MakeLazyArgumentMap(map[string]interface{}{
+		MakeMarshalerMap(map[string]interface{}{
 			"input1": []int{1, 2},
 			"input2": "foo",
 			"input3": json.RawMessage(`{"foo":"bar"}`),
@@ -38,16 +38,18 @@ func ExampleBuildCallSource() {
 			InParams: &syntax.InParams{
 				List: []*syntax.InParam{
 					{
-						Tname:    "int",
-						ArrayDim: 1,
-						Id:       "input1",
+						Tname: syntax.TypeId{
+							Tname:    syntax.KindInt,
+							ArrayDim: 1,
+						},
+						Id: "input1",
 					},
 					{
-						Tname: "string",
+						Tname: syntax.TypeId{Tname: syntax.KindString},
 						Id:    "input2",
 					},
 					{
-						Tname: "map",
+						Tname: syntax.TypeId{Tname: syntax.KindMap},
 						Id:    "input3",
 					},
 				},
@@ -69,8 +71,19 @@ func ExampleBuildCallSource() {
 	// )
 }
 
+type nullWriter struct{}
+
+func (*nullWriter) Write(b []byte) (int, error) {
+	return len(b), nil
+}
+func (*nullWriter) WriteString(b string) (int, error) {
+	return len(b), nil
+}
+
 // Very basic invoke test.
 func TestInvoke(t *testing.T) {
+	var devNull nullWriter
+	util.SetPrintLogger(&devNull)
 	src := `
 stage SUM_SQUARES(
     in  float[] values,
@@ -142,7 +155,7 @@ call SUM_SQUARE_PIPELINE(
 		cfg := path.Join(jobPath, "config.json")
 		if _, err := os.Stat(cfg); os.IsNotExist(err) {
 			t.Log("Creating ", cfg)
-			if ioutil.WriteFile(cfg, []byte(`{
+			if err := ioutil.WriteFile(cfg, []byte(`{
   "settings": {
     "threads_per_job": 1,
     "memGB_per_job": 1,
@@ -213,5 +226,60 @@ func TestGetCallable(t *testing.T) {
 				callable.File().FileName,
 				strings.Join(mropaths[i:], ":"))
 		}
+	}
+}
+
+func TestBuildCallData(t *testing.T) {
+	const src = `@include "testdata/mock_stages.mro"
+
+call MOCK_PHASER_SVCALLER(
+    sample_def = [{
+        "gem_group": null,
+        "lanes": null,
+        "read_path": "testdata/manager/bclprocessor",
+        "sample_indices": [
+            "AAAGCATA",
+            "TCCAATAA",
+        ],
+    }],
+    downsample = {
+        "subsample_rate": 1,
+    },
+    unused     = sweep(
+        1,
+        2,
+    ),
+)
+`
+	invocationData, err := BuildCallData(src, "mock", []string{""})
+	if err != nil {
+		t.Error(err)
+	}
+	if invocationData == nil {
+		t.Fatal("no invocation data returned")
+	}
+	if len(invocationData.Args) != 3 {
+		t.Error("incorrect argument count ", len(invocationData.Args))
+	}
+	if invocationData.Call != "MOCK_PHASER_SVCALLER" {
+		t.Errorf("Expected call MOCK_PHASER_SVCALLER, got %s",
+			invocationData.Call)
+	}
+	if len(invocationData.SweepArgs) != 1 {
+		t.Errorf("Expected 1 sweep arg, got %d", len(invocationData.SweepArgs))
+	}
+	if len(invocationData.SweepArgs) > 0 &&
+		invocationData.SweepArgs[0] != "unused" {
+		t.Errorf("expected 'unused' as sweep arg, got %s",
+			invocationData.SweepArgs[0])
+	}
+	if invocationData.Include != "testdata/mock_stages.mro" {
+		t.Errorf("expected include 'testdata/mock_stages.mro', got %q",
+			invocationData.Include)
+	}
+	if s, err := invocationData.BuildCallSource([]string{""}); err != nil {
+		t.Error(err)
+	} else if s != src {
+		t.Errorf("incorrect source:\n%s", s)
 	}
 }

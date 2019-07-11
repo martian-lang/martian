@@ -70,7 +70,10 @@ func uncheckedMakeTables(top *Ast, included *Ast) error {
 			top.Callables.Table[callable.GetId()] = callable
 		}
 	}
-	err := top.compileTypes()
+	var errs ErrorList
+	if err := top.compileTypes(); err != nil {
+		errs = append(errs, err)
+	}
 	if included != nil {
 		for _, callable := range included.Callables.List {
 			if top.Callables.Table == nil {
@@ -81,26 +84,42 @@ func uncheckedMakeTables(top *Ast, included *Ast) error {
 			}
 		}
 		for _, userType := range included.UserTypes {
-			if top.UserTypeTable == nil {
-				top.UserTypeTable = make(map[string]*UserType, len(included.UserTypes))
+			if top.TypeTable.baseTypes == nil {
+				top.TypeTable.init(len(included.UserTypes) + len(included.StructTypes) + len(included.Callables.List))
 			}
-			if _, ok := top.UserTypeTable[userType.Id]; !ok {
-				top.UserTypeTable[userType.Id] = userType
+			if err := top.TypeTable.AddUserType(userType); err != nil {
+				errs = append(errs, err)
+			}
+		}
+		for _, structType := range included.StructTypes {
+			if top.TypeTable.baseTypes == nil {
+				top.TypeTable.init(len(included.UserTypes) + len(included.StructTypes) + len(included.Callables.List))
+			}
+			if err := top.TypeTable.AddStructType(structType); err != nil {
+				errs = append(errs, err)
+			}
+		}
+		for _, callable := range included.Callables.List {
+			if top.TypeTable.baseTypes == nil {
+				top.TypeTable.init(len(included.UserTypes) + len(included.StructTypes) + len(included.Callables.List))
+			}
+			if err := top.TypeTable.AddStructType(structFromCallable(callable)); err != nil {
+				errs = append(errs, err)
 			}
 		}
 	}
-	return err
+	return errs.If()
 }
 
 // Get the set of includes which are required for this source AST,
 // as well as the set of types and callables which remain undefined.
 func getRequiredIncludes(source *Ast) (map[string]*SourceFile,
-	map[string]*UserType, map[string]struct{}) {
+	map[string]Type, map[string]struct{}) {
 	required := make(map[string]*SourceFile, 1+len(source.Includes))
 	for k, v := range source.Files {
 		required[k] = v
 	}
-	unknownTypes := make(map[string]*UserType)
+	unknownTypes := make(map[string]Type)
 	unknownCallables := make(map[string]struct{})
 	if source.Call != nil {
 		if call := source.Callables.Table[source.Call.DecId]; call != nil {
@@ -128,15 +147,18 @@ func getRequiredIncludes(source *Ast) (map[string]*SourceFile,
 		} {
 			for _, param := range params.List {
 				tName := param.GetTname()
-				if t := source.UserTypeTable[tName]; t != nil {
-					if srcFile := t.getNode().Loc.File; srcFile != param.File() {
-						if _, ok := required[srcFile.FileName]; !ok {
-							unknownTypes[tName] = t
+				if t := source.TypeTable.Get(TypeId{Tname: tName.Tname}); t != nil {
+					// Don't worry about builtin types
+					if tn, ok := t.(AstNodable); ok {
+						if srcFile := tn.getNode().Loc.File; srcFile != param.File() {
+							if _, ok := required[srcFile.FileName]; !ok {
+								unknownTypes[tName.Tname] = t
+							}
 						}
 					}
-				} else if _, ok := source.TypeTable[tName]; !ok {
-					unknownTypes[tName] = &UserType{
-						Id: tName,
+				} else {
+					unknownTypes[tName.Tname] = &UserType{
+						Id: tName.Tname,
 					}
 				}
 			}
@@ -147,15 +169,18 @@ func getRequiredIncludes(source *Ast) (map[string]*SourceFile,
 		} {
 			for _, param := range params.List {
 				tName := param.GetTname()
-				if t := source.UserTypeTable[tName]; t != nil {
-					if srcFile := t.getNode().Loc.File; srcFile != param.File() {
-						if _, ok := required[srcFile.FileName]; !ok {
-							unknownTypes[tName] = t
+				if t := source.TypeTable.Get(TypeId{Tname: tName.Tname}); t != nil {
+					// Don't worry about builtin types
+					if tn, ok := t.(AstNodable); ok {
+						if srcFile := tn.getNode().Loc.File; srcFile != param.File() {
+							if _, ok := required[srcFile.FileName]; !ok {
+								unknownTypes[tName.Tname] = t
+							}
 						}
 					}
-				} else if _, ok := source.TypeTable[tName]; !ok {
-					unknownTypes[tName] = &UserType{
-						Id: tName,
+				} else {
+					unknownTypes[tName.Tname] = &UserType{
+						Id: tName.Tname,
 					}
 				}
 			}
@@ -165,9 +190,9 @@ func getRequiredIncludes(source *Ast) (map[string]*SourceFile,
 }
 
 func (parser *Parser) findMissingIncludes(seenFiles map[string]*SourceFile,
-	neededTypes map[string]*UserType,
+	neededTypes map[string]Type,
 	neededCallables map[string]struct{},
-	incPaths []string) ([]*SourceFile, []*UserType, error) {
+	incPaths []string) ([]*SourceFile, []Type, error) {
 	if len(neededTypes) == 0 && len(neededCallables) == 0 {
 		return nil, nil, nil
 	}
@@ -210,10 +235,21 @@ func (parser *Parser) findMissingIncludes(seenFiles map[string]*SourceFile,
 								}
 								neededFiles = append(neededFiles, &srcFile)
 							} else {
-								for _, t := range ast.UserTypes {
-									if t, ok := neededTypes[t.Id]; ok {
-										if t.Node.Loc.File == nil {
-											neededTypes[t.Id] = t
+								for _, ut := range ast.UserTypes {
+									if t, ok := neededTypes[ut.GetId().Tname]; ok {
+										if tn, ok := t.(AstNodable); ok {
+											if tn.getNode().Loc.File == nil {
+												neededTypes[t.GetId().Tname] = ut
+											}
+										}
+									}
+								}
+								for _, st := range ast.StructTypes {
+									if t, ok := neededTypes[st.GetId().Tname]; ok {
+										if tn, ok := t.(AstNodable); ok {
+											if tn.getNode().Loc.File == nil {
+												neededTypes[t.GetId().Tname] = st
+											}
 										}
 									}
 								}
@@ -230,7 +266,7 @@ func (parser *Parser) findMissingIncludes(seenFiles map[string]*SourceFile,
 			break
 		}
 	}
-	types := make([]*UserType, 0, len(neededTypes))
+	types := make([]Type, 0, len(neededTypes))
 	for _, t := range neededTypes {
 		types = append(types, t)
 	}
@@ -243,7 +279,7 @@ func (parser *Parser) findMissingIncludes(seenFiles map[string]*SourceFile,
 }
 
 // Add required includes, remove unnecessary ones, and sort them.
-func fixIncludes(source *Ast, needed map[string]*SourceFile, extraTypes []*UserType) {
+func fixIncludes(source *Ast, needed map[string]*SourceFile, extraTypes []Type) {
 	// Grab the scope comments off the first node, so that we can reattach them post-sort.
 	var scopeComments []*commentBlock
 	if len(source.Includes) > 0 {
@@ -307,17 +343,42 @@ func fixIncludes(source *Ast, needed map[string]*SourceFile, extraTypes []*UserT
 			loc = t.Node.Loc
 		}
 		sort.Slice(extraTypes, func(i, j int) bool {
-			return extraTypes[i].Id < extraTypes[j].Id
+			// sort UserTypes before structs
+			if ui, ok := extraTypes[i].(*UserType); ok {
+				if uj, ok := extraTypes[j].(*UserType); !ok {
+					return true
+				} else {
+					return ui.Id < uj.Id
+				}
+			} else if _, ok := extraTypes[j].(*UserType); ok {
+				return false
+			}
+			return extraTypes[i].GetId().Tname < extraTypes[j].GetId().Tname
 		})
 		for _, t := range extraTypes {
-			source.UserTypes = append(source.UserTypes, &UserType{
-				Id: t.Id,
-				Node: AstNode{
-					Loc:      loc,
-					Comments: t.Node.Comments,
-					// Don't include scope comments.
-				},
-			})
+			switch t := t.(type) {
+			case *UserType:
+				source.UserTypes = append(source.UserTypes, &UserType{
+					Id: t.Id,
+					Node: AstNode{
+						Loc:      loc,
+						Comments: t.Node.Comments,
+						// Don't include scope comments.
+					},
+				})
+			case *StructType:
+				source.StructTypes = append(source.StructTypes, &StructType{
+					Id: t.Id,
+					Node: AstNode{
+						Loc:      loc,
+						Comments: t.Node.Comments,
+						// Don't include scope comments.
+					},
+					Members: t.Members,
+				})
+			default:
+				panic(fmt.Sprintf("unexpected extra type %T", t))
+			}
 		}
 	}
 	source.Includes = newIncludes

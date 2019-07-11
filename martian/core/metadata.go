@@ -235,17 +235,29 @@ func (self *Metadata) TempDir() string {
 	}
 }
 
+func (self *Metadata) writeError(msg string, src error) {
+	msg = msg + self.fqname
+	util.LogError(src, "runtime", msg)
+	if err := self.WriteRaw(Errors, msg+": "+src.Error()); err != nil {
+		util.PrintError(err, "runtime", "Could not write error message")
+	}
+}
+
+func (self *Metadata) writeErrorNoLock(msg string, src error) {
+	msg = msg + self.fqname
+	util.LogError(src, "runtime", msg)
+	if err := self._writeRawNoLock(Errors, msg+": "+src.Error()); err != nil {
+		util.PrintError(err, "runtime", "Could not write error message")
+	}
+}
+
 func (self *Metadata) mkdirs() error {
 	if err := util.Mkdir(self.path); err != nil {
-		msg := fmt.Sprintf("Could not create directories for %s: %s", self.fqname, err.Error())
-		util.LogError(err, "runtime", msg)
-		self.WriteRaw(Errors, msg)
+		self.writeError("Could not create directories for ", err)
 		return err
 	}
 	if err := util.Mkdir(self.curFilesPath); err != nil {
-		msg := fmt.Sprintf("Could not create directories for %s: %s", self.fqname, err.Error())
-		util.LogError(err, "runtime", msg)
-		self.WriteRaw(Errors, msg)
+		self.writeError("Could not create directories for ", err)
 		return err
 	}
 	return nil
@@ -259,25 +271,19 @@ func (self *Metadata) uniquify() error {
 	}
 	p := self.finalPath + "-u" + self.uniquifier
 	if err := util.Mkdir(p); err != nil {
-		msg := fmt.Sprintf("Could not create directories for %s: %s", self.fqname, err.Error())
-		util.LogError(err, "runtime", msg)
-		self._writeRawNoLock(Errors, msg)
+		self.writeErrorNoLock("Could not create directories for ", err)
 		return err
 	}
 	self.path = p
 	filesPath := path.Join(p, "files")
 	if err := util.Mkdir(filesPath); err != nil {
-		msg := fmt.Sprintf("Could not create file directory for %s: %s", self.fqname, err.Error())
-		util.LogError(err, "runtime", msg)
-		self._writeRawNoLock(Errors, msg)
+		self.writeErrorNoLock("Could not create file directory for ", err)
 		os.Remove(p)
 		return err
 	}
 	self.curFilesPath = filesPath
 	if err := util.Mkdir(self.TempDir()); err != nil {
-		msg := fmt.Sprintf("Could not create temp directory for %s: %s", self.fqname, err.Error())
-		util.LogError(err, "runtime", msg)
-		self._writeRawNoLock(Errors, msg)
+		self.writeErrorNoLock("Could not create temp directory for ", err)
 		os.Remove(filesPath)
 		os.Remove(p)
 		return err
@@ -285,41 +291,37 @@ func (self *Metadata) uniquify() error {
 
 	if self.discoverUniquifier() != self.uniquifier {
 		if relPath, err := filepath.Rel(filepath.Dir(self.finalPath), p); err != nil {
-			msg := fmt.Sprintf("Could not compute relative path for %s to %s", self.finalPath, p)
-			util.LogError(err, "runtime", msg)
-			self._writeRawNoLock(Errors, msg)
+			msg := fmt.Sprintf(
+				"Could not compute relative path for %s to %s for stage ",
+				self.finalPath, p)
+			self.writeErrorNoLock(msg, err)
 			os.RemoveAll(p)
 			return err
 
 		} else {
 			if err := os.Symlink(relPath, self.finalPath); err != nil {
-				msg := fmt.Sprintf("Could not create symlink for %s: %s", self.fqname, err.Error())
-				util.LogError(err, "runtime", msg)
-				self._writeRawNoLock(Errors, msg)
+				self.writeErrorNoLock("Could not create symlink for ", err)
 				os.RemoveAll(p)
 				return err
 			}
 		}
 		if self.finalFilePath != path.Join(self.finalPath, "files") {
 			if err := os.Remove(self.finalFilePath); err != nil && !os.IsNotExist(err) {
-				msg := fmt.Sprintf("Could not remove existing directory for %s: %s", self.fqname, err.Error())
-				util.LogError(err, "runtime", msg)
-				self._writeRawNoLock(Errors, msg)
+				self.writeErrorNoLock("Could not remove existing directory for ", err)
 				os.RemoveAll(p)
 				return err
 			}
 			if relPath, err := filepath.Rel(filepath.Dir(self.finalFilePath), filesPath); err != nil {
-				msg := fmt.Sprintf("Could not compute relative path for %s to %s", self.finalFilePath, filesPath)
-				util.LogError(err, "runtime", msg)
-				self._writeRawNoLock(Errors, msg)
+				msg := fmt.Sprintf(
+					"Could not compute relative path for %s to %s for stage ",
+					self.finalFilePath, filesPath)
+				self.writeErrorNoLock(msg, err)
 				os.RemoveAll(p)
 				return err
 
 			} else {
 				if err := os.Symlink(relPath, self.finalFilePath); err != nil {
-					msg := fmt.Sprintf("Could not create files symlink for %s: %s", self.fqname, err.Error())
-					util.LogError(err, "runtime", msg)
-					self._writeRawNoLock(Errors, msg)
+					self.writeErrorNoLock("Could not create files symlink for ", err)
 					os.RemoveAll(p)
 					return err
 				}
@@ -597,10 +599,16 @@ func (self *Metadata) WriteRawBytes(name MetadataFileName, text []byte) error {
 		msg := fmt.Sprintf("Could not write %s for %s: %s", name, self.fqname, err.Error())
 		util.LogError(err, "runtime", msg)
 		if name != Errors {
-			self.WriteRaw(Errors, msg)
+			self.WriteErrorString(msg)
 		}
 	}
 	return err
+}
+
+func (self *Metadata) WriteErrorString(msg string) {
+	if err := self.WriteRaw(Errors, msg); err != nil {
+		util.LogError(err, "runtime", "Could not write errors file.")
+	}
 }
 
 func (self *Metadata) appendRaw(name MetadataFileName, text string) error {
@@ -622,7 +630,7 @@ func (self *Metadata) AppendAlarm(text string) error {
 		msg := fmt.Sprintf("Could not write alarm for %s: %s",
 			self.fqname, err.Error())
 		util.LogError(err, "runtime", msg)
-		self.WriteRaw(Errors, msg)
+		self.WriteErrorString(msg)
 		return err
 	}
 	if self.journalPrefix != "" {
@@ -686,11 +694,25 @@ func (self *Metadata) UpdateJournal(name MetadataFileName) error {
 
 func (self *Metadata) remove(name MetadataFileName) error {
 	self.uncache(name)
-	return os.Remove(self.MetadataFilePath(name))
+	err := os.Remove(self.MetadataFilePath(name))
+	if os.IsNotExist(err) {
+		// Workaround for an issue one heavily loaded NFS servers.  If a request
+		// is taking a long time, the client will re-send the request.  The
+		// server is supposed to note that the request is a duplicate and
+		// de-duplicate it, but if it's heavily loaded its duplicate request
+		// cache might have already been flushed, in which case the second
+		// request will see ENOENT and fail.
+		return nil
+	}
+	return err
 }
 func (self *Metadata) _removeNoLock(name MetadataFileName) error {
 	self._uncacheNoLock(name)
-	return os.Remove(self.MetadataFilePath(name))
+	err := os.Remove(self.MetadataFilePath(name))
+	if os.IsNotExist(err) {
+		return nil
+	}
+	return err
 }
 
 func (self *Metadata) clearReadCache() {
@@ -882,7 +904,7 @@ func (self *Metadata) checkHeartbeat() {
 			if state, _ := self.getState(); state != Running {
 				return
 			}
-			self.WriteRaw("errors", fmt.Sprintf(
+			self.WriteErrorString(fmt.Sprintf(
 				"%s: No heartbeat detected for %d minutes. "+
 					"Assuming job has failed. This may be "+
 					"due to a user manually terminating the job, "+

@@ -23,23 +23,6 @@ type JobResources struct {
 	Special string `json:"__special,omitempty"`
 }
 
-func (self *JobResources) ToMap() ArgumentMap {
-	r := make(ArgumentMap, 3)
-	if self.Threads != 0 {
-		r["__threads"] = self.Threads
-	}
-	if self.MemGB != 0 {
-		r["__mem_gb"] = self.MemGB
-	}
-	if self.VMemGB != 0 {
-		r["__vmem_gb"] = self.VMemGB
-	}
-	if self.Special != "" {
-		r["__special"] = self.Special
-	}
-	return r
-}
-
 func (self *JobResources) ToLazyMap() LazyArgumentMap {
 	r := make(LazyArgumentMap, 3)
 	if self.Threads != 0 {
@@ -120,127 +103,30 @@ func (self *JobResources) updateFromLazyArgs(args LazyArgumentMap) error {
 
 }
 
-func (self *JobResources) updateFromArgs(args ArgumentMap) error {
-	if args == nil {
-		return nil
-	}
-	getInt := func(v interface{}, key string) (int, error) {
-		switch n := v.(type) {
-		case json.Number:
-			if i, err := n.Int64(); err == nil {
-				return int(i), nil
-			} else if level := syntax.GetEnforcementLevel(); level == syntax.EnforceError {
-				return int(i), err
-			} else if f, err := n.Float64(); err != nil {
-				return 0, err
-			} else {
-				if level == syntax.EnforceLog {
-					util.LogInfo("runtime",
-						"WARNING: value %v for %s was not of integer type",
-						n, key)
-				} else if level == syntax.EnforceAlarm {
-					util.PrintInfo("runtime",
-						"WARNING: value %v for %s was not of integer type",
-						n, key)
-				}
-				return int(f), nil
-			}
-		case float64:
-			if n != float64(int(n)) {
-				return int(n), fmt.Errorf("%f is not an integer", n)
-			} else {
-				return int(n), nil
-			}
-		case int64:
-			return int(n), nil
-		case int:
-			return n, nil
-		default:
-			return 0, fmt.Errorf("Expected integer for %s, found %v instead",
-				key, v)
-		}
-	}
-	if v, ok := args["__threads"]; ok {
-		if n, err := getInt(v, "__threads"); err != nil {
-			return err
-		} else {
-			self.Threads = n
-		}
-		delete(args, "__threads")
-	}
-	if v, ok := args["__mem_gb"]; ok {
-		if n, err := getInt(v, "__mem_gb"); err != nil {
-			return err
-		} else {
-			self.MemGB = n
-		}
-		delete(args, "__mem_gb")
-	}
-	if v, ok := args["__vmem_gb"]; ok {
-		if n, err := getInt(v, "__vmem_gb"); err != nil {
-			return err
-		} else {
-			self.VMemGB = n
-		}
-		delete(args, "__vmem_gb")
-	}
-	if v, ok := args["__special"]; ok {
-		if s, ok := v.(string); !ok {
-			return fmt.Errorf("Expected string for __special, found %v instead", v)
-		} else {
-			self.Special = s
-		}
-		delete(args, "__special")
-	}
-	return nil
-}
-
-// LazyChunkDef is a ChunkDef which does not fully deserialize its arguments.
-type LazyChunkDef struct {
-	Resources *JobResources
-	Args      LazyArgumentMap
-}
-
-// Fully unmarshal the def.
-func (self *LazyChunkDef) Resolve() (*ChunkDef, error) {
-	result := &ChunkDef{
-		Resources: self.Resources,
-	}
-	if self.Args != nil {
-		result.Args = make(ArgumentMap, len(self.Args))
-		for key, value := range self.Args {
-			var val interface{}
-			if err := json.Unmarshal(value, &val); err != nil {
-				return result, err
-			}
-			result.Args[key] = val
-		}
-	}
-	return result, nil
-}
-
-func (self *LazyChunkDef) MergeArguments(bindings LazyArgumentMap) *LazyChunkDef {
+func (self *ChunkDef) mergeFromMarshaler(bindings MarshalerMap) *ChunkDef {
 	if bindings == nil || len(bindings) == 0 {
 		return self
 	}
-	if self.Args == nil || len(self.Args) == 0 {
-		return &LazyChunkDef{
-			Resources: self.Resources,
-			Args:      bindings,
-		}
-	}
-	def := LazyChunkDef{
+	def := ChunkDef{
 		Resources: self.Resources,
-		Args: make(LazyArgumentMap, func(i, j int) int {
-			if i < j {
-				return j
+		Args: make(LazyArgumentMap, func(a LazyArgumentMap, b int) int {
+			if len(a) < b {
+				return b
 			} else {
-				return i
+				return len(a)
 			}
-		}(len(self.Args), len(bindings))),
+		}(self.Args, len(bindings))),
 	}
 	for key, value := range bindings {
-		def.Args[key] = value
+		if value == nil {
+			def.Args[key] = nullBytes
+		} else if b, ok := value.(json.RawMessage); ok {
+			def.Args[key] = b
+		} else if b, err := value.MarshalJSON(); err == nil {
+			def.Args[key] = b
+		} else {
+			util.LogError(err, "runtime", "Error serializing bindings")
+		}
 	}
 	for key, value := range self.Args {
 		def.Args[key] = value
@@ -248,11 +134,11 @@ func (self *LazyChunkDef) MergeArguments(bindings LazyArgumentMap) *LazyChunkDef
 	return &def
 }
 
-func (self *LazyChunkDef) mergeEagerArguments(bindings ArgumentMap) *LazyChunkDef {
-	if bindings == nil || len(bindings) == 0 {
+func (self *ChunkDef) mergeEagerArguments(bindings map[string]interface{}) *ChunkDef {
+	if len(bindings) == 0 {
 		return self
 	}
-	def := LazyChunkDef{
+	def := ChunkDef{
 		Resources: self.Resources,
 		Args: make(LazyArgumentMap, func(a LazyArgumentMap, b int) int {
 			if a == nil || len(a) < b {
@@ -263,8 +149,14 @@ func (self *LazyChunkDef) mergeEagerArguments(bindings ArgumentMap) *LazyChunkDe
 		}(self.Args, len(bindings))),
 	}
 	for key, value := range bindings {
-		if b, err := json.Marshal(value); err != nil {
+		if value == nil {
+			def.Args[key] = nullBytes
+		} else if b, ok := value.(json.RawMessage); ok {
 			def.Args[key] = b
+		} else if b, err := json.Marshal(value); err == nil {
+			def.Args[key] = b
+		} else {
+			util.LogError(err, "runtime", "Error serializing bindings")
 		}
 	}
 	for key, value := range self.Args {
@@ -273,7 +165,7 @@ func (self *LazyChunkDef) mergeEagerArguments(bindings ArgumentMap) *LazyChunkDe
 	return &def
 }
 
-func (self *LazyChunkDef) UnmarshalJSON(b []byte) error {
+func (self *ChunkDef) UnmarshalJSON(b []byte) error {
 	args := self.Args
 	if args == nil {
 		args = make(LazyArgumentMap)
@@ -296,7 +188,7 @@ func (self *LazyChunkDef) UnmarshalJSON(b []byte) error {
 	return nil
 }
 
-func (self *LazyChunkDef) MarshalJSON() ([]byte, error) {
+func (self *ChunkDef) MarshalJSON() ([]byte, error) {
 	if self.Resources == nil {
 		if self.Args == nil {
 			return []byte("{}"), nil
@@ -310,31 +202,14 @@ func (self *LazyChunkDef) MarshalJSON() ([]byte, error) {
 	return json.Marshal(args)
 }
 
-type LazyStageDefs struct {
-	ChunkDefs []*LazyChunkDef `json:"chunks"`
-	JoinDef   *JobResources   `json:"join,omitempty"`
+type StageDefs struct {
+	ChunkDefs []*ChunkDef   `json:"chunks"`
+	JoinDef   *JobResources `json:"join,omitempty"`
 }
 
-func (self *LazyStageDefs) Resolve() (*StageDefs, error) {
-	result := &StageDefs{
-		JoinDef: self.JoinDef,
-	}
-	if len(self.ChunkDefs) > 0 {
-		result.ChunkDefs = make([]*ChunkDef, 0, len(self.ChunkDefs))
-		for i, d := range self.ChunkDefs {
-			if c, err := d.Resolve(); err != nil {
-				return result, err
-			} else {
-				result.ChunkDefs[i] = c
-			}
-		}
-	}
-	return result, nil
-}
-
-func (self *LazyStageDefs) UnmarshalJSON(b []byte) error {
+func (self *StageDefs) UnmarshalJSON(b []byte) error {
 	type stageDefsWeak struct {
-		ChunkDefs []*LazyChunkDef `json:"chunks"`
+		ChunkDefs []*ChunkDef     `json:"chunks"`
 		JoinDef   LazyArgumentMap `json:"join,omitempty"`
 	}
 	into := stageDefsWeak{
@@ -359,7 +234,7 @@ func (self *LazyStageDefs) UnmarshalJSON(b []byte) error {
 	return nil
 }
 
-func (self *LazyChunkDef) Merge(bindings interface{}) *LazyChunkDef {
+func (self *ChunkDef) Merge(bindings interface{}) *ChunkDef {
 	if bindings == nil {
 		return self
 	}
@@ -367,22 +242,22 @@ func (self *LazyChunkDef) Merge(bindings interface{}) *LazyChunkDef {
 	case LazyArgumentMap:
 		return self.MergeArguments(bindings)
 	case map[string]interface{}:
-		return self.mergeEagerArguments(ArgumentMap(bindings))
-	case ArgumentMap:
 		return self.mergeEagerArguments(bindings)
+	case MarshalerMap:
+		return self.mergeFromMarshaler(bindings)
 	default:
 		// Cross-serialize as if it were a map.
-		return self.Merge(MakeLazyArgumentMap(bindings))
+		return self.Merge(MakeMarshalerMap(bindings))
 	}
 }
 
 // Defines the resources and arguments of a chunk.
 type ChunkDef struct {
 	Resources *JobResources
-	Args      ArgumentMap
+	Args      LazyArgumentMap
 }
 
-func (self *ChunkDef) MergeArguments(bindings ArgumentMap) *ChunkDef {
+func (self *ChunkDef) MergeArguments(bindings LazyArgumentMap) *ChunkDef {
 	if bindings == nil || len(bindings) == 0 {
 		return self
 	}
@@ -394,7 +269,7 @@ func (self *ChunkDef) MergeArguments(bindings ArgumentMap) *ChunkDef {
 	} else {
 		def := ChunkDef{
 			Resources: self.Resources,
-			Args:      make(ArgumentMap),
+			Args:      make(LazyArgumentMap),
 		}
 		for key, value := range bindings {
 			def.Args[key] = value
@@ -404,88 +279,4 @@ func (self *ChunkDef) MergeArguments(bindings ArgumentMap) *ChunkDef {
 		}
 		return &def
 	}
-}
-
-func (self *ChunkDef) Merge(bindings interface{}) *ChunkDef {
-	if bindings == nil {
-		return self
-	}
-	switch bindings := bindings.(type) {
-	case map[string]interface{}:
-		return self.Merge(ArgumentMap(bindings))
-	case ArgumentMap:
-		return self.MergeArguments(bindings)
-	default:
-		// Cross-serialize as if it were a map.
-		return self.MergeArguments(MakeArgumentMap(bindings))
-	}
-}
-
-func (self *ChunkDef) UnmarshalJSON(b []byte) error {
-	args := self.Args
-	if args == nil {
-		args = make(ArgumentMap)
-	}
-	if err := json.Unmarshal(b, &args); err != nil {
-		return err
-	}
-	self.Args = args
-	if self.Resources != nil {
-		return self.Resources.updateFromArgs(self.Args)
-	} else {
-		var res JobResources
-		if err := res.updateFromArgs(self.Args); err != nil {
-			return err
-		}
-		if res.Threads != 0 || res.MemGB != 0 || res.VMemGB != 0 || res.Special != "" {
-			self.Resources = &res
-		}
-	}
-	return nil
-}
-
-func (self *ChunkDef) MarshalJSON() ([]byte, error) {
-	if self.Resources == nil {
-		if self.Args == nil {
-			return []byte("{}"), nil
-		}
-		return json.Marshal(self.Args)
-	}
-	args := self.Resources.ToMap()
-	for k, v := range self.Args {
-		args[k] = v
-	}
-	return json.Marshal(args)
-}
-
-type StageDefs struct {
-	ChunkDefs []*ChunkDef   `json:"chunks"`
-	JoinDef   *JobResources `json:"join,omitempty"`
-}
-
-func (self *StageDefs) UnmarshalJSON(b []byte) error {
-	type stageDefsWeak struct {
-		ChunkDefs []*ChunkDef `json:"chunks"`
-		JoinDef   ArgumentMap `json:"join,omitempty"`
-	}
-	into := stageDefsWeak{
-		ChunkDefs: self.ChunkDefs,
-		JoinDef:   make(ArgumentMap),
-	}
-	if err := json.Unmarshal(b, &into); err != nil {
-		return err
-	}
-	self.ChunkDefs = into.ChunkDefs
-	if into.JoinDef != nil && len(into.JoinDef) > 0 {
-		if self.JoinDef == nil {
-			self.JoinDef = &JobResources{}
-		}
-		if err := self.JoinDef.updateFromArgs(into.JoinDef); err != nil {
-			return err
-		}
-		if len(into.JoinDef) != 0 {
-			return fmt.Errorf("Invalid parameter in join definition.")
-		}
-	}
-	return nil
 }

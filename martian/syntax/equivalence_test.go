@@ -4,6 +4,8 @@ package syntax
 
 import (
 	"testing"
+
+	"github.com/martian-lang/martian/martian/util"
 )
 
 func TestParsedEquivalence(t *testing.T) {
@@ -75,6 +77,7 @@ call SUM_SQUARE_PIPELINE(
 }
 
 func TestEquivalenceAliasFailure(t *testing.T) {
+	util.SetPrintLogger(&devNull)
 	if ast1, ast2 := testGood(t, `
 stage SUM_SQUARES(
     in  float[] values,
@@ -132,6 +135,7 @@ call SUM_SQUARE_PIPELINE(
 }
 
 func TestEquivalenceOutNameChange(t *testing.T) {
+	util.SetPrintLogger(&devNull)
 	if ast1, ast2 := testGood(t, `
 stage SUM_SQUARES(
     in  float[] values,
@@ -189,6 +193,7 @@ call SUM_SQUARE_PIPELINE(
 }
 
 func TestEquivalenceInNameChange(t *testing.T) {
+	util.SetPrintLogger(&devNull)
 	if ast1, ast2 := testGood(t, `
 stage SUM_SQUARES(
     in  float[] values_in,
@@ -246,28 +251,23 @@ call SUM_SQUARE_PIPELINE(
 }
 
 func TestNumExpEquivalence(t *testing.T) {
-	exp := ValExp{
-		Kind:  KindInt,
+	util.SetPrintLogger(&devNull)
+	exp := IntExp{
 		Value: parseInt([]byte("1")),
 	}
-	i1 := ValExp{
-		Kind:  KindInt,
+	i1 := IntExp{
 		Value: parseInt([]byte("1")),
 	}
-	i2 := ValExp{
-		Kind:  KindInt,
+	i2 := IntExp{
 		Value: parseInt([]byte("2")),
 	}
-	f1 := ValExp{
-		Kind:  KindFloat,
+	f1 := FloatExp{
 		Value: parseFloat([]byte("1.0")),
 	}
-	f2 := ValExp{
-		Kind:  KindFloat,
+	f2 := FloatExp{
 		Value: parseFloat([]byte("2.0")),
 	}
-	f3 := ValExp{
-		Kind:  KindFloat,
+	f3 := FloatExp{
 		Value: parseFloat([]byte("1.1")),
 	}
 	if !exp.equal(&i1) {

@@ -212,7 +212,11 @@ func (self *LocalJobManager) setupSemaphores() {
 	} else if int64(rlim.Max) > startingThreadCount &&
 		int64(rlim.Cur) > startingThreadCount {
 		self.procsSem = NewResourceSemaphore(int64(rlim.Max), "processes")
-		self.procsSem.Acquire(startingThreadCount)
+		if err := self.procsSem.Acquire(startingThreadCount); err != nil {
+			util.LogError(err, "runtime", "WARNING: attempting to launch a "+
+				"process which may use more threads than the current ulimit "+
+				"permits.")
+		}
 
 		if userProcs, err := GetUserProcessCount(); err != nil {
 			self.procsSem.UpdateSize(int64(rlim.Cur))
@@ -467,7 +471,7 @@ func (self *LocalJobManager) Enqueue(shellCmd string, argv []string,
 			util.LogError(err, "jobmngr",
 				"%s requested %d threads, but the job manager was only configured to use %d.",
 				metadata.fqname, res.Threads, self.maxCores)
-			metadata.WriteRaw(Errors, err.Error())
+			metadata.WriteErrorString(err.Error())
 			return
 		}
 		defer func(threads int) {
@@ -498,7 +502,7 @@ func (self *LocalJobManager) Enqueue(shellCmd string, argv []string,
 			util.LogError(err, "jobmngr",
 				"%s requested %d GB of memory, but the job manager was only configured to use %d.",
 				metadata.fqname, res.MemGB, self.maxMemGB)
-			metadata.WriteRaw(Errors, err.Error())
+			metadata.WriteErrorString(err.Error())
 			return
 		}
 		defer func(memGB int) {
@@ -525,7 +529,7 @@ func (self *LocalJobManager) Enqueue(shellCmd string, argv []string,
 					"%s requested %d GB of virtual memory, but the "+
 						"job manager was only configured to use %.1f.",
 					metadata.fqname, res.VMemGB, float64(self.maxVmemMB)/1024)
-				metadata.WriteRaw(Errors, err.Error())
+				metadata.WriteErrorString(err.Error())
 				return
 			}
 			defer func(vmem int64, sem *ResourceSemaphore) {
@@ -561,7 +565,7 @@ func (self *LocalJobManager) Enqueue(shellCmd string, argv []string,
 				util.LogError(err, "jobmngr",
 					"%s estimated to require %d processes, but the process ulimit is %d.",
 					metadata.fqname, procEstimate, self.procsSem.CurrentSize())
-				metadata.WriteRaw(Errors, err.Error())
+				metadata.WriteErrorString(err.Error())
 				return
 			}
 
@@ -599,7 +603,7 @@ func (self *LocalJobManager) Enqueue(shellCmd string, argv []string,
 					// Only write _errors if the job didn't write one before
 					// failing.  Because this is local mode, we don't need to
 					// worry about nfs data races.
-					metadata.WriteRaw(Errors, err.Error())
+					metadata.WriteErrorString(err.Error())
 				}
 			} else {
 				util.LogInfo("jobmngr",
@@ -625,34 +629,38 @@ func (self *LocalJobManager) Enqueue(shellCmd string, argv []string,
 
 func executeLocal(cmd *exec.Cmd, stdoutPath, stderrPath string,
 	localpreflight bool, metadata *Metadata) error {
-	// Set up _stdout and _stderr for the job.
-	if stdoutFile, err := os.Create(stdoutPath); err == nil {
-		stdoutFile.WriteString("[stdout]\n")
-		// If local preflight stage, let stdout go to the console
-		if localpreflight {
-			cmd.Stdout = os.Stdout
-		} else {
-			cmd.Stdout = stdoutFile
+	if err := func(cmd *exec.Cmd, stdoutPath, stderrPath string,
+		localpreflight bool, metadata *Metadata) error {
+		// Set up _stdout and _stderr for the job.
+		stdoutFile, err := os.Create(stdoutPath)
+		if err == nil {
+			stdoutFile.WriteString("[stdout]\n")
+			// If local preflight stage, let stdout go to the console
+			if localpreflight {
+				cmd.Stdout = os.Stdout
+			} else {
+				cmd.Stdout = stdoutFile
+			}
+			defer stdoutFile.Close()
 		}
-		defer stdoutFile.Close()
-	}
-	cmd.SysProcAttr = util.Pdeathsig(&syscall.SysProcAttr{}, syscall.SIGTERM)
-	if stderrFile, err := os.Create(stderrPath); err == nil {
-		stderrFile.WriteString("[stderr]\n")
-		cmd.Stderr = stderrFile
-		defer stderrFile.Close()
-	}
+		cmd.SysProcAttr = util.Pdeathsig(&syscall.SysProcAttr{}, syscall.SIGTERM)
+		stderrFile, err := os.Create(stderrPath)
+		if err == nil {
+			stderrFile.WriteString("[stderr]\n")
+			cmd.Stderr = stderrFile
+			defer stderrFile.Close()
+		}
 
-	// Run the command and wait for completion.
-	if err := func(metadata *Metadata, cmd *exec.Cmd) error {
+		// Run the command and wait for completion.
 		util.EnterCriticalSection()
 		defer util.ExitCriticalSection()
-		err := cmd.Start()
+		err = cmd.Start()
 		if err == nil {
-			metadata.remove(QueuedLocally)
+			return metadata.remove(QueuedLocally)
 		}
 		return err
-	}(metadata, cmd); err != nil {
+	}(cmd, stdoutPath, stderrPath,
+		localpreflight, metadata); err != nil {
 		return err
 	}
 	return cmd.Wait()

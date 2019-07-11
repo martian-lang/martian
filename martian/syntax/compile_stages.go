@@ -80,24 +80,28 @@ func (stage *Stage) compile(global *Ast) error {
 }
 
 func (src *SrcParam) compile(global *Ast) error {
+	var errs ErrorList
 	if strings.ContainsAny(src.cmd, `"'`) {
-		return global.err(src,
-			"StageCodeError: quotes are not supported in stage code strings")
+		errs = append(errs, global.err(src,
+			"StageCodeError: quotes are not supported in stage code strings"))
 	}
 	if src.Path == "" {
-		return global.err(src,
-			"StageCodeError: path cannot be blank.")
+		errs = append(errs, global.err(src,
+			"StageCodeError: path cannot be blank."))
 	}
 	if lang, err := src.Lang.Parse(); err != nil {
-		return &wrapError{
+		errs = append(errs, &wrapError{
 			innerError: err,
 			loc:        src.Node.Loc,
+		})
+	} else {
+		src.Type = lang
+		if lang == PythonStage && len(src.Args) != 0 {
+			errs = append(errs, global.err(src,
+				"py stage type cannot have additional arguments"))
 		}
-	} else if lang == PythonStage && len(src.Args) > 0 {
-		return global.err(src,
-			"StageCodeError: python stages cannot have additional arguments.")
 	}
-	return nil
+	return errs.If()
 }
 
 const (
@@ -112,10 +116,10 @@ const (
 // only the list is set.
 var modParams = InParams{
 	Table: map[string]*InParam{
-		disabled:  {Id: disabled, Tname: KindBool},
-		local:     {Id: local, Tname: KindBool},
-		preflight: {Id: preflight, Tname: KindBool},
-		volatile:  {Id: volatile, Tname: KindBool},
+		disabled:  {Id: disabled, Tname: TypeId{Tname: KindBool}},
+		local:     {Id: local, Tname: TypeId{Tname: KindBool}},
+		preflight: {Id: preflight, Tname: TypeId{Tname: KindBool}},
+		volatile:  {Id: volatile, Tname: TypeId{Tname: KindBool}},
 	},
 }
 
@@ -145,7 +149,7 @@ func (mods *Modifiers) compile(global *Ast, parent *Pipeline, call *CallStm) err
 					ConflictingModifiers))
 			}
 			// grammar only allows bool literals.
-			mods.Volatile = binding.Exp.ToInterface().(bool)
+			mods.Volatile = binding.Exp.(*BoolExp).Value
 			delete(mods.Bindings.Table, volatile)
 		}
 		if binding := mods.Bindings.Table[local]; binding != nil {
@@ -154,7 +158,7 @@ func (mods *Modifiers) compile(global *Ast, parent *Pipeline, call *CallStm) err
 					ConflictingModifiers))
 			}
 			// grammar only allows bool literals.
-			mods.Local = binding.Exp.ToInterface().(bool)
+			mods.Local = binding.Exp.(*BoolExp).Value
 			delete(mods.Bindings.Table, local)
 		}
 		if binding := mods.Bindings.Table[preflight]; binding != nil {
@@ -163,7 +167,7 @@ func (mods *Modifiers) compile(global *Ast, parent *Pipeline, call *CallStm) err
 					ConflictingModifiers))
 			}
 			// grammar only allows bool literals.
-			mods.Preflight = binding.Exp.ToInterface().(bool)
+			mods.Preflight = binding.Exp.(*BoolExp).Value
 			delete(mods.Bindings.Table, preflight)
 		}
 	}
@@ -181,6 +185,7 @@ func (mods *Modifiers) compile(global *Ast, parent *Pipeline, call *CallStm) err
 				UnsupportedTagError+"'preflight' tag",
 				call.DecId))
 		}
+
 		if call.Modifiers.Volatile {
 			errs = append(errs, global.err(call,
 				UnsupportedTagError+"'volatile' tag",
@@ -224,7 +229,7 @@ func (retains *RetainParams) compile(global *Ast, stage *Stage) error {
 			errs = append(errs, global.err(param,
 				"RetainParamError: stage %s does not have an out parameter named %s to retain.",
 				stage.Id, param.Id))
-		} else if !out.IsFile() && out.GetTname() != KindMap {
+		} else if out.IsFile() == KindIsNotFile {
 			errs = append(errs, global.err(param,
 				"RetainParamError: out parameter %s of %s is not of file type.",
 				param.Id, stage.Id))

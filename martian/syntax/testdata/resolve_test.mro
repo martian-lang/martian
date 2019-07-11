@@ -1,0 +1,166 @@
+struct POINT(
+    int   x,
+    float y,
+)
+
+struct POINT_SET(
+    POINT   point,
+    POINT[] points,
+    string  extra,
+)
+
+stage POINT_MAKER(
+    in  POINT[] points,
+    out POINT   point,
+    out POINT[] points,
+    out string  extra,
+    out bool    disable_user,
+    src py      "foo",
+)
+
+stage POINT_USER(
+    in  POINT[]        points,
+    in  POINT          point,
+    in  int[]          xs,
+    in  map<float>     ys,
+    in  string         extra,
+    in  POINT_SET      set,
+    in  map<POINT_SET> mpset,
+    out map<POINT_SET> mpset,
+    out string         thing,
+    src py             "bar",
+)
+
+pipeline POINT_PIPE(
+    in  int       x,
+    in  float     y,
+    out POINT_SET z,
+    out POINT_SET w,
+    out bool      disable_user,
+)
+{
+    call POINT_MAKER(
+        points = [
+            {
+                x: self.x,
+                y: self.y,
+            },
+            {
+                x: 1,
+                y: 2,
+            },
+        ],
+    )
+
+    return (
+        z            = POINT_MAKER,
+        w            = {
+            extra: "nope",
+            point: {
+                x: self.x,
+                y: self.y,
+            },
+            points: [
+                POINT_MAKER.point,
+                {
+                    x: self.x,
+                    y: self.y,
+                },
+            ],
+        },
+        disable_user = POINT_MAKER.disable_user,
+    )
+}
+
+pipeline POINT_MAPPER(
+    in  POINT          one,
+    in  POINT          two,
+    in  map<POINT_SET> mp,
+    in  bool           disable4,
+    in  bool           disable_user,
+    out map<POINT_SET> result,
+    out map<int[]>     xs,
+)
+{
+    call POINT_PIPE as PIPE1(
+        x = self.one.x,
+        y = self.one.y,
+    )
+
+    call POINT_PIPE as PIPE2(
+        x = self.two.x,
+        y = self.two.y,
+    )
+
+    call POINT_PIPE as PIPE3(
+        x = 3,
+        y = 4,
+    )
+
+    call POINT_PIPE as PIPE4(
+        x = 18,
+        y = 19,
+    ) using (
+        disabled = self.disable4,
+    )
+
+    call POINT_PIPE as PIPE5(
+        x = 20,
+        y = 21,
+    ) using (
+        disabled = PIPE1.disable_user,
+    )
+
+    call POINT_USER(
+        points = [PIPE1.w.point],
+        point  = self.one,
+        xs     = PIPE1.w.points.x,
+        ys     = self.mp.point.y,
+        extra  = "frob\nlate",
+        set    = PIPE3.w,
+        mpset  = {
+            "foo": PIPE3.w,
+        },
+    ) using (
+        disabled = self.disable_user,
+    )
+
+    return (
+        result = {
+            "1": PIPE1.z,
+            "2": PIPE2.z,
+            "3": PIPE3.z,
+        },
+        xs     = {
+            "1": PIPE1.w.points.x,
+            "2": PIPE2.w.points.x,
+            "3": PIPE3.w.points.x,
+        },
+    )
+}
+
+call POINT_MAPPER(
+    one          = {
+        x: 5,
+        y: 6,
+    },
+    two          = {
+        x: 7,
+        y: 8,
+    },
+    mp           = {
+        "three": {
+            extra: null,
+            point: {
+                x: 9,
+                y: 10.2,
+            },
+            points: [{
+                x: 11,
+                y: 3,
+            }],
+        },
+    },
+    disable4     = true,
+    disable_user = false,
+)

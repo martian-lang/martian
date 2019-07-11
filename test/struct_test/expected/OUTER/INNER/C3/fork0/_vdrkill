@@ -1,0 +1,20 @@
+{
+    "count": 2,
+    "size": 2,
+    "timestamp": "2019-09-17 19:03:09",
+    "paths": [
+        "/github.com/martian-lang/martian/test/struct_test/pipeline_test/OUTER/INNER/C3/fork0/chnk0/files/file1",
+        "/github.com/martian-lang/martian/test/struct_test/pipeline_test/OUTER/INNER/C3/fork0/chnk0/files/output_name.file"
+    ],
+    "errors": null,
+    "events": [
+        {
+            "Timestamp": "2019-09-17T19:03:09-07:00",
+            "DeltaBytes": 4197
+        },
+        {
+            "Timestamp": "2019-09-17T19:03:09.9463044-07:00",
+            "DeltaBytes": -2
+        }
+    ]
+}

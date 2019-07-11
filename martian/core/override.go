@@ -151,7 +151,7 @@ func (self *PipestanceOverrides) GetOverride(node *Node, what string, def interf
 	 */
 	for cur := node; cur != nil; cur = getParent(cur) {
 		var exists bool
-		pqn := partiallyQualifiedName(cur.fqname)
+		pqn := partiallyQualifiedName(cur.GetFQName())
 		so, exists = self.overridesbystage[pqn]
 		if exists {
 			val := so[what]
@@ -160,7 +160,7 @@ func (self *PipestanceOverrides) GetOverride(node *Node, what string, def interf
 				 * use it. Otherwise, backtrack another level and try again.
 				 */
 				util.LogInfo("override", "At [%v:%v] replace %v with %v",
-					what, cur.fqname, def, val)
+					what, cur.GetFQName(), def, val)
 				return val
 			}
 		}

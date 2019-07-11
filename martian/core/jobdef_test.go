@@ -4,22 +4,23 @@ package core
 
 import (
 	"encoding/json"
-	"reflect"
 	"testing"
 )
 
 func TestChunkDefMarshal(t *testing.T) {
-	if b, err := json.Marshal(&ChunkDef{
+	if args, err := MakeMarshalerMap(map[string]interface{}{
+		"foo":  12,
+		"bar":  1.2,
+		"baz":  map[string]interface{}{"fooz": "bars"},
+		"bath": "soap",
+	}).ToLazyArgumentMap(); err != nil {
+		t.Fatal(err)
+	} else if b, err := json.Marshal(&ChunkDef{
 		Resources: &JobResources{
 			Threads: 3,
 			MemGB:   2,
 		},
-		Args: ArgumentMap{
-			"foo":  12,
-			"bar":  1.2,
-			"baz":  map[string]interface{}{"fooz": "bars"},
-			"bath": "soap",
-		},
+		Args: args,
 	}); err != nil {
 		t.Errorf("Marshaling failure %v", err)
 	} else {
@@ -59,9 +60,7 @@ func TestChunkDefUnmarshal(t *testing.T) {
 		"__threads": 4,
 		"__mem_gb": 3,
 		"foo": 12,
-		"bar": 1.2,
-		"baz": { "fooz": "bars" },
-		"bath": "soap"
+		"bar": 1.2
 	}`), &def); err != nil {
 		t.Errorf("Unmarshal failure: %v", err)
 	}
@@ -75,30 +74,14 @@ func TestChunkDefUnmarshal(t *testing.T) {
 			t.Errorf("Incorrect mem_gb: expected 3, got %d", def.Resources.MemGB)
 		}
 	}
-	if len(def.Args) != 4 {
+	if len(def.Args) != 2 {
 		t.Errorf("Incorrect number of args: expected 4, got %d", len(def.Args))
 	}
-	if v, ok := def.Args["foo"].(json.Number); !ok {
-		t.Errorf("Incorrect type for foo: expected number 12, got %v", reflect.TypeOf(def.Args["foo"]))
-	} else if n, err := v.Int64(); err != nil {
-		t.Errorf("Error reading foo as int: %v", err)
-	} else if n != 12 {
-		t.Errorf("Incorrect foo: expected 12, got %d", n)
+	if s := string(def.Args["foo"]); s != "12" {
+		t.Errorf("Incorrect type for foo: expected number 12, got %q", s)
 	}
-	if v, ok := def.Args["bar"].(json.Number); !ok {
-		t.Errorf("Incorrect type for bar: expected number 1.2, got %v", reflect.TypeOf(def.Args["bar"]))
-	} else if n, err := v.Float64(); err != nil {
-		t.Errorf("Error reading bar as float: %v", err)
-	} else if n != 1.2 {
-		t.Errorf("Incorrect bar: expected 1.2, got %f", n)
-	}
-	if v, ok := def.Args["baz"].(map[string]interface{}); !ok {
-		t.Errorf("Incorrect foo: expected map, got %v", def.Args["baz"])
-	} else if s, ok := v["fooz"].(string); !ok || s != "bars" {
-		t.Errorf("Incorrect foo: expected {\"fooz\":\"bars\"}, got %v", v)
-	}
-	if v, ok := def.Args["bath"].(string); !ok || v != "soap" {
-		t.Errorf("Incorrect foo: expected soap, got %v", def.Args["bath"])
+	if s := string(def.Args["bar"]); s != "1.2" {
+		t.Errorf("Incorrect type for bar: expected number 1.2, got %q", s)
 	}
 }
 

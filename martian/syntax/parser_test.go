@@ -109,21 +109,18 @@ call SUM_SQUARE_PIPELINE(
 			} else if binding.Exp.getKind() != KindArray {
 				t.Errorf("Expected array binding, got %v",
 					binding.Exp.getKind())
-			} else if val := binding.Exp.ToInterface(); val == nil {
-				t.Errorf("Could not get binding value.")
-			} else if arr, ok := val.([]interface{}); !ok {
-				t.Errorf("Could not convert expression of type %T to array.",
-					val)
-			} else if len(arr) != 8 {
+			} else if arr, ok := binding.Exp.(*ArrayExp); !ok {
+				t.Errorf("Could not get binding value as array.")
+			} else if len(arr.Value) != 8 {
 				t.Errorf("Expected 8-element array, got %d elements.",
-					len(arr))
+					len(arr.Value))
 			} else {
-				for i, v := range arr {
-					if f, ok := v.(float64); !ok {
+				for i, v := range arr.Value {
+					if f, ok := v.(*FloatExp); !ok {
 						t.Errorf("Expected floating point number, got %T",
 							v)
-					} else if f != float64(10*i) {
-						t.Errorf("Expected %d, got %f", 10*i, f)
+					} else if f.Value != float64(10*i) {
+						t.Errorf("Expected %d, got %f", 10*i, f.Value)
 					}
 				}
 			}
@@ -187,21 +184,18 @@ call SUM_SQUARE_PIPELINE(
 			} else if binding.Exp.getKind() != KindArray {
 				t.Errorf("Expected array binding, got %v",
 					binding.Exp.getKind())
-			} else if val := binding.Exp.ToInterface(); val == nil {
-				t.Errorf("Could not get binding value.")
-			} else if arr, ok := val.([]interface{}); !ok {
-				t.Errorf("Could not convert expression of type %T to array.",
-					val)
-			} else if len(arr) != 3 {
+			} else if arr, ok := binding.Exp.(*ArrayExp); !ok {
+				t.Errorf("Could not get binding as array.")
+			} else if len(arr.Value) != 3 {
 				t.Errorf("Expected 3-element array, got %d elements.",
-					len(arr))
+					len(arr.Value))
 			} else {
-				for i, v := range arr {
-					if f, ok := v.(float64); !ok {
+				for i, v := range arr.Value {
+					if f, ok := v.(*FloatExp); !ok {
 						t.Errorf("Expected floating point number, got %T",
 							v)
-					} else if f != float64(i+1)/10 {
-						t.Errorf("Expected 0.%d, got %f", i+1, f)
+					} else if f.Value != float64(i+1)/10 {
+						t.Errorf("Expected 0.%d, got %f", i+1, f.Value)
 					}
 				}
 			}
@@ -1015,6 +1009,150 @@ call THING(
     value        = 1,
 )
 `)
+}
+
+func TestStructRedefinition(t *testing.T) {
+	t.Parallel()
+	testGood(t, `
+struct STRUCT_1(
+    int   i1,
+    int[] i2,
+)
+
+struct STRUCT_2(
+    int   i1,
+    int[] i2,
+)
+
+struct STRUCT_3(
+    STRUCT_1        s1,
+    map<STRUCT_1>   s1m,
+    map<STRUCT_1>[] s1am,
+    map<STRUCT_1[]> s1ma,
+)
+
+struct STRUCT_3(
+    STRUCT_1        s1,
+    map<STRUCT_1>   s1m,
+    map<STRUCT_1>[] s1am,
+    map<STRUCT_1[]> s1ma,
+)
+`)
+	testBadCompile(t, `
+struct STRUCT_1(
+    int   i1,
+    int[] i2,
+)
+
+struct STRUCT_2(
+    int   i1,
+    int[] i2,
+)
+
+struct STRUCT_3(
+    STRUCT_1        s1,
+    map<STRUCT_1>   s1m,
+    map<STRUCT_1>[] s1am "outname",
+    map<STRUCT_1[]> s1ma,
+)
+
+struct STRUCT_3(
+    STRUCT_1        s1,
+    map<STRUCT_1>   s1m,
+    map<STRUCT_1>[] s1am,
+    map<STRUCT_1[]> s1ma,
+)
+`, "MRO name conflicts with previously declared struct type")
+}
+
+func TestStructBindingGood(t *testing.T) {
+	t.Parallel()
+	testGood(t, `
+filetype txt;
+
+struct DEST(
+    txt y,
+)
+
+stage SOURCE(
+    in  int  x,
+    out DEST y,
+    src py   "foo",
+)
+
+pipeline CALLING(
+    in  int x,
+    out txt result,
+)
+{
+    call SOURCE(
+        x = self.x,
+    )
+
+    return (
+        result = SOURCE.y.y,
+    )
+}
+`)
+	testGood(t, `
+struct DEST(
+    int y,
+)
+
+stage SOURCE(
+    in  int  x,
+    out DEST y,
+    src py   "foo",
+)
+
+pipeline CALLING(
+    in  DEST x,
+    out int  result,
+)
+{
+    call SOURCE(
+        x = self.x.y,
+    )
+
+    return (
+        result = SOURCE.y.y,
+    )
+}
+`)
+}
+
+func TestBadStruct(t *testing.T) {
+	testBadGrammar(t, `
+struct FOO(
+)`)
+	testBadCompile(t, `
+struct FOO(
+    FOO bar,
+)`, `TypeError: field "bar" of struct type "FOO" cannot be of type "FOO"`)
+}
+
+func TestBadOutname(t *testing.T) {
+	t.Parallel()
+	testBadCompile(t, `
+struct FOO(
+    file bar ".",
+)`, "not legal under Microsoft Windows")
+	testBadCompile(t, `
+struct FOO(
+    file bar "con.sol",
+)`, "conflicts with a reserved windows device name")
+
+	testBadCompile(t, `
+stage FOO(
+    in  int x,
+    out file bar "helptext" ".",
+    src py "foo",
+)`, "not legal under Microsoft Windows")
+	testBadCompile(t, `
+stage FOO(
+    out file bar "help" "con.sol",
+    src py "foo",
+)`, "conflicts with a reserved windows device name")
 }
 
 func TestCompileBig(t *testing.T) {

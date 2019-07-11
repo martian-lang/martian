@@ -52,7 +52,7 @@ func TestMroToGo(t *testing.T) {
 	}
 	var dest bytes.Buffer
 	if err := MroToGo(&dest,
-		string(mrosrc), "testdata/pipeline_stages.mro", "",
+		mrosrc, "testdata/pipeline_stages.mro", "",
 		nil,
 		"main", "split_test.go"); err != nil {
 		t.Fatal(err)
@@ -130,10 +130,14 @@ func TestToChunkDef(t *testing.T) {
 	def := SumSquaresChunkDef{JobResources: &core.JobResources{}}
 	def.Threads = 2
 	def.Value = 4
-	if !reflect.DeepEqual(def.ToChunkDef(), &core.ChunkDef{
+	cd, err := def.ToChunkDef()
+	if err != nil {
+		t.Error(err)
+	}
+	if !reflect.DeepEqual(cd, &core.ChunkDef{
 		Resources: &core.JobResources{Threads: 2},
-		Args:      core.ArgumentMap{"value": 4.0},
+		Args:      core.LazyArgumentMap{"value": json.RawMessage([]byte("4"))},
 	}) {
-		t.Errorf("Incorrect result: %v", def.ToChunkDef())
+		t.Errorf("Incorrect result: %v", cd)
 	}
 }

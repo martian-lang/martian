@@ -13,7 +13,6 @@ import (
 	"math"
 	"os"
 	"path"
-	"path/filepath"
 	"strings"
 	"sync"
 	"time"
@@ -54,7 +53,7 @@ var disableUniquification = (os.Getenv("MRO_UNIQUIFIED_DIRECTORIES") == "disable
 type Chunk struct {
 	fork       *Fork
 	index      int
-	chunkDef   *LazyChunkDef
+	chunkDef   *ChunkDef
 	fqname     string
 	metadata   *Metadata
 	hasBeenRun bool
@@ -63,20 +62,24 @@ type Chunk struct {
 // Exportable information about a Chunk object.
 type ChunkInfo struct {
 	Index    int           `json:"index"`
-	ChunkDef *LazyChunkDef `json:"chunkDef"`
+	ChunkDef *ChunkDef     `json:"chunkDef"`
 	State    MetadataState `json:"state"`
 	Metadata *MetadataInfo `json:"metadata"`
 }
 
 func NewChunk(fork *Fork, index int,
-	chunkDef *LazyChunkDef, chunkIndexWidth int) *Chunk {
-	self := &Chunk{}
-	self.fork = fork
-	self.index = index
-	self.chunkDef = chunkDef
-	chunkPath := path.Join(fork.path, fmt.Sprintf("chnk%0*d", chunkIndexWidth, index))
-	self.fqname = fork.fqname + fmt.Sprintf(".chnk%0*d", chunkIndexWidth, index)
-	self.metadata = NewMetadataWithJournalPath(self.fqname, chunkPath, self.fork.node.journalPath)
+	chunkDef *ChunkDef, chunkIndexWidth int) *Chunk {
+	self := &Chunk{
+		fork:     fork,
+		index:    index,
+		chunkDef: chunkDef,
+	}
+	chnkNum := fmt.Sprintf("chnk%0*d",
+		chunkIndexWidth, index)
+	chunkPath := path.Join(fork.path, chnkNum)
+	self.fqname = fork.fqname + "." + chnkNum
+	self.metadata = NewMetadataWithJournalPath(self.fqname,
+		chunkPath, self.fork.node.top.journalPath)
 	self.metadata.discoverUniquify()
 	// HACK: Sometimes we need to load older pipestances with newer martian
 	// versions.  Because of this, we may sometimes encounter chunks which
@@ -89,7 +92,7 @@ func NewChunk(fork *Fork, index int,
 			if info, err := os.Stat(legacyPath); err == nil && info != nil {
 				if info.IsDir() {
 					self.metadata = NewMetadataWithJournalPath(
-						self.fqname, legacyPath, self.fork.node.journalPath)
+						self.fqname, legacyPath, self.fork.node.top.journalPath)
 				}
 			}
 		}
@@ -115,15 +118,15 @@ func (self *Chunk) verifyDef() {
 		return
 	}
 	if self.chunkDef.Args == nil {
-		self.metadata.WriteRaw(Errors, "Chunk def args were nil.")
+		self.metadata.WriteErrorString("Chunk def args were nil.")
 		return
 	}
-	if err, alarms := self.chunkDef.Args.ValidateInputs(inParams); err != nil {
-		self.metadata.WriteRaw(Errors, err.Error()+alarms)
+	if err, alarms := self.chunkDef.Args.ValidateInputs(self.fork.node.top.types, inParams); err != nil {
+		self.metadata.WriteErrorString(err.Error() + alarms)
 	} else if alarms != "" {
 		switch syntax.GetEnforcementLevel() {
 		case syntax.EnforceError:
-			self.metadata.WriteRaw(Errors, alarms)
+			self.metadata.WriteErrorString(alarms)
 		case syntax.EnforceAlarm:
 			self.metadata.AppendAlarm(alarms)
 		case syntax.EnforceLog:
@@ -144,17 +147,17 @@ func (self *Chunk) verifyOutput(output LazyArgumentMap) bool {
 		return true
 	}
 	if output == nil {
-		self.metadata.WriteRaw(Errors, "Output not found.")
+		self.metadata.WriteErrorString("Output not found.")
 	} else {
 		outParams := self.Stage().ChunkOuts
-		if err, alarms := output.ValidateOutputs(
+		if err, alarms := output.ValidateOutputs(self.fork.node.top.types,
 			outParams, self.fork.OutParams()); err != nil {
-			self.metadata.WriteRaw(Errors, err.Error()+alarms)
+			self.metadata.WriteErrorString(err.Error() + alarms)
 			return false
 		} else if alarms != "" {
 			switch syntax.GetEnforcementLevel() {
 			case syntax.EnforceError:
-				self.metadata.WriteRaw(Errors, alarms)
+				self.metadata.WriteErrorString(alarms)
 				return false
 			case syntax.EnforceAlarm:
 				self.metadata.AppendAlarm(alarms)
@@ -202,12 +205,12 @@ func (self *Chunk) updateState(state MetadataFileName, uniquifier string) {
 	}
 	if beginState == Running || beginState == Queued {
 		if st, _ := self.metadata.getState(); st != Running && st != Queued {
-			self.fork.node.rt.JobManager.endJob(self.metadata)
+			self.fork.node.top.rt.JobManager.endJob(self.metadata)
 		}
 	}
 }
 
-func (self *Chunk) step(bindings LazyArgumentMap) {
+func (self *Chunk) step(bindings MarshalerMap) {
 	if self.getState() != Ready {
 		return
 	}
@@ -263,7 +266,7 @@ func (self *Chunk) serializePerf() *ChunkPerfInfo {
 
 // Get the stage definition for this chunk.  Panics if this is not a stage fork.
 func (self *Chunk) Stage() *syntax.Stage {
-	return self.fork.node.callable.(*syntax.Stage)
+	return self.fork.node.call.Callable().(*syntax.Stage)
 }
 
 //=============================================================================
@@ -275,7 +278,9 @@ func (self *Chunk) Stage() *syntax.Stage {
 // a given pipeline or stage.
 type Fork struct {
 	node           *Node
+	forkId         ForkId
 	index          int
+	id             string
 	path           string
 	fqname         string
 	metadata       *Metadata
@@ -286,8 +291,8 @@ type Fork struct {
 	chunks         []*Chunk
 	split_has_run  bool
 	join_has_run   bool
-	argPermute     map[string]interface{}
-	stageDefs      *LazyStageDefs
+	args           map[string]*syntax.ResolvedBinding
+	stageDefs      *StageDefs
 	perfCache      *ForkPerfCache
 	lastPrint      time.Time
 	metadatasCache []*Metadata // cache for collectMetadata
@@ -304,7 +309,7 @@ type Fork struct {
 	fileArgs map[string]map[Nodable]struct{}
 
 	// Mapping from post-node to set of file-type args it depends on.
-	filePostNodes map[Nodable]map[string]struct{}
+	filePostNodes map[Nodable]map[string]syntax.Type
 }
 
 // Exportable information from a Fork object.
@@ -321,8 +326,8 @@ type ForkInfo struct {
 }
 
 type ForkBindingsInfo struct {
-	Argument []*BindingInfo `json:"Argument"`
-	Return   []*BindingInfo `json:"Return"`
+	Argument []BindingInfo `json:"Argument"`
+	Return   []BindingInfo `json:"Return"`
 }
 
 type ForkPerfCache struct {
@@ -330,12 +335,19 @@ type ForkPerfCache struct {
 	vdrKillReport *VDRKillReport
 }
 
-func NewFork(nodable Nodable, index int, argPermute map[string]interface{}) *Fork {
-	self := &Fork{}
-	self.node = nodable.getNode()
-	self.index = index
-	self.path = path.Join(self.node.path, fmt.Sprintf("fork%d", index))
-	self.fqname = self.node.fqname + fmt.Sprintf(".fork%d", index)
+func NewFork(nodable Nodable, index int, id ForkId, args map[string]*syntax.ResolvedBinding) *Fork {
+	self := &Fork{
+		node:   nodable.getNode(),
+		forkId: id,
+		index:  index,
+	}
+	if idx, err := id.ForkIdString(); err != nil {
+		panic(err)
+	} else {
+		self.id = idx
+	}
+	self.path = path.Join(self.node.path, self.id)
+	self.fqname = self.node.call.GetFqid() + "." + self.id
 	self.metadata = NewMetadata(self.fqname, self.path)
 	self.split_metadata = NewMetadata(self.fqname+".split",
 		path.Join(self.path, "split"))
@@ -346,13 +358,13 @@ func NewFork(nodable Nodable, index int, argPermute map[string]interface{}) *For
 		self.join_metadata.finalFilePath = self.metadata.finalFilePath
 		self.join_metadata.discoverUniquify()
 	}
-	self.argPermute = argPermute
+	self.args = args
 	self.split_has_run = false
 	self.join_has_run = false
 	self.lastPrint = time.Now()
 
 	// By default, initialize stage defs with one empty chunk.
-	self.stageDefs = &LazyStageDefs{ChunkDefs: []*LazyChunkDef{new(LazyChunkDef)}}
+	self.stageDefs = &StageDefs{ChunkDefs: []*ChunkDef{new(ChunkDef)}}
 
 	if err := self.split_metadata.ReadInto(StageDefsFile, &self.stageDefs); err == nil {
 		width := util.WidthForInt(len(self.stageDefs.ChunkDefs))
@@ -367,7 +379,7 @@ func NewFork(nodable Nodable, index int, argPermute map[string]interface{}) *For
 }
 
 func (self *Fork) Split() bool {
-	if stage, ok := self.node.callable.(*syntax.Stage); ok {
+	if stage, ok := self.node.call.Callable().(*syntax.Stage); ok {
 		return stage.Split
 	} else {
 		return false
@@ -375,7 +387,7 @@ func (self *Fork) Split() bool {
 }
 
 func (self *Fork) ChunkOutParams() *syntax.OutParams {
-	if stage, ok := self.node.callable.(*syntax.Stage); ok {
+	if stage, ok := self.node.call.Callable().(*syntax.Stage); ok {
 		return stage.ChunkOuts
 	} else {
 		return nil
@@ -384,26 +396,26 @@ func (self *Fork) ChunkOutParams() *syntax.OutParams {
 
 // Get the fork's output parameter list.
 func (self *Fork) OutParams() *syntax.OutParams {
-	return self.node.callable.GetOutParams()
+	return self.node.call.Callable().GetOutParams()
 }
 
 func (self *Fork) kill(message string) {
 	if state, _ := self.split_metadata.getState(); state == Queued || state == Running {
-		self.split_metadata.WriteRaw(Errors, message)
+		self.split_metadata.WriteErrorString(message)
 	}
 	if state, _ := self.join_metadata.getState(); state == Queued || state == Running {
-		self.join_metadata.WriteRaw(Errors, message)
+		self.join_metadata.WriteErrorString(message)
 	}
 	for _, chunk := range self.chunks {
 		if state := chunk.getState(); state == Queued || state == Running {
-			chunk.metadata.WriteRaw(Errors, message)
+			chunk.metadata.WriteErrorString(message)
 		}
 	}
 }
 
 func (self *Fork) reset() {
 	for _, chunk := range self.chunks {
-		self.node.rt.JobManager.endJob(chunk.metadata)
+		self.node.top.rt.JobManager.endJob(chunk.metadata)
 	}
 	self.chunks = nil
 	self.metadatasCache = nil
@@ -527,60 +539,86 @@ var escapedPathSep = func() []byte {
 // separator character, since there is no way for downstream stages to figure
 // out the location of this stage's file outputs without an absolute path, or
 // at least one relative to something the downstream stage can know about.
-func getMaybeFileNames(value json.RawMessage) []string {
-	if len(value) == 0 || bytes.Equal(value, nullBytes) {
-		return nil
-	}
-	if !bytes.Contains(value, escapedPathSep) {
-		return nil
-	}
-	var s string
-	if json.Unmarshal(value, &s) == nil {
-		if strings.ContainsRune(s, os.PathSeparator) {
-			return []string{s}
-		} else {
-			return nil
-		}
-	}
-	var varr []json.RawMessage
-	if json.Unmarshal(value, &varr) == nil {
-		if len(varr) == 0 {
-			return nil
-		}
-		vs := make([]string, 0, len(varr))
-		for _, element := range varr {
-			vs = append(vs, getMaybeFileNames(element)...)
-		}
-		return vs
-	}
-	var vmap map[string]json.RawMessage
-	if json.Unmarshal(value, &vmap) == nil {
-		if len(vmap) == 0 {
-			return nil
-		}
-		vs := make([]string, 0, len(vmap))
-		for key, element := range vmap {
-			if strings.ContainsRune(key, os.PathSeparator) {
-				vs = append(vs, key)
+func getMaybeFileNames(value json.Marshaler) []string {
+	switch value := value.(type) {
+	case marshallerArray:
+		var result []string
+		for _, v := range value {
+			if r := getMaybeFileNames(v); len(r) > 0 {
+				if len(result) == 0 {
+					result = r
+				} else {
+					result = append(result, r...)
+				}
 			}
-			vs = append(vs, getMaybeFileNames(element)...)
 		}
-		return vs
+		return result
+	case LazyArgumentMap:
+		var result []string
+		for k, v := range value {
+			if len(k) > 0 && k[0] == os.PathSeparator {
+				result = append(result, k)
+			}
+			if r := getMaybeFileNames(v); len(r) > 0 {
+				if len(result) == 0 {
+					result = r
+				} else {
+					result = append(result, r...)
+				}
+			}
+		}
+		return result
+	case json.RawMessage:
+		value = json.RawMessage(bytes.TrimSpace(value))
+		if len(value) == 0 || bytes.Equal(value, nullBytes) {
+			return nil
+		}
+		if !bytes.Contains(value, escapedPathSep) {
+			return nil
+		}
+		if value[0] == '[' {
+			var arr []json.RawMessage
+			if json.Unmarshal(value, &arr) == nil {
+				var result []string
+				for _, v := range arr {
+					if r := getMaybeFileNames(v); len(r) > 0 {
+						if len(result) == 0 {
+							result = r
+						} else {
+							result = append(result, r...)
+						}
+					}
+				}
+				return result
+			}
+		} else if value[0] == '{' {
+			var m LazyArgumentMap
+			if json.Unmarshal(value, &m) == nil {
+				return getMaybeFileNames(m)
+			}
+		} else if value[0] == '"' {
+			var s string
+			if json.Unmarshal(value, &s) == nil &&
+				len(s) > 0 && path.IsAbs(s) {
+				return []string{s}
+			}
+		}
+		return nil
+	default:
+		return nil
 	}
-	return nil
 }
 
 // Once the job has completed, look for arguments which might contain file
 // names and remove any which didn't actually have any.
-func (self *Fork) removeEmptyFileArgs(outs map[string]json.RawMessage) {
+func (self *Fork) removeEmptyFileArgs(outs LazyArgumentMap) {
 	self.storageLock.Lock()
 	defer self.storageLock.Unlock()
 	if len(self.fileArgs) == 0 {
 		return
 	} else {
 		for arg := range self.fileArgs {
-			if val, ok := outs[arg]; !ok ||
-				len(getMaybeFileNames(val)) == 0 {
+			if val := outs.jsonPath(arg); len(getMaybeFileNames(val)) == 0 {
 				self.removeFileArg(arg)
 			}
 		}
@@ -590,7 +628,7 @@ func (self *Fork) removeEmptyFileArgs(outs map[string]json.RawMessage) {
 func (self *Fork) verifyOutput(outs LazyArgumentMap) (bool, string) {
 	outparams := self.OutParams()
 	if len(outparams.List) > 0 {
-		if err, alarms := outs.ValidateOutputs(outparams); err != nil {
+		if err, alarms := outs.ValidateOutputs(self.node.top.types, outparams); err != nil {
 			return false, err.Error() + alarms
 		} else if alarms != "" {
 			switch syntax.GetEnforcementLevel() {
@@ -660,11 +698,15 @@ func (self *Fork) getState() MetadataState {
 }
 
 func (self *Fork) disabled() bool {
-	for _, bind := range self.node.disabled {
-		if res, _ := bind.resolve(self.argPermute, self.node.rt.FreeMemBytes()/2); res != nil {
+	top := self.node.top
+	for _, bind := range self.node.call.Disabled() {
+		if ready, res, _ := top.resolve(bind,
+			top.types.Get(syntax.TypeId{
+				Tname: syntax.KindBool,
+			}), self.forkId, top.rt.FreeMemBytes()/2); ready && res != nil {
 			switch d := res.(type) {
-			case bool:
-				if d {
+			case *syntax.BoolExp:
+				if d.Value {
 					return true
 				}
 			case json.RawMessage:
@@ -703,14 +745,14 @@ func (self *Fork) updateState(state, uniquifier string) {
 			MetadataFileName(strings.TrimPrefix(state, SplitPrefix)),
 			uniquifier)
 		if st, _ := self.split_metadata.getState(); st != Running && st != Queued {
-			self.node.rt.JobManager.endJob(self.split_metadata)
+			self.node.top.rt.JobManager.endJob(self.split_metadata)
 		}
 	} else if strings.HasPrefix(state, JoinPrefix) {
 		self.join_metadata.cache(
 			MetadataFileName(strings.TrimPrefix(state, JoinPrefix)),
 			uniquifier)
 		if st, _ := self.join_metadata.getState(); st != Running && st != Queued {
-			self.node.rt.JobManager.endJob(self.join_metadata)
+			self.node.top.rt.JobManager.endJob(self.join_metadata)
 		}
 	} else {
 		self.metadata.cache(MetadataFileName(state), uniquifier)
@@ -730,13 +772,12 @@ func (self *Fork) skip() {
 
 func (self *Fork) writeInvocation() {
 	if !self.metadata.exists(InvocationFile) {
-		argBindings, _ := resolveBindings(self.node.argbindings, self.argPermute,
-			self.node.rt.FreeMemBytes()/int64(1+len(self.node.prenodes)))
+		argBindings, _ := self.node.resolveInputs(self.forkId)
 		invocation, _ := BuildCallSource(
-			self.node.name,
-			MakeLazyArgumentMap(argBindings), nil,
-			self.node.callable,
-			self.node.mroPaths)
+			self.node.call.Call().Id,
+			argBindings, nil,
+			self.node.call.Callable(),
+			self.node.top.mroPaths)
 		self.metadata.WriteRaw(InvocationFile, invocation)
 	}
 }
@@ -744,19 +785,19 @@ func (self *Fork) writeInvocation() {
 func (self *Fork) printState(state MetadataState) {
 	statePad := strings.Repeat(" ", int(math.Max(0, float64(15-len(state)))))
 	// Only log fork num if we've got more than one fork
-	fqname := self.node.fqname
+	fqname := self.node.GetFQName()
 	if len(self.node.forks) > 1 {
 		fqname = self.fqname
 	}
 	self.lastPrint = time.Now()
-	if self.node.preflight {
+	if self.node.call.Call().Modifiers.Preflight {
 		util.LogInfo("runtime", "(%s)%s %s", state, statePad, fqname)
 	} else {
 		util.PrintInfo("runtime", "(%s)%s %s", state, statePad, fqname)
 	}
 }
 
-func (self *Fork) doSplit(getBindings func() LazyArgumentMap) MetadataState {
+func (self *Fork) doSplit(getBindings func() MarshalerMap) MetadataState {
 	if self.disabled() {
 		self.writeDisable()
 		return DisabledState
@@ -777,9 +818,9 @@ func (self *Fork) doSplit(getBindings func() LazyArgumentMap) MetadataState {
 	return Ready
 }
 
-func (self *Fork) doChunks(state MetadataState, getBindings func() LazyArgumentMap) MetadataState {
-	self.node.rt.JobManager.endJob(self.split_metadata)
-	if self.node.volatile {
+func (self *Fork) doChunks(state MetadataState, getBindings func() MarshalerMap) MetadataState {
+	self.node.top.rt.JobManager.endJob(self.split_metadata)
+	if self.node.call.Call().Modifiers.Volatile {
 		lockAquired := make(chan struct{}, 1)
 		go func() {
 			self.storageLock.Lock()
@@ -801,7 +842,7 @@ func (self *Fork) doChunks(state MetadataState, getBindings func() LazyArgumentM
 	if self.split_metadata.exists(StageDefsFile) {
 		if err := self.split_metadata.ReadInto(StageDefsFile, &self.stageDefs); err != nil {
 			errstring := err.Error()
-			self.split_metadata.WriteRaw(Errors, fmt.Sprintf(
+			self.split_metadata.WriteErrorString(fmt.Sprintf(
 				"The split method did not return a dictionary {'chunks': [{}], 'join': {}}.\nError: %s\nChunk count: %d",
 				errstring, len(self.stageDefs.ChunkDefs)))
 		} else if len(self.stageDefs.ChunkDefs) == 0 {
@@ -847,15 +888,19 @@ func (self *Fork) doChunks(state MetadataState, getBindings func() LazyArgumentM
 	return state
 }
 
-func (self *Fork) doJoin(state MetadataState, getBindings func() LazyArgumentMap) MetadataState {
+func (self *Fork) doJoin(state MetadataState, getBindings func() MarshalerMap) MetadataState {
 	go self.partialVdrKill()
 	if self.stageDefs.JoinDef == nil {
 		self.stageDefs.JoinDef = &JobResources{}
 	}
 	res := self.node.setJoinJobReqs(self.stageDefs.JoinDef)
-	resolvedBindings := LazyChunkDef{
+	args, err := getBindings().ToLazyArgumentMap()
+	if err != nil {
+		panic(err)
+	}
+	resolvedBindings := ChunkDef{
 		Resources: self.stageDefs.JoinDef,
-		Args:      getBindings(),
+		Args:      args,
 	}
 	self.join_metadata.Write(ArgsFile, &resolvedBindings)
 	self.join_metadata.Write(ChunkDefsFile, self.stageDefs.ChunkDefs)
@@ -865,10 +910,10 @@ func (self *Fork) doJoin(state MetadataState, getBindings func() LazyArgumentMap
 			if co := self.ChunkOutParams(); len(self.OutParams().List) > 0 ||
 				(co != nil && len(co.List) > 0) {
 				chunkOuts := make([]LazyArgumentMap, 0, len(self.chunks))
-				readSize := self.node.rt.FreeMemBytes() / int64(2*len(self.chunks))
+				readSize := self.node.top.rt.FreeMemBytes() / int64(2*len(self.chunks))
 				for _, chunk := range self.chunks {
 					if outs, err := chunk.metadata.read(OutsFile, readSize); err != nil {
-						chunk.metadata.WriteRaw(Errors, err.Error())
+						chunk.metadata.WriteErrorString(err.Error())
 						ok = false
 					} else {
 						chunkOuts = append(chunkOuts, outs)
@@ -918,13 +963,13 @@ func (self *Fork) doJoin(state MetadataState, getBindings func() LazyArgumentMap
 }
 
 func (self *Fork) doComplete() {
-	self.node.rt.JobManager.endJob(self.join_metadata)
+	self.node.top.rt.JobManager.endJob(self.join_metadata)
 	var joinOut LazyArgumentMap
 	if len(self.OutParams().List) > 0 {
 		var err error
-		joinOut, err = self.join_metadata.read(OutsFile, self.node.rt.FreeMemBytes()/3)
+		joinOut, err = self.join_metadata.read(OutsFile, self.node.top.rt.FreeMemBytes()/3)
 		if err != nil {
-			self.join_metadata.WriteRaw(Errors, err.Error())
+			self.join_metadata.WriteErrorString(err.Error())
 			return
 		} else if joinOut == nil {
 			self.metadata.WriteRaw(OutsFile, "{}")
@@ -934,7 +979,7 @@ func (self *Fork) doComplete() {
 	} else {
 		self.metadata.WriteRaw(OutsFile, "{}")
 	}
-	if self.node.rt.Config.VdrMode == "post" {
+	if self.node.top.rt.Config.VdrMode == "post" {
 		// Still clean up tmp, but run before we've declared
 		// the stage maybe complete.
 		func() {
@@ -955,18 +1000,18 @@ func (self *Fork) doComplete() {
 		if alarms.Len() > 0 {
 			self.lastPrint = time.Now()
 			if len(self.node.forks) > 1 {
-				util.Print("Alerts for %s.fork%d:\n%s\n",
-					self.node.fqname, self.index, alarms.String())
+				util.Print("Alerts for %s:\n%s\n",
+					self.fqname, alarms.String())
 			} else {
 				util.Print("Alerts for %s:\n%s\n",
-					self.node.fqname, alarms.String())
+					self.node.GetFQName(), alarms.String())
 			}
 		}
 	} else {
-		self.metadata.WriteRaw(Errors, msg)
+		self.metadata.WriteErrorString(msg)
 	}
 	self.removeEmptyFileArgs(joinOut)
-	if self.node.rt.Config.VdrMode != "post" {
+	if self.node.top.rt.Config.VdrMode != "post" {
 		go func() {
 			func() {
 				self.storageLock.Lock()
@@ -984,11 +1029,14 @@ func (self *Fork) stepPipeline() {
 		return
 	}
 	self.writeInvocation()
-	if outs, err := resolveBindings(self.node.retbindings, self.argPermute,
-		self.node.rt.FreeMemBytes()/int64(len(self.node.prenodes)+1)); err != nil {
+	if outs, err := self.node.resolvePipelineOutputs(self.forkId); err != nil {
 		util.PrintError(err, "runtime",
 			"Error resolving output argument bindings.")
-		self.metadata.WriteRaw(Errors, err.Error())
+		self.metadata.WriteErrorString(err.Error())
+	} else if outs, err := outs.(MarshalerMap).ToLazyArgumentMap(); err != nil {
+		util.PrintError(err, "runtime",
+			"Error serializing pipeline output argument bindings.")
+		self.metadata.WriteErrorString(err.Error())
 	} else {
 		self.metadata.Write(OutsFile, outs)
 		if ok, msg := self.verifyOutput(outs); ok {
@@ -997,27 +1045,28 @@ func (self *Fork) stepPipeline() {
 			}
 			self.metadata.WriteTime(CompleteFile)
 		} else {
-			self.metadata.WriteRaw(Errors, msg)
+			self.metadata.WriteErrorString(msg)
 		}
 	}
 }
 
 func (self *Fork) step() {
-	if self.node.kind == "stage" {
+	if self.node.call.Kind() == syntax.KindStage {
 		state := self.getState()
 		if !state.IsRunning() && !state.IsQueued() && state != DisabledState {
 			self.printState(state)
 		}
 
 		// Lazy-evaluate bindings, only once per step.
-		var bindings LazyArgumentMap
-		getBindings := func() LazyArgumentMap {
+		var bindings MarshalerMap
+		getBindings := func() MarshalerMap {
 			if bindings == nil {
 				var err error
-				bindings, err = resolveBindings(self.node.argbindings, self.argPermute,
-					self.node.rt.FreeMemBytes()/int64(len(self.node.prenodes)+1))
+				bindings, err = self.node.resolveInputs(self.forkId)
 				if err != nil {
 					util.PrintError(err, "runtime", "Error resolving argument bindings.")
+				} else if bindings == nil {
+					util.LogInfo("runtime", "Failed to resolve bindings")
 				}
 			}
 			return bindings
@@ -1040,7 +1089,7 @@ func (self *Fork) step() {
 		if state == Complete.Prefixed(JoinPrefix) {
 			self.doComplete()
 		}
-	} else if self.node.kind == "pipeline" {
+	} else if self.node.call.Kind() == syntax.KindPipeline {
 		self.stepPipeline()
 	}
 }
@@ -1102,139 +1151,6 @@ func (self *Fork) writePartialKill(killReport *PartialVdrKillReport) {
 	self.metadata.Write(PartialVdr, killReport)
 }
 
-func (self *Fork) postProcess() {
-	// Handle formal output parameters
-	pipestancePath := self.node.parent.getNode().path
-	outsPath := path.Join(pipestancePath, "outs")
-
-	// Handle multi-fork sweeps
-	if len(self.node.forks) > 1 {
-		outsPath = path.Join(outsPath, fmt.Sprintf("fork%d", self.index))
-		util.Print("\nOutputs (fork%d):\n", self.index)
-	} else {
-		util.Print("\nOutputs:\n")
-	}
-
-	// Create the fork-specific outs/ folder
-	util.MkdirAll(outsPath)
-
-	paramList := self.OutParams().List
-
-	// Get fork's output parameter values
-	outs := make(map[string]interface{}, len(paramList))
-	self.metadata.ReadInto(OutsFile, &outs)
-
-	errors := self.handleOuts(paramList, outs, pipestancePath, outsPath)
-
-	// Print errors
-	if len(errors) > 0 {
-		util.Print("\nCould not move output files:\n")
-		for _, err := range errors {
-			util.Print("%s\n", err.Error())
-		}
-	}
-	util.Print("\n")
-
-	self.printAlarms()
-}
-
-func (self *Fork) handleOuts(paramList []*syntax.OutParam,
-	outs map[string]interface{},
-	pipestancePath, outsPath string) []error {
-	// Error message accumulator
-	var errors []error
-
-	// Calculate longest key name for alignment
-	keyWidth := 0
-	for _, param := range paramList {
-		// Print out the param help and value
-		key := param.GetHelp()
-		if len(key) == 0 {
-			key = param.GetId()
-		}
-		if len(key) > keyWidth {
-			keyWidth = len(key)
-		}
-	}
-
-	// Iterate through output parameters
-	for _, param := range paramList {
-		// Pull the param value from the fork _outs
-		// If value not available, report null
-		id := param.GetId()
-		value, ok := outs[id]
-		if !ok || value == nil {
-			value = "null"
-		}
-
-		if param.IsFile() {
-			// Make sure value is a string
-			filePath, ok := value.(string)
-			if ok {
-				filePath, err := moveOutFile(param, filePath, pipestancePath, outsPath)
-				if err != nil {
-					errors = append(errors, err)
-				}
-				value = filePath
-			}
-		}
-
-		// Print out the param help and value
-		key := param.GetHelp()
-		if len(key) == 0 {
-			key = param.GetId()
-		}
-		keyPad := strings.Repeat(" ", keyWidth-len(key))
-		util.Print("- %s:%s %v\n", key, keyPad, value)
-	}
-	return errors
-}
-
-// Move files to the top-level pipestance outs directory.
-func moveOutFile(param *syntax.OutParam, filePath, pipestancePath, outsPath string) (string, error) {
-	// If file doesn't exist (e.g. stage just didn't create it)
-	// then report null
-	if _, err := os.Stat(filePath); os.IsNotExist(err) {
-		return "null", nil
-	}
-
-	// Generate the outs path for this param
-	outPath := path.Join(outsPath, param.GetOutFilename())
-
-	// Only continue if path to be copied is inside the pipestance
-	if absFilePath, err := filepath.Abs(filePath); err == nil {
-		if absPipestancePath, err := filepath.Abs(pipestancePath); err == nil {
-			if !strings.Contains(absFilePath, absPipestancePath) {
-				// But we still want a symlink
-				return filePath, os.Symlink(absFilePath, outPath)
-			}
-		}
-	}
-
-	// If this param has already been moved to outs/, we're done
-	if _, err := os.Stat(outPath); err == nil {
-		return filePath, nil
-	}
-
-	// If source file exists, move it to outs/
-	if err := os.Rename(filePath, outPath); err != nil {
-		return filePath, err
-	}
-
-	// Generate the relative path from files/ to outs/
-	relPath, err := filepath.Rel(filepath.Dir(filePath), outPath)
-	if err != nil {
-		return filePath, err
-	}
-
-	// Symlink it back to the original files/ folder
-	if err := os.Symlink(relPath, filePath); err != nil {
-		return filePath, err
-	}
-
-	return outPath, err
-}
-
 func (self *Fork) printAlarms() {
 	// Print alerts
 	var alarms strings.Builder
@@ -1242,7 +1158,7 @@ func (self *Fork) printAlarms() {
 	if alarms.Len() > 0 {
 		self.lastPrint = time.Now()
 		if len(self.node.forks) > 1 {
-			util.Print("Alerts (fork%d):\n", self.index)
+			util.Print("Alerts (%s):\n", self.id)
 		} else {
 			util.Print("Alerts:\n")
 		}
@@ -1265,26 +1181,11 @@ func (self *Fork) getAlarms(alarms *strings.Builder) {
 }
 
 func (self *Fork) serializeState() *ForkInfo {
-	argbindings := make([]*BindingInfo, 0, len(self.node.argbindingList))
-	readSize := self.node.rt.FreeMemBytes() / 2
-	for _, argbinding := range self.node.argbindingList {
-		if s, err := argbinding.serializeState(self.argPermute, readSize); err != nil && !os.IsNotExist(err) {
-			util.LogError(err, "runtime", "Error reading fork arg bindings.")
-		} else {
-			argbindings = append(argbindings, s)
-		}
-	}
-	retbindings := make([]*BindingInfo, 0, len(self.node.retbindingList))
-	for _, retbinding := range self.node.retbindingList {
-		if s, err := retbinding.serializeState(self.argPermute, readSize); err != nil && !os.IsNotExist(err) {
-			util.LogError(err, "runtime", "Error reading fork return bindings.")
-		} else {
-			retbindings = append(retbindings, s)
-		}
-	}
+	argbindings := self.node.inputBindingInfo(self.forkId)
+	outputs := self.node.outputBindingInfo(self.forkId)
 	bindings := &ForkBindingsInfo{
 		Argument: argbindings,
-		Return:   retbindings,
+		Return:   outputs,
 	}
 	chunks := make([]*ChunkInfo, 0, len(self.chunks))
 	for _, chunk := range self.chunks {
@@ -1292,7 +1193,6 @@ func (self *Fork) serializeState() *ForkInfo {
 	}
 	return &ForkInfo{
 		Index:         self.index,
-		ArgPermute:    self.argPermute,
 		JoinDef:       self.stageDefs.JoinDef,
 		State:         self.getState(),
 		Metadata:      self.metadata.serializeState(),
@@ -1308,10 +1208,10 @@ func (self *Fork) getStages() []*StagePerfInfo {
 	for _, subfork := range self.subforks {
 		stages = append(stages, subfork.getStages()...)
 	}
-	if self.node.kind == "stage" {
+	if self.node.call.Kind() == syntax.KindStage {
 		stages = append(stages, &StagePerfInfo{
-			Name:   self.node.name,
-			Fqname: self.node.fqname,
+			Name:   self.node.call.Call().Id,
+			Fqname: self.node.GetFQName(),
 			Forki:  self.index,
 		})
 	}

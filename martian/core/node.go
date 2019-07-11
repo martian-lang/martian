@@ -7,13 +7,11 @@
 package core
 
 import (
-	"encoding/json"
 	"fmt"
 	"math"
 	"os"
 	"path"
 	"path/filepath"
-	"reflect"
 	"regexp"
 	"sort"
 	"strconv"
@@ -50,20 +48,11 @@ type Nodable interface {
 // Represents a node in the pipeline graph.
 type Node struct {
 	parent         Nodable
-	rt             *Runtime
-	kind           string
-	name           string
-	callableId     string
-	fqname         string
+	top            *TopNode
+	call           syntax.CallGraphNode
 	path           string
 	metadata       *Metadata
-	callable       syntax.Callable
 	resources      *JobResources
-	argbindings    map[string]*Binding
-	argbindingList []*Binding // for stable ordering
-	retbindings    map[string]*Binding
-	retbindingList []*Binding // for stable ordering
-	sweepbindings  []*Binding
 	subnodes       map[string]Nodable
 	prenodes       map[string]Nodable
 	directPrenodes []Nodable
@@ -71,20 +60,11 @@ type Node struct {
 	frontierNodes  *threadSafeNodeMap
 	forks          []*Fork
 	state          MetadataState
-	volatile       bool
-	strictVolatile bool
 	local          bool
-	preflight      bool
-	disabled       []*Binding
-	modBindingList []*Binding
-	stagecodeLang  syntax.StageCodeType
-	stagecodeCmd   string
-	journalPath    string
-	tmpPath        string
-	mroPaths       []string
-	mroVersion     string
-	envs           map[string]string
-	invocation     *InvocationData
+	stagecode      *syntax.SrcParam
+	forkRoots      []syntax.Exp
+	forkIds        []ForkId
+	resolvedCmd    string
 }
 
 // Represents an edge in the pipeline graph.
@@ -102,18 +82,17 @@ type NodeErrorInfo struct {
 }
 
 type NodeInfo struct {
-	Name          string               `json:"name"`
-	Fqname        string               `json:"fqname"`
-	Type          string               `json:"type"`
-	Path          string               `json:"path"`
-	State         MetadataState        `json:"state"`
-	Metadata      *MetadataInfo        `json:"metadata"`
-	SweepBindings []*BindingInfo       `json:"sweepbindings"`
-	Forks         []*ForkInfo          `json:"forks"`
-	Edges         []EdgeInfo           `json:"edges"`
-	StagecodeLang syntax.StageCodeType `json:"stagecodeLang"`
-	StagecodeCmd  string               `json:"stagecodeCmd"`
-	Error         *NodeErrorInfo       `json:"error,omitempty"`
+	Name          string                   `json:"name"`
+	Fqname        string                   `json:"fqname"`
+	Type          syntax.CallGraphNodeType `json:"type"`
+	Path          string                   `json:"path"`
+	State         MetadataState            `json:"state"`
+	Metadata      *MetadataInfo            `json:"metadata"`
+	Forks         []*ForkInfo              `json:"forks"`
+	Edges         []EdgeInfo               `json:"edges"`
+	StagecodeLang syntax.StageCodeType     `json:"stagecodeLang"`
+	StagecodeCmd  string                   `json:"stagecodeCmd"`
+	Error         *NodeErrorInfo           `json:"error,omitempty"`
 }
 
 func (self *Node) getNode() *Node { return self }
@@ -127,74 +106,229 @@ func (self *Node) GetPostNodes() map[string]Nodable {
 }
 
 func (self *Node) Callable() syntax.Callable {
-	return self.callable
+	return self.call.Callable()
 }
 
-func NewNode(parent Nodable, kind string, callStm *syntax.CallStm, callables *syntax.Callables) *Node {
-	self := &Node{}
-	self.parent = parent
+func (self *Node) Types() *syntax.TypeLookup {
+	return self.top.types
+}
 
-	self.rt = parent.getNode().rt
-	self.kind = kind
-	self.name = callStm.Id
-	self.callableId = callStm.DecId
-	self.fqname = parent.getNode().fqname + "." + self.name
-	self.path = path.Join(parent.getNode().path, self.name)
-	self.journalPath = parent.getNode().journalPath
-	self.tmpPath = parent.getNode().tmpPath
-	self.mroPaths = parent.getNode().mroPaths
-	self.mroVersion = parent.getNode().mroVersion
-	self.envs = parent.getNode().envs
-	self.invocation = parent.getNode().invocation
-	self.metadata = NewMetadata(self.fqname, self.path)
-	self.volatile = callStm.Modifiers.Volatile
-	self.preflight = callStm.Modifiers.Preflight
-	if self.preflight || !self.rt.Config.NeverLocal {
-		self.local = callStm.Modifiers.Local
+func NewNode(parent Nodable, call syntax.CallGraphNode) *Node {
+	self := &Node{
+		parent: parent,
+		top:    parent.getNode().top,
+		call:   call,
 	}
-
-	self.callable = callables.Table[callStm.DecId]
-	self.argbindings = map[string]*Binding{}
-	self.argbindingList = []*Binding{}
-	self.retbindings = map[string]*Binding{}
-	self.retbindingList = []*Binding{}
-	self.subnodes = map[string]Nodable{}
-	self.prenodes = map[string]Nodable{}
-	self.directPrenodes = []Nodable{}
-	self.postnodes = map[string]Nodable{}
+	self.top.allNodes[call.GetFqid()] = self
+	self.path = path.Join(parent.getNode().path, call.Call().Id)
+	self.metadata = NewMetadata(self.call.GetFqid(), self.path)
+	if self.call.Call().Modifiers.Preflight || !self.top.rt.Config.NeverLocal {
+		self.local = call.Call().Modifiers.Local
+	}
+	if len(call.GetChildren()) > 0 {
+		self.subnodes = make(map[string]Nodable, len(call.GetChildren()))
+	} else if s, ok := call.Callable().(*syntax.Stage); ok {
+		self.stagecode = s.Src
+	}
 	self.frontierNodes = parent.getNode().frontierNodes
 
-	for id, bindStm := range callStm.Bindings.Table {
-		binding := NewBinding(self, bindStm)
-		self.argbindings[id] = binding
-		self.argbindingList = append(self.argbindingList, binding)
-	}
-	self.disabled = parent.getNode().disabled
-	if callStm.Modifiers.Bindings != nil {
-		if disabled := callStm.Modifiers.Bindings.Table["disabled"]; disabled != nil {
-			binding := NewBinding(self, disabled)
-			self.disabled = append(self.disabled, binding)
-		}
-		// Any future bindable modifiers here.
-	}
-	self.modBindingList = self.disabled
-	self.attachBindings(append(self.argbindingList, self.modBindingList...))
+	self.makeDirectPrenodes()
+	self.makePrenodes()
 
 	// Do not set state = getState here, or else nodes will wrongly report
 	// complete before the first refreshMetadata call
 	return self
 }
 
-func (self *Node) attachBindings(bindingList []*Binding) {
-	prenodes, directPrenodes, fileParents := recurseBoundNodes(bindingList)
-	for key, prenode := range prenodes {
-		self.prenodes[key] = prenode
-		prenode.getNode().postnodes[self.fqname] = self
+func (self *Node) makeDirectPrenodes() {
+	if parent, ok := self.parent.(*Node); ok {
+		allBindings := self.call.Call().Bindings.List
+		if mods := self.call.Call().Modifiers; mods != nil {
+			if modBindings := mods.Bindings; modBindings != nil {
+				allBindings = append(
+					allBindings[:len(allBindings):len(allBindings)],
+					modBindings.List...)
+			}
+		}
+		var prenodes map[Nodable]struct{}
+		for i, binding := range allBindings {
+			prenodes = findDirectRefs(binding.Exp, parent, len(allBindings)-i, prenodes)
+		}
+		if len(prenodes) == 0 {
+			self.directPrenodes = nil
+		} else {
+			self.directPrenodes = make([]Nodable, 0, len(prenodes))
+			for n := range prenodes {
+				self.directPrenodes = append(self.directPrenodes, n)
+			}
+			sort.Slice(self.directPrenodes, func(i, j int) bool {
+				return self.directPrenodes[i].GetFQName() < self.directPrenodes[j].GetFQName()
+			})
+		}
 	}
-	self.directPrenodes = append(self.directPrenodes, directPrenodes...)
+}
+
+func findDirectRefs(exp syntax.Exp, parent *Node, expectedSize int,
+	prenodes map[Nodable]struct{}) map[Nodable]struct{} {
+	refs := exp.FindRefs()
+	for i, ref := range refs {
+		if ref.Kind == syntax.KindCall {
+			if prenodes == nil {
+				prenodes = make(map[Nodable]struct{}, len(refs)-i+expectedSize)
+			}
+			n := parent.subnodes[ref.Id]
+			if n == nil {
+				panic(parent.GetFQName() + " has no child " + ref.Id)
+			}
+			prenodes[n] = struct{}{}
+		} else {
+			prenodes = parent.addDirectRefNodes(ref, prenodes)
+		}
+	}
+	return prenodes
+}
+
+func (self *Node) addDirectRefNodes(ref *syntax.RefExp,
+	prenodes map[Nodable]struct{}) map[Nodable]struct{} {
+	binding := self.call.Call().Bindings.Table[ref.Id]
+	if binding == nil {
+		panic(self.GetFQName() + " has no argument " + ref.Id)
+	}
+	exp, err := binding.Exp.BindingPath(ref.OutputId)
+	if err != nil {
+		panic(err)
+	}
+	if n := self.parent; n != nil {
+		return findDirectRefs(exp, n.getNode(), 0, prenodes)
+	}
+	return prenodes
+}
+
+func (self *Node) makePrenodesForBinding(bind *syntax.ResolvedBinding,
+	refs map[Nodable]struct{},
+	fileRefs map[Nodable]map[string]syntax.Type) (map[Nodable]struct{}, map[Nodable]map[string]syntax.Type) {
+	brefs, err := bind.FindRefs(self.top.types)
+	if err != nil {
+		// This should never happen if the ast compiled properly
+		panic(err)
+	}
+	if len(brefs) > 0 {
+		if refs == nil {
+			refs = make(map[Nodable]struct{},
+				len(self.call.ResolvedInputs())*len(brefs))
+		}
+		for _, ref := range brefs {
+			rnode := self.top.allNodes[ref.Exp.Id]
+			refs[rnode] = struct{}{}
+			if ref.Type.IsFile() != syntax.KindIsNotFile {
+				if self.top.rt.Config.Debug {
+					util.LogInfo("storage",
+						"Output %s of %s is a file argument, bound by %s",
+						ref.Exp.OutputId,
+						rnode.GetFQName(),
+						self.GetFQName())
+				}
+				if fileRefs == nil {
+					fileRefs = map[Nodable]map[string]syntax.Type{
+						rnode: map[string]syntax.Type{
+							ref.Exp.OutputId: ref.Type,
+						},
+					}
+				} else if nrefs := fileRefs[rnode]; nrefs == nil {
+					fileRefs[rnode] = map[string]syntax.Type{
+						ref.Exp.OutputId: ref.Type,
+					}
+				} else if existing := nrefs[ref.Exp.OutputId]; existing == nil ||
+					ref.Type.IsAssignableFrom(existing, self.top.types) != nil {
+					nrefs[ref.Exp.OutputId] = ref.Type
+				}
+			}
+		}
+	}
+	return refs, fileRefs
+}
+
+func (self *Node) makePrenodes() {
+	var refs map[Nodable]struct{}
+	var fileRefs map[Nodable]map[string]syntax.Type
+	for _, bind := range self.call.ResolvedInputs() {
+		refs, fileRefs = self.makePrenodesForBinding(bind, refs, fileRefs)
+	}
+	for _, exp := range self.call.Disabled() {
+		brefs := exp.FindRefs()
+		if len(brefs) > 0 {
+			if refs == nil {
+				refs = make(map[Nodable]struct{}, len(brefs))
+			}
+			for _, ref := range brefs {
+				refs[self.top.allNodes[ref.Id]] = struct{}{}
+			}
+		}
+	}
+	if len(refs) == 0 {
+		self.prenodes = nil
+	} else {
+		self.prenodes = make(map[string]Nodable)
+		for node := range refs {
+			self.prenodes[node.GetFQName()] = node
+			node.getNode().setPostNode(self)
+		}
+	}
+	if len(fileRefs) > 0 {
+		self.attachToFileParents(fileRefs)
+	}
+}
+
+func (self *Node) makeReturnBindings(directReturn []*syntax.BindStm) {
+	prenodes := make(map[string]struct{}, len(directReturn))
+	for _, binding := range directReturn {
+		refs := binding.Exp.FindRefs()
+		for _, ref := range refs {
+			if ref.Kind == syntax.KindCall {
+				prenodes[ref.Id] = struct{}{}
+			}
+		}
+	}
+	if len(prenodes) > 0 {
+		if self.directPrenodes == nil {
+			self.directPrenodes = make([]Nodable, 0, len(prenodes))
+		}
+		for id := range prenodes {
+			n := self.top.allNodes[self.call.GetFqid()+"."+id]
+			if n == nil {
+				panic("unknown node " + self.parent.getNode().call.GetFqid() + "." + id)
+			}
+			self.directPrenodes = append(self.directPrenodes, n)
+		}
+		sort.Slice(self.directPrenodes, func(i, j int) bool {
+			return self.directPrenodes[i].GetFQName() < self.directPrenodes[j].GetFQName()
+		})
+	}
+	refs, fileRefs := self.makePrenodesForBinding(
+		self.call.ResolvedOutputs(), nil, nil)
+	if len(refs) > 0 {
+		if self.prenodes == nil {
+			self.prenodes = make(map[string]Nodable, len(refs))
+		}
+		for node := range refs {
+			self.prenodes[node.GetFQName()] = node
+			node.getNode().setPostNode(self)
+		}
+	}
+	if len(fileRefs) > 0 {
+		self.attachToFileParents(fileRefs)
+	}
+}
+
+func (self *Node) attachToFileParents(fileParents map[Nodable]map[string]syntax.Type) {
 	setNode := self
-	if self.kind == "pipeline" {
-		if _, ok := self.parent.(*TopNode); ok {
+	if self.call.Kind() == syntax.KindPipeline {
+		if self.parent == self.top {
+			if self.top.rt.Config.Debug {
+				util.LogInfo("storage",
+					"Top-level pipeline binds files from %d nodes",
+					len(fileParents))
+			}
 			// Don't add to file post-nodes, since this will never count as
 			// "done".  However still add to fileArgs since we want to
 			// preserve the arg.
@@ -208,7 +342,7 @@ func (self *Node) attachBindings(bindingList []*Binding) {
 		for _, fork := range prenode.getNode().forks {
 			if setNode != nil {
 				if pNodeFiles := fork.filePostNodes; pNodeFiles == nil {
-					fork.filePostNodes = map[Nodable]map[string]struct{}{
+					fork.filePostNodes = map[Nodable]map[string]syntax.Type{
 						self: boundArgs,
 					}
 				} else {
@@ -233,94 +367,26 @@ func (self *Node) attachBindings(bindingList []*Binding) {
 	}
 }
 
-// Returns true if tname is a type which might contain a file name.
-// Any string, map, user-defined file type, or array thereof might
-// contain a file name, so to be safe all of those are considered.
-func maybeFileType(tname string) bool {
-	return tname != "int" && tname != "float" && tname != "bool"
-}
-
-// Get the set of distinct precursor nodes and direct precursor nodes based on
-// the given binding set.
-func recurseBoundNodes(bindingList []*Binding) (prenodes map[string]Nodable,
-	parents []Nodable,
-	fileParents map[Nodable]map[string]struct{}) {
-	found := make(map[string]Nodable)
-	fileParents = make(map[Nodable]map[string]struct{})
-	allParents := make(map[Nodable]struct{})
-	parentList := make([]Nodable, 0, len(bindingList))
-	addPrenode := func(prenode Nodable) {
-		prename := prenode.getNode().fqname
-		if existing, ok := found[prename]; !ok {
-			found[prename] = prenode
-		} else if existing != prenode {
-			util.LogInfo("runtime",
-				"WARNING: multiple prenodes with the same fqname %s",
-				prename)
-		}
-	}
-	for _, binding := range bindingList {
-		if binding.mode == "reference" && binding.boundNode != nil {
-			addPrenode(binding.boundNode)
-			parent := binding.parentNode
-			if _, ok := allParents[parent]; !ok {
-				allParents[parent] = struct{}{}
-				parentList = append(parentList, parent)
-			}
-			if maybeFileType(binding.tname) {
-				if par := fileParents[binding.boundNode]; par == nil {
-					fileParents[binding.boundNode] = map[string]struct{}{
-						binding.output: {},
-					}
-				} else {
-					par[binding.output] = struct{}{}
-				}
-			}
-		} else if binding.mode == "array" {
-			prenodes, parents, fparents := recurseBoundNodes(binding.value.([]*Binding))
-			for _, prenode := range prenodes {
-				addPrenode(prenode)
-			}
-			for _, parent := range parents {
-				if _, ok := allParents[parent]; !ok {
-					allParents[parent] = struct{}{}
-					parentList = append(parentList, parent)
-				}
-			}
-			for key, val := range fparents {
-				if a := fileParents[key]; a == nil {
-					fileParents[key] = val
-				} else {
-					for arg := range val {
-						a[arg] = struct{}{}
-					}
-				}
-			}
-		}
-	}
-	return found, parentList, fileParents
-}
-
 //
 // Folder construction
 //
 func (self *Node) mkdirs() error {
 	if err := util.MkdirAll(self.path); err != nil {
-		msg := fmt.Sprintf("Could not create root directory for %s: %s", self.fqname, err.Error())
+		msg := fmt.Sprintf("Could not create root directory for %s: %s", self.call.GetFqid(), err.Error())
 		util.LogError(err, "runtime", msg)
-		self.metadata.WriteRaw(Errors, msg)
+		self.metadata.WriteErrorString(msg)
 		return err
 	}
-	if err := util.Mkdir(self.journalPath); err != nil {
-		msg := fmt.Sprintf("Could not create directories for %s: %s", self.fqname, err.Error())
+	if err := util.Mkdir(self.top.journalPath); err != nil {
+		msg := fmt.Sprintf("Could not create directories for %s: %s", self.call.GetFqid(), err.Error())
 		util.LogError(err, "runtime", msg)
-		self.metadata.WriteRaw(Errors, msg)
+		self.metadata.WriteErrorString(msg)
 		return err
 	}
-	if err := util.Mkdir(self.tmpPath); err != nil {
-		msg := fmt.Sprintf("Could not create directories for %s: %s", self.fqname, err.Error())
+	if err := util.Mkdir(self.top.tmpPath); err != nil {
+		msg := fmt.Sprintf("Could not create directories for %s: %s", self.call.GetFqid(), err.Error())
 		util.LogError(err, "runtime", msg)
-		self.metadata.WriteRaw(Errors, msg)
+		self.metadata.WriteErrorString(msg)
 		return err
 	}
 
@@ -336,124 +402,17 @@ func (self *Node) mkdirs() error {
 	return nil
 }
 
-//
-// Sweep management
-//
-func (self *Node) buildUniqueSweepBindings(bindings []*Binding) {
-	// Add all unique sweep bindings to self.sweepbindings.
-	// Make sure to use sweepRootId to uniquify and not just id.
-	// This will ensure stages bind a sweep value to differently
-	// named local params will not create unnecessary fork multiplication.
-
-	bindingTable := map[string]*Binding{}
-
-	// Add local sweep bindings.
-	for _, binding := range bindings {
-		if binding.sweep {
-			bindingTable[binding.sweepRootId] = binding
-		}
-	}
-	// Add upstream sweep bindings (from prenodes).
-	for _, prenode := range self.prenodes {
-		for _, binding := range prenode.getNode().sweepbindings {
-			bindingTable[binding.sweepRootId] = binding
-		}
-	}
-
-	// Sort keys in bindingTable to ensure stable fork ordering.
-	ids := []string{}
-	for id := range bindingTable {
-		ids = append(ids, id)
-	}
-	sort.Strings(ids)
-
-	// Save sorted, unique sweep bindings.
-	for _, id := range ids {
-		binding := bindingTable[id]
-		self.sweepbindings = append(self.sweepbindings, binding)
-	}
-}
-
-func cartesianProduct(valueSets []interface{}) []interface{} {
-	perms := []interface{}{[]interface{}{}}
-	for _, valueSet := range valueSets {
-		newPerms := []interface{}{}
-		for _, perm := range perms {
-			for _, value := range valueSet.([]interface{}) {
-				perm := perm.([]interface{})
-				newPerm := make([]interface{}, len(perm))
-				copy(newPerm, perm)
-				newPerm = append(newPerm, value)
-				newPerms = append(newPerms, newPerm)
-			}
-		}
-		perms = newPerms
-	}
-	return perms
-}
-
-func (self *Node) buildForks(bindings []*Binding) {
-	self.buildUniqueSweepBindings(append(bindings, self.modBindingList...))
-
-	// Expand out sweep values for each binding.
-	paramIds := []string{}
-	argRanges := []interface{}{}
-	for _, binding := range self.sweepbindings {
-		// This needs to use self.sweepRootId because Binding::resolve
-		// will also match using sweepRootId, not id.
-		// This is required for proper forking when param names don't match.
-		paramIds = append(paramIds, binding.sweepRootId)
-		v, _ := binding.resolve(nil, 0)
-		argRanges = append(argRanges, v)
-	}
-
+func (self *Node) buildForks() {
 	// Build out argument permutations.
-	for i, valPermute := range cartesianProduct(argRanges) {
-		argPermute := map[string]interface{}{}
-		for j, paramId := range paramIds {
-			argPermute[paramId] = valPermute.([]interface{})[j]
-		}
-		self.forks = append(self.forks, NewFork(self, i, argPermute))
-	}
-
-	// Match forks with their parallel, same-value upstream forks.
-	for _, fork := range self.forks {
-		for _, subnode := range self.subnodes {
-			if matchedFork := subnode.getNode().matchFork(fork.argPermute); matchedFork != nil {
-				matchedFork.parentFork = fork
-				fork.subforks = append(fork.subforks, matchedFork)
-			}
+	self.forkIds = MakeForkIds(self.forkRoots)
+	if len(self.forkIds) == 0 {
+		self.forks = []*Fork{NewFork(self, 0, nil, self.call.ResolvedInputs())}
+	} else {
+		self.forks = make([]*Fork, len(self.forkIds))
+		for i, id := range self.forkIds {
+			self.forks[i] = NewFork(self, i, id, self.call.ResolvedInputs())
 		}
 	}
-}
-
-func (self *Node) matchFork(targetArgPermute map[string]interface{}) *Fork {
-	if targetArgPermute == nil {
-		return nil
-	}
-	for _, fork := range self.forks {
-		every := true
-		for paramId, argValue := range fork.argPermute {
-			unmarshal := func(val interface{}) interface{} {
-				if msg, ok := val.(json.RawMessage); ok {
-					var result interface{}
-					if json.Unmarshal(msg, &result) != nil {
-						return nil
-					}
-					return result
-				}
-				return val
-			}
-			if !reflect.DeepEqual(unmarshal(targetArgPermute[paramId]), unmarshal(argValue)) {
-				every = false
-				break
-			}
-		}
-		if every {
-			return fork
-		}
-	}
-	return nil
 }
 
 //
@@ -463,33 +422,29 @@ func (self *Node) setPrenode(prenode Nodable) {
 	for _, subnode := range self.subnodes {
 		subnode.getNode().setPrenode(prenode)
 	}
-	self.prenodes[prenode.getNode().fqname] = prenode
-	prenode.getNode().postnodes[self.fqname] = self
+	if self.prenodes == nil {
+		self.prenodes = make(map[string]Nodable)
+	}
+	self.prenodes[prenode.GetFQName()] = prenode
+	prenode.getNode().setPostNode(self)
 }
 
-func (self *Node) findBoundNode(id string, outputId string, mode string,
-	value interface{}) (Nodable, string, string, interface{}) {
-	if self.kind == "pipeline" {
-		subnode := self.subnodes[id]
-		if subnode == nil {
-			panic("Invalid subnode id " + id + " in " + self.fqname)
+func (self *Node) setPostNode(postnode *Node) {
+	if self.postnodes == nil {
+		self.postnodes = map[string]Nodable{
+			postnode.call.GetFqid(): postnode,
 		}
-		for _, binding := range subnode.getNode().retbindings {
-			if binding.id == outputId {
-				return binding.boundNode, binding.output, binding.mode, binding.value
-			}
-		}
-		return subnode, outputId, mode, value
+	} else {
+		self.postnodes[postnode.call.GetFqid()] = postnode
 	}
-	return self, outputId, mode, value
 }
 
 func (self *Node) addFrontierNode(node Nodable) {
-	self.frontierNodes.Add(node.getNode().fqname, node)
+	self.frontierNodes.Add(node.GetFQName(), node)
 }
 
 func (self *Node) removeFrontierNode(node Nodable) {
-	self.frontierNodes.Remove(node.getNode().fqname)
+	self.frontierNodes.Remove(node.GetFQName())
 }
 
 func (self *Node) getFrontierNodes() []*Node {
@@ -517,7 +472,7 @@ func (self *Node) allNodes() []*Node {
 }
 
 func (self *Node) find(fqname string) *Node {
-	if self.fqname == fqname {
+	if self.call.GetFqid() == fqname {
 		return self
 	}
 	for _, subnode := range self.subnodes {
@@ -600,8 +555,8 @@ func (self *Node) getState() MetadataState {
 }
 
 func (self *Node) reset() error {
-	if self.rt.Config.FullStageReset {
-		util.PrintInfo("runtime", "(reset)           %s", self.fqname)
+	if self.top.rt.Config.FullStageReset {
+		util.PrintInfo("runtime", "(reset)           %s", self.call.GetFqid())
 
 		// Blow away the entire stage node.
 		if err := os.RemoveAll(self.path); err != nil {
@@ -609,7 +564,7 @@ func (self *Node) reset() error {
 			return err
 		}
 		// Remove all related files from journal directory.
-		if files, err := filepath.Glob(path.Join(self.journalPath, self.fqname+"*")); err == nil {
+		if files, err := filepath.Glob(path.Join(self.top.journalPath, self.call.GetFqid()+"*")); err == nil {
 			for _, file := range files {
 				os.Remove(file)
 			}
@@ -638,7 +593,7 @@ func (self *Node) reset() error {
 }
 
 func (self *Node) restartLocallyQueuedJobs() error {
-	if self.rt.Config.FullStageReset {
+	if self.top.rt.Config.FullStageReset {
 		// If entire stages got blown away then this isn't needed.
 		return nil
 	}
@@ -651,7 +606,7 @@ func (self *Node) restartLocallyQueuedJobs() error {
 }
 
 func (self *Node) restartLocalJobs() error {
-	if self.rt.Config.FullStageReset {
+	if self.top.rt.Config.FullStageReset {
 		// If entire stages got blown away then this isn't needed.
 		return nil
 	}
@@ -676,11 +631,17 @@ func (self *Node) kill(message string) {
 }
 
 func (self *Node) postProcess() {
-	os.RemoveAll(self.journalPath)
-	os.RemoveAll(self.tmpPath)
+	os.RemoveAll(self.top.journalPath)
+	os.RemoveAll(self.top.tmpPath)
 
+	var errs syntax.ErrorList
 	for _, fork := range self.forks {
-		fork.postProcess()
+		if err := fork.postProcess(); err != nil {
+			errs = append(errs, err)
+		}
+	}
+	if err := errs.If(); err != nil {
+		util.Print("\nCould not move output files:\n%s\n\n", err.Error())
 	}
 }
 
@@ -694,7 +655,10 @@ func (self *Node) cachePerf() {
 }
 
 func (self *Node) GetFQName() string {
-	return self.fqname
+	if self.call == nil {
+		return self.top.fqname
+	}
+	return self.call.GetFqid()
 }
 
 func (self *Node) getFatalError() (string, bool, string, string, MetadataFileName, []string) {
@@ -705,7 +669,7 @@ func (self *Node) getFatalError() (string, bool, string, string, MetadataFileNam
 		if metadata.exists(Errors) {
 			errlog := metadata.readRaw(Errors)
 			summary := "<none>"
-			if self.stagecodeLang == syntax.PythonStage {
+			if self.stagecode != nil && self.stagecode.Type == syntax.PythonStage {
 				errlines := strings.Split(errlog, "\n")
 				if len(errlines) >= 2 {
 					summary = errlines[len(errlines)-2]
@@ -718,10 +682,11 @@ func (self *Node) getFatalError() (string, bool, string, string, MetadataFileNam
 				metadata.MetadataFilePath(StdOut),
 				metadata.MetadataFilePath(StdErr),
 			}
-			if self.rt.Config.StackVars {
+			if self.top.rt.Config.StackVars {
 				errpaths = append(errpaths, metadata.MetadataFilePath(Stackvars))
 			}
-			return metadata.fqname, self.preflight, summary, errlog, Errors, errpaths
+			return metadata.fqname, self.call.Call().Modifiers.Preflight,
+				summary, errlog, Errors, errpaths
 		}
 		if metadata.exists(Assert) {
 			assertlog := metadata.readRaw(Assert)
@@ -730,9 +695,10 @@ func (self *Node) getFatalError() (string, bool, string, string, MetadataFileNam
 			if len(assertlines) >= 1 {
 				summary = assertlines[len(assertlines)-1]
 			}
-			return metadata.fqname, self.preflight, summary, assertlog, Assert, []string{
-				metadata.MetadataFilePath(Assert),
-			}
+			return metadata.fqname, self.call.Call().Modifiers.Preflight,
+				summary, assertlog, Assert, []string{
+					metadata.MetadataFilePath(Assert),
+				}
 		}
 	}
 	return "", false, "", "", "", []string{}
@@ -767,7 +733,7 @@ func (self *Node) isErrorTransient() (bool, string) {
 func (self *Node) step() bool {
 	if self.state == Running {
 		for _, fork := range self.forks {
-			if self.preflight && self.rt.Config.SkipPreflight {
+			if self.call.Call().Modifiers.Preflight && self.top.rt.Config.SkipPreflight {
 				fork.skip()
 			} else {
 				fork.step()
@@ -785,7 +751,7 @@ func (self *Node) step() bool {
 		}
 		self.addFrontierNode(self)
 	case Complete:
-		if self.rt.Config.VdrMode == "rolling" {
+		if self.top.rt.Config.VdrMode == "rolling" {
 			for _, node := range self.prenodes {
 				node.getNode().vdrKill()
 				node.getNode().cachePerf()
@@ -827,8 +793,8 @@ func (self *Node) parseRunFilename(fqname string) (string, int, int, string, str
 }
 
 func (self *Node) refreshState(readOnly bool) {
-	startTime := time.Now().Add(-self.rt.JobManager.queueCheckGrace())
-	files, _ := filepath.Glob(path.Join(self.journalPath, "*"))
+	startTime := time.Now().Add(-self.top.rt.JobManager.queueCheckGrace())
+	files, _ := filepath.Glob(path.Join(self.top.journalPath, "*"))
 	updatedForks := make(map[*Fork]struct{})
 	for _, file := range files {
 		filename := path.Base(file)
@@ -842,12 +808,24 @@ func (self *Node) refreshState(readOnly bool) {
 				if chunkIndex >= 0 {
 					if chunk := fork.getChunk(chunkIndex); chunk != nil {
 						chunk.updateState(MetadataFileName(state), uniquifier)
+					} else {
+						util.LogInfo("runtime",
+							"WARNING: Journal update for unknown chunk %s.fork%d.chnk%d",
+							fqname, forkIndex, chunkIndex)
 					}
 				} else {
 					fork.updateState(state, uniquifier)
 				}
 				updatedForks[fork] = struct{}{}
+			} else {
+				util.LogInfo("runtime",
+					"WARNING: Journal update for unknown fork %s.fork%d",
+					fqname, forkIndex)
 			}
+		} else {
+			util.LogInfo("runtime",
+				"WARNING: Journal update for unknown node %s",
+				fqname)
 		}
 		if !readOnly {
 			os.Remove(file)
@@ -867,11 +845,6 @@ func (self *Node) refreshState(readOnly bool) {
 // Serialization
 //
 func (self *Node) serializeState() *NodeInfo {
-	sweepbindings := []*BindingInfo{}
-	for _, sweepbinding := range self.sweepbindings {
-		v, _ := sweepbinding.serializeState(nil, 0)
-		sweepbindings = append(sweepbindings, v)
-	}
 	forks := []*ForkInfo{}
 	for _, fork := range self.forks {
 		forks = append(forks, fork.serializeState())
@@ -879,8 +852,8 @@ func (self *Node) serializeState() *NodeInfo {
 	edges := make([]EdgeInfo, 0, len(self.directPrenodes))
 	for _, prenode := range self.directPrenodes {
 		edges = append(edges, EdgeInfo{
-			From: prenode.getNode().fqname,
-			To:   self.fqname,
+			From: prenode.GetFQName(),
+			To:   self.call.GetFqid(),
 		})
 	}
 	var err *NodeErrorInfo
@@ -897,20 +870,27 @@ func (self *Node) serializeState() *NodeInfo {
 			Log:     log,
 		}
 	}
-	return &NodeInfo{
-		Name:          self.name,
-		Fqname:        self.fqname,
-		Type:          self.kind,
-		Path:          self.path,
-		State:         self.state,
-		Metadata:      self.metadata.serializeState(),
-		SweepBindings: sweepbindings,
-		Forks:         forks,
-		Edges:         edges,
-		StagecodeLang: self.stagecodeLang,
-		StagecodeCmd:  self.stagecodeCmd,
-		Error:         err,
+	info := &NodeInfo{
+		Name:     self.call.Call().Id,
+		Fqname:   self.call.GetFqid(),
+		Type:     self.call.Kind(),
+		Path:     self.path,
+		State:    self.state,
+		Metadata: self.metadata.serializeState(),
+		Forks:    forks,
+		Edges:    edges,
+		Error:    err,
 	}
+	if src := self.stagecode; src != nil {
+		info.StagecodeLang = src.Type
+		if len(src.Args) == 0 {
+			info.StagecodeCmd = self.resolvedCmd
+		} else {
+			info.StagecodeCmd = self.resolvedCmd +
+				" " + strings.Join(src.Args, " ")
+		}
+	}
+	return info
 }
 
 func (self *Node) serializePerf() (*NodePerfInfo, []*VdrEvent) {
@@ -919,14 +899,14 @@ func (self *Node) serializePerf() (*NodePerfInfo, []*VdrEvent) {
 	for _, fork := range self.forks {
 		forkSer, vdrKill := fork.serializePerf()
 		forks = append(forks, forkSer)
-		if vdrKill != nil && self.kind != "pipeline" {
+		if vdrKill != nil && self.call.Kind() != syntax.KindPipeline {
 			storageEvents = append(storageEvents, vdrKill.Events...)
 		}
 	}
 	return &NodePerfInfo{
-		Name:   self.name,
-		Fqname: self.fqname,
-		Type:   self.kind,
+		Name:   self.call.Call().Id,
+		Fqname: self.call.GetFqid(),
+		Type:   self.call.Kind(),
 		Forks:  forks,
 	}, storageEvents
 }
@@ -958,7 +938,7 @@ func (self *Node) getJobReqs(jobDef *JobResources, stageType string) JobResource
 	}
 
 	// Override with job manager caps specified from commandline
-	overrideThreads := self.rt.overrides.GetOverride(self,
+	overrideThreads := self.top.rt.overrides.GetOverride(self,
 		fmt.Sprintf("%s.threads", stageType),
 		float64(res.Threads))
 	if overrideThreadsNum, ok := overrideThreads.(float64); ok {
@@ -966,10 +946,10 @@ func (self *Node) getJobReqs(jobDef *JobResources, stageType string) JobResource
 	} else {
 		util.PrintInfo("runtime",
 			"Invalid value for %s %s.threads: %v",
-			self.fqname, stageType, overrideThreads)
+			self.call.GetFqid(), stageType, overrideThreads)
 	}
 
-	overrideMem := self.rt.overrides.GetOverride(self,
+	overrideMem := self.top.rt.overrides.GetOverride(self,
 		fmt.Sprintf("%s.mem_gb", stageType),
 		float64(res.MemGB))
 	if overrideMemFloat, ok := overrideMem.(float64); ok {
@@ -977,10 +957,10 @@ func (self *Node) getJobReqs(jobDef *JobResources, stageType string) JobResource
 	} else {
 		util.PrintInfo("runtime",
 			"Invalid value for %s %s.mem_gb: %v",
-			self.fqname, stageType, overrideMem)
+			self.call.GetFqid(), stageType, overrideMem)
 	}
 
-	overrideVMem := self.rt.overrides.GetOverride(self,
+	overrideVMem := self.top.rt.overrides.GetOverride(self,
 		fmt.Sprintf("%s.vmem_gb", stageType),
 		float64(res.VMemGB))
 	if overrideVMemFloat, ok := overrideVMem.(float64); ok {
@@ -988,33 +968,33 @@ func (self *Node) getJobReqs(jobDef *JobResources, stageType string) JobResource
 	} else {
 		util.PrintInfo("runtime",
 			"Invalid value for %s %s.vmem_gb: %v",
-			self.fqname, stageType, overrideVMem)
+			self.call.GetFqid(), stageType, overrideVMem)
 	}
 
 	if self.local {
-		return self.rt.LocalJobManager.GetSystemReqs(&res)
+		return self.top.rt.LocalJobManager.GetSystemReqs(&res)
 	} else {
-		return self.rt.JobManager.GetSystemReqs(&res)
+		return self.top.rt.JobManager.GetSystemReqs(&res)
 	}
 }
 
 func (self *Node) getProfileMode(stageType string) ProfileMode {
-	p := self.rt.overrides.GetOverride(self,
+	p := self.top.rt.overrides.GetOverride(self,
 		fmt.Sprintf("%s.profile", stageType),
 		nil)
 	if p == nil {
-		return self.rt.Config.ProfileMode
+		return self.top.rt.Config.ProfileMode
 	} else if ps, ok := p.(string); ok {
 		if ps == "" {
-			return self.rt.Config.ProfileMode
+			return self.top.rt.Config.ProfileMode
 		} else {
 			return ProfileMode(ps)
 		}
 	} else {
 		util.PrintInfo("runtime",
 			"Invalid value for %s %s.profile: %v",
-			self.fqname, stageType, p)
-		return self.rt.Config.ProfileMode
+			self.call.GetFqid(), stageType, p)
+		return self.top.rt.Config.ProfileMode
 	}
 }
 
@@ -1060,70 +1040,73 @@ func (self *Node) runJob(shellName string, fqname, stageType string, metadata *M
 
 	// Configure local variable dumping.
 	stackVars := "disable"
-	if self.rt.Config.StackVars {
+	if self.top.rt.Config.StackVars {
 		stackVars = "stackvars"
 	}
 
 	// Configure memory monitoring.
 	monitor := "disable"
-	if self.rt.Config.Monitor {
+	if self.top.rt.Config.Monitor {
 		monitor = "monitor"
 	}
 
 	// Construct path to the shell.
 	shellCmd := ""
 	var argv []string
-	stagecodeParts := strings.Split(self.stagecodeCmd, " ")
-	runFile := path.Join(self.journalPath, fqname)
+	runFile := path.Join(self.top.journalPath, fqname)
 	if metadata.uniquifier != "" {
 		runFile += ".u" + metadata.uniquifier
 	}
-	version := &VersionInfo{
-		Martian:   self.rt.Config.MartianVersion,
-		Pipelines: self.mroVersion,
-	}
-	envs := make(map[string]string, len(self.envs)+1)
-	for k, v := range self.envs {
-		envs[k] = v
-	}
+	version := &self.top.version
+	envs := self.top.envs
 	if td := metadata.TempDir(); td != "" {
+		envs = make(map[string]string, len(self.top.envs)+1)
+		for k, v := range self.top.envs {
+			envs[k] = v
+		}
 		envs["TMPDIR"] = td
 	}
-
-	switch self.stagecodeLang {
+	switch self.stagecode.Type {
 	case syntax.PythonStage:
-		if len(stagecodeParts) != 1 {
-			panic(fmt.Sprintf("Invalid python stage module specification \"%s\"", self.stagecodeCmd))
+		if len(self.stagecode.Args) != 0 {
+			panic(fmt.Sprintf(
+				"Invalid python stage module specification \"%s %s\"",
+				self.resolvedCmd, strings.Join(self.stagecode.Args, " ")))
 		}
-		shellCmd = self.rt.mrjob
+		shellCmd = self.top.rt.mrjob
 		argv = []string{
-			path.Join(self.rt.adaptersPath, "python", "martian_shell.py"),
-			stagecodeParts[0],
+			path.Join(self.top.rt.adaptersPath, "python", "martian_shell.py"),
+			self.resolvedCmd,
 			shellName,
 			metadata.path,
 			metadata.curFilesPath,
 			runFile,
 		}
 	case syntax.CompiledStage:
-		shellCmd = self.rt.mrjob
-		argv = append(stagecodeParts, shellName, metadata.path, metadata.curFilesPath, runFile)
+		shellCmd = self.top.rt.mrjob
+		argv = make([]string, 1, len(self.stagecode.Args)+4)
+		argv[0] = self.resolvedCmd
+		argv = append(argv, self.stagecode.Args...)
+		argv = append(argv, shellName, metadata.path, metadata.curFilesPath, runFile)
 	case syntax.ExecStage:
-		shellCmd = stagecodeParts[0]
-		argv = append(stagecodeParts[1:], shellName, metadata.path, metadata.curFilesPath, runFile)
+		shellCmd = self.resolvedCmd
+		argv = append(
+			self.stagecode.Args[:len(self.stagecode.Args):len(self.stagecode.Args)],
+			shellName, metadata.path, metadata.curFilesPath, runFile)
 	default:
-		panic(fmt.Sprintf("Unknown stage code language: %v", self.stagecodeLang))
+		panic(fmt.Sprint("Unknown stage code language: ", self.stagecode.Type))
 	}
 
 	// Log the job run.
-	jobMode := self.rt.Config.JobMode
-	jobManager := self.rt.JobManager
+	jobMode := self.top.rt.Config.JobMode
+	jobManager := self.top.rt.JobManager
 	if self.local {
 		jobMode = "local"
-		jobManager = self.rt.LocalJobManager
+		jobManager = self.top.rt.LocalJobManager
 	}
 	jobModeLabel := strings.Replace(jobMode, ".template", "", -1)
 	padding := strings.Repeat(" ", int(math.Max(0, float64(10-len(path.Base(jobModeLabel))))))
-	if self.preflight {
+	if self.call.Call().Modifiers.Preflight {
 		util.LogInfo("runtime", "(run:%s) %s %s.%s",
 			path.Base(jobModeLabel), padding, fqname, shellName)
 	} else {
@@ -1137,23 +1120,29 @@ func (self *Node) runJob(shellName string, fqname, stageType string, metadata *M
 		Threads:       res.Threads,
 		MemGB:         res.MemGB,
 		VMemGB:        res.VMemGB,
-		ProfileConfig: self.rt.ProfileConfig(profileMode),
+		ProfileConfig: self.top.rt.ProfileConfig(profileMode),
 		ProfileMode:   profileMode,
 		Stackvars:     stackVars,
 		Monitor:       monitor,
-		Invocation:    self.invocation,
+		Invocation:    self.top.invocation,
 		Version:       version,
 	}
 	if jobInfo.ProfileConfig != nil && jobInfo.ProfileConfig.Adapter != "" {
 		jobInfo.ProfileMode = jobInfo.ProfileConfig.Adapter
 	}
 
-	func() {
+	if err := func() error {
 		util.EnterCriticalSection()
 		defer util.ExitCriticalSection()
-		metadata.WriteTime(QueuedLocally)
-		metadata.Write(JobInfoFile, &jobInfo)
-	}()
+		if err := metadata.WriteTime(QueuedLocally); err != nil {
+			return err
+		}
+		return metadata.Write(JobInfoFile, &jobInfo)
+	}(); err != nil {
+		util.PrintError(err, "jobmngr",
+			"Could not write jobinfo file, aborting.")
+		util.Suicide(false)
+	}
 	jobManager.execJob(shellCmd, argv, envs, metadata, res, fqname,
-		shellName, self.preflight && self.local)
+		shellName, self.call.Call().Modifiers.Preflight && self.local)
 }

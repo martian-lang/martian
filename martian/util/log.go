@@ -92,7 +92,7 @@ func (p *printTarget) WriteString(msg string) (int, error) {
 	}
 }
 
-var printWriter = new(printTarget)
+var printWriter = printTarget{}
 
 // A writer which can be passed to fmt.Fprintf for the log methods.
 type logTarget struct{}
@@ -232,7 +232,11 @@ func LogError(err error, component string, format string, v ...interface{}) {
 
 // Like Log, but also prints to standard output.
 func Print(format string, v ...interface{}) {
-	fmt.Fprintf(printWriter, format, v...)
+	fmt.Fprintf(&printWriter, format, v...)
+}
+
+func PrintBytes(msg []byte) {
+	printWriter.Write(msg)
 }
 
 func Println(format string, v ...interface{}) {
@@ -241,12 +245,12 @@ func Println(format string, v ...interface{}) {
 
 // Like LogInfo but also prints to standard output.
 func PrintInfo(component string, format string, v ...interface{}) {
-	formatInfo(printWriter, component, format, v...)
+	formatInfo(&printWriter, component, format, v...)
 }
 
 // Like LogError but also prints to standard output.
 func PrintError(err error, component string, format string, v ...interface{}) {
-	formatError(printWriter, err, component, format, v...)
+	formatError(&printWriter, err, component, format, v...)
 }
 
 // Surrounds the given string with ANSI color control characters.

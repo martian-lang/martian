@@ -32,13 +32,17 @@ func split(metadata *core.Metadata) (*core.StageDefs, error) {
 		},
 	}
 	for _, val := range args.Values {
-		sd.ChunkDefs = append(sd.ChunkDefs, (&SumSquaresChunkDef{
+		def, err := (&SumSquaresChunkDef{
 			Value: val,
 			JobResources: &core.JobResources{
 				Threads: 1,
 				MemGB:   1,
 			},
-		}).ToChunkDef())
+		}).ToChunkDef()
+		if err != nil {
+			return sd, err
+		}
+		sd.ChunkDefs = append(sd.ChunkDefs, def)
 	}
 	return sd, nil
 }

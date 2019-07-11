@@ -274,7 +274,7 @@ func processFile(dest *os.File, mrofile, stageName, packageName string,
 	if src, _, err := readSrc(mrofile, mroPaths); err != nil {
 		fmt.Fprintf(os.Stderr, "Error reading source file\n%s\n", err.Error())
 		os.Exit(1)
-	} else if err := MroToGo(dest, string(src),
+	} else if err := MroToGo(dest, src,
 		mrofile, stageName, mroPaths,
 		packageName, dest.Name()); err != nil {
 		fmt.Fprintf(os.Stderr, "Error generating go source for %s\n%s\n",
@@ -303,7 +303,7 @@ func readSrc(mrofile string, mroPaths []string) ([]byte, string, error) {
 }
 
 func MroToGo(dest io.Writer,
-	src, mrofile, stageName string, mroPaths []string,
+	src []byte, mrofile, stageName string, mroPaths []string,
 	pkg, outName string) error {
 	if ast, err := parseMro(src, mrofile, mroPaths); err != nil {
 		return err
@@ -312,8 +312,8 @@ func MroToGo(dest io.Writer,
 	}
 }
 
-func parseMro(src, fname string, mroPaths []string) (*syntax.Ast, error) {
-	_, _, ast, err := syntax.ParseSource(src, fname, mroPaths, false)
+func parseMro(src []byte, fname string, mroPaths []string) (*syntax.Ast, error) {
+	_, _, ast, err := syntax.ParseSourceBytes(src, fname, mroPaths, false)
 	return ast, err
 }
 

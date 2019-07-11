@@ -7,9 +7,10 @@ package main
 import (
 	"bytes"
 	"fmt"
-	"github.com/martian-lang/martian/martian/syntax"
 	"strings"
 	"unicode"
+
+	"github.com/martian-lang/martian/martian/syntax"
 )
 
 func writeStageStructs(buffer *bytes.Buffer, stage *syntax.Stage) {
@@ -92,13 +93,13 @@ func writeParam(buffer *bytes.Buffer, param syntax.Param) {
 			c[1:])
 		spacer = true
 	}
-	if param.IsFile() {
+	if param.IsFile() == syntax.KindIsFile {
 		if spacer {
 			buffer.WriteString("\t//\n")
 		}
 		fmt.Fprintf(buffer,
 			"\t// %s file",
-			param.GetTname())
+			param.GetTname().Tname)
 		if param.GetArrayDim() > 0 {
 			buffer.WriteString("s\n")
 		} else {
@@ -106,8 +107,10 @@ func writeParam(buffer *bytes.Buffer, param syntax.Param) {
 		}
 	}
 	var goType string
+	tid := param.GetTname()
 	if _, ok := param.(*syntax.OutParam); ok &&
-		param.IsFile() && param.GetArrayDim() > 0 {
+		param.IsFile() == syntax.KindIsFile && tid.ArrayDim > 0 &&
+		tid.MapDim == 0 {
 		// HACK: Currently, Martian puts filenames into out parameters
 		// of file type, even for arrays.  That can't be fixed, yet, because
 		// there are released pipelines which depend on that broken behavior.
@@ -121,21 +124,36 @@ func writeParam(buffer *bytes.Buffer, param syntax.Param) {
 			goType,
 			param.GetId())
 	} else {
-		switch param.GetTname() {
-		case "int", "bool":
-			goType = param.GetTname()
-		case "float":
-			goType = "float64"
-		case "map":
-			goType = "map[string]interface{}"
+		buffer.WriteRune('\t')
+		buffer.WriteString(GoName(param.GetId()))
+		buffer.WriteRune(' ')
+		for i := tid.ArrayDim; i > 0; i-- {
+			buffer.WriteString("[]")
+		}
+		if tid.MapDim > 0 {
+			buffer.WriteString("map[string]")
+			for i := tid.MapDim; i > 1; i-- {
+				buffer.WriteString("[]")
+			}
+		}
+		switch tid.Tname {
+		case syntax.KindInt, syntax.KindBool:
+			buffer.WriteString(tid.Tname)
+		case syntax.KindFloat:
+			buffer.WriteString("float64")
+		case syntax.KindMap:
+			buffer.WriteString("map[string]json.RawMessage")
 		default:
-			goType = "string"
+			if param.IsFile() == syntax.KindIsDirectory {
+				// Struct type
+				buffer.WriteRune('*')
+				buffer.WriteString(tid.Tname)
+			} else {
+				buffer.WriteString("string")
+			}
 		}
 		fmt.Fprintf(buffer,
-			"\t%s %s%s `json:\"%s\"`\n",
-			GoName(param.GetId()),
-			strings.Repeat("[]", param.GetArrayDim()),
-			goType,
+			" `json:\"%s\"`\n",
 			param.GetId())
 	}
 }
