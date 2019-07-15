@@ -12,11 +12,14 @@ matrix:
   include:
   - name: "python2"
     sudo: false
+    dist: trusty
     before_install:
     - pyenv global 2.7
   - name: "python3"
+    sudo: false
+    dist: xenial
     before_install:
-    - pyenv global 3.6
+    - pyenv global 3.7
   - name: "bazel"
     sudo: true
     dist: xenial
