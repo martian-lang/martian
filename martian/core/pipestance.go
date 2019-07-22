@@ -41,13 +41,23 @@ func NewStagestance(parent Nodable, callStm *syntax.CallStm, callables *syntax.C
 		return nil, &RuntimeError{fmt.Sprintf("'%s' is not a declared stage", callStm.DecId)}
 	}
 
-	stagecodePaths := append(self.node.mroPaths, strings.Split(os.Getenv("PATH"), ":")...)
 	stagecodePath := stage.Src.Path
-	if fullPath, found := util.SearchPaths(stage.Src.Path, stagecodePaths); found {
-		// While it should have been checked at compile time (at least for
-		// python stages), it's better to have a relative path here than
-		// an empty string if the path no longer resolves.
-		stagecodePath = fullPath
+	if !path.IsAbs(stagecodePath) && stage.Node.Loc.File != nil {
+		// First search for the stage code relative to the file where the
+		// stage was defined.
+		mroRelPath := path.Join(path.Dir(stage.Node.Loc.File.FullPath), stage.Src.Path)
+		if _, err := os.Stat(mroRelPath); err == nil {
+			stagecodePath = mroRelPath
+		}
+	}
+	if !path.IsAbs(stagecodePath) {
+		stagecodePaths := append(self.node.mroPaths, filepath.SplitList(os.Getenv("PATH"))...)
+		if fullPath, found := util.SearchPaths(stage.Src.Path, stagecodePaths); found {
+			// While it should have been checked at compile time (at least for
+			// python stages), it's better to have a relative path here than
+			// an empty string if the path no longer resolves.
+			stagecodePath = fullPath
+		}
 	}
 	self.node.stagecodeCmd = strings.Join(append([]string{stagecodePath}, stage.Src.Args...), " ")
 	var err error

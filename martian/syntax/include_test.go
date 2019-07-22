@@ -8,7 +8,8 @@ import (
 // Tests that compilation fails when a file includes itself.
 func TestFailSelfInclude(t *testing.T) {
 	t.Parallel()
-	if _, _, _, err := Compile("self_include.mro", []string{"testdata"}, false); err == nil {
+	if _, _, _, err := Compile(path.Join("testdata", "self_include.mro"),
+		[]string{"testdata"}, false); err == nil {
 		t.Error("expected an error.")
 	}
 }
@@ -298,5 +299,27 @@ stage MY_BROKEN_STAGE(
 ` {
 			t.Errorf("Incorrect combined source.  Got \n%s", src)
 		}
+	}
+}
+
+// Tests that compilation fails when a file includes itself.
+func TestIncludeRelative(t *testing.T) {
+	t.Parallel()
+	if _, _, _, err := Compile(path.Join("testdata", "subdir", "pipeline_subdir.mro"),
+		[]string{"testdata"}, false); err != nil {
+		t.Error(err)
+	}
+	if _, _, _, err := Compile(path.Join("testdata", "subdir", "pipeline_rel.mro"),
+		[]string{"testdata"}, false); err != nil {
+		t.Error(err)
+	}
+}
+
+// Tests that compilation fails when a file includes itself.
+func TestFailAmbiguousInclude(t *testing.T) {
+	t.Parallel()
+	if _, _, _, err := Compile(path.Join("testdata", "subdir", "pipeline_ambiguous.mro"),
+		[]string{"testdata"}, false); err == nil {
+		t.Error("expected failure")
 	}
 }

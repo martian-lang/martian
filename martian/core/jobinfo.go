@@ -42,6 +42,7 @@ type InvocationData struct {
 	Call      string          `json:"call"`
 	Args      LazyArgumentMap `json:"args"`
 	SweepArgs []string        `json:"sweepargs"`
+	Include   string          `json:"mro_file,omitempty"`
 }
 
 type VersionInfo struct {

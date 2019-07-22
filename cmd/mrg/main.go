@@ -8,12 +8,14 @@ package main
 import (
 	"encoding/json"
 	"fmt"
-	"github.com/martian-lang/docopt.go"
-	"github.com/martian-lang/martian/martian/core"
-	"github.com/martian-lang/martian/martian/util"
 	"os"
 	"path"
 	"path/filepath"
+
+	"github.com/martian-lang/docopt.go"
+	"github.com/martian-lang/martian/martian/core"
+	"github.com/martian-lang/martian/martian/syntax"
+	"github.com/martian-lang/martian/martian/util"
 )
 
 func main() {
@@ -49,9 +51,21 @@ Options:
 			fmt.Println("No pipeline or stage specified.")
 			os.Exit(1)
 		}
-		callable, err := core.GetCallable(mroPaths, input.Call)
-		if err != nil {
-			fmt.Printf("Could not find %s: %v\n", input.Call, err)
+		var callable syntax.Callable
+		if input.Include != "" {
+			c, err := core.GetCallableFrom(input.Call, input.Include, mroPaths)
+			if err != nil {
+				fmt.Printf("Could not find %s: %v\n", input.Call, err)
+				os.Exit(1)
+			}
+			callable = c
+		} else {
+			c, err := core.GetCallable(mroPaths, input.Call)
+			if err != nil {
+				fmt.Printf("Could not find %s: %v\n", input.Call, err)
+				os.Exit(1)
+			}
+			callable = c
 		}
 
 		if input.Args == nil {

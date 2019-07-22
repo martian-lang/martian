@@ -735,13 +735,37 @@ func (self *MroCache) GetCallable(mroPaths []string, name string) (syntax.Callab
 	return nil, &RuntimeError{fmt.Sprintf("'%s' is not a declared pipeline or stage", name)}
 }
 
+// GetCallableFrom returns the named callable from the given include path.
+func GetCallableFrom(pName, incPath string, mroPaths []string) (syntax.Callable, error) {
+	if fpath, err := util.FindUniquePath(incPath, mroPaths); err != nil {
+		return nil, err
+	} else if b, err := ioutil.ReadFile(fpath); err != nil {
+		return nil, err
+	} else {
+		var parser syntax.Parser
+		if ast, err := parser.UncheckedParse(b, fpath); err != nil {
+			return nil, err
+		} else {
+			for _, c := range ast.Callables.List {
+				if c.GetId() == pName {
+					return c, nil
+				}
+			}
+			return nil, &RuntimeError{fmt.Sprintf(
+				"%q is not a declared pipeline or stage in %q",
+				pName, fpath)}
+		}
+	}
+}
+
 func GetCallable(mroPaths []string, name string) (syntax.Callable, error) {
+	var parser syntax.Parser
 	for _, mroPath := range mroPaths {
 		if fpaths, err := filepath.Glob(mroPath + "/[^_]*.mro"); err == nil {
 			for _, fpath := range fpaths {
 				if data, err := ioutil.ReadFile(fpath); err == nil {
-					if _, _, ast, err := syntax.ParseSource(
-						string(data), fpath, mroPaths, true); err == nil {
+					if _, _, ast, err := parser.ParseSourceBytes(
+						data, fpath, mroPaths, true); err == nil {
 						for _, callable := range ast.Callables.Table {
 							if callable.GetId() == name {
 								return callable, nil
@@ -843,9 +867,24 @@ func BuildDataForAst(ast *syntax.Ast) (*InvocationData, error) {
 			sweepargs = append(sweepargs, binding.Id)
 		}
 	}
+	var include string
+	if c := ast.Callables.Table[ast.Call.DecId]; c != nil {
+		if f := c.File(); f != nil {
+			include = f.FileName
+		}
+	} else {
+		// Possibly not fully compiled, do a linear search instead.
+		for _, c := range ast.Callables.List {
+			if f := c.File(); c.GetId() == ast.Call.DecId && f != nil {
+				include = f.FileName
+				break
+			}
+		}
+	}
 	return &InvocationData{
 		Call:      ast.Call.DecId,
 		Args:      args,
 		SweepArgs: sweepargs,
+		Include:   include,
 	}, nil
 }

@@ -1,0 +1,17 @@
+@include "stages.mro"
+
+pipeline MY_PIPELINE(
+    in  int info,
+    out bam result,
+)
+{
+    call MY_STAGE(
+        info = self.info,
+    )
+
+    return (
+        result = MY_STAGE.result,
+    )
+}
+
+# trailing comment

@@ -105,6 +105,8 @@ type Parser struct {
 //
 // if checksrc is true, then the parser will verify that stage src values
 // refer to code that actually exists.
+//
+// Deprecated: Use ParseSourceBytes instead.
 func ParseSource(src string, srcPath string,
 	incPaths []string, checkSrc bool) (string, []string, *Ast, error) {
 	return ParseSourceBytes([]byte(src), srcPath, incPaths, checkSrc)
@@ -237,10 +239,11 @@ func getIncludes(srcFile *SourceFile, includes []*Include, incPaths []string,
 	var iasts *Ast
 	seen := make(map[string]struct{}, len(includes))
 	for _, inc := range includes {
-		if ifpath, found := util.SearchPaths(inc.Value, incPaths); !found {
+		if ifpath, err := util.FindUniquePath(inc.Value, incPaths); err != nil {
 			errs = append(errs, &FileNotFoundError{
-				name: inc.Value,
-				loc:  inc.Node.Loc,
+				name:  inc.Value,
+				loc:   inc.Node.Loc,
+				inner: err,
 			})
 		} else {
 			absPath, _ := filepath.Abs(ifpath)

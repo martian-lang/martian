@@ -10,6 +10,7 @@ import (
 	"fmt"
 	"io/ioutil"
 	"os"
+	"os/exec"
 	"path"
 	"strconv"
 	"strings"
@@ -228,10 +229,9 @@ func verifyJobManager(jobMode string, jobJson *JobManagerJson, memGBPerCore int)
 	}
 
 	// Verify job command exists
-	incPaths := strings.Split(os.Getenv("PATH"), ":")
-	if _, found := util.SearchPaths(jobCmd, incPaths); !found {
-		util.Println("Job command '%s' not found in (%s)",
-			jobCmd, strings.Join(incPaths, ", "))
+	if _, err := exec.LookPath(jobCmd); err != nil {
+		util.Println("Job command '%s' not found in %q",
+			jobCmd, os.Getenv("PATH"))
 		os.Exit(1)
 	}
 

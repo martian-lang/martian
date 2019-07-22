@@ -8,6 +8,7 @@ package syntax
 
 import (
 	"fmt"
+	"os"
 	"strings"
 )
 
@@ -37,14 +38,25 @@ func (err *AstError) Error() string {
 }
 
 type FileNotFoundError struct {
-	loc  SourceLoc
-	name string
+	loc   SourceLoc
+	name  string
+	inner error
 }
 
 func (err *FileNotFoundError) writeTo(w stringWriter) {
 	w.WriteString("File '")
 	w.WriteString(err.name)
-	w.WriteString("' not found (included from ")
+	if err.inner == nil || os.IsNotExist(err.inner) {
+		w.WriteString("' not found (included from ")
+	} else {
+		w.WriteString("' could not be resolved: ")
+		if ew, ok := err.inner.(errorWriter); ok {
+			ew.writeTo(w)
+		} else {
+			w.WriteString(err.inner.Error())
+		}
+		w.WriteString("\n                 (included from ")
+	}
 	err.loc.writeTo(w,
 		"                 ")
 	w.WriteRune(')')
@@ -55,6 +67,13 @@ func (err *FileNotFoundError) Error() string {
 	buff.Grow(len("File 'sourcename.mro' not found (included from sourcename.mro:10)"))
 	err.writeTo(&buff)
 	return buff.String()
+}
+
+func (err *FileNotFoundError) Unwrap() error {
+	if err == nil {
+		return err
+	}
+	return err.inner
 }
 
 type DuplicateCallError struct {
