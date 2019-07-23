@@ -54,7 +54,10 @@ go_test(
         "stage_test.go",
         "storage_test.go",
     ],
-    data = ["testdata/vsize.py"],
+    data = [
+        "testdata/vsize.py",
+        "testdata/stages.mro",
+    ],
     embed = [":go_default_library"],
     deps = [
         "//martian/syntax:go_default_library",

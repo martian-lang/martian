@@ -177,3 +177,15 @@ call SUM_SQUARE_PIPELINE(
 		}
 	}
 }
+
+func TestGetCallableFrom(t *testing.T) {
+	callable, err := GetCallableFrom("MY_STAGE",
+		path.Join("stages.mro"), []string{"testdata"})
+	if err != nil {
+		t.Error(err)
+	} else if callable.GetId() != "MY_STAGE" {
+		t.Errorf("Expected MY_STAGE, got %q", callable.GetId())
+	} else if callable.File().FileName != "stages.mro" {
+		t.Errorf("Expected stages.mro, got %q", callable.File().FileName)
+	}
+}
