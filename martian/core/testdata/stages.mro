@@ -1,0 +1,7 @@
+filetype bam;
+
+stage MY_STAGE(
+    in  int info,
+    out bam result,
+    src py  "nope.py",
+)
