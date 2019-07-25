@@ -426,7 +426,9 @@ func (binding *BindStm) compileReturns(global *Ast, pipeline *Pipeline, params *
 func getBoundParamIds(uexp Exp) []string {
 	switch exp := uexp.(type) {
 	case *RefExp:
-		return []string{exp.Id}
+		if exp.Kind == KindSelf {
+			return []string{exp.Id}
+		}
 	case *ValExp:
 		if exp.Kind == KindArray {
 			var ids []string
