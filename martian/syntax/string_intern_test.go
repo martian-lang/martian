@@ -52,7 +52,7 @@ func TestUnquote(t *testing.T) {
 	check(t, `"Hex is \u0146ormal"`, "Hex is \u0146ormal")
 	check(t, `"We căn use anỿ valid utf-8 ☺"`, "We căn use anỿ valid utf-8 ☺")
 	check(t, `"Case sensitivity is \U0001f4A9"`, "Case sensitivity is \U0001f4A9")
-	check(t, `"Control\a\b\f\n\r\t\v characters"`, "Control\a\b\f\n\r\t\v characters")
+	check(t, `"Control\a\b\f\n\r\t\v \u2029 characters"`, "Control\a\b\f\n\r\t\v \u2029 characters")
 	check(t, `"Invalid \u123"`, "Invalid \ufffd")
 }
 

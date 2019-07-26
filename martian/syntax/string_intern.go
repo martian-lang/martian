@@ -128,7 +128,7 @@ func unquoteBytes(value []byte) []byte {
 					buf = append(buf, runeError()...)
 					value = value[len(value):]
 				} else {
-					var enc [2]byte
+					var enc [3]byte
 					n := utf8.EncodeRune(enc[:],
 						rune(parseHexByte(value[2], value[3]))+
 							(rune(parseHexByte(value[0], value[1]))<<8))
