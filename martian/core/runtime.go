@@ -758,15 +758,29 @@ func GetCallableFrom(pName, incPath string, mroPaths []string) (syntax.Callable,
 	}
 }
 
-func GetCallable(mroPaths []string, name string) (syntax.Callable, error) {
+// GetCallable searches every file in $MROPATH/[^_]*.mro until it finds one
+// containing the given callable object (stage or pipeline) and returns it.
+//
+// If compile is true, the sources are "compiled" (checked for errors).
+// Otherwise, keep in mind that some fields in the callable, such as the
+// .Table fields of the parameter and binding lists, may not be fully
+// populated.
+func GetCallable(mroPaths []string, name string, compile bool) (syntax.Callable, error) {
 	var parser syntax.Parser
+	parse := parser.UncheckedParse
+	if compile {
+		parse = func(data []byte, fpath string) (*syntax.Ast, error) {
+			_, _, ast, err := parser.ParseSourceBytes(
+				data, fpath, mroPaths, true)
+			return ast, err
+		}
+	}
 	for _, mroPath := range mroPaths {
 		if fpaths, err := filepath.Glob(mroPath + "/[^_]*.mro"); err == nil {
 			for _, fpath := range fpaths {
 				if data, err := ioutil.ReadFile(fpath); err == nil {
-					if _, _, ast, err := parser.ParseSourceBytes(
-						data, fpath, mroPaths, true); err == nil {
-						for _, callable := range ast.Callables.Table {
+					if ast, err := parse(data, fpath); err == nil {
+						for _, callable := range ast.Callables.List {
 							if callable.GetId() == name {
 								return callable, nil
 							}

@@ -60,7 +60,7 @@ Options:
 			}
 			callable = c
 		} else {
-			c, err := core.GetCallable(mroPaths, input.Call)
+			c, err := core.GetCallable(mroPaths, input.Call, false)
 			if err != nil {
 				fmt.Printf("Could not find %s: %v\n", input.Call, err)
 				os.Exit(1)
