@@ -14,6 +14,8 @@ import (
 	"sort"
 	"strings"
 	"unicode/utf8"
+
+	"github.com/martian-lang/martian/martian/util"
 )
 
 const (
@@ -79,6 +81,12 @@ func (self *printer) WriteString(s string) (int, error) {
 	return self.buf.WriteString(s)
 }
 
+func (self *printer) mustWriteString(s string) {
+	if _, err := self.WriteString(s); err != nil {
+		panic(err)
+	}
+}
+
 func (self *printer) Write(b []byte) (int, error) {
 	return self.buf.Write(b)
 }
@@ -89,6 +97,12 @@ func (self *printer) WriteByte(b byte) error {
 
 func (self *printer) WriteRune(r rune) (int, error) {
 	return self.buf.WriteRune(r)
+}
+
+func (self *printer) mustWriteRune(r rune) {
+	if _, err := self.WriteRune(r); err != nil {
+		panic(err)
+	}
 }
 
 func (self *printer) Printf(format string, args ...interface{}) {
@@ -120,7 +134,7 @@ func (self *printer) String() string {
 // json encoder implementation (see
 // https://github.com/golang/go/blob/release-branch.go1.11/src/encoding/json/encode.go#L884)
 func quoteString(w stringWriter, s string) {
-	w.WriteByte('"')
+	mustWriteByte(w, '"')
 	const hex = "0123456789abcdef"
 	start := 0
 	for i := 0; i < len(s); {
@@ -131,26 +145,26 @@ func quoteString(w stringWriter, s string) {
 				continue
 			}
 			if start < i {
-				w.WriteString(s[start:i])
+				mustWriteString(w, s[start:i])
 			}
 			switch b {
 			case '\\', '"':
-				w.WriteByte('\\')
-				w.WriteByte(b)
+				mustWriteByte(w, '\\')
+				mustWriteByte(w, b)
 			case '\n':
-				w.WriteByte('\\')
-				w.WriteByte('n')
+				mustWriteByte(w, '\\')
+				mustWriteByte(w, 'n')
 			case '\r':
-				w.WriteByte('\\')
-				w.WriteByte('r')
+				mustWriteByte(w, '\\')
+				mustWriteByte(w, 'r')
 			case '\t':
-				w.WriteByte('\\')
-				w.WriteByte('t')
+				mustWriteByte(w, '\\')
+				mustWriteByte(w, 't')
 			default:
 				// This encodes bytes < 0x20 except for \t, \n and \r.
-				w.WriteString(`\u00`)
-				w.WriteByte(hex[b>>4])
-				w.WriteByte(hex[b&0xF])
+				mustWriteString(w, `\u00`)
+				mustWriteByte(w, hex[b>>4])
+				mustWriteByte(w, hex[b&0xF])
 			}
 			i++
 			start = i
@@ -162,9 +176,9 @@ func quoteString(w stringWriter, s string) {
 			// Transform invalid code points into unicode
 			// "replacement character".
 			if start < i {
-				w.WriteString(s[start:i])
+				mustWriteString(w, s[start:i])
 			}
-			w.WriteString(`\ufffd`)
+			mustWriteString(w, `\ufffd`)
 			i += size
 			start = i
 			continue
@@ -178,10 +192,10 @@ func quoteString(w stringWriter, s string) {
 		// See http://timelessrepo.com/json-isnt-a-javascript-subset for discussion.
 		if c == '\u2028' || c == '\u2029' {
 			if start < i {
-				w.WriteString(s[start:i])
+				mustWriteString(w, s[start:i])
 			}
-			w.WriteString(`\u202`)
-			w.WriteByte(hex[c&0xF])
+			mustWriteString(w, `\u202`)
+			mustWriteByte(w, hex[c&0xF])
 			i += size
 			start = i
 			continue
@@ -189,9 +203,9 @@ func quoteString(w stringWriter, s string) {
 		i += size
 	}
 	if start < len(s) {
-		w.WriteString(s[start:])
+		mustWriteString(w, s[start:])
 	}
-	w.WriteByte('"')
+	mustWriteByte(w, '"')
 }
 
 // Format returns an mro-formatted representation of an expression.
@@ -208,7 +222,7 @@ func (self *ValExp) Format(prefix string) string {
 //
 func (self *ValExp) format(w stringWriter, prefix string) {
 	if self.Value == nil {
-		w.WriteString("null")
+		mustWriteString(w, "null")
 	} else if self.Kind == KindInt {
 		fmt.Fprintf(w, "%d", self.Value)
 	} else if self.Kind == KindFloat {
@@ -231,42 +245,42 @@ func (self *ValExp) format(w stringWriter, prefix string) {
 
 func (self *ValExp) formatSweep(w stringWriter, prefix string) {
 	values := self.Value.([]Exp)
-	w.WriteString("sweep(\n")
+	mustWriteString(w, "sweep(\n")
 	vindent := prefix + INDENT
 	for _, val := range values {
-		w.WriteString(vindent)
+		mustWriteString(w, vindent)
 		val.format(w, vindent)
-		w.WriteString(",\n")
+		mustWriteString(w, ",\n")
 	}
-	w.WriteString(prefix)
-	w.WriteRune(')')
+	mustWriteString(w, prefix)
+	mustWriteRune(w, ')')
 }
 
 func (self *ValExp) formatArray(w stringWriter, prefix string) {
 	values := self.Value.([]Exp)
 	if len(values) == 0 {
-		w.WriteString("[]")
+		mustWriteString(w, "[]")
 	} else if len(values) == 1 {
 		// Place single-element arrays on a single line.
-		w.WriteRune('[')
+		mustWriteRune(w, '[')
 		values[0].format(w, prefix)
-		w.WriteRune(']')
+		mustWriteRune(w, ']')
 	} else {
-		w.WriteString("[\n")
+		mustWriteString(w, "[\n")
 		vindent := prefix + INDENT
 		for _, val := range values {
-			w.WriteString(vindent)
+			mustWriteString(w, vindent)
 			val.format(w, vindent)
-			w.WriteString(",\n")
+			mustWriteString(w, ",\n")
 		}
-		w.WriteString(prefix)
-		w.WriteRune(']')
+		mustWriteString(w, prefix)
+		mustWriteRune(w, ']')
 	}
 }
 
 func (self *ValExp) formatMap(w stringWriter, prefix string) {
 	if valExpMap, ok := self.Value.(map[string]Exp); ok && len(valExpMap) > 0 {
-		w.WriteString("{\n")
+		mustWriteString(w, "{\n")
 		vindent := prefix + INDENT
 		keys := make([]string, 0, len(valExpMap))
 		for key := range valExpMap {
@@ -274,30 +288,30 @@ func (self *ValExp) formatMap(w stringWriter, prefix string) {
 		}
 		sort.Strings(keys)
 		for _, key := range keys {
-			w.WriteString(vindent)
-			w.WriteRune('"')
-			w.WriteString(key)
-			w.WriteString(`": `)
+			mustWriteString(w, vindent)
+			mustWriteRune(w, '"')
+			mustWriteString(w, key)
+			mustWriteString(w, `": `)
 			valExpMap[key].format(w, vindent)
-			w.WriteString(",\n")
+			mustWriteString(w, ",\n")
 		}
-		w.WriteString(prefix)
-		w.WriteRune('}')
+		mustWriteString(w, prefix)
+		mustWriteRune(w, '}')
 	} else {
-		w.WriteString("{}")
+		mustWriteString(w, "{}")
 	}
 }
 
 func (self *RefExp) format(w stringWriter, prefix string) {
 	if self.Kind == KindCall {
-		w.WriteString(self.Id)
+		mustWriteString(w, self.Id)
 		if self.OutputId != "default" {
-			w.WriteRune('.')
-			w.WriteString(self.OutputId)
+			mustWriteRune(w, '.')
+			mustWriteString(w, self.OutputId)
 		}
 	} else {
-		w.WriteString("self.")
-		w.WriteString(self.Id)
+		mustWriteString(w, "self.")
+		mustWriteString(w, self.Id)
 	}
 }
 
@@ -316,14 +330,14 @@ func (self *BindStm) format(printer *printer, prefix string, idWidth int) {
 	if ve, ok := self.Exp.(*ValExp); ok {
 		if arr, ok := ve.Value.([]Exp); ok && self.Sweep && len(arr) > 1 {
 			ve.formatSweep(printer, prefix+INDENT)
-			printer.WriteRune(',')
-			printer.WriteString(NEWLINE)
+			printer.mustWriteRune(',')
+			printer.mustWriteString(NEWLINE)
 			return
 		}
 	}
 	self.Exp.format(printer, prefix+INDENT)
-	printer.WriteRune(',')
-	printer.WriteString(NEWLINE)
+	printer.mustWriteRune(',')
+	printer.mustWriteString(NEWLINE)
 }
 
 func (self *BindStms) format(printer *printer, prefix string) {
@@ -367,7 +381,7 @@ func paramFormat(printer *printer, param Param, modeWidth int, typeWidth int, id
 
 	// If type is annotated as array, add brackets and shrink padding.
 	for i := 0; i < param.GetArrayDim(); i++ {
-		printer.WriteString("[]")
+		printer.mustWriteString("[]")
 	}
 
 	// Add id if not default.
@@ -390,7 +404,7 @@ func paramFormat(printer *printer, param Param, modeWidth int, typeWidth int, id
 		}
 		printer.Printf("%s  \"%s\"", helpPad, param.GetOutName())
 	}
-	printer.WriteString(",\n")
+	printer.mustWriteString(",\n")
 }
 
 type Params interface {
@@ -473,33 +487,37 @@ func (self *Pipeline) format(printer *printer) {
 	printer.Printf("pipeline %s(\n", self.Id)
 	self.InParams.format(printer, modeWidth, typeWidth, idWidth, helpWidth)
 	self.OutParams.format(printer, modeWidth, typeWidth, idWidth, helpWidth)
-	printer.WriteString(")\n{")
-	self.topoSort()
+	printer.mustWriteString(")\n{")
+	if err := self.topoSort(); err != nil {
+		util.PrintError(err, "format",
+			"WARNING: formatting pipeline %s",
+			self.Id)
+	}
 	for _, callstm := range self.Calls {
-		printer.WriteString(NEWLINE)
+		printer.mustWriteString(NEWLINE)
 		callstm.format(printer, INDENT)
 	}
-	printer.WriteString(NEWLINE)
+	printer.mustWriteString(NEWLINE)
 	self.Ret.format(printer)
 	if self.Retain != nil {
-		printer.WriteString(NEWLINE)
+		printer.mustWriteString(NEWLINE)
 		self.Retain.format(printer)
 	}
-	printer.WriteString("}\n")
+	printer.mustWriteString("}\n")
 }
 
 func (self *CallStm) format(printer *printer, prefix string) {
 	printer.printComments(&self.Node, prefix)
-	printer.WriteString(prefix)
-	printer.WriteString("call ")
-	printer.WriteString(self.DecId)
+	printer.mustWriteString(prefix)
+	printer.mustWriteString("call ")
+	printer.mustWriteString(self.DecId)
 	if self.Id != self.DecId {
-		printer.WriteString(" as ")
-		printer.WriteString(self.Id)
+		printer.mustWriteString(" as ")
+		printer.mustWriteString(self.Id)
 	}
-	printer.WriteString("(\n")
+	printer.mustWriteString("(\n")
 	self.Bindings.format(printer, prefix)
-	printer.WriteString(prefix)
+	printer.mustWriteString(prefix)
 
 	if self.Modifiers != nil && (self.Modifiers.Bindings != nil &&
 		len(self.Modifiers.Bindings.List) > 0 ||
@@ -509,7 +527,7 @@ func (self *CallStm) format(printer *printer, prefix string) {
 				Node: self.Node,
 			}
 		}
-		printer.WriteString(") using (\n")
+		printer.mustWriteString(") using (\n")
 		// Convert unbound-form mods to bound form.
 		// Because we remove elements from the binding table if they're
 		// static, we can't just use the table to see if they're needed.
@@ -552,32 +570,32 @@ func (self *CallStm) format(printer *printer, prefix string) {
 			return self.Modifiers.Bindings.List[i].Id < self.Modifiers.Bindings.List[j].Id
 		})
 		self.Modifiers.Bindings.format(printer, prefix)
-		printer.WriteString(prefix)
+		printer.mustWriteString(prefix)
 	}
-	printer.WriteString(")\n")
+	printer.mustWriteString(")\n")
 }
 
 func (self *ReturnStm) format(printer *printer) {
 	printer.printComments(&self.Node, INDENT)
-	printer.WriteString(INDENT)
-	printer.WriteString("return (\n")
+	printer.mustWriteString(INDENT)
+	printer.mustWriteString("return (\n")
 	self.Bindings.format(printer, INDENT)
-	printer.WriteString(INDENT)
-	printer.WriteString(")\n")
+	printer.mustWriteString(INDENT)
+	printer.mustWriteString(")\n")
 }
 
 func (self *PipelineRetains) format(printer *printer) {
 	printer.printComments(&self.Node, INDENT)
-	printer.WriteString(INDENT)
-	printer.WriteString("retain (\n")
+	printer.mustWriteString(INDENT)
+	printer.mustWriteString("retain (\n")
 	for _, ref := range self.Refs {
-		printer.WriteString(INDENT)
-		printer.WriteString(INDENT)
+		printer.mustWriteString(INDENT)
+		printer.mustWriteString(INDENT)
 		ref.format(printer, INDENT+INDENT)
-		printer.WriteString(",\n")
+		printer.mustWriteString(",\n")
 	}
-	printer.WriteString(INDENT)
-	printer.WriteString(")\n")
+	printer.mustWriteString(INDENT)
+	printer.mustWriteString(")\n")
 }
 
 //
@@ -600,7 +618,7 @@ func (self *Stage) format(printer *printer) {
 			self.ChunkIns, self.ChunkOuts)
 	}
 	if self.Split {
-		printer.WriteString(") split (\n")
+		printer.mustWriteString(") split (\n")
 		self.ChunkIns.format(printer, modeWidth, typeWidth, idWidth, helpWidth)
 		self.ChunkOuts.format(printer, modeWidth, typeWidth, idWidth, helpWidth)
 	}
@@ -610,12 +628,12 @@ func (self *Stage) format(printer *printer) {
 	if self.Retain != nil {
 		self.Retain.format(printer)
 	}
-	printer.WriteString(")\n")
+	printer.mustWriteString(")\n")
 }
 
 func (self *Resources) format(printer *printer) {
 	printer.printComments(&self.Node, INDENT)
-	printer.WriteString(") using (\n")
+	printer.mustWriteString(") using (\n")
 	// Pad depending on which arguments are present.
 	// mem_gb   = x,
 	// special  = y
@@ -632,39 +650,39 @@ func (self *Resources) format(printer *printer) {
 	}
 	if self.MemNode != nil {
 		printer.printComments(self.MemNode, INDENT)
-		printer.WriteString(INDENT)
+		printer.mustWriteString(INDENT)
 		printer.Printf("mem_gb%s = %d,\n", memPad, self.MemGB)
 	}
 	if self.SpecialNode != nil {
 		printer.printComments(self.SpecialNode, INDENT)
-		printer.WriteString(INDENT)
+		printer.mustWriteString(INDENT)
 		printer.Printf("special%s = \"%s\",\n", threadPad, self.Special)
 	}
 	if self.ThreadNode != nil {
 		printer.printComments(self.ThreadNode, INDENT)
-		printer.WriteString(INDENT)
+		printer.mustWriteString(INDENT)
 		printer.Printf("threads%s = %d,\n", threadPad, self.Threads)
 	}
 	if self.VMemNode != nil {
 		printer.printComments(self.VMemNode, INDENT)
-		printer.WriteString(INDENT)
+		printer.mustWriteString(INDENT)
 		printer.Printf("vmem_gb%s = %d,\n", threadPad, self.VMemGB)
 	}
 	if self.VolatileNode != nil {
 		printer.printComments(self.VolatileNode, INDENT)
-		printer.WriteString(INDENT)
-		printer.WriteString("volatile = strict,\n")
+		printer.mustWriteString(INDENT)
+		printer.mustWriteString("volatile = strict,\n")
 	}
 }
 
 func (self *RetainParams) format(printer *printer) {
 	printer.printComments(&self.Node, INDENT)
-	printer.WriteString(") retain (\n")
+	printer.mustWriteString(") retain (\n")
 	for _, param := range self.Params {
 		printer.printComments(&param.Node, INDENT)
-		printer.WriteString(INDENT)
-		printer.WriteString(param.Id)
-		printer.WriteString(",\n")
+		printer.mustWriteString(INDENT)
+		printer.mustWriteString(param.Id)
+		printer.mustWriteString(",\n")
 	}
 }
 
@@ -686,7 +704,7 @@ func (self *Callables) format(printer *printer) {
 	}
 	for i, callable := range self.List {
 		if i != 0 {
-			printer.WriteString(NEWLINE)
+			printer.mustWriteString(NEWLINE)
 		}
 		callable.format(printer)
 	}
@@ -740,17 +758,17 @@ func (self *Ast) format(writeIncludes bool) string {
 	if writeIncludes {
 		for _, directive := range self.Includes {
 			printer.printComments(&directive.Node, "")
-			printer.WriteString("@include \"")
-			printer.WriteString(directive.Value)
-			printer.WriteRune('"')
-			printer.WriteString(NEWLINE)
+			printer.mustWriteString("@include \"")
+			printer.mustWriteString(directive.Value)
+			printer.mustWriteRune('"')
+			printer.mustWriteString(NEWLINE)
 			needSpacer = true
 		}
 	}
 
 	// filetype declarations.
 	if needSpacer && len(self.UserTypes) > 0 {
-		printer.WriteString(NEWLINE)
+		printer.mustWriteString(NEWLINE)
 	}
 	for _, filetype := range self.UserTypes {
 		filetype.format(&printer)
@@ -759,14 +777,14 @@ func (self *Ast) format(writeIncludes bool) string {
 
 	// callables.
 	if needSpacer && self.Callables != nil && len(self.Callables.List) > 0 {
-		printer.WriteString(NEWLINE)
+		printer.mustWriteString(NEWLINE)
 	}
 	self.Callables.format(&printer)
 
 	// call.
 	if self.Call != nil {
 		if self.Callables != nil && len(self.Callables.List) > 0 || needSpacer {
-			printer.WriteString(NEWLINE)
+			printer.mustWriteString(NEWLINE)
 		}
 		self.Call.format(&printer, "")
 	}

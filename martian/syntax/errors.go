@@ -8,9 +8,34 @@ package syntax
 
 import (
 	"fmt"
+	"io"
 	"os"
 	"strings"
 )
+
+func mustWrite(w io.Writer, b []byte) {
+	if _, err := w.Write(b); err != nil {
+		panic(err)
+	}
+}
+
+func mustWriteByte(w stringWriter, b byte) {
+	if err := w.WriteByte(b); err != nil {
+		panic(err)
+	}
+}
+
+func mustWriteRune(w stringWriter, r rune) {
+	if _, err := w.WriteRune(r); err != nil {
+		panic(err)
+	}
+}
+
+func mustWriteString(w stringWriter, s string) {
+	if _, err := w.WriteString(s); err != nil {
+		panic(err)
+	}
+}
 
 type errorWriter interface {
 	writeTo(w stringWriter)
@@ -24,9 +49,9 @@ type AstError struct {
 }
 
 func (err *AstError) writeTo(w stringWriter) {
-	w.WriteString("MRO ")
-	w.WriteString(err.Msg)
-	w.WriteString("\n    at ")
+	mustWriteString(w, "MRO ")
+	mustWriteString(w, err.Msg)
+	mustWriteString(w, "\n    at ")
 	err.Node.Loc.writeTo(w, "        ")
 }
 
@@ -44,22 +69,22 @@ type FileNotFoundError struct {
 }
 
 func (err *FileNotFoundError) writeTo(w stringWriter) {
-	w.WriteString("File '")
-	w.WriteString(err.name)
+	mustWriteString(w, "File '")
+	mustWriteString(w, err.name)
 	if err.inner == nil || os.IsNotExist(err.inner) {
-		w.WriteString("' not found (included from ")
+		mustWriteString(w, "' not found (included from ")
 	} else {
-		w.WriteString("' could not be resolved: ")
+		mustWriteString(w, "' could not be resolved: ")
 		if ew, ok := err.inner.(errorWriter); ok {
 			ew.writeTo(w)
 		} else {
-			w.WriteString(err.inner.Error())
+			mustWriteString(w, err.inner.Error())
 		}
-		w.WriteString("\n                 (included from ")
+		mustWriteString(w, "\n                 (included from ")
 	}
 	err.loc.writeTo(w,
 		"                 ")
-	w.WriteRune(')')
+	mustWriteRune(w, ')')
 }
 
 func (err *FileNotFoundError) Error() string {
@@ -82,13 +107,13 @@ type DuplicateCallError struct {
 }
 
 func (err *DuplicateCallError) writeTo(w stringWriter) {
-	w.WriteString("Cannot have more than one top-level call.\n    First call: ")
-	w.WriteString(err.First.Id)
-	w.WriteString(" at ")
+	mustWriteString(w, "Cannot have more than one top-level call.\n    First call: ")
+	mustWriteString(w, err.First.Id)
+	mustWriteString(w, " at ")
 	err.First.Node.Loc.writeTo(w, "        ")
-	w.WriteString("\n    Next call: ")
-	w.WriteString(err.Second.Id)
-	w.WriteString(" at ")
+	mustWriteString(w, "\n    Next call: ")
+	mustWriteString(w, err.Second.Id)
+	mustWriteString(w, " at ")
 	err.Second.Node.Loc.writeTo(w, "        ")
 }
 
@@ -112,13 +137,13 @@ func (err *wrapError) Unwrap() error {
 }
 
 func (err *wrapError) writeTo(w stringWriter) {
-	w.WriteString("MRO ")
+	mustWriteString(w, "MRO ")
 	if ew, ok := err.innerError.(errorWriter); ok {
 		ew.writeTo(w)
 	} else {
-		w.WriteString(err.innerError.Error())
+		mustWriteString(w, err.innerError.Error())
 	}
-	w.WriteString("\n    at ")
+	mustWriteString(w, "\n    at ")
 	err.loc.writeTo(w,
 		"        ")
 }
@@ -135,7 +160,7 @@ func (loc *SourceLoc) writeTo(w stringWriter, indent string) {
 		loc.File.FullPath == "" && len(loc.File.IncludedFrom) == 0 {
 		fmt.Fprintf(w, "line %d", loc.Line)
 	} else if len(loc.File.IncludedFrom) == 0 {
-		w.WriteString(loc.File.FullPath)
+		mustWriteString(w, loc.File.FullPath)
 		fmt.Fprintf(w, ":%d", loc.Line)
 	} else if len(loc.File.IncludedFrom) == 1 {
 		fmt.Fprintf(w, "%s:%d\n%s    included from ",

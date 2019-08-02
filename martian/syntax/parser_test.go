@@ -1066,7 +1066,9 @@ func BenchmarkParseAndCompile(b *testing.B) {
 	srcFile := new(SourceFile)
 	intern := makeStringIntern()
 	// prepopulate the string internment cache.
-	yaccParse(srcBytes, srcFile, intern)
+	if _, err := yaccParse(srcBytes, srcFile, intern); err != nil {
+		b.Error(err)
+	}
 
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {

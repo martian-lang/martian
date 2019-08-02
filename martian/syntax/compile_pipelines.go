@@ -147,7 +147,7 @@ func (pipeline *Pipeline) topoSort() error {
 	for checkIndex+1 < len(pipeline.Calls) {
 		call := pipeline.Calls[checkIndex]
 		deps := depsMap[call]
-		if deps == nil || len(deps) == 0 {
+		if len(deps) == 0 {
 			checkIndex++
 			continue
 		}

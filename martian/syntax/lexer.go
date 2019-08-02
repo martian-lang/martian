@@ -107,22 +107,22 @@ type mmLexError struct {
 }
 
 func (err *mmLexError) writeTo(w stringWriter) {
-	w.WriteString("MRO ParseError: unexpected token '")
-	w.Write(err.info.token)
+	mustWriteString(w, "MRO ParseError: unexpected token '")
+	mustWrite(w, err.info.token)
 	if len(err.info.previous) > 0 {
-		w.WriteString("' after '")
-		w.Write(err.info.previous)
+		mustWriteString(w, "' after '")
+		mustWrite(w, err.info.previous)
 	}
 	if lineStart, line := err.info.getLine(); len(line) > 0 {
-		w.WriteString("'\n")
-		w.Write(line)
-		w.WriteRune('\n')
+		mustWriteString(w, "'\n")
+		mustWrite(w, line)
+		mustWriteRune(w, '\n')
 		for i := 0; i < err.info.pos-len(err.info.token)-lineStart; i++ {
-			w.WriteRune(' ')
+			mustWriteRune(w, ' ')
 		}
-		w.WriteString("^\n    at ")
+		mustWriteString(w, "^\n    at ")
 	} else {
-		w.WriteString("' at ")
+		mustWriteString(w, "' at ")
 	}
 	loc := err.info.Loc()
 	loc.writeTo(w, "        ")

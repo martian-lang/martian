@@ -63,9 +63,12 @@ func TestUnquoteFuzz(t *testing.T) {
 		return s
 	}, func(s string) string {
 		var buf bytes.Buffer
+		buf.Grow(len(s) + 10)
 		enc := json.NewEncoder(&buf)
 		enc.SetEscapeHTML(false)
-		enc.Encode(s)
+		if err := enc.Encode(s); err != nil {
+			t.Error(err)
+		}
 		return unquote(buf.Bytes()[:buf.Len()-1])
 	}, nil); err != nil {
 		t.Error(err)
@@ -90,7 +93,9 @@ func TestUnquoteFormat(t *testing.T) {
 		var buf bytes.Buffer
 		enc := json.NewEncoder(&buf)
 		enc.SetEscapeHTML(false)
-		enc.Encode(s)
+		if err := enc.Encode(s); err != nil {
+			t.Error(err)
+		}
 		return buf.Bytes()[:buf.Len()-1]
 	}
 	if err := quick.CheckEqual(enc, jsonEnc, nil); err != nil {

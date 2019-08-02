@@ -231,7 +231,9 @@ func parseSource(src []byte, srcFile *SourceFile, incPaths []string,
 
 	iasts, err := getIncludes(srcFile, ast.Includes, incPaths, processedIncludes, intern)
 	if iasts != nil {
-		ast.merge(iasts)
+		if err := ast.merge(iasts); err != nil {
+			return nil, err
+		}
 	}
 	return ast, err
 }
@@ -290,7 +292,9 @@ func getIncludes(srcFile *SourceFile, includes []*Include, incPaths []string,
 							iasts = iast
 						} else {
 							// x.merge(y) puts y's stuff before x's.
-							iast.merge(iasts)
+							if err := iast.merge(iasts); err != nil {
+								errs = append(errs, err)
+							}
 							iasts = iast
 						}
 					}

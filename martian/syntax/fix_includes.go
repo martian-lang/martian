@@ -13,6 +13,8 @@ import (
 	"path/filepath"
 	"sort"
 	"strings"
+
+	"github.com/martian-lang/martian/martian/util"
 )
 
 func FixIncludes(source *Ast, mropath []string) error {
@@ -41,7 +43,10 @@ func fixIncludesTop(source *Ast, mropath []string, intern *stringIntern) error {
 		incPaths, seen, intern); err != nil {
 		return err
 	} else {
-		uncheckedMakeTables(source, closure)
+		if err := uncheckedMakeTables(source, closure); err != nil {
+			util.PrintError(err, "include", "WARNING: compile errors")
+			util.PrintInfo("include", "         Attempting to fix...")
+		}
 		needed, missingTypes, missingCalls := getRequiredIncludes(source)
 		extraIncs, extraTypes, err := findMissingIncludes(seen,
 			missingTypes, missingCalls,
@@ -61,7 +66,7 @@ func fixIncludesTop(source *Ast, mropath []string, intern *stringIntern) error {
 // Compile the type and callable tables, but do not enforce uniqueness or
 // check anything else.  It does ensure that the first mention is the one that
 // will be in the table.
-func uncheckedMakeTables(top *Ast, included *Ast) {
+func uncheckedMakeTables(top *Ast, included *Ast) error {
 	for _, callable := range top.Callables.List {
 		if top.Callables.Table == nil {
 			top.Callables.Table = make(map[string]Callable, len(top.Callables.List))
@@ -70,7 +75,7 @@ func uncheckedMakeTables(top *Ast, included *Ast) {
 			top.Callables.Table[callable.GetId()] = callable
 		}
 	}
-	top.compileTypes()
+	err := top.compileTypes()
 	if included != nil {
 		for _, callable := range included.Callables.List {
 			if top.Callables.Table == nil {
@@ -89,6 +94,7 @@ func uncheckedMakeTables(top *Ast, included *Ast) {
 			}
 		}
 	}
+	return err
 }
 
 // Get the set of includes which are required for this source AST,

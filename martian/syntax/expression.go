@@ -9,13 +9,13 @@ package syntax
 // "self" and "call".
 const (
 	// Represents an array of expressions.
-	KindArray  ExpKind = "array"
-	KindMap            = "map"
-	KindFloat          = "float"
-	KindInt            = "int"
-	KindString         = "string"
-	KindBool           = "bool"
-	KindNull           = "null"
+	KindArray  = ExpKind("array")
+	KindMap    = "map"
+	KindFloat  = "float"
+	KindInt    = "int"
+	KindString = "string"
+	KindBool   = "bool"
+	KindNull   = "null"
 
 	// A reference to the pipeline's inputs.
 	KindSelf = "self"
@@ -101,13 +101,13 @@ func (*ValExp) getExp() {}
 
 func (valExp *ValExp) ToInterface() interface{} {
 	// Convert tree of Exps into a tree of interface{}s.
-	if valExp.Kind == "array" {
+	if valExp.Kind == KindArray {
 		varray := []interface{}{}
 		for _, exp := range valExp.Value.([]Exp) {
 			varray = append(varray, exp.ToInterface())
 		}
 		return varray
-	} else if valExp.Kind == "map" {
+	} else if valExp.Kind == KindMap {
 		vmap := map[string]interface{}{}
 		// Type assertion fails if map is empty
 		valExpMap, ok := valExp.Value.(map[string]Exp)
