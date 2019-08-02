@@ -743,7 +743,7 @@ func GetCallableFrom(pName, incPath string, mroPaths []string) (syntax.Callable,
 		return nil, err
 	} else {
 		var parser syntax.Parser
-		if ast, err := parser.UncheckedParse(b, fpath); err != nil {
+		if ast, err := parser.UncheckedParse(b, incPath); err != nil {
 			return nil, err
 		} else {
 			for _, c := range ast.Callables.List {
@@ -779,7 +779,7 @@ func GetCallable(mroPaths []string, name string, compile bool) (syntax.Callable,
 		if fpaths, err := filepath.Glob(mroPath + "/[^_]*.mro"); err == nil {
 			for _, fpath := range fpaths {
 				if data, err := ioutil.ReadFile(fpath); err == nil {
-					if ast, err := parse(data, fpath); err == nil {
+					if ast, err := parse(data, path.Base(fpath)); err == nil {
 						for _, callable := range ast.Callables.List {
 							if callable.GetId() == name {
 								return callable, nil

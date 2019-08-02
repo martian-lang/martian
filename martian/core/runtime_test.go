@@ -12,6 +12,8 @@ import (
 	"io/ioutil"
 	"os"
 	"path"
+	"path/filepath"
+	"strings"
 	"testing"
 
 	"github.com/martian-lang/martian/martian/syntax"
@@ -187,5 +189,34 @@ func TestGetCallableFrom(t *testing.T) {
 		t.Errorf("Expected MY_STAGE, got %q", callable.GetId())
 	} else if callable.File().FileName != "stages.mro" {
 		t.Errorf("Expected stages.mro, got %q", callable.File().FileName)
+	}
+	callable, err = GetCallableFrom("MY_STAGE",
+		path.Join("sub/stages.mro"), []string{"testdata"})
+	if err != nil {
+		t.Error(err)
+	} else if callable.GetId() != "MY_STAGE" {
+		t.Errorf("Expected MY_STAGE, got %q", callable.GetId())
+	} else if callable.File().FileName != "sub/stages.mro" {
+		t.Errorf("Expected stages.mro, got %q", callable.File().FileName)
+	}
+}
+
+func TestGetCallable(t *testing.T) {
+	atd, err := filepath.Abs("testdata")
+	if err != nil {
+		t.Fatal(err)
+	}
+	mropaths := []string{"testdata", "testdata/", atd, atd + "/"}
+	for i := range mropaths {
+		callable, err := GetCallable(mropaths[i:], "MY_STAGE", false)
+		if err != nil {
+			t.Error(err)
+		} else if callable.GetId() != "MY_STAGE" {
+			t.Errorf("Expected MY_STAGE, got %q", callable.GetId())
+		} else if callable.File().FileName != "stages.mro" {
+			t.Errorf("Expected stages.mro, got %q (MROPATH: %s)",
+				callable.File().FileName,
+				strings.Join(mropaths[i:], ":"))
+		}
 	}
 }

@@ -153,10 +153,12 @@ func (parser *Parser) getIntern() *stringIntern {
 // refer to code that actually exists.
 func (parser *Parser) ParseSourceBytes(src []byte, srcPath string,
 	incPaths []string, checkSrc bool) (string, []string, *Ast, error) {
-	fname := filepath.Base(srcPath)
-	absPath, _ := filepath.Abs(srcPath)
+	srcPath, absPath, err := IncludeFilePath(srcPath, incPaths)
+	if err != nil {
+		return "", nil, nil, err
+	}
 	srcFile := SourceFile{
-		FileName: fname,
+		FileName: srcPath,
 		FullPath: absPath,
 	}
 	if ast, err := parseSource(src, &srcFile, incPaths,
@@ -190,10 +192,9 @@ func (parser *Parser) ParseSourceBytes(src []byte, srcPath string,
 // UncheckedParse loads an Ast from source bytes, but does not follow includes
 // or perform any semantic verification.
 func (parser *Parser) UncheckedParse(src []byte, srcPath string) (*Ast, error) {
-	fname := filepath.Base(srcPath)
 	absPath, _ := filepath.Abs(srcPath)
 	srcFile := SourceFile{
-		FileName: fname,
+		FileName: srcPath,
 		FullPath: absPath,
 	}
 	return yaccParse(src, &srcFile, parser.getIntern())
@@ -203,10 +204,12 @@ func (parser *Parser) UncheckedParse(src []byte, srcPath string) (*Ast, error) {
 // include directives, but does not perform any further semantic verification.
 func (parser *Parser) UncheckedParseIncludes(src []byte,
 	srcPath string, incPaths []string) (*Ast, error) {
-	fname := filepath.Base(srcPath)
-	absPath, _ := filepath.Abs(srcPath)
+	srcPath, absPath, err := IncludeFilePath(srcPath, incPaths)
+	if err != nil {
+		return nil, err
+	}
 	srcFile := SourceFile{
-		FileName: fname,
+		FileName: srcPath,
 		FullPath: absPath,
 	}
 	return parseSource(src, &srcFile, incPaths,
@@ -296,6 +299,58 @@ func getIncludes(srcFile *SourceFile, includes []*Include, incPaths []string,
 		}
 	}
 	return iasts, errs.If()
+}
+
+// Get the mropath-relative and absolute paths for a file name,
+// which may or may not be an aboslute file name.
+func IncludeFilePath(filename string, mroPaths []string) (rel, abs string, err error) {
+	abs, err = filepath.Abs(filename)
+	if err != nil {
+		return filename, abs, err
+	}
+	rdir := filepath.Dir(filename)
+	adir := filepath.Dir(abs)
+	// Check for direct include before looking at deeper include paths.
+	for _, p := range mroPaths {
+		if rdir == p || adir == p {
+			return filepath.Base(filename), abs, nil
+		}
+	}
+	for _, p := range mroPaths {
+		if p == "" {
+			// working directory is in MROPATH.
+			if !filepath.IsAbs(filename) {
+				return filename, abs, nil
+			}
+		} else if strings.HasPrefix(rdir, p) {
+			// Relative path to directory containing filename is in MROPATH
+			if p[len(p)-1] == '/' {
+				return filename[len(p):], abs, nil
+			} else if rdir[len(p)] == '/' {
+				return filename[len(p)+1:], abs, nil
+			}
+		} else if strings.HasPrefix(adir, p) {
+			// Absolute path of directory containing filename is in MROPATH
+			if p[len(p)-1] == '/' {
+				return abs[len(p):], abs, nil
+			} else if adir[len(p)] == '/' {
+				return abs[len(p)+1:], abs, nil
+			}
+		}
+		ap, err := filepath.Abs(p)
+		if err != nil {
+			return filename, abs, err
+		}
+		if ap == adir {
+			return filepath.Base(filename), abs, nil
+		}
+		if strings.HasPrefix(adir, ap) {
+			if adir[len(ap)] == '/' {
+				return abs[len(ap)+1:], abs, nil
+			}
+		}
+	}
+	return filename, abs, nil
 }
 
 // Compile an MRO file in cwd or mroPaths.

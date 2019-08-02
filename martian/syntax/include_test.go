@@ -1,7 +1,9 @@
 package syntax
 
 import (
+	"io/ioutil"
 	"path"
+	"path/filepath"
 	"testing"
 )
 
@@ -9,6 +11,19 @@ import (
 func TestFailSelfInclude(t *testing.T) {
 	t.Parallel()
 	if _, _, _, err := Compile(path.Join("testdata", "self_include.mro"),
+		[]string{"testdata"}, false); err == nil {
+		t.Error("expected an error.")
+	}
+	if _, _, _, err := Compile(path.Join("testdata", "self_include_indirect.mro"),
+		[]string{"testdata"}, false); err == nil {
+		t.Error("expected an error.")
+	}
+}
+
+// Tests that compilation fails when a file includes itself.
+func TestFailMultiInclude(t *testing.T) {
+	t.Parallel()
+	if _, _, _, err := Compile(path.Join("testdata", "multi_include.mro"),
 		[]string{"testdata"}, false); err == nil {
 		t.Error("expected an error.")
 	}
@@ -75,37 +90,7 @@ func TestIncludeDiamond(t *testing.T) {
 	}
 }
 
-// Tests that the "combined" source resulting from compilation is as expected.
-func TestCombineSource(t *testing.T) {
-	t.Parallel()
-	if src, ifnames, _, err := Compile(path.Join("testdata", "call.mro"),
-		[]string{"testdata"}, false); err != nil {
-		t.Error(err)
-	} else {
-		if len(ifnames) != 2 {
-			t.Errorf("Expected 3 included files, found %d", len(ifnames))
-		}
-		found := false
-		for _, f := range ifnames {
-			if f == "pipeline.mro" {
-				found = true
-				break
-			}
-		}
-		if !found {
-			t.Error("Expected to find pipeline.mro.")
-		}
-		found = false
-		for _, f := range ifnames {
-			if f == "stages.mro" {
-				found = true
-				break
-			}
-		}
-		if !found {
-			t.Error("Expected to find stages.mro.")
-		}
-		if src != `#
+const combinedTestSrc = `#
 # @include "stages.mro"
 #
 
@@ -145,8 +130,94 @@ pipeline MY_PIPELINE(
 call MY_PIPELINE(
     info = 2,
 )
-` {
-			t.Errorf("Incorrect combined source.  Got \n%s", src)
+`
+
+// Tests that the "combined" source resulting from compilation is as expected.
+func TestCombineSource(t *testing.T) {
+	t.Parallel()
+	atd, err := filepath.Abs("testdata")
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, mropath := range []string{"testdata", "testdata/", atd, atd + "/"} {
+		if src, ifnames, _, err := Compile(path.Join(atd, "call.mro"),
+			[]string{mropath}, false); err != nil {
+			t.Error(err)
+		} else {
+			if len(ifnames) != 2 {
+				t.Errorf("Expected 3 included files, found %d", len(ifnames))
+			}
+			found := false
+			for _, f := range ifnames {
+				if f == "pipeline.mro" {
+					found = true
+					break
+				}
+			}
+			if !found {
+				t.Error("Expected to find pipeline.mro.")
+			}
+			found = false
+			for _, f := range ifnames {
+				if f == "stages.mro" {
+					found = true
+					break
+				}
+			}
+			if !found {
+				t.Error("Expected to find stages.mro.")
+			}
+			if src != combinedTestSrc {
+				t.Errorf("Incorrect combined source.  Got \n%s", src)
+			}
+		}
+	}
+}
+
+// Tests that the "combined" source resulting from compilation is as expected.
+func TestUncheckedCombineSource(t *testing.T) {
+	t.Parallel()
+	atd, err := filepath.Abs("testdata")
+	if err != nil {
+		t.Fatal(err)
+	}
+	srcBytes, err := ioutil.ReadFile(path.Join("testdata", "call.mro"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	var parser Parser
+	for _, mropath := range []string{"testdata", "testdata/", atd, atd + "/"} {
+		if ast, err := parser.UncheckedParseIncludes(srcBytes,
+			path.Join(atd, "call.mro"),
+			[]string{mropath}); err != nil {
+			t.Error(err)
+		} else {
+			if len(ast.Files) != 3 {
+				t.Errorf("Expected 3 included files, found %d", len(ast.Includes))
+			}
+			found := false
+			for _, f := range ast.Files {
+				if f.FileName == "pipeline.mro" {
+					found = true
+					break
+				}
+			}
+			if !found {
+				t.Error("Expected to find pipeline.mro.")
+			}
+			found = false
+			for _, f := range ast.Files {
+				if f.FileName == "stages.mro" {
+					found = true
+					break
+				}
+			}
+			if !found {
+				t.Error("Expected to find stages.mro.")
+			}
+			if src := ast.Format(); src != combinedTestSrc {
+				t.Errorf("Incorrect combined source.  Got \n%s", src)
+			}
 		}
 	}
 }
@@ -305,12 +376,27 @@ stage MY_BROKEN_STAGE(
 // Tests that compilation fails when a file includes itself.
 func TestIncludeRelative(t *testing.T) {
 	t.Parallel()
-	if _, _, _, err := Compile(path.Join("testdata", "subdir", "pipeline_subdir.mro"),
-		[]string{"testdata"}, false); err != nil {
-		t.Error(err)
+	atd, err := filepath.Abs("testdata")
+	if err != nil {
+		t.Fatal(err)
 	}
-	if _, _, _, err := Compile(path.Join("testdata", "subdir", "pipeline_rel.mro"),
-		[]string{"testdata"}, false); err != nil {
+	for _, mropath := range []string{"testdata", "testdata/", atd, atd + "/"} {
+		if _, _, _, err := Compile(path.Join("testdata", "subdir", "pipeline_subdir.mro"),
+			[]string{mropath}, false); err != nil {
+			t.Error(err)
+		}
+		if _, _, _, err := Compile(path.Join(atd, "subdir", "pipeline_subdir.mro"),
+			[]string{mropath}, false); err != nil {
+			t.Error(err)
+		}
+		if _, _, _, err := Compile(path.Join("testdata", "subdir", "pipeline_rel.mro"),
+			[]string{mropath}, false); err != nil {
+			t.Error(err)
+		}
+	}
+	if _, _, _, err := Compile(path.Join("testdata", "subdir", "pipeline_ambiguous.mro"),
+		[]string{""}, false); err != nil {
+		// not ambiguous if testdata isn't in the MROPATH
 		t.Error(err)
 	}
 }

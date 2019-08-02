@@ -1,0 +1,3 @@
+# This should fail to compile.
+@include "pipeline.mro"
+@include "pipeline.mro"
