@@ -161,6 +161,8 @@ func FsTypeString(fsType int64) string {
 		return "pipefs"
 	case unix.PROC_SUPER_MAGIC:
 		return "proc"
+	case 0x7c7c6673:
+		return "prl_fs"
 	case unix.PSTOREFS_MAGIC:
 		return "pstore"
 	case unix.QNX4_SUPER_MAGIC:
