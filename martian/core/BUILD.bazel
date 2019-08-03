@@ -57,6 +57,7 @@ go_test(
     data = [
         "testdata/vsize.py",
         "testdata/stages.mro",
+        "testdata/sub/stages.mro",
     ],
     embed = [":go_default_library"],
     deps = [
