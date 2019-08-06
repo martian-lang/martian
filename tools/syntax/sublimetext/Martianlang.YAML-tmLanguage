@@ -1,16 +1,388 @@
+# [PackageDev] target_format: plist, ext: tmLanguage
 fileTypes: [mro]
 name: Martianlang
 patterns:
-- {match: '([^\w]|^)(^|\s+)(filetype)([^\w]|$)', name: keyword.operator}
-- {match: '([^\w]|^)(stage|pipeline)([^\w]|$)', name: storage.type}
-- {match: '([^\w]|^)(@include|return|volatile|file|sweep|call|=)([^\w]|$)', name: keyword.operator}
-- {match: '([^\w]|^)(in|out|src|py|int|string|float|path|bool|null)([^\w]|$)', name: storage.modifier}
-- captures:
-    '1': {name: entity.name.function}
-  match: (\w+)\s*\(
-  name: function.martianlang
-- {match: '"[^"]+"', name: string.quoted.double}
-- {match: \#.*$, name: comment.line}
-- {match: '-?\d+(\.\d+)?', name: constant.numeric}
+- match: \#.*$
+  name: comment.line
+- match: '^\s*(@include)\s+("(?:[^"]|\\")+")'
+  name: meta.preprocessor.mro.import
+  captures:
+    '1': {name: keyword.import.mro}
+    '2':
+      patterns:
+      - include: '#string'
+- include: '#filetype'
+- include: '#callable'
+- include: '#pipeline_calls'
+- include: '#call'
+repository:
+  string:
+    patterns:
+    - match: '(")((?:[^\\"]|\\.)*)(")'
+      name: string.quoted.double.mro
+      captures:
+        '1': {name: punctuation.definition.string.begin.mro}
+        '2':
+          patterns:
+          - match: '\\(?:[0-7]{3}|[abfnrtv\\"]|x[0-9a-fA-F]{2}|u[0-9a-fA-F]{4}|U[0-9a-fA-F]{8})'
+            name: constant.character.escape.mro
+          - match: '\\(?:[0-7]+[^0-7]|[xuU][0-9a-fA-F]*[^0-9a-fA-F]|.)'
+            name: invalid.illegal.unknown-escape.mro
+          - match: '[^\\"]'
+            name: string.quoted.double.character.mro
+        '3': {name: punctuation.definition.string.end.mro}
+  number:
+    patterns:
+    - match: '\b-?[0-9]+(:?\.[0-9]+[eE][+-]?|[eE][+-]?|\.)[0-9]+\b'
+      name: constant.numeric.floating-point
+    - match: '\b-?0*[0-9]{1,19}\b'
+      name: constant.numeric.integer
+  constant:
+    patterns:
+    - include: '#string'
+    - include: '#number'
+    - match: '\b(true|false|null)\b'
+      name: constant.language.mro
+  filetype_name:
+    patterns:
+    - match: '(?:[a-zA-z0-9_]+\.)*[a-zA-z0-9_]+'
+      name: entity.name.type.mro.filetype
+  filetype:
+    patterns:
+    - name: meta.type.mro.filetype
+      match: '^\s*(filetype)\s+((?:[a-zA-z0-9_]+\.)*[a-zA-z0-9_]+)\s*(;)'
+      captures:
+        '1': {name: keyword.declaration.type.mro.filetype}
+        '2':
+          patterns:
+          - include: '#filetype_name'
+        '3': {name: punctuation.terminator.semicolon}
+  binding_path:
+    patterns:
+    - name: meta.group.binding_path
+      begin: '\b(?:(self)|(_?[a-zA-Z][a-zA-z0-9_]*))\b'
+      beginCaptures:
+        '1': {name: variable.language.mro.self}
+        '2': {name: variable.function}
+      end: ','
+      endCaptures:
+        '0': {name: punctuation.other.comma}
+      patterns:
+        - name: meta.group.mro.member
+          match: '(\.)\s*(_?[a-zA-Z][a-zA-z0-9_]*)'
+          captures:
+            '1': {name: punctuation.accessor.period.mro}
+            '2': {name: variable.other.member.mro}
+  binding:
+    patterns:
+    - name: meta.brackets.binding_array
+      begin: '\['
+      beginCaptures:
+        '0': {name: punctuation.definition.begin.bracket.square.mro}
+      end: '\]'
+      endCaptures:
+        '0': {name: punctuation.definition.end.bracket.square.mro}
+      patterns:
+        - include: '#binding'
+    - name: meta.braces.binding_map
+      begin: '{'
+      beginCaptures:
+        '0': {name: punctuation.definition.begin.bracket.curly.mro}
+      end: '}'
+      endCaptures:
+        '0': {name: punctuation.definition.end.bracket.curly.mro}
+      patterns:
+      - name: meta.group.map_key_one_line
+        match: '(?:("(?:[^"]|\\")*")|(_?[a-zA-Z][a-zA-z0-9_]*))\s*(:)\s*((?:"(?:[^"]|\\")*"|[^,:()"\[\]{}]*),?\s*$)'
+        captures:
+          '1':
+            patterns:
+            - include: '#string'
+          '2': {name: variable.other.member.mro}
+          '3': {name: punctuation.other.colon.mro}
+          '4':
+            patterns:
+            - include: '#binding'
+      - name: meta.annotation.identifier.map_key
+        begin: '(?:("(?:[^"]|\\")*")|(_?[a-zA-Z][a-zA-z0-9_]*))\s*(:)'
+        beginCaptures:
+          '1':
+            patterns:
+            - include: '#string'
+          '2': {name: variable.other.member.mro}
+          '3': {name: punctuation.other.colon.mro}
+        end: ','
+        endCaptures:
+          '0': {name: punctuation.other.comma}
+        patterns:
+        - include: '#binding'
+    - name: meta.annotation.identifier.simple_binding
+      match: '("(?:[^"]|\\"\s*)*"|\b[^,:()"\[\]{}]*)(,)?'
+      captures:
+        '1':
+          patterns:
+          - include: '#constant'
+          - include: '#binding_path'
+        '2': {name: punctuation.other.comma}
+  assignment:
+    patterns:
+    - name: meta.function.parameters.assignment
+      match: '\b(_?[a-zA-Z][a-zA-z0-9_]*)\s*(=)\s*'
+      captures:
+        '1': {name: variable.parameter}
+        '2': {name: keyword.operator.assignment}
+  call_modifier:
+    patterns:
+    - match: '\blocal\b'
+      name: variable.language.mro.local
+    - match: '\bpreflight\b'
+      name: variable.language.mro.preflight
+    - match: '\bvolatile\b'
+      name: variable.language.mro.volatile
+  call:
+    patterns:
+    - name: meta.function-call.mro
+      begin: '\b(call)((?:\s+(?:local|preflight|volatile)){0,3})\s+(_?[a-zA-Z][a-zA-z0-9_]*)\s+(as)\s+(_?[a-zA-Z][a-zA-z0-9_]*)\s*(\()'
+      beginCaptures:
+        '1': {name: keyword.control.mro.call}
+        '2':
+          patterns:
+          - include: '#call_modifier'
+        '3': {name: variable.function}
+        '4': {name: keyword.control.mro.as}
+        '5': {name: entity.name.function.alias}
+        '6': {name: punctuation.definition.begin.bracket.round.mro}
+      end: '\)'
+      endCaptures:
+        '0': {name: punctuation.definition.end.bracket.round.mro}
+      patterns:
+      - include: '#assignment'
+      - include: '#binding'
+    - name: meta.function-call.mro
+      begin: '\b(call)((?:\s+(?:local|preflight|volatile)){0,3})\s+(_?[a-zA-Z][a-zA-z0-9_]*)\s*(\()'
+      beginCaptures:
+        '1': {name: keyword.control.mro.call}
+        '2':
+          patterns:
+          - include: '#call_modifier'
+        '3': {name: entity.name.function}
+        '4': {name: punctuation.definition.begin.bracket.round.mro}
+      end: '\)'
+      endCaptures:
+        '0': {name: punctuation.definition.end.bracket.round.mro}
+      patterns:
+      - include: '#assignment'
+      - include: '#binding'
+  pipeline_call:
+    patterns:
+    - include: '#call'
+    - name: meta.function.return-type.mro
+      begin: '\b(return)\s*(\()'
+      beginCaptures:
+        '1': {name: keyword.control.mro.return}
+        '2': {name: punctuation.definition.begin.bracket.round.mro}
+      end: '\)'
+      endCaptures:
+        '0': {name: punctuation.definition.end.bracket.round.mro}
+      patterns:
+      - include: '#assignment'
+      - include: '#binding'
+    - name: meta.function.return-type.mro.retain
+      begin: '\b(retain)\s*(\()'
+      beginCaptures:
+        '1': {name: keyword.control.mro.retain}
+        '2': {name: punctuation.definition.begin.bracket.round.mro}
+      end: '\)'
+      endCaptures:
+        '0': {name: punctuation.definition.end.bracket.round.mro}
+      patterns:
+      - include: '#binding_path'
+    - name: meta.function.mro.using
+      begin: '\b(using)\s*(\()'
+      beginCaptures:
+        '1': {name: keyword.control.mro.using}
+        '2': {name: punctuation.definition.begin.bracket.round.mro}
+      end: '\)'
+      endCaptures:
+        '0': {name: punctuation.definition.end.bracket.round.mro}
+      patterns:
+        - match: '(preflight|local|volatile)\s*(=)\s*(true|false)\s*(,)'
+          captures:
+            '1':
+            - patterns:
+              - include: '#call_modifier'
+            '2': {name: keyword.operator.assignment}
+            '3':
+            - include: '#constant'
+            '4': {name: punctuation.other.comma}
+        - match: '(disabled)\s*(=)\s*([a-zA-z0-9_.]+)\s*(,)'
+          captures:
+            '1': {name: variable.language.mro.disabled}
+            '2': {name: keyword.operator.assignment}
+            '3':
+            - include: '#binding_path'
+            '4': {name: punctuation.other.comma}
+  builtin_types:
+    patterns:
+    # Does not include map, because we don't want to allow map<map>
+    - name: storage.type.boolean
+      match: '\bbool\b'
+    - name: storage.type.numeric.int
+      match: '\bint\b'
+    - name: storage.type.numeric.float
+      match: '\bfloat\b'
+    - name: storage.type.string
+      match: '\b(?:string|file|path)\b'
+  type_name:
+    patterns:
+    - name: meta.type.mro.typed_map
+      begin: '\b(map)\s*(<)\s*([a-zA-Z0-9._]*)\s*((?:\[\])*)\s*(>)\s*((?:\[\])*)'
+      captures:
+        '1': {name: storage.type.map}
+        '2': {name: punctuation.definition.generic.begin.bracket.angle.mro}
+        '3':
+          patterns:
+            - include: '#builtin_types'
+            - include: '#filetype_name'
+        '4': {name: storage.modifier.array}
+        '5': {name: punctuation.definition.generic.end.bracket.angle.mro}
+        '6': {name: storage.modifier.array}
+    - name: meta.type.mro.array
+      match: '([a-zA-Z0-9._]*)\s*((?:\[\])*)'
+      captures:
+        '1':
+          patterns:
+          - include: '#builtin_types'
+          - name: storage.type.map
+            match: '\bmap\b'
+          - include: '#filetype_name'
+        '2': {name: storage.modifier.array}
+  param:
+    patterns:
+    - name: meta.function.parameters.mro.inparam
+      match: '\b(in)\s*([a-zA-Z0-9._<>\[\]]*)\s+(_?[a-zA-Z][a-zA-z0-9_]*)(?:\s+("(?:[^"]|\\")*"))?\s*(,)'
+      captures:
+        '1': {name: storage.modifier.mro.in}
+        '2':
+          patterns:
+          - include: '#type_name'
+        '3': {name: entity.name.parameter}
+        '4':
+          patterns:
+          - include: '#string'
+        '5': {name: punctuation.other.comma}
+    - name: meta.function.parameters.mro.outparam
+      match: '\b(out)\s*([a-zA-Z0-9._<>\[\]]*)\s+(_?[a-zA-Z][a-zA-z0-9_]*)(?:\s+("(?:[^"]|\\")*")(?:\s+("(?:[^"]|\\")*"))?)?\s*(,)'
+      captures:
+        '1': {name: storage.modifier.mro.out}
+        '2':
+          patterns:
+          - include: '#type_name'
+        '3': {name: entity.name.parameter}
+        '4':
+          patterns:
+          - include: '#string'
+        '5':
+          patterns:
+          - include: '#string'
+        '6': {name: punctuation.other.comma}
+  callable:
+    patterns:
+    - name: meta.function.mro.pipeline
+      begin: '\b(pipeline)\s+(_?[a-zA-Z][a-zA-z0-9_]*)\s*(\()'
+      beginCaptures:
+        '1': {name: keyword.declaration.function.mro.pipeline}
+        '2': {name: entity.name.function}
+        '3': {name: punctuation.definition.begin.bracket.round.mro}
+      end: '\)'
+      endCaptures:
+        '0': {name: punctuation.definition.end.bracket.round.mro}
+      patterns:
+      - include: '#param'
+    - name: meta.function.mro.stage
+      begin: '\b(stage)\s+(_?[a-zA-Z][a-zA-z0-9_]*)\s*(\()'
+      beginCaptures:
+        '1': {name: keyword.declaration.function.mro.stage}
+        '2': {name: entity.name.function}
+        '3': {name: punctuation.definition.begin.bracket.round.mro}
+      end: '\)'
+      endCaptures:
+        '0': {name: punctuation.definition.end.bracket.round.mro}
+      patterns:
+      - include: '#param'
+      - name: meta.function.parameters.mro.srcparam
+        match: '\b(src)\s*(py|exec|comp)\s+("(?:[^"]|\\")+")\s*(,)'
+        captures:
+          '1': {name: storage.modifier.mro.src}
+          '2': {name: keyword.language.mro.srclang}
+          '3':
+            patterns:
+            - include: '#string'
+          '4': {name: punctuation.other.comma}
+    - name: meta.function.mro.split
+      begin: '\b(split)\s*(?:using\s*)?(\()'
+      beginCaptures:
+        '1': {name: keyword.control.mro.split}
+        '2': {name: punctuation.definition.begin.bracket.round.mro}
+      end: '\)'
+      endCaptures:
+        '0': {name: punctuation.definition.end.bracket.round.mro}
+      patterns:
+      - include: '#param'
+    - name: meta.function.mro.using
+      begin: '\b(using)\s*(\()'
+      beginCaptures:
+        '1': {name: keyword.control.mro.using}
+        '2': {name: punctuation.definition.begin.bracket.round.mro}
+      end: '\)'
+      endCaptures:
+        '0': {name: punctuation.definition.end.bracket.round.mro}
+      patterns:
+      - match: '(threads|v?mem_?gb)\s*(=)\s*([0-9.eE+-]+)\s*(,)'
+        captures:
+          '1': {name: variable.language.mro.resources}
+          '2': {name: keyword.operator.assignment}
+          '3':
+          - include: '#number'
+          '4': {name: punctuation.other.comma}
+      - match: '(special)\s*(=)\s*("(?:[^"]|\\")*")\s*(,)'
+        captures:
+          '1': {name: variable.language.mro.resources.special}
+          '2': {name: keyword.operator.assignment}
+          '3':
+          - include: '#string'
+          '4': {name: punctuation.other.comma}
+    - name: meta.struct.mro
+      begin: '\b(struct)\s+(_?[a-zA-Z][a-zA-z0-9_]*)\s*(\()'
+      beginCaptures:
+        '1': {name: keyword.declaration.struct.mro}
+        '2': {name: entity.name.type.struct.mro}
+        '3': {name: punctuation.definition.begin.bracket.round.mro}
+      end: '\)'
+      endCaptures:
+        '0': {name: punctuation.definition.end.bracket.round.mro}
+      patterns:
+      - name: meta.function.parameters.param
+        match: '\b([a-zA-Z0-9._<>\[\]]*)\s+(_?[a-zA-Z][a-zA-z0-9_]*)(?:\s+("(?:[^"]|\\")*"))?\s*(,)'
+        captures:
+          '1':
+            patterns:
+            - include: '#type_name'
+          '2': {name: variable.other.member.mro}
+          '3':
+            patterns:
+            - include: '#string'
+          '4': {name: punctuation.other.comma}
+  pipeline_calls:
+    patterns:
+    - name: meta.block.mro.pipeline
+      begin: '{'
+      beginCaptures:
+        '0': {name: punctuation.definition.begin.bracket.curley.mro}
+      end: '}'
+      endCaptures:
+        '0': {name: punctuation.definition.end.bracket.curley.mro}
+      patterns:
+      - include: '#pipeline_call'
 scopeName: source.martianlang
 uuid: 5da873b6-8693-47c9-b074-1eb3574281d1

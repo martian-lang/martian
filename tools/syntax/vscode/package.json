@@ -1,0 +1,34 @@
+{
+    "name": "martian-lang",
+    "displayName": "Martian MRO language",
+    "description": "Supports syntax highlighting and indenting for Martian (https://martian-lang.org) .mro files.",
+    "version": "0.0.1",
+    "engines": {
+        "vscode": "^1.36.0"
+    },
+    "categories": [
+        "Programming Languages"
+    ],
+    "contributes": {
+        "languages": [
+            {
+                "id": "mro",
+                "aliases": [
+                    "Martian",
+                    "mro"
+                ],
+                "extensions": [
+                    ".mro"
+                ],
+                "configuration": "./language-configuration.json"
+            }
+        ],
+        "grammars": [
+            {
+                "language": "mro",
+                "scopeName": "source.martianlang",
+                "path": "./syntaxes/Martianlang.tmLanguage.json"
+            }
+        ]
+    }
+}
