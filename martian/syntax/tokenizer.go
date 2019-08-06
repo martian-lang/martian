@@ -72,7 +72,7 @@ var rules = [...]rule{
 	{regexp.MustCompile(`^` + default_out_name + `\b`), DEFAULT},
 	{regexp.MustCompile(`^_?[a-zA-Z][a-zA-z0-9_]*\b`), ID},
 	{regexp.MustCompile(`^-?[0-9]+(:?\.[0-9]+[eE][+-]?|[eE][+-]?|\.)[0-9]+\b`), NUM_FLOAT},
-	{regexp.MustCompile(`^-?0*?[0-9]{1,19}\b`), NUM_INT},
+	{regexp.MustCompile(`^-?0*[0-9]{1,19}\b`), NUM_INT},
 }
 
 func nextToken(head []byte) (int, []byte) {

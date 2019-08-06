@@ -45,6 +45,8 @@ func TestNextToken(t *testing.T) {
 	check(`9223372036854775807`, NUM_INT)
 	check(`00009223372036854775807`, NUM_INT)
 	check(`-9223372036854775808`, NUM_INT)
+	check(`-0`, NUM_INT)
+	check(`0`, NUM_INT)
 
 	// float patterns
 	check(`0.0`, NUM_FLOAT)
