@@ -434,23 +434,43 @@ func diffLines(src, formatted string, t *testing.T) {
 	src_lines := strings.Split(src, "\n")
 	formatted_lines := strings.Split(formatted, "\n")
 	offset := 0
+	// Replace tabs with \t for visibility, and truncate lines over 30
+	// characters so that the diff will fit.
+	trimLine := func(line string) string {
+		line = strings.Replace(line, "\t", "\\t", -1)
+		if len(line) > 30 {
+			line = line[:27] + "..."
+		}
+		return line
+	}
+	removeSpace := func(line string) string {
+		line = strings.TrimSpace(line)
+		if len(line) == 0 {
+			return line
+		}
+		flds := strings.Fields(line)
+		if len(flds) <= 1 {
+			return line
+		}
+		return strings.Join(flds, "")
+	}
 	for i, line := range src_lines {
 		pad := ""
-		if len(line) < 30 {
-			pad = strings.Repeat(" ", 30-len(line))
+		if fmtLen := len(line) + strings.Count(line, "\t"); fmtLen < 30 {
+			// Add the tab count because when formatting we'll replace those
+			// characters with \t.
+			pad = strings.Repeat(" ", 30-fmtLen)
 		}
 		if len(formatted_lines) > i+offset {
 			if line == formatted_lines[i+offset] {
-				if len(line) > 30 {
-					line = line[:27] + "..."
-				}
+				line = trimLine(line)
 				t.Logf("%3d: %s %s= %s", i, line, pad, line)
-			} else if strings.TrimSpace(line) == strings.TrimSpace(formatted_lines[i+offset]) {
+			} else if cline := removeSpace(line); cline == removeSpace(formatted_lines[i+offset]) {
 				t.Errorf("%3d: %s %s| %s", i, line, pad, formatted_lines[i+offset])
 			} else {
 				forwardOffset := 0
 				for moreOffset, fline := range formatted_lines[i+offset:] {
-					if strings.TrimSpace(fline) == strings.TrimSpace(line) {
+					if removeSpace(fline) == cline {
 						forwardOffset = moreOffset
 						break
 					} else if moreOffset > 20 {
@@ -458,15 +478,15 @@ func diffLines(src, formatted string, t *testing.T) {
 					}
 				}
 				backwardOffset := 0
+				cline := removeSpace(formatted_lines[i+offset])
 				for moreOffset, uline := range src_lines[i:] {
-					if strings.TrimSpace(uline) == strings.TrimSpace(formatted_lines[i+offset]) {
+					if removeSpace(uline) == cline {
 						backwardOffset = moreOffset
 						break
 					} else if moreOffset > 20 {
 						break
 					}
 				}
-				//				t.Logf("offsets %d and %d", forwardOffset, backwardOffset)
 				if forwardOffset == 0 && backwardOffset == 0 {
 					t.Errorf("%3d: %s %s| %s", i, line, pad, formatted_lines[i+offset])
 				} else if (forwardOffset == 0 && backwardOffset != 0) ||
@@ -479,7 +499,8 @@ func diffLines(src, formatted string, t *testing.T) {
 					}
 					offset += forwardOffset
 					if line == formatted_lines[i+offset] {
-						t.Logf("%3d: %s %s= %s", i, line, pad, formatted_lines[i+offset])
+						line = trimLine(line)
+						t.Logf("%3d: %s %s= %s", i, line, pad, line)
 					} else {
 						t.Errorf("%3d: %s %s| %s", i, line, pad, formatted_lines[i+offset])
 					}
