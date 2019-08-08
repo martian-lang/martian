@@ -5,6 +5,8 @@ import (
 	"path"
 	"path/filepath"
 	"testing"
+
+	"github.com/martian-lang/martian/martian/util"
 )
 
 // Tests that compilation fails when a file includes itself.
@@ -224,6 +226,7 @@ func TestUncheckedCombineSource(t *testing.T) {
 
 // Tests that FixIncludes does the right thing on a file with a top-level call.
 func TestFixIncludesTop(t *testing.T) {
+	util.SetPrintLogger(&devNull)
 	t.Parallel()
 	if src, err := FormatFile(path.Join("testdata", "call.mro"),
 		true,
@@ -246,6 +249,7 @@ call MY_PIPELINE(
 // Tests that FixIncludes does the right thing on a file with a top-level call
 // missing the include.
 func TestFixIncludesTopMissing(t *testing.T) {
+	util.SetPrintLogger(&devNull)
 	t.Parallel()
 	if src, err := FormatFile(path.Join("testdata", "call_missing_include.mro"),
 		true,
@@ -267,6 +271,7 @@ call MY_PIPELINE(
 
 // Tests that FixIncludes does the right thing on a file with a pipeline.
 func TestFixIncludesPipeline(t *testing.T) {
+	util.SetPrintLogger(&devNull)
 	t.Parallel()
 	if src, err := FormatFile(path.Join("testdata", "pipeline.mro"),
 		true,
@@ -298,6 +303,7 @@ pipeline MY_PIPELINE(
 // Tests that FixIncludes does the right thing on a file with a pipeline
 // with a missing include.
 func TestFixIncludesPipelineMissing(t *testing.T) {
+	util.SetPrintLogger(&devNull)
 	t.Parallel()
 	if src, err := FormatFile(path.Join("testdata", "pipeline_missing_include.mro"),
 		true,
@@ -328,6 +334,7 @@ pipeline MY_BROKEN_PIPELINE(
 
 // Tests that FixIncludes does the right thing on a file with a stage.
 func TestFixIncludesStage(t *testing.T) {
+	util.SetPrintLogger(&devNull)
 	t.Parallel()
 	if src, err := FormatFile(path.Join("testdata", "stages.mro"),
 		true,
@@ -349,9 +356,21 @@ stage MY_STAGE(
 	}
 }
 
+type nullWriter struct{}
+
+func (*nullWriter) Write(b []byte) (int, error) {
+	return len(b), nil
+}
+func (*nullWriter) WriteString(b string) (int, error) {
+	return len(b), nil
+}
+
+var devNull nullWriter
+
 // Tests that FixIncludes does the right thing on a file with a stage
 // that is missing a type definition.
 func TestFixIncludesStageMissing(t *testing.T) {
+	util.SetPrintLogger(&devNull)
 	t.Parallel()
 	if src, err := FormatFile(path.Join("testdata", "stages_missing_type.mro"),
 		true,

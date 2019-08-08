@@ -9,7 +9,6 @@ package syntax
 import (
 	"fmt"
 	"io/ioutil"
-	"os"
 	"path/filepath"
 	"sort"
 	"strings"
@@ -203,7 +202,8 @@ func findMissingIncludes(seenFiles map[string]*SourceFile,
 							needed := false
 							for _, callable := range ast.Callables.List {
 								if _, ok := neededCallables[callable.GetId()]; ok {
-									fmt.Fprintf(os.Stderr, "Found %s in %s\n",
+									util.PrintInfo("include",
+										"Found %s in %s\n",
 										callable.GetId(), absPath)
 									needed = true
 									delete(neededCallables, callable.GetId())
