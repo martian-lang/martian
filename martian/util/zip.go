@@ -254,8 +254,8 @@ func CreateZip(zipPath string, filePaths []string) error {
 		if info.Mode()&os.ModeSymlink != 0 {
 			if link, err := os.Readlink(filePath); err != nil {
 				return err
-			} else {
-				out.Write([]byte(link))
+			} else if _, err := out.Write([]byte(link)); err != nil {
+				return err
 			}
 		} else {
 			if err := addZipFile(filePath, out); err != nil {

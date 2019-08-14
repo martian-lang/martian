@@ -352,18 +352,15 @@ func ParseTagsOpt(opt string) []string {
 
 func ParseMroFlags(opts map[string]interface{}, doc string, martianOptions []string, martianArguments []string) {
 	// Parse doc string for accepted arguments
-	r := regexp.MustCompile("--\\w+")
+	r := regexp.MustCompile(`--\w+`)
 	s := r.FindAllString(doc, -1)
-	if s == nil {
-		s = []string{}
-	}
 
-	allowedOptions := map[string]bool{}
+	allowedOptions := make(map[string]struct{}, len(s))
 	for _, allowedOption := range s {
-		allowedOptions[allowedOption] = true
+		allowedOptions[allowedOption] = struct{}{}
 	}
 	// Remove unallowed options
-	newMartianOptions := []string{}
+	newMartianOptions := make([]string, 0, len(martianOptions)+len(martianArguments))
 	for allowedOption := range allowedOptions {
 		for _, option := range martianOptions {
 			if strings.HasPrefix(option, allowedOption) {

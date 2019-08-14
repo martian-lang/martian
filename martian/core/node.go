@@ -49,43 +49,42 @@ type Nodable interface {
 
 // Represents a node in the pipeline graph.
 type Node struct {
-	parent             Nodable
-	rt                 *Runtime
-	kind               string
-	name               string
-	callableId         string
-	fqname             string
-	path               string
-	metadata           *Metadata
-	callable           syntax.Callable
-	resources          *JobResources
-	argbindings        map[string]*Binding
-	argbindingList     []*Binding // for stable ordering
-	retbindings        map[string]*Binding
-	retbindingList     []*Binding // for stable ordering
-	sweepbindings      []*Binding
-	subnodes           map[string]Nodable
-	prenodes           map[string]Nodable
-	directPrenodes     []Nodable
-	postnodes          map[string]Nodable
-	frontierNodes      *threadSafeNodeMap
-	forks              []*Fork
-	state              MetadataState
-	volatile           bool
-	strictVolatile     bool
-	local              bool
-	preflight          bool
-	disabled           []*Binding
-	modBindingList     []*Binding
-	stagecodeLang      syntax.StageCodeType
-	stagecodeCmd       string
-	journalPath        string
-	tmpPath            string
-	mroPaths           []string
-	mroVersion         string
-	envs               map[string]string
-	invocation         *InvocationData
-	blacklistedFromMRT bool // Don't used cached data when MRT'ing
+	parent         Nodable
+	rt             *Runtime
+	kind           string
+	name           string
+	callableId     string
+	fqname         string
+	path           string
+	metadata       *Metadata
+	callable       syntax.Callable
+	resources      *JobResources
+	argbindings    map[string]*Binding
+	argbindingList []*Binding // for stable ordering
+	retbindings    map[string]*Binding
+	retbindingList []*Binding // for stable ordering
+	sweepbindings  []*Binding
+	subnodes       map[string]Nodable
+	prenodes       map[string]Nodable
+	directPrenodes []Nodable
+	postnodes      map[string]Nodable
+	frontierNodes  *threadSafeNodeMap
+	forks          []*Fork
+	state          MetadataState
+	volatile       bool
+	strictVolatile bool
+	local          bool
+	preflight      bool
+	disabled       []*Binding
+	modBindingList []*Binding
+	stagecodeLang  syntax.StageCodeType
+	stagecodeCmd   string
+	journalPath    string
+	tmpPath        string
+	mroPaths       []string
+	mroVersion     string
+	envs           map[string]string
+	invocation     *InvocationData
 }
 
 // Represents an edge in the pipeline graph.

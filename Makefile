@@ -62,9 +62,6 @@ endif
 web:
 	(cd web/martian && npm $(NPM_CMD) && node_modules/gulp/bin/gulp.js)
 
-mrt:
-	cp scripts/mrt $(GOBIN)/mrt
-
 $(GOLIBTESTS): test-%:
 	go test -v ./martian/$*
 

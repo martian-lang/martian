@@ -555,7 +555,7 @@ func getMaybeFileNames(value json.RawMessage) []string {
 	}
 	var vmap map[string]json.RawMessage
 	if json.Unmarshal(value, &vmap) == nil {
-		if vmap == nil || len(vmap) == 0 {
+		if len(vmap) == 0 {
 			return nil
 		}
 		vs := make([]string, 0, len(vmap))

@@ -174,7 +174,7 @@ func walkInternal(root string, start *os.File, walkFn filepath.WalkFunc) error {
 		for _, name := range list {
 			info := unixFileInfo{name: name}
 			if err := info.fstatat(startFd, name); err != nil {
-				if walkFn(path.Join(root, name), &info, err); err != nil && err != filepath.SkipDir {
+				if err := walkFn(path.Join(root, name), &info, err); err != nil && err != filepath.SkipDir {
 					return err
 				} else if err == filepath.SkipDir {
 					return nil

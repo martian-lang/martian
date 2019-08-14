@@ -37,6 +37,8 @@ func BenchmarkGetProcessTreeMemory(b *testing.B) {
 	pid := os.Getppid()
 	io := make(map[int]*IoAmount)
 	for n := 0; n < b.N; n++ {
-		GetProcessTreeMemory(pid, true, io)
+		if _, err := GetProcessTreeMemory(pid, true, io); err != nil {
+			b.Error(err)
+		}
 	}
 }

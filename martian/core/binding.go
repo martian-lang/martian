@@ -20,8 +20,8 @@ type Binding struct {
 	node        *Node
 	id          string
 	tname       string
-	sweep       bool
 	sweepRootId string
+	sweep       bool
 	waiting     bool
 	valexp      string
 	mode        string

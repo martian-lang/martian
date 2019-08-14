@@ -78,24 +78,23 @@ func (pr *VDRKillReport) mergeEvents() {
 
 func mergeVDRKillReports(killReports []*VDRKillReport) *VDRKillReport {
 	allKillReport := &VDRKillReport{}
-	var allEvents []*VdrEvent
 	if len(killReports) > 0 {
-		allEvents = make([]*VdrEvent, 0, len(killReports)+len(killReports[0].Events))
-	}
-	for _, killReport := range killReports {
-		if killReport == nil {
-			continue
+		allEvents := make([]*VdrEvent, 0, len(killReports)+len(killReports[0].Events))
+		for _, killReport := range killReports {
+			if killReport == nil {
+				continue
+			}
+			allKillReport.Size += killReport.Size
+			allKillReport.Count += killReport.Count
+			allKillReport.Errors = append(allKillReport.Errors, killReport.Errors...)
+			allKillReport.Paths = append(allKillReport.Paths, killReport.Paths...)
+			allEvents = append(allEvents, killReport.Events...)
+			if allKillReport.Timestamp == "" || allKillReport.Timestamp < killReport.Timestamp {
+				allKillReport.Timestamp = killReport.Timestamp
+			}
 		}
-		allKillReport.Size += killReport.Size
-		allKillReport.Count += killReport.Count
-		allKillReport.Errors = append(allKillReport.Errors, killReport.Errors...)
-		allKillReport.Paths = append(allKillReport.Paths, killReport.Paths...)
-		allEvents = append(allEvents, killReport.Events...)
-		if allKillReport.Timestamp == "" || allKillReport.Timestamp < killReport.Timestamp {
-			allKillReport.Timestamp = killReport.Timestamp
-		}
+		allKillReport.Events = allEvents
 	}
-	allKillReport.Events = allEvents
 	allKillReport.mergeEvents()
 	return allKillReport
 }
@@ -208,11 +207,8 @@ func (self *Fork) vdrKillSome(partial *PartialVdrKillReport, done bool) (*VDRKil
 		!self.node.rt.overrides.GetOverride(self.node, "force_volatile", true).(bool) {
 		if partial == nil {
 			return nil, false
-		}
-		if partial != nil {
-			return &partial.VDRKillReport, false
 		} else {
-			return nil, false
+			return &partial.VDRKillReport, false
 		}
 	}
 	killPaths := make([]string, 0, len(self.fileParamMap))

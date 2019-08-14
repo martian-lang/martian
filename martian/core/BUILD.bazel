@@ -15,7 +15,6 @@ go_library(
         "jobmanager_remote.go",
         "maxjobs_semaphore.go",
         "metadata.go",
-        "mrt.go",
         "node.go",
         "override.go",
         "perf.go",

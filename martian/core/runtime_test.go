@@ -20,11 +20,6 @@ import (
 	"github.com/martian-lang/martian/martian/util"
 )
 
-func MockRuntime() *Runtime {
-	util.ENABLE_LOGGING = false // Disable core.LogInfo calls in Runtime
-	return NewRuntime("local", "disable", "disable", "")
-}
-
 func ExampleBuildCallSource() {
 	src, _ := BuildCallSource(
 		"STAGE_NAME",

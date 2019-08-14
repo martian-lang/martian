@@ -65,15 +65,15 @@ func ParseVersions(data string) (string, string, error) {
 
 func ParseJobMode(data string) (string, string, string) {
 	jobmode := "local"
-	if m := regexp.MustCompile(".*--jobmode=([^\\s]+).*").FindStringSubmatch(data); len(m) > 0 {
+	if m := regexp.MustCompile(`.*--jobmode=([^\s]+).*`).FindStringSubmatch(data); len(m) > 0 {
 		jobmode = m[1]
 	}
 	localcores := "max"
-	if m := regexp.MustCompile(".*--localcores=([^\\s]+).*").FindStringSubmatch(data); len(m) > 0 {
+	if m := regexp.MustCompile(`.*--localcores=([^\s]+).*`).FindStringSubmatch(data); len(m) > 0 {
 		localcores = m[1]
 	}
 	localmem := "max"
-	if m := regexp.MustCompile(".*--localmem=([^\\s]+).*").FindStringSubmatch(data); len(m) > 0 {
+	if m := regexp.MustCompile(`.*--localmem=([^\s]+).*`).FindStringSubmatch(data); len(m) > 0 {
 		localmem = m[1]
 	}
 	return jobmode, localcores, localmem
@@ -663,7 +663,7 @@ func (self *MroCache) CacheMros(mroPaths []string) {
 				go func(fpath string, result chan map[string]syntax.Callable, mroPaths []string, wg *sync.WaitGroup) {
 					defer wg.Done()
 					if data, err := ioutil.ReadFile(fpath); err == nil {
-						if _, _, ast, err := syntax.ParseSource(string(data), fpath, mroPaths, true); err == nil {
+						if _, _, ast, err := syntax.ParseSourceBytes(data, fpath, mroPaths, true); err == nil {
 							result <- ast.Callables.Table
 						} else {
 							util.PrintError(err, "runtime", "Failed to parse %s", fpath)
@@ -701,7 +701,7 @@ func (self *MroCache) CacheMros(mroPaths []string) {
 			func(mroPath string, callables map[string]syntax.Callable) {
 				self.lock.Lock()
 				defer self.lock.Unlock()
-				self.callableTable[mroPath] = callableTable
+				self.callableTable[mroPath] = callables
 			}(mroPath, callableTable)
 		}(mroPath)
 	}

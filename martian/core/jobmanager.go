@@ -107,11 +107,11 @@ type jobManagerConfig struct {
 	jobSettings      *JobManagerSettings
 	jobCmd           string
 	jobCmdArgs       []string
-	alwaysVmem       bool
 	queueQueryCmd    string
 	queueQueryGrace  time.Duration
 	jobResourcesOpt  string
 	jobTemplate      string
+	alwaysVmem       bool
 	threadingEnabled bool
 }
 

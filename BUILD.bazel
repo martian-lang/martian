@@ -55,12 +55,6 @@ copy_binary(
     visibility = ["//visibility:public"],
 )
 
-copy_binary(
-    name = "mrt_helper",
-    src = "//cmd/mrt_helper",
-    dest = "bin/mrt_helper",
-)
-
 load("@bazel_tools//tools/build_defs/pkg:pkg.bzl", "pkg_tar")
 
 pkg_tar(
@@ -81,7 +75,6 @@ pkg_tar(
     name = "bin",
     srcs = [
         ":mro2go",
-        ":mrt_helper",
     ],
     include_runfiles = 1,
     strip_prefix = "./",

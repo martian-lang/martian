@@ -612,7 +612,7 @@ func (self *Stage) format(printer *printer) {
 	printer.Printf("stage %s(\n", self.Id)
 	self.InParams.format(printer, modeWidth, typeWidth, idWidth, helpWidth)
 	self.OutParams.format(printer, modeWidth, typeWidth, idWidth, helpWidth)
-	self.Src.format(printer, modeWidth, typeWidth, idWidth)
+	self.Src.format(printer, modeWidth, typeWidth)
 	if idWidth > 30 || helpWidth > 20 {
 		_, _, idWidth, helpWidth = measureParamsWidths(
 			self.ChunkIns, self.ChunkOuts)
@@ -686,7 +686,7 @@ func (self *RetainParams) format(printer *printer) {
 	}
 }
 
-func (self *SrcParam) format(printer *printer, modeWidth int, typeWidth int, idWidth int) {
+func (self *SrcParam) format(printer *printer, modeWidth, typeWidth int) {
 	printer.printComments(&self.Node, INDENT)
 	langPad := strings.Repeat(" ", typeWidth-len(string(self.Lang)))
 	modePad := strings.Repeat(" ", modeWidth-len("src"))
