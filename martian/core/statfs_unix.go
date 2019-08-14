@@ -125,6 +125,8 @@ func FsTypeString(fsType int64) string {
 		return "jfs"
 	case 0x0bd00bd0:
 		return "lustre"
+	case 0x53464846:
+		return "lxfs"
 	case unix.MINIX_SUPER_MAGIC, unix.MINIX_SUPER_MAGIC2:
 		return "minix"
 	case unix.MINIX2_SUPER_MAGIC, unix.MINIX2_SUPER_MAGIC2:
