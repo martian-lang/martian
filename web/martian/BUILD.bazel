@@ -1,5 +1,3 @@
-load("@build_bazel_rules_nodejs//:defs.bzl", "nodejs_binary")
-
 genrule(
     name = "clean_css",
     srcs = [
@@ -24,9 +22,9 @@ genrule(
     outs = [
         "templates/graph.html",
     ],
-    cmd = "$(execpath @martian_npm//node_modules/pug-cli:pug__bin) -o $$(readlink -f $(@D)/) $$(readlink -f $<)",
+    cmd = "$(execpath @martian_npm//pug-cli/bin:pug) -o $$(readlink -f $(@D)/) $$(readlink -f $<)",
     tools = [
-        "@martian_npm//node_modules/pug-cli:pug__bin",
+        "@martian_npm//pug-cli/bin:pug",
     ],
 )
 
