@@ -6,6 +6,7 @@ package syntax
 
 import (
 	"sort"
+	"strings"
 
 	"github.com/martian-lang/martian/martian/util"
 )
@@ -72,7 +73,31 @@ func (stage *Stage) compile(global *Ast) error {
 			errs = append(errs, err)
 		}
 	}
+	if err := stage.Src.compile(global); err != nil {
+		errs = append(errs, err)
+	}
 	return errs.If()
+}
+
+func (src *SrcParam) compile(global *Ast) error {
+	if strings.ContainsAny(src.cmd, `"'`) {
+		return global.err(src,
+			"StageCodeError: quotes are not supported in stage code strings")
+	}
+	if src.Path == "" {
+		return global.err(src,
+			"StageCodeError: path cannot be blank.")
+	}
+	if lang, err := src.Lang.Parse(); err != nil {
+		return &wrapError{
+			innerError: err,
+			loc:        src.Node.Loc,
+		}
+	} else if lang == PythonStage && len(src.Args) > 0 {
+		return global.err(src,
+			"StageCodeError: python stages cannot have additional arguments.")
+	}
+	return nil
 }
 
 const (

@@ -385,10 +385,12 @@ out_param
 
 src_stm
     : SRC src_lang LITSTRING COMMA
-        {{ stagecodeParts := strings.Split($<intern>3.unquote($3), " ")
+        {{ cmd := strings.TrimSpace($<intern>3.unquote($3))
+           stagecodeParts := strings.Fields($<intern>3.unquote($3))
            $$ = &SrcParam{
                Node: NewAstNode($<loc>1, $<srcfile>1),
                Lang: StageLanguage($<intern>2.Get($2)),
+               cmd:  cmd,
                Path: stagecodeParts[0],
                Args: stagecodeParts[1:],
            } }}

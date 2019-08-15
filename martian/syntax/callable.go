@@ -120,6 +120,7 @@ type (
 	SrcParam struct {
 		Node AstNode
 		Lang StageLanguage
+		cmd  string
 		Path string
 		Args []string
 	}

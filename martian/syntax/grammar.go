@@ -175,7 +175,7 @@ const mmEofCode = 1
 const mmErrCode = 2
 const mmInitialStackSize = 16
 
-//line grammar.y:740
+//line grammar.y:742
 
 //line yacctab:1
 var mmExca = [...]int{
@@ -1202,10 +1202,12 @@ mmdefault:
 //line grammar.y:388
 		{
 			{
-				stagecodeParts := strings.Split(mmDollar[3].intern.unquote(mmDollar[3].val), " ")
+				cmd := strings.TrimSpace(mmDollar[3].intern.unquote(mmDollar[3].val))
+				stagecodeParts := strings.Fields(mmDollar[3].intern.unquote(mmDollar[3].val))
 				mmVAL.src = &SrcParam{
 					Node: NewAstNode(mmDollar[1].loc, mmDollar[1].srcfile),
 					Lang: StageLanguage(mmDollar[2].intern.Get(mmDollar[2].val)),
+					cmd:  cmd,
 					Path: stagecodeParts[0],
 					Args: stagecodeParts[1:],
 				}
@@ -1213,7 +1215,7 @@ mmdefault:
 		}
 	case 58:
 		mmDollar = mmS[mmpt-0 : mmpt+1]
-//line grammar.y:423
+//line grammar.y:425
 		{
 			{
 				mmVAL.par_tuple = paramsTuple{
@@ -1225,7 +1227,7 @@ mmdefault:
 		}
 	case 59:
 		mmDollar = mmS[mmpt-6 : mmpt+1]
-//line grammar.y:431
+//line grammar.y:433
 		{
 			{
 				mmVAL.par_tuple = paramsTuple{
@@ -1237,7 +1239,7 @@ mmdefault:
 		}
 	case 60:
 		mmDollar = mmS[mmpt-5 : mmpt+1]
-//line grammar.y:437
+//line grammar.y:439
 		{
 			{
 				mmVAL.par_tuple = paramsTuple{
@@ -1249,7 +1251,7 @@ mmdefault:
 		}
 	case 61:
 		mmDollar = mmS[mmpt-4 : mmpt+1]
-//line grammar.y:446
+//line grammar.y:448
 		{
 			{
 				mmVAL.retstm = &ReturnStm{
@@ -1260,7 +1262,7 @@ mmdefault:
 		}
 	case 62:
 		mmDollar = mmS[mmpt-0 : mmpt+1]
-//line grammar.y:454
+//line grammar.y:456
 		{
 			{
 				mmVAL.plretains = nil
@@ -1268,7 +1270,7 @@ mmdefault:
 		}
 	case 63:
 		mmDollar = mmS[mmpt-4 : mmpt+1]
-//line grammar.y:456
+//line grammar.y:458
 		{
 			{
 				mmVAL.plretains = &PipelineRetains{
@@ -1279,7 +1281,7 @@ mmdefault:
 		}
 	case 64:
 		mmDollar = mmS[mmpt-0 : mmpt+1]
-//line grammar.y:463
+//line grammar.y:465
 		{
 			{
 				mmVAL.reflist = nil
@@ -1287,7 +1289,7 @@ mmdefault:
 		}
 	case 65:
 		mmDollar = mmS[mmpt-3 : mmpt+1]
-//line grammar.y:465
+//line grammar.y:467
 		{
 			{
 				mmVAL.reflist = append(mmDollar[1].reflist, mmDollar[2].rexp)
@@ -1295,7 +1297,7 @@ mmdefault:
 		}
 	case 66:
 		mmDollar = mmS[mmpt-2 : mmpt+1]
-//line grammar.y:469
+//line grammar.y:471
 		{
 			{
 				mmVAL.calls = append(mmDollar[1].calls, mmDollar[2].call)
@@ -1303,7 +1305,7 @@ mmdefault:
 		}
 	case 67:
 		mmDollar = mmS[mmpt-1 : mmpt+1]
-//line grammar.y:471
+//line grammar.y:473
 		{
 			{
 				mmVAL.calls = []*CallStm{mmDollar[1].call}
@@ -1311,7 +1313,7 @@ mmdefault:
 		}
 	case 68:
 		mmDollar = mmS[mmpt-6 : mmpt+1]
-//line grammar.y:476
+//line grammar.y:478
 		{
 			{
 				id := mmDollar[3].intern.Get(mmDollar[3].val)
@@ -1326,7 +1328,7 @@ mmdefault:
 		}
 	case 69:
 		mmDollar = mmS[mmpt-8 : mmpt+1]
-//line grammar.y:485
+//line grammar.y:487
 		{
 			{
 				mmVAL.call = &CallStm{
@@ -1340,7 +1342,7 @@ mmdefault:
 		}
 	case 70:
 		mmDollar = mmS[mmpt-5 : mmpt+1]
-//line grammar.y:493
+//line grammar.y:495
 		{
 			{
 				mmDollar[1].call.Modifiers.Bindings = mmDollar[4].bindings
@@ -1349,7 +1351,7 @@ mmdefault:
 		}
 	case 71:
 		mmDollar = mmS[mmpt-0 : mmpt+1]
-//line grammar.y:501
+//line grammar.y:503
 		{
 			{
 				mmVAL.modifiers = new(Modifiers)
@@ -1357,7 +1359,7 @@ mmdefault:
 		}
 	case 72:
 		mmDollar = mmS[mmpt-2 : mmpt+1]
-//line grammar.y:503
+//line grammar.y:505
 		{
 			{
 				mmVAL.modifiers.Local = true
@@ -1365,7 +1367,7 @@ mmdefault:
 		}
 	case 73:
 		mmDollar = mmS[mmpt-2 : mmpt+1]
-//line grammar.y:505
+//line grammar.y:507
 		{
 			{
 				mmVAL.modifiers.Preflight = true
@@ -1373,7 +1375,7 @@ mmdefault:
 		}
 	case 74:
 		mmDollar = mmS[mmpt-2 : mmpt+1]
-//line grammar.y:507
+//line grammar.y:509
 		{
 			{
 				mmVAL.modifiers.Volatile = true
@@ -1381,7 +1383,7 @@ mmdefault:
 		}
 	case 75:
 		mmDollar = mmS[mmpt-0 : mmpt+1]
-//line grammar.y:512
+//line grammar.y:514
 		{
 			{
 				mmVAL.bindings = &BindStms{
@@ -1392,7 +1394,7 @@ mmdefault:
 		}
 	case 76:
 		mmDollar = mmS[mmpt-2 : mmpt+1]
-//line grammar.y:517
+//line grammar.y:519
 		{
 			{
 				mmDollar[1].bindings.List = append(mmDollar[1].bindings.List, mmDollar[2].binding)
@@ -1401,7 +1403,7 @@ mmdefault:
 		}
 	case 77:
 		mmDollar = mmS[mmpt-4 : mmpt+1]
-//line grammar.y:525
+//line grammar.y:527
 		{
 			{
 				mmVAL.binding = &BindStm{
@@ -1413,7 +1415,7 @@ mmdefault:
 		}
 	case 78:
 		mmDollar = mmS[mmpt-4 : mmpt+1]
-//line grammar.y:531
+//line grammar.y:533
 		{
 			{
 				mmVAL.binding = &BindStm{
@@ -1425,7 +1427,7 @@ mmdefault:
 		}
 	case 79:
 		mmDollar = mmS[mmpt-4 : mmpt+1]
-//line grammar.y:537
+//line grammar.y:539
 		{
 			{
 				mmVAL.binding = &BindStm{
@@ -1437,7 +1439,7 @@ mmdefault:
 		}
 	case 80:
 		mmDollar = mmS[mmpt-4 : mmpt+1]
-//line grammar.y:543
+//line grammar.y:545
 		{
 			{
 				mmVAL.binding = &BindStm{
@@ -1449,7 +1451,7 @@ mmdefault:
 		}
 	case 81:
 		mmDollar = mmS[mmpt-0 : mmpt+1]
-//line grammar.y:551
+//line grammar.y:553
 		{
 			{
 				mmVAL.bindings = &BindStms{
@@ -1460,7 +1462,7 @@ mmdefault:
 		}
 	case 82:
 		mmDollar = mmS[mmpt-2 : mmpt+1]
-//line grammar.y:556
+//line grammar.y:558
 		{
 			{
 				mmDollar[1].bindings.List = append(mmDollar[1].bindings.List, mmDollar[2].binding)
@@ -1469,7 +1471,7 @@ mmdefault:
 		}
 	case 83:
 		mmDollar = mmS[mmpt-4 : mmpt+1]
-//line grammar.y:564
+//line grammar.y:566
 		{
 			{
 				mmVAL.binding = &BindStm{
@@ -1481,7 +1483,7 @@ mmdefault:
 		}
 	case 84:
 		mmDollar = mmS[mmpt-8 : mmpt+1]
-//line grammar.y:570
+//line grammar.y:572
 		{
 			{
 				mmVAL.binding = &BindStm{
@@ -1498,7 +1500,7 @@ mmdefault:
 		}
 	case 85:
 		mmDollar = mmS[mmpt-7 : mmpt+1]
-//line grammar.y:581
+//line grammar.y:583
 		{
 			{
 				mmVAL.binding = &BindStm{
@@ -1515,7 +1517,7 @@ mmdefault:
 		}
 	case 86:
 		mmDollar = mmS[mmpt-3 : mmpt+1]
-//line grammar.y:595
+//line grammar.y:597
 		{
 			{
 				mmVAL.exps = append(mmDollar[1].exps, mmDollar[3].exp)
@@ -1523,7 +1525,7 @@ mmdefault:
 		}
 	case 87:
 		mmDollar = mmS[mmpt-1 : mmpt+1]
-//line grammar.y:597
+//line grammar.y:599
 		{
 			{
 				mmVAL.exps = []Exp{mmDollar[1].exp}
@@ -1531,7 +1533,7 @@ mmdefault:
 		}
 	case 88:
 		mmDollar = mmS[mmpt-5 : mmpt+1]
-//line grammar.y:602
+//line grammar.y:604
 		{
 			{
 				mmDollar[1].kvpairs[unquote(mmDollar[3].val)] = mmDollar[5].exp
@@ -1540,7 +1542,7 @@ mmdefault:
 		}
 	case 89:
 		mmDollar = mmS[mmpt-3 : mmpt+1]
-//line grammar.y:607
+//line grammar.y:609
 		{
 			{
 				mmVAL.kvpairs = map[string]Exp{unquote(mmDollar[1].val): mmDollar[3].exp}
@@ -1548,7 +1550,7 @@ mmdefault:
 		}
 	case 90:
 		mmDollar = mmS[mmpt-1 : mmpt+1]
-//line grammar.y:612
+//line grammar.y:614
 		{
 			{
 				mmVAL.exp = mmDollar[1].vexp
@@ -1556,7 +1558,7 @@ mmdefault:
 		}
 	case 91:
 		mmDollar = mmS[mmpt-1 : mmpt+1]
-//line grammar.y:614
+//line grammar.y:616
 		{
 			{
 				mmVAL.exp = mmDollar[1].rexp
@@ -1564,7 +1566,7 @@ mmdefault:
 		}
 	case 92:
 		mmDollar = mmS[mmpt-3 : mmpt+1]
-//line grammar.y:618
+//line grammar.y:620
 		{
 			{
 				mmVAL.vexp = &ValExp{
@@ -1576,7 +1578,7 @@ mmdefault:
 		}
 	case 93:
 		mmDollar = mmS[mmpt-4 : mmpt+1]
-//line grammar.y:624
+//line grammar.y:626
 		{
 			{
 				mmVAL.vexp = &ValExp{
@@ -1588,7 +1590,7 @@ mmdefault:
 		}
 	case 94:
 		mmDollar = mmS[mmpt-2 : mmpt+1]
-//line grammar.y:630
+//line grammar.y:632
 		{
 			{
 				mmVAL.vexp = &ValExp{
@@ -1600,7 +1602,7 @@ mmdefault:
 		}
 	case 95:
 		mmDollar = mmS[mmpt-2 : mmpt+1]
-//line grammar.y:636
+//line grammar.y:638
 		{
 			{
 				mmVAL.vexp = &ValExp{
@@ -1612,7 +1614,7 @@ mmdefault:
 		}
 	case 96:
 		mmDollar = mmS[mmpt-3 : mmpt+1]
-//line grammar.y:642
+//line grammar.y:644
 		{
 			{
 				mmVAL.vexp = &ValExp{
@@ -1624,7 +1626,7 @@ mmdefault:
 		}
 	case 97:
 		mmDollar = mmS[mmpt-4 : mmpt+1]
-//line grammar.y:648
+//line grammar.y:650
 		{
 			{
 				mmVAL.vexp = &ValExp{
@@ -1636,7 +1638,7 @@ mmdefault:
 		}
 	case 98:
 		mmDollar = mmS[mmpt-1 : mmpt+1]
-//line grammar.y:654
+//line grammar.y:656
 		{
 			{ // Lexer guarantees parseable float strings.
 				f := parseFloat(mmDollar[1].val)
@@ -1649,7 +1651,7 @@ mmdefault:
 		}
 	case 99:
 		mmDollar = mmS[mmpt-1 : mmpt+1]
-//line grammar.y:663
+//line grammar.y:665
 		{
 			{ // Lexer guarantees parseable int strings.
 				i := parseInt(mmDollar[1].val)
@@ -1662,7 +1664,7 @@ mmdefault:
 		}
 	case 100:
 		mmDollar = mmS[mmpt-1 : mmpt+1]
-//line grammar.y:672
+//line grammar.y:674
 		{
 			{
 				mmVAL.vexp = &ValExp{
@@ -1674,7 +1676,7 @@ mmdefault:
 		}
 	case 102:
 		mmDollar = mmS[mmpt-1 : mmpt+1]
-//line grammar.y:679
+//line grammar.y:681
 		{
 			{
 				mmVAL.vexp = &ValExp{
@@ -1685,7 +1687,7 @@ mmdefault:
 		}
 	case 103:
 		mmDollar = mmS[mmpt-1 : mmpt+1]
-//line grammar.y:687
+//line grammar.y:689
 		{
 			{
 				mmVAL.vexp = &ValExp{
@@ -1697,7 +1699,7 @@ mmdefault:
 		}
 	case 104:
 		mmDollar = mmS[mmpt-1 : mmpt+1]
-//line grammar.y:693
+//line grammar.y:695
 		{
 			{
 				mmVAL.vexp = &ValExp{
@@ -1709,7 +1711,7 @@ mmdefault:
 		}
 	case 105:
 		mmDollar = mmS[mmpt-3 : mmpt+1]
-//line grammar.y:701
+//line grammar.y:703
 		{
 			{
 				mmVAL.rexp = &RefExp{
@@ -1722,7 +1724,7 @@ mmdefault:
 		}
 	case 106:
 		mmDollar = mmS[mmpt-1 : mmpt+1]
-//line grammar.y:708
+//line grammar.y:710
 		{
 			{
 				mmVAL.rexp = &RefExp{
@@ -1735,7 +1737,7 @@ mmdefault:
 		}
 	case 107:
 		mmDollar = mmS[mmpt-3 : mmpt+1]
-//line grammar.y:715
+//line grammar.y:717
 		{
 			{
 				mmVAL.rexp = &RefExp{

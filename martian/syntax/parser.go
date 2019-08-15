@@ -52,16 +52,42 @@ func (global *Ast) compile() error {
 	return nil
 }
 
+func (src *SrcParam) FindPath(searchPaths []string) (string, error) {
+	if filepath.IsAbs(src.Path) {
+		_, err := os.Stat(src.Path)
+		if err != nil {
+			return src.Path, &wrapError{
+				innerError: err,
+				loc:        src.Node.Loc,
+			}
+		}
+		return src.Path, nil
+	}
+	if src.Node.Loc.File != nil {
+		p := filepath.Join(filepath.Dir(src.Node.Loc.File.FullPath), src.Path)
+		if _, err := os.Stat(p); err == nil {
+			return p, nil
+		}
+	}
+	if p, found := util.SearchPaths(src.Path, searchPaths); !found {
+		return src.Path, &wrapError{
+			innerError: fmt.Errorf(
+				"SourcePathError: searched (%s) but stage source path not found '%s'",
+				strings.Join(searchPaths, ", "), src.Path),
+			loc: src.Node.Loc,
+		}
+	} else {
+		return p, nil
+	}
+}
+
 func (global *Ast) checkSrcPaths(stagecodePaths []string) error {
 	var errs ErrorList
 	for _, stage := range global.Stages {
 		// Exempt exec stages
 		if stage.Src.Lang != "exec" && stage.Src.Lang != "comp" {
-			if _, found := util.SearchPaths(stage.Src.Path, stagecodePaths); !found {
-				stagecodePathsList := strings.Join(stagecodePaths, ", ")
-				errs = append(errs, global.err(stage,
-					"SourcePathError: searched (%s) but stage source path not found '%s'",
-					stagecodePathsList, stage.Src.Path))
+			if _, err := stage.Src.FindPath(stagecodePaths); err != nil {
+				errs = append(errs, err)
 			}
 		}
 	}

@@ -30,7 +30,7 @@ $(GOBIN)/goyacc: vendor/golang.org/x/tools/cmd/goyacc/yacc.go
 	go install -mod=vendor golang.org/x/tools/cmd/goyacc
 
 martian/syntax/grammar.go: $(GOBIN)/goyacc martian/syntax/grammar.y
-	PATH=$(GOBIN):$(PATH) go generate ./martian/syntax
+	PATH="$(GOBIN):$(PATH)" go generate ./martian/syntax
 
 martian/test/sum_squares/types.go: PATH:=$(GOBIN):$(PATH)
 martian/test/sum_squares/types.go: test/split_test_go/pipeline_stages.mro mro2go
