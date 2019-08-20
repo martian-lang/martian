@@ -450,7 +450,10 @@ func sigToErr(err error) error {
 	if exitErr, ok := err.(*exec.ExitError); ok {
 		if state, ok := exitErr.Sys().(*syscall.WaitStatus); ok &&
 			state.Signaled() && externalSignal(state.Signal()) {
-			return &stageReturnedError{message: fmt.Sprintf("signal: %v", state.Signal())}
+			return &stageReturnedError{
+				message: fmt.Sprintf(
+					"stage code received signal: %v", state.Signal()),
+			}
 		}
 	}
 	return err
@@ -584,6 +587,12 @@ func (self *runner) monitor(lastHeartbeat *time.Time) error {
 			util.PrintError(err, "monitor", "Could not write heartbeat.")
 		} else {
 			*lastHeartbeat = time.Now()
+		}
+		if _, err := os.Stat(self.metadata.MetadataFilePath(core.LogFile)); os.IsNotExist(err) {
+			self.job.Process.Kill()
+			return fmt.Errorf("Stage log file has been deleted.  Aborting run.\n" +
+				"  This is usually the result of `mrp` thinking the stage failed\n" +
+				"  and deleting the stage directory in order to retry.")
 		}
 	}
 	return nil
