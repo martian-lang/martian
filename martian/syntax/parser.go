@@ -187,9 +187,8 @@ func (parser *Parser) ParseSourceBytes(src []byte, srcPath string,
 		FileName: srcPath,
 		FullPath: absPath,
 	}
-	if ast, err := parseSource(src, &srcFile, incPaths,
-		map[string]*SourceFile{absPath: &srcFile},
-		parser.getIntern()); err != nil {
+	if ast, err := parser.parseSource(src, &srcFile, incPaths[:len(incPaths):len(incPaths)],
+		map[string]*SourceFile{absPath: &srcFile}); err != nil {
 		return "", nil, ast, err
 	} else {
 		err := ast.compile()
@@ -238,24 +237,23 @@ func (parser *Parser) UncheckedParseIncludes(src []byte,
 		FileName: srcPath,
 		FullPath: absPath,
 	}
-	return parseSource(src, &srcFile, incPaths,
-		map[string]*SourceFile{absPath: &srcFile},
-		parser.getIntern())
+	return parser.parseSource(src, &srcFile, incPaths[:len(incPaths):len(incPaths)],
+		map[string]*SourceFile{absPath: &srcFile})
 }
 
-func parseSource(src []byte, srcFile *SourceFile, incPaths []string,
-	processedIncludes map[string]*SourceFile, intern *stringIntern) (*Ast, error) {
+func (parser *Parser) parseSource(src []byte, srcFile *SourceFile, incPaths []string,
+	processedIncludes map[string]*SourceFile) (*Ast, error) {
 	// Add the source file's own folder to the include path for
 	// resolving both @includes and stage src paths.
-	incPaths = append([]string{filepath.Dir(srcFile.FullPath)}, incPaths...)
+	incPaths = append(incPaths, filepath.Dir(srcFile.FullPath))
 
 	// Parse the source into an AST and attach the comments.
-	ast, err := yaccParse(src, srcFile, intern)
+	ast, err := yaccParse(src, srcFile, parser.getIntern())
 	if err != nil {
 		return nil, err
 	}
 
-	iasts, err := getIncludes(srcFile, ast.Includes, incPaths, processedIncludes, intern)
+	iasts, err := parser.getIncludes(srcFile, ast.Includes, incPaths, processedIncludes)
 	if iasts != nil {
 		if err := ast.merge(iasts); err != nil {
 			return nil, err
@@ -264,8 +262,8 @@ func parseSource(src []byte, srcFile *SourceFile, incPaths []string,
 	return ast, err
 }
 
-func getIncludes(srcFile *SourceFile, includes []*Include, incPaths []string,
-	processedIncludes map[string]*SourceFile, intern *stringIntern) (*Ast, error) {
+func (parser *Parser) getIncludes(srcFile *SourceFile, includes []*Include, incPaths []string,
+	processedIncludes map[string]*SourceFile) (*Ast, error) {
 	var errs ErrorList
 	var iasts *Ast
 	seen := make(map[string]struct{}, len(includes))
@@ -310,8 +308,8 @@ func getIncludes(srcFile *SourceFile, includes []*Include, incPaths []string,
 						loc:        inc.Node.Loc,
 					})
 				} else {
-					iast, err := parseSource(b, iSrcFile,
-						incPaths[1:], processedIncludes, intern)
+					iast, err := parser.parseSource(b, iSrcFile,
+						incPaths[:len(incPaths)-1], processedIncludes)
 					errs = append(errs, err)
 					if iast != nil {
 						if iasts == nil {
@@ -335,7 +333,7 @@ func getIncludes(srcFile *SourceFile, includes []*Include, incPaths []string,
 // which may or may not be an aboslute file name.
 func IncludeFilePath(filename string, mroPaths []string) (rel, abs string, err error) {
 	abs, err = filepath.Abs(filename)
-	if err != nil {
+	if err != nil || len(mroPaths) == 0 {
 		return filename, abs, err
 	}
 	rdir := filepath.Dir(filename)

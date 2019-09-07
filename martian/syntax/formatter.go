@@ -828,7 +828,7 @@ func (parser *Parser) FormatSrcBytes(src []byte, filename string, fixIncludes bo
 	}
 	var err error
 	if fixIncludes {
-		err = fixIncludesTop(global, mropath, parser.getIntern())
+		err = parser.FixIncludes(global, mropath)
 	}
 
 	// Format the source.

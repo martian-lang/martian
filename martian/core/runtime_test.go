@@ -52,7 +52,7 @@ func ExampleBuildCallSource() {
 					},
 				},
 			},
-		})
+		}, nil)
 	fmt.Println(src)
 	// Output:
 	// @include "foo.mro"

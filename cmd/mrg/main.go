@@ -75,7 +75,7 @@ Options:
 
 		src, bldErr := core.BuildCallSource(
 			input.Call, input.Args, input.SweepArgs,
-			callable)
+			callable, mroPaths)
 
 		if bldErr == nil {
 			fmt.Print(src)

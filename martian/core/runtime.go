@@ -806,14 +806,15 @@ func (self *Runtime) BuildCallSource(name string, args LazyArgumentMap,
 		util.LogInfo("package", "Could not get callable: %s", name)
 		return "", err
 	}
-	return BuildCallSource(name, args, sweepargs, callable)
+	return BuildCallSource(name, args, sweepargs, callable, mroPaths)
 }
 
 func BuildCallSource(
 	name string,
 	args LazyArgumentMap,
 	sweepargs []string,
-	callable syntax.Callable) (string, error) {
+	callable syntax.Callable,
+	mroPaths []string) (string, error) {
 	ast := syntax.Ast{
 		Call: &syntax.CallStm{
 			Id:    name,
@@ -825,7 +826,11 @@ func BuildCallSource(
 		},
 	}
 	if f := callable.File(); f != nil && f.FileName != "" {
-		ast.Includes = []*syntax.Include{{Value: f.FileName}}
+		rel, _, err := syntax.IncludeFilePath(f.FileName, mroPaths)
+		if err != nil && rel == "" {
+			rel = f.FileName
+		}
+		ast.Includes = []*syntax.Include{{Value: rel}}
 	}
 	var parser syntax.Parser
 	null := syntax.ValExp{Kind: syntax.KindNull}

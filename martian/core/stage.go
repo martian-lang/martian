@@ -735,7 +735,8 @@ func (self *Fork) writeInvocation() {
 		invocation, _ := BuildCallSource(
 			self.node.name,
 			MakeLazyArgumentMap(argBindings), nil,
-			self.node.callable)
+			self.node.callable,
+			self.node.mroPaths)
 		self.metadata.WriteRaw(InvocationFile, invocation)
 	}
 }

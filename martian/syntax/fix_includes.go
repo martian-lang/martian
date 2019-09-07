@@ -16,15 +16,16 @@ import (
 	"github.com/martian-lang/martian/martian/util"
 )
 
-func FixIncludes(source *Ast, mropath []string) error {
-	return fixIncludesTop(source, mropath, makeStringIntern())
-}
-
-func fixIncludesTop(source *Ast, mropath []string, intern *stringIntern) error {
+func (parser *Parser) FixIncludes(source *Ast, mropath []string) error {
 	seen := make(map[string]*SourceFile, len(source.Files)+len(source.Includes))
 	incPaths := make([]string, 0, len(mropath)+1)
 	seenPaths := make(map[string]struct{}, len(mropath))
 	var srcFile *SourceFile
+	for _, p := range mropath {
+		if _, ok := seenPaths[p]; !ok {
+			incPaths = append(incPaths, p)
+		}
+	}
 	for k, v := range source.Files {
 		seen[k] = v
 		d := filepath.Dir(v.FullPath)
@@ -33,13 +34,8 @@ func fixIncludesTop(source *Ast, mropath []string, intern *stringIntern) error {
 		}
 		srcFile = v
 	}
-	for _, p := range mropath {
-		if _, ok := seenPaths[p]; !ok {
-			incPaths = append(incPaths, p)
-		}
-	}
-	if closure, err := getIncludes(srcFile, source.Includes,
-		incPaths, seen, intern); err != nil {
+	if closure, err := parser.getIncludes(srcFile, source.Includes,
+		incPaths, seen); err != nil {
 		return err
 	} else {
 		if err := uncheckedMakeTables(source, closure); err != nil {
@@ -47,9 +43,9 @@ func fixIncludesTop(source *Ast, mropath []string, intern *stringIntern) error {
 			util.PrintInfo("include", "         Attempting to fix...")
 		}
 		needed, missingTypes, missingCalls := getRequiredIncludes(source)
-		extraIncs, extraTypes, err := findMissingIncludes(seen,
+		extraIncs, extraTypes, err := parser.findMissingIncludes(seen,
 			missingTypes, missingCalls,
-			incPaths, intern)
+			incPaths)
 		for _, file := range extraIncs {
 			if _, ok := needed[file.FileName]; !ok {
 				needed[file.FileName] = file
@@ -168,11 +164,10 @@ func getRequiredIncludes(source *Ast) (map[string]*SourceFile,
 	return required, unknownTypes, unknownCallables
 }
 
-func findMissingIncludes(seenFiles map[string]*SourceFile,
+func (parser *Parser) findMissingIncludes(seenFiles map[string]*SourceFile,
 	neededTypes map[string]*UserType,
 	neededCallables map[string]struct{},
-	incPaths []string,
-	intern *stringIntern) ([]*SourceFile, []*UserType, error) {
+	incPaths []string) ([]*SourceFile, []*UserType, error) {
 	if len(neededTypes) == 0 && len(neededCallables) == 0 {
 		return nil, nil, nil
 	}
@@ -198,7 +193,7 @@ func findMissingIncludes(seenFiles map[string]*SourceFile,
 							FileName: filepath.Base(absPath),
 							FullPath: absPath,
 						}
-						if ast, err := yaccParse(src, &srcFile, intern); err == nil {
+						if ast, err := yaccParse(src, &srcFile, parser.getIntern()); err == nil {
 							needed := false
 							for _, callable := range ast.Callables.List {
 								if _, ok := neededCallables[callable.GetId()]; ok {

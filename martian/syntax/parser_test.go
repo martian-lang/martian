@@ -8,6 +8,7 @@ package syntax
 
 import (
 	"os"
+	"path/filepath"
 	"testing"
 )
 
@@ -1047,6 +1048,32 @@ stage SQUARE(
 			t.Error(err)
 		}
 	}
+}
+
+func TestIncludeFilePath(t *testing.T) {
+	t.Parallel()
+	check := func(t *testing.T, filename string, mroPaths []string, expect string) {
+		t.Helper()
+		if rel, _, err := IncludeFilePath(filename, mroPaths); err != nil {
+			t.Error(err)
+		} else if expect != rel {
+			t.Errorf("%s != %s", rel, expect)
+		}
+	}
+	check(t, "foo.mro", nil, "foo.mro")
+	check(t, "testdata/foo.mro", nil, "testdata/foo.mro")
+	check(t, "testdata/foo.mro", []string{""}, "testdata/foo.mro")
+	check(t, "testdata/foo.mro", []string{"testdata"}, "foo.mro")
+	check(t, "testdata/foo.mro", []string{"", "testdata"}, "foo.mro")
+	check(t, "testdata/foo.mro", []string{"testdata", ""}, "foo.mro")
+	abs, err := filepath.Abs("")
+	if err != nil {
+		t.Fatal(err)
+	}
+	check(t, "testdata/foo.mro", []string{abs}, "testdata/foo.mro")
+	check(t, "testdata/foo.mro", []string{filepath.Join(abs, "testdata")}, "foo.mro")
+	check(t, "testdata/foo.mro", []string{"", filepath.Join(abs, "testdata")}, "foo.mro")
+	check(t, "testdata/foo.mro", []string{"testdata", abs}, "foo.mro")
 }
 
 func BenchmarkParse(b *testing.B) {
