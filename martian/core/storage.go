@@ -151,6 +151,9 @@ func (self *Fork) partialVdrKill() (*VDRKillReport, bool) {
 						"Running full vdr on %s",
 						self.node.GetFQName())
 				}
+				if self.node.strictVolatile {
+					return self.vdrKillSome(partial, true)
+				}
 				return self.vdrKill(partial), true
 			} else {
 				if self.node.rt.Config.Debug {
@@ -907,6 +910,8 @@ func (self *Fork) vdrKill(partialKill *PartialVdrKillReport) *VDRKillReport {
 		for _, chunk := range self.chunks {
 			if paths, err := chunk.metadata.enumerateFiles(); err == nil {
 				killPaths = append(killPaths, paths...)
+			} else if self.node.rt.Config.Debug {
+				util.LogError(err, "storage", "Error enumerating files.")
 			}
 		}
 	}

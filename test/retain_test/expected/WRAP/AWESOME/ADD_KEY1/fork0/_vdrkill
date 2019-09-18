@@ -1,19 +1,20 @@
 {
-    "count": 1,
-    "size": 12,
-    "timestamp": "2019-05-23 13:58:38",
+    "count": 2,
+    "size": 38,
+    "timestamp": "2019-09-18 10:55:58",
     "paths": [
-        "/user/test/retain_test/pipeline_test/WRAP/AWESOME/ADD_KEY1/fork0/chnk0-u9ba9e7097e/files/extra"
+        "/github.com/martian-lang/martian/test/retain_test/pipeline_test/WRAP/AWESOME/ADD_KEY1/fork0/chnk0/files/extra",
+        "/github.com/martian-lang/martian/test/retain_test/pipeline_test/WRAP/AWESOME/ADD_KEY1/fork0/chnk0/files/result.json"
     ],
     "errors": null,
     "events": [
         {
-            "Timestamp": "2019-05-23T13:58:38-07:00",
-            "DeltaBytes": 4046
+            "Timestamp": "2019-09-18T10:55:58-07:00",
+            "DeltaBytes": 4052
         },
         {
-            "Timestamp": "2019-05-23T13:58:38.526538716-07:00",
-            "DeltaBytes": -12
+            "Timestamp": "2019-09-18T10:55:58.5529733-07:00",
+            "DeltaBytes": -38
         }
     ]
 }
