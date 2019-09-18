@@ -66,13 +66,20 @@ type FileNotFoundError struct {
 	loc   SourceLoc
 	name  string
 	inner error
+	paths string
 }
 
 func (err *FileNotFoundError) writeTo(w stringWriter) {
 	mustWriteString(w, "File '")
 	mustWriteString(w, err.name)
 	if err.inner == nil || os.IsNotExist(err.inner) {
-		mustWriteString(w, "' not found (included from ")
+		if err.paths != "" {
+			mustWriteString(w, "' not found in ")
+			mustWriteString(w, err.paths)
+			mustWriteString(w, " (included from ")
+		} else {
+			mustWriteString(w, "' not found (included from ")
+		}
 	} else {
 		mustWriteString(w, "' could not be resolved: ")
 		if ew, ok := err.inner.(errorWriter); ok {
@@ -89,7 +96,8 @@ func (err *FileNotFoundError) writeTo(w stringWriter) {
 
 func (err *FileNotFoundError) Error() string {
 	var buff strings.Builder
-	buff.Grow(len("File 'sourcename.mro' not found (included from sourcename.mro:10)"))
+	buff.Grow(len("File '' not found in  (included from sourcename.mro:1000)") +
+		len(err.name) + len(err.paths))
 	err.writeTo(&buff)
 	return buff.String()
 }

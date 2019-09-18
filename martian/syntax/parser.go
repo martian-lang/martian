@@ -243,10 +243,6 @@ func (parser *Parser) UncheckedParseIncludes(src []byte,
 
 func (parser *Parser) parseSource(src []byte, srcFile *SourceFile, incPaths []string,
 	processedIncludes map[string]*SourceFile) (*Ast, error) {
-	// Add the source file's own folder to the include path for
-	// resolving both @includes and stage src paths.
-	incPaths = append(incPaths, filepath.Dir(srcFile.FullPath))
-
 	// Parse the source into an AST and attach the comments.
 	ast, err := yaccParse(src, srcFile, parser.getIntern())
 	if err != nil {
@@ -264,6 +260,14 @@ func (parser *Parser) parseSource(src []byte, srcFile *SourceFile, incPaths []st
 
 func (parser *Parser) getIncludes(srcFile *SourceFile, includes []*Include, incPaths []string,
 	processedIncludes map[string]*SourceFile) (*Ast, error) {
+	if len(includes) == 0 {
+		return nil, nil
+	}
+	// Add the source file's own folder to the include path for
+	// resolving both @includes and stage src paths.
+	srcDir := filepath.Dir(srcFile.FullPath)
+	incPaths = append(incPaths, srcDir)
+
 	var errs ErrorList
 	var iasts *Ast
 	seen := make(map[string]struct{}, len(includes))
@@ -273,6 +277,7 @@ func (parser *Parser) getIncludes(srcFile *SourceFile, includes []*Include, incP
 				name:  inc.Value,
 				loc:   inc.Node.Loc,
 				inner: err,
+				paths: strings.Join(incPaths, ":"),
 			})
 		} else {
 			absPath, _ := filepath.Abs(ifpath)
@@ -310,6 +315,9 @@ func (parser *Parser) getIncludes(srcFile *SourceFile, includes []*Include, incP
 				} else {
 					iast, err := parser.parseSource(b, iSrcFile,
 						incPaths[:len(incPaths)-1], processedIncludes)
+					// The last element of the array may have been overwritten.
+					// Restore it.
+					incPaths[len(incPaths)-1] = srcDir
 					errs = append(errs, err)
 					if iast != nil {
 						if iasts == nil {

@@ -399,21 +399,31 @@ func TestIncludeRelative(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+	var parser Parser
 	for _, mropath := range []string{"testdata", "testdata/", atd, atd + "/"} {
-		if _, _, _, err := Compile(path.Join("testdata", "subdir", "pipeline_subdir.mro"),
+		if _, _, _, err := parser.Compile(
+			path.Join("testdata", "subdir", "pipeline_subdir.mro"),
 			[]string{mropath}, false); err != nil {
 			t.Error(err)
 		}
-		if _, _, _, err := Compile(path.Join(atd, "subdir", "pipeline_subdir.mro"),
+		if _, _, _, err := parser.Compile(
+			path.Join(atd, "subdir", "pipeline_subdir.mro"),
 			[]string{mropath}, false); err != nil {
 			t.Error(err)
 		}
-		if _, _, _, err := Compile(path.Join("testdata", "subdir", "pipeline_rel.mro"),
+		if _, _, _, err := parser.Compile(
+			path.Join("testdata", "subdir", "pipeline_rel.mro"),
+			[]string{mropath}, false); err != nil {
+			t.Error(err)
+		}
+		if _, _, _, err := parser.Compile(
+			path.Join("testdata", "subdir", "pipeline_both.mro"),
 			[]string{mropath}, false); err != nil {
 			t.Error(err)
 		}
 	}
-	if _, _, _, err := Compile(path.Join("testdata", "subdir", "pipeline_ambiguous.mro"),
+	if _, _, _, err := parser.Compile(
+		path.Join("testdata", "subdir", "pipeline_ambiguous.mro"),
 		[]string{""}, false); err != nil {
 		// not ambiguous if testdata isn't in the MROPATH
 		t.Error(err)
