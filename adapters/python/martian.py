@@ -278,6 +278,7 @@ def alarm(message):
 
 def test_initialize(path):
     """Initialize with a fake test metadata."""
+    # pylint: disable=bad-option-value, import-outside-toplevel
     import martian_shell as mr_shell
 
     # pylint: disable=global-statement
