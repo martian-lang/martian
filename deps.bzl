@@ -41,17 +41,18 @@ def martian_dependencies():
     _maybe(
         go_repository,
         name = "org_golang_x_sys",
-        commit = "3b5209105503162ded1863c307ac66fec31120dd",
+        commit = "d0b11bdaac8adb652bff00e49bcacf992835621a",
         importpath = "golang.org/x/sys",
         shallow_since = "1547471016 +0000",
     )
 
     _maybe(
+        # This actually already brought in by rules_go, and
+        # is included here mostly for clarity.
         go_repository,
         name = "org_golang_x_tools",
-        commit = "49d818b07734fb3230f2d00bc5d4453348348d24",
+        commit = "c8855242db9c1762032abe33c2dff50de3ec9d05",
         importpath = "golang.org/x/tools",
-        sha256 = "11629171a39a1cb4d426760005be6f7cb9b4182e4cb2756b7f1c5c2b6ae869fe",
     )
 
     _maybe(
