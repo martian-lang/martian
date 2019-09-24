@@ -11,11 +11,15 @@ before_cache:
 matrix:
   include:
   - name: "python2"
+    go:
+    - 1.12.x
     sudo: false
     dist: trusty
     before_install:
     - pyenv global 2.7
   - name: "python3"
+    go:
+    - 1.12.x
     sudo: false
     dist: xenial
     before_install:
@@ -61,7 +65,7 @@ before_install:
 - pip --version
 before_script:
 - nvm install --lts node
-- npm install -g npm@^6.9
+- npm install -g npm@^6.10
 - pip install --user pylint
 script:
 - "./.travis.gofmt.sh"

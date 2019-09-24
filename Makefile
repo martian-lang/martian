@@ -80,6 +80,7 @@ JOBMANAGERS=$(wildcard jobmanagers/*.py) \
 PRODUCT_NAME:=martian-$(VERSION)-$(shell uname -is | tr "A-Z " "a-z-")
 
 $(PRODUCT_NAME).tar.%: $(addprefix bin/, $(GOBINS)) $(ADAPTERS) $(JOBMANAGERS) $(WEB_FILES)
+	git status || echo "no git status"
 	tar --owner=0 --group=0 --transform "s/^./$(PRODUCT_NAME)/" -caf $@ $(addprefix ./, $^)
 
 tarball: $(PRODUCT_NAME).tar.xz $(PRODUCT_NAME).tar.gz
