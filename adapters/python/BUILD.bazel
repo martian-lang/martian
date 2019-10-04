@@ -1,3 +1,5 @@
+load("@bazel_tools//tools/build_defs/pkg:pkg.bzl", "pkg_tar")
+
 filegroup(
     name = "python",
     srcs = [":martian_shell"],
@@ -15,14 +17,19 @@ py_library(
     deps = [":martian"],
 )
 
+alias(
+    name = "testing",
+    testonly = 1,
+    actual = ":martian_shell",
+    visibility = ["//visibility:public"],
+)
+
 py_library(
     name = "martian",
     srcs = ["martian.py"],
     imports = ["."],
     visibility = ["//visibility:public"],
 )
-
-load("@bazel_tools//tools/build_defs/pkg:pkg.bzl", "pkg_tar")
 
 pkg_tar(
     name = "pkg",
