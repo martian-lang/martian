@@ -261,6 +261,45 @@ func TestPostProcess(t *testing.T) {
   ]`
 	compareOutputText(t, expectSummary,
 		strings.Replace(buf.String(), psPath+"/", "", -1))
+	var outs outerPipeline
+	if err := fork.metadata.ReadInto(OutsFile, &outs); err != nil {
+		t.Error(err)
+	} else {
+		if s := strings.TrimPrefix(outs.Text, psPath); s != "/outs/text.txt" {
+			t.Errorf("%s != /outs/text.txt", s)
+		}
+		if outs.Inner.Bar.Bar == nil {
+			t.Error("inner.bar.bar was null")
+		} else if v := *outs.Inner.Bar.Bar; v != 1 {
+			t.Errorf("inner.bar.bar == %d != 1", v)
+		}
+		if s := strings.TrimPrefix(outs.Inner.Bar.File1, psPath); s != "/outs/inner/bar/file1.txt" {
+			t.Errorf("inner.bar.file1 == '%s' != '/outs/inner/bar/file1.txt'", s)
+		}
+		if s := strings.TrimPrefix(outs.Inner.Bar.File2, psPath); s != "/outs/inner/bar/file2" {
+			t.Errorf("inner.bar.file2 == '%s' != '/outs/inner/bar/file2'", s)
+		}
+		if s := strings.TrimPrefix(outs.Inner.Bar.File3, psPath); s != "/outs/inner/bar/output_name.file" {
+			t.Errorf("inner.bar.file3 == '%s' != '/outs/inner/bar/output_name.file'", s)
+		}
+		if d := len(outs.Inner.Results1); d != 2 {
+			t.Errorf("len(inner.results1) == %d != 2", d)
+		}
+		if d := len(outs.Inner.Results2); d != 2 {
+			t.Errorf("len(inner.results2) == %d != 2", d)
+		}
+		if len(outs.Bars) != 2 {
+			t.Errorf("len(bars) == %d != 2", len(outs.Bars))
+		}
+		if len(outs.Strs) != 2 {
+			t.Errorf("len(strs) == %d != 2", len(outs.Strs))
+		}
+		if len(outs.Texts) != 1 {
+			t.Errorf("len(texts) == %d != 2", len(outs.Texts))
+		} else if s := strings.TrimPrefix(outs.Texts[0], psPath); s != `/outs/texts/0.txt` {
+			t.Errorf("texts[0] == '%s' != '/outs/texts/0.txt'", s)
+		}
+	}
 }
 
 func TestPostProcessEmpties(t *testing.T) {
@@ -315,6 +354,8 @@ func TestPostProcessEmpties(t *testing.T) {
 			t.Error(err)
 		}
 	}
+	// Use the executable file as a path that's known to exist and that is
+	// outside the pipestance directory.
 	var exeFile, exeLink string
 	if exe, err := os.Executable(); err != nil {
 		t.Error(err)
@@ -398,7 +439,7 @@ func TestPostProcessEmpties(t *testing.T) {
 		t.Error("unexpected file inner/output_name/c2")
 	}
 	expectSummary := fmt.Sprintf(`Outputs:
-- text:   outs/text.txt
+- text:   %s
 - inner:
     bar:
       bar:              1
@@ -408,8 +449,8 @@ func TestPostProcessEmpties(t *testing.T) {
     results1:    {
       c1:
         bar:              null
-        file1:            outs/inner/results1/c1/file1.txt
-        file2:            outs/inner/results1/c1/file2
+        file1:            outs/inner/bar/file1.txt
+        file2:            outs/inner/bar/file2
         output_name.file: null
       c2:
         bar:              null
@@ -421,7 +462,7 @@ func TestPostProcessEmpties(t *testing.T) {
 - files1: []
 - bars:   null
 - strs:   []
-- texts:  null`, exeFile)
+- texts:  null`, exeFile, exeFile)
 	compareOutputText(t, expectSummary,
 		strings.Replace(buf.String(), psPath+"/", "", -1))
 }

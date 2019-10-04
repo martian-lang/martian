@@ -2,42 +2,42 @@
     "inner": {
         "bar": {
             "bar": {
-                "file2": "/github.com/martian-lang/martian/test/struct_test/pipeline_test/OUTER/INNER/C2/fork0/chnk0/files/file2",
-                "file1": "/github.com/martian-lang/martian/test/struct_test/pipeline_test/OUTER/INNER/C2/fork0/chnk0/files/file1",
-                "bar": 7
+                "bar": 7,
+                "file1": "/user/test/struct_test/pipeline_test/outs/text.txt",
+                "file2": "/user/test/struct_test/pipeline_test/outs/inner/bar/bar/file2.txt"
             },
-            "file3": "/github.com/martian-lang/martian/test/struct_test/pipeline_test/OUTER/INNER/C2/fork0/chnk0/files/output_name.file"
+            "file3": "/user/test/struct_test/pipeline_test/outs/inner/bar/output_name.file"
         },
-        "out_file": "/github.com/martian-lang/martian/test/struct_test/pipeline_test/OUTER/INNER/C3/fork0/chnk0/files/file2",
+        "out_file": "/user/test/struct_test/pipeline_test/outs/inner/another_file.txt",
         "results1": {
             "c1": {
                 "bar": {
-                    "file2": "/github.com/martian-lang/martian/test/struct_test/pipeline_test/OUTER/INNER/C1/fork0/chnk0/files/file2",
-                    "file1": "/github.com/martian-lang/martian/test/struct_test/pipeline_test/OUTER/INNER/C1/fork0/chnk0/files/file1",
-                    "bar": 4
+                    "bar": 4,
+                    "file1": "/user/test/struct_test/pipeline_test/outs/inner/results1/c1/bar/file1",
+                    "file2": "/user/test/struct_test/pipeline_test/outs/inner/results1/c1/bar/file2.txt"
                 },
-                "file3": "/github.com/martian-lang/martian/test/struct_test/pipeline_test/OUTER/INNER/C1/fork0/chnk0/files/output_name.file"
+                "file3": "/user/test/struct_test/pipeline_test/outs/inner/results1/c1/output_name.file"
             },
             "c2": {
                 "bar": {
-                    "file2": "/github.com/martian-lang/martian/test/struct_test/pipeline_test/OUTER/INNER/C2/fork0/chnk0/files/file2",
-                    "file1": "/github.com/martian-lang/martian/test/struct_test/pipeline_test/OUTER/INNER/C2/fork0/chnk0/files/file1",
-                    "bar": 7
+                    "bar": 7,
+                    "file1": "/user/test/struct_test/pipeline_test/outs/text.txt",
+                    "file2": "/user/test/struct_test/pipeline_test/outs/inner/bar/bar/file2.txt"
                 },
-                "file3": "/github.com/martian-lang/martian/test/struct_test/pipeline_test/OUTER/INNER/C2/fork0/chnk0/files/output_name.file"
+                "file3": "/user/test/struct_test/pipeline_test/outs/inner/bar/output_name.file"
             }
         },
         "results2": {
             "c1": {
                 "bar": {
-                    "file2": "/github.com/martian-lang/martian/test/struct_test/pipeline_test/OUTER/INNER/C1/fork0/chnk0/files/file2",
-                    "file1": "/github.com/martian-lang/martian/test/struct_test/pipeline_test/OUTER/INNER/C1/fork0/chnk0/files/file1",
-                    "bar": 4
+                    "bar": 4,
+                    "file1": "/user/test/struct_test/pipeline_test/outs/inner/results1/c1/bar/file1",
+                    "file2": "/user/test/struct_test/pipeline_test/outs/inner/results1/c1/bar/file2.txt"
                 },
-                "file3": "/github.com/martian-lang/martian/test/struct_test/pipeline_test/OUTER/INNER/C1/fork0/chnk0/files/output_name.file"
+                "file3": "/user/test/struct_test/pipeline_test/outs/inner/results1/c1/output_name.file"
             },
             "c2": null
         }
     },
-    "text": "/github.com/martian-lang/martian/test/struct_test/pipeline_test/OUTER/INNER/C2/fork0/chnk0/files/file1"
+    "text": "/user/test/struct_test/pipeline_test/outs/text.txt"
 }
