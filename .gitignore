@@ -6,3 +6,5 @@ bin
 pkg
 .*.sw*
 /bazel-*
+coverage.out
+coverage.html

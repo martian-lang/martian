@@ -19,7 +19,7 @@ unexport GOPATH
 export GO111MODULE=on
 export GOBIN=$(PWD)/bin
 
-.PHONY: $(GOBINS) grammar web $(GOTESTS) govet all-bins $(GOBIN)/sum_squares longtests mrs integration_prereqs
+.PHONY: $(GOBINS) grammar web $(GOTESTS) coverage.out govet all-bins $(GOBIN)/sum_squares longtests mrs integration_prereqs
 
 #
 # Targets for development builds.
@@ -87,6 +87,14 @@ tarball: $(PRODUCT_NAME).tar.xz $(PRODUCT_NAME).tar.gz
 
 test-all:
 	go test ./martian/... ./cmd/...
+
+coverage.out:
+	go test -coverprofile=coverage.out ./martian/... ./cmd/...
+
+coverage.html: coverage.out
+	go tool cover -html=coverage.out -o coverage.html
+
+cover: coverage.html
 
 govet:
 	go vet ./martian/... ./cmd/...

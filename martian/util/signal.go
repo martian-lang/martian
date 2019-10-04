@@ -108,6 +108,14 @@ func Suicide(success bool) {
 	}
 }
 
+// Set up a signal handler object to support testing of code which
+// requires it, without actually registering for signal notifications.
+func MockSignalHandlersForTest() {
+	if signalHandler == nil {
+		signalHandler = newSignalHandler()
+	}
+}
+
 // Initializes the global signal handler.
 func SetupSignalHandlers() {
 	signalHandler = newSignalHandler()
