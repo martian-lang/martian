@@ -360,45 +360,22 @@ out_param
                 Node: NewAstNode($<loc>1, $<srcfile>1),
                 Tname: $2,
                 Id: default_out_name,
+                Help: unquote($3),
             },
-            Help: unquote($3),
         } }}
     | OUT type_id help outname COMMA
         {{ $$ = &OutParam{
             StructMember: StructMember{
-            Node: NewAstNode($<loc>1, $<srcfile>1),
+                Node: NewAstNode($<loc>1, $<srcfile>1),
                 Tname: $2,
                 Id: default_out_name,
                 OutName: $<intern>5.unquote($4),
-            },
-            Help: unquote($3),
-        } }}
-    | OUT type_id id COMMA
-        {{ $$ = &OutParam{
-            StructMember: StructMember{
-                Node: NewAstNode($<loc>1, $<srcfile>1),
-                Tname: $2,
-                Id: $<intern>3.Get($3),
+                Help: unquote($3),
             },
         } }}
-    | OUT type_id id help COMMA
+    | OUT struct_field
         {{ $$ = &OutParam{
-            StructMember: StructMember{
-                Node: NewAstNode($<loc>1, $<srcfile>1),
-                Tname: $2,
-                Id: $<intern>3.Get($3),
-            },
-            Help: unquote($4),
-        } }}
-    | OUT type_id id help outname COMMA
-        {{ $$ = &OutParam{
-            StructMember: StructMember{
-                Node: NewAstNode($<loc>1, $<srcfile>1),
-                Tname: $2,
-                Id: $<intern>3.Get($3),
-                OutName: $<intern>5.unquote($5),
-            },
-            Help: unquote($4),
+            StructMember: *$2,
         } }}
     ;
 
@@ -418,14 +395,22 @@ struct_field
             Tname: $1,
             Id: $<intern>2.Get($2),
         } }}
-    | type_id id outname COMMA
+    | type_id id help COMMA
         {{ $$ = &StructMember{
             Node: NewAstNode($<loc>1, $<srcfile>1),
             Tname: $1,
             Id: $<intern>2.Get($2),
-            OutName: $<intern>3.unquote($3),
+            Help: unquote($3),
         } }}
-    ;
+    | type_id id help outname COMMA
+        {{ $$ = &StructMember{
+            Node: NewAstNode($<loc>1, $<srcfile>1),
+            Tname: $1,
+            Id: $<intern>2.Get($2),
+            OutName: $<intern>4.unquote($4),
+            Help: unquote($3),
+        } }}
+     ;
 
 src_stm
     : SRC src_lang LITSTRING COMMA

@@ -184,7 +184,7 @@ const mmEofCode = 1
 const mmErrCode = 2
 const mmInitialStackSize = 16
 
-//line grammar.y:837
+//line grammar.y:822
 
 //line yacctab:1
 var mmExca = [...]int{
@@ -192,153 +192,152 @@ var mmExca = [...]int{
 	1, -1,
 	-2, 0,
 	-1, 73,
-	13, 130,
-	38, 130,
-	-2, 81,
+	13, 129,
+	38, 129,
+	-2, 80,
 	-1, 74,
-	13, 133,
-	38, 133,
-	-2, 82,
+	13, 132,
+	38, 132,
+	-2, 81,
 	-1, 75,
-	13, 141,
-	38, 141,
-	-2, 83,
+	13, 140,
+	38, 140,
+	-2, 82,
 }
 
 const mmPrivate = 57344
 
-const mmLast = 890
+const mmLast = 887
 
 var mmAct = [...]int{
 
-	59, 58, 131, 126, 158, 56, 106, 54, 4, 110,
-	139, 28, 30, 190, 113, 109, 14, 36, 22, 23,
-	119, 77, 65, 128, 81, 66, 67, 68, 20, 80,
-	263, 236, 21, 76, 262, 72, 69, 35, 60, 41,
+	59, 58, 131, 126, 54, 56, 106, 178, 4, 139,
+	158, 28, 30, 113, 110, 76, 109, 36, 14, 77,
+	119, 128, 65, 22, 23, 66, 67, 68, 20, 81,
+	80, 233, 21, 260, 259, 72, 69, 35, 60, 41,
 	170, 171, 172, 48, 52, 46, 42, 45, 53, 39,
-	49, 50, 261, 221, 264, 188, 51, 43, 44, 47,
-	37, 11, 9, 10, 70, 33, 40, 38, 16, 24,
-	25, 8, 239, 77, 22, 23, 15, 207, 94, 205,
-	26, 36, 99, 194, 95, 102, 157, 101, 159, 244,
-	133, 36, 104, 105, 127, 92, 107, 240, 241, 242,
-	243, 97, 154, 153, 257, 265, 246, 29, 224, 36,
-	134, 137, 192, 7, 159, 100, 156, 31, 192, 216,
-	93, 159, 32, 203, 136, 201, 154, 146, 154, 36,
-	16, 24, 25, 8, 36, 149, 150, 202, 154, 36,
-	187, 31, 26, 155, 8, 165, 138, 212, 233, 148,
-	175, 167, 8, 160, 161, 36, 174, 162, 163, 164,
-	120, 197, 84, 82, 173, 168, 256, 178, 146, 85,
-	83, 177, 183, 234, 191, 122, 123, 124, 125, 228,
-	226, 225, 218, 217, 196, 227, 199, 147, 193, 90,
-	89, 88, 71, 78, 161, 206, 79, 255, 254, 253,
-	252, 166, 143, 142, 211, 208, 141, 214, 213, 140,
-	219, 271, 270, 222, 269, 268, 267, 266, 260, 249,
-	237, 232, 231, 220, 209, 230, 204, 198, 182, 235,
-	181, 180, 95, 245, 179, 130, 146, 20, 176, 251,
-	129, 21, 87, 86, 1, 184, 229, 60, 41, 259,
-	57, 5, 48, 52, 46, 42, 45, 53, 39, 49,
-	50, 3, 200, 210, 27, 51, 43, 44, 47, 37,
-	11, 9, 10, 91, 121, 40, 38, 20, 96, 145,
-	195, 21, 63, 22, 23, 15, 62, 60, 41, 13,
-	12, 151, 48, 52, 46, 42, 45, 53, 39, 49,
-	50, 186, 108, 223, 247, 51, 43, 44, 47, 37,
-	11, 9, 10, 215, 238, 40, 38, 20, 55, 152,
-	132, 21, 19, 22, 23, 15, 18, 60, 41, 17,
-	34, 169, 48, 52, 46, 42, 45, 53, 39, 49,
-	50, 112, 2, 0, 0, 51, 43, 44, 47, 37,
-	11, 9, 10, 0, 0, 40, 38, 20, 0, 0,
-	0, 21, 0, 22, 23, 15, 0, 60, 41, 0,
+	49, 50, 258, 207, 261, 77, 51, 43, 44, 47,
+	37, 11, 9, 10, 191, 70, 40, 38, 16, 24,
+	25, 8, 236, 195, 22, 23, 15, 177, 94, 157,
+	26, 36, 99, 33, 95, 102, 133, 101, 179, 241,
+	262, 36, 104, 105, 127, 92, 107, 237, 238, 239,
+	240, 97, 154, 153, 254, 222, 216, 29, 159, 36,
+	134, 137, 179, 32, 159, 100, 16, 24, 25, 8,
+	93, 243, 156, 205, 203, 136, 154, 146, 26, 36,
+	190, 8, 138, 161, 36, 149, 150, 204, 7, 36,
+	199, 212, 31, 154, 154, 165, 8, 120, 155, 148,
+	84, 167, 160, 230, 176, 36, 175, 85, 168, 162,
+	163, 164, 122, 123, 124, 125, 31, 231, 146, 173,
+	180, 174, 186, 82, 137, 226, 224, 268, 223, 218,
+	83, 225, 217, 201, 193, 197, 194, 147, 90, 89,
+	88, 78, 71, 181, 79, 161, 253, 252, 251, 250,
+	249, 208, 166, 143, 142, 211, 214, 141, 140, 213,
+	267, 266, 219, 265, 264, 263, 257, 246, 234, 220,
+	209, 206, 229, 200, 198, 228, 185, 232, 184, 183,
+	95, 242, 130, 146, 20, 182, 248, 129, 21, 87,
+	86, 1, 187, 227, 60, 41, 256, 57, 5, 48,
+	52, 46, 42, 45, 53, 39, 49, 50, 3, 202,
+	210, 27, 51, 43, 44, 47, 37, 11, 9, 10,
+	91, 121, 40, 38, 20, 96, 145, 196, 21, 63,
+	22, 23, 15, 62, 60, 41, 13, 12, 151, 48,
+	52, 46, 42, 45, 53, 39, 49, 50, 189, 108,
+	221, 244, 51, 43, 44, 47, 37, 11, 9, 10,
+	215, 235, 40, 38, 20, 55, 152, 132, 21, 19,
+	22, 23, 15, 18, 60, 41, 17, 34, 169, 48,
+	52, 46, 42, 45, 53, 39, 49, 50, 112, 2,
+	0, 0, 51, 43, 44, 47, 37, 11, 9, 10,
+	0, 0, 40, 38, 20, 0, 0, 0, 21, 0,
+	22, 23, 15, 0, 60, 41, 0, 0, 0, 48,
+	52, 46, 42, 45, 53, 39, 49, 50, 0, 0,
+	0, 0, 51, 43, 44, 47, 37, 11, 9, 10,
+	0, 135, 40, 38, 0, 0, 0, 0, 0, 41,
+	22, 23, 15, 48, 52, 46, 42, 45, 53, 39,
+	49, 50, 0, 0, 0, 0, 51, 43, 44, 47,
+	37, 0, 0, 0, 0, 0, 40, 38, 111, 114,
+	115, 117, 116, 118, 41, 0, 0, 0, 48, 52,
+	46, 42, 45, 53, 39, 49, 50, 0, 0, 0,
+	0, 51, 43, 44, 47, 37, 0, 0, 0, 0,
+	0, 40, 38, 111, 114, 115, 117, 116, 118, 41,
+	0, 0, 0, 48, 52, 46, 42, 45, 53, 39,
+	49, 50, 0, 0, 0, 0, 51, 43, 44, 47,
+	37, 0, 0, 0, 0, 0, 40, 38, 0, 114,
+	115, 117, 116, 118, 41, 0, 0, 0, 48, 52,
+	46, 42, 45, 53, 39, 49, 50, 0, 0, 0,
+	0, 51, 43, 44, 47, 37, 20, 0, 0, 0,
+	21, 40, 38, 0, 0, 0, 0, 16, 24, 25,
+	8, 0, 98, 0, 0, 0, 0, 0, 0, 26,
+	0, 0, 0, 0, 0, 0, 0, 0, 0, 11,
+	9, 10, 0, 0, 0, 0, 0, 0, 0, 0,
+	255, 0, 22, 23, 15, 0, 6, 60, 41, 0,
+	0, 0, 48, 52, 46, 42, 45, 53, 39, 49,
+	50, 192, 0, 0, 0, 51, 43, 44, 47, 37,
+	0, 0, 0, 0, 41, 40, 38, 0, 48, 52,
+	46, 42, 45, 53, 39, 49, 50, 0, 0, 0,
+	0, 51, 43, 44, 47, 37, 159, 61, 0, 0,
+	0, 40, 38, 41, 0, 0, 0, 48, 52, 46,
+	42, 45, 53, 39, 49, 50, 0, 0, 0, 0,
+	51, 43, 44, 47, 37, 64, 247, 0, 0, 0,
+	40, 38, 0, 0, 41, 0, 0, 0, 48, 52,
+	46, 42, 45, 53, 39, 49, 50, 0, 0, 0,
+	0, 51, 43, 44, 47, 37, 245, 0, 0, 0,
+	0, 40, 38, 0, 41, 0, 0, 0, 48, 52,
+	46, 42, 45, 53, 39, 49, 50, 0, 0, 0,
+	0, 51, 43, 44, 47, 37, 188, 0, 0, 0,
+	0, 40, 38, 0, 41, 0, 0, 0, 48, 52,
+	46, 42, 45, 53, 39, 49, 50, 0, 0, 0,
+	0, 51, 43, 44, 47, 37, 0, 0, 60, 41,
+	0, 40, 38, 48, 52, 46, 42, 45, 53, 39,
+	49, 50, 0, 0, 0, 0, 51, 43, 44, 47,
+	37, 144, 0, 0, 0, 0, 40, 38, 0, 41,
+	0, 0, 0, 48, 52, 46, 42, 45, 53, 39,
+	49, 50, 0, 0, 0, 0, 51, 43, 44, 47,
+	37, 0, 103, 0, 0, 0, 40, 38, 41, 0,
 	0, 0, 48, 52, 46, 42, 45, 53, 39, 49,
 	50, 0, 0, 0, 0, 51, 43, 44, 47, 37,
-	11, 9, 10, 0, 135, 40, 38, 0, 0, 0,
-	0, 0, 41, 22, 23, 15, 48, 52, 46, 42,
-	45, 53, 39, 49, 50, 0, 0, 0, 0, 51,
-	43, 44, 47, 37, 0, 0, 0, 0, 0, 40,
-	38, 111, 114, 115, 117, 116, 118, 41, 0, 0,
-	0, 48, 52, 46, 42, 45, 53, 39, 49, 50,
-	0, 0, 0, 0, 51, 43, 44, 47, 37, 0,
-	0, 0, 0, 0, 40, 38, 111, 114, 115, 117,
-	116, 118, 41, 0, 0, 0, 48, 52, 46, 42,
-	45, 53, 39, 49, 50, 0, 0, 0, 0, 51,
-	43, 44, 47, 37, 0, 0, 0, 0, 0, 40,
-	38, 0, 114, 115, 117, 116, 118, 41, 0, 0,
-	0, 48, 52, 46, 42, 45, 53, 39, 49, 50,
-	0, 0, 0, 0, 51, 43, 44, 47, 37, 20,
-	0, 0, 0, 21, 40, 38, 0, 0, 0, 0,
-	16, 24, 25, 8, 0, 98, 0, 0, 0, 0,
-	0, 0, 26, 0, 0, 0, 0, 0, 0, 0,
-	0, 0, 11, 9, 10, 0, 0, 0, 0, 0,
-	0, 0, 0, 258, 0, 22, 23, 15, 0, 6,
-	60, 41, 0, 0, 0, 48, 52, 46, 42, 45,
-	53, 39, 49, 50, 189, 0, 0, 0, 51, 43,
-	44, 47, 37, 0, 0, 0, 0, 41, 40, 38,
-	0, 48, 52, 46, 42, 45, 53, 39, 49, 50,
-	0, 0, 0, 0, 51, 43, 44, 47, 37, 192,
-	61, 0, 0, 0, 40, 38, 41, 0, 0, 0,
-	48, 52, 46, 42, 45, 53, 39, 49, 50, 0,
-	0, 0, 0, 51, 43, 44, 47, 37, 64, 250,
-	0, 0, 0, 40, 38, 0, 0, 41, 0, 0,
-	0, 48, 52, 46, 42, 45, 53, 39, 49, 50,
-	0, 0, 0, 0, 51, 43, 44, 47, 37, 248,
-	0, 0, 0, 0, 40, 38, 0, 41, 0, 0,
-	0, 48, 52, 46, 42, 45, 53, 39, 49, 50,
-	0, 0, 0, 0, 51, 43, 44, 47, 37, 185,
-	0, 0, 0, 0, 40, 38, 0, 41, 0, 0,
-	0, 48, 52, 46, 42, 45, 53, 39, 49, 50,
-	0, 0, 0, 0, 51, 43, 44, 47, 37, 0,
-	0, 60, 41, 0, 40, 38, 48, 52, 46, 42,
-	45, 53, 39, 49, 50, 0, 0, 0, 0, 51,
-	43, 44, 47, 37, 144, 0, 0, 0, 0, 40,
-	38, 0, 41, 0, 0, 0, 48, 52, 46, 42,
-	45, 53, 39, 49, 50, 0, 0, 0, 0, 51,
-	43, 44, 47, 37, 0, 103, 0, 0, 0, 40,
-	38, 41, 0, 0, 0, 48, 52, 46, 42, 45,
-	53, 39, 49, 50, 0, 0, 0, 0, 51, 43,
-	44, 47, 37, 0, 0, 0, 41, 0, 40, 38,
-	48, 52, 46, 42, 45, 53, 39, 49, 50, 0,
-	0, 0, 0, 51, 43, 44, 47, 37, 0, 0,
-	0, 41, 0, 40, 38, 48, 52, 46, 73, 74,
-	75, 39, 49, 50, 0, 0, 0, 0, 51, 43,
-	44, 47, 37, 0, 0, 0, 0, 0, 40, 38,
+	0, 0, 0, 41, 0, 40, 38, 48, 52, 46,
+	42, 45, 53, 39, 49, 50, 0, 0, 0, 0,
+	51, 43, 44, 47, 37, 0, 0, 0, 41, 0,
+	40, 38, 48, 52, 46, 73, 74, 75, 39, 49,
+	50, 0, 0, 0, 0, 51, 43, 44, 47, 37,
+	0, 0, 0, 0, 0, 40, 38,
 }
 var mmPact = [...]int{
 
-	518, -1000, 46, 108, 95, -1000, 21, -1000, -1000, -1000,
-	-1000, -1000, -1000, -1000, -1000, -1000, 814, -1000, -1000, -1000,
-	306, 614, -1000, -1000, 814, 814, 814, 108, 95, 20,
-	95, -1000, 179, -1000, 839, 26, -1000, -1000, -1000, -1000,
+	515, -1000, 46, 94, 86, -1000, 39, -1000, -1000, -1000,
+	-1000, -1000, -1000, -1000, -1000, -1000, 811, -1000, -1000, -1000,
+	303, 611, -1000, -1000, 811, 811, 811, 94, 86, 21,
+	86, -1000, 179, -1000, 836, 8, -1000, -1000, -1000, -1000,
 	-1000, -1000, -1000, -1000, -1000, -1000, -1000, -1000, -1000, -1000,
-	-1000, -1000, -1000, -1000, 184, -1000, -1000, -1000, -1000, -18,
-	-23, -1000, 154, 153, 235, 234, 178, 177, 176, 95,
-	-1000, -1000, 82, -1000, -1000, -1000, -1000, 814, 266, -1000,
-	485, 814, 71, -1000, 789, -1000, 346, 346, -1000, -1000,
-	415, 146, -1000, 814, -1000, -1000, -1000, -26, -1000, -24,
-	232, -1000, 227, -1000, -1000, -1000, 55, 55, 380, -1000,
-	814, 129, -1000, -1000, -1000, -1000, -1000, -1000, -1000, -26,
-	-1000, -1000, 199, 196, 193, 192, 760, 174, 814, 346,
-	346, 66, -1000, 415, 102, -1000, -1000, 77, 450, 183,
-	-39, -39, -39, 730, -1000, -1000, 191, -1000, -26, -1000,
-	-1000, 151, -1000, -8, 415, 814, 135, -1000, 229, -1000,
-	-1000, 155, 225, 222, 221, 219, 226, 705, 114, 11,
-	-1000, -1000, -1000, 585, 74, 119, -1000, 143, -1000, -1000,
-	-1000, -1000, -1000, 218, 173, -1000, 98, 110, 217, -1000,
-	70, 68, -1000, 215, -1000, 127, 95, -1000, -1000, 346,
-	91, 170, 169, -1000, -1000, -1000, 214, -1000, 44, -1000,
-	80, 95, 168, 183, 171, -1000, 166, -1000, -1000, 55,
-	-1000, -1000, 212, 132, 160, -1000, 17, 211, -1000, 58,
-	55, 92, -1000, -1000, -1000, 675, 210, -1000, 645, -1000,
-	190, 189, 188, 187, 156, 90, -1000, 559, -1000, -1000,
-	-1000, 209, 6, -12, -16, 10, 72, -1000, -1000, 208,
-	-1000, 207, 206, 205, 203, 202, -1000, -1000, -1000, -1000,
-	-1000, -1000,
+	-1000, -1000, -1000, -1000, 182, -1000, -1000, -1000, -1000, -17,
+	-18, -1000, 164, 141, 232, 231, 177, 176, 175, 86,
+	-1000, -1000, 82, -1000, -1000, -1000, -1000, 811, 263, -1000,
+	482, 811, 71, -1000, 786, -1000, 343, 343, -1000, -1000,
+	412, 133, -1000, 811, -1000, -1000, -1000, -28, -1000, -26,
+	229, -1000, 224, -1000, -1000, -1000, 51, 51, 377, -1000,
+	811, 115, -1000, -1000, -1000, -1000, -1000, -1000, -1000, -28,
+	-1000, -1000, 198, 197, 194, 193, 757, 174, 811, 343,
+	343, 66, -1000, 412, 108, -1000, -1000, 70, 447, 184,
+	-34, -34, -34, 727, -1000, -1000, 192, -1000, -28, -1000,
+	-1000, 144, -1000, -8, 412, 811, 139, -1000, 68, -1000,
+	-1000, 181, 226, 220, 219, 217, 223, 702, 104, 20,
+	-1000, -1000, -1000, 582, -1000, 64, 106, -1000, 215, -1000,
+	122, -1000, -1000, -1000, -1000, -1000, 214, 170, -1000, 97,
+	110, 212, -1000, 44, 211, -1000, 121, 86, -1000, -1000,
+	-1000, 343, 78, 169, 166, -1000, -1000, -1000, 210, -1000,
+	77, 86, 165, 184, 167, -1000, 162, -1000, -1000, 51,
+	-1000, 137, 154, -1000, 17, 209, -1000, 58, 51, 107,
+	-1000, -1000, 672, 208, -1000, 642, -1000, 190, 189, 188,
+	187, 186, 90, -1000, 556, -1000, -1000, -1000, 207, 6,
+	-12, -13, 10, 57, -1000, -1000, 206, -1000, 205, 204,
+	202, 201, 168, -1000, -1000, -1000, -1000, -1000, -1000,
 }
 var mmPgo = [...]int{
 
-	0, 342, 0, 20, 14, 341, 13, 331, 4, 330,
-	10, 113, 329, 326, 322, 261, 320, 319, 15, 314,
-	313, 304, 303, 6, 2, 302, 301, 291, 9, 5,
-	1, 250, 16, 290, 289, 7, 286, 282, 8, 280,
-	279, 274, 3, 273, 263, 262, 246, 244,
+	0, 339, 0, 20, 13, 338, 10, 328, 7, 327,
+	9, 138, 326, 323, 319, 258, 317, 316, 16, 311,
+	310, 301, 300, 6, 2, 299, 298, 288, 14, 5,
+	1, 247, 18, 287, 286, 4, 283, 279, 8, 277,
+	276, 271, 3, 270, 260, 259, 243, 241,
 }
 var mmR1 = [...]int{
 
@@ -346,17 +345,17 @@ var mmR1 = [...]int{
 	15, 15, 11, 11, 11, 11, 13, 12, 14, 45,
 	45, 46, 46, 46, 46, 46, 46, 20, 20, 19,
 	19, 3, 3, 10, 10, 23, 23, 16, 16, 24,
-	24, 17, 17, 17, 17, 17, 17, 25, 25, 18,
-	18, 27, 6, 8, 5, 5, 4, 4, 4, 4,
-	4, 4, 28, 28, 7, 7, 7, 26, 26, 26,
-	44, 22, 22, 21, 21, 39, 39, 38, 38, 38,
-	9, 9, 9, 9, 43, 43, 41, 41, 41, 41,
-	42, 42, 40, 40, 40, 35, 35, 36, 36, 37,
-	37, 29, 29, 31, 31, 31, 31, 31, 31, 31,
-	33, 33, 33, 34, 34, 34, 34, 34, 32, 32,
-	30, 30, 30, 30, 30, 2, 2, 2, 2, 2,
+	24, 17, 17, 17, 17, 25, 25, 18, 18, 18,
+	27, 6, 8, 5, 5, 4, 4, 4, 4, 4,
+	4, 28, 28, 7, 7, 7, 26, 26, 26, 44,
+	22, 22, 21, 21, 39, 39, 38, 38, 38, 9,
+	9, 9, 9, 43, 43, 41, 41, 41, 41, 42,
+	42, 40, 40, 40, 35, 35, 36, 36, 37, 37,
+	29, 29, 31, 31, 31, 31, 31, 31, 31, 33,
+	33, 33, 34, 34, 34, 34, 34, 32, 32, 30,
+	30, 30, 30, 30, 2, 2, 2, 2, 2, 2,
 	2, 2, 2, 2, 2, 2, 2, 2, 2, 2,
-	2, 2,
+	2,
 }
 var mmR2 = [...]int{
 
@@ -364,17 +363,17 @@ var mmR2 = [...]int{
 	2, 1, 3, 1, 1, 1, 11, 10, 5, 0,
 	4, 0, 5, 5, 5, 5, 5, 0, 4, 0,
 	3, 3, 1, 0, 3, 0, 2, 5, 4, 0,
-	2, 3, 4, 5, 4, 5, 6, 1, 2, 3,
-	4, 4, 1, 1, 1, 1, 1, 1, 1, 1,
-	1, 1, 6, 2, 1, 1, 1, 0, 6, 5,
-	4, 0, 4, 0, 3, 2, 1, 6, 8, 5,
-	0, 2, 2, 2, 0, 2, 4, 4, 4, 4,
-	0, 2, 4, 8, 7, 3, 1, 5, 3, 5,
-	3, 1, 1, 1, 1, 1, 1, 1, 1, 1,
-	3, 4, 2, 2, 3, 4, 3, 4, 1, 1,
-	3, 3, 1, 3, 5, 1, 1, 1, 1, 1,
+	2, 3, 4, 5, 2, 1, 2, 3, 4, 5,
+	4, 1, 1, 1, 1, 1, 1, 1, 1, 1,
+	1, 6, 2, 1, 1, 1, 0, 6, 5, 4,
+	0, 4, 0, 3, 2, 1, 6, 8, 5, 0,
+	2, 2, 2, 0, 2, 4, 4, 4, 4, 0,
+	2, 4, 8, 7, 3, 1, 5, 3, 5, 3,
+	1, 1, 1, 1, 1, 1, 1, 1, 1, 3,
+	4, 2, 2, 3, 4, 3, 4, 1, 1, 3,
+	3, 1, 3, 5, 1, 1, 1, 1, 1, 1,
 	1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
-	1, 1,
+	1,
 }
 var mmChk = [...]int{
 
@@ -393,50 +392,48 @@ var mmChk = [...]int{
 	14, -41, 29, 30, 31, 32, -42, -2, 47, 8,
 	8, -24, -16, 35, -24, 14, -18, -2, 17, -10,
 	10, 10, 10, 10, 14, -40, -2, 13, -3, -29,
-	-29, -27, -17, 37, 36, -28, 14, 9, -8, 44,
+	-29, -27, -17, 37, 36, -28, 14, 9, -6, 44,
 	-4, 11, -32, -32, -32, -30, 10, -42, 14, -7,
-	48, 49, 50, -28, -2, 15, 9, -10, 12, 9,
-	9, 9, 9, -29, 19, 14, -26, 26, 44, 9,
-	-6, -2, 44, -6, 9, -39, -38, 18, 9, 13,
-	-45, 27, 27, 13, 9, 9, -8, 9, -6, 9,
+	48, 49, 50, -28, -18, -2, 15, 9, -8, 44,
+	-10, 12, 9, 9, 9, 9, -29, 19, 14, -26,
+	26, 44, 9, -6, -6, 9, -39, -38, 9, 18,
+	9, 13, -45, 27, 27, 13, 9, 9, -8, 9,
 	-44, -38, 20, -10, -35, -20, 28, 13, 13, -23,
-	9, 9, -8, -22, 28, 13, 9, 14, 13, -46,
-	-23, -24, 9, 16, 13, -42, 14, 9, -19, 14,
-	39, 40, 41, 42, 31, -24, 14, -21, 14, 9,
-	14, -2, 10, 10, 10, 10, 10, 14, 14, -30,
-	9, 46, 46, 46, 44, 33, 9, 9, 9, 9,
-	9, 9,
+	9, -22, 28, 13, 9, 14, 13, -46, -23, -24,
+	16, 13, -42, 14, 9, -19, 14, 39, 40, 41,
+	42, 31, -24, 14, -21, 14, 9, 14, -2, 10,
+	10, 10, 10, 10, 14, 14, -30, 9, 46, 46,
+	46, 44, 33, 9, 9, 9, 9, 9, 9,
 }
 var mmDef = [...]int{
 
-	0, -2, 0, 4, 6, 7, 0, 11, 80, 103,
-	104, 105, 106, 107, 108, 109, 0, 13, 14, 15,
-	0, 0, 118, 119, 0, 0, 0, 1, 3, 0,
-	5, 10, 0, 9, 0, 0, 32, 125, 126, 127,
-	128, 129, 130, 131, 132, 133, 134, 135, 136, 137,
-	138, 139, 140, 141, 0, 112, 96, 101, 102, 122,
-	0, 113, 0, 0, 0, 0, 0, 0, 0, 2,
-	8, 84, 0, -2, -2, -2, 12, 0, 0, 110,
-	0, 0, 0, 114, 0, 116, 0, 0, 35, 35,
-	0, 0, 90, 0, 31, 95, 111, 120, 121, 123,
-	0, 115, 0, 117, 98, 100, 39, 39, 0, 47,
-	0, 55, 33, 54, 56, 57, 58, 59, 60, 61,
-	79, 85, 0, 0, 0, 0, 0, 0, 0, 0,
-	0, 0, 36, 0, 0, 18, 48, 0, 0, 63,
-	0, 0, 0, 0, 77, 91, 0, 90, 124, 97,
-	99, 0, 40, 0, 0, 0, 0, 49, 0, 53,
-	33, 0, 0, 0, 0, 0, 0, 0, 67, 0,
-	64, 65, 66, 0, 0, 0, 50, 0, 34, 86,
-	87, 88, 89, 0, 0, 78, 19, 0, 0, 41,
-	0, 0, 52, 0, 38, 0, 76, 33, 92, 0,
-	27, 0, 0, 35, 51, 42, 0, 44, 0, 37,
-	71, 75, 0, 62, 0, 17, 0, 21, 35, 39,
-	43, 45, 0, 0, 0, 90, 0, 0, 29, 0,
-	39, 0, 46, 16, 73, 0, 0, 94, 0, 20,
-	0, 0, 0, 0, 0, 0, 69, 0, 70, 93,
-	28, 0, 0, 0, 0, 0, 0, 68, 72, 0,
-	30, 0, 0, 0, 0, 0, 74, 22, 23, 24,
-	25, 26,
+	0, -2, 0, 4, 6, 7, 0, 11, 79, 102,
+	103, 104, 105, 106, 107, 108, 0, 13, 14, 15,
+	0, 0, 117, 118, 0, 0, 0, 1, 3, 0,
+	5, 10, 0, 9, 0, 0, 32, 124, 125, 126,
+	127, 128, 129, 130, 131, 132, 133, 134, 135, 136,
+	137, 138, 139, 140, 0, 111, 95, 100, 101, 121,
+	0, 112, 0, 0, 0, 0, 0, 0, 0, 2,
+	8, 83, 0, -2, -2, -2, 12, 0, 0, 109,
+	0, 0, 0, 113, 0, 115, 0, 0, 35, 35,
+	0, 0, 89, 0, 31, 94, 110, 119, 120, 122,
+	0, 114, 0, 116, 97, 99, 39, 39, 0, 45,
+	0, 54, 33, 53, 55, 56, 57, 58, 59, 60,
+	78, 84, 0, 0, 0, 0, 0, 0, 0, 0,
+	0, 0, 36, 0, 0, 18, 46, 0, 0, 62,
+	0, 0, 0, 0, 76, 90, 0, 89, 123, 96,
+	98, 0, 40, 0, 0, 0, 0, 47, 0, 51,
+	33, 0, 0, 0, 0, 0, 0, 0, 66, 0,
+	63, 64, 65, 0, 44, 0, 0, 48, 0, 52,
+	0, 34, 85, 86, 87, 88, 0, 0, 77, 19,
+	0, 0, 41, 0, 0, 38, 0, 75, 49, 33,
+	91, 0, 27, 0, 0, 35, 50, 42, 0, 37,
+	70, 74, 0, 61, 0, 17, 0, 21, 35, 39,
+	43, 0, 0, 89, 0, 0, 29, 0, 39, 0,
+	16, 72, 0, 0, 93, 0, 20, 0, 0, 0,
+	0, 0, 0, 68, 0, 69, 92, 28, 0, 0,
+	0, 0, 0, 0, 67, 71, 0, 30, 0, 0,
+	0, 0, 0, 73, 22, 23, 24, 25, 26,
 }
 var mmTok1 = [...]int{
 
@@ -1196,8 +1193,8 @@ mmdefault:
 						Node:  NewAstNode(mmDollar[1].loc, mmDollar[1].srcfile),
 						Tname: mmDollar[2].type_id,
 						Id:    default_out_name,
+						Help:  unquote(mmDollar[3].val),
 					},
-					Help: unquote(mmDollar[3].val),
 				}
 			}
 		}
@@ -1212,75 +1209,40 @@ mmdefault:
 						Tname:   mmDollar[2].type_id,
 						Id:      default_out_name,
 						OutName: mmDollar[5].intern.unquote(mmDollar[4].val),
+						Help:    unquote(mmDollar[3].val),
 					},
-					Help: unquote(mmDollar[3].val),
 				}
 			}
 		}
 	case 44:
-		mmDollar = mmS[mmpt-4 : mmpt+1]
+		mmDollar = mmS[mmpt-2 : mmpt+1]
 //line grammar.y:377
 		{
 			{
 				mmVAL.outparam = &OutParam{
-					StructMember: StructMember{
-						Node:  NewAstNode(mmDollar[1].loc, mmDollar[1].srcfile),
-						Tname: mmDollar[2].type_id,
-						Id:    mmDollar[3].intern.Get(mmDollar[3].val),
-					},
+					StructMember: *mmDollar[2].s_member,
 				}
 			}
 		}
 	case 45:
-		mmDollar = mmS[mmpt-5 : mmpt+1]
-//line grammar.y:385
-		{
-			{
-				mmVAL.outparam = &OutParam{
-					StructMember: StructMember{
-						Node:  NewAstNode(mmDollar[1].loc, mmDollar[1].srcfile),
-						Tname: mmDollar[2].type_id,
-						Id:    mmDollar[3].intern.Get(mmDollar[3].val),
-					},
-					Help: unquote(mmDollar[4].val),
-				}
-			}
-		}
-	case 46:
-		mmDollar = mmS[mmpt-6 : mmpt+1]
-//line grammar.y:394
-		{
-			{
-				mmVAL.outparam = &OutParam{
-					StructMember: StructMember{
-						Node:    NewAstNode(mmDollar[1].loc, mmDollar[1].srcfile),
-						Tname:   mmDollar[2].type_id,
-						Id:      mmDollar[3].intern.Get(mmDollar[3].val),
-						OutName: mmDollar[5].intern.unquote(mmDollar[5].val),
-					},
-					Help: unquote(mmDollar[4].val),
-				}
-			}
-		}
-	case 47:
 		mmDollar = mmS[mmpt-1 : mmpt+1]
-//line grammar.y:407
+//line grammar.y:384
 		{
 			{
 				mmVAL.s_members = []*StructMember{mmDollar[1].s_member}
 			}
 		}
-	case 48:
+	case 46:
 		mmDollar = mmS[mmpt-2 : mmpt+1]
-//line grammar.y:409
+//line grammar.y:386
 		{
 			{
 				mmVAL.s_members = append(mmDollar[1].s_members, mmDollar[2].s_member)
 			}
 		}
-	case 49:
+	case 47:
 		mmDollar = mmS[mmpt-3 : mmpt+1]
-//line grammar.y:416
+//line grammar.y:393
 		{
 			{
 				mmVAL.s_member = &StructMember{
@@ -1290,22 +1252,36 @@ mmdefault:
 				}
 			}
 		}
-	case 50:
+	case 48:
 		mmDollar = mmS[mmpt-4 : mmpt+1]
-//line grammar.y:422
+//line grammar.y:399
+		{
+			{
+				mmVAL.s_member = &StructMember{
+					Node:  NewAstNode(mmDollar[1].loc, mmDollar[1].srcfile),
+					Tname: mmDollar[1].type_id,
+					Id:    mmDollar[2].intern.Get(mmDollar[2].val),
+					Help:  unquote(mmDollar[3].val),
+				}
+			}
+		}
+	case 49:
+		mmDollar = mmS[mmpt-5 : mmpt+1]
+//line grammar.y:406
 		{
 			{
 				mmVAL.s_member = &StructMember{
 					Node:    NewAstNode(mmDollar[1].loc, mmDollar[1].srcfile),
 					Tname:   mmDollar[1].type_id,
 					Id:      mmDollar[2].intern.Get(mmDollar[2].val),
-					OutName: mmDollar[3].intern.unquote(mmDollar[3].val),
+					OutName: mmDollar[4].intern.unquote(mmDollar[4].val),
+					Help:    unquote(mmDollar[3].val),
 				}
 			}
 		}
-	case 51:
+	case 50:
 		mmDollar = mmS[mmpt-4 : mmpt+1]
-//line grammar.y:432
+//line grammar.y:417
 		{
 			{
 				cmd := strings.TrimSpace(mmDollar[3].intern.unquote(mmDollar[3].val))
@@ -1319,9 +1295,9 @@ mmdefault:
 				}
 			}
 		}
-	case 62:
+	case 61:
 		mmDollar = mmS[mmpt-6 : mmpt+1]
-//line grammar.y:467
+//line grammar.y:452
 		{
 			{
 				mmVAL.type_id = TypeId{
@@ -1331,9 +1307,9 @@ mmdefault:
 				}
 			}
 		}
-	case 63:
+	case 62:
 		mmDollar = mmS[mmpt-2 : mmpt+1]
-//line grammar.y:473
+//line grammar.y:458
 		{
 			{
 				mmVAL.type_id = TypeId{
@@ -1342,9 +1318,9 @@ mmdefault:
 				}
 			}
 		}
-	case 67:
+	case 66:
 		mmDollar = mmS[mmpt-0 : mmpt+1]
-//line grammar.y:487
+//line grammar.y:472
 		{
 			{
 				mmVAL.par_tuple = paramsTuple{
@@ -1354,9 +1330,9 @@ mmdefault:
 				}
 			}
 		}
-	case 68:
+	case 67:
 		mmDollar = mmS[mmpt-6 : mmpt+1]
-//line grammar.y:495
+//line grammar.y:480
 		{
 			{
 				mmVAL.par_tuple = paramsTuple{
@@ -1366,9 +1342,9 @@ mmdefault:
 				}
 			}
 		}
-	case 69:
+	case 68:
 		mmDollar = mmS[mmpt-5 : mmpt+1]
-//line grammar.y:501
+//line grammar.y:486
 		{
 			{
 				mmVAL.par_tuple = paramsTuple{
@@ -1378,9 +1354,9 @@ mmdefault:
 				}
 			}
 		}
-	case 70:
+	case 69:
 		mmDollar = mmS[mmpt-4 : mmpt+1]
-//line grammar.y:510
+//line grammar.y:495
 		{
 			{
 				mmVAL.retstm = &ReturnStm{
@@ -1389,17 +1365,17 @@ mmdefault:
 				}
 			}
 		}
-	case 71:
+	case 70:
 		mmDollar = mmS[mmpt-0 : mmpt+1]
-//line grammar.y:518
+//line grammar.y:503
 		{
 			{
 				mmVAL.plretains = nil
 			}
 		}
-	case 72:
+	case 71:
 		mmDollar = mmS[mmpt-4 : mmpt+1]
-//line grammar.y:520
+//line grammar.y:505
 		{
 			{
 				mmVAL.plretains = &PipelineRetains{
@@ -1408,41 +1384,41 @@ mmdefault:
 				}
 			}
 		}
-	case 73:
+	case 72:
 		mmDollar = mmS[mmpt-0 : mmpt+1]
-//line grammar.y:527
+//line grammar.y:512
 		{
 			{
 				mmVAL.reflist = nil
 			}
 		}
-	case 74:
+	case 73:
 		mmDollar = mmS[mmpt-3 : mmpt+1]
-//line grammar.y:529
+//line grammar.y:514
 		{
 			{
 				mmVAL.reflist = append(mmDollar[1].reflist, mmDollar[2].rexp)
 			}
 		}
-	case 75:
+	case 74:
 		mmDollar = mmS[mmpt-2 : mmpt+1]
-//line grammar.y:533
+//line grammar.y:518
 		{
 			{
 				mmVAL.calls = append(mmDollar[1].calls, mmDollar[2].call)
 			}
 		}
-	case 76:
+	case 75:
 		mmDollar = mmS[mmpt-1 : mmpt+1]
-//line grammar.y:535
+//line grammar.y:520
 		{
 			{
 				mmVAL.calls = []*CallStm{mmDollar[1].call}
 			}
 		}
-	case 77:
+	case 76:
 		mmDollar = mmS[mmpt-6 : mmpt+1]
-//line grammar.y:540
+//line grammar.y:525
 		{
 			{
 				id := mmDollar[3].intern.Get(mmDollar[3].val)
@@ -1455,9 +1431,9 @@ mmdefault:
 				}
 			}
 		}
-	case 78:
+	case 77:
 		mmDollar = mmS[mmpt-8 : mmpt+1]
-//line grammar.y:549
+//line grammar.y:534
 		{
 			{
 				mmVAL.call = &CallStm{
@@ -1469,50 +1445,50 @@ mmdefault:
 				}
 			}
 		}
-	case 79:
+	case 78:
 		mmDollar = mmS[mmpt-5 : mmpt+1]
-//line grammar.y:557
+//line grammar.y:542
 		{
 			{
 				mmDollar[1].call.Modifiers.Bindings = mmDollar[4].bindings
 				mmVAL.call = mmDollar[1].call
 			}
 		}
-	case 80:
+	case 79:
 		mmDollar = mmS[mmpt-0 : mmpt+1]
-//line grammar.y:565
+//line grammar.y:550
 		{
 			{
 				mmVAL.modifiers = new(Modifiers)
 			}
 		}
-	case 81:
+	case 80:
 		mmDollar = mmS[mmpt-2 : mmpt+1]
-//line grammar.y:567
+//line grammar.y:552
 		{
 			{
 				mmVAL.modifiers.Local = true
 			}
 		}
-	case 82:
+	case 81:
 		mmDollar = mmS[mmpt-2 : mmpt+1]
-//line grammar.y:569
+//line grammar.y:554
 		{
 			{
 				mmVAL.modifiers.Preflight = true
 			}
 		}
-	case 83:
+	case 82:
 		mmDollar = mmS[mmpt-2 : mmpt+1]
-//line grammar.y:571
+//line grammar.y:556
 		{
 			{
 				mmVAL.modifiers.Volatile = true
 			}
 		}
-	case 84:
+	case 83:
 		mmDollar = mmS[mmpt-0 : mmpt+1]
-//line grammar.y:576
+//line grammar.y:561
 		{
 			{
 				mmVAL.bindings = &BindStms{
@@ -1521,18 +1497,18 @@ mmdefault:
 				}
 			}
 		}
-	case 85:
+	case 84:
 		mmDollar = mmS[mmpt-2 : mmpt+1]
-//line grammar.y:581
+//line grammar.y:566
 		{
 			{
 				mmDollar[1].bindings.List = append(mmDollar[1].bindings.List, mmDollar[2].binding)
 				mmVAL.bindings = mmDollar[1].bindings
 			}
 		}
-	case 86:
+	case 85:
 		mmDollar = mmS[mmpt-4 : mmpt+1]
-//line grammar.y:589
+//line grammar.y:574
 		{
 			{
 				mmVAL.binding = &BindStm{
@@ -1542,9 +1518,9 @@ mmdefault:
 				}
 			}
 		}
-	case 87:
+	case 86:
 		mmDollar = mmS[mmpt-4 : mmpt+1]
-//line grammar.y:595
+//line grammar.y:580
 		{
 			{
 				mmVAL.binding = &BindStm{
@@ -1554,9 +1530,9 @@ mmdefault:
 				}
 			}
 		}
-	case 88:
+	case 87:
 		mmDollar = mmS[mmpt-4 : mmpt+1]
-//line grammar.y:601
+//line grammar.y:586
 		{
 			{
 				mmVAL.binding = &BindStm{
@@ -1566,9 +1542,9 @@ mmdefault:
 				}
 			}
 		}
-	case 89:
+	case 88:
 		mmDollar = mmS[mmpt-4 : mmpt+1]
-//line grammar.y:607
+//line grammar.y:592
 		{
 			{
 				mmVAL.binding = &BindStm{
@@ -1578,9 +1554,9 @@ mmdefault:
 				}
 			}
 		}
-	case 90:
+	case 89:
 		mmDollar = mmS[mmpt-0 : mmpt+1]
-//line grammar.y:615
+//line grammar.y:600
 		{
 			{
 				mmVAL.bindings = &BindStms{
@@ -1589,18 +1565,18 @@ mmdefault:
 				}
 			}
 		}
-	case 91:
+	case 90:
 		mmDollar = mmS[mmpt-2 : mmpt+1]
-//line grammar.y:620
+//line grammar.y:605
 		{
 			{
 				mmDollar[1].bindings.List = append(mmDollar[1].bindings.List, mmDollar[2].binding)
 				mmVAL.bindings = mmDollar[1].bindings
 			}
 		}
-	case 92:
+	case 91:
 		mmDollar = mmS[mmpt-4 : mmpt+1]
-//line grammar.y:628
+//line grammar.y:613
 		{
 			{
 				mmVAL.binding = &BindStm{
@@ -1610,9 +1586,25 @@ mmdefault:
 				}
 			}
 		}
-	case 93:
+	case 92:
 		mmDollar = mmS[mmpt-8 : mmpt+1]
-//line grammar.y:634
+//line grammar.y:619
+		{
+			{
+				mmVAL.binding = &BindStm{
+					Node: NewAstNode(mmDollar[1].loc, mmDollar[1].srcfile),
+					Id:   mmDollar[1].intern.Get(mmDollar[1].val),
+					Exp: &SweepExp{
+						valExp: valExp{Node: NewAstNode(mmDollar[1].loc, mmDollar[1].srcfile)},
+						Value:  mmDollar[5].exps,
+					},
+					Sweep: true,
+				}
+			}
+		}
+	case 93:
+		mmDollar = mmS[mmpt-7 : mmpt+1]
+//line grammar.y:629
 		{
 			{
 				mmVAL.binding = &BindStm{
@@ -1627,90 +1619,74 @@ mmdefault:
 			}
 		}
 	case 94:
-		mmDollar = mmS[mmpt-7 : mmpt+1]
-//line grammar.y:644
-		{
-			{
-				mmVAL.binding = &BindStm{
-					Node: NewAstNode(mmDollar[1].loc, mmDollar[1].srcfile),
-					Id:   mmDollar[1].intern.Get(mmDollar[1].val),
-					Exp: &SweepExp{
-						valExp: valExp{Node: NewAstNode(mmDollar[1].loc, mmDollar[1].srcfile)},
-						Value:  mmDollar[5].exps,
-					},
-					Sweep: true,
-				}
-			}
-		}
-	case 95:
 		mmDollar = mmS[mmpt-3 : mmpt+1]
-//line grammar.y:657
+//line grammar.y:642
 		{
 			{
 				mmVAL.exps = append(mmDollar[1].exps, mmDollar[3].exp)
 			}
 		}
-	case 96:
+	case 95:
 		mmDollar = mmS[mmpt-1 : mmpt+1]
-//line grammar.y:659
+//line grammar.y:644
 		{
 			{
 				mmVAL.exps = []Exp{mmDollar[1].exp}
 			}
 		}
-	case 97:
+	case 96:
 		mmDollar = mmS[mmpt-5 : mmpt+1]
-//line grammar.y:664
+//line grammar.y:649
 		{
 			{
 				mmDollar[1].kvpairs[unquote(mmDollar[3].val)] = mmDollar[5].exp
 				mmVAL.kvpairs = mmDollar[1].kvpairs
 			}
 		}
-	case 98:
+	case 97:
 		mmDollar = mmS[mmpt-3 : mmpt+1]
-//line grammar.y:669
+//line grammar.y:654
 		{
 			{
 				mmVAL.kvpairs = map[string]Exp{unquote(mmDollar[1].val): mmDollar[3].exp}
 			}
 		}
-	case 99:
+	case 98:
 		mmDollar = mmS[mmpt-5 : mmpt+1]
-//line grammar.y:674
+//line grammar.y:659
 		{
 			{
 				mmDollar[1].kvpairs[mmDollar[3].intern.Get(mmDollar[3].val)] = mmDollar[5].exp
 				mmVAL.kvpairs = mmDollar[1].kvpairs
 			}
 		}
-	case 100:
+	case 99:
 		mmDollar = mmS[mmpt-3 : mmpt+1]
-//line grammar.y:679
+//line grammar.y:664
 		{
 			{
 				mmVAL.kvpairs = map[string]Exp{mmDollar[1].intern.Get(mmDollar[1].val): mmDollar[3].exp}
 			}
 		}
-	case 101:
+	case 100:
 		mmDollar = mmS[mmpt-1 : mmpt+1]
-//line grammar.y:684
+//line grammar.y:669
 		{
 			{
 				mmVAL.exp = mmDollar[1].vexp
 			}
 		}
-	case 102:
+	case 101:
 		mmDollar = mmS[mmpt-1 : mmpt+1]
-//line grammar.y:686
+//line grammar.y:671
 		{
 			{
 				mmVAL.exp = mmDollar[1].rexp
 			}
 		}
-	case 103:
+	case 102:
 		mmDollar = mmS[mmpt-1 : mmpt+1]
-//line grammar.y:690
+//line grammar.y:675
 		{
 			{ // Lexer guarantees parseable float strings.
 				f := parseFloat(mmDollar[1].val)
@@ -1720,9 +1696,9 @@ mmdefault:
 				}
 			}
 		}
-	case 104:
+	case 103:
 		mmDollar = mmS[mmpt-1 : mmpt+1]
-//line grammar.y:698
+//line grammar.y:683
 		{
 			{ // Lexer guarantees parseable int strings.
 				i := parseInt(mmDollar[1].val)
@@ -1732,9 +1708,9 @@ mmdefault:
 				}
 			}
 		}
-	case 105:
+	case 104:
 		mmDollar = mmS[mmpt-1 : mmpt+1]
-//line grammar.y:706
+//line grammar.y:691
 		{
 			{
 				mmVAL.vexp = &StringExp{
@@ -1744,9 +1720,9 @@ mmdefault:
 				}
 			}
 		}
-	case 109:
+	case 108:
 		mmDollar = mmS[mmpt-1 : mmpt+1]
-//line grammar.y:715
+//line grammar.y:700
 		{
 			{
 				mmVAL.vexp = &NullExp{
@@ -1754,9 +1730,20 @@ mmdefault:
 				}
 			}
 		}
-	case 110:
+	case 109:
 		mmDollar = mmS[mmpt-3 : mmpt+1]
-//line grammar.y:722
+//line grammar.y:707
+		{
+			{
+				mmVAL.vexp = &ArrayExp{
+					valExp: valExp{Node: NewAstNode(mmDollar[1].loc, mmDollar[1].srcfile)},
+					Value:  mmDollar[2].exps,
+				}
+			}
+		}
+	case 110:
+		mmDollar = mmS[mmpt-4 : mmpt+1]
+//line grammar.y:712
 		{
 			{
 				mmVAL.vexp = &ArrayExp{
@@ -1766,19 +1753,8 @@ mmdefault:
 			}
 		}
 	case 111:
-		mmDollar = mmS[mmpt-4 : mmpt+1]
-//line grammar.y:727
-		{
-			{
-				mmVAL.vexp = &ArrayExp{
-					valExp: valExp{Node: NewAstNode(mmDollar[1].loc, mmDollar[1].srcfile)},
-					Value:  mmDollar[2].exps,
-				}
-			}
-		}
-	case 112:
 		mmDollar = mmS[mmpt-2 : mmpt+1]
-//line grammar.y:732
+//line grammar.y:717
 		{
 			{
 				mmVAL.vexp = &ArrayExp{
@@ -1787,9 +1763,9 @@ mmdefault:
 				}
 			}
 		}
-	case 113:
+	case 112:
 		mmDollar = mmS[mmpt-2 : mmpt+1]
-//line grammar.y:739
+//line grammar.y:724
 		{
 			{
 				mmVAL.vexp = &MapExp{
@@ -1799,9 +1775,21 @@ mmdefault:
 				}
 			}
 		}
-	case 114:
+	case 113:
 		mmDollar = mmS[mmpt-3 : mmpt+1]
-//line grammar.y:745
+//line grammar.y:730
+		{
+			{
+				mmVAL.vexp = &MapExp{
+					valExp: valExp{Node: NewAstNode(mmDollar[1].loc, mmDollar[1].srcfile)},
+					Kind:   KindMap,
+					Value:  mmDollar[2].kvpairs,
+				}
+			}
+		}
+	case 114:
+		mmDollar = mmS[mmpt-4 : mmpt+1]
+//line grammar.y:736
 		{
 			{
 				mmVAL.vexp = &MapExp{
@@ -1812,20 +1800,20 @@ mmdefault:
 			}
 		}
 	case 115:
-		mmDollar = mmS[mmpt-4 : mmpt+1]
-//line grammar.y:751
+		mmDollar = mmS[mmpt-3 : mmpt+1]
+//line grammar.y:742
 		{
 			{
 				mmVAL.vexp = &MapExp{
 					valExp: valExp{Node: NewAstNode(mmDollar[1].loc, mmDollar[1].srcfile)},
-					Kind:   KindMap,
+					Kind:   KindStruct,
 					Value:  mmDollar[2].kvpairs,
 				}
 			}
 		}
 	case 116:
-		mmDollar = mmS[mmpt-3 : mmpt+1]
-//line grammar.y:757
+		mmDollar = mmS[mmpt-4 : mmpt+1]
+//line grammar.y:748
 		{
 			{
 				mmVAL.vexp = &MapExp{
@@ -1836,20 +1824,8 @@ mmdefault:
 			}
 		}
 	case 117:
-		mmDollar = mmS[mmpt-4 : mmpt+1]
-//line grammar.y:763
-		{
-			{
-				mmVAL.vexp = &MapExp{
-					valExp: valExp{Node: NewAstNode(mmDollar[1].loc, mmDollar[1].srcfile)},
-					Kind:   KindStruct,
-					Value:  mmDollar[2].kvpairs,
-				}
-			}
-		}
-	case 118:
 		mmDollar = mmS[mmpt-1 : mmpt+1]
-//line grammar.y:771
+//line grammar.y:756
 		{
 			{
 				mmVAL.vexp = &BoolExp{
@@ -1858,9 +1834,9 @@ mmdefault:
 				}
 			}
 		}
-	case 119:
+	case 118:
 		mmDollar = mmS[mmpt-1 : mmpt+1]
-//line grammar.y:776
+//line grammar.y:761
 		{
 			{
 				mmVAL.vexp = &BoolExp{
@@ -1869,9 +1845,9 @@ mmdefault:
 				}
 			}
 		}
-	case 120:
+	case 119:
 		mmDollar = mmS[mmpt-3 : mmpt+1]
-//line grammar.y:783
+//line grammar.y:768
 		{
 			{
 				mmVAL.rexp = &RefExp{
@@ -1882,9 +1858,9 @@ mmdefault:
 				}
 			}
 		}
-	case 121:
+	case 120:
 		mmDollar = mmS[mmpt-3 : mmpt+1]
-//line grammar.y:790
+//line grammar.y:775
 		{
 			{
 				mmVAL.rexp = &RefExp{
@@ -1895,9 +1871,9 @@ mmdefault:
 				}
 			}
 		}
-	case 122:
+	case 121:
 		mmDollar = mmS[mmpt-1 : mmpt+1]
-//line grammar.y:798
+//line grammar.y:783
 		{
 			{
 				mmVAL.rexp = &RefExp{
@@ -1907,9 +1883,9 @@ mmdefault:
 				}
 			}
 		}
-	case 123:
+	case 122:
 		mmDollar = mmS[mmpt-3 : mmpt+1]
-//line grammar.y:804
+//line grammar.y:789
 		{
 			{
 				mmVAL.rexp = &RefExp{
@@ -1919,9 +1895,9 @@ mmdefault:
 				}
 			}
 		}
-	case 124:
+	case 123:
 		mmDollar = mmS[mmpt-5 : mmpt+1]
-//line grammar.y:810
+//line grammar.y:795
 		{
 			{
 				mmVAL.rexp = &RefExp{

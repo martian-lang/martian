@@ -42,7 +42,7 @@ func TestSimplePipe(t *testing.T) {
 stage SUM_SQUARES(
     in  float[] values,
     # sum comment
-    out float   sum,
+    out float   sum  "description of output",
     src py      "stages/sum_squares",
 )
 
@@ -91,6 +91,9 @@ call SUM_SQUARE_PIPELINE(
 						t.Errorf("Expected comment '# sum comment', got %s",
 							p.getNode().Comments[0])
 					}
+				}
+				if h := p.GetDisplayName(); h != "description of output" {
+					t.Errorf("'%s' != 'description of output'", h)
 				}
 			}
 		}
@@ -1135,11 +1138,11 @@ func TestBadOutname(t *testing.T) {
 	t.Parallel()
 	testBadCompile(t, `
 struct FOO(
-    file bar ".",
+    file bar "bad file" ".",
 )`, "not legal under Microsoft Windows")
 	testBadCompile(t, `
 struct FOO(
-    file bar "con.sol",
+    file bar "bad file" "con.sol",
 )`, "conflicts with a reserved windows device name")
 
 	testBadCompile(t, `

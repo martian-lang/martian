@@ -2,7 +2,10 @@
 
 package syntax
 
-import "testing"
+import (
+	"strings"
+	"testing"
+)
 
 func TestMapIsAssignableFrom(t *testing.T) {
 	structType1 := StructType{
@@ -440,6 +443,9 @@ func TestStructTypeRedefinition(t *testing.T) {
 		}
 		if err := ast.TypeTable.AddStructType(st); err == nil {
 			t.Error(msg)
+		} else if !strings.Contains(err.Error(), msg) {
+			t.Errorf("expected error %q but got %q",
+				msg, err.Error())
 		}
 	}
 	checkBad(&StructType{
@@ -458,7 +464,7 @@ func TestStructTypeRedefinition(t *testing.T) {
 				},
 			},
 		},
-	}, "differing field types")
+	}, "differing types")
 	checkBad(&StructType{
 		Id: "MY_STRUCT_1",
 		Members: []*StructMember{
@@ -481,7 +487,7 @@ func TestStructTypeRedefinition(t *testing.T) {
 				},
 			},
 		},
-	}, "extra field")
+	}, "missing field")
 	checkBad(&StructType{
 		Id: "MY_STRUCT_1",
 		Members: []*StructMember{
@@ -517,7 +523,25 @@ func TestStructTypeRedefinition(t *testing.T) {
 				},
 			},
 		},
-	}, "differing map dim")
+	}, "not a typed map")
+	checkBad(&StructType{
+		Id: "MY_STRUCT_1",
+		Members: []*StructMember{
+			&StructMember{
+				Id: "my_field_1",
+				Tname: TypeId{
+					Tname: KindInt,
+				},
+				Help: "foo",
+			},
+			&StructMember{
+				Id: "my_field_2",
+				Tname: TypeId{
+					Tname: KindFloat,
+				},
+			},
+		},
+	}, "differing output display name")
 	checkBad(&StructType{
 		Id: "MY_STRUCT_1",
 		Members: []*StructMember{
@@ -535,5 +559,27 @@ func TestStructTypeRedefinition(t *testing.T) {
 				},
 			},
 		},
-	}, "differing outname")
+	}, "differing explicit output name")
+	structType1.Members[0].Tname = TypeId{
+		Tname:  KindInt,
+		MapDim: 2,
+	}
+	checkBad(&StructType{
+		Id: "MY_STRUCT_1",
+		Members: []*StructMember{
+			&StructMember{
+				Id: "my_field_1",
+				Tname: TypeId{
+					Tname:  KindInt,
+					MapDim: 3,
+				},
+			},
+			&StructMember{
+				Id: "my_field_2",
+				Tname: TypeId{
+					Tname: KindFloat,
+				},
+			},
+		},
+	}, "differing inner array dim")
 }

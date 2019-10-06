@@ -10,19 +10,21 @@ func (self *StructType) format(printer *printer) {
 
 	typeWidth := 0
 	idWidth := 0
+	helpWidth := 0
 	for _, m := range self.Members {
 		typeWidth = max(typeWidth, m.Tname.strlen())
 		idWidth = max(idWidth, len(m.Id))
+		helpWidth = max(helpWidth, len(m.Help))
 	}
 
 	printer.Printf("struct %s(\n", self.Id)
 	for _, m := range self.Members {
-		m.format(printer, typeWidth, idWidth)
+		m.format(printer, typeWidth, idWidth, helpWidth)
 	}
 	printer.mustWriteString(")\n")
 }
 
-func (member *StructMember) format(printer *printer, typeWidth int, idWidth int) {
+func (member *StructMember) format(printer *printer, typeWidth, idWidth, helpWidth int) {
 	printer.printComments(member.getNode(), INDENT)
 
 	// Common columns up to type name.
@@ -33,8 +35,15 @@ func (member *StructMember) format(printer *printer, typeWidth int, idWidth int)
 	}
 	printer.mustWriteRune(' ')
 	printer.mustWriteString(member.Id)
-	if member.OutName != "" {
+	if member.Help != "" || member.OutName != "" {
 		for i := len(member.Id); i < idWidth; i++ {
+			printer.mustWriteRune(' ')
+		}
+		printer.mustWriteRune(' ')
+		quoteString(printer, member.Help)
+	}
+	if member.OutName != "" {
+		for i := len(member.Help); i < helpWidth; i++ {
 			printer.mustWriteRune(' ')
 		}
 		printer.mustWriteRune(' ')

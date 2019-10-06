@@ -63,7 +63,6 @@ type (
 
 	OutParam struct {
 		StructMember
-		Help string
 	}
 
 	Stage struct {

@@ -114,7 +114,7 @@ stage MY_STAGE(
 
 pipeline MY_PIPELINE(
     in  int info,
-    out bam result,
+    out bam result  "description of output"  "output.bam",
 )
 {
     call MY_STAGE(
@@ -284,7 +284,7 @@ func TestFixIncludesPipeline(t *testing.T) {
 
 pipeline MY_PIPELINE(
     in  int info,
-    out bam result,
+    out bam result  "description of output"  "output.bam",
 )
 {
     call MY_STAGE(

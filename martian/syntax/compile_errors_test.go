@@ -1298,8 +1298,8 @@ func TestDuplicateStructOutNames(t *testing.T) {
 	t.Parallel()
 	const src = `
 struct X(
-    file foo "foo.txt",
-	file bar "foo.%s",
+    file foo "" "foo.txt",
+	file bar "" "foo.%s",
 )
 `
 	testGood(t, fmt.Sprintf(src, "csv"))

@@ -217,28 +217,28 @@ func TestPostProcess(t *testing.T) {
 - one text file: outs/text.txt
 - inner:
     bar:
-      bar:              1
-      file1:            outs/inner/bar/file1.txt
-      file2:            outs/inner/bar/file2
-      output_name.file: outs/inner/bar/output_name.file
+      bar:       1
+      file1:     outs/inner/bar/file1.txt
+      file2:     outs/inner/bar/file2
+      help text: outs/inner/bar/output_name.file
     results1:    {
       c1:
-        bar:              null
-        file1:            outs/inner/results1/c1/file1.txt
-        file2:            outs/inner/results1/c1/file2
-        output_name.file: null
+        bar:       null
+        file1:     outs/inner/results1/c1/file1.txt
+        file2:     outs/inner/results1/c1/file2
+        help text: null
       c2:
-        bar:              null
-        file1:            outs/inner/results1/c2/file1.txt
-        file2:            null
-        output_name.file: null
+        bar:       null
+        file1:     outs/inner/results1/c2/file1.txt
+        file2:     null
+        help text: null
     }
-    output_name: {
+    description: {
       c1:
-        bar:              null
-        file1:            null
-        file2:            null
-        output_name.file: outs/inner/output_name/c1/output_name.file
+        bar:       null
+        file1:     null
+        file2:     null
+        help text: outs/inner/output_name/c1/output_name.file
       c2: null
     }
 - files1:        [
@@ -442,23 +442,23 @@ func TestPostProcessEmpties(t *testing.T) {
 - one text file: %s
 - inner:
     bar:
-      bar:              1
-      file1:            outs/inner/bar/file1.txt
-      file2:            outs/inner/bar/file2
-      output_name.file: outs/inner/bar/output_name.file
+      bar:       1
+      file1:     outs/inner/bar/file1.txt
+      file2:     outs/inner/bar/file2
+      help text: outs/inner/bar/output_name.file
     results1:    {
       c1:
-        bar:              null
-        file1:            outs/inner/bar/file1.txt
-        file2:            outs/inner/bar/file2
-        output_name.file: null
+        bar:       null
+        file1:     outs/inner/bar/file1.txt
+        file2:     outs/inner/bar/file2
+        help text: null
       c2:
-        bar:              null
-        file1:            %s
-        file2:            null
-        output_name.file: null
+        bar:       null
+        file1:     %s
+        file2:     null
+        help text: null
     }
-    output_name: {}
+    description: {}
 - files1:        []
 - some ints:     null
 - strs:          []

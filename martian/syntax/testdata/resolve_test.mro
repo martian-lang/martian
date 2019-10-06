@@ -5,7 +5,7 @@ struct POINT(
 
 struct POINT_SET(
     POINT   point,
-    POINT[] points,
+    POINT[] points "description",
     string  extra,
 )
 

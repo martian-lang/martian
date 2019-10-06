@@ -13,10 +13,19 @@ import (
 
 type (
 	StructMember struct {
-		Node      AstNode
-		Tname     TypeId
-		Id        string
-		OutName   string
+		Node  AstNode
+		Tname TypeId
+		// The key for this value in json.
+		Id string
+		// The name of the file or directory in the top-level outputs
+		// directory to use for this output.
+		//
+		// If this is not set, the default is the Id, unless the type
+		// is a user-defined file type, in which case it is Id.TypeName.
+		OutName string
+		// The name by which this value is labeled when printing outputs
+		// to the console.
+		Help      string
 		isComplex bool
 		isFile    FileKind
 	}
@@ -69,6 +78,15 @@ func (s *StructMember) GetOutFilename() string {
 	} else {
 		return s.Id + "." + s.Tname.Tname
 	}
+}
+
+// GetDisplayName returns the name by which this field is described when
+// printing outputs.
+func (s *StructMember) GetDisplayName() string {
+	if s.Help != "" {
+		return s.Help
+	}
+	return s.Id
 }
 
 func (*StructType) getDec()             {}
@@ -257,6 +275,11 @@ func (s *StructType) CheckEqual(other Type) error {
 							": differing inner array dimension"),
 					})
 				}
+			} else if om.Help != member.Help {
+				errs = append(errs, &IncompatibleTypeError{
+					Message: fmt.Sprint("field ", member.Id,
+						": differing output display names"),
+				})
 			} else if om.OutName != member.OutName {
 				errs = append(errs, &IncompatibleTypeError{
 					Message: fmt.Sprint("field ", member.Id,

@@ -33,7 +33,12 @@ struct POINT(
 struct POINTALISM(
     POINT point,
     # output file
-    json  dest  "dest.xml",
+    json  dest  "help" "dest.xml",
+)
+
+struct HELPFUL(
+    int  d2 "foo",
+    file d3 ""    "blargh",
 )
 
 # Adds a key to the json in a file.

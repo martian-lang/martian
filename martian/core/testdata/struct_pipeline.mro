@@ -10,7 +10,7 @@ struct FOO(
 )
 
 struct BAR(
-    int bar,
+    int bar   "an int",
     txt file1,
 )
 
@@ -34,7 +34,7 @@ pipeline INNER(
     in  int          foo,
     out CREATOR      bar,
     out map<CREATOR> results1,
-    out map<CREATOR> results2  "help text"  "output_name",
+    out map<CREATOR> results2  "description"  "output_name",
 )
 {
     call CREATOR as C1(

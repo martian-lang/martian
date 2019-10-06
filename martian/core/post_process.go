@@ -94,12 +94,8 @@ func (self *Fork) handleOuts(paramList []*syntax.OutParam,
 			}
 		}
 		// Print out the param help and value
-		key := param.GetHelp()
-		if len(key) == 0 {
-			key = param.GetId()
-		}
-		if len(key) > keyWidth {
-			keyWidth = len(key)
+		if kw := len(param.GetDisplayName()); kw > keyWidth {
+			keyWidth = kw
 		}
 	}
 	// Rewrite the outs json file with the updated locations.
@@ -112,10 +108,7 @@ func (self *Fork) handleOuts(paramList []*syntax.OutParam,
 	// Iterate through output parameters
 	for _, param := range paramList {
 		id := param.GetId()
-		key := param.GetHelp()
-		if len(key) == 0 {
-			key = id
-		}
+		key := param.GetDisplayName()
 		if _, err := result.WriteString("- "); err != nil {
 			errs = append(errs, err)
 		}
@@ -682,10 +675,7 @@ func printOutDir(w *bytes.Buffer, value json.RawMessage,
 		}
 		keys := make([]string, len(t.Members))
 		for i, m := range t.Members {
-			keys[i] = m.GetOutName()
-			if len(keys[i]) == 0 {
-				keys[i] = m.Id
-			}
+			keys[i] = m.GetDisplayName()
 			if f := len(keys[i]); f > keyLen {
 				keyLen = f
 			}
