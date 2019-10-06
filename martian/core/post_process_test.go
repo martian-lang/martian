@@ -214,7 +214,7 @@ func TestPostProcess(t *testing.T) {
 		t.Error("unexpected file inner/output_name/c2")
 	}
 	const expectSummary = `Outputs:
-- text:   outs/text.txt
+- one text file: outs/text.txt
 - inner:
     bar:
       bar:              1
@@ -241,7 +241,7 @@ func TestPostProcess(t *testing.T) {
         output_name.file: outs/inner/output_name/c1/output_name.file
       c2: null
     }
-- files1: [
+- files1:        [
     0: {
       c1: outs/files1/0/c1
       c2: outs/files1/0/c2
@@ -251,13 +251,13 @@ func TestPostProcess(t *testing.T) {
       c2: outs/files1/1/c2
     }
   ]
-- bars:   [2,3]
-- strs:   [
+- some ints:     [2,3]
+- strs:          [
     {"file1":"foo1"}
     {"file1":"foo2"}
   ]
-- texts:  [
-    0: outs/texts/0.txt
+- some files:    [
+    0: outs/output_text_file_set/0.txt
   ]`
 	compareOutputText(t, expectSummary,
 		strings.Replace(buf.String(), psPath+"/", "", -1))
@@ -296,8 +296,8 @@ func TestPostProcess(t *testing.T) {
 		}
 		if len(outs.Texts) != 1 {
 			t.Errorf("len(texts) == %d != 2", len(outs.Texts))
-		} else if s := strings.TrimPrefix(outs.Texts[0], psPath); s != `/outs/texts/0.txt` {
-			t.Errorf("texts[0] == '%s' != '/outs/texts/0.txt'", s)
+		} else if s := strings.TrimPrefix(outs.Texts[0], psPath); s != `/outs/output_text_file_set/0.txt` {
+			t.Errorf("texts[0] == '%s' != '/outs/output_text_file_set/0.txt'", s)
 		}
 	}
 }
@@ -439,7 +439,7 @@ func TestPostProcessEmpties(t *testing.T) {
 		t.Error("unexpected file inner/output_name/c2")
 	}
 	expectSummary := fmt.Sprintf(`Outputs:
-- text:   %s
+- one text file: %s
 - inner:
     bar:
       bar:              1
@@ -459,10 +459,10 @@ func TestPostProcessEmpties(t *testing.T) {
         output_name.file: null
     }
     output_name: {}
-- files1: []
-- bars:   null
-- strs:   []
-- texts:  null`, exeFile, exeFile)
+- files1:        []
+- some ints:     null
+- strs:          []
+- some files:    null`, exeFile, exeFile)
 	compareOutputText(t, expectSummary,
 		strings.Replace(buf.String(), psPath+"/", "", -1))
 }

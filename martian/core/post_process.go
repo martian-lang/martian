@@ -112,7 +112,7 @@ func (self *Fork) handleOuts(paramList []*syntax.OutParam,
 	// Iterate through output parameters
 	for _, param := range paramList {
 		id := param.GetId()
-		key := param.GetOutName()
+		key := param.GetHelp()
 		if len(key) == 0 {
 			key = id
 		}
