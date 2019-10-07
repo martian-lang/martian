@@ -21,6 +21,7 @@ type mmLexInfo struct {
 	loc      int    // Keep track of the line number
 	previous []byte //
 	token    []byte // Cache the last token for error messaging
+	err      string // errors reported by the parser
 	global   *Ast
 	exp      ValExp // If parsing an expression, rather than an AST.
 	srcfile  *SourceFile
@@ -109,12 +110,20 @@ type mmLexError struct {
 func (err *mmLexError) writeTo(w stringWriter) {
 	mustWriteString(w, "MRO ParseError: unexpected token '")
 	mustWrite(w, err.info.token)
+	if err.info.err != "" {
+		mustWriteString(w, "' (")
+		mustWriteString(w, err.info.err)
+		mustWriteRune(w, ')')
+	} else {
+		mustWriteRune(w, '\'')
+	}
 	if len(err.info.previous) > 0 {
-		mustWriteString(w, "' after '")
+		mustWriteString(w, " after '")
 		mustWrite(w, err.info.previous)
+		mustWriteRune(w, '\'')
 	}
 	if lineStart, line := err.info.getLine(); len(line) > 0 {
-		mustWriteString(w, "'\n")
+		mustWriteString(w, "\n")
 		mustWrite(w, line)
 		mustWriteRune(w, '\n')
 		for i := 0; i < err.info.pos-len(err.info.token)-lineStart; i++ {
@@ -122,7 +131,7 @@ func (err *mmLexError) writeTo(w stringWriter) {
 		}
 		mustWriteString(w, "^\n    at ")
 	} else {
-		mustWriteString(w, "' at ")
+		mustWriteString(w, " at ")
 	}
 	loc := err.info.Loc()
 	loc.writeTo(w, "        ")
@@ -135,9 +144,18 @@ func (self *mmLexError) Error() string {
 	return buff.String()
 }
 
-func (self *mmLexInfo) Error(string) {}
+func (self *mmLexInfo) Error(e string) {
+	// Unfortunately goyacc doesn't expose a stable API to get at the expected
+	// token other than this.
+	if i := strings.Index(e, ", expecting "); i > 0 {
+		self.err = e[i+2:]
+	} else {
+		self.err = ""
+	}
+}
 
 func yaccParseAny(src []byte, file *SourceFile, intern *stringIntern) (int, mmLexError) {
+	mmErrorVerbose = true
 	lexinfo := mmLexError{
 		info: mmLexInfo{
 			src:     src,
