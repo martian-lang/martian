@@ -110,7 +110,8 @@ func NewChunk(fork *Fork, index int,
 }
 
 func (self *Chunk) verifyDef() {
-	if syntax.GetEnforcementLevel() <= syntax.EnforceDisable {
+	level := syntax.GetEnforcementLevel()
+	if level <= syntax.EnforceDisable {
 		return
 	}
 	inParams := self.Stage().ChunkIns
@@ -121,9 +122,19 @@ func (self *Chunk) verifyDef() {
 		self.metadata.WriteErrorString("Chunk def args were nil.")
 		return
 	}
-	if err, alarms := self.chunkDef.Args.ValidateInputs(self.fork.node.top.types, inParams); err != nil {
-		self.metadata.WriteErrorString(err.Error() + alarms)
-	} else if alarms != "" {
+	err, alarms := self.chunkDef.Args.ValidateInputs(self.fork.node.top.types, inParams)
+	if err != nil {
+		if level >= syntax.EnforceError {
+			self.metadata.WriteErrorString(err.Error() + alarms)
+			return
+		}
+		if alarms == "" {
+			alarms = err.Error()
+		} else {
+			alarms = err.Error() + "\n" + alarms
+		}
+	}
+	if alarms != "" {
 		switch syntax.GetEnforcementLevel() {
 		case syntax.EnforceError:
 			self.metadata.WriteErrorString(alarms)
@@ -138,7 +149,8 @@ func (self *Chunk) verifyDef() {
 }
 
 func (self *Chunk) verifyOutput(output LazyArgumentMap) bool {
-	if syntax.GetEnforcementLevel() <= syntax.EnforceDisable {
+	level := syntax.GetEnforcementLevel()
+	if level <= syntax.EnforceDisable {
 		return true
 	}
 	if len(self.fork.OutParams().List) == 0 &&
@@ -150,11 +162,20 @@ func (self *Chunk) verifyOutput(output LazyArgumentMap) bool {
 		self.metadata.WriteErrorString("Output not found.")
 	} else {
 		outParams := self.Stage().ChunkOuts
-		if err, alarms := output.ValidateOutputs(self.fork.node.top.types,
-			outParams, self.fork.OutParams()); err != nil {
-			self.metadata.WriteErrorString(err.Error() + alarms)
-			return false
-		} else if alarms != "" {
+		err, alarms := output.ValidateOutputs(self.fork.node.top.types,
+			outParams, self.fork.OutParams())
+		if err != nil {
+			if level >= syntax.EnforceError {
+				self.metadata.WriteErrorString(err.Error() + alarms)
+				return false
+			}
+			if alarms == "" {
+				alarms = err.Error()
+			} else {
+				alarms = err.Error() + "\n" + alarms
+			}
+		}
+		if alarms != "" {
 			switch syntax.GetEnforcementLevel() {
 			case syntax.EnforceError:
 				self.metadata.WriteErrorString(alarms)
