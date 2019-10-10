@@ -793,7 +793,19 @@ func (self *Fork) skip() {
 
 func (self *Fork) writeInvocation() {
 	if !self.metadata.exists(InvocationFile) {
-		argBindings, _ := self.node.resolveInputs(self.forkId)
+		argBindings, err := self.node.resolveInputs(self.forkId)
+		if err != nil {
+			switch syntax.GetEnforcementLevel() {
+			case syntax.EnforceError:
+				self.metadata.WriteErrorString(err.Error())
+			case syntax.EnforceAlarm:
+				self.metadata.AppendAlarm(err.Error())
+			case syntax.EnforceLog:
+				util.PrintError(err, "runtime",
+					"(inputs)          %s: WARNING: invalid args\n%s",
+					self.fqname)
+			}
+		}
 		invocation, _ := BuildCallSource(
 			self.node.call.Call().Id,
 			argBindings, nil,
@@ -1012,7 +1024,7 @@ func (self *Fork) doComplete() {
 	}
 	if ok, msg := self.verifyOutput(joinOut); ok {
 		if msg != "" {
-			self.metadata.AppendAlarm(msg)
+			self.metadata.AppendAlarm("Incorrect _outs: " + msg)
 		}
 		self.metadata.WriteTime(CompleteFile)
 		// Print alerts
@@ -1062,7 +1074,7 @@ func (self *Fork) stepPipeline() {
 		self.metadata.Write(OutsFile, outs)
 		if ok, msg := self.verifyOutput(outs); ok {
 			if msg != "" {
-				self.metadata.AppendAlarm(msg)
+				self.metadata.AppendAlarm("Incorrect _outs: " + msg)
 			}
 			self.metadata.WriteTime(CompleteFile)
 		} else {

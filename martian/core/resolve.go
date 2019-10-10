@@ -173,6 +173,12 @@ func (node *TopNode) resolveRef(binding *syntax.RefExp, t syntax.Type,
 		node.types.Get(syntax.TypeId{
 			Tname: boundNode.call.Call().DecId,
 		}), t, node.types)
+	if err != nil {
+		err = &elementError{
+			element: "stage " + binding.Id,
+			inner:   err,
+		}
+	}
 	return true, value, err
 }
 
@@ -207,17 +213,18 @@ func (args LazyArgumentMap) Path(p string, source, dest syntax.Type,
 	switch t := source.(type) {
 	case *syntax.TypedMapType:
 		result := make(MarshalerMap, len(args))
+		var errs syntax.ErrorList
 		for k, v := range args {
 			elem, err := resolvePath(v, p, t.Elem, lookup)
 			result[k] = elem
 			if err != nil {
-				return result, &elementError{
+				errs = append(errs, &elementError{
 					element: "key " + k,
 					inner:   err,
-				}
+				})
 			}
 		}
-		return result, nil
+		return result, errs.If()
 	case *syntax.StructType:
 		key := p
 		indexDot := strings.IndexRune(p, '.')
@@ -258,7 +265,7 @@ func (args LazyArgumentMap) Path(p string, source, dest syntax.Type,
 					inner:   err,
 				}
 			}
-			return m, err
+			return m, nil
 		}
 	default:
 		if strings.ContainsRune(p, '.') {
@@ -325,32 +332,34 @@ func (args LazyArgumentMap) filter(t syntax.Type,
 	}
 	switch t := t.(type) {
 	case *syntax.TypedMapType:
+		var errs syntax.ErrorList
 		result := make(MarshalerMap, len(args))
 		for k, v := range args {
-			if b, _, err := t.Elem.FilterJson(v, lookup); err != nil {
-				return result, &elementError{
+			b, _, err := t.Elem.FilterJson(v, lookup)
+			if err != nil {
+				errs = append(errs, &elementError{
 					element: "key " + k,
 					inner:   err,
-				}
-			} else {
-				result[k] = b
+				})
 			}
+			result[k] = b
 		}
-		return result, nil
+		return result, errs.If()
 	case *syntax.StructType:
+		var errs syntax.ErrorList
 		result := make(MarshalerMap, len(t.Members))
 		for _, member := range t.Members {
 			et := lookup.Get(member.Tname)
-			if b, _, err := et.FilterJson(args[member.Id], lookup); err != nil {
-				return result, &elementError{
+			b, _, err := et.FilterJson(args[member.Id], lookup)
+			if err != nil {
+				errs = append(errs, &elementError{
 					element: "key " + member.Id,
 					inner:   err,
-				}
-			} else {
-				result[member.Id] = b
+				})
 			}
+			result[member.Id] = b
 		}
-		return result, nil
+		return result, errs.If()
 	default:
 		panic(fmt.Sprintf("incorrect type %T for map filtering", t))
 	}
@@ -373,17 +382,18 @@ func resolvePath(b json.RawMessage, p string,
 		}
 		et := lookup.GetArray(t.Elem, t.Dim-1)
 		result := make(marshallerArray, 0, len(arr))
+		var errs syntax.ErrorList
 		for i, v := range arr {
 			elem, err := resolvePath(v, p, et, lookup)
 			if err != nil {
-				return result, &elementError{
+				errs = append(errs, &elementError{
 					element: fmt.Sprint("array index ", i),
 					inner:   err,
-				}
+				})
 			}
 			result = append(result, elem)
 		}
-		return result, nil
+		return result, errs.If()
 	case *syntax.TypedMapType, *syntax.StructType:
 		var args LazyArgumentMap
 		if err := json.Unmarshal(b, &args); err != nil {
@@ -484,32 +494,36 @@ func (node *TopNode) resolveArray(binding *syntax.ArrayExp, t syntax.Type,
 		t = node.types.GetArray(at.Elem, at.Dim-1)
 	}
 	allReady := true
+	var errs syntax.ErrorList
 	for i, exp := range binding.Value {
 		if ready, v, err := node.resolve(exp, t,
 			fork, readSize); err != nil {
-			return ready && allReady, result, err
+			allReady = ready && allReady
+			err = append(errs, err)
 		} else if !ready {
 			allReady = false
 		} else {
 			result[i] = v
 		}
 	}
-	return allReady, result, nil
+	return allReady, result, errs.If()
 }
 
 func (node *TopNode) resolveMap(binding *syntax.MapExp, t syntax.Type,
 	fork ForkId, readSize int64) (bool, json.Marshaler, error) {
 	result := make(MarshalerMap, len(binding.Value))
 	allReady := true
+	var errs syntax.ErrorList
 	switch t := t.(type) {
 	case *syntax.TypedMapType:
 		for key, exp := range binding.Value {
 			if ready, v, err := node.resolve(exp, t.Elem,
 				fork, readSize); err != nil {
-				return ready && allReady, result, &elementError{
+				allReady = ready && allReady
+				errs = append(errs, &elementError{
 					element: "key " + key,
 					inner:   err,
-				}
+				})
 			} else if !ready {
 				allReady = false
 				result[key] = nil
@@ -524,10 +538,12 @@ func (node *TopNode) resolveMap(binding *syntax.MapExp, t syntax.Type,
 				node.types.Get(member.Tname),
 				fork,
 				readSize); err != nil {
-				return ready && allReady, result, &elementError{
+				allReady = ready && allReady
+				errs = append(errs, &elementError{
 					element: "field " + member.Id,
 					inner:   err,
-				}
+				})
+				result[member.Id] = nil
 			} else if !ready {
 				allReady = false
 				result[member.Id] = nil
@@ -540,5 +556,5 @@ func (node *TopNode) resolveMap(binding *syntax.MapExp, t syntax.Type,
 			Message: "not a map type",
 		}
 	}
-	return allReady, result, nil
+	return allReady, result, errs.If()
 }

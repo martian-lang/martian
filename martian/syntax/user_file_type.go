@@ -149,5 +149,6 @@ func (s *UserType) FilterJson(data json.RawMessage, _ *TypeLookup) (json.RawMess
 	}
 	var tmp string
 	err := json.Unmarshal(data, &tmp)
-	return data, err != nil, err
+	// For consistency with IsValidJson, don't treat any errors as fatal.
+	return data, false, err
 }
