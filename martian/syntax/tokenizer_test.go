@@ -14,9 +14,27 @@ func TestNextToken(t *testing.T) {
 			t.Errorf("Wrong token type %d for %s", tokid, s)
 		}
 		if expect != INVALID && len(tok) != len(s) {
-			t.Errorf("Only got %q back from %s", tok, s)
+			t.Errorf("Only got %q back from %q", tok, s)
 		}
 	}
+
+	check2 := func(s string, expect, expectLen int) {
+		t.Helper()
+		tokid, tok := nextToken([]byte(s))
+		if tokid != expect {
+			t.Errorf("Wrong token type %d for %s", tokid, s)
+		}
+		if expect != INVALID && len(tok) != expectLen {
+			t.Errorf("Only got %q back from %q", tok, s)
+		}
+	}
+	check(" \t\r\n ", SKIP)
+	check2(" \t\r\n foo", SKIP, len(" \t\r\n "))
+	check(KindSelf, SELF)
+	check2("self ", SELF, 4)
+	check(KindInt, INT)
+	check(`=`, EQUALS)
+
 	check("# this is a comment\n", COMMENT)
 	check(`"this/is/a/string"`, LITSTRING)
 	check(`""`, LITSTRING)
@@ -38,6 +56,9 @@ func TestNextToken(t *testing.T) {
 	check(`__type_name`, INVALID)
 	check(`name_`, ID)
 	check(`_name_`, ID)
+	check2("foo ", ID, 3)
+	check2("foo.bar", ID, 3)
+	check2(".bar", DOT, 1)
 
 	// int patterns
 	check(`012345567`, NUM_INT)
@@ -86,4 +107,17 @@ func TestNextToken(t *testing.T) {
 	check(`-0E-0`, NUM_FLOAT)
 	check(`-0.0e-0`, NUM_FLOAT)
 	check(`-0.0E-0`, NUM_FLOAT)
+}
+
+func BenchmarkNextToken(b *testing.B) {
+	src := []byte(fmtTestSrc)
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		val := src
+		pos := 0
+		for len(val) > 0 {
+			_, val = nextToken(src[pos:])
+			pos += len(val)
+		}
+	}
 }
