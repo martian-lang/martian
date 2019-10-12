@@ -305,7 +305,7 @@ func (binding *BindStm) rewriteToDefaultOutput(global *Ast,
 			return false
 		}
 		defExp := *exp
-		defExp.OutputId = default_out_name
+		defExp.OutputId = defaultOutName
 		if tname, err := defExp.resolveType(global, pipeline); err == nil {
 			if tname.MapDim == 0 {
 				if rt := global.TypeTable.Get(tname); rt != nil &&

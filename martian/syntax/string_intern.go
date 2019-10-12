@@ -26,7 +26,7 @@ func makeStringIntern() (v *stringIntern) {
 	v.internSet[volatile] = volatile
 	v.internSet[disabled] = disabled
 	v.internSet[strict] = strict
-	v.internSet[default_out_name] = default_out_name
+	v.internSet[defaultOutName] = defaultOutName
 	v.internSet[abr_python] = abr_python
 	v.internSet[abr_exec] = abr_exec
 	v.internSet[abr_compiled] = abr_compiled

@@ -30,12 +30,15 @@ func TestNextToken(t *testing.T) {
 	}
 	check(" \t\r\n ", SKIP)
 	check2(" \t\r\n foo", SKIP, len(" \t\r\n "))
+	check2(" \u00a0foo ", SKIP, 3)
 	check(KindSelf, SELF)
 	check2("self ", SELF, 4)
 	check(KindInt, INT)
-	check(`=`, EQUALS)
+	check(`=`, int('='))
 
 	check("# this is a comment\n", COMMENT)
+	check2("blah#blah", ID, 4)
+	check2("#blah\nblah", COMMENT, 6)
 	check(`"this/is/a/string"`, LITSTRING)
 	check(`""`, LITSTRING)
 	check(`"this\nis\na\nstring"`, LITSTRING)
@@ -58,7 +61,7 @@ func TestNextToken(t *testing.T) {
 	check(`_name_`, ID)
 	check2("foo ", ID, 3)
 	check2("foo.bar", ID, 3)
-	check2(".bar", DOT, 1)
+	check2(".bar", '.', 1)
 
 	// int patterns
 	check(`012345567`, NUM_INT)
