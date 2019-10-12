@@ -69,6 +69,8 @@ stage ADD_KEY2(
     out json   result,
     out int    very_long_output_name_should_not_push_help_text_over,
     src py     "stages/add_key",
+) using (
+    special = "something",
 )
 
 # Adds a third key to the json in a file.

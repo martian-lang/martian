@@ -89,7 +89,9 @@ test-all:
 	go test ./martian/... ./cmd/...
 
 coverage.out:
-	go test -coverprofile=coverage.out ./martian/... ./cmd/...
+	go test -coverprofile=coverage.out \
+	        -coverpkg=./martian/... \
+	        ./martian/... ./cmd/...
 
 coverage.html: coverage.out
 	go tool cover -html=coverage.out -o coverage.html

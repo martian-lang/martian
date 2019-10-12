@@ -154,8 +154,12 @@ func (self *mmLexInfo) Error(e string) {
 	}
 }
 
-func yaccParseAny(src []byte, file *SourceFile, intern *stringIntern) (int, mmLexError) {
+func init() {
+	// There does not seem to be a way to make goyacc not initialize this to false.
 	mmErrorVerbose = true
+}
+
+func yaccParseAny(src []byte, file *SourceFile, intern *stringIntern) (int, mmLexError) {
 	lexinfo := mmLexError{
 		info: mmLexInfo{
 			src:     src,
