@@ -279,10 +279,18 @@ func wrapStageAsPipeline(call *CallStm, stage *Stage) *Pipeline {
 		returns.Table[param.Id] = binding
 	}
 	return &Pipeline{
-		Node:  stage.Node,
-		Id:    stage.Id,
-		Calls: []*CallStm{call},
-		Ret:   &ReturnStm{Bindings: returns},
+		Node:      stage.Node,
+		Id:        stage.Id,
+		InParams:  stage.InParams,
+		OutParams: stage.OutParams,
+		Calls:     []*CallStm{call},
+		Callables: &Callables{
+			List: []Callable{stage},
+			Table: map[string]Callable{
+				stage.Id: stage,
+			},
+		},
+		Ret: &ReturnStm{Bindings: returns},
 	}
 }
 
