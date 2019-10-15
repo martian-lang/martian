@@ -238,6 +238,10 @@ func (e *IntExp) GoString() string {
 	}
 	return strconv.FormatInt(e.Value, 10)
 }
+func (e *IntExp) String() string {
+	return e.GoString()
+}
+
 func (e *FloatExp) format(w stringWriter, _ string) {
 	mustWriteString(w, strconv.FormatFloat(e.Value, 'g', -1, 64))
 }
@@ -248,6 +252,10 @@ func (e *FloatExp) GoString() string {
 	}
 	return strconv.FormatFloat(e.Value, 'g', -1, 64)
 }
+func (e *FloatExp) String() string {
+	return e.GoString()
+}
+
 func (e *StringExp) format(w stringWriter, _ string) {
 	quoteString(w, e.Value)
 }
@@ -267,6 +275,12 @@ func (e *StringExp) GoString() string {
 	buf = append(buf, '"')
 	return string(buf)
 }
+func (e *StringExp) String() string {
+	if e == nil {
+		return "null"
+	}
+	return e.Value
+}
 func (e *BoolExp) format(w stringWriter, _ string) {
 	mustWriteString(w, strconv.FormatBool(e.Value))
 }
@@ -277,12 +291,18 @@ func (e *BoolExp) GoString() string {
 	}
 	return strconv.FormatBool(e.Value)
 }
+func (e *BoolExp) String() string {
+	return e.GoString()
+}
 func (e *NullExp) format(w stringWriter, _ string) {
 	mustWriteString(w, "null")
 }
 
 func (e *NullExp) GoString() string {
 	return "null"
+}
+func (e *NullExp) String() string {
+	return e.GoString()
 }
 
 func (e *RefExp) format(w stringWriter, prefix string) {

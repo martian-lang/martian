@@ -101,6 +101,24 @@ func TestFormatNullExpression(t *testing.T) {
 	Equal(t, FormatExp(&ve, ""), "null", "Nil value is 'null'.")
 }
 
+func TestExpressionStringer(t *testing.T) {
+	check := func(e Exp, expect string) {
+		t.Helper()
+		if str, ok := e.(fmt.Stringer); !ok {
+			t.Errorf("Expression of type %T does not implement fmt.Stringer", e)
+		} else if s := str.String(); s != expect {
+			t.Errorf("%T: %s != %s", e, s, expect)
+		}
+	}
+	check(new(NullExp), "null")
+	const s = `A potentially very long string, which would be truncated
+	           when using GoString, which is intended for debugging.`
+	check(&StringExp{Value: s}, s)
+	check(new(BoolExp), "false")
+	check(&IntExp{Value: 4}, "4")
+	check(&FloatExp{Value: 3.14}, "3.14")
+}
+
 func TestMarshalJsonExpression(t *testing.T) {
 	var parser Parser
 	const src = `{
