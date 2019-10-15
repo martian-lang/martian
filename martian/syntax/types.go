@@ -114,6 +114,30 @@ func (id *TypeId) MarshalText() ([]byte, error) {
 	return buf.Bytes(), err
 }
 
+func (id *TypeId) UnmarshalText(b []byte) error {
+	var newId TypeId
+	for len(b) > 2 && b[len(b)-1] == ']' && b[len(b)-2] == '[' {
+		newId.ArrayDim++
+		b = b[:len(b)-2]
+	}
+	if len(b) > 5 && b[len(b)-1] == '>' &&
+		b[3] == '<' && b[2] == 'p' && b[1] == 'a' && b[0] == 'm' {
+		newId.MapDim++
+		b = b[:len(b)-1]
+		b = b[4:]
+		for len(b) > 2 && b[len(b)-1] == ']' && b[len(b)-2] == '[' {
+			newId.MapDim++
+			b = b[:len(b)-2]
+		}
+	}
+	newId.Tname = string(b)
+	*id = newId
+	if strings.ContainsAny(newId.Tname, "[]<> ") {
+		return fmt.Errorf("invalid type name %s", newId.Tname)
+	}
+	return nil
+}
+
 func (id TypeId) EncodeJSON(buf *bytes.Buffer) error {
 	if _, err := buf.WriteRune('"'); err != nil {
 		return err

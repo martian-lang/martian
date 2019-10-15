@@ -28,6 +28,19 @@ func TestTypeIdWrite(t *testing.T) {
 				"array dim %d map dim %d type %s wrote out as %q",
 				id.ArrayDim, id.MapDim, id.Tname, s)
 		}
+		var reverse TypeId
+		if err := reverse.UnmarshalText([]byte(expect)); err != nil {
+			t.Error(err)
+		}
+		if reverse.Tname != id.Tname {
+			t.Errorf("Unmarshalled %q != %q", reverse.Tname, id.Tname)
+		}
+		if reverse.MapDim != id.MapDim {
+			t.Errorf("MapDim %d != %d", reverse.MapDim, id.MapDim)
+		}
+		if reverse.ArrayDim != id.ArrayDim {
+			t.Errorf("ArrayDim %d != %d", reverse.ArrayDim, id.ArrayDim)
+		}
 	}
 	check(t, TypeId{
 		Tname:    "int",
