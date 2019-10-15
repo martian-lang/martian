@@ -13,7 +13,6 @@ import (
 	"syscall"
 	"time"
 
-	sigar "github.com/cloudfoundry/gosigar"
 	"github.com/martian-lang/martian/martian/util"
 )
 
@@ -100,7 +99,7 @@ func (self *LocalJobManager) setMaxCores(userMaxCores int, clusterMode bool) {
 }
 
 func (self *LocalJobManager) setMaxMem(userMaxMemGB, userMaxVMemGB int, clusterMode bool) {
-	sysMem := sigar.Mem{}
+	var sysMem MemInfo
 	sysMem.Get()
 	cgMem, cgSoftLimit, cgUse := util.GetCgroupMemoryLimit()
 
@@ -116,13 +115,13 @@ func (self *LocalJobManager) setMaxMem(userMaxMemGB, userMaxVMemGB int, clusterM
 		}
 	} else {
 		MAXMEM_FRACTION := 0.9
-		if cgMem > 0 && cgMem < int64(sysMem.Total) {
+		if cgMem > 0 && cgMem < sysMem.Total {
 			util.LogInfo("jobmngr",
 				"Detected cgroup memory limit of %d bytes.  Using it instead of total system memory %d",
 				cgMem, sysMem.Total)
-			sysMem.Total = uint64(cgMem)
-			if cgUse < cgMem && cgMem-cgUse < int64(sysMem.ActualFree) {
-				sysMem.ActualFree = uint64(cgMem - cgUse)
+			sysMem.Total = cgMem
+			if cgUse < cgMem && cgMem-cgUse < sysMem.ActualFree {
+				sysMem.ActualFree = cgMem - cgUse
 				MAXMEM_FRACTION = 0.96
 			}
 		}
@@ -156,7 +155,7 @@ func (self *LocalJobManager) setMaxMem(userMaxMemGB, userMaxVMemGB int, clusterM
 		}
 	}
 
-	if uint64(self.maxMemGB*1024) > (sysMem.ActualFree+(1024*1024-1))/(1024*1024) {
+	if int64(self.maxMemGB*1024) > (sysMem.ActualFree+(1024*1024-1))/(1024*1024) {
 		util.PrintInfo("jobmngr",
 			"WARNING: configured to use %dGB of local memory, but only %.1fGB is currently available.",
 			self.maxMemGB, float64(sysMem.ActualFree+(1024*1024-1))/(1024*1024*1024))
@@ -251,7 +250,7 @@ func (self *LocalJobManager) GetSettings() *JobManagerSettings {
 }
 
 func (self *LocalJobManager) refreshResources(localMode bool) error {
-	sysMem := sigar.Mem{}
+	var sysMem MemInfo
 	if err := sysMem.Get(); err != nil {
 		return err
 	}
@@ -295,7 +294,7 @@ func (self *LocalJobManager) refreshResources(localMode bool) error {
 			self.maxVmemMB - usedMem.Vmem/(1024*1024))
 	}
 	if self.limitLoad {
-		load := sigar.LoadAverage{}
+		var load LoadAverage
 		if err := load.Get(); err != nil {
 			return err
 		}

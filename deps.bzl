@@ -4,13 +4,6 @@ load("@bazel_gazelle//:deps.bzl", "go_repository")
 def martian_dependencies():
     _maybe(
         go_repository,
-        name = "com_github_cloudfoundry_gosigar",
-        importpath = "github.com/cloudfoundry/gosigar",
-        tag = "v1.1.0",
-    )
-
-    _maybe(
-        go_repository,
         name = "com_github_dustin_go_humanize",
         commit = "9f541cc9db5d",
         importpath = "github.com/dustin/go-humanize",
