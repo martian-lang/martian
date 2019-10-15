@@ -28,15 +28,18 @@ func TestNextToken(t *testing.T) {
 			t.Errorf("Only got %q back from %q", tok, s)
 		}
 	}
+	check("", INVALID) // EOF
 	check(" \t\r\n ", SKIP)
 	check2(" \t\r\n foo", SKIP, len(" \t\r\n "))
 	check2(" \u00a0foo ", SKIP, 3)
+	check2("\u00a0 foo ", SKIP, 3)
 	check(KindSelf, SELF)
 	check2("self ", SELF, 4)
 	check(KindInt, INT)
 	check(`=`, int('='))
 
 	check("# this is a comment\n", COMMENT)
+	check("#", COMMENT)
 	check2("blah#blah", ID, 4)
 	check2("#blah\nblah", COMMENT, 6)
 	check(`"this/is/a/string"`, LITSTRING)

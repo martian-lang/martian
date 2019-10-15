@@ -172,6 +172,24 @@ stage MAP_CONSUMER(
     src comp                 "stages/structy",
 )
 
+#
+stage _HAS_DEFAULT_OUT(
+    out path,
+    src comp "fake",
+)
+
+pipeline USES_DEFAULT(
+    out path something,
+)
+{
+    call _HAS_DEFAULT_OUT(
+    )
+
+    return (
+        something = _HAS_DEFAULT_OUT.default,
+    )
+}
+
 # Adds some keys to some json files and then merges them.
 pipeline AWESOME(
     in  string     key1       "help text",
