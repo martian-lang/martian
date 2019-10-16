@@ -3,7 +3,7 @@
 //
 // Martian lexical scanner.
 //
-//go:generate goyacc -p "mm" -o grammar.go grammar.y
+//go:generate goyacc -l -p "mm" -o grammar.go grammar.y
 //go:generate rm -f y.output
 //go:generate gofmt -s -w grammar.go
 

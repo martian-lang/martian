@@ -71,13 +71,15 @@ import (
 %type <type_id>   type_id
 %type <exp>       exp
 %type <rexp>      ref_exp
-%type <vexp>      val_exp bool_exp array_exp map_exp
+%type <vexp>      val_exp bool_exp
+%type <vexp>      array_exp nonempty_array_exp
+%type <vexp>      map_exp nonempty_map_exp
 %type <exps>      exp_list
 %type <kvpairs>   kvpair_list struct_vals_list
 %type <call>      call_stm
 %type <calls>     call_stm_list
 %type <binding>   bind_stm modifier_stm
-%type <bindings>  bind_stm_list modifier_stm_list
+%type <bindings>  bind_stm_list nonempty_bind_stm_list modifier_stm_list
 %type <retstm>    return_stm
 %type <res>       resources resource_list
 
@@ -596,18 +598,29 @@ modifier_stm
             Id: disabled,
             Exp: $3,
         } }
+    ;
 
-bind_stm_list
-    :
-        { $$ = &BindStms{
-            Node: NewAstNode($<loc>0, $<srcfile>0),
-            Table: make(map[string]*BindStm),
-        } }
-    | bind_stm_list bind_stm
+nonempty_bind_stm_list
+    : nonempty_bind_stm_list bind_stm
         {
             $1.List = append($1.List, $2)
             $$ = $1
         }
+    | bind_stm
+        { $$ = &BindStms{
+            Node: NewAstNode($<loc>0, $<srcfile>0),
+            Table: make(map[string]*BindStm),
+            List: []*BindStm{$1},
+        } }
+    ;
+
+bind_stm_list
+    : nonempty_bind_stm_list
+    |
+        { $$ = &BindStms{
+            Node: NewAstNode($<loc>0, $<srcfile>0),
+            Table: make(map[string]*BindStm),
+        } }
     ;
 
 bind_stm
@@ -671,6 +684,7 @@ exp
         { $$ = $1 }
     | ref_exp
         { $$ = $1 }
+    ;
 
 val_exp
     : NUM_FLOAT
@@ -704,7 +718,7 @@ val_exp
         } }
     ;
 
-array_exp
+nonempty_array_exp
     : '[' exp_list ']'
         { $$ = &ArrayExp{
             valExp: valExp{Node: NewAstNode($<loc>1, $<srcfile>1)},
@@ -715,20 +729,19 @@ array_exp
             valExp: valExp{Node: NewAstNode($<loc>1, $<srcfile>1)},
             Value: $2,
         } }
+    ;
+
+array_exp
+    : nonempty_array_exp
     | '[' ']'
         { $$ = &ArrayExp{
             valExp: valExp{Node: NewAstNode($<loc>1, $<srcfile>1)},
             Value: make([]Exp, 0),
         } }
+    ;
 
-map_exp
-    : '{' '}'
-        { $$ = &MapExp{
-            valExp: valExp{Node: NewAstNode($<loc>1, $<srcfile>1)},
-            Kind: KindMap,
-            Value: make(map[string]Exp, 0),
-        } }
-    | '{' kvpair_list '}'
+nonempty_map_exp
+    : '{' kvpair_list '}'
         { $$ = &MapExp{
             valExp: valExp{Node: NewAstNode($<loc>1, $<srcfile>1)},
             Kind: KindMap,
@@ -740,6 +753,10 @@ map_exp
             Kind: KindMap,
             Value: $2,
         } }
+    ;
+
+map_exp
+    : nonempty_map_exp
     | '{' struct_vals_list '}'
         { $$ = &MapExp{
             valExp: valExp{Node: NewAstNode($<loc>1, $<srcfile>1)},
@@ -752,6 +769,13 @@ map_exp
             Kind: KindStruct,
             Value: $2,
         } }
+    | '{' '}'
+        { $$ = &MapExp{
+            valExp: valExp{Node: NewAstNode($<loc>1, $<srcfile>1)},
+            Kind: KindMap,
+            Value: make(map[string]Exp, 0),
+        } }
+    ;
 
 bool_exp
     : TRUE
@@ -764,6 +788,7 @@ bool_exp
             valExp: valExp{Node: NewAstNode($<loc>1, $<srcfile>1)},
             Value: false,
         } }
+    ;
 
 ref_exp
     : id '.' id_list

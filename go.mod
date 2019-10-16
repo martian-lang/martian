@@ -8,3 +8,5 @@ require (
 	golang.org/x/sys v0.0.0-20190215142949-d0b11bdaac8a
 	golang.org/x/tools v0.0.0-20190708203411-c8855242db9c
 )
+
+go 1.12
