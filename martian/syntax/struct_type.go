@@ -176,7 +176,7 @@ func (s *StructType) IsAssignableFrom(other Type, typeTable *TypeLookup) error {
 func (s *StructType) IsValidExpression(exp Exp, pipeline *Pipeline, ast *Ast) error {
 	switch exp := exp.(type) {
 	case *RefExp:
-		if tname, err := exp.resolveType(ast, pipeline); err != nil {
+		if tname, _, err := exp.resolveType(ast, pipeline); err != nil {
 			return err
 		} else if tname.ArrayDim != 0 {
 			return &IncompatibleTypeError{
@@ -200,6 +200,8 @@ func (s *StructType) IsValidExpression(exp Exp, pipeline *Pipeline, ast *Ast) er
 		}
 	case *SweepExp:
 		return isValidSweep(s, exp, pipeline, ast)
+	case *SplitExp:
+		return isValidSplit(s, exp, pipeline, ast)
 	case *NullExp:
 		return nil
 	case *MapExp:

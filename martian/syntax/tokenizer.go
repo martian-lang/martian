@@ -172,7 +172,7 @@ func keywordToken(b []byte) ([]byte, int) {
 			if v := bytesPrefixString(b, `special`); len(v) > 0 {
 				return v, SPECIAL
 			}
-			if v := bytesPrefixString(b, `split`); len(v) > 0 {
+			if v := bytesPrefixString(b, KindSplit); len(v) > 0 {
 				return v, SPLIT
 			}
 			if v := bytesPrefixString(b, `src`); len(v) > 0 {

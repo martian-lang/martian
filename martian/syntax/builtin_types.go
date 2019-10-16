@@ -106,7 +106,7 @@ func (s *BuiltinType) IsAssignableFrom(other Type, _ *TypeLookup) error {
 func (s *BuiltinType) IsValidExpression(exp Exp, pipeline *Pipeline, ast *Ast) error {
 	switch exp := exp.(type) {
 	case *RefExp:
-		if tname, err := exp.resolveType(ast, pipeline); err != nil {
+		if tname, _, err := exp.resolveType(ast, pipeline); err != nil {
 			return err
 		} else if tname.ArrayDim > 0 {
 			return &IncompatibleTypeError{
@@ -130,6 +130,8 @@ func (s *BuiltinType) IsValidExpression(exp Exp, pipeline *Pipeline, ast *Ast) e
 		}
 	case *SweepExp:
 		return isValidSweep(s, exp, pipeline, ast)
+	case *SplitExp:
+		return isValidSplit(s, exp, pipeline, ast)
 	case *NullExp:
 		return nil
 	case *StringExp:

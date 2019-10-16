@@ -192,6 +192,9 @@ func (self *Pipeline) format(printer *printer) {
 func (self *CallStm) format(printer *printer, prefix string) {
 	printer.printComments(&self.Node, prefix)
 	printer.mustWriteString(prefix)
+	if self.CallMode() != ModeSingleCall {
+		printer.mustWriteString("map ")
+	}
 	printer.mustWriteString("call ")
 	printer.mustWriteString(self.DecId)
 	if self.Id != self.DecId {

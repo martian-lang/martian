@@ -61,6 +61,8 @@ func (pipeline *Pipeline) directDepsMap() (map[*CallStm]map[*CallStm]struct{}, e
 				}
 			}
 			return errs.If()
+		case *SplitExp:
+			return findDeps(src, exp.Value)
 		}
 		return nil
 	}
@@ -183,7 +185,7 @@ func (pipeline *Pipeline) topoSort() error {
 func (retains *PipelineRetains) compile(global *Ast, pipeline *Pipeline) error {
 	var errs ErrorList
 	for _, param := range retains.Refs {
-		if tName, err := param.resolveType(global, pipeline); err != nil {
+		if tName, _, err := param.resolveType(global, pipeline); err != nil {
 			errs = append(errs, err)
 		} else if t := global.TypeTable.Get(tName); t == nil || t.IsFile() == KindIsNotFile {
 			errs = append(errs, global.err(param,
@@ -231,6 +233,11 @@ func (pipeline *Pipeline) compile(global *Ast) error {
 	if err := errs.If(); err != nil {
 		return err
 	}
+	// Do topo sort before compiling calls to ensure we compile them in the
+	// correct order, in order to get correct types for mapped calls.
+	if err := pipeline.topoSort(); err != nil {
+		return err
+	}
 	// Check call bindings after all calls are checked, so that the Callables
 	// table is fully populated.
 	for _, call := range pipeline.Calls {
@@ -243,13 +250,12 @@ func (pipeline *Pipeline) compile(global *Ast) error {
 		if err := call.Bindings.compile(
 			global, pipeline, callable.GetInParams()); err != nil {
 			errs = append(errs, err)
-			continue
+		}
+		if err := call.checkMappings(global, pipeline); err != nil {
+			errs = append(errs, err)
 		}
 	}
-	if err := errs.If(); err != nil {
-		return err
-	}
-	return pipeline.topoSort()
+	return errs.If()
 }
 
 // Check pipeline declarations.

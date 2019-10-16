@@ -137,6 +137,21 @@ func (e *SweepExp) GoString() string {
 	return buf.String()
 }
 
+func (e *SplitExp) format(w stringWriter, prefix string) {
+	if e.Value == nil {
+		mustWriteString(w, "null")
+		return
+	}
+	mustWriteString(w, "split ")
+	e.Value.format(w, prefix)
+}
+func (e *SplitExp) GoString() string {
+	if e == nil || e.Value == nil {
+		return "null"
+	}
+	return "split " + e.Value.GoString()
+}
+
 func (e *MapExp) format(w stringWriter, prefix string) {
 	if e.Value == nil {
 		mustWriteString(w, "null")

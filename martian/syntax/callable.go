@@ -178,7 +178,12 @@ func (s *Resources) getSubnodes() []AstNodable {
 	return subs
 }
 
-func (s *Pipeline) GetId() string            { return s.Id }
+func (s *Pipeline) GetId() string {
+	if s == nil {
+		return ""
+	}
+	return s.Id
+}
 func (s *Pipeline) getNode() *AstNode        { return &s.Node }
 func (s *Pipeline) File() *SourceFile        { return s.Node.Loc.File }
 func (s *Pipeline) GetInParams() *InParams   { return s.InParams }
@@ -203,6 +208,15 @@ func (s *Pipeline) getSubnodes() []AstNodable {
 		subs = append(subs, s.Retain)
 	}
 	return subs
+}
+
+func (s *Pipeline) findCall(id string) *CallStm {
+	for _, call := range s.Calls {
+		if call.Id == id {
+			return call
+		}
+	}
+	return nil
 }
 
 func (s *SrcParam) getNode() *AstNode         { return &s.Node }

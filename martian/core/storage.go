@@ -446,7 +446,7 @@ func getArgsToFilesMap(fileArgs map[string]map[Nodable]struct{},
 func addFilesToArgsMappings(fpath string, debug bool, fqname string,
 	filesToArgs map[string]*vdrFileCache,
 	argToFiles map[string]map[string]struct{}) {
-	util.Walk(fpath, func(fpath string, info os.FileInfo, err error) error {
+	if err := util.Walk(fpath, func(fpath string, info os.FileInfo, err error) error {
 		// We can't just short-circuit directories here, because
 		// for example an argument might refer to files/foo which
 		// is a symlink to files/bar/baz/foo.  While we do
@@ -501,7 +501,9 @@ func addFilesToArgsMappings(fpath string, debug bool, fqname string,
 				fqname, fpath)
 		}
 		return nil
-	})
+	}); err != nil && err != filepath.SkipDir && !os.IsNotExist((err)) {
+		util.LogError(err, "storage", "Error scanning output files")
+	}
 }
 
 // Tests if any file in files refers directly to any file in names,
@@ -657,7 +659,7 @@ func (self *Fork) cleanSplitTemp(partial *PartialVdrKillReport) *PartialVdrKillR
 		var startEvent, cleanupEvent VdrEvent
 		startEvent.Timestamp = self.split_metadata.getStartTime()
 		for _, p := range tempPaths {
-			util.Walk(p, func(tpath string, info os.FileInfo, err error) error {
+			if err := util.Walk(p, func(tpath string, info os.FileInfo, err error) error {
 				if err == nil {
 					partial.Size += uint64(info.Size())
 					partial.Count++
@@ -667,17 +669,21 @@ func (self *Fork) cleanSplitTemp(partial *PartialVdrKillReport) *PartialVdrKillR
 					partial.Errors = append(partial.Errors, err.Error())
 				}
 				return nil
-			})
+			}); err != nil && !os.IsNotExist(err) {
+				partial.Errors = append(partial.Errors, err.Error())
+			}
 		}
 		for _, p := range filesPaths {
-			util.Walk(p, func(tpath string, info os.FileInfo, err error) error {
+			if err := util.Walk(p, func(tpath string, info os.FileInfo, err error) error {
 				if err == nil {
 					startEvent.DeltaBytes += int64(info.Size())
 				} else {
 					partial.Errors = append(partial.Errors, err.Error())
 				}
 				return nil
-			})
+			}); err != nil && !os.IsNotExist(err) {
+				partial.Errors = append(partial.Errors, err.Error())
+			}
 		}
 		// Add metadata file sizes.
 		for _, md := range self.split_metadata.glob() {
@@ -746,7 +752,7 @@ func (self *Fork) cleanChunkTemp(partial *PartialVdrKillReport) *PartialVdrKillR
 		startEvent.Timestamp = start
 	}
 	for _, p := range temps {
-		util.Walk(p, func(tpath string, info os.FileInfo, err error) error {
+		if err := util.Walk(p, func(tpath string, info os.FileInfo, err error) error {
 			if err == nil {
 				partial.Size += uint64(info.Size())
 				partial.Count++
@@ -756,17 +762,21 @@ func (self *Fork) cleanChunkTemp(partial *PartialVdrKillReport) *PartialVdrKillR
 				partial.Errors = append(partial.Errors, err.Error())
 			}
 			return nil
-		})
+		}); err != nil && !os.IsNotExist(err) {
+			partial.Errors = append(partial.Errors, err.Error())
+		}
 	}
 	for _, p := range files {
-		util.Walk(p, func(tpath string, info os.FileInfo, err error) error {
+		if err := util.Walk(p, func(tpath string, info os.FileInfo, err error) error {
 			if err == nil {
 				startEvent.DeltaBytes += int64(info.Size())
 			} else {
 				partial.Errors = append(partial.Errors, err.Error())
 			}
 			return nil
-		})
+		}); err != nil && !os.IsNotExist(err) {
+			partial.Errors = append(partial.Errors, err.Error())
+		}
 	}
 	// Add metadata file sizes.
 	for _, chunk := range self.chunks {

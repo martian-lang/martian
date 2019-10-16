@@ -393,27 +393,10 @@ type ForkPerfCache struct {
 
 func NewFork(nodable Nodable, index int, id ForkId, args map[string]*syntax.ResolvedBinding) *Fork {
 	self := &Fork{
-		node:   nodable.getNode(),
-		forkId: id,
-		index:  index,
+		node:  nodable.getNode(),
+		index: index,
 	}
-	if idx, err := id.ForkIdString(); err != nil {
-		panic(err)
-	} else {
-		self.id = idx
-	}
-	self.path = path.Join(self.node.path, self.id)
-	self.fqname = self.node.call.GetFqid() + "." + self.id
-	self.metadata = NewMetadata(self.fqname, self.path)
-	self.split_metadata = NewMetadata(self.fqname+".split",
-		path.Join(self.path, "split"))
-	self.join_metadata = NewMetadata(self.fqname+".join",
-		path.Join(self.path, "join"))
-	if self.Split() {
-		self.split_metadata.discoverUniquify()
-		self.join_metadata.finalFilePath = self.metadata.finalFilePath
-		self.join_metadata.discoverUniquify()
-	}
+	self.updateId(id)
 	self.args = args
 	self.split_has_run = false
 	self.join_has_run = false
@@ -432,6 +415,27 @@ func NewFork(nodable Nodable, index int, id ForkId, args map[string]*syntax.Reso
 	}
 
 	return self
+}
+
+func (self *Fork) updateId(id ForkId) {
+	self.forkId = id
+	if idx, err := id.ForkIdString(); err != nil {
+		panic(err)
+	} else {
+		self.id = idx
+	}
+	self.path = path.Join(self.node.path, self.id)
+	self.fqname = self.node.call.GetFqid() + "." + self.id
+	self.metadata = NewMetadata(self.fqname, self.path)
+	self.split_metadata = NewMetadata(self.fqname+".split",
+		path.Join(self.path, "split"))
+	self.join_metadata = NewMetadata(self.fqname+".join",
+		path.Join(self.path, "join"))
+	if self.Split() {
+		self.split_metadata.discoverUniquify()
+		self.join_metadata.finalFilePath = self.metadata.finalFilePath
+		self.join_metadata.discoverUniquify()
+	}
 }
 
 func (self *Fork) Split() bool {
@@ -705,6 +709,31 @@ func (self *Fork) verifyOutput(outs LazyArgumentMap) (bool, string) {
 	return true, ""
 }
 
+func (self *Fork) verifyPipelineOutput(outs MarshalerMap) (bool, string) {
+	outparams := self.OutParams()
+	if len(outparams.List) > 0 {
+		if err, alarms := outs.ValidatePipelineOutputs(
+			self.node.top.types, outparams); err != nil {
+			return false, err.Error() + alarms
+		} else if alarms != "" {
+			switch syntax.GetEnforcementLevel() {
+			case syntax.EnforceError:
+				return false, alarms
+			case syntax.EnforceAlarm:
+				return true, alarms
+			case syntax.EnforceLog:
+				util.PrintInfo("runtime",
+					"(outputs)         %s: WARNING: invalid output\n%s",
+					self.fqname, alarms)
+				fallthrough
+			default:
+				return true, ""
+			}
+		}
+	}
+	return true, ""
+}
+
 func (self *Fork) getState() MetadataState {
 	if state, _ := self.metadata.getState(); state == Failed ||
 		state == Complete ||
@@ -843,7 +872,7 @@ func (self *Fork) writeInvocation() {
 		}
 		invocation, _ := BuildCallSource(
 			self.node.call.Call().Id,
-			argBindings, nil,
+			argBindings, nil, nil,
 			self.node.call.Callable(),
 			self.node.top.types,
 			self.node.top.mroPaths)
@@ -1102,19 +1131,15 @@ func (self *Fork) stepPipeline() {
 		util.PrintError(err, "runtime",
 			"Error resolving output argument bindings.")
 		self.metadata.WriteErrorString(err.Error())
-	} else if outs, ok := outs.(MarshalerMap); !ok {
+	} else if mapOuts, ok := outs.(MarshalerMap); !ok {
 		// If the outputs all resolved to constants, then we don't get
 		// a MarshalerMap and there's no need to do any conversions
 		// because the output types were already checked by the compiler.
 		self.metadata.Write(OutsFile, outs)
 		self.metadata.WriteTime(CompleteFile)
-	} else if outs, err := outs.ToLazyArgumentMap(); err != nil {
-		util.PrintError(err, "runtime",
-			"Error serializing pipeline output argument bindings.")
-		self.metadata.WriteErrorString(err.Error())
 	} else {
 		self.metadata.Write(OutsFile, outs)
-		if ok, msg := self.verifyOutput(outs); ok {
+		if ok, msg := self.verifyPipelineOutput(mapOuts); ok {
 			if msg != "" {
 				self.metadata.AppendAlarm("Incorrect _outs: " + msg)
 			}
@@ -1139,9 +1164,13 @@ func (self *Fork) step() {
 				var err error
 				bindings, err = self.node.resolveInputs(self.forkId)
 				if err != nil {
-					util.PrintError(err, "runtime", "Error resolving argument bindings.")
+					util.PrintError(err, "runtime",
+						"Error resolving input argument bindings for %s",
+						self.fqname)
 				} else if bindings == nil {
-					util.LogInfo("runtime", "Failed to resolve bindings")
+					util.LogInfo("runtime",
+						"Failed to resolve bindings for %s",
+						self.fqname)
 				}
 			}
 			return bindings
@@ -1251,7 +1280,7 @@ func (self *Fork) getAlarms(alarms *strings.Builder) {
 		}
 	}
 	for _, subnode := range self.node.subnodes {
-		if subfork := subnode.matchFork(self.forkId); subfork != nil {
+		for _, subfork := range subnode.matchForks(self.forkId) {
 			subfork.getAlarms(alarms)
 		}
 	}
@@ -1283,7 +1312,7 @@ func (self *Fork) serializeState() *ForkInfo {
 func (self *Fork) getStages() []*StagePerfInfo {
 	stages := make([]*StagePerfInfo, 0, len(self.node.subnodes)+1)
 	for _, node := range self.node.subnodes {
-		if subfork := node.matchFork(self.forkId); subfork != nil {
+		for _, subfork := range node.matchForks(self.forkId) {
 			stages = append(stages, subfork.getStages()...)
 		}
 	}
@@ -1334,7 +1363,7 @@ func (self *Fork) serializePerf() (*ForkPerfInfo, *VDRKillReport) {
 	killReports := make([]*VDRKillReport, 1, len(self.node.subnodes)+1)
 	killReports[0], _ = self.getVdrKillReport()
 	for _, node := range self.node.subnodes {
-		if subfork := node.matchFork(self.forkId); subfork != nil {
+		for _, subfork := range node.matchForks(self.forkId) {
 			subforkSer, subforkKillReport := subfork.serializePerf()
 			stats = append(stats, subforkSer.ForkStats)
 			if subforkKillReport != nil {

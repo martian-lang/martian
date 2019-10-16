@@ -18,7 +18,7 @@ type (
 		// before the node, but not attached to the node.
 		scopeComments []*commentBlock
 
-		Comments []string
+		Comments []string `json:"comments,omitempty"`
 	}
 
 	SourceLoc struct {

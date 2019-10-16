@@ -60,7 +60,7 @@ func TestBuiltinIsAssignableFrom(t *testing.T) {
 	structType := StructType{
 		Id: "MY_STRUCT",
 		Members: []*StructMember{
-			&StructMember{
+			{
 				Id: "my_field",
 				Tname: TypeId{
 					Tname: KindInt,

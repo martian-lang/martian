@@ -451,6 +451,16 @@ func (exp *SweepExp) equal(uother Exp) bool {
 	}
 	return true
 }
+func (exp *SplitExp) equal(uother Exp) bool {
+	other, ok := uother.(*SplitExp)
+	if !ok {
+		util.PrintInfo("compare",
+			"Values are not both sweeps.  Other is %T",
+			other)
+		return false
+	}
+	return exp.Value.equal(other.Value)
+}
 
 func (exp *RefExp) equal(other Exp) bool {
 	if exp == nil {

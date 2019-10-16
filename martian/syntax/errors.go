@@ -215,16 +215,31 @@ type ErrorList []error
 func (errList ErrorList) Error() string {
 	var buf strings.Builder
 	for i, err := range errList {
-		if i != 0 {
-			buf.WriteRune('\n')
+		if i != 0 || len(errList) > 1 {
+			if _, err := buf.WriteString("\n\t"); err != nil {
+				panic(err)
+			}
 		}
 		if ew, ok := err.(errorWriter); ok {
 			ew.writeTo(&buf)
 		} else {
-			buf.WriteString(err.Error())
+			mustWriteString(&buf, err.Error())
 		}
 	}
 	return buf.String()
+}
+
+func (errList ErrorList) writeTo(buf stringWriter) {
+	for i, err := range errList {
+		if i != 0 || len(errList) > 1 {
+			mustWriteString(buf, "\n\t")
+		}
+		if ew, ok := err.(errorWriter); ok {
+			ew.writeTo(buf)
+		} else {
+			mustWriteString(buf, err.Error())
+		}
+	}
 }
 
 // Collapse the error list down, and remove any nil errors.

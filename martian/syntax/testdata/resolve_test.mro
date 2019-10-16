@@ -111,6 +111,11 @@ pipeline POINT_MAPPER(
         disabled = PIPE1.disable_user,
     )
 
+    map call POINT_PIPE as PIPE6(
+        x = split self.mp.point.x,
+        y = split self.mp.point.y,
+    )
+
     call POINT_USER(
         points = [PIPE1.w.point],
         point  = self.one,

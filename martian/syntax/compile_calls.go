@@ -61,6 +61,114 @@ func (global *Ast) compileCall() error {
 					"UnsupportedTagError: Top-level call cannot be preflight.")
 			}
 		}
+		if err := global.Call.checkMappings(global, nil); err != nil {
+			return err
+		}
 	}
 	return nil
+}
+
+// checkMappings fills the MapOver list for the call and verifies (to the extent
+// possible at check time) that the split parameters are either all arrays with
+// the same lengths or all maps with the same keys.
+//
+// While it is always possible to verify that the mapped parameters are either
+// all arrays or all maps, it is only possible to verify the array lengths or
+// map keys if the source maps or arrays are either literals or references to
+// map calls in the same pipeline.
+func (call *CallStm) checkMappings(global *Ast, pipeline *Pipeline) error {
+	if call.Bindings == nil || call.Mapping == nil {
+		return nil
+	}
+	var firstSplit *BindStm
+	var errs ErrorList
+	for _, binding := range call.Bindings.List {
+		if spe, ok := binding.Exp.(*SplitExp); ok {
+			if spe.Call == nil {
+				spe.Call = call
+			}
+			if firstSplit == nil {
+				firstSplit = binding
+			}
+			switch exp := spe.Value.(type) {
+			case *ArrayExp:
+				if src, err := MergeMapCallSources(call.Mapping, exp); err != nil {
+					errs = append(errs, &InconsistentMapCallError{
+						Call:     call,
+						Pipeline: pipeline.GetId(),
+						Inner:    err,
+					})
+				} else {
+					call.Mapping = src
+				}
+			case *MapExp:
+				if src, err := MergeMapCallSources(call.Mapping, exp); err != nil {
+					errs = append(errs, &InconsistentMapCallError{
+						Call:     call,
+						Pipeline: pipeline.GetId(),
+						Inner:    err,
+					})
+				} else {
+					call.Mapping = src
+				}
+			case *RefExp:
+				if t, mapping, err := exp.resolveType(global, pipeline); err != nil {
+					errs = append(errs, &wrapError{
+						innerError: err,
+						loc:        exp.Node.Loc,
+					})
+				} else if mapping != nil {
+					if src, err := MergeMapCallSources(mapping, call); err != nil {
+						errs = append(errs, &InconsistentMapCallError{
+							Call:     call,
+							Pipeline: pipeline.GetId(),
+							Inner:    err,
+						})
+					} else {
+						call.Mapping = src
+						exp.MergeOver = []MapCallSource{src}
+					}
+				} else {
+					if t.ArrayDim > 0 {
+						exp.MergeOver = []MapCallSource{new(placeholderArrayMapSource)}
+						if src, err := MergeMapCallSources(call.Mapping, exp); err != nil {
+							errs = append(errs, &InconsistentMapCallError{
+								Call:     call,
+								Pipeline: pipeline.GetId(),
+								Inner:    err,
+							})
+						} else {
+							call.Mapping = src
+							if src != exp {
+								exp.MergeOver[0] = src
+							}
+						}
+					} else if t.MapDim > 0 {
+						exp.MergeOver = []MapCallSource{new(placeholderMapMapSource)}
+						if src, err := MergeMapCallSources(call.Mapping, exp); err != nil {
+							errs = append(errs, &InconsistentMapCallError{
+								Call:     call,
+								Pipeline: pipeline.GetId(),
+								Inner:    err,
+							})
+						} else {
+							call.Mapping = src
+							if src != exp {
+								exp.MergeOver[0] = src
+							}
+						}
+					} else {
+						errs = append(errs, &wrapError{
+							innerError: &IncompatibleTypeError{
+								Message: "SplitTypeMismatch: cannot split over a " + t.Tname,
+							},
+							loc: spe.Node.Loc,
+						})
+					}
+				}
+			}
+			spe.Source = call.Mapping
+		}
+	}
+	return errs.If()
 }

@@ -173,9 +173,9 @@ func (params *OutParams) CheckFilenames() error {
 	return errs.If()
 }
 
-func (exp *RefExp) resolveType(global *Ast, pipeline *Pipeline) (TypeId, error) {
+func (exp *RefExp) resolveType(global *Ast, pipeline *Pipeline) (TypeId, MapCallSource, error) {
 	if pipeline == nil {
-		return TypeId{}, global.err(exp,
+		return TypeId{}, nil, global.err(exp,
 			"ReferenceError: this binding cannot be resolved outside of a stage or pipeline.")
 	}
 
@@ -185,12 +185,12 @@ func (exp *RefExp) resolveType(global *Ast, pipeline *Pipeline) (TypeId, error) 
 	case KindSelf:
 		param, ok := pipeline.GetInParams().Table[exp.Id]
 		if !ok {
-			return TypeId{}, global.err(exp,
+			return TypeId{}, nil, global.err(exp,
 				"ScopeNameError: '%s' is not an input parameter of pipeline '%s'",
 				exp.Id, pipeline.GetId())
 		}
 		if t, err := fieldType(param.GetTname(), &global.TypeTable, exp.OutputId); err != nil {
-			return t, &StructFieldError{
+			return t, nil, &StructFieldError{
 				Message: "could not evaluate self." + exp.Id + "." + exp.OutputId,
 				InnerError: &wrapError{
 					innerError: err,
@@ -198,45 +198,67 @@ func (exp *RefExp) resolveType(global *Ast, pipeline *Pipeline) (TypeId, error) 
 				},
 			}
 		} else {
-			return t, nil
+			return t, nil, nil
 		}
 
 	// Call: STAGE.myoutparam or STAGE
 	case KindCall:
 		callable, ok := pipeline.Callables.Table[exp.Id]
 		if !ok {
-			return TypeId{}, global.err(exp,
+			return TypeId{}, nil, global.err(exp,
 				"ScopeNameError: '%s' is not called in pipeline '%s'",
 				exp.Id, pipeline.Id)
 		}
+		call := pipeline.findCall(exp.Id)
+		if call == nil {
+			// Should be impossible because of the previous check.
+			panic("invalid call " + exp.Id)
+		}
 		if exp.OutputId == "" {
-			return TypeId{Tname: callable.GetId()}, nil
+			switch call.CallMode() {
+			case ModeArrayCall:
+				return TypeId{Tname: callable.GetId(), ArrayDim: 1}, call.Mapping, nil
+			case ModeMapCall:
+				return TypeId{Tname: callable.GetId(), MapDim: 1}, call.Mapping, nil
+			default:
+				return TypeId{Tname: callable.GetId()}, call.Mapping, nil
+			}
 		}
 		// Check referenced output is actually an output of the callable.
 		idParts := strings.SplitN(exp.OutputId, ".", 2)
 		param, ok := callable.GetOutParams().Table[idParts[0]]
 		if !ok {
-			return TypeId{}, global.err(exp,
+			return TypeId{}, call.Mapping, global.err(exp,
 				"NoSuchOutputError: '%s' is not an output parameter of '%s'",
 				exp.OutputId, callable.GetId())
 		}
-		if len(idParts) == 1 {
-			return param.GetTname(), nil
-		} else if t, err := fieldType(param.GetTname(),
-			&global.TypeTable, idParts[1]); err != nil {
-			return t, &StructFieldError{
-				Message: "could not evaluate " + exp.Id + "." + exp.OutputId,
-				InnerError: &wrapError{
-					innerError: err,
-					loc:        exp.Node.Loc,
-				},
+		t := param.GetTname()
+		if len(idParts) > 1 {
+			var err error
+			if t, err = fieldType(param.GetTname(),
+				&global.TypeTable, idParts[1]); err != nil {
+				return t, call.Mapping, &StructFieldError{
+					Message: "could not evaluate " + exp.Id + "." + exp.OutputId,
+					InnerError: &wrapError{
+						innerError: err,
+						loc:        exp.Node.Loc,
+					},
+				}
 			}
-		} else {
-			return t, nil
 		}
-
+		switch call.CallMode() {
+		case ModeArrayCall:
+			t.ArrayDim++
+		case ModeMapCall:
+			if t.MapDim != 0 {
+				return t, call.Mapping, global.err(exp, "MappedMapError: cannot nest map types")
+			}
+			t.MapDim = t.ArrayDim + 1
+			t.ArrayDim = 0
+		}
+		return t, call.Mapping, nil
 	}
-	return TypeId{}, nil
+	panic("invalid ref kind")
 }
 
 func (bindings *BindStms) compile(global *Ast, pipeline *Pipeline, params *InParams) error {
@@ -306,7 +328,7 @@ func (binding *BindStm) rewriteToDefaultOutput(global *Ast,
 		}
 		defExp := *exp
 		defExp.OutputId = defaultOutName
-		if tname, err := defExp.resolveType(global, pipeline); err == nil {
+		if tname, _, err := defExp.resolveType(global, pipeline); err == nil {
 			if tname.MapDim == 0 {
 				if rt := global.TypeTable.Get(tname); rt != nil &&
 					t.IsAssignableFrom(rt, &global.TypeTable) == nil {
@@ -403,6 +425,8 @@ func getBoundParamIds(exp Exp) []string {
 			ids = append(ids, getBoundParamIds(subExp)...)
 		}
 		return ids
+	case *SplitExp:
+		return getBoundParamIds(exp.Value)
 	}
 	return nil
 }

@@ -9,20 +9,20 @@ import (
 
 func TestExpSetBuilderAddBindings(t *testing.T) {
 	var finder expSetBuilder
-	exps := []syntax.Exp{
-		&syntax.SweepExp{
+	exps := []*syntax.SweepExp{
+		{
 			Value: []syntax.Exp{
 				&syntax.BoolExp{Value: true},
 				&syntax.BoolExp{Value: false},
 			},
 		},
-		&syntax.SweepExp{
+		{
 			Value: []syntax.Exp{
 				&syntax.StringExp{Value: "bar"},
 				&syntax.StringExp{Value: "baz"},
 			},
 		},
-		&syntax.SweepExp{
+		{
 			Value: []syntax.Exp{
 				&syntax.IntExp{Value: 2},
 				&syntax.IntExp{Value: 3},
@@ -30,13 +30,13 @@ func TestExpSetBuilderAddBindings(t *testing.T) {
 		},
 	}
 	finder.AddBindings(map[string]*syntax.ResolvedBinding{
-		"a": &syntax.ResolvedBinding{
+		"a": {
 			Exp: &syntax.StringExp{Value: `foo`},
 		},
-		"b": &syntax.ResolvedBinding{
+		"b": {
 			Exp: exps[0],
 		},
-		"c": &syntax.ResolvedBinding{
+		"c": {
 			Exp: &syntax.ArrayExp{
 				Value: []syntax.Exp{
 					&syntax.StringExp{Value: "foo"},
@@ -44,7 +44,7 @@ func TestExpSetBuilderAddBindings(t *testing.T) {
 				},
 			},
 		},
-		"d": &syntax.ResolvedBinding{
+		"d": {
 			Exp: &syntax.MapExp{
 				Value: map[string]syntax.Exp{
 					"1": &syntax.IntExp{Value: 1},
@@ -65,7 +65,7 @@ func TestExpSetBuilderAddBindings(t *testing.T) {
 
 func TestExpSetBuilderAddMany(t *testing.T) {
 	var finder expSetBuilder
-	exps := []syntax.Exp{
+	exps := []syntax.MapCallSource{
 		&syntax.SweepExp{
 			Value: []syntax.Exp{
 				&syntax.BoolExp{Value: true},
@@ -98,7 +98,7 @@ func TestExpSetBuilderAddMany(t *testing.T) {
 }
 
 func TestMakeForkIds(t *testing.T) {
-	exps := []syntax.Exp{
+	exps := []syntax.MapCallSource{
 		&syntax.SweepExp{
 			Value: []syntax.Exp{
 				&syntax.BoolExp{Value: true},
@@ -118,7 +118,8 @@ func TestMakeForkIds(t *testing.T) {
 			},
 		},
 	}
-	ids := MakeForkIds(exps)
+	var ids ForkIdSet
+	ids.MakeForkIds(nil, exps)
 	mkId := func(i, j, k arrayIndexFork) ForkId {
 		return ForkId{
 			&ForkSourcePart{
@@ -145,15 +146,15 @@ func TestMakeForkIds(t *testing.T) {
 		mkId(0, 1, 1),
 		mkId(1, 1, 1),
 	}
-	if len(ids) != 8 {
-		t.Errorf("expected %d ids, got %d", len(expect), len(ids))
+	if len(ids.List) != 8 {
+		t.Errorf("expected %d ids, got %d", len(expect), len(ids.List))
 	}
-	for i, id := range ids {
+	for i, id := range ids.List {
 		if !id.Equal(expect[i]) {
-			t.Errorf("expected %v, got %v", expect[i], id)
+			t.Errorf("expected %v, got %v", expect[i].GoString(), id.GoString())
 		}
 	}
-	for i, id := range ids {
+	for i, id := range ids.List {
 		if s, err := id.ForkIdString(); err != nil {
 			t.Error(err)
 		} else if s != fmt.Sprintf("fork%d", i) {

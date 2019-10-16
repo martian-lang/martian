@@ -150,6 +150,10 @@ test/fork_test/ar_pass/pipeline_test: test/fork_test/autoretry_pass.json \
                                       integration_prereqs
 	test/martian_test.py $<
 
+test/map_test/pipeline_test: test/map_test/map_test.json \
+                             integration_prereqs
+	test/martian_test.py $<
+
 longtests: test/split_test/pipeline_test \
            test/split_test_go/pipeline_test \
            test/split_test_go/disable_pipeline_test \
@@ -161,7 +165,8 @@ longtests: test/split_test/pipeline_test \
            test/fork_test/retry/pipeline_test \
            test/fork_test/ar_pass/pipeline_test \
            test/fork_test/fail/pipeline_fail \
-           test/fork_test/ar_fail/pipeline_fail
+           test/fork_test/ar_fail/pipeline_fail \
+           test/map_test/pipeline_test
 
 clean:
 	rm -rf $(GOBIN)

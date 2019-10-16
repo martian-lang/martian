@@ -1,0 +1,248 @@
+# This pipeline tests various ways of mapping calls over arrays.
+
+stage POW(
+    in  float x,
+    in  float y,
+    out float z,
+    src py    "stages/pow",
+)
+
+stage MULTIPLY(
+    in  float x,
+    in  float y,
+    out float product,
+    src py    "stages/multiply",
+)
+
+stage SUM(
+    in  float[] x,
+    out float   sum,
+    src py      "stages/sum",
+)
+
+stage RANGE(
+    in  float begin,
+    in  float end,
+    out int[] values,
+    src py    "stages/range",
+)
+
+pipeline DIVIDE(
+    in  float x,
+    in  float y,
+    out float z,
+)
+{
+    call POW(
+        x = self.y,
+        y = -1,
+    )
+
+    call MULTIPLY(
+        x = self.x,
+        y = POW.z,
+    )
+
+    return (
+        z = MULTIPLY.product,
+    )
+}
+
+pipeline SUBTRACT(
+    in  float x,
+    in  float y,
+    out float z,
+)
+{
+    call MULTIPLY as NEG_Y(
+        x = self.y,
+        y = -1,
+    )
+
+    call SUM(
+        x = [
+            self.x,
+            NEG_Y.product,
+        ],
+    )
+
+    return (
+        z = SUM.sum,
+    )
+}
+
+# Abuses POW and SUM to compute the length of an array.
+pipeline LEN(
+    in  float[] x,
+    out float   len,
+)
+{
+    map call POW as ONES(
+        x = split self.x,
+        y = 0,
+    )
+
+    call SUM(
+        x = ONES.z,
+    )
+
+    return (
+        len = SUM.sum,
+    )
+}
+
+pipeline STATISTICS(
+    in  float[] data,
+    out float   mean,
+    out float   std_dev,
+    out float[] data,
+)
+{
+    call SUM(
+        x = self.data,
+    )
+
+    call LEN(
+        x = self.data,
+    )
+
+    call DIVIDE as MEAN(
+        x = SUM.sum,
+        y = LEN.len,
+    )
+
+    map call SUBTRACT as ERROR(
+        x = split self.data,
+        y = MEAN.z,
+    )
+
+    # Not using POW here because we want to test fusing two arrays.
+    map call MULTIPLY as SQUARED_ERROR(
+        x = split ERROR.z,
+        y = split ERROR.z,
+    )
+
+    call SUM as TOTAL_VARIANCE(
+        x = SQUARED_ERROR.product,
+    )
+
+    call DIVIDE as VARIANCE(
+        x = TOTAL_VARIANCE.sum,
+        y = LEN.len,
+    )
+
+    call POW as STD_DEV(
+        x = VARIANCE.z,
+        y = 0.5,
+    )
+
+    return (
+        mean    = MEAN.z,
+        std_dev = STD_DEV.z,
+        data    = self.data,
+    )
+}
+
+pipeline RESHAPE(
+    in  float   data,
+    out float[] data,
+)
+{
+    return (
+        data = [self.data],
+    )
+}
+
+# This is a hacky way of introducing a constant into mro.  Users should
+# be encoraged to make such values parameters to pipelines instead.
+pipeline _BEGIN_CONST(
+    out float begin,
+)
+{
+    return (
+        begin = 3,
+    )
+}
+
+pipeline GENERATE_DISTRIBUTION(
+    in  float   count,
+    out float[] values,
+)
+{
+    call _BEGIN_CONST(
+    )
+
+    call SUM(
+        x = [
+            _BEGIN_CONST.begin,
+            self.count,
+        ],
+    )
+
+    call RANGE(
+        begin = _BEGIN_CONST.begin,
+        end   = SUM.sum,
+    )
+
+    map call POW(
+        x = split RANGE.values,
+        y = 2,
+    )
+
+    return (
+        values = POW.z,
+    )
+}
+
+pipeline SOME_STATIC(
+    in  float[]    inputs,
+    out STATISTICS values1,
+    out STATISTICS values2,
+    out float[][]  reshaped,
+)
+{
+    call LEN(
+        x = self.inputs,
+    )
+
+    call SUM(
+        x = [
+            LEN.len,
+            -3,
+        ],
+    )
+
+    call GENERATE_DISTRIBUTION(
+        count = SUM.sum,
+    )
+
+    # Call here has static inputs
+    call STATISTICS as VALUES1(
+        data = self.inputs,
+    )
+
+    # Call here has dynamic inputs
+    call STATISTICS as VALUES2(
+        data = GENERATE_DISTRIBUTION.values,
+    )
+
+    map call RESHAPE(
+        data = split self.inputs,
+    )
+
+    return (
+        values1  = VALUES1,
+        values2  = VALUES2,
+        reshaped = RESHAPE.data,
+    )
+}
+
+call SOME_STATIC(
+    inputs = [
+        1,
+        3,
+        4,
+        5,
+        7,
+    ],
+)

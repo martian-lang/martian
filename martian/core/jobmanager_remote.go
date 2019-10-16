@@ -283,7 +283,9 @@ func (self *RemoteJobManager) sendJob(shellCmd string, argv []string, envs map[s
 
 	util.EnterCriticalSection()
 	defer util.ExitCriticalSection()
-	metadata.remove("queued_locally")
+	if err := metadata.remove("queued_locally"); err != nil {
+		util.LogError(err, "jobmngr", "Error removing queue sentinel file.")
+	}
 	if output, err := cmd.CombinedOutput(); err != nil {
 		metadata.WriteErrorString(
 			"jobcmd error (" + err.Error() + "):\n" + string(output))

@@ -90,6 +90,7 @@ stage ADD_KEY3(
 stage ADD_KEY5(
     in  string   key,
     in  string[] value,
+    out string[] value,
     src exec     "stages/whatever arg",
 )
 
@@ -268,6 +269,11 @@ pipeline AWESOME(
             "six",
             "seven",
         ],
+    )
+
+    map call ADD_KEY5 as ADD_KEY7(
+        key   = split ADD_KEY5.value,
+        value = null,
     )
 
     call MERGE_JSON(

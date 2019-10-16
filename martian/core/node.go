@@ -45,7 +45,10 @@ type Nodable interface {
 	Callable() syntax.Callable
 
 	// Gets the fork of this node corresponding to the given fork ID.
-	matchFork(ForkId) *Fork
+	matchFork(map[syntax.MapCallSource]syntax.CollectionIndex, ForkId) (*Fork, error)
+
+	// Gets the set of forks of this node which match the given fork ID.
+	matchForks(ForkId) []*Fork
 }
 
 // Represents a node in the pipeline graph.
@@ -64,9 +67,10 @@ type Node struct {
 	forks          []*Fork
 	state          MetadataState
 	local          bool
+	swept          bool
 	stagecode      *syntax.SrcParam
-	forkRoots      []syntax.Exp
-	forkIds        []ForkId
+	forkRoots      []syntax.MapCallSource
+	forkIds        ForkIdSet
 	resolvedCmd    string
 }
 
@@ -197,7 +201,7 @@ func (self *Node) addDirectRefNodes(ref *syntax.RefExp,
 	if binding == nil {
 		panic(self.GetFQName() + " has no argument " + ref.Id)
 	}
-	exp, err := binding.Exp.BindingPath(ref.OutputId)
+	exp, err := binding.Exp.BindingPath(ref.OutputId, nil, nil)
 	if err != nil {
 		panic(err)
 	}
@@ -233,7 +237,7 @@ func (self *Node) makePrenodesForBinding(bind *syntax.ResolvedBinding,
 				}
 				if fileRefs == nil {
 					fileRefs = map[Nodable]map[string]syntax.Type{
-						rnode: map[string]syntax.Type{
+						rnode: {
 							ref.Exp.OutputId: ref.Type,
 						},
 					}
@@ -246,6 +250,16 @@ func (self *Node) makePrenodesForBinding(bind *syntax.ResolvedBinding,
 					nrefs[ref.Exp.OutputId] = ref.Type
 				}
 			}
+		}
+	}
+	// Make sure we get fork root prenodes as well as actual input prenodes.
+	allRefs := bind.Exp.FindRefs()
+	if len(allRefs) > 0 {
+		if refs == nil {
+			refs = make(map[Nodable]struct{}, len(allRefs))
+		}
+		for _, ref := range allRefs {
+			refs[self.top.allNodes[ref.Id]] = struct{}{}
 		}
 	}
 	return refs, fileRefs
@@ -407,15 +421,89 @@ func (self *Node) mkdirs() error {
 
 func (self *Node) buildForks() {
 	// Build out argument permutations.
-	self.forkIds = MakeForkIds(self.forkRoots)
-	if len(self.forkIds) == 0 {
+	if self.swept || self.call.Kind() != syntax.KindPipeline {
+		self.forkIds.MakeForkIds(self.top.allNodes, self.forkRoots)
+	}
+	if len(self.forkIds.List) == 0 {
 		self.forks = []*Fork{NewFork(self, 0, nil, self.call.ResolvedInputs())}
 	} else {
-		self.forks = make([]*Fork, len(self.forkIds))
-		for i, id := range self.forkIds {
+		self.forks = make([]*Fork, len(self.forkIds.List))
+		for i, id := range self.forkIds.List {
 			self.forks[i] = NewFork(self, i, id, self.call.ResolvedInputs())
 		}
 	}
+}
+
+func cloneFork(fork *Fork, id ForkId) *Fork {
+	nf := NewFork(fork.node, len(fork.node.forks), id, fork.args)
+	// Copy fileArgs
+	if len(fork.fileArgs) > 0 {
+		nf.fileArgs = make(
+			map[string]map[Nodable]struct{},
+			len(fork.fileArgs))
+		for k, m := range fork.fileArgs {
+			if m == nil {
+				nf.fileArgs[k] = nil
+			} else {
+				nm := make(map[Nodable]struct{}, len(m))
+				nf.fileArgs[k] = nm
+				for k := range m {
+					nm[k] = struct{}{}
+				}
+			}
+		}
+	}
+	if len(fork.filePostNodes) > 0 {
+		nf.filePostNodes = make(
+			map[Nodable]map[string]syntax.Type,
+			len(fork.filePostNodes))
+		for k, m := range fork.filePostNodes {
+			if m == nil {
+				nf.filePostNodes[k] = nil
+			} else {
+				nm := make(map[string]syntax.Type, len(m))
+				for k, t := range m {
+					nm[k] = t
+				}
+				nf.filePostNodes[k] = nm
+			}
+		}
+	}
+	return nf
+}
+
+func (self *Node) expandForks() bool {
+	any := false
+	for i := 0; i < len(self.forks); i++ {
+		fork := self.forks[i]
+		newForks, err := fork.expand()
+		for ; err == nil && len(newForks) > 0; newForks, err = fork.expand() {
+			any = true
+			if len(self.forkIds.List) == 0 {
+				self.forkIds.List = make([]ForkId, 1, len(newForks)+1)
+			}
+			self.forkIds.List[i] = fork.forkId
+			util.LogInfo("runtime", "Adding %d new forks of %s",
+				len(newForks),
+				fork.fqname)
+			for _, id := range newForks {
+				nf := cloneFork(fork, id)
+				self.forks = append(self.forks, nf)
+				self.forkIds.List = append(self.forkIds.List, id)
+			}
+		}
+		if err != nil {
+			util.PrintError(err, "runtime",
+				"Error computing forking for %s\n",
+				fork.fqname)
+			fork.metadata.writeError("resolving forks", err)
+			return any
+		}
+		if len(self.forkIds.List) > 0 {
+			self.forkIds.List[i] = fork.forkId
+		}
+	}
+	return any
 }
 
 //
@@ -491,7 +579,8 @@ func (self *Node) find(fqname string) *Node {
 // State management
 //
 func (self *Node) collectMetadatas() []*Metadata {
-	metadatas := []*Metadata{self.metadata}
+	metadatas := make([]*Metadata, 1, 1+4*len(self.forks))
+	metadatas[0] = self.metadata
 	for _, fork := range self.forks {
 		metadatas = append(metadatas, fork.collectMetadatas()...)
 	}
@@ -744,7 +833,13 @@ func (self *Node) step() bool {
 		}
 	}
 	previousState := self.state
-	self.state = self.getState()
+	newState := self.getState()
+	if newState == Running && newState != previousState {
+		if self.expandForks() {
+			return true
+		}
+	}
+	self.state = newState
 	switch self.state {
 	case Failed:
 		self.addFrontierNode(self)

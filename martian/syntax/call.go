@@ -21,6 +21,9 @@ type (
 
 		// The set of bindings for the input arguments of the callable.
 		Bindings *BindStms
+
+		// The source of map keys or array length, if this is a map call.
+		Mapping MapCallSource
 	}
 
 	// A set of modifiers on a call.
@@ -56,4 +59,11 @@ func (s *CallStm) getSubnodes() []AstNodable {
 	} else {
 		return []AstNodable{s.Bindings}
 	}
+}
+
+func (s *CallStm) GoString() string {
+	if s.DecId != s.Id {
+		return s.DecId + " as " + s.Id
+	}
+	return s.Id
 }

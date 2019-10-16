@@ -29,6 +29,7 @@ func ExampleBuildCallSource() {
 			"input3": json.RawMessage(`{"foo":"bar"}`),
 		}),
 		nil,
+		nil,
 		&syntax.Stage{
 			Node: syntax.NewAstNode(15, &syntax.SourceFile{
 				FileName: "foo.mro",

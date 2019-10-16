@@ -1,0 +1,10 @@
+{
+  "command": [
+    "run_test.sh"
+  ],
+  "expected_return": 0,
+  "output_dir": "pipeline_test",
+  "contents_match": [
+    "_outs"
+  ]
+}

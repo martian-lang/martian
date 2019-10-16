@@ -9,7 +9,7 @@ import (
 	"strings"
 )
 
-// CompileTypes initializes the TypeStable for the Ast object, starting with
+// CompileTypes initializes the TypeTable for the Ast object, starting with
 // builtins.
 //
 // Duplicate declarations are allowed for user-defined file types.

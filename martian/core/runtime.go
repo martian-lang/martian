@@ -793,7 +793,7 @@ func fixExpressionTypes(exp syntax.Exp, tname syntax.TypeId, lookup *syntax.Type
 	}
 }
 
-func convertToExp(parser *syntax.Parser, sweep bool, val json.Marshaler,
+func convertToExp(parser *syntax.Parser, split, sweep bool, val json.Marshaler,
 	tname syntax.TypeId, lookup *syntax.TypeLookup) (syntax.ValExp, error) {
 	switch val := val.(type) {
 	case syntax.ValExp:
@@ -809,7 +809,8 @@ func convertToExp(parser *syntax.Parser, sweep bool, val json.Marshaler,
 			sweepVal := make([]syntax.Exp, len(jv.Sweep))
 			for i, v := range jv.Sweep {
 				var err error
-				sweepVal[i], err = convertToExp(parser, false, v, tname, lookup)
+				sweepVal[i], err = convertToExp(parser, false, false,
+					v, tname, lookup)
 				if err != nil {
 					return nil, err
 				}
@@ -817,6 +818,18 @@ func convertToExp(parser *syntax.Parser, sweep bool, val json.Marshaler,
 			return &syntax.SweepExp{
 				Value: sweepVal,
 			}, nil
+		} else if split {
+			var jv struct {
+				Split json.RawMessage `json:"split"`
+			}
+			if err := json.Unmarshal(val, &jv); err != nil {
+				return nil, err
+			}
+			exp, err := convertToExp(parser, false, false,
+				jv.Split, tname, lookup)
+			return &syntax.SplitExp{
+				Value: exp,
+			}, err
 		}
 		exp, err := parser.ParseValExp(val)
 		fixExpressionTypes(exp, tname, lookup)
@@ -833,7 +846,8 @@ func convertToExp(parser *syntax.Parser, sweep bool, val json.Marshaler,
 			tname.MapDim = 0
 		}
 		for k, v := range val {
-			if e, err := convertToExp(parser, false, v, tname, lookup); err != nil {
+			if e, err := convertToExp(parser, false, false,
+				v, tname, lookup); err != nil {
 				return &res, err
 			} else {
 				res.Value[k] = e
@@ -852,7 +866,8 @@ func convertToExp(parser *syntax.Parser, sweep bool, val json.Marshaler,
 			tname.MapDim = 0
 		}
 		for k, v := range val {
-			if e, err := convertToExp(parser, false, v, tname, lookup); err != nil {
+			if e, err := convertToExp(parser, false, false,
+				v, tname, lookup); err != nil {
 				return &res, err
 			} else {
 				res.Value[k] = e
@@ -867,7 +882,8 @@ func convertToExp(parser *syntax.Parser, sweep bool, val json.Marshaler,
 			tname.ArrayDim--
 		}
 		for _, v := range val {
-			if e, err := convertToExp(parser, false, v, tname, lookup); err != nil {
+			if e, err := convertToExp(parser, false, false,
+				v, tname, lookup); err != nil {
 				return &res, err
 			} else {
 				res.Value = append(res.Value, e)
@@ -875,6 +891,9 @@ func convertToExp(parser *syntax.Parser, sweep bool, val json.Marshaler,
 		}
 		return &res, nil
 	default:
+		if val == nil {
+			return new(syntax.NullExp), nil
+		}
 		// Simple types, e.g. string, boolean, number
 		if b, err := val.MarshalJSON(); err != nil {
 			return nil, err
@@ -887,6 +906,7 @@ func convertToExp(parser *syntax.Parser, sweep bool, val json.Marshaler,
 func BuildCallSource(
 	name string,
 	args MarshalerMap,
+	splitargs []string,
 	sweepargs []string,
 	callable syntax.Callable,
 	lookup *syntax.TypeLookup,
@@ -922,9 +942,16 @@ func BuildCallSource(
 				break
 			}
 		}
+		split := false
+		for _, id := range splitargs {
+			if id == param.GetId() {
+				split = true
+				break
+			}
+		}
 		if val := args[param.GetId()]; val != nil {
 			var err error
-			binding.Exp, err = convertToExp(&parser, binding.Sweep, val, binding.Tname, lookup)
+			binding.Exp, err = convertToExp(&parser, split, binding.Sweep, val, binding.Tname, lookup)
 			if err != nil {
 				return "", err
 			}
@@ -966,6 +993,7 @@ func (invocation *InvocationData) BuildCallSource(mroPaths []string) (string, er
 	return BuildCallSource(
 		invocation.Call,
 		invocation.Args.ToMarshalerMap(),
+		invocation.SplitArgs,
 		invocation.SweepArgs,
 		callable,
 		lookup,
@@ -1008,7 +1036,7 @@ func BuildDataForAst(ast *syntax.Ast) (*InvocationData, error) {
 	}
 
 	args := make(LazyArgumentMap, len(ast.Call.Bindings.List))
-	sweepargs := []string{}
+	var splitargs, sweepargs []string
 	for _, binding := range ast.Call.Bindings.List {
 		var err error
 		args[binding.Id], err = binding.Exp.MarshalJSON()
@@ -1018,6 +1046,9 @@ func BuildDataForAst(ast *syntax.Ast) (*InvocationData, error) {
 		}
 		if binding.Sweep {
 			sweepargs = append(sweepargs, binding.Id)
+		}
+		if _, ok := binding.Exp.(*syntax.SplitExp); ok {
+			splitargs = append(splitargs, binding.Id)
 		}
 	}
 	var include string
@@ -1038,6 +1069,7 @@ func BuildDataForAst(ast *syntax.Ast) (*InvocationData, error) {
 		Call:      ast.Call.DecId,
 		Args:      args,
 		SweepArgs: sweepargs,
+		SplitArgs: splitargs,
 		Include:   include,
 	}, nil
 }

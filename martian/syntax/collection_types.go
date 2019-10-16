@@ -80,7 +80,7 @@ func (s *ArrayType) IsAssignableFrom(other Type, lookup *TypeLookup) error {
 func (s *ArrayType) IsValidExpression(exp Exp, pipeline *Pipeline, ast *Ast) error {
 	switch exp := exp.(type) {
 	case *RefExp:
-		if tname, err := exp.resolveType(ast, pipeline); err != nil {
+		if tname, _, err := exp.resolveType(ast, pipeline); err != nil {
 			return err
 		} else if tname.ArrayDim < 1 {
 			return &IncompatibleTypeError{
@@ -106,6 +106,8 @@ func (s *ArrayType) IsValidExpression(exp Exp, pipeline *Pipeline, ast *Ast) err
 		}
 	case *SweepExp:
 		return isValidSweep(s, exp, pipeline, ast)
+	case *SplitExp:
+		return isValidSplit(s, exp, pipeline, ast)
 	case *NullExp:
 		return nil
 	case *ArrayExp:
@@ -372,7 +374,7 @@ func (s *TypedMapType) IsAssignableFrom(other Type, lookup *TypeLookup) error {
 func (s *TypedMapType) IsValidExpression(exp Exp, pipeline *Pipeline, ast *Ast) error {
 	switch exp := exp.(type) {
 	case *RefExp:
-		if tname, err := exp.resolveType(ast, pipeline); err != nil {
+		if tname, _, err := exp.resolveType(ast, pipeline); err != nil {
 			return err
 		} else if tname.MapDim == 0 {
 			return &IncompatibleTypeError{
@@ -392,6 +394,8 @@ func (s *TypedMapType) IsValidExpression(exp Exp, pipeline *Pipeline, ast *Ast) 
 		}
 	case *SweepExp:
 		return isValidSweep(s, exp, pipeline, ast)
+	case *SplitExp:
+		return isValidSplit(s, exp, pipeline, ast)
 	case *NullExp:
 		return nil
 	case *MapExp:

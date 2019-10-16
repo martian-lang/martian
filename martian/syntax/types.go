@@ -278,3 +278,59 @@ func isValidSweep(s Type, exp *SweepExp, pipeline *Pipeline, ast *Ast) error {
 	}
 	return errs.If()
 }
+
+func isValidSplit(s Type, exp *SplitExp, pipeline *Pipeline, ast *Ast) error {
+	if exp == nil {
+		return fmt.Errorf("cannot split on null")
+	} else if exp.Value == nil {
+		return nil
+	}
+	var errs ErrorList
+	switch inner := exp.Value.(type) {
+	case *ArrayExp:
+		for i, subexp := range inner.Value {
+			if err := s.IsValidExpression(subexp, pipeline, ast); err != nil {
+				errs = append(errs, &IncompatibleTypeError{
+					Message: fmt.Sprintf("split element %d", i),
+					Reason:  err,
+				})
+			}
+		}
+	case *MapExp:
+		for i, subexp := range inner.Value {
+			if err := s.IsValidExpression(subexp, pipeline, ast); err != nil {
+				errs = append(errs, &IncompatibleTypeError{
+					Message: fmt.Sprintf("split key %s", i),
+					Reason:  err,
+				})
+			}
+		}
+	case *RefExp:
+		tname, _, err := inner.resolveType(ast, pipeline)
+		if err != nil {
+			return err
+		} else if tname.ArrayDim > 0 {
+			tname.ArrayDim--
+		} else if tname.MapDim > 0 {
+			tname.ArrayDim = tname.MapDim - 1
+			tname.MapDim = 0
+		} else {
+			return &IncompatibleTypeError{
+				Message: "binding is not a collection",
+			}
+		}
+		if t := ast.TypeTable.Get(tname); t == nil {
+			return &IncompatibleTypeError{
+				Message: "Unknown type " + tname.Tname,
+			}
+		} else if err := s.IsAssignableFrom(t, &ast.TypeTable); err != nil {
+			return &IncompatibleTypeError{
+				Message: "incompatible types",
+				Reason:  err,
+			}
+		} else {
+			return nil
+		}
+	}
+	return errs.If()
+}

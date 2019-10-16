@@ -295,3 +295,257 @@ func TestSerializeCallGraph(t *testing.T) {
 		diffLines(expect, s, t)
 	}
 }
+
+func TestSerializeMapCallGraph(t *testing.T) {
+	src, err := ioutil.ReadFile("testdata/map_call_test.mro")
+	if err != nil {
+		t.Fatal(err)
+	}
+	_, _, ast, err := ParseSourceBytes(src, "map_call_test.mro", nil, false)
+	if err != nil {
+		t.Fatal(err)
+	}
+	graph, err := ast.MakeCallGraph("", ast.Call)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var dest strings.Builder
+	enc := json.NewEncoder(&dest)
+	enc.SetEscapeHTML(false)
+	enc.SetIndent("", "  ")
+	if err := enc.Encode(graph); err != nil {
+		t.Fatal(err)
+	}
+	expectB, err := ioutil.ReadFile("testdata/map_call_test.json")
+	if err != nil {
+		t.Fatal(err)
+	}
+	expect := string(expectB)
+	if s := dest.String(); expect != s {
+		diffLines(expect, s, t)
+	}
+}
+
+func makeSplitMapExp(t *testing.T, src string) (*MapExp, MapCallSource) {
+	t.Helper()
+	var parser Parser
+	if exp, err := parser.ParseValExp([]byte(src)); err != nil {
+		t.Error(err)
+	} else if m, ok := exp.(*MapExp); !ok {
+		t.Errorf("Expected map, got %T", exp)
+	} else {
+		var src MapCallSource
+		for k, v := range m.Value {
+			if v, ok := v.(MapCallSource); ok &&
+				v.CallMode() != ModeNullMapCall &&
+				v.KnownLength() && src == nil {
+				src = v
+			}
+			m.Value[k] = &SplitExp{
+				Value:  v,
+				Source: src,
+			}
+		}
+		return m, src
+	}
+	return nil, nil
+}
+
+func TestMapInvertArray(t *testing.T) {
+	if ma, src := makeSplitMapExp(t, `{
+		a: [1,2,null,3,],
+		b: [4,5,6,7,],
+		c: null,
+	}`); ma != nil {
+		if a, err := unsplit(ma, make(map[MapCallSource]CollectionIndex, 1),
+			ForkRootList{&CallGraphStage{Source: src}}); err != nil {
+			t.Error(err)
+		} else if aa, ok := a.(*ArrayExp); !ok {
+			t.Errorf("Expected map, got %T", a)
+		} else if len(aa.Value) != 4 {
+			t.Errorf("Expected 4 elements, got %d", len(aa.Value))
+		} else {
+			var s strings.Builder
+			aa.format(&s, "\t\t")
+			const expect = `[
+		    {
+		        a: 1,
+		        b: 4,
+		        c: null,
+		    },
+		    {
+		        a: 2,
+		        b: 5,
+		        c: null,
+		    },
+		    {
+		        a: null,
+		        b: 6,
+		        c: null,
+		    },
+		    {
+		        a: 3,
+		        b: 7,
+		        c: null,
+		    },
+		]`
+			if s := s.String(); s != expect {
+				diffLines(expect, s, t)
+			}
+		}
+	}
+	if ma, src := makeSplitMapExp(t, `{
+		a: [1,],
+		b: {"a": 1},
+		c: null,
+	}`); ma != nil {
+		if aa, err := unsplit(ma, make(map[MapCallSource]CollectionIndex, 1),
+			ForkRootList{&CallGraphStage{Source: src}}); err == nil {
+			t.Error("expected failure")
+			t.Log(FormatExp(aa, ""))
+		}
+	}
+}
+
+func TestMapInvertMap(t *testing.T) {
+	if ma, src := makeSplitMapExp(t, `{
+		a: {"x":1,"y":2,"z":null,},
+		b: {"x":4,"y":5,"z":6,},
+		c: null,
+	}`); ma != nil {
+		if a, err := unsplit(ma, make(map[MapCallSource]CollectionIndex, 1),
+			ForkRootList{&CallGraphStage{Source: src}}); err != nil {
+			t.Error(err)
+		} else if aa, ok := a.(*MapExp); !ok {
+			t.Errorf("Expected map, got %T", a)
+		} else if len(aa.Value) != 3 {
+			t.Errorf("Expected 3 elements, got %d", len(aa.Value))
+		} else {
+			var s strings.Builder
+			aa.format(&s, "\t\t")
+			const expect = `{
+		    "x": {
+		        a: 1,
+		        b: 4,
+		        c: null,
+		    },
+		    "y": {
+		        a: 2,
+		        b: 5,
+		        c: null,
+		    },
+		    "z": {
+		        a: null,
+		        b: 6,
+		        c: null,
+		    },
+		}`
+			if s := s.String(); s != expect {
+				diffLines(expect, s, t)
+			}
+		}
+	}
+	if ma, src := makeSplitMapExp(t, `{
+		a: [1,],
+		b: {"a": 1},
+		c: null,
+	}`); ma != nil {
+		if aa, err := unsplit(ma, make(map[MapCallSource]CollectionIndex, 1),
+			ForkRootList{&CallGraphStage{Source: src}}); err == nil {
+			t.Error("expected failure")
+			t.Log(FormatExp(aa, ""))
+		}
+	}
+}
+
+// Test a pipeline which uses a map call to reshape a struct of maps into a
+// map of structs.
+func TestResolveReshapeMap(t *testing.T) {
+	t.Parallel()
+	ast := testGood(t, `
+pipeline METRIC1(
+    out map<int> metric,
+)
+{
+    return (
+        metric = {
+            "foo": 1,
+            "bar": 2,
+            "baz": 3,
+        },
+    )
+}
+
+pipeline METRIC2(
+    out map<int> metric,
+)
+{
+    return (
+        metric = {
+            "foo": 4,
+            "bar": 5,
+            "baz": 6,
+        },
+    )
+}
+
+pipeline METRIC(
+    in  int a,
+    in  int b,
+    out int a,
+    out int b,
+)
+{
+    return (
+        a = self.a,
+        b = self.b,
+    )
+}
+
+pipeline METRICS(
+    out map<METRIC> metrics,
+)
+{
+    call METRIC1()
+    call METRIC2()
+
+    map call METRIC(
+        a = split METRIC1.metric,
+        b = split METRIC2.metric,
+    )
+
+    return (
+        metrics = METRIC,
+    )
+}
+
+call METRICS()
+`)
+	if ast == nil {
+		return
+	}
+	graph, err := ast.MakeCallGraph("", ast.Call)
+	if err != nil {
+		t.Fatal(err)
+	}
+	result := FormatExp(graph.ResolvedOutputs().Exp, "")
+	expect := `{
+    metrics: {
+        "bar": {
+            a: 2,
+            b: 5,
+        },
+        "baz": {
+            a: 3,
+            b: 6,
+        },
+        "foo": {
+            a: 1,
+            b: 4,
+        },
+    },
+}`
+	if result != expect {
+		diffLines(expect, result, t)
+	}
+}

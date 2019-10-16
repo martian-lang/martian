@@ -78,8 +78,9 @@ import (
 %type <kvpairs>   kvpair_list struct_vals_list
 %type <call>      call_stm
 %type <calls>     call_stm_list
-%type <binding>   bind_stm modifier_stm
-%type <bindings>  bind_stm_list nonempty_bind_stm_list modifier_stm_list
+%type <binding>   bind_stm split_bind_stm modifier_stm
+%type <bindings>  bind_stm_list nonempty_bind_stm_list
+%type <bindings>  split_bind_stm_list modifier_stm_list
 %type <retstm>    return_stm
 %type <res>       resources resource_list
 
@@ -552,6 +553,25 @@ call_stm
             DecId: $<intern>3.Get($3),
             Bindings: $7,
         } }
+    | MAP CALL id '(' split_bind_stm_list ')'
+        { id := $<intern>3.Get($3)
+          $$ = &CallStm{
+            Node: NewAstNode($<loc>1, $<srcfile>1),
+            Modifiers: new(Modifiers),
+            Id: id,
+            DecId: id,
+            Bindings: $5,
+            Mapping: &mapSourcePlaceholder,
+        } }
+    | MAP CALL id AS id '(' split_bind_stm_list ')'
+        { $$ = &CallStm{
+            Node: NewAstNode($<loc>1, $<srcfile>1),
+            Modifiers: new(Modifiers),
+            Id: $<intern>5.Get($5),
+            DecId: $<intern>3.Get($3),
+            Bindings: $7,
+            Mapping: &mapSourcePlaceholder,
+        } }
     | call_stm USING '(' modifier_stm_list ')'
         {
             $1.Modifiers.Bindings = $4
@@ -633,6 +653,30 @@ bind_stm_list
         } }
     ;
 
+split_bind_stm_list
+    : split_bind_stm
+        { $$ = &BindStms{
+            Node: NewAstNode($<loc>0, $<srcfile>0),
+            Table: make(map[string]*BindStm),
+            List: []*BindStm{$1},
+        } }
+    | nonempty_bind_stm_list split_bind_stm
+        {
+            $1.List = append($1.List, $2)
+            $$ = $1
+        }
+    | split_bind_stm_list split_bind_stm
+        {
+            $1.List = append($1.List, $2)
+            $$ = $1
+        }
+    | split_bind_stm_list bind_stm
+        {
+            $1.List = append($1.List, $2)
+            $$ = $1
+        }
+    ;
+
 bind_stm
     : id '=' exp ','
         { $$ = &BindStm{
@@ -645,7 +689,7 @@ bind_stm
             Node: NewAstNode($<loc>1, $<srcfile>1),
             Id: $<intern>1.Get($1),
             Exp: &SweepExp{
-                valExp: valExp{Node: NewAstNode($<loc>1, $<srcfile>1)},
+                valExp: valExp{Node: NewAstNode($<loc>3, $<srcfile>3)},
                 Value: $5,
             },
             Sweep: true,
@@ -655,12 +699,43 @@ bind_stm
             Node: NewAstNode($<loc>1, $<srcfile>1),
             Id: $<intern>1.Get($1),
             Exp: &SweepExp{
-                valExp: valExp{Node: NewAstNode($<loc>1, $<srcfile>1)},
+                valExp: valExp{Node: NewAstNode($<loc>3, $<srcfile>3)},
                 Value: $5,
             },
             Sweep: true,
         } }
     ;
+
+split_bind_stm
+    : id '=' SPLIT nonempty_array_exp ','
+        { $$ = &BindStm{
+            Node: NewAstNode($<loc>1, $<srcfile>1),
+            Id: $<intern>1.Get($1),
+            Exp: &SplitExp{
+                valExp: valExp{Node: NewAstNode($<loc>3, $<srcfile>3)},
+                Value: $4,
+                Source: $4.(MapCallSource),
+            },
+        } }
+    | id '=' SPLIT nonempty_map_exp ','
+        { $$ = &BindStm{
+            Node: NewAstNode($<loc>1, $<srcfile>1),
+            Id: $<intern>1.Get($1),
+            Exp: &SplitExp{
+                valExp: valExp{Node: NewAstNode($<loc>3, $<srcfile>3)},
+                Value: $4,
+                Source: $4.(MapCallSource),
+            },
+        } }
+    | id '=' SPLIT ref_exp ','
+        { $$ = &BindStm{
+            Node: NewAstNode($<loc>1, $<srcfile>1),
+            Id: $<intern>1.Get($1),
+            Exp: &SplitExp{
+                valExp: valExp{Node: NewAstNode($<loc>3, $<srcfile>3)},
+                Value: $4,
+            },
+        } }
 
 exp_list
     : exp_list ',' exp

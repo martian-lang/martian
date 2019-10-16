@@ -59,22 +59,43 @@ func NewStagestance(parent Nodable, call *syntax.CallGraphStage) (*Stagestance, 
 		}
 	}
 
-	var finder expSetBuilder
-	finder.AddPrenodes(self.node.prenodes)
-	finder.AddBindings(call.ResolvedInputs())
-	for _, exp := range self.node.call.Disabled() {
-		finder.AddForkRoots(exp)
+	if splits := call.Forks; len(splits) > 0 {
+		exps := make([]syntax.MapCallSource, len(splits))
+		for i, s := range splits {
+			exps[i] = s.MapSource()
+		}
+		self.node.forkRoots = exps
+	} else {
+		var finder expSetBuilder
+		finder.AddPrenodes(self.node.prenodes)
+		finder.AddBindings(call.ResolvedInputs())
+		for _, exp := range self.node.call.Disabled() {
+			finder.AddForkRoots(exp)
+		}
+		self.node.forkRoots = finder.Exps
+		if len(self.node.forkRoots) > 0 {
+			self.node.swept = true
+		}
 	}
-	self.node.forkRoots = finder.Exps
+	return self, self.buildForks()
+}
+
+func (self *Stagestance) buildForks() error {
 	self.node.buildForks()
 
-	if stage.Retain != nil {
-		for _, param := range stage.Retain.Params {
-			for _, fork := range self.node.forks {
+	return setupRetains(
+		self.node.call.Callable().(*syntax.Stage).Retain,
+		self.node.forks)
+}
+
+func setupRetains(retain *syntax.RetainParams, forks []*Fork) error {
+	if retain != nil {
+		for _, param := range retain.Params {
+			for _, fork := range forks {
 				if fork.fileArgs == nil {
 					fork.fileArgs = make(
 						map[string]map[Nodable]struct{},
-						len(stage.Retain.Params))
+						len(retain.Params))
 				}
 				if arg := fork.fileArgs[param.Id]; arg == nil {
 					fork.fileArgs[param.Id] = map[Nodable]struct{}{
@@ -86,7 +107,7 @@ func NewStagestance(parent Nodable, call *syntax.CallGraphStage) (*Stagestance, 
 			}
 		}
 	}
-	return self, nil
+	return nil
 }
 
 func (self *Stagestance) getNode() *Node    { return self.node }
@@ -100,8 +121,12 @@ func (self *Stagestance) GetPostNodes() map[string]Nodable {
 	return self.node.GetPostNodes()
 }
 
-func (self *Stagestance) matchFork(id ForkId) *Fork {
-	return self.node.matchFork(id)
+func (self *Stagestance) matchFork(
+	ref map[syntax.MapCallSource]syntax.CollectionIndex, id ForkId) (*Fork, error) {
+	return self.node.matchFork(ref, id)
+}
+func (self *Stagestance) matchForks(id ForkId) []*Fork {
+	return self.node.matchForks(id)
 }
 
 func (self *Stagestance) Callable() syntax.Callable {
@@ -248,22 +273,35 @@ func NewPipestance(parent Nodable, call *syntax.CallGraphPipeline) (*Pipestance,
 			}
 		}
 	}
-	var finder expSetBuilder
-	finder.AddPrenodes(self.node.prenodes)
-	finder.AddBindings(call.ResolvedInputs())
-	finder.AddForkRoots(call.ResolvedOutputs().Exp)
-	for _, exp := range self.node.call.Disabled() {
-		finder.AddForkRoots(exp)
+	if splits := call.Forks; len(splits) > 0 {
+		exps := make([]syntax.MapCallSource, len(splits))
+		for i, s := range splits {
+			exps[i] = s.MapSource()
+		}
+		self.node.forkRoots = exps
+	} else {
+		var finder expSetBuilder
+		finder.AddPrenodes(self.node.prenodes)
+		finder.AddBindings(call.ResolvedInputs())
+		finder.AddForkRoots(call.ResolvedOutputs().Exp)
+		for _, exp := range self.node.call.Disabled() {
+			finder.AddForkRoots(exp)
+		}
+		self.node.forkRoots = finder.Exps
+		if len(self.node.forkRoots) > 0 {
+			self.node.swept = true
+		}
 	}
-	self.node.forkRoots = finder.Exps
+	return self, self.buildForks()
+}
 
+func (self *Pipestance) buildForks() error {
 	self.node.buildForks()
-
-	if rs := call.Retained(); len(rs) > 0 {
+	if rs := self.node.call.Retained(); len(rs) > 0 {
 		for _, r := range rs {
 			node := self.node.top.allNodes[r.Id]
 			if node == nil {
-				return self, fmt.Errorf("Retaining unknown node %s", r.Id)
+				return fmt.Errorf("Retaining unknown node %s", r.Id)
 			}
 			for _, fork := range node.forks {
 				if fork.fileArgs == nil {
@@ -282,7 +320,7 @@ func NewPipestance(parent Nodable, call *syntax.CallGraphPipeline) (*Pipestance,
 		}
 	}
 
-	return self, nil
+	return nil
 }
 
 func (self *Pipestance) getNode() *Node    { return self.node }
@@ -304,8 +342,11 @@ func (self *Pipestance) GetPostNodes() map[string]Nodable {
 	return self.node.GetPostNodes()
 }
 
-func (self *Pipestance) matchFork(id ForkId) *Fork {
-	return self.node.matchFork(id)
+func (self *Pipestance) matchFork(ref map[syntax.MapCallSource]syntax.CollectionIndex, id ForkId) (*Fork, error) {
+	return self.node.matchFork(ref, id)
+}
+func (self *Pipestance) matchForks(id ForkId) []*Fork {
+	return self.node.matchForks(id)
 }
 
 func (self *Pipestance) Callable() syntax.Callable {
@@ -919,8 +960,12 @@ func (self *TopNode) Types() *syntax.TypeLookup {
 	return self.types
 }
 
-func (self *TopNode) matchFork(id ForkId) *Fork {
-	return self.node.matchFork(id)
+func (self *TopNode) matchFork(
+	ref map[syntax.MapCallSource]syntax.CollectionIndex, id ForkId) (*Fork, error) {
+	return self.node.matchFork(ref, id)
+}
+func (self *TopNode) matchForks(id ForkId) []*Fork {
+	return self.node.matchForks(id)
 }
 
 func NewTopNode(rt *Runtime, fqname string, p string,

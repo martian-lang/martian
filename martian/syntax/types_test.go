@@ -129,13 +129,13 @@ func TestTypedMapTypeIsAssignableFrom(t *testing.T) {
 	structType := StructType{
 		Id: "MY_STRUCT",
 		Members: []*StructMember{
-			&StructMember{
+			{
 				Id: "my_field_1",
 				Tname: TypeId{
 					Tname: KindInt,
 				},
 			},
-			&StructMember{
+			{
 				Id: "my_field_2",
 				Tname: TypeId{
 					Tname: KindFloat,

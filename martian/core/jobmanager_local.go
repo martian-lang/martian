@@ -633,7 +633,9 @@ func executeLocal(cmd *exec.Cmd, stdoutPath, stderrPath string,
 		// Set up _stdout and _stderr for the job.
 		stdoutFile, err := os.Create(stdoutPath)
 		if err == nil {
-			stdoutFile.WriteString("[stdout]\n")
+			if _, err := stdoutFile.WriteString("[stdout]\n"); err != nil {
+				util.LogError(err, "jobmngr", "Error writing job stdout header")
+			}
 			// If local preflight stage, let stdout go to the console
 			if localpreflight {
 				cmd.Stdout = os.Stdout
@@ -641,13 +643,19 @@ func executeLocal(cmd *exec.Cmd, stdoutPath, stderrPath string,
 				cmd.Stdout = stdoutFile
 			}
 			defer stdoutFile.Close()
+		} else {
+			util.LogError(err, "jobmngr", "Error creating job stdout file.")
 		}
 		cmd.SysProcAttr = util.Pdeathsig(&syscall.SysProcAttr{}, syscall.SIGTERM)
 		stderrFile, err := os.Create(stderrPath)
 		if err == nil {
-			stderrFile.WriteString("[stderr]\n")
+			if _, err := stderrFile.WriteString("[stderr]\n"); err != nil {
+				util.LogError(err, "jobmngr", "Error writing job stderr header")
+			}
 			cmd.Stderr = stderrFile
 			defer stderrFile.Close()
+		} else {
+			util.LogError(err, "jobmngr", "Error creating job stderr file.")
 		}
 
 		// Run the command and wait for completion.

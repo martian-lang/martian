@@ -11,13 +11,13 @@ func TestMapIsAssignableFrom(t *testing.T) {
 	structType1 := StructType{
 		Id: "MY_STRUCT_1",
 		Members: []*StructMember{
-			&StructMember{
+			{
 				Id: "my_field_1",
 				Tname: TypeId{
 					Tname: KindInt,
 				},
 			},
-			&StructMember{
+			{
 				Id: "my_field_2",
 				Tname: TypeId{
 					Tname: KindFloat,
@@ -28,13 +28,13 @@ func TestMapIsAssignableFrom(t *testing.T) {
 	structType2 := StructType{
 		Id: "MY_STRUCT_2",
 		Members: []*StructMember{
-			&StructMember{
+			{
 				Id: "my_field_1",
 				Tname: TypeId{
 					Tname: KindFloat,
 				},
 			},
-			&StructMember{
+			{
 				Id: "my_field_2",
 				Tname: TypeId{
 					Tname: KindFloat,
@@ -45,13 +45,13 @@ func TestMapIsAssignableFrom(t *testing.T) {
 	structType3 := StructType{
 		Id: "NESTED_STRUCT_1",
 		Members: []*StructMember{
-			&StructMember{
+			{
 				Id: "my_field_1",
 				Tname: TypeId{
 					Tname: structType1.Id,
 				},
 			},
-			&StructMember{
+			{
 				Id: "my_field_2",
 				Tname: TypeId{
 					Tname: structType1.Id,
@@ -62,13 +62,13 @@ func TestMapIsAssignableFrom(t *testing.T) {
 	structType4 := StructType{
 		Id: "NESTED_STRUCT_2",
 		Members: []*StructMember{
-			&StructMember{
+			{
 				Id: "my_field_1",
 				Tname: TypeId{
 					Tname: structType2.Id,
 				},
 			},
-			&StructMember{
+			{
 				Id: "my_field_2",
 				Tname: TypeId{
 					Tname: structType2.Id,
@@ -79,19 +79,19 @@ func TestMapIsAssignableFrom(t *testing.T) {
 	structType5 := StructType{
 		Id: "MY_STRUCT_5",
 		Members: []*StructMember{
-			&StructMember{
+			{
 				Id: "my_field_1",
 				Tname: TypeId{
 					Tname: KindFloat,
 				},
 			},
-			&StructMember{
+			{
 				Id: "my_field_2",
 				Tname: TypeId{
 					Tname: KindFloat,
 				},
 			},
-			&StructMember{
+			{
 				Id: "my_field_3",
 				Tname: TypeId{
 					Tname: KindFloat,
@@ -102,13 +102,13 @@ func TestMapIsAssignableFrom(t *testing.T) {
 	structType6 := StructType{
 		Id: "MY_STRUCT_6",
 		Members: []*StructMember{
-			&StructMember{
+			{
 				Id: "my_field_1",
 				Tname: TypeId{
 					Tname: KindFloat,
 				},
 			},
-			&StructMember{
+			{
 				Id: "my_field_2",
 				Tname: TypeId{
 					Tname:    KindFloat,
@@ -120,13 +120,13 @@ func TestMapIsAssignableFrom(t *testing.T) {
 	structType7 := StructType{
 		Id: "MY_STRUCT_7",
 		Members: []*StructMember{
-			&StructMember{
+			{
 				Id: "my_field_1",
 				Tname: TypeId{
 					Tname: KindFloat,
 				},
 			},
-			&StructMember{
+			{
 				Id: "my_field_2",
 				Tname: TypeId{
 					Tname:  KindFloat,
@@ -202,13 +202,13 @@ func TestStructTypeIsValidExpression(t *testing.T) {
 	structType1 := StructType{
 		Id: "MY_STRUCT",
 		Members: []*StructMember{
-			&StructMember{
+			{
 				Id: "my_field_1",
 				Tname: TypeId{
 					Tname: KindInt,
 				},
 			},
-			&StructMember{
+			{
 				Id: "my_field_2",
 				Tname: TypeId{
 					Tname: KindFloat,
@@ -219,13 +219,13 @@ func TestStructTypeIsValidExpression(t *testing.T) {
 	structType2 := StructType{
 		Id: "NESTED_STRUCT",
 		Members: []*StructMember{
-			&StructMember{
+			{
 				Id: "my_field_1",
 				Tname: TypeId{
 					Tname: structType1.Id,
 				},
 			},
-			&StructMember{
+			{
 				Id: "my_field_2",
 				Tname: TypeId{
 					Tname: structType1.Id,
@@ -374,13 +374,13 @@ func TestStructTypeRedefinition(t *testing.T) {
 	structType1 := StructType{
 		Id: "MY_STRUCT_1",
 		Members: []*StructMember{
-			&StructMember{
+			{
 				Id: "my_field_1",
 				Tname: TypeId{
 					Tname: KindInt,
 				},
 			},
-			&StructMember{
+			{
 				Id: "my_field_2",
 				Tname: TypeId{
 					Tname: KindFloat,
@@ -393,16 +393,16 @@ func TestStructTypeRedefinition(t *testing.T) {
 		StructTypes: []*StructType{
 			&structType1,
 			// Check equivalence allowed.
-			&StructType{
+			{
 				Id: "MY_STRUCT_1",
 				Members: []*StructMember{
-					&StructMember{
+					{
 						Id: "my_field_1",
 						Tname: TypeId{
 							Tname: KindInt,
 						},
 					},
-					&StructMember{
+					{
 						Id: "my_field_2",
 						Tname: TypeId{
 							Tname: KindFloat,
@@ -430,13 +430,13 @@ func TestStructTypeRedefinition(t *testing.T) {
 	checkBad(&StructType{
 		Id: "MY_STRUCT_1",
 		Members: []*StructMember{
-			&StructMember{
+			{
 				Id: "my_field_1",
 				Tname: TypeId{
 					Tname: KindInt,
 				},
 			},
-			&StructMember{
+			{
 				Id: "my_field_2",
 				Tname: TypeId{
 					Tname: KindInt,
@@ -447,19 +447,19 @@ func TestStructTypeRedefinition(t *testing.T) {
 	checkBad(&StructType{
 		Id: "MY_STRUCT_1",
 		Members: []*StructMember{
-			&StructMember{
+			{
 				Id: "my_field_1",
 				Tname: TypeId{
 					Tname: KindInt,
 				},
 			},
-			&StructMember{
+			{
 				Id: "my_field_2",
 				Tname: TypeId{
 					Tname: KindFloat,
 				},
 			},
-			&StructMember{
+			{
 				Id: "my_field_3",
 				Tname: TypeId{
 					Tname: KindFloat,
@@ -470,14 +470,14 @@ func TestStructTypeRedefinition(t *testing.T) {
 	checkBad(&StructType{
 		Id: "MY_STRUCT_1",
 		Members: []*StructMember{
-			&StructMember{
+			{
 				Id: "my_field_1",
 				Tname: TypeId{
 					Tname:    KindInt,
 					ArrayDim: 1,
 				},
 			},
-			&StructMember{
+			{
 				Id: "my_field_2",
 				Tname: TypeId{
 					Tname: KindFloat,
@@ -488,14 +488,14 @@ func TestStructTypeRedefinition(t *testing.T) {
 	checkBad(&StructType{
 		Id: "MY_STRUCT_1",
 		Members: []*StructMember{
-			&StructMember{
+			{
 				Id: "my_field_1",
 				Tname: TypeId{
 					Tname:  KindInt,
 					MapDim: 1,
 				},
 			},
-			&StructMember{
+			{
 				Id: "my_field_2",
 				Tname: TypeId{
 					Tname: KindFloat,
@@ -506,14 +506,14 @@ func TestStructTypeRedefinition(t *testing.T) {
 	checkBad(&StructType{
 		Id: "MY_STRUCT_1",
 		Members: []*StructMember{
-			&StructMember{
+			{
 				Id: "my_field_1",
 				Tname: TypeId{
 					Tname: KindInt,
 				},
 				Help: "foo",
 			},
-			&StructMember{
+			{
 				Id: "my_field_2",
 				Tname: TypeId{
 					Tname: KindFloat,
@@ -524,14 +524,14 @@ func TestStructTypeRedefinition(t *testing.T) {
 	checkBad(&StructType{
 		Id: "MY_STRUCT_1",
 		Members: []*StructMember{
-			&StructMember{
+			{
 				Id: "my_field_1",
 				Tname: TypeId{
 					Tname: KindInt,
 				},
 				OutName: "foo",
 			},
-			&StructMember{
+			{
 				Id: "my_field_2",
 				Tname: TypeId{
 					Tname: KindFloat,
@@ -546,14 +546,14 @@ func TestStructTypeRedefinition(t *testing.T) {
 	checkBad(&StructType{
 		Id: "MY_STRUCT_1",
 		Members: []*StructMember{
-			&StructMember{
+			{
 				Id: "my_field_1",
 				Tname: TypeId{
 					Tname:  KindInt,
 					MapDim: 3,
 				},
 			},
-			&StructMember{
+			{
 				Id: "my_field_2",
 				Tname: TypeId{
 					Tname: KindFloat,

@@ -161,19 +161,19 @@ func TestPostProcess(t *testing.T) {
 			},
 		},
 		Files1: []map[string]string{
-			map[string]string{
+			{
 				"c1": files[8],
 				"c2": files[9],
 			},
-			map[string]string{
+			{
 				"c1": files[10],
 				"c2": files[11],
 			},
 		},
 		Bars: []int{2, 3},
 		Strs: []fooStruct{
-			fooStruct{File1: "foo1"},
-			fooStruct{File1: "foo2"},
+			{File1: "foo1"},
+			{File1: "foo2"},
 		},
 		Texts: files[12:],
 		One:   &c3,

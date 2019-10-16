@@ -1,0 +1,7 @@
+Tests for a pipeline with mapped calls.  It consists of a few simple stages
+for basic operations (which are combined by pipelines to make others, while
+keep the number of stages down).  It uses these operations to compute the mean
+and standard deviation of two arrays, one provided statically and the other
+produced by another stage.
+
+map_test.json tests normal operation

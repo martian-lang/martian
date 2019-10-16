@@ -11,6 +11,7 @@ const (
 	// Represents an array of expressions.
 	KindArray  = ExpKind("array")
 	KindSweep  = "sweep"
+	KindSplit  = "split"
 	KindMap    = "map"
 	KindFloat  = "float"
 	KindInt    = "int"
@@ -52,6 +53,13 @@ type (
 		// HasSweep returns true if this expression or any sub-expression is
 		// a sweep.
 		HasSweep() bool
+		// HasSweep returns true if this expression or any sub-expression is
+		// a sweep.
+		HasSplit() bool
+
+		// Returns an arbitrary SplitExp from within the expression, if one of
+		// them is on the given call.
+		FindSplit(*CallStm) *SplitExp
 
 		// Recursively searches the expression for references.
 		FindRefs() []*RefExp
@@ -76,7 +84,11 @@ type (
 		//   exp.BindingPath("c.e") -> {"d":"bar", "f":"baz"}
 		//   exp.BindingPath("d.e") -> ["bar", "baz"]
 		//   exp.BindingPath("f.bar") -> STAGE.out.bar
-		BindingPath(bindPath string) (Exp, error)
+		BindingPath(bindPath string,
+			fork map[MapCallSource]CollectionIndex,
+			index []CollectionIndex) (Exp, error)
+		resolveRefs(self, siblings map[string]*ResolvedBinding,
+			lookup *TypeLookup) (Exp, error)
 		filter(t Type, lookup *TypeLookup) (Exp, error)
 
 		// Returns a json representation of the concrete value of a
@@ -112,6 +124,23 @@ type (
 	SweepExp struct {
 		valExp
 		Value []Exp
+	}
+
+	// A SplitExp represents an expression which is either a typed map or array,
+	// where a call is made repeatedly, once for each element in the collection.
+	// Only top-level expressions can be split.
+	SplitExp struct {
+		valExp
+		// Either a MapExp, ArrayExp, or RefExp.  In a fully-resolved pipeline,
+		// it could also be another nested SplitExp.
+		Value Exp
+		// The call that this split was made on.  This becomes relevent when
+		// resolving a map call of a pipeline - calls within that pipeline
+		// may split further, but potentially over a different set of keys.
+		Call *CallStm
+
+		// The dimensionality source
+		Source MapCallSource
 	}
 
 	// A MapExp represents a literal map of expressions.
@@ -151,20 +180,6 @@ type (
 	NullExp struct {
 		valExp
 	}
-
-	// A RefExp represents a value that is a reference to a pipeline input or
-	// a call output.
-	RefExp struct {
-		Node AstNode
-		Kind ExpKind
-
-		// For KindSelf, the name of the input parameter.  For KindCall,
-		// the call's Id.
-		Id string
-
-		// For KindCall, the Id of the output parameter of the bound call.
-		OutputId string
-	}
 )
 
 func (e *valExp) getNode() *AstNode       { return &e.Node }
@@ -173,10 +188,15 @@ func (s *valExp) inheritComments() bool   { return false }
 func (*valExp) getSubnodes() []AstNodable { return nil }
 func (*valExp) HasRef() bool              { return false }
 func (*valExp) HasSweep() bool            { return false }
+func (*valExp) HasSplit() bool            { return false }
 func (*valExp) FindRefs() []*RefExp       { return nil }
+func (*valExp) FindSplit(*CallStm) *SplitExp {
+	return nil
+}
 
 func (s *ArrayExp) getKind() ExpKind  { return KindArray }
 func (s *SweepExp) getKind() ExpKind  { return KindSweep }
+func (s *SplitExp) getKind() ExpKind  { return KindSplit }
 func (s *MapExp) getKind() ExpKind    { return s.Kind }
 func (s *StringExp) getKind() ExpKind { return s.Kind }
 func (s *BoolExp) getKind() ExpKind   { return KindBool }
@@ -186,6 +206,7 @@ func (s *NullExp) getKind() ExpKind   { return KindNull }
 
 func (s *ArrayExp) val() interface{}  { return s.Value }
 func (s *SweepExp) val() interface{}  { return s.Value }
+func (s *SplitExp) val() interface{}  { return s.Value }
 func (s *MapExp) val() interface{}    { return s.Value }
 func (s *StringExp) val() interface{} { return s.Value }
 func (s *BoolExp) val() interface{}   { return s.Value }
@@ -206,6 +227,9 @@ func (s *SweepExp) getSubnodes() []AstNodable {
 		subs = append(subs, n)
 	}
 	return subs
+}
+func (s *SplitExp) getSubnodes() []AstNodable {
+	return []AstNodable{s.Value}
 }
 
 func (s *MapExp) getSubnodes() []AstNodable {
@@ -239,6 +263,28 @@ func (e *ArrayExp) HasSweep() bool {
 	}
 	return false
 }
+func (e *ArrayExp) HasSplit() bool {
+	if e == nil {
+		return false
+	}
+	for _, exp := range e.Value {
+		if exp.HasSplit() {
+			return true
+		}
+	}
+	return false
+}
+func (e *ArrayExp) FindSplit(c *CallStm) *SplitExp {
+	if e == nil {
+		return nil
+	}
+	for _, exp := range e.Value {
+		if s := exp.FindSplit(c); s != nil {
+			return s
+		}
+	}
+	return nil
+}
 
 func (e *SweepExp) HasRef() bool {
 	if e == nil {
@@ -252,8 +298,33 @@ func (e *SweepExp) HasRef() bool {
 	return false
 }
 
+func (e *SplitExp) HasRef() bool {
+	if e == nil || e.Value == nil {
+		return false
+	}
+	return e.Value.HasRef()
+}
+
 func (e *SweepExp) HasSweep() bool {
 	return true
+}
+
+func (e *SplitExp) HasSplit() bool {
+	return true
+}
+
+func (e *SplitExp) FindSplit(c *CallStm) *SplitExp {
+	if e.Call == c {
+		return e
+	}
+	return e.Value.FindSplit(c)
+}
+
+func (e *SplitExp) CallMode() CallMode {
+	if e == nil || e.Source == nil {
+		return ModeUnknownMapCall
+	}
+	return e.Source.CallMode()
 }
 
 func (e *MapExp) HasRef() bool {
@@ -278,6 +349,28 @@ func (e *MapExp) HasSweep() bool {
 		}
 	}
 	return false
+}
+func (e *MapExp) HasSplit() bool {
+	if e == nil {
+		return false
+	}
+	for _, exp := range e.Value {
+		if exp.HasSplit() {
+			return true
+		}
+	}
+	return false
+}
+func (e *MapExp) FindSplit(c *CallStm) *SplitExp {
+	if e == nil {
+		return nil
+	}
+	for _, exp := range e.Value {
+		if s := exp.FindSplit(c); s != nil {
+			return s
+		}
+	}
+	return nil
 }
 
 func (e *ArrayExp) FindRefs() []*RefExp {
@@ -308,6 +401,13 @@ func (e *SweepExp) FindRefs() []*RefExp {
 	}
 	return result
 }
+func (e *SplitExp) FindRefs() []*RefExp {
+	refs := e.Value.FindRefs()
+	if s, ok := e.Source.(Exp); ok && s != nil {
+		refs = append(refs, s.FindRefs()...)
+	}
+	return refs
+}
 func (e *MapExp) FindRefs() []*RefExp {
 	var result []*RefExp
 	for _, v := range e.Value {
@@ -323,7 +423,37 @@ func (e *MapExp) FindRefs() []*RefExp {
 	return result
 }
 func (e *RefExp) FindRefs() []*RefExp {
-	return []*RefExp{e}
+	refs := []*RefExp{e}
+	for _, m := range e.MergeOver {
+		if s, ok := m.(Exp); ok {
+			refs = append(refs, s.FindRefs()...)
+		}
+	}
+	for m := range e.ForkIndex {
+		if s, ok := m.(Exp); ok {
+			refs = append(refs, s.FindRefs()...)
+		}
+	}
+	return refs
+}
+
+// IsEmpty returns true if the split expression is over an empty array or map.
+func (e *SplitExp) IsEmpty() bool {
+	switch exp := e.Value.(type) {
+	case *ArrayExp:
+		if len(exp.Value) == 0 {
+			return true
+		}
+	case *MapExp:
+		if len(exp.Value) == 0 {
+			return true
+		}
+	case *NullExp:
+		return true
+	case *SplitExp:
+		return exp.IsEmpty()
+	}
+	return false
 }
 
 func (s *StringExp) Type() (Type, int) { return &builtinString, 0 }
@@ -331,19 +461,3 @@ func (s *BoolExp) Type() (Type, int)   { return &builtinBool, 0 }
 func (s *IntExp) Type() (Type, int)    { return &builtinInt, 0 }
 func (s *FloatExp) Type() (Type, int)  { return &builtinFloat, 0 }
 func (s *NullExp) Type() (Type, int)   { return &builtinNull, 0 }
-
-func (s *RefExp) getNode() *AstNode { return &s.Node }
-func (s *RefExp) File() *SourceFile { return s.Node.Loc.File }
-func (s *RefExp) getKind() ExpKind  { return s.Kind }
-
-func (s *RefExp) inheritComments() bool { return false }
-func (s *RefExp) getSubnodes() []AstNodable {
-	return nil
-}
-
-func (*RefExp) HasRef() bool {
-	return true
-}
-func (*RefExp) HasSweep() bool {
-	return false
-}
