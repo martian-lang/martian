@@ -307,8 +307,6 @@ type Fork struct {
 	metadata       *Metadata
 	split_metadata *Metadata
 	join_metadata  *Metadata
-	parentFork     *Fork
-	subforks       []*Fork
 	chunks         []*Chunk
 	split_has_run  bool
 	join_has_run   bool
@@ -1208,8 +1206,10 @@ func (self *Fork) getAlarms(alarms *strings.Builder) {
 			alarms.Write(b)
 		}
 	}
-	for _, subfork := range self.subforks {
-		subfork.getAlarms(alarms)
+	for _, subnode := range self.node.subnodes {
+		if subfork := subnode.matchFork(self.forkId); subfork != nil {
+			subfork.getAlarms(alarms)
+		}
 	}
 }
 
@@ -1237,9 +1237,11 @@ func (self *Fork) serializeState() *ForkInfo {
 }
 
 func (self *Fork) getStages() []*StagePerfInfo {
-	stages := make([]*StagePerfInfo, 0, len(self.subforks)+1)
-	for _, subfork := range self.subforks {
-		stages = append(stages, subfork.getStages()...)
+	stages := make([]*StagePerfInfo, 0, len(self.node.subnodes)+1)
+	for _, node := range self.node.subnodes {
+		if subfork := node.matchFork(self.forkId); subfork != nil {
+			stages = append(stages, subfork.getStages()...)
+		}
 	}
 	if self.node.call.Kind() == syntax.KindStage {
 		stages = append(stages, &StagePerfInfo{
@@ -1258,7 +1260,7 @@ func (self *Fork) serializePerf() (*ForkPerfInfo, *VDRKillReport) {
 	}
 
 	chunks := make([]*ChunkPerfInfo, 0, len(self.chunks))
-	stats := make([]*PerfInfo, 0, len(self.chunks)+len(self.subforks)+2)
+	stats := make([]*PerfInfo, 0, len(self.chunks)+len(self.node.subnodes)+2)
 	for _, chunk := range self.chunks {
 		chunkSer := chunk.serializePerf()
 		chunks = append(chunks, chunkSer)
@@ -1285,13 +1287,15 @@ func (self *Fork) serializePerf() (*ForkPerfInfo, *VDRKillReport) {
 		stats = append(stats, joinStats)
 	}
 
-	killReports := make([]*VDRKillReport, 1, len(self.subforks)+1)
+	killReports := make([]*VDRKillReport, 1, len(self.node.subnodes)+1)
 	killReports[0], _ = self.getVdrKillReport()
-	for _, subfork := range self.subforks {
-		subforkSer, subforkKillReport := subfork.serializePerf()
-		stats = append(stats, subforkSer.ForkStats)
-		if subforkKillReport != nil {
-			killReports = append(killReports, subforkKillReport)
+	for _, node := range self.node.subnodes {
+		if subfork := node.matchFork(self.forkId); subfork != nil {
+			subforkSer, subforkKillReport := subfork.serializePerf()
+			stats = append(stats, subforkSer.ForkStats)
+			if subforkKillReport != nil {
+				killReports = append(killReports, subforkKillReport)
+			}
 		}
 	}
 	killReport := mergeVDRKillReports(killReports)

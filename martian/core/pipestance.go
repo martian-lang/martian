@@ -100,6 +100,10 @@ func (self *Stagestance) GetPostNodes() map[string]Nodable {
 	return self.node.GetPostNodes()
 }
 
+func (self *Stagestance) matchFork(id ForkId) *Fork {
+	return self.node.matchFork(id)
+}
+
 func (self *Stagestance) Callable() syntax.Callable {
 	return self.node.Callable()
 }
@@ -298,6 +302,10 @@ func (self *Pipestance) GetPrenodes() map[string]Nodable {
 
 func (self *Pipestance) GetPostNodes() map[string]Nodable {
 	return self.node.GetPostNodes()
+}
+
+func (self *Pipestance) matchFork(id ForkId) *Fork {
+	return self.node.matchFork(id)
 }
 
 func (self *Pipestance) Callable() syntax.Callable {
@@ -909,6 +917,10 @@ func (self *TopNode) Callable() syntax.Callable {
 
 func (self *TopNode) Types() *syntax.TypeLookup {
 	return self.types
+}
+
+func (self *TopNode) matchFork(id ForkId) *Fork {
+	return self.node.matchFork(id)
 }
 
 func NewTopNode(rt *Runtime, fqname string, p string,

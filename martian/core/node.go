@@ -43,6 +43,9 @@ type Nodable interface {
 
 	// Gets the mro AST object, if any, which will be executed for this node.
 	Callable() syntax.Callable
+
+	// Gets the fork of this node corresponding to the given fork ID.
+	matchFork(ForkId) *Fork
 }
 
 // Represents a node in the pipeline graph.
