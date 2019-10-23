@@ -82,10 +82,19 @@ func (*nullWriter) WriteString(b string) (int, error) {
 	return len(b), nil
 }
 
+var devNull nullWriter
+
+func TestMain(m *testing.M) {
+	syntax.SetEnforcementLevel(syntax.EnforceError)
+	// Disable logging here, because otherwise the race detector can get unhappy
+	// when running parallel tests.
+	util.SetPrintLogger(&devNull)
+	util.LogTeeWriter(&devNull)
+	os.Exit(m.Run())
+}
+
 // Very basic invoke test.
 func TestInvoke(t *testing.T) {
-	var devNull nullWriter
-	util.SetPrintLogger(&devNull)
 	src := `
 stage SUM_SQUARES(
     in  float[] values,

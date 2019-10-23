@@ -181,7 +181,7 @@ func TestPostProcess(t *testing.T) {
 	if err := fork.postProcess(); err != nil {
 		t.Error(err)
 	}
-	util.SetPrintLogger(os.Stderr)
+	util.SetPrintLogger(&devNull)
 	for _, f := range files {
 		if info, err := os.Lstat(f); err != nil {
 			t.Error(err)
@@ -403,7 +403,7 @@ func TestPostProcessEmpties(t *testing.T) {
 	if err := fork.postProcess(); err != nil {
 		t.Error(err)
 	}
-	util.SetPrintLogger(os.Stderr)
+	util.SetPrintLogger(&devNull)
 	for _, f := range files {
 		if info, err := os.Lstat(f); err != nil {
 			t.Error(err)

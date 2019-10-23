@@ -4,8 +4,6 @@ package syntax
 
 import (
 	"testing"
-
-	"github.com/martian-lang/martian/martian/util"
 )
 
 func TestParsedEquivalence(t *testing.T) {
@@ -77,7 +75,6 @@ call SUM_SQUARE_PIPELINE(
 }
 
 func TestEquivalenceAliasFailure(t *testing.T) {
-	util.SetPrintLogger(&devNull)
 	if ast1, ast2 := testGood(t, `
 stage SUM_SQUARES(
     in  float[] values,
@@ -135,7 +132,6 @@ call SUM_SQUARE_PIPELINE(
 }
 
 func TestEquivalenceOutNameChange(t *testing.T) {
-	util.SetPrintLogger(&devNull)
 	if ast1, ast2 := testGood(t, `
 stage SUM_SQUARES(
     in  float[] values,
@@ -193,7 +189,6 @@ call SUM_SQUARE_PIPELINE(
 }
 
 func TestEquivalenceInNameChange(t *testing.T) {
-	util.SetPrintLogger(&devNull)
 	if ast1, ast2 := testGood(t, `
 stage SUM_SQUARES(
     in  float[] values_in,
@@ -251,7 +246,6 @@ call SUM_SQUARE_PIPELINE(
 }
 
 func TestNumExpEquivalence(t *testing.T) {
-	util.SetPrintLogger(&devNull)
 	exp := IntExp{
 		Value: parseInt([]byte("1")),
 	}
