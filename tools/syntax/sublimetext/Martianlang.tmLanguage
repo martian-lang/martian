@@ -435,7 +435,7 @@
             <key>name</key>
             <string>meta.function.parameters.assignment</string>
             <key>match</key>
-            <string>\b(_?[a-zA-Z][a-zA-z0-9_]*)\s*(=)\s*</string>
+            <string>\b(_?[a-zA-Z][a-zA-z0-9_]*)\s*(=)\s*(?:(split)\s+)?</string>
             <key>captures</key>
             <dict>
               <key>1</key>
@@ -447,6 +447,11 @@
               <dict>
                 <key>name</key>
                 <string>keyword.operator.assignment</string>
+              </dict>
+              <key>3</key>
+              <dict>
+                <key>name</key>
+                <string>keyword.control.mro.split</string>
               </dict>
             </dict>
           </dict>
@@ -484,15 +489,20 @@
             <key>name</key>
             <string>meta.function-call.mro</string>
             <key>begin</key>
-            <string>\b(call)((?:\s+(?:local|preflight|volatile)){0,3})\s+(_?[a-zA-Z][a-zA-z0-9_]*)\s+(as)\s+(_?[a-zA-Z][a-zA-z0-9_]*)\s*(\()</string>
+            <string>\b(?:(map)\s+)?(call)((?:\s+(?:local|preflight|volatile)){0,3})\s+(_?[a-zA-Z][a-zA-z0-9_]*)\s+(as)\s+(_?[a-zA-Z][a-zA-z0-9_]*)\s*(\()</string>
             <key>beginCaptures</key>
             <dict>
               <key>1</key>
               <dict>
                 <key>name</key>
-                <string>keyword.control.mro.call</string>
+                <string>keyword.control.mro.map</string>
               </dict>
               <key>2</key>
+              <dict>
+                <key>name</key>
+                <string>keyword.control.mro.call</string>
+              </dict>
+              <key>3</key>
               <dict>
                 <key>patterns</key>
                 <array>
@@ -502,22 +512,22 @@
                   </dict>
                 </array>
               </dict>
-              <key>3</key>
+              <key>4</key>
               <dict>
                 <key>name</key>
                 <string>variable.function</string>
               </dict>
-              <key>4</key>
+              <key>5</key>
               <dict>
                 <key>name</key>
                 <string>keyword.control.mro.as</string>
               </dict>
-              <key>5</key>
+              <key>6</key>
               <dict>
                 <key>name</key>
                 <string>entity.name.function.alias</string>
               </dict>
-              <key>6</key>
+              <key>7</key>
               <dict>
                 <key>name</key>
                 <string>punctuation.definition.begin.bracket.round.mro</string>
@@ -549,15 +559,20 @@
             <key>name</key>
             <string>meta.function-call.mro</string>
             <key>begin</key>
-            <string>\b(call)((?:\s+(?:local|preflight|volatile)){0,3})\s+(_?[a-zA-Z][a-zA-z0-9_]*)\s*(\()</string>
+            <string>\b(?:(map)\s+)?(call)((?:\s+(?:local|preflight|volatile)){0,3})\s+(_?[a-zA-Z][a-zA-z0-9_]*)\s*(\()</string>
             <key>beginCaptures</key>
             <dict>
               <key>1</key>
               <dict>
                 <key>name</key>
-                <string>keyword.control.mro.call</string>
+                <string>keyword.control.mro.map</string>
               </dict>
               <key>2</key>
+              <dict>
+                <key>name</key>
+                <string>keyword.control.mro.call</string>
+              </dict>
+              <key>3</key>
               <dict>
                 <key>patterns</key>
                 <array>
@@ -567,12 +582,12 @@
                   </dict>
                 </array>
               </dict>
-              <key>3</key>
+              <key>4</key>
               <dict>
                 <key>name</key>
                 <string>entity.name.function</string>
               </dict>
-              <key>4</key>
+              <key>5</key>
               <dict>
                 <key>name</key>
                 <string>punctuation.definition.begin.bracket.round.mro</string>

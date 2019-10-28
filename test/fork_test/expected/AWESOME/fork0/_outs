@@ -1,3 +1,14 @@
-{
-    "outfile": "/user/test/fork_test/pipeline_test/outs/fork0/outfile.json"
-}
+[
+    {
+        "outfile": [
+            "/user/test/fork_test/pipeline_test/outs/0/outfile/0.json",
+            "/user/test/fork_test/pipeline_test/outs/0/outfile/1.json"
+        ]
+    },
+    {
+        "outfile": [
+            "/user/test/fork_test/pipeline_test/outs/1/outfile/0.json",
+            "/user/test/fork_test/pipeline_test/outs/1/outfile/1.json"
+        ]
+    }
+]

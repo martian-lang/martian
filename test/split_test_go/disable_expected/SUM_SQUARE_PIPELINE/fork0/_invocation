@@ -6,5 +6,8 @@ call SUM_SQUARE_PIPELINE(
         2,
         3,
     ],
-    disable_sq = true,
+    disable_sq = split [
+        true,
+        false,
+    ],
 )

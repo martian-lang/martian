@@ -80,95 +80,111 @@ func (call *CallStm) checkMappings(global *Ast, pipeline *Pipeline) error {
 	if call.Bindings == nil || call.Mapping == nil {
 		return nil
 	}
-	var firstSplit *BindStm
 	var errs ErrorList
 	for _, binding := range call.Bindings.List {
 		if spe, ok := binding.Exp.(*SplitExp); ok {
 			if spe.Call == nil {
 				spe.Call = call
 			}
-			if firstSplit == nil {
-				firstSplit = binding
-			}
-			switch exp := spe.Value.(type) {
-			case *ArrayExp:
-				if src, err := MergeMapCallSources(call.Mapping, exp); err != nil {
-					errs = append(errs, &InconsistentMapCallError{
-						Call:     call,
-						Pipeline: pipeline.GetId(),
-						Inner:    err,
-					})
-				} else {
-					call.Mapping = src
-				}
-			case *MapExp:
-				if src, err := MergeMapCallSources(call.Mapping, exp); err != nil {
-					errs = append(errs, &InconsistentMapCallError{
-						Call:     call,
-						Pipeline: pipeline.GetId(),
-						Inner:    err,
-					})
-				} else {
-					call.Mapping = src
-				}
-			case *RefExp:
-				if t, mapping, err := exp.resolveType(global, pipeline); err != nil {
-					errs = append(errs, &wrapError{
-						innerError: err,
-						loc:        exp.Node.Loc,
-					})
-				} else if mapping != nil {
-					if src, err := MergeMapCallSources(mapping, call); err != nil {
-						errs = append(errs, &InconsistentMapCallError{
-							Call:     call,
-							Pipeline: pipeline.GetId(),
-							Inner:    err,
-						})
-					} else {
-						call.Mapping = src
-						exp.MergeOver = []MapCallSource{src}
-					}
-				} else {
-					if t.ArrayDim > 0 {
-						exp.MergeOver = []MapCallSource{new(placeholderArrayMapSource)}
-						if src, err := MergeMapCallSources(call.Mapping, exp); err != nil {
-							errs = append(errs, &InconsistentMapCallError{
-								Call:     call,
-								Pipeline: pipeline.GetId(),
-								Inner:    err,
-							})
-						} else {
-							call.Mapping = src
-							if src != exp {
-								exp.MergeOver[0] = src
-							}
-						}
-					} else if t.MapDim > 0 {
-						exp.MergeOver = []MapCallSource{new(placeholderMapMapSource)}
-						if src, err := MergeMapCallSources(call.Mapping, exp); err != nil {
-							errs = append(errs, &InconsistentMapCallError{
-								Call:     call,
-								Pipeline: pipeline.GetId(),
-								Inner:    err,
-							})
-						} else {
-							call.Mapping = src
-							if src != exp {
-								exp.MergeOver[0] = src
-							}
-						}
-					} else {
-						errs = append(errs, &wrapError{
-							innerError: &IncompatibleTypeError{
-								Message: "SplitTypeMismatch: cannot split over a " + t.Tname,
-							},
-							loc: spe.Node.Loc,
-						})
-					}
-				}
+			if err := call.checkBindingMap(global, spe, pipeline); err != nil {
+				errs = append(errs, err)
 			}
 			spe.Source = call.Mapping
 		}
 	}
+	if mods := call.Modifiers.Bindings; mods != nil {
+		if binding := mods.Table[disabled]; binding != nil {
+			if spe, ok := binding.Exp.(*SplitExp); ok {
+				if spe.Call == nil {
+					spe.Call = call
+				}
+				if err := call.checkBindingMap(global, spe, pipeline); err != nil {
+					errs = append(errs, err)
+				}
+				spe.Source = call.Mapping
+			}
+		}
+	}
 	return errs.If()
+}
+
+func (call *CallStm) checkBindingMap(global *Ast, spe *SplitExp, pipeline *Pipeline) error {
+	switch exp := spe.Value.(type) {
+	case *ArrayExp:
+		if src, err := MergeMapCallSources(call.Mapping, exp); err != nil {
+			return &InconsistentMapCallError{
+				Call:     call,
+				Pipeline: pipeline.GetId(),
+				Inner:    err,
+			}
+		} else {
+			call.Mapping = src
+		}
+	case *MapExp:
+		if src, err := MergeMapCallSources(call.Mapping, exp); err != nil {
+			return &InconsistentMapCallError{
+				Call:     call,
+				Pipeline: pipeline.GetId(),
+				Inner:    err,
+			}
+		} else {
+			call.Mapping = src
+		}
+	case *RefExp:
+		if t, mapping, err := exp.resolveType(global, pipeline); err != nil {
+			return &wrapError{
+				innerError: err,
+				loc:        exp.Node.Loc,
+			}
+		} else if mapping != nil {
+			if src, err := MergeMapCallSources(mapping, call); err != nil {
+				return &InconsistentMapCallError{
+					Call:     call,
+					Pipeline: pipeline.GetId(),
+					Inner:    err,
+				}
+			} else {
+				call.Mapping = src
+				exp.MergeOver = []MapCallSource{src}
+			}
+		} else {
+			if t.ArrayDim > 0 {
+				exp.MergeOver = []MapCallSource{new(placeholderArrayMapSource)}
+				if src, err := MergeMapCallSources(call.Mapping, exp); err != nil {
+					return &InconsistentMapCallError{
+						Call:     call,
+						Pipeline: pipeline.GetId(),
+						Inner:    err,
+					}
+				} else {
+					call.Mapping = src
+					if src != exp {
+						exp.MergeOver[0] = src
+					}
+				}
+			} else if t.MapDim > 0 {
+				exp.MergeOver = []MapCallSource{new(placeholderMapMapSource)}
+				if src, err := MergeMapCallSources(call.Mapping, exp); err != nil {
+					return &InconsistentMapCallError{
+						Call:     call,
+						Pipeline: pipeline.GetId(),
+						Inner:    err,
+					}
+				} else {
+					call.Mapping = src
+					if src != exp {
+						exp.MergeOver[0] = src
+					}
+				}
+			} else {
+				return &wrapError{
+					innerError: &IncompatibleTypeError{
+						Message: "SplitTypeMismatch: cannot split over a " + t.Tname,
+					},
+					loc: spe.Node.Loc,
+				}
+			}
+		}
+	}
+	return nil
 }

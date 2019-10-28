@@ -189,8 +189,10 @@ def mysorted(lst):
     try:
         return sorted(lst)
     except TypeError:
+        if lst[0] is None:
+            return lst
         if isinstance(lst[0], dict):
-            return sorted(lst, key=lambda x: list(x.items()))
+            return sorted(lst, key=lambda x: [[k, str(type(v)), v] for k, v in x.items()])
         raise
 
 

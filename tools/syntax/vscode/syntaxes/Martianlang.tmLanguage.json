@@ -283,13 +283,16 @@
       "patterns": [
         {
           "name": "meta.function.parameters.assignment",
-          "match": "\\b(_?[a-zA-Z][a-zA-z0-9_]*)\\s*(=)\\s*",
+          "match": "\\b(_?[a-zA-Z][a-zA-z0-9_]*)\\s*(=)\\s*(?:(split)\\s+)?",
           "captures": {
             "1": {
               "name": "variable.parameter"
             },
             "2": {
               "name": "keyword.operator.assignment"
+            },
+            "3": {
+              "name": "keyword.control.mro.split"
             }
           }
         }
@@ -315,28 +318,31 @@
       "patterns": [
         {
           "name": "meta.function-call.mro",
-          "begin": "\\b(call)((?:\\s+(?:local|preflight|volatile)){0,3})\\s+(_?[a-zA-Z][a-zA-z0-9_]*)\\s+(as)\\s+(_?[a-zA-Z][a-zA-z0-9_]*)\\s*(\\()",
+          "begin": "\\b(?:(map)\\s+)?(call)((?:\\s+(?:local|preflight|volatile)){0,3})\\s+(_?[a-zA-Z][a-zA-z0-9_]*)\\s+(as)\\s+(_?[a-zA-Z][a-zA-z0-9_]*)\\s*(\\()",
           "beginCaptures": {
             "1": {
-              "name": "keyword.control.mro.call"
+              "name": "keyword.control.mro.map"
             },
             "2": {
+              "name": "keyword.control.mro.call"
+            },
+            "3": {
               "patterns": [
                 {
                   "include": "#call_modifier"
                 }
               ]
             },
-            "3": {
+            "4": {
               "name": "variable.function"
             },
-            "4": {
+            "5": {
               "name": "keyword.control.mro.as"
             },
-            "5": {
+            "6": {
               "name": "entity.name.function.alias"
             },
-            "6": {
+            "7": {
               "name": "punctuation.definition.begin.bracket.round.mro"
             }
           },
@@ -357,22 +363,25 @@
         },
         {
           "name": "meta.function-call.mro",
-          "begin": "\\b(call)((?:\\s+(?:local|preflight|volatile)){0,3})\\s+(_?[a-zA-Z][a-zA-z0-9_]*)\\s*(\\()",
+          "begin": "\\b(?:(map)\\s+)?(call)((?:\\s+(?:local|preflight|volatile)){0,3})\\s+(_?[a-zA-Z][a-zA-z0-9_]*)\\s*(\\()",
           "beginCaptures": {
             "1": {
-              "name": "keyword.control.mro.call"
+              "name": "keyword.control.mro.map"
             },
             "2": {
+              "name": "keyword.control.mro.call"
+            },
+            "3": {
               "patterns": [
                 {
                   "include": "#call_modifier"
                 }
               ]
             },
-            "3": {
+            "4": {
               "name": "entity.name.function"
             },
-            "4": {
+            "5": {
               "name": "punctuation.definition.begin.bracket.round.mro"
             }
           },

@@ -14,6 +14,7 @@ import (
 	"path"
 	"path/filepath"
 	"sort"
+	"strconv"
 	"strings"
 
 	"github.com/martian-lang/martian/martian/syntax"
@@ -21,6 +22,17 @@ import (
 )
 
 func (self *Fork) postProcess() error {
+	ro := self.node.call.ResolvedOutputs()
+	if ro == nil {
+		return nil
+	}
+	if rro, err := ro.BindingPath("", self.forkId.SourceIndexMap(),
+		nil, self.node.top.types); err != nil {
+		return err
+	} else {
+		ro = rro
+	}
+
 	// Handle formal output parameters
 	pipestancePath := self.node.parent.getNode().path
 	outsPath := path.Join(pipestancePath, "outs")
@@ -34,20 +46,82 @@ func (self *Fork) postProcess() error {
 	}
 
 	var errs syntax.ErrorList
-	// Create the fork-specific outs/ folder
-	if err := util.MkdirAll(outsPath); err != nil {
+	var newOuts json.Marshaler
+	switch ro.Type.(type) {
+	case *syntax.ArrayType:
+		var arr []json.RawMessage
+		if err := self.metadata.ReadInto(OutsFile, &arr); err != nil {
+			errs = append(errs, err)
+		}
+		noutArr := make(marshallerArray, len(arr))
+		for i, elem := range arr {
+			k := strconv.Itoa(i)
+			util.Print("Fork %s:\n", k)
+			nout, err := self.processStructOuts(pipestancePath,
+				path.Join(outsPath, k), elem)
+			if err != nil {
+				errs = append(errs, err)
+			}
+			noutArr[i] = nout
+		}
+		newOuts = noutArr
+	case *syntax.TypedMapType:
+		var outs LazyArgumentMap
+		if err := self.metadata.ReadInto(OutsFile, &outs); err != nil {
+			errs = append(errs, err)
+		}
+		noutMap := make(MarshalerMap, len(outs))
+		for k, elem := range outs {
+			util.Print("Fork \"%s\":\n", k)
+			nout, err := self.processStructOuts(pipestancePath,
+				path.Join(outsPath, k), elem)
+			if err != nil {
+				errs = append(errs, err)
+			}
+			noutMap[k] = nout
+		}
+		newOuts = noutMap
+	default:
+		if b, err := self.metadata.readRawBytes(OutsFile); err != nil {
+			errs = append(errs, err)
+		} else {
+			newOuts, err = self.processStructOuts(
+				pipestancePath, outsPath, b)
+			if err != nil {
+				errs = append(errs, err)
+			}
+		}
+	}
+	// Rewrite the outs json file with the updated locations.
+	if err := self.metadata.WriteAtomic(OutsFile, newOuts); err != nil {
 		errs = append(errs, err)
 	}
+	self.printAlarms()
+	return errs.If()
+}
 
+func (self *Fork) processStructOuts(pipestancePath, outsPath string,
+	outputs json.RawMessage) (LazyArgumentMap, error) {
+	var errs syntax.ErrorList
 	paramList := self.OutParams().List
+	for _, p := range paramList {
+		if k := p.IsFile(); k == syntax.KindIsFile || k == syntax.KindIsDirectory {
+			// Create the fork-specific outs/ folder
+			if err := util.MkdirAll(outsPath); err != nil {
+				errs = append(errs, err)
+			}
+			break
+		}
+	}
 
 	// Get fork's output parameter values
-	outs := make(LazyArgumentMap, len(paramList))
-	if err := self.metadata.ReadInto(OutsFile, &outs); err != nil {
+	var outs LazyArgumentMap
+	if err := json.Unmarshal(outputs, &outs); err != nil {
 		errs = append(errs, err)
 	}
 
-	if oerrs := self.handleOuts(paramList, outs, pipestancePath, outsPath); len(oerrs) != 0 {
+	newOuts, oerrs := self.handleOuts(paramList, outs, pipestancePath, outsPath)
+	if len(oerrs) != 0 {
 		if len(errs) == 0 {
 			errs = oerrs
 		} else {
@@ -56,13 +130,12 @@ func (self *Fork) postProcess() error {
 	}
 	util.Print("\n")
 
-	self.printAlarms()
-	return errs.If()
+	return newOuts, errs.If()
 }
 
 func (self *Fork) handleOuts(paramList []*syntax.OutParam,
 	outs LazyArgumentMap,
-	pipestancePath, outsPath string) syntax.ErrorList {
+	pipestancePath, outsPath string) (LazyArgumentMap, syntax.ErrorList) {
 	var errs syntax.ErrorList
 
 	// Calculate longest key name for alignment
@@ -98,10 +171,7 @@ func (self *Fork) handleOuts(paramList []*syntax.OutParam,
 			keyWidth = kw
 		}
 	}
-	// Rewrite the outs json file with the updated locations.
-	if err := self.metadata.WriteAtomic(OutsFile, newOuts); err != nil {
-		errs = append(errs, err)
-	}
+
 	indent := bytes.Repeat([]byte{' '}, keyWidth+1) // "- keyWidth: "
 
 	var result bytes.Buffer
@@ -134,7 +204,7 @@ func (self *Fork) handleOuts(paramList []*syntax.OutParam,
 		util.PrintBytes(result.Bytes())
 		result.Reset()
 	}
-	return errs
+	return newOuts, errs
 }
 
 func moveOutFiles(w *bytes.Buffer, param *syntax.StructMember,

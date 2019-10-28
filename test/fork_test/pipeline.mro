@@ -63,7 +63,7 @@ pipeline AWESOME(
     in  string value1,
     in  string key2,
     in  string value2,
-    out json   outfile,
+    out json[] outfile,
 )
 {
     call ADD_KEY1(
@@ -87,19 +87,19 @@ pipeline AWESOME(
         start    = ADD_KEY2.result,
     )
 
-    call ADD_KEY4(
+    map call ADD_KEY4(
         key      = "4",
-        value    = sweep(
+        value    = split [
             "four",
             "feir",
-        ),
+        ],
         failfile = "fail4",
         start    = ADD_KEY2.result,
     )
 
-    call MERGE_JSON(
+    map call MERGE_JSON(
         json1 = ADD_KEY3.result,
-        json2 = ADD_KEY4.result,
+        json2 = split ADD_KEY4.result,
     )
 
     return (
@@ -108,12 +108,12 @@ pipeline AWESOME(
 }
 
 # Calls the pipelines, sweeping over two forks.
-call AWESOME(
+map call AWESOME(
     key1   = "1",
     value1 = "one",
     key2   = "2",
-    value2 = sweep(
+    value2 = split [
         "two",
         "deux",
-    ),
+    ],
 )

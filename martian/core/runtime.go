@@ -951,7 +951,10 @@ func BuildCallSource(
 		}
 		if val := args[param.GetId()]; val != nil {
 			var err error
-			binding.Exp, err = convertToExp(&parser, split, binding.Sweep, val, binding.Tname, lookup)
+			binding.Exp, err = convertToExp(&parser, split, val, binding.Tname, lookup)
+			if split && ast.Call.Mapping == nil {
+				ast.Call.Mapping = binding.Exp.(*syntax.SplitExp).Source
+			}
 			if err != nil {
 				return "", err
 			}
@@ -959,6 +962,10 @@ func BuildCallSource(
 			binding.Exp = &null
 		}
 		ast.Call.Bindings.List = append(ast.Call.Bindings.List, &binding)
+	}
+	if len(splitargs) > 0 && ast.Call.Mapping == nil {
+		// Will happen if uncompiled.  Add a placeholder.
+		ast.Call.Mapping = new(syntax.NullExp)
 	}
 	return ast.Format(), nil
 }

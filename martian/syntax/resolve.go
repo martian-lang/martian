@@ -497,7 +497,6 @@ func (ast *Ast) MakePipelineCallGraph(
 }
 
 func (bindings *BindStms) resolve(self, calls map[string]*ResolvedBinding,
-	fork MapCallSource,
 	lookup *TypeLookup) (map[string]*ResolvedBinding, error) {
 	if len(bindings.List) == 0 {
 		return nil, nil
@@ -506,15 +505,6 @@ func (bindings *BindStms) resolve(self, calls map[string]*ResolvedBinding,
 	var errs ErrorList
 	for _, binding := range bindings.List {
 		tid := binding.Tname
-		if fork != nil {
-			switch fork.CallMode() {
-			case ModeArrayCall:
-				tid.ArrayDim++
-			case ModeMapCall:
-				tid.MapDim = tid.ArrayDim + 1
-				tid.ArrayDim = 0
-			}
-		}
 		r, err := resolveExp(binding.Exp, tid, self, calls, lookup)
 		if err != nil {
 			errs = append(errs, &bindingError{
@@ -563,7 +553,7 @@ func (node *CallGraphStage) resolveInputs(siblings map[string]*ResolvedBinding,
 		parentInputs = parent.Inputs
 		disable = parent.Disable
 	}
-	ins, err := node.call.Bindings.resolve(parentInputs, siblings, nil,
+	ins, err := node.call.Bindings.resolve(parentInputs, siblings,
 		lookup)
 	if err != nil {
 		errs = append(errs, &bindingError{
@@ -571,7 +561,12 @@ func (node *CallGraphStage) resolveInputs(siblings map[string]*ResolvedBinding,
 			Err: err,
 		})
 	}
-	node.Source, err = unifyMapSources(node.call, ins)
+	node.Disable, err = node.resolveDisable(disable, parentInputs,
+		siblings, lookup)
+	if err != nil {
+		errs = append(errs, err)
+	}
+	node.Source, err = unifyMapSources(node.call, ins, node.Disable)
 	if err != nil {
 		errs = append(errs, &bindingError{
 			Msg: node.Fqid,
@@ -601,18 +596,16 @@ func (node *CallGraphStage) resolveInputs(siblings map[string]*ResolvedBinding,
 			node.Forks = append(node.Forks, node)
 		}
 	}
-	node.Disable, err = node.resolveDisable(disable, parentInputs,
-		siblings, lookup)
-	if err != nil {
-		errs = append(errs, err)
-	}
 	return errs.If()
 }
 
-func unifyMapSources(call *CallStm, ins map[string]*ResolvedBinding) (MapCallSource, error) {
+func unifyMapSources(call *CallStm, ins map[string]*ResolvedBinding, disable []Exp) (MapCallSource, error) {
 	splits := make(map[*SplitExp]struct{})
 	for _, b := range ins {
 		findSplitsForCall(b.Exp, call, splits)
+	}
+	for _, b := range disable {
+		findSplitsForCall(b, call, splits)
 	}
 	// Sort the splits before merging, to make the resolution repeatable.
 	splitList := make([]*SplitExp, 0, len(splits))
@@ -663,9 +656,7 @@ func unifyMapSources(call *CallStm, ins map[string]*ResolvedBinding) (MapCallSou
 				}
 			}
 		}
-		if f, err := MergeMapCallSources(root, sp.Value.(MapCallSource)); err != nil {
-			errs = append(errs, err)
-		} else if f, err := MergeMapCallSources(f, sp.Source); err != nil {
+		if f, err := mergeSplitSource(root, sp); err != nil {
 			errs = append(errs, err)
 		} else {
 			root = f
@@ -681,6 +672,23 @@ func unifyMapSources(call *CallStm, ins map[string]*ResolvedBinding) (MapCallSou
 		for _, sp := range splitList {
 			sp.Source = root
 		}
+	}
+	return root, nil
+}
+
+func mergeSplitSource(root MapCallSource, sp *SplitExp) (MapCallSource, error) {
+	switch src := sp.Value.(type) {
+	case MapCallSource:
+		if f, err := MergeMapCallSources(root, src); err != nil {
+			return root, err
+		} else {
+			root = f
+		}
+	}
+	if f, err := MergeMapCallSources(root, sp.Source); err != nil {
+		return root, err
+	} else {
+		root = f
 	}
 	return root, nil
 }
@@ -728,6 +736,9 @@ func (node *CallGraphStage) resolveForks(mapped []CallGraphNode, localRoot CallG
 	splits := make(map[*CallStm]struct{}, len(mapped))
 	for _, input := range node.Inputs {
 		findSplitCalls(input.Exp, splits)
+	}
+	for _, d := range node.Disable {
+		findSplitCalls(d, splits)
 	}
 	if len(splits) > 0 {
 		if localRoot == nil {
@@ -786,7 +797,11 @@ func (node *CallGraphStage) resolveDisable(disable []Exp,
 			Err: err,
 		}
 	}
-	switch r := r.Exp.(type) {
+	return resolveDisableExp(r.Exp, disable)
+}
+
+func resolveDisableExp(r Exp, disable []Exp) ([]Exp, error) {
+	switch r := r.(type) {
 	case *RefExp:
 		for _, e := range disable {
 			if e == r {
@@ -804,40 +819,23 @@ func (node *CallGraphStage) resolveDisable(disable []Exp,
 		}
 		return disable, nil
 	case *SweepExp:
-		if len(r.Value) == 0 {
-			return disable, nil
-		}
-		allFalse := true
-		allTrue := true
-		for _, e := range r.Value {
-			switch e := e.(type) {
-			case *RefExp, *NullExp:
-				allTrue = false
-				allFalse = false
-			case *BoolExp:
-				if e.Value {
-					allFalse = false
-				} else {
-					allTrue = false
-				}
-			default:
+		return resolveDisableArray(r, r.Value, disable)
+	case *SplitExp:
+		switch v := r.Value.(type) {
+		case *ArrayExp:
+			return resolveDisableArray(r, v.Value, disable)
+		case *MapExp:
+			if v.Kind != KindMap {
 				return disable, &wrapError{
 					innerError: &bindingError{
-						Msg: "BindingError: disabled control binding was not boolean",
+						Msg: "BindingError: cannot split " + string(v.Kind),
 					},
-					loc: e.getNode().Loc,
+					loc: r.getNode().Loc,
 				}
 			}
+			return resolveDisableMap(r, v.Value, disable)
 		}
-		if allFalse {
-			return disable, nil
-		}
-		if allTrue {
-			return []Exp{r.Value[0]}, nil
-		}
-		v := make([]Exp, len(disable), len(disable)+1)
-		copy(v, disable)
-		return append(v, r), nil
+		return resolveDisableExp(r.Value, disable)
 	default:
 		return disable, &wrapError{
 			innerError: &bindingError{
@@ -846,6 +844,88 @@ func (node *CallGraphStage) resolveDisable(disable []Exp,
 			loc: r.getNode().Loc,
 		}
 	}
+}
+
+func resolveDisableArray(r Exp, v, disable []Exp) ([]Exp, error) {
+	if len(v) == 0 {
+		return disable, nil
+	} else if len(v) == 1 {
+		return resolveDisableExp(v[0], disable)
+	}
+	allFalse := true
+	allTrue := true
+	for _, e := range v {
+		switch e := e.(type) {
+		case *RefExp, *NullExp:
+			allTrue = false
+			allFalse = false
+		case *BoolExp:
+			if e.Value {
+				allFalse = false
+			} else {
+				allTrue = false
+			}
+		default:
+			return disable, &wrapError{
+				innerError: &bindingError{
+					Msg: "BindingError: disabled control binding was not boolean",
+				},
+				loc: e.getNode().Loc,
+			}
+		}
+	}
+	if allFalse {
+		return disable, nil
+	}
+	if allTrue {
+		return []Exp{v[0]}, nil
+	}
+	result := make([]Exp, len(disable), len(disable)+1)
+	copy(result, disable)
+	return append(result, r), nil
+}
+
+func resolveDisableMap(r Exp, v map[string]Exp, disable []Exp) ([]Exp, error) {
+	if len(v) == 0 {
+		return disable, nil
+	} else if len(v) == 1 {
+		for _, e := range v {
+			return resolveDisableExp(e, disable)
+		}
+	}
+	allFalse := true
+	allTrue := true
+	for _, e := range v {
+		switch e := e.(type) {
+		case *RefExp, *NullExp:
+			allTrue = false
+			allFalse = false
+		case *BoolExp:
+			if e.Value {
+				allFalse = false
+			} else {
+				allTrue = false
+			}
+		default:
+			return disable, &wrapError{
+				innerError: &bindingError{
+					Msg: "BindingError: disabled control binding was not boolean",
+				},
+				loc: e.getNode().Loc,
+			}
+		}
+	}
+	if allFalse {
+		return disable, nil
+	}
+	if allTrue {
+		for _, e := range v {
+			return []Exp{e}, nil
+		}
+	}
+	result := make([]Exp, len(disable), len(disable)+1)
+	copy(result, disable)
+	return append(result, r), nil
 }
 
 func (node *CallGraphStage) resolve(siblings map[string]*ResolvedBinding,
@@ -869,18 +949,31 @@ func (node *CallGraphStage) resolve(siblings map[string]*ResolvedBinding,
 				Kind: KindCall,
 				Id:   node.Fqid,
 			}
+			var exp Exp = &ref
 			for i := len(node.Forks) - 1; i >= 0; i-- {
-				ref.MergeOver = append(ref.MergeOver, node.Forks[i].MapSource())
-				switch node.Forks[i].MapSource().CallMode() {
+				fs := node.Forks[i]
+				ref.MergeOver = append(ref.MergeOver, fs.MapSource())
+				switch fs.MapSource().CallMode() {
 				case ModeArrayCall:
 					tid.ArrayDim++
 				case ModeMapCall:
 					tid.MapDim = tid.ArrayDim + 1
 					tid.ArrayDim = 0
 				}
+				if fs.MapSource() != node.MapSource() {
+					// Forking because the parent pipeline forked, so other
+					// calls in the same pipeline should also fork.
+					// These splits will be removed by unsplit later.
+					exp = &SplitExp{
+						valExp: valExp{Node: fs.Call().Node},
+						Call:   fs.Call(),
+						Source: fs.MapSource(),
+						Value:  exp,
+					}
+				}
 			}
 			node.Outputs = &ResolvedBinding{
-				Exp:  &ref,
+				Exp:  exp,
 				Type: lookup.Get(tid),
 			}
 		}
@@ -889,6 +982,12 @@ func (node *CallGraphStage) resolve(siblings map[string]*ResolvedBinding,
 }
 
 func (node *CallGraphStage) unsplit() error {
+	if node.Outputs == nil {
+		return nil
+	}
+	for s, ok := node.Outputs.Exp.(*SplitExp); ok; s, ok = node.Outputs.Exp.(*SplitExp) {
+		node.Outputs.Exp = s.Value
+	}
 	return nil
 }
 
@@ -1148,13 +1247,22 @@ func (node *CallGraphPipeline) resolve(siblings map[string]*ResolvedBinding,
 				}
 			}
 		}
+		// Stages which forked based on upstream splits should not propagate
+		// their splits to the outputs, so we remove them here.
+		for _, child := range node.Children {
+			if stage, ok := child.(*CallGraphStage); ok {
+				if err := stage.unsplit(); err != nil {
+					errs = append(errs, err)
+				}
+			}
+		}
 		if err := errs.If(); err != nil {
 			return err
 		}
 	}
 	if len(node.pipeline.Ret.Bindings.List) > 0 {
 		outs, err := node.pipeline.Ret.Bindings.resolve(node.Inputs, childMap,
-			nil, lookup)
+			lookup)
 		if err != nil {
 			errs = append(errs, &bindingError{
 				Msg: node.Fqid + " outputs",
@@ -1255,6 +1363,9 @@ func (node *CallGraphPipeline) resolvePipelineForks(mapped []CallGraphNode) {
 	}
 	splits := make(map[*CallStm]struct{}, len(mapped))
 	findSplitCalls(node.Outputs.Exp, splits)
+	for _, d := range node.Disable {
+		findSplitCalls(d, splits)
+	}
 	for _, m := range mapped {
 		if _, ok := splits[m.Call()]; !ok {
 			if hasMerge(node.Outputs.Exp, m.MapSource()) {

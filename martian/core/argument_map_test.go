@@ -221,7 +221,7 @@ func TestArgumentMapValidateOutputs(t *testing.T) {
 	}
 }
 
-func TestUnmarshalMarshallerMap(t *testing.T) {
+func TestUnmarshalMarshalerMap(t *testing.T) {
 	sb := []byte(`{
 		"__threads": 4,
 		"__mem_gb": 3,

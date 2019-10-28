@@ -2,14 +2,14 @@
 @include "pipeline_stages.mro"
 
 # Calls the pipelines, sweeping over two forks.
-call SUM_SQUARE_PIPELINE(
+map call SUM_SQUARE_PIPELINE(
     values     = [
         1,
         2,
         3,
     ],
-    disable_sq = sweep(
+    disable_sq = split [
         true,
         false,
-    ),
+    ],
 )

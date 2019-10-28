@@ -253,12 +253,6 @@ func (s *SplitExp) BindingPath(bindPath string,
 	if v == s.Value {
 		return s, err
 	}
-	// if v, ok := v.(*RefExp); ok {
-	// 	rv := *v
-	// 	rv.OutputIndex = append([]CollectionIndex{&unknownIndex{src: s.Source}},
-	// 		rv.OutputIndex...)
-	// 	return rv.BindingPath(bindPath, fork, index)
-	// }
 	e := *s
 	e.Value = v
 	return &e, err

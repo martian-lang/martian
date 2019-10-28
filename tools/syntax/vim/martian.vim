@@ -16,38 +16,41 @@ syn keyword modifier  local preflight volatile nextgroup=modifier,callTarg skipw
 syn keyword boundMod  local preflight volatile disabled nextgroup=assign contained skipwhite
 syn keyword sweep     sweep nextgroup=sweepArray contained
 
+syn match   mapCall     'map\s\+call'   nextgroup=callTarg  skipwhite transparent contains=map,call
 syn keyword declaration pipeline stage nextgroup=pipeName  skipwhite
 syn keyword declaration struct nextgroup=structName        skipwhite
 syn keyword call        call   nextgroup=modifier,callTarg skipwhite
+syn keyword map         map    nextgroup=call              skipwhite contained
 syn keyword return      return nextgroup=callParams        skipwhite contained
 
 syn keyword mroNull  null       contained
 syn keyword mroBool  true false contained
 
-syn keyword split      split  nextgroup=splitUsing,paramBlock skipwhite contained
+syn keyword split      split  nextgroup=splitUsing,paramBlock        skipwhite contained
+syn keyword splitParam split  nextgroup=self,parName,arrayLit,mapLit skipwhite contained
 syn keyword splitUsing using  nextgroup=paramBlock skipwhite contained
 syn keyword using      using  nextgroup=resParams  skipwhite contained
 syn keyword retain     retain nextgroup=idList     skipwhite contained
 syn keyword callUsing  using  nextgroup=modBlock   skipwhite contained
 syn keyword as         as     nextgroup=callTarg   skipwhite contained
-syn keyword self       self   nextgroup=dot contained
+syn keyword self       self   nextgroup=dot        contained
 
 syn match dot    '\.' nextgroup=parName contained
 syn match mapSep ':'  nextgroup=mroString,mroNull,mroBool,arrayLit,mapLit skipwhite contained
-syn match assign '='  nextgroup=self,sweep,mroString,mroNumber,mroNull,mroBool,parName,arrayLit,mapLit skipwhite contained
+syn match assign '='  nextgroup=self,sweep,splitParam,mroString,mroNumber,mroNull,mroBool,parName,arrayLit,mapLit skipwhite contained
 
-syn match assignment '_\?[A-Za-z][A-Za-z0-9_]*\s*=' contains=parName,assign contained skipwhite nextgroup=self,sweep,mroString,mroNumber,mroNull,mroBool,parName,arrayLit,mapLit
+syn match assignment '_\?[A-Za-z][A-Za-z0-9_]*\s*=' contains=parName,assign contained skipwhite nextgroup=self,sweep,splitParam,mroString,mroNumber,mroNull,mroBool,parName,arrayLit,mapLit
 syn match parType '_\?[A-Za-z][.A-Za-z0-9_]*' nextgroup=arrayDim,mapType,parName skipwhite contained
 syn match arrayDim '\[\]' nextgroup=arraydim,parName skipwhite contained
 syn match parName '_\?[A-Za-z][A-Za-z0-9_]*' nextgroup=dot,mroString skipwhite contained
 syn match pipeName '_\?[A-Za-z][A-Za-z0-9_]*' nextgroup=paramBlock contained
 syn match structName '_\?[A-Za-z][A-Za-z0-9_]*' nextgroup=fieldBlock contained
 syn match callTarg '_\?[A-Za-z][A-Za-z0-9_]*' nextgroup=as,callParams skipwhite contained
+syn match structLitMember '_\?[A-Za-z][A-Za-z0-9_]*\s*:' contains=parName,mapSep nextgroup=mroString,mroNull,mroBool,arrayLit,mapLit,self,parName skipwhite transparent contained
 
 syn match commentLine '#.*$'
 
-syn match mroNumber '\v<\d+>' contained skipwhite nextgroup=mapSep
-syn match mroNumber '\v<\d+\.\d+>' contained skipwhite nextgroup=mapSep
+syn match mroNumber '\v<\d+(\.\d+)?>' contained skipwhite nextgroup=mapSep
 
 syn region paramBlock start="(" end=")" fold transparent nextgroup=split,using,retain,callBlock skipwhite skipnl contained contains=parameter,src
 syn region fieldBlock start="(" end=")" fold transparent skipwhite skipnl contained contains=parType
@@ -56,11 +59,11 @@ syn region callParams start="(" end=")" fold transparent nextgroup=callUsing,ret
 syn region resParams  start="(" end=")" fold transparent nextgroup=retain contained skipwhite skipnl contains=restype
 syn region idList     start="(" end=")" fold transparent contained contains=parName
 syn region modBlock   start="(" end=")" fold transparent contained contains=boundMod
-syn region callBlock  start="{" end="}" fold transparent contains=call,return contained skipwhite
+syn region callBlock  start="{" end="}" fold transparent contains=call,mapCall,return contained skipwhite
 syn region mroString  start=/"/ skip=/\\"/ end=/"/ nextgroup=mapSep skipwhite contained
 syn region arrayLit   start='\[' end='\]' transparent contains=mroString,mroNumber,mroNull,mroBool,arrayLit,mapLit,parName contained
 syn region sweepArray start='(' end=')' transparent contains=mroString,mroNumber,mroNull,mroBool,arrayLit,mapLit contained
-syn region mapLit     start="{" end="}" transparent contains=mroString,mroNumber contained
+syn region mapLit     start="{" end="}" transparent contains=mroString,mroNumber,structLitMember contained
 
 let b:current_syntax = "mro"
 
@@ -73,6 +76,7 @@ hi def link src           Statement
 hi def link declaration   Statement
 hi def link return        Statement
 hi def link call          Statement
+hi def link map           Statement
 hi def link modifier      Statement
 hi def link split         Statement
 hi def link splitUsing    Statement
@@ -83,6 +87,7 @@ hi def link restype       Keyword
 hi def link boundMod      Keyword
 hi def link self          Keyword
 hi def link sweep         Keyword
+hi def link splitParam    Keyword
 hi def link using         Statement
 hi def link retain        Statement
 
