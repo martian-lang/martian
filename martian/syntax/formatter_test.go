@@ -37,8 +37,8 @@ struct POINTALISM(
 )
 
 struct HELPFUL(
-    int  d2 "foo",
-    file d3 ""    "blargh",
+    int  d2           "foo",
+    file d3_is_a_file ""    "blargh",
 )
 
 # Adds a key to the json in a file.
@@ -198,6 +198,7 @@ pipeline AWESOME(
     in  string     value2,
     in  POINTALISM struct_in,
     out json       outfile    "The json file containing all of the keys and values."  "all_keys",
+    out HELPFUL    thing,
 )
 {
     call ADD_KEY1(
@@ -334,6 +335,10 @@ pipeline AWESOME(
 
     return (
         outfile = MERGE_JSON.result,
+        thing   = {
+            d2:           1,
+            d3_is_a_file: "foo.bar",
+        },
     )
 
     retain (

@@ -145,8 +145,18 @@ func (e *MapExp) format(w stringWriter, prefix string) {
 		mustWriteString(w, "{\n")
 		vindent := prefix + INDENT
 		keys := make([]string, 0, len(e.Value))
-		for key := range e.Value {
+		maxKeyLen := 0
+		for key, val := range e.Value {
 			keys = append(keys, key)
+			if e.Kind == KindStruct {
+				switch val.(type) {
+				case *ArrayExp, *MapExp:
+				default:
+					if len(key) > maxKeyLen {
+						maxKeyLen = len(key)
+					}
+				}
+			}
 		}
 		sort.Strings(keys)
 		for _, key := range keys {
@@ -157,7 +167,17 @@ func (e *MapExp) format(w stringWriter, prefix string) {
 				mustWriteString(w, key)
 			}
 			mustWriteString(w, `: `)
-			e.Value[key].format(w, vindent)
+			v := e.Value[key]
+			if e.Kind == KindStruct {
+				switch v.(type) {
+				case *ArrayExp, *MapExp:
+				default:
+					for i := len(key); i < maxKeyLen; i++ {
+						mustWriteRune(w, ' ')
+					}
+				}
+			}
+			v.format(w, vindent)
 			mustWriteString(w, ",\n")
 		}
 		mustWriteString(w, prefix)
