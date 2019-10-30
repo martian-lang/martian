@@ -85,10 +85,10 @@ $(PRODUCT_NAME).tar.%: $(addprefix bin/, $(GOBINS)) $(ADAPTERS) $(JOBMANAGERS) $
 
 tarball: $(PRODUCT_NAME).tar.xz $(PRODUCT_NAME).tar.gz
 
-test-all:
+test-all: martian/syntax/grammar.go | martian/test/sum_squares/types.go
 	go test ./martian/... ./cmd/...
 
-coverage.out:
+coverage.out: martian/syntax/grammar.go | martian/test/sum_squares/types.go
 	go test -coverprofile=coverage.out \
 	        -coverpkg=./martian/... \
 	        ./martian/... ./cmd/...
@@ -98,7 +98,7 @@ coverage.html: coverage.out
 
 cover: coverage.html
 
-govet:
+govet: martian/syntax/grammar.go | martian/test/sum_squares/types.go
 	go vet ./martian/... ./cmd/...
 
 test: test-all govet $(GOBIN)/sum_squares
