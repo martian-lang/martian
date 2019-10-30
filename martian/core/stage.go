@@ -21,21 +21,58 @@ import (
 	"github.com/martian-lang/martian/martian/util"
 )
 
-func makeOutArgs(outParams *syntax.OutParams, filesPath string, nullAll bool) map[string]interface{} {
-	args := make(map[string]interface{}, len(outParams.Table))
-	for id, param := range outParams.Table {
-		// TODO(azarchs): Don't put file names in arrays.  Except we have
-		// released pipelines which depend on this incorrect behavior.  It can
-		// be fixed once we have an Enterprise-based solution for running
-		// flowcells so breaking backwards compatibility will be ok.
-		if nullAll ||
-			(syntax.GetEnforcementLevel() == syntax.EnforceError &&
-				param.GetArrayDim() > 0) {
-			args[id] = nil
-		} else if fn := param.GetOutFilename(); fn != "" {
-			args[id] = path.Join(filesPath, fn)
+// For convenience, a string which implements json.Marshaler.
+type jsonString string
+
+func (s jsonString) MarshalJSON() ([]byte, error) {
+	return json.Marshal(string(s))
+}
+
+// makeOutArg generates the value with which to pre-populate an entry in the
+// _outs json file.
+//
+// If brokenFileArrays is true, then for backwards compatibility it will return
+// a file name for arrays of file types.
+//
+// An empty array is returned for arrays.  An empty map is returned for maps.
+// A map with recursively-populated fields is returned for struct types.
+// Nil is returned for any other type.
+func makeOutArg(field *syntax.StructMember, filesPath string, lookup *syntax.TypeLookup, brokenFileArrays bool) json.Marshaler {
+	if field.Tname.ArrayDim > 0 {
+		if brokenFileArrays && field.Tname.MapDim == 0 {
+			if field.IsFile() == syntax.KindIsDirectory {
+				// TODO(azarchs): Don't put file names in arrays.  Except we have
+				// released pipelines which depend on this incorrect behavior.  It can
+				// be fixed once we have an Enterprise-based solution for running
+				// flowcells so breaking backwards compatibility will be ok.
+				tn := field.Tname
+				tn.ArrayDim = 0
+				if lookup.Get(tn).IsFile() == syntax.KindIsFile {
+					if fn := field.GetOutFilename(); fn != "" {
+						return jsonString(path.Join(filesPath, fn))
+					}
+				}
+			}
+		}
+		return marshallerArray{}
+	} else if field.Tname.MapDim > 0 {
+		return MarshalerMap{}
+	} else if field.IsFile() == syntax.KindIsFile {
+		if fn := field.GetOutFilename(); fn != "" {
+			return jsonString(path.Join(filesPath, fn))
+		}
+	}
+	return nil
+}
+
+func makeOutArgs(outParams *syntax.OutParams, filesPath string, nullAll bool, lookup *syntax.TypeLookup) MarshalerMap {
+	args := make(MarshalerMap, len(outParams.List))
+	brokenFileArrays := syntax.GetEnforcementLevel() < syntax.EnforceError
+	for _, param := range outParams.List {
+		if nullAll {
+			args[param.Id] = nil
 		} else {
-			args[id] = nil
+			args[param.Id] = makeOutArg(&param.StructMember, filesPath, lookup, brokenFileArrays)
 		}
 	}
 	return args
@@ -253,10 +290,10 @@ func (self *Chunk) step(bindings MarshalerMap) {
 
 	// Write out input and output args for the chunk.
 	self.metadata.Write(ArgsFile, resolvedBindings)
-	outs := makeOutArgs(self.fork.OutParams(), self.metadata.curFilesPath, false)
+	outs := makeOutArgs(self.fork.OutParams(), self.metadata.curFilesPath, false, self.fork.node.top.types)
 	if self.fork.Split() {
 		for k, v := range makeOutArgs(self.Stage().ChunkOuts,
-			self.metadata.curFilesPath, false) {
+			self.metadata.curFilesPath, false, self.fork.node.top.types) {
 			outs[k] = v
 		}
 	}
@@ -741,7 +778,7 @@ func (self *Fork) disabled() bool {
 
 func (self *Fork) writeDisable() {
 	self.metadata.Write(OutsFile, makeOutArgs(
-		self.OutParams(), self.metadata.curFilesPath, true))
+		self.OutParams(), self.metadata.curFilesPath, true, nil))
 	self.skip()
 	self.printState(DisabledState)
 }
@@ -975,7 +1012,7 @@ func (self *Fork) doJoin(state MetadataState, getBindings func() MarshalerMap) M
 		self.join_metadata.Write(
 			OutsFile,
 			makeOutArgs(self.OutParams(),
-				self.join_metadata.curFilesPath, false))
+				self.join_metadata.curFilesPath, false, self.node.top.types))
 		if !self.join_has_run {
 			self.join_has_run = true
 			self.lastPrint = time.Now()
