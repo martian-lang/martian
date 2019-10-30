@@ -333,6 +333,15 @@
                             "matchedFork": null,
                             "value": 1,
                             "waiting": false
+                        },
+                        {
+                            "id": "things",
+                            "type": "STUFF",
+                            "mode": "",
+                            "node": null,
+                            "matchedFork": null,
+                            "value": null,
+                            "waiting": false
                         }
                     ],
                     "Return": null
@@ -421,6 +430,19 @@
                             "node": "ID.pipeline_test.OUTER.INNER.C1",
                             "matchedFork": null,
                             "value": 4,
+                            "waiting": false
+                        },
+                        {
+                            "id": "things",
+                            "type": "STUFF",
+                            "mode": "reference",
+                            "node": "ID.pipeline_test.OUTER.INNER.C1",
+                            "matchedFork": null,
+                            "value": {
+                                "file2": "/github.com/martian-lang/martian/test/struct_test/pipeline_test/OUTER/INNER/C1/fork0/chnk0/files/file2",
+                                "file1": "/github.com/martian-lang/martian/test/struct_test/pipeline_test/OUTER/INNER/C1/fork0/chnk0/files/file1",
+                                "bar": 4
+                            },
                             "waiting": false
                         }
                     ],
@@ -516,6 +538,19 @@
                             "matchedFork": null,
                             "value": 7,
                             "waiting": false
+                        },
+                        {
+                            "id": "things",
+                            "type": "STUFF",
+                            "mode": "reference",
+                            "node": "ID.pipeline_test.OUTER.INNER.C1",
+                            "matchedFork": null,
+                            "value": {
+                                "file2": "/github.com/martian-lang/martian/test/struct_test/pipeline_test/OUTER/INNER/C1/fork0/chnk0/files/file2",
+                                "file1": "/github.com/martian-lang/martian/test/struct_test/pipeline_test/OUTER/INNER/C1/fork0/chnk0/files/file1",
+                                "bar": 4
+                            },
+                            "waiting": false
                         }
                     ],
                     "Return": null
@@ -523,6 +558,10 @@
             }
         ],
         "edges": [
+            {
+                "from": "ID.pipeline_test.OUTER.INNER.C1",
+                "to": "ID.pipeline_test.OUTER.INNER.C3"
+            },
             {
                 "from": "ID.pipeline_test.OUTER.INNER.C2",
                 "to": "ID.pipeline_test.OUTER.INNER.C3"

@@ -2,5 +2,6 @@
     "__mem_gb": 1,
     "__threads": 1,
     "__vmem_gb": 4,
-    "foo": 1
+    "foo": 1,
+    "things": null
 }

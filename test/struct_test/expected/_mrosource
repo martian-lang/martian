@@ -17,8 +17,9 @@ struct STUFF(
 
 stage CREATOR(
     in  int   foo,
+    in  STUFF things,
     out STUFF bar,
-    out txt   file3  "help text"  "output_name.file",
+    out txt   file3   "help text"  "output_name.file",
     src py    "creator",
 ) using (
     volatile = strict,
@@ -33,15 +34,18 @@ pipeline INNER(
 )
 {
     call CREATOR as C1(
-        foo = self.foo,
+        foo    = self.foo,
+        things = null,
     )
 
     call CREATOR as C2(
-        foo = C1.bar.bar,
+        foo    = C1.bar.bar,
+        things = C1.bar,
     )
 
     call CREATOR as C3(
-        foo = C2.bar.bar,
+        foo    = C2.bar.bar,
+        things = C1.bar,
     )
 
     return (

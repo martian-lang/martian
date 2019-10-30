@@ -1,5 +1,10 @@
 @include "pipeline.mro"
 
 call CREATOR as C3(
-    foo = 7,
+    foo    = 7,
+    things = {
+        bar:   4,
+        file1: "/github.com/martian-lang/martian/test/struct_test/pipeline_test/OUTER/INNER/C1/fork0/chnk0/files/file1",
+        file2: "/github.com/martian-lang/martian/test/struct_test/pipeline_test/OUTER/INNER/C1/fork0/chnk0/files/file2",
+    },
 )

@@ -2,5 +2,10 @@
     "__mem_gb": 1,
     "__threads": 1,
     "__vmem_gb": 4,
-    "foo": 7
+    "foo": 7,
+    "things": {
+        "file2": "/github.com/martian-lang/martian/test/struct_test/pipeline_test/OUTER/INNER/C1/fork0/chnk0/files/file2",
+        "file1": "/github.com/martian-lang/martian/test/struct_test/pipeline_test/OUTER/INNER/C1/fork0/chnk0/files/file1",
+        "bar": 4
+    }
 }

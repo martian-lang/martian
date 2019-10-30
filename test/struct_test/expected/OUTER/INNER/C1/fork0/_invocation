@@ -1,5 +1,6 @@
 @include "pipeline.mro"
 
 call CREATOR as C1(
-    foo = 1,
+    foo    = 1,
+    things = null,
 )
