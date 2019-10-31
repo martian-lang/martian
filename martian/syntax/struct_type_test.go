@@ -307,27 +307,6 @@ func TestStructTypeIsValidExpression(t *testing.T) {
 				},
 			},
 			"my_field_2": &MapExp{
-				Kind: KindMap,
-				Value: map[string]Exp{
-					"my_field_1": &IntExp{Value: 2},
-					"my_field_2": &FloatExp{Value: 5.5},
-				},
-			},
-		},
-	}, nil, &ast); err == nil {
-		t.Error("use of a map literal for a struct is not allowed")
-	}
-	if err := structType2.IsValidExpression(&MapExp{
-		Kind: KindStruct,
-		Value: map[string]Exp{
-			"my_field_1": &MapExp{
-				Kind: KindStruct,
-				Value: map[string]Exp{
-					"my_field_1": &IntExp{Value: 1},
-					"my_field_2": &FloatExp{Value: 4.5},
-				},
-			},
-			"my_field_2": &MapExp{
 				Kind: KindStruct,
 				Value: map[string]Exp{
 					"my_field_1": &FloatExp{Value: 2.5},

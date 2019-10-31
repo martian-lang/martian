@@ -203,11 +203,6 @@ func (s *StructType) IsValidExpression(exp Exp, pipeline *Pipeline, ast *Ast) er
 	case *NullExp:
 		return nil
 	case *MapExp:
-		if exp.Kind != KindStruct {
-			return &IncompatibleTypeError{
-				Message: "cannot assign map literal to struct",
-			}
-		}
 		var errs ErrorList
 		for _, member := range s.Members {
 			if v, ok := exp.Value[member.Id]; !ok {
