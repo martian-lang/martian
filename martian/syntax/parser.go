@@ -24,7 +24,7 @@ func (global *Ast) err(nodable AstNodable, msg string, v ...interface{}) error {
 }
 
 func (global *Ast) compile() error {
-	if err := global.compileTypes(); err != nil {
+	if err := global.CompileTypes(); err != nil {
 		return err
 	}
 

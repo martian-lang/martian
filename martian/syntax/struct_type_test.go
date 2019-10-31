@@ -148,7 +148,7 @@ func TestMapIsAssignableFrom(t *testing.T) {
 		},
 	}
 	lookup := &ast.TypeTable
-	if err := ast.compileTypes(); err != nil {
+	if err := ast.CompileTypes(); err != nil {
 		t.Error(err)
 	}
 
@@ -433,7 +433,7 @@ func TestStructTypeRedefinition(t *testing.T) {
 			},
 		},
 	}
-	if err := ast.compileTypes(); err != nil {
+	if err := ast.CompileTypes(); err != nil {
 		t.Error(err)
 	}
 	checkBad := func(st *StructType, msg string) {

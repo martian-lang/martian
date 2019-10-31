@@ -54,7 +54,9 @@ func ExampleBuildCallSource() {
 					},
 				},
 			},
-		}, nil)
+		},
+		syntax.NewTypeLookup(),
+		nil)
 	fmt.Println(src)
 	// Output:
 	// @include "foo.mro"
@@ -189,7 +191,7 @@ call SUM_SQUARE_PIPELINE(
 }
 
 func TestGetCallableFrom(t *testing.T) {
-	callable, err := GetCallableFrom("MY_STAGE",
+	callable, _, err := GetCallableFrom("MY_STAGE",
 		path.Join("stages.mro"), []string{"testdata"})
 	if err != nil {
 		t.Error(err)
@@ -198,7 +200,7 @@ func TestGetCallableFrom(t *testing.T) {
 	} else if callable.File().FileName != "stages.mro" {
 		t.Errorf("Expected stages.mro, got %q", callable.File().FileName)
 	}
-	callable, err = GetCallableFrom("MY_STAGE",
+	callable, _, err = GetCallableFrom("MY_STAGE",
 		path.Join("sub/stages.mro"), []string{"testdata"})
 	if err != nil {
 		t.Error(err)
@@ -216,7 +218,7 @@ func TestGetCallable(t *testing.T) {
 	}
 	mropaths := []string{"testdata", "testdata/", atd, atd + "/"}
 	for i := range mropaths {
-		callable, err := GetCallable(mropaths[i:], "MY_STAGE", false)
+		callable, _, err := GetCallable(mropaths[i:], "MY_STAGE", false)
 		if err != nil {
 			t.Error(err)
 		} else if callable.GetId() != "MY_STAGE" {

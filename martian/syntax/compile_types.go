@@ -9,8 +9,13 @@ import (
 	"strings"
 )
 
-// Build type table, starting with builtins. Duplicates allowed.
-func (global *Ast) compileTypes() error {
+// CompileTypes initializes the TypeStable for the Ast object, starting with
+// builtins.
+//
+// Duplicate declarations are allowed for user-defined file types.
+// For struct types and callables, duplicates are allowed (at this stage) if
+// and only if they are functionally identical.
+func (global *Ast) CompileTypes() error {
 	var errs ErrorList
 	global.TypeTable.init(len(global.UserTypes) + len(global.StructTypes) + len(global.Callables.List))
 	for _, userType := range global.UserTypes {

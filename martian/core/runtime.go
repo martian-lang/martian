@@ -18,7 +18,6 @@ import (
 	"regexp"
 	"runtime/trace"
 	"strings"
-	"sync"
 	"time"
 
 	"github.com/martian-lang/martian/martian/syntax"
@@ -263,7 +262,6 @@ type Runtime struct {
 	Config          *RuntimeOptions
 	adaptersPath    string
 	mrjob           string
-	MroCache        *MroCache
 	JobManager      JobManager
 	LocalJobManager *LocalJobManager
 	overrides       *PipestanceOverrides
@@ -314,7 +312,6 @@ func (c *RuntimeOptions) NewRuntime() *Runtime {
 	}
 
 	self.jobConfig = getJobConfig(c.ProfileMode)
-	self.MroCache = NewMroCache()
 	self.LocalJobManager = NewLocalJobManager(c.LocalCores,
 		c.LocalMem, c.LocalVMem,
 		c.Debug,
@@ -670,122 +667,27 @@ func (self *Runtime) FreeMemBytes() int64 {
 	return self.freeMemMB() * 1024 * 1024
 }
 
-type MroCache struct {
-	callableTable map[string]map[string]syntax.Callable
-	pipelines     map[string]bool
-	lock          sync.RWMutex
-}
-
-func NewMroCache() *MroCache {
-	return &MroCache{
-		callableTable: make(map[string]map[string]syntax.Callable),
-		pipelines:     make(map[string]bool),
-	}
-}
-
-func (self *MroCache) CacheMros(mroPaths []string) {
-	var wg sync.WaitGroup
-	wg.Add(len(mroPaths))
-	for _, mroPath := range mroPaths {
-		go func(mroPath string) {
-			defer wg.Done()
-			fpaths, _ := filepath.Glob(mroPath + "/[^_]*.mro")
-			callables := make(chan map[string]syntax.Callable, len(fpaths))
-			var filesWg sync.WaitGroup
-			filesWg.Add(len(fpaths))
-			for _, fpath := range fpaths {
-				go func(fpath string, result chan map[string]syntax.Callable, mroPaths []string, wg *sync.WaitGroup) {
-					defer wg.Done()
-					if data, err := ioutil.ReadFile(fpath); err == nil {
-						if _, _, ast, err := syntax.ParseSourceBytes(data, fpath, mroPaths, true); err == nil {
-							result <- ast.Callables.Table
-						} else {
-							util.PrintError(err, "runtime", "Failed to parse %s", fpath)
-						}
-					} else {
-						util.PrintError(err, "runtime", "Could not read %s", fpath)
-					}
-				}(fpath, callables, mroPaths, &filesWg)
-			}
-			filesWg.Wait()
-			close(callables)
-			callableTable := make(map[string]syntax.Callable, len(fpaths))
-			for calls := range callables {
-				for _, call := range calls {
-					name := call.GetId()
-					if existing, ok := callableTable[name]; ok {
-						efile := syntax.DefiningFile(existing)
-						nfile := syntax.DefiningFile(call)
-						if efile != nfile {
-							util.PrintInfo("runtime",
-								"Warning: %s is defined in both %s and %s",
-								name, efile, nfile)
-						}
-					}
-					if _, ok := call.(*syntax.Pipeline); ok {
-						func(pname string) {
-							self.lock.Lock()
-							defer self.lock.Unlock()
-							self.pipelines[pname] = true
-						}(name)
-					}
-					callableTable[name] = call
-				}
-			}
-			func(mroPath string, callables map[string]syntax.Callable) {
-				self.lock.Lock()
-				defer self.lock.Unlock()
-				self.callableTable[mroPath] = callables
-			}(mroPath, callableTable)
-		}(mroPath)
-	}
-	wg.Wait()
-}
-
-func (self *MroCache) GetPipelines() []string {
-	self.lock.RLock()
-	defer self.lock.RUnlock()
-	pipelines := make([]string, 0, len(self.pipelines))
-	for pipeline := range self.pipelines {
-		pipelines = append(pipelines, pipeline)
-	}
-	return pipelines
-}
-
-func (self *MroCache) GetCallable(mroPaths []string, name string) (syntax.Callable, error) {
-	self.lock.RLock()
-	defer self.lock.RUnlock()
-	for _, mroPath := range mroPaths {
-		// Make sure MROs from mroPath have been loaded.
-		if _, ok := self.callableTable[mroPath]; !ok {
-			return nil, &RuntimeError{fmt.Sprintf("MROs from mro path '%s' have not been loaded", mroPath)}
-		}
-
-		// Make sure pipeline has been loaded
-		if callable, ok := self.callableTable[mroPath][name]; ok {
-			return callable, nil
-		}
-	}
-	return nil, &RuntimeError{fmt.Sprintf("'%s' is not a declared pipeline or stage", name)}
-}
-
 // GetCallableFrom returns the named callable from the given include path.
-func GetCallableFrom(pName, incPath string, mroPaths []string) (syntax.Callable, error) {
+func GetCallableFrom(pName, incPath string, mroPaths []string) (syntax.Callable, *syntax.TypeLookup, error) {
 	if fpath, err := util.FindUniquePath(incPath, mroPaths); err != nil {
-		return nil, err
+		return nil, nil, err
 	} else if b, err := ioutil.ReadFile(fpath); err != nil {
-		return nil, err
+		return nil, nil, err
 	} else {
 		var parser syntax.Parser
 		if ast, err := parser.UncheckedParse(b, incPath); err != nil {
-			return nil, err
+			return nil, nil, err
 		} else {
+			// Try to initialize the type table, but don't worry about
+			// failures.  The includes were never parsed, so failures
+			// are to be expected.
+			ast.CompileTypes()
 			for _, c := range ast.Callables.List {
 				if c.GetId() == pName {
-					return c, nil
+					return c, &ast.TypeTable, nil
 				}
 			}
-			return nil, &RuntimeError{fmt.Sprintf(
+			return nil, &ast.TypeTable, &RuntimeError{fmt.Sprintf(
 				"%q is not a declared pipeline or stage in %q",
 				pName, fpath)}
 		}
@@ -799,7 +701,7 @@ func GetCallableFrom(pName, incPath string, mroPaths []string) (syntax.Callable,
 // Otherwise, keep in mind that some fields in the callable, such as the
 // .Table fields of the parameter and binding lists, may not be fully
 // populated.
-func GetCallable(mroPaths []string, name string, compile bool) (syntax.Callable, error) {
+func GetCallable(mroPaths []string, name string, compile bool) (syntax.Callable, *syntax.TypeLookup, error) {
 	var parser syntax.Parser
 	parse := parser.UncheckedParse
 	if compile {
@@ -816,34 +718,83 @@ func GetCallable(mroPaths []string, name string, compile bool) (syntax.Callable,
 					if ast, err := parse(data, path.Base(fpath)); err == nil {
 						for _, callable := range ast.Callables.List {
 							if callable.GetId() == name {
-								return callable, nil
+								return callable, &ast.TypeTable, nil
 							}
 						}
 					} else {
-						return nil, err
+						return nil, nil, err
 					}
 				} else {
-					return nil, err
+					return nil, nil, err
 				}
 			}
 		} else {
-			return nil, err
+			return nil, nil, err
 		}
 	}
-	return nil, &RuntimeError{fmt.Sprintf("'%s' is not a declared pipeline or stage", name)}
+	return nil, nil, &RuntimeError{fmt.Sprintf("'%s' is not a declared pipeline or stage", name)}
 }
 
-func (self *Runtime) BuildCallSource(name string, args MarshalerMap,
-	sweepargs []string, mroPaths []string) (string, error) {
-	callable, err := self.MroCache.GetCallable(mroPaths, name)
-	if err != nil {
-		util.LogInfo("package", "Could not get callable: %s", name)
-		return "", err
+// possibleStructType returns true if the type name might refer to a struct
+// type.  That is, if it is not an array, typed map, or builtin type.
+func possibleStructType(tname syntax.TypeId, lookup *syntax.TypeLookup) bool {
+	if tname.MapDim != 0 {
+		// Maps are not structs.
+		return false
 	}
-	return BuildCallSource(name, args, sweepargs, callable, mroPaths)
+	if lookup == nil {
+		// Neither is the builtin untyped map
+		return tname.Tname != syntax.KindMap
+	}
+	t := lookup.Get(tname)
+	if t == nil {
+		return true
+	}
+	_, ok := t.(*syntax.StructType)
+	return ok
 }
 
-func convertToExp(parser *syntax.Parser, sweep bool, val json.Marshaler) (syntax.ValExp, error) {
+// Recursively search an expression to convert MapExp to struct types where
+// appropriate.  This should only get applied for expression types which are
+// parsed from json, as opposed to those parsed from mro.
+func fixExpressionTypes(exp syntax.Exp, tname syntax.TypeId, lookup *syntax.TypeLookup) {
+	switch exp := exp.(type) {
+	case *syntax.ArrayExp:
+		if tname.ArrayDim > 0 {
+			tname.ArrayDim--
+		}
+		for _, e := range exp.Value {
+			fixExpressionTypes(e, tname, lookup)
+		}
+	case *syntax.MapExp:
+		if tname.MapDim > 0 {
+			tname.ArrayDim = tname.MapDim - 1
+			tname.MapDim = 0
+			for _, e := range exp.Value {
+				fixExpressionTypes(e, tname, lookup)
+			}
+		} else if lookup == nil {
+			if possibleStructType(tname, lookup) {
+				exp.Kind = syntax.KindStruct
+			}
+		} else {
+			t := lookup.Get(tname)
+			if t != nil {
+				if t, ok := t.(*syntax.StructType); ok {
+					exp.Kind = syntax.KindStruct
+					for _, member := range t.Members {
+						fixExpressionTypes(exp.Value[member.Id], member.Tname, lookup)
+					}
+				}
+			} else if possibleStructType(tname, lookup) {
+				exp.Kind = syntax.KindStruct
+			}
+		}
+	}
+}
+
+func convertToExp(parser *syntax.Parser, sweep bool, val json.Marshaler,
+	tname syntax.TypeId, lookup *syntax.TypeLookup) (syntax.ValExp, error) {
 	switch val := val.(type) {
 	case syntax.ValExp:
 		return val, nil
@@ -858,7 +809,7 @@ func convertToExp(parser *syntax.Parser, sweep bool, val json.Marshaler) (syntax
 			sweepVal := make([]syntax.Exp, len(jv.Sweep))
 			for i, v := range jv.Sweep {
 				var err error
-				sweepVal[i], err = convertToExp(parser, false, v)
+				sweepVal[i], err = convertToExp(parser, false, v, tname, lookup)
 				if err != nil {
 					return nil, err
 				}
@@ -867,14 +818,22 @@ func convertToExp(parser *syntax.Parser, sweep bool, val json.Marshaler) (syntax
 				Value: sweepVal,
 			}, nil
 		}
-		return parser.ParseValExp(val)
+		exp, err := parser.ParseValExp(val)
+		fixExpressionTypes(exp, tname, lookup)
+		return exp, err
 	case LazyArgumentMap:
 		res := syntax.MapExp{
 			Kind:  syntax.KindMap,
 			Value: make(map[string]syntax.Exp, len(val)),
 		}
+		if possibleStructType(tname, lookup) {
+			res.Kind = syntax.KindStruct
+		} else if tname.MapDim > 0 {
+			tname.ArrayDim = tname.MapDim - 1
+			tname.MapDim = 0
+		}
 		for k, v := range val {
-			if e, err := parser.ParseValExp(v); err != nil {
+			if e, err := convertToExp(parser, false, v, tname, lookup); err != nil {
 				return &res, err
 			} else {
 				res.Value[k] = e
@@ -886,8 +845,14 @@ func convertToExp(parser *syntax.Parser, sweep bool, val json.Marshaler) (syntax
 			Kind:  syntax.KindMap,
 			Value: make(map[string]syntax.Exp, len(val)),
 		}
+		if possibleStructType(tname, lookup) {
+			res.Kind = syntax.KindStruct
+		} else if tname.MapDim > 0 {
+			tname.ArrayDim = tname.MapDim - 1
+			tname.MapDim = 0
+		}
 		for k, v := range val {
-			if e, err := convertToExp(parser, false, v); err != nil {
+			if e, err := convertToExp(parser, false, v, tname, lookup); err != nil {
 				return &res, err
 			} else {
 				res.Value[k] = e
@@ -898,8 +863,11 @@ func convertToExp(parser *syntax.Parser, sweep bool, val json.Marshaler) (syntax
 		res := syntax.ArrayExp{
 			Value: make([]syntax.Exp, 0, len(val)),
 		}
+		if tname.ArrayDim > 0 {
+			tname.ArrayDim--
+		}
 		for _, v := range val {
-			if e, err := convertToExp(parser, false, v); err != nil {
+			if e, err := convertToExp(parser, false, v, tname, lookup); err != nil {
 				return &res, err
 			} else {
 				res.Value = append(res.Value, e)
@@ -907,6 +875,7 @@ func convertToExp(parser *syntax.Parser, sweep bool, val json.Marshaler) (syntax
 		}
 		return &res, nil
 	default:
+		// Simple types, e.g. string, boolean, number
 		if b, err := val.MarshalJSON(); err != nil {
 			return nil, err
 		} else {
@@ -920,6 +889,7 @@ func BuildCallSource(
 	args MarshalerMap,
 	sweepargs []string,
 	callable syntax.Callable,
+	lookup *syntax.TypeLookup,
 	mroPaths []string) (string, error) {
 	ast := syntax.Ast{
 		Call: &syntax.CallStm{
@@ -954,7 +924,7 @@ func BuildCallSource(
 		}
 		if val := args[param.GetId()]; val != nil {
 			var err error
-			binding.Exp, err = convertToExp(&parser, binding.Sweep, val)
+			binding.Exp, err = convertToExp(&parser, binding.Sweep, val, binding.Tname, lookup)
 			if err != nil {
 				return "", err
 			}
@@ -971,19 +941,22 @@ func (invocation *InvocationData) BuildCallSource(mroPaths []string) (string, er
 		return "", fmt.Errorf("no pipeline or stage specified")
 	}
 	var callable syntax.Callable
+	var lookup *syntax.TypeLookup
 	if invocation.Include != "" {
-		c, err := GetCallableFrom(
+		c, l, err := GetCallableFrom(
 			invocation.Call, invocation.Include, mroPaths)
 		if err != nil {
 			return "", err
 		}
 		callable = c
+		lookup = l
 	} else {
-		c, err := GetCallable(mroPaths, invocation.Call, false)
+		c, l, err := GetCallable(mroPaths, invocation.Call, false)
 		if err != nil {
 			return "", err
 		}
 		callable = c
+		lookup = l
 	}
 
 	if invocation.Args == nil {
@@ -995,6 +968,7 @@ func (invocation *InvocationData) BuildCallSource(mroPaths []string) (string, er
 		invocation.Args.ToMarshalerMap(),
 		invocation.SweepArgs,
 		callable,
+		lookup,
 		mroPaths)
 }
 

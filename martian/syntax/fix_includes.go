@@ -71,7 +71,7 @@ func uncheckedMakeTables(top *Ast, included *Ast) error {
 		}
 	}
 	var errs ErrorList
-	if err := top.compileTypes(); err != nil {
+	if err := top.CompileTypes(); err != nil {
 		errs = append(errs, err)
 	}
 	if included != nil {

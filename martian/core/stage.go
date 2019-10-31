@@ -845,6 +845,7 @@ func (self *Fork) writeInvocation() {
 			self.node.call.Call().Id,
 			argBindings, nil,
 			self.node.call.Callable(),
+			self.node.top.types,
 			self.node.top.mroPaths)
 		self.metadata.WriteRaw(InvocationFile, invocation)
 	}
