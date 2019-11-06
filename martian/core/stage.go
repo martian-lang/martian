@@ -1102,7 +1102,13 @@ func (self *Fork) stepPipeline() {
 		util.PrintError(err, "runtime",
 			"Error resolving output argument bindings.")
 		self.metadata.WriteErrorString(err.Error())
-	} else if outs, err := outs.(MarshalerMap).ToLazyArgumentMap(); err != nil {
+	} else if outs, ok := outs.(MarshalerMap); !ok {
+		// If the outputs all resolved to constants, then we don't get
+		// a MarshalerMap and there's no need to do any conversions
+		// because the output types were already checked by the compiler.
+		self.metadata.Write(OutsFile, outs)
+		self.metadata.WriteTime(CompleteFile)
+	} else if outs, err := outs.ToLazyArgumentMap(); err != nil {
 		util.PrintError(err, "runtime",
 			"Error serializing pipeline output argument bindings.")
 		self.metadata.WriteErrorString(err.Error())
