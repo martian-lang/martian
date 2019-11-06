@@ -8,6 +8,7 @@ package main
 import (
 	"encoding/json"
 	"fmt"
+	"io/ioutil"
 	"os"
 	"path"
 	"path/filepath"
@@ -24,13 +25,15 @@ func main() {
 
 Usage:
     mrg
+    mrg --reverse
     mrg -h | --help | --version
 
 Options:
+    --reverse       Generate invocation data from mro source.
     -h --help       Show this message.
     --version       Show version.`
 	martianVersion := util.GetVersion()
-	docopt.Parse(doc, nil, true, martianVersion, false)
+	opts, _ := docopt.Parse(doc, nil, true, martianVersion, false)
 
 	util.ENABLE_LOGGING = false
 
@@ -39,6 +42,29 @@ Options:
 	mroPaths := util.ParseMroPath(cwd)
 	if value := os.Getenv("MROPATH"); len(value) > 0 {
 		mroPaths = util.ParseMroPath(value)
+	}
+
+	if opts["--reverse"].(bool) {
+		src, err := ioutil.ReadAll(os.Stdin)
+		if err != nil {
+			panic(err)
+		}
+		invocation, err := core.InvocationDataFromSource(src, mroPaths)
+		if err != nil {
+			os.Stderr.WriteString("Error parsing source: ")
+			os.Stderr.WriteString(err.Error())
+			os.Stderr.WriteString("\n")
+			os.Exit(1)
+		}
+		enc := json.NewEncoder(os.Stdout)
+		enc.SetEscapeHTML(false)
+		enc.SetIndent("", "  ")
+		if err := enc.Encode(invocation); err != nil {
+			os.Stderr.WriteString("Error generating json: ")
+			os.Stderr.WriteString(err.Error())
+			os.Stderr.WriteString("\n")
+			os.Exit(1)
+		}
 	}
 
 	// Read and parse JSON from stdin.

@@ -231,7 +231,7 @@ func TestGetCallable(t *testing.T) {
 	}
 }
 
-func TestBuildCallData(t *testing.T) {
+func TestInvocationDataFromSource(t *testing.T) {
 	const src = `@include "testdata/mock_stages.mro"
 
 call MOCK_PHASER_SVCALLER(
@@ -253,7 +253,7 @@ call MOCK_PHASER_SVCALLER(
     ),
 )
 `
-	invocationData, err := BuildCallData(src, "mock", []string{""})
+	invocationData, err := InvocationDataFromSource([]byte(src), []string{""})
 	if err != nil {
 		t.Error(err)
 	}

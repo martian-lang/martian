@@ -972,6 +972,28 @@ func (invocation *InvocationData) BuildCallSource(mroPaths []string) (string, er
 		mroPaths)
 }
 
+// InvocationDataFromSource generates an InvocationData for which its
+// BuildCallSource method will produce an equivalent call.
+//
+// That is, if one does
+//
+//   src, err := invocation1.BuildCallSource(mroPaths)
+//   if err != nil {
+//        panic(err)
+//   }
+//   invocation2, err := InvocationDataFromSource([]byte(src), mroPaths)
+//
+// then invocation2 should be equivalent to invocation1.
+func InvocationDataFromSource(src []byte, mroPaths []string) (*InvocationData, error) {
+	var parser syntax.Parser
+	ast, err := parser.UncheckedParseIncludes(src, "", mroPaths)
+	if err != nil {
+		return nil, err
+	}
+	return BuildDataForAst(ast)
+}
+
+// Deprecated: Use InvocationDataFromSource instead.
 func BuildCallData(src string, srcPath string, mroPaths []string) (*InvocationData, error) {
 	_, _, ast, err := syntax.ParseSource(src, srcPath, mroPaths, false)
 	if err != nil {
