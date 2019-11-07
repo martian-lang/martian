@@ -185,6 +185,16 @@ pipeline
             Ret: $9,
             Retain: $10,
         } }
+    | PIPELINE id '(' in_param_list out_param_list ')' '{' return_stm pipeline_retain '}'
+        { $$ = &Pipeline{
+            Node: NewAstNode($<loc>2, $<srcfile>2),
+            Id: $<intern>2.Get($2),
+            InParams: $4,
+            OutParams: $5,
+            Callables: new(Callables),
+            Ret: $8,
+            Retain: $9,
+        } }
     ;
 
 stage

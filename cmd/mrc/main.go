@@ -169,10 +169,19 @@ func printCallGraphs(asts []*syntax.Ast) bool {
 	}
 	enc := json.NewEncoder(os.Stdout)
 	enc.SetIndent("", "  ")
+	// This is frequently enough for human consumption that we don't want the
+	// type names to be mangled.
+	enc.SetEscapeHTML(false)
 	if len(graphs) == 1 {
-		enc.Encode(graphs[0])
+		if err := enc.Encode(graphs[0]); err != nil {
+			fmt.Fprintln(os.Stderr, err.Error())
+			wasErr = true
+		}
 	} else {
-		enc.Encode(graphs)
+		if err := enc.Encode(graphs); err != nil {
+			fmt.Fprintln(os.Stderr, err.Error())
+			wasErr = true
+		}
 	}
 	return wasErr
 }

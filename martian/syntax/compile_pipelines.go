@@ -268,20 +268,25 @@ func (global *Ast) compilePipelineArgs() error {
 	// Doing these in a separate loop gives the user better incremental
 	// error messages while writing a long pipeline declaration.
 	for _, pipeline := range global.Pipelines {
-		boundParamIds := map[string]bool{}
+		boundParamIds := make(map[string]struct{}, len(pipeline.InParams.List))
 		for _, call := range pipeline.Calls {
 			for _, binding := range call.Bindings.List {
 				for _, id := range getBoundParamIds(binding.Exp) {
-					boundParamIds[id] = true
+					boundParamIds[id] = struct{}{}
 				}
 			}
 			if call.Modifiers.Bindings != nil {
 				for _, binding := range call.Modifiers.Bindings.List {
 					refexp, ok := binding.Exp.(*RefExp)
 					if ok {
-						boundParamIds[refexp.Id] = true
+						boundParamIds[refexp.Id] = struct{}{}
 					}
 				}
+			}
+		}
+		for _, binding := range pipeline.Ret.Bindings.List {
+			for _, id := range getBoundParamIds(binding.Exp) {
+				boundParamIds[id] = struct{}{}
 			}
 		}
 		for _, param := range pipeline.InParams.List {

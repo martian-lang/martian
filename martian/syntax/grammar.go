@@ -171,177 +171,179 @@ var mmExca = [...]int{
 	1, -1,
 	-2, 0,
 	-1, 75,
-	14, 133,
-	28, 133,
-	-2, 80,
-	-1, 76,
-	14, 136,
-	28, 136,
+	14, 134,
+	28, 134,
 	-2, 81,
-	-1, 77,
-	14, 144,
-	28, 144,
+	-1, 76,
+	14, 137,
+	28, 137,
 	-2, 82,
+	-1, 77,
+	14, 145,
+	28, 145,
+	-2, 83,
 }
 
 const mmPrivate = 57344
 
-const mmLast = 759
+const mmLast = 776
 
 var mmAct = [...]int{
 
-	61, 60, 136, 128, 4, 144, 108, 30, 32, 184,
-	56, 163, 111, 115, 264, 112, 58, 38, 14, 130,
-	263, 121, 21, 262, 67, 230, 23, 68, 69, 70,
-	24, 25, 212, 201, 71, 265, 197, 74, 37, 43,
-	176, 177, 178, 72, 183, 241, 50, 54, 48, 44,
+	61, 60, 136, 128, 144, 108, 219, 203, 184, 56,
+	4, 58, 163, 30, 32, 112, 111, 38, 14, 130,
+	268, 121, 21, 115, 67, 235, 23, 68, 69, 70,
+	24, 25, 176, 177, 178, 267, 266, 74, 37, 43,
+	71, 246, 269, 197, 214, 201, 50, 54, 48, 44,
 	47, 55, 41, 51, 52, 53, 45, 46, 49, 39,
-	11, 9, 10, 35, 42, 40, 62, 162, 24, 25,
-	15, 246, 266, 185, 164, 242, 243, 244, 245, 228,
-	96, 103, 222, 38, 101, 185, 34, 104, 208, 196,
-	7, 138, 210, 38, 33, 131, 132, 97, 109, 258,
-	31, 26, 27, 8, 99, 106, 107, 143, 164, 16,
-	159, 38, 139, 142, 102, 209, 8, 26, 27, 8,
-	33, 122, 94, 141, 28, 16, 159, 158, 8, 217,
-	131, 248, 161, 86, 38, 236, 95, 182, 250, 38,
-	28, 87, 159, 159, 38, 124, 125, 126, 127, 150,
-	170, 154, 155, 131, 160, 153, 173, 165, 194, 174,
-	38, 181, 166, 149, 167, 168, 169, 219, 171, 205,
-	84, 186, 180, 220, 237, 179, 232, 229, 85, 224,
-	142, 223, 193, 152, 92, 91, 90, 203, 80, 73,
-	187, 199, 81, 200, 166, 78, 79, 133, 83, 79,
-	82, 257, 256, 255, 206, 254, 253, 216, 272, 213,
-	21, 218, 151, 148, 23, 147, 146, 225, 6, 26,
-	27, 8, 145, 271, 270, 269, 268, 16, 235, 267,
-	131, 234, 135, 238, 261, 21, 97, 247, 239, 23,
-	231, 252, 28, 226, 214, 211, 204, 192, 11, 9,
-	10, 260, 43, 191, 190, 189, 24, 25, 15, 50,
-	54, 48, 44, 47, 55, 41, 51, 52, 53, 45,
-	46, 49, 39, 11, 9, 10, 188, 42, 40, 62,
-	172, 24, 25, 15, 21, 98, 134, 89, 23, 88,
-	3, 59, 5, 29, 1, 233, 207, 215, 93, 129,
-	123, 43, 202, 64, 63, 22, 13, 20, 50, 54,
-	48, 44, 47, 55, 41, 51, 52, 53, 45, 46,
-	49, 39, 11, 9, 10, 12, 42, 40, 62, 156,
-	24, 25, 15, 21, 57, 195, 110, 23, 227, 249,
-	221, 240, 157, 137, 19, 18, 17, 36, 175, 114,
-	43, 2, 0, 0, 0, 0, 0, 50, 54, 48,
+	11, 9, 10, 72, 42, 40, 62, 251, 24, 25,
+	15, 247, 248, 249, 250, 183, 162, 103, 35, 220,
+	96, 270, 226, 38, 101, 185, 164, 104, 34, 210,
+	196, 143, 97, 38, 138, 131, 132, 109, 122, 241,
+	106, 107, 159, 158, 99, 31, 26, 27, 8, 212,
+	102, 38, 139, 142, 16, 232, 185, 164, 26, 27,
+	8, 94, 124, 125, 126, 127, 16, 141, 182, 28,
+	131, 243, 211, 194, 38, 95, 166, 263, 7, 38,
+	253, 28, 33, 207, 38, 174, 154, 155, 159, 150,
+	170, 159, 149, 131, 160, 153, 173, 187, 161, 237,
+	38, 181, 166, 171, 167, 168, 169, 165, 33, 159,
+	186, 8, 205, 86, 84, 179, 180, 223, 79, 262,
+	142, 87, 85, 224, 233, 228, 227, 221, 193, 152,
+	92, 91, 199, 204, 200, 90, 80, 73, 78, 133,
+	81, 83, 79, 208, 82, 261, 260, 259, 215, 258,
+	217, 151, 222, 218, 148, 147, 146, 145, 229, 275,
+	1, 274, 131, 21, 231, 234, 273, 23, 272, 271,
+	265, 264, 240, 244, 239, 97, 236, 230, 216, 213,
+	43, 206, 252, 192, 255, 191, 257, 50, 54, 48,
 	44, 47, 55, 41, 51, 52, 53, 45, 46, 49,
-	39, 11, 9, 10, 21, 42, 40, 62, 23, 24,
-	25, 15, 0, 0, 0, 0, 0, 0, 0, 0,
-	0, 43, 0, 0, 0, 0, 0, 0, 50, 54,
-	48, 44, 47, 55, 41, 51, 52, 53, 45, 46,
-	49, 39, 11, 9, 10, 140, 42, 40, 62, 0,
-	24, 25, 15, 0, 0, 0, 0, 0, 0, 43,
-	113, 116, 117, 119, 118, 120, 50, 54, 48, 44,
+	39, 11, 9, 10, 190, 42, 40, 62, 172, 24,
+	25, 15, 21, 98, 189, 188, 23, 135, 134, 89,
+	88, 3, 59, 5, 29, 238, 209, 93, 129, 43,
+	123, 202, 64, 63, 22, 13, 50, 54, 48, 44,
 	47, 55, 41, 51, 52, 53, 45, 46, 49, 39,
-	43, 0, 0, 0, 42, 40, 0, 50, 54, 48,
-	44, 47, 55, 41, 51, 52, 53, 45, 46, 49,
-	39, 0, 0, 0, 0, 42, 40, 0, 0, 0,
-	0, 0, 100, 43, 113, 116, 117, 119, 118, 120,
+	11, 9, 10, 20, 42, 40, 62, 12, 24, 25,
+	15, 21, 57, 156, 195, 23, 110, 242, 225, 245,
+	157, 137, 19, 18, 17, 36, 175, 114, 43, 2,
+	0, 0, 0, 0, 0, 50, 54, 48, 44, 47,
+	55, 41, 51, 52, 53, 45, 46, 49, 39, 11,
+	9, 10, 21, 42, 40, 62, 23, 24, 25, 15,
+	0, 0, 0, 0, 0, 0, 0, 0, 0, 43,
+	0, 0, 0, 0, 0, 0, 50, 54, 48, 44,
+	47, 55, 41, 51, 52, 53, 45, 46, 49, 39,
+	11, 9, 10, 140, 42, 40, 62, 0, 24, 25,
+	15, 0, 0, 0, 0, 0, 0, 43, 113, 116,
+	117, 119, 118, 120, 50, 54, 48, 44, 47, 55,
+	41, 51, 52, 53, 45, 46, 49, 39, 43, 0,
+	0, 0, 42, 40, 0, 50, 54, 48, 44, 47,
+	55, 41, 51, 52, 53, 45, 46, 49, 39, 0,
+	0, 0, 0, 42, 40, 0, 0, 0, 0, 0,
+	100, 43, 113, 116, 117, 119, 118, 120, 50, 54,
+	48, 44, 47, 55, 41, 51, 52, 53, 45, 46,
+	49, 39, 0, 0, 0, 0, 42, 40, 43, 0,
+	116, 117, 119, 118, 120, 50, 54, 48, 44, 47,
+	55, 41, 51, 52, 53, 45, 46, 49, 39, 254,
+	0, 0, 0, 42, 40, 0, 0, 0, 0, 0,
+	0, 0, 0, 43, 198, 0, 0, 0, 0, 0,
 	50, 54, 48, 44, 47, 55, 41, 51, 52, 53,
-	45, 46, 49, 39, 0, 0, 0, 0, 42, 40,
-	43, 0, 116, 117, 119, 118, 120, 50, 54, 48,
-	44, 47, 55, 41, 51, 52, 53, 45, 46, 49,
-	39, 259, 0, 0, 0, 42, 40, 0, 0, 0,
-	0, 0, 0, 0, 0, 43, 198, 0, 0, 0,
-	0, 0, 50, 54, 48, 44, 47, 55, 41, 51,
-	52, 53, 45, 46, 49, 39, 43, 0, 0, 0,
-	42, 40, 62, 50, 54, 48, 44, 47, 55, 41,
-	51, 52, 53, 45, 46, 49, 39, 164, 43, 0,
-	0, 42, 40, 0, 0, 50, 54, 48, 44, 47,
-	55, 41, 51, 52, 53, 45, 46, 49, 39, 65,
-	0, 0, 0, 42, 40, 62, 0, 0, 0, 0,
-	0, 43, 0, 0, 0, 0, 0, 0, 50, 54,
-	48, 44, 47, 55, 41, 51, 52, 53, 45, 46,
-	49, 39, 66, 251, 0, 0, 42, 40, 0, 0,
-	0, 0, 0, 0, 0, 0, 0, 43, 0, 0,
+	45, 46, 49, 39, 43, 0, 0, 0, 42, 40,
+	62, 50, 54, 48, 44, 47, 55, 41, 51, 52,
+	53, 45, 46, 49, 39, 164, 43, 0, 0, 42,
+	40, 0, 0, 50, 54, 48, 44, 47, 55, 41,
+	51, 52, 53, 45, 46, 49, 39, 65, 0, 0,
+	0, 42, 40, 62, 0, 0, 0, 0, 0, 43,
+	0, 0, 0, 0, 0, 0, 50, 54, 48, 44,
+	47, 55, 41, 51, 52, 53, 45, 46, 49, 39,
+	66, 0, 21, 0, 42, 40, 23, 0, 0, 0,
+	6, 26, 27, 8, 0, 0, 0, 0, 0, 16,
+	0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+	256, 0, 0, 0, 28, 0, 0, 0, 0, 0,
+	11, 9, 10, 0, 43, 0, 0, 0, 24, 25,
+	15, 50, 54, 48, 44, 47, 55, 41, 51, 52,
+	53, 45, 46, 49, 39, 105, 0, 0, 0, 42,
+	40, 0, 0, 0, 0, 0, 0, 43, 0, 0,
 	0, 0, 0, 0, 50, 54, 48, 44, 47, 55,
-	41, 51, 52, 53, 45, 46, 49, 39, 105, 0,
-	0, 0, 42, 40, 0, 0, 0, 0, 0, 0,
-	43, 0, 0, 0, 0, 0, 0, 50, 54, 48,
-	44, 47, 55, 41, 51, 52, 53, 45, 46, 49,
-	39, 43, 0, 0, 0, 42, 40, 0, 50, 54,
-	48, 44, 47, 55, 41, 51, 52, 53, 45, 46,
-	49, 39, 43, 0, 0, 0, 42, 40, 0, 50,
-	54, 48, 75, 76, 77, 41, 51, 52, 53, 45,
-	46, 49, 39, 0, 0, 0, 0, 42, 40,
+	41, 51, 52, 53, 45, 46, 49, 39, 43, 0,
+	0, 0, 42, 40, 0, 50, 54, 48, 44, 47,
+	55, 41, 51, 52, 53, 45, 46, 49, 39, 43,
+	0, 0, 0, 42, 40, 0, 50, 54, 48, 75,
+	76, 77, 41, 51, 52, 53, 45, 46, 49, 39,
+	0, 0, 0, 0, 42, 40,
 }
 var mmPact = [...]int{
 
-	198, -1000, 80, 96, 49, -1000, 13, -1000, -1000, -1000,
-	-1000, -1000, -1000, -1000, -1000, -1000, 682, -1000, -1000, -1000,
-	-1000, 321, -1000, 592, -1000, -1000, 682, 682, 682, 96,
-	49, -7, 49, -1000, 175, -1000, 703, 188, -1000, -1000,
+	620, -1000, 85, 97, 51, -1000, 28, -1000, -1000, -1000,
+	-1000, -1000, -1000, -1000, -1000, -1000, 699, -1000, -1000, -1000,
+	-1000, 309, -1000, 580, -1000, -1000, 699, 699, 699, 97,
+	51, 13, 51, -1000, 183, -1000, 720, 191, -1000, -1000,
 	-1000, -1000, -1000, -1000, -1000, -1000, -1000, -1000, -1000, -1000,
-	-1000, -1000, -1000, -1000, -1000, -1000, 179, -1000, -1000, -1000,
-	-1000, 189, 187, 161, 124, -1000, 281, 279, 172, 171,
-	170, 49, -1000, -1000, 108, -1000, -1000, -1000, -1000, 682,
-	272, -1000, 421, 682, 64, -1000, 661, -1000, 362, 362,
-	-1000, -1000, 454, 106, 682, 682, -1000, -1000, -1000, 185,
-	-1000, 186, 278, -1000, 224, -1000, -1000, -1000, 66, 66,
-	400, -1000, 682, 89, -1000, -1000, -1000, -1000, -1000, -1000,
-	-1000, 185, -1000, -1000, 212, 206, 205, 203, 148, 682,
-	-1000, 202, 169, 682, 362, 362, 100, -1000, 454, 117,
-	-1000, -1000, 58, 481, 182, -28, -28, -28, 559, -1000,
-	-1000, 223, 682, 185, -1000, -1000, 144, -1000, -13, 454,
-	682, 121, -1000, 35, -1000, -1000, 177, 267, 246, 245,
-	244, 238, 168, 143, 53, -14, -1000, -1000, -1000, 537,
-	-1000, 24, 93, -1000, 237, -1000, 150, -1000, -1000, -1000,
-	-1000, -1000, -1000, 362, -1000, 51, 78, 236, -1000, 23,
-	235, -1000, 105, 49, -1000, -1000, 158, 44, 167, 165,
-	-1000, -1000, -1000, 234, -1000, 41, 49, 163, 182, 10,
-	231, -1000, 162, -1000, -1000, 66, -1000, 118, 160, 682,
-	229, -1000, -1000, 30, 66, 116, -1000, -1000, 123, -1000,
-	628, -1000, 196, 195, 193, 192, 191, 84, -1000, 516,
-	-1000, -1000, 225, -29, -32, -38, -15, 29, -1000, -1000,
-	220, -1000, 217, 216, 215, 214, 199, -1000, -1000, -1000,
-	-1000, -1000, -1000,
+	-1000, -1000, -1000, -1000, -1000, -1000, 187, -1000, -1000, -1000,
+	-1000, 193, 190, 165, 164, -1000, 272, 271, 181, 177,
+	176, 51, -1000, -1000, 107, -1000, -1000, -1000, -1000, 699,
+	260, -1000, 409, 699, 60, -1000, 678, -1000, 350, 350,
+	-1000, -1000, 442, 83, 699, 699, -1000, -1000, -1000, 167,
+	-1000, 188, 270, -1000, 269, -1000, -1000, -1000, 69, 69,
+	388, -1000, 699, 73, -1000, -1000, -1000, -1000, -1000, -1000,
+	-1000, 167, -1000, -1000, 207, 206, 205, 204, 137, 699,
+	-1000, 201, 175, 699, 350, 350, 76, -1000, 442, 143,
+	-1000, -1000, 67, 469, 150, -28, -28, -28, 547, -1000,
+	-1000, 211, 699, 167, -1000, -1000, 130, -1000, -21, 442,
+	699, 112, -1000, 66, -1000, -1000, 144, 266, 265, 255,
+	236, 234, 174, 118, 54, -7, -1000, -1000, -1000, 525,
+	-1000, 36, 148, -1000, 232, -1000, 124, -1000, -1000, -1000,
+	-1000, -1000, -1000, 350, -1000, 52, 95, 230, -1000, 35,
+	229, -1000, 148, 41, 51, 173, -1000, -1000, 168, 44,
+	172, 171, -1000, -1000, -1000, 228, -1000, 41, 51, 98,
+	170, 699, 150, 10, 227, -1000, 145, -1000, -1000, 69,
+	-1000, 82, -1000, -1000, 116, 224, -1000, -1000, 26, 69,
+	125, -1000, 504, -1000, -1000, 645, -1000, 199, 197, 196,
+	195, 169, 122, -1000, -1000, 222, -1000, 221, -16, -17,
+	-32, -8, 38, -1000, -1000, -1000, 220, 219, 217, 212,
+	210, -1000, -1000, -1000, -1000, -1000,
 }
 var mmPgo = [...]int{
 
-	0, 351, 0, 21, 13, 349, 11, 348, 9, 347,
-	5, 90, 346, 345, 344, 290, 343, 342, 12, 341,
-	340, 339, 338, 6, 2, 336, 335, 329, 15, 16,
-	1, 291, 18, 325, 307, 306, 305, 10, 304, 303,
-	4, 302, 19, 300, 3, 299, 298, 297, 296, 295,
-	294,
+	0, 339, 0, 21, 23, 337, 12, 336, 8, 335,
+	4, 138, 334, 333, 332, 281, 331, 330, 16, 329,
+	328, 327, 6, 5, 2, 326, 324, 323, 15, 11,
+	1, 282, 18, 317, 313, 295, 294, 9, 293, 292,
+	10, 291, 19, 290, 3, 288, 287, 7, 286, 285,
+	220,
 }
 var mmR1 = [...]int{
 
 	0, 50, 50, 50, 50, 50, 50, 50, 1, 1,
-	15, 15, 11, 11, 11, 11, 13, 12, 14, 48,
-	48, 49, 49, 49, 49, 49, 49, 20, 20, 19,
-	19, 3, 3, 10, 10, 23, 23, 16, 16, 24,
-	24, 17, 17, 17, 17, 25, 25, 18, 18, 18,
-	27, 6, 8, 5, 5, 4, 4, 4, 4, 4,
-	4, 28, 28, 7, 7, 7, 26, 26, 26, 47,
-	22, 22, 21, 21, 41, 41, 40, 40, 40, 9,
-	9, 9, 9, 46, 46, 43, 43, 43, 43, 45,
-	45, 44, 44, 42, 42, 42, 37, 37, 38, 38,
-	39, 39, 29, 29, 31, 31, 31, 31, 31, 31,
-	31, 34, 34, 33, 33, 36, 36, 35, 35, 35,
-	35, 32, 32, 30, 30, 30, 30, 30, 2, 2,
+	15, 15, 11, 11, 11, 11, 13, 13, 12, 14,
+	48, 48, 49, 49, 49, 49, 49, 49, 20, 20,
+	19, 19, 3, 3, 10, 10, 23, 23, 16, 16,
+	24, 24, 17, 17, 17, 17, 25, 25, 18, 18,
+	18, 27, 6, 8, 5, 5, 4, 4, 4, 4,
+	4, 4, 28, 28, 7, 7, 7, 26, 26, 26,
+	47, 22, 22, 21, 21, 41, 41, 40, 40, 40,
+	9, 9, 9, 9, 46, 46, 43, 43, 43, 43,
+	45, 45, 44, 44, 42, 42, 42, 37, 37, 38,
+	38, 39, 39, 29, 29, 31, 31, 31, 31, 31,
+	31, 31, 34, 34, 33, 33, 36, 36, 35, 35,
+	35, 35, 32, 32, 30, 30, 30, 30, 30, 2,
 	2, 2, 2, 2, 2, 2, 2, 2, 2, 2,
-	2, 2, 2, 2, 2,
+	2, 2, 2, 2, 2, 2,
 }
 var mmR2 = [...]int{
 
 	0, 2, 3, 2, 1, 2, 1, 1, 3, 2,
-	2, 1, 3, 1, 1, 1, 11, 10, 5, 0,
-	4, 0, 5, 5, 5, 5, 5, 0, 4, 0,
-	3, 3, 1, 0, 3, 0, 2, 5, 4, 0,
-	2, 3, 4, 5, 2, 1, 2, 3, 4, 5,
-	4, 1, 1, 1, 1, 1, 1, 1, 1, 1,
-	1, 6, 2, 1, 1, 1, 0, 6, 5, 4,
-	0, 4, 0, 3, 2, 1, 6, 8, 5, 0,
-	2, 2, 2, 0, 2, 4, 4, 4, 4, 2,
-	1, 1, 0, 4, 8, 7, 3, 1, 5, 3,
-	5, 3, 1, 1, 1, 1, 1, 1, 1, 1,
-	1, 3, 4, 1, 2, 3, 4, 1, 3, 4,
-	2, 1, 1, 3, 3, 1, 3, 5, 1, 1,
+	2, 1, 3, 1, 1, 1, 11, 10, 10, 5,
+	0, 4, 0, 5, 5, 5, 5, 5, 0, 4,
+	0, 3, 3, 1, 0, 3, 0, 2, 5, 4,
+	0, 2, 3, 4, 5, 2, 1, 2, 3, 4,
+	5, 4, 1, 1, 1, 1, 1, 1, 1, 1,
+	1, 1, 6, 2, 1, 1, 1, 0, 6, 5,
+	4, 0, 4, 0, 3, 2, 1, 6, 8, 5,
+	0, 2, 2, 2, 0, 2, 4, 4, 4, 4,
+	2, 1, 1, 0, 4, 8, 7, 3, 1, 5,
+	3, 5, 3, 1, 1, 1, 1, 1, 1, 1,
+	1, 1, 3, 4, 1, 2, 3, 4, 1, 3,
+	4, 2, 1, 1, 3, 3, 1, 3, 5, 1,
 	1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
-	1, 1, 1, 1, 1,
+	1, 1, 1, 1, 1, 1,
 }
 var mmChk = [...]int{
 
@@ -365,45 +367,45 @@ var mmChk = [...]int{
 	-30, -29, 57, -44, 15, -7, 53, 54, 55, -28,
 	-18, -2, 16, 9, -8, 50, -10, 13, 9, 9,
 	9, 9, 9, 14, 15, -26, 36, 50, 9, -6,
-	-6, 9, -41, -40, 9, 19, -37, -48, 37, 37,
-	14, 9, 9, -8, 9, -47, -40, 24, -10, 9,
-	15, -20, 38, 14, 14, -23, 9, -22, 38, 14,
-	15, 9, 14, -49, -23, -24, 17, 14, -44, 9,
-	-19, 15, 45, 46, 47, 48, 41, -24, 15, -21,
-	15, 15, -2, 10, 10, 10, 10, 10, 15, 15,
-	-30, 9, 52, 52, 52, 50, 43, 9, 9, 9,
-	9, 9, 9,
+	-6, 9, -41, -47, -40, 24, 9, 19, -37, -48,
+	37, 37, 14, 9, 9, -8, 9, -47, -40, -22,
+	38, 14, -10, 9, 15, -20, 38, 14, 14, -23,
+	9, -22, 17, 14, -44, 15, 9, 14, -49, -23,
+	-24, 17, -21, 15, 9, -19, 15, 45, 46, 47,
+	48, 41, -24, 15, 15, -30, 15, -2, 10, 10,
+	10, 10, 10, 15, 9, 9, 52, 52, 52, 50,
+	43, 9, 9, 9, 9, 9,
 }
 var mmDef = [...]int{
 
-	0, -2, 0, 4, 6, 7, 0, 11, 79, 104,
-	105, 106, 107, 108, 109, 110, 0, 13, 14, 15,
-	113, 0, 117, 0, 121, 122, 0, 0, 0, 1,
-	3, 0, 5, 10, 0, 9, 0, 0, 32, 128,
-	129, 130, 131, 132, 133, 134, 135, 136, 137, 138,
-	139, 140, 141, 142, 143, 144, 0, 114, 97, 102,
-	103, 125, 0, 0, 0, 120, 0, 0, 0, 0,
-	0, 2, 8, 83, 0, -2, -2, -2, 12, 0,
-	0, 111, 0, 0, 0, 115, 0, 118, 0, 0,
-	35, 35, 0, 0, 92, 0, 31, 96, 112, 123,
-	124, 126, 0, 116, 0, 119, 99, 101, 39, 39,
-	0, 45, 0, 54, 33, 53, 55, 56, 57, 58,
-	59, 60, 78, 84, 0, 0, 0, 0, 0, 91,
-	90, 0, 0, 0, 0, 0, 0, 36, 0, 0,
-	18, 46, 0, 0, 62, 0, 0, 0, 0, 76,
-	89, 0, 92, 127, 98, 100, 0, 40, 0, 0,
-	0, 0, 47, 0, 51, 33, 0, 0, 0, 0,
-	0, 0, 0, 0, 66, 0, 63, 64, 65, 0,
-	44, 0, 0, 48, 0, 52, 0, 34, 85, 86,
-	87, 88, 93, 0, 77, 19, 0, 0, 41, 0,
-	0, 38, 0, 75, 49, 33, 0, 27, 0, 0,
-	35, 50, 42, 0, 37, 70, 74, 0, 61, 0,
-	0, 17, 0, 21, 35, 39, 43, 0, 0, 92,
-	0, 95, 29, 0, 39, 0, 16, 72, 0, 94,
-	0, 20, 0, 0, 0, 0, 0, 0, 68, 0,
-	69, 28, 0, 0, 0, 0, 0, 0, 67, 71,
-	0, 30, 0, 0, 0, 0, 0, 73, 22, 23,
-	24, 25, 26,
+	0, -2, 0, 4, 6, 7, 0, 11, 80, 105,
+	106, 107, 108, 109, 110, 111, 0, 13, 14, 15,
+	114, 0, 118, 0, 122, 123, 0, 0, 0, 1,
+	3, 0, 5, 10, 0, 9, 0, 0, 33, 129,
+	130, 131, 132, 133, 134, 135, 136, 137, 138, 139,
+	140, 141, 142, 143, 144, 145, 0, 115, 98, 103,
+	104, 126, 0, 0, 0, 121, 0, 0, 0, 0,
+	0, 2, 8, 84, 0, -2, -2, -2, 12, 0,
+	0, 112, 0, 0, 0, 116, 0, 119, 0, 0,
+	36, 36, 0, 0, 93, 0, 32, 97, 113, 124,
+	125, 127, 0, 117, 0, 120, 100, 102, 40, 40,
+	0, 46, 0, 55, 34, 54, 56, 57, 58, 59,
+	60, 61, 79, 85, 0, 0, 0, 0, 0, 92,
+	91, 0, 0, 0, 0, 0, 0, 37, 0, 0,
+	19, 47, 0, 0, 63, 0, 0, 0, 0, 77,
+	90, 0, 93, 128, 99, 101, 0, 41, 0, 0,
+	0, 0, 48, 0, 52, 34, 0, 0, 0, 0,
+	0, 0, 0, 0, 67, 0, 64, 65, 66, 0,
+	45, 0, 0, 49, 0, 53, 0, 35, 86, 87,
+	88, 89, 94, 0, 78, 20, 0, 0, 42, 0,
+	0, 39, 0, 71, 76, 0, 50, 34, 0, 28,
+	0, 0, 36, 51, 43, 0, 38, 71, 75, 0,
+	0, 93, 62, 0, 0, 18, 0, 22, 36, 40,
+	44, 0, 17, 73, 0, 0, 96, 30, 0, 40,
+	0, 16, 0, 70, 95, 0, 21, 0, 0, 0,
+	0, 0, 0, 69, 72, 0, 29, 0, 0, 0,
+	0, 0, 0, 68, 74, 31, 0, 0, 0, 0,
+	0, 23, 24, 25, 26, 27,
 }
 var mmTok1 = [...]int{
 
@@ -867,6 +869,19 @@ mmdefault:
 	case 17:
 		mmDollar = mmS[mmpt-10 : mmpt+1]
 		{
+			mmVAL.dec = &Pipeline{
+				Node:      NewAstNode(mmDollar[2].loc, mmDollar[2].srcfile),
+				Id:        mmDollar[2].intern.Get(mmDollar[2].val),
+				InParams:  mmDollar[4].i_params,
+				OutParams: mmDollar[5].o_params,
+				Callables: new(Callables),
+				Ret:       mmDollar[8].retstm,
+				Retain:    mmDollar[9].plretains,
+			}
+		}
+	case 18:
+		mmDollar = mmS[mmpt-10 : mmpt+1]
+		{
 			mmVAL.dec = &Stage{
 				Node:      NewAstNode(mmDollar[2].loc, mmDollar[2].srcfile),
 				Id:        mmDollar[2].intern.Get(mmDollar[2].val),
@@ -880,7 +895,7 @@ mmdefault:
 				Retain:    mmDollar[10].stretains,
 			}
 		}
-	case 18:
+	case 19:
 		mmDollar = mmS[mmpt-5 : mmpt+1]
 		{
 			mmVAL.dec = &StructType{
@@ -889,23 +904,23 @@ mmdefault:
 				Members: mmDollar[4].s_members,
 			}
 		}
-	case 19:
+	case 20:
 		mmDollar = mmS[mmpt-0 : mmpt+1]
 		{
 			mmVAL.res = nil
 		}
-	case 20:
+	case 21:
 		mmDollar = mmS[mmpt-4 : mmpt+1]
 		{
 			mmDollar[3].res.Node = NewAstNode(mmDollar[1].loc, mmDollar[1].srcfile)
 			mmVAL.res = mmDollar[3].res
 		}
-	case 21:
+	case 22:
 		mmDollar = mmS[mmpt-0 : mmpt+1]
 		{
 			mmVAL.res = new(Resources)
 		}
-	case 22:
+	case 23:
 		mmDollar = mmS[mmpt-5 : mmpt+1]
 		{
 			n := NewAstNode(mmDollar[2].loc, mmDollar[2].srcfile)
@@ -914,7 +929,7 @@ mmdefault:
 			mmDollar[1].res.Threads = int16(i)
 			mmVAL.res = mmDollar[1].res
 		}
-	case 23:
+	case 24:
 		mmDollar = mmS[mmpt-5 : mmpt+1]
 		{
 			n := NewAstNode(mmDollar[2].loc, mmDollar[2].srcfile)
@@ -923,7 +938,7 @@ mmdefault:
 			mmDollar[1].res.MemGB = int16(i)
 			mmVAL.res = mmDollar[1].res
 		}
-	case 24:
+	case 25:
 		mmDollar = mmS[mmpt-5 : mmpt+1]
 		{
 			n := NewAstNode(mmDollar[2].loc, mmDollar[2].srcfile)
@@ -932,7 +947,7 @@ mmdefault:
 			mmDollar[1].res.VMemGB = int16(i)
 			mmVAL.res = mmDollar[1].res
 		}
-	case 25:
+	case 26:
 		mmDollar = mmS[mmpt-5 : mmpt+1]
 		{
 			n := NewAstNode(mmDollar[2].loc, mmDollar[2].srcfile)
@@ -940,7 +955,7 @@ mmdefault:
 			mmDollar[1].res.Special = mmDollar[4].intern.unquote(mmDollar[4].val)
 			mmVAL.res = mmDollar[1].res
 		}
-	case 26:
+	case 27:
 		mmDollar = mmS[mmpt-5 : mmpt+1]
 		{
 			n := NewAstNode(mmDollar[2].loc, mmDollar[2].srcfile)
@@ -948,12 +963,12 @@ mmdefault:
 			mmDollar[1].res.StrictVolatile = true
 			mmVAL.res = mmDollar[1].res
 		}
-	case 27:
+	case 28:
 		mmDollar = mmS[mmpt-0 : mmpt+1]
 		{
 			mmVAL.stretains = nil
 		}
-	case 28:
+	case 29:
 		mmDollar = mmS[mmpt-4 : mmpt+1]
 		{
 			mmVAL.stretains = &RetainParams{
@@ -961,12 +976,12 @@ mmdefault:
 				Params: mmDollar[3].retains,
 			}
 		}
-	case 29:
+	case 30:
 		mmDollar = mmS[mmpt-0 : mmpt+1]
 		{
 			mmVAL.retains = nil
 		}
-	case 30:
+	case 31:
 		mmDollar = mmS[mmpt-3 : mmpt+1]
 		{
 			mmVAL.retains = append(mmDollar[1].retains, &RetainParam{
@@ -974,40 +989,40 @@ mmdefault:
 				Id:   mmDollar[2].intern.Get(mmDollar[2].val),
 			})
 		}
-	case 31:
+	case 32:
 		mmDollar = mmS[mmpt-3 : mmpt+1]
 		{
 			mmVAL.val = append(append(mmDollar[1].val, '.'), mmDollar[3].val...)
 		}
-	case 32:
+	case 33:
 		mmDollar = mmS[mmpt-1 : mmpt+1]
 		{
 			// set capacity == length so append doesn't overwrite
 			// other parts of the buffer later.
 			mmVAL.val = mmDollar[1].val[:len(mmDollar[1].val):len(mmDollar[1].val)]
 		}
-	case 33:
+	case 34:
 		mmDollar = mmS[mmpt-0 : mmpt+1]
 		{
 			mmVAL.arr = 0
 		}
-	case 34:
+	case 35:
 		mmDollar = mmS[mmpt-3 : mmpt+1]
 		{
 			mmVAL.arr++
 		}
-	case 35:
+	case 36:
 		mmDollar = mmS[mmpt-0 : mmpt+1]
 		{
 			mmVAL.i_params = &InParams{Table: make(map[string]*InParam)}
 		}
-	case 36:
+	case 37:
 		mmDollar = mmS[mmpt-2 : mmpt+1]
 		{
 			mmDollar[1].i_params.List = append(mmDollar[1].i_params.List, mmDollar[2].inparam)
 			mmVAL.i_params = mmDollar[1].i_params
 		}
-	case 37:
+	case 38:
 		mmDollar = mmS[mmpt-5 : mmpt+1]
 		{
 			mmVAL.inparam = &InParam{
@@ -1017,7 +1032,7 @@ mmdefault:
 				Help:  unquote(mmDollar[4].val),
 			}
 		}
-	case 38:
+	case 39:
 		mmDollar = mmS[mmpt-4 : mmpt+1]
 		{
 			mmVAL.inparam = &InParam{
@@ -1026,18 +1041,18 @@ mmdefault:
 				Id:    mmDollar[3].intern.Get(mmDollar[3].val),
 			}
 		}
-	case 39:
+	case 40:
 		mmDollar = mmS[mmpt-0 : mmpt+1]
 		{
 			mmVAL.o_params = &OutParams{Table: make(map[string]*OutParam)}
 		}
-	case 40:
+	case 41:
 		mmDollar = mmS[mmpt-2 : mmpt+1]
 		{
 			mmDollar[1].o_params.List = append(mmDollar[1].o_params.List, mmDollar[2].outparam)
 			mmVAL.o_params = mmDollar[1].o_params
 		}
-	case 41:
+	case 42:
 		mmDollar = mmS[mmpt-3 : mmpt+1]
 		{
 			mmVAL.outparam = &OutParam{
@@ -1048,7 +1063,7 @@ mmdefault:
 				},
 			}
 		}
-	case 42:
+	case 43:
 		mmDollar = mmS[mmpt-4 : mmpt+1]
 		{
 			mmVAL.outparam = &OutParam{
@@ -1060,7 +1075,7 @@ mmdefault:
 				},
 			}
 		}
-	case 43:
+	case 44:
 		mmDollar = mmS[mmpt-5 : mmpt+1]
 		{
 			mmVAL.outparam = &OutParam{
@@ -1073,24 +1088,24 @@ mmdefault:
 				},
 			}
 		}
-	case 44:
+	case 45:
 		mmDollar = mmS[mmpt-2 : mmpt+1]
 		{
 			mmVAL.outparam = &OutParam{
 				StructMember: *mmDollar[2].s_member,
 			}
 		}
-	case 45:
+	case 46:
 		mmDollar = mmS[mmpt-1 : mmpt+1]
 		{
 			mmVAL.s_members = []*StructMember{mmDollar[1].s_member}
 		}
-	case 46:
+	case 47:
 		mmDollar = mmS[mmpt-2 : mmpt+1]
 		{
 			mmVAL.s_members = append(mmDollar[1].s_members, mmDollar[2].s_member)
 		}
-	case 47:
+	case 48:
 		mmDollar = mmS[mmpt-3 : mmpt+1]
 		{
 			mmVAL.s_member = &StructMember{
@@ -1099,7 +1114,7 @@ mmdefault:
 				Id:    mmDollar[2].intern.Get(mmDollar[2].val),
 			}
 		}
-	case 48:
+	case 49:
 		mmDollar = mmS[mmpt-4 : mmpt+1]
 		{
 			mmVAL.s_member = &StructMember{
@@ -1109,7 +1124,7 @@ mmdefault:
 				Help:  unquote(mmDollar[3].val),
 			}
 		}
-	case 49:
+	case 50:
 		mmDollar = mmS[mmpt-5 : mmpt+1]
 		{
 			mmVAL.s_member = &StructMember{
@@ -1120,7 +1135,7 @@ mmdefault:
 				Help:    unquote(mmDollar[3].val),
 			}
 		}
-	case 50:
+	case 51:
 		mmDollar = mmS[mmpt-4 : mmpt+1]
 		{
 			cmd := strings.TrimSpace(mmDollar[3].intern.unquote(mmDollar[3].val))
@@ -1133,7 +1148,7 @@ mmdefault:
 				Args: stagecodeParts[1:],
 			}
 		}
-	case 61:
+	case 62:
 		mmDollar = mmS[mmpt-6 : mmpt+1]
 		{
 			mmVAL.type_id = TypeId{
@@ -1142,7 +1157,7 @@ mmdefault:
 				MapDim:   1 + mmDollar[4].arr,
 			}
 		}
-	case 62:
+	case 63:
 		mmDollar = mmS[mmpt-2 : mmpt+1]
 		{
 			mmVAL.type_id = TypeId{
@@ -1150,7 +1165,7 @@ mmdefault:
 				ArrayDim: mmDollar[2].arr,
 			}
 		}
-	case 66:
+	case 67:
 		mmDollar = mmS[mmpt-0 : mmpt+1]
 		{
 			mmVAL.par_tuple = paramsTuple{
@@ -1159,7 +1174,7 @@ mmdefault:
 				Outs:    &OutParams{Table: make(map[string]*OutParam)},
 			}
 		}
-	case 67:
+	case 68:
 		mmDollar = mmS[mmpt-6 : mmpt+1]
 		{
 			mmVAL.par_tuple = paramsTuple{
@@ -1168,7 +1183,7 @@ mmdefault:
 				Outs:    mmDollar[5].o_params,
 			}
 		}
-	case 68:
+	case 69:
 		mmDollar = mmS[mmpt-5 : mmpt+1]
 		{
 			mmVAL.par_tuple = paramsTuple{
@@ -1177,7 +1192,7 @@ mmdefault:
 				Outs:    mmDollar[4].o_params,
 			}
 		}
-	case 69:
+	case 70:
 		mmDollar = mmS[mmpt-4 : mmpt+1]
 		{
 			mmVAL.retstm = &ReturnStm{
@@ -1185,12 +1200,12 @@ mmdefault:
 				Bindings: mmDollar[3].bindings,
 			}
 		}
-	case 70:
+	case 71:
 		mmDollar = mmS[mmpt-0 : mmpt+1]
 		{
 			mmVAL.plretains = nil
 		}
-	case 71:
+	case 72:
 		mmDollar = mmS[mmpt-4 : mmpt+1]
 		{
 			mmVAL.plretains = &PipelineRetains{
@@ -1198,27 +1213,27 @@ mmdefault:
 				Refs: mmDollar[3].reflist,
 			}
 		}
-	case 72:
+	case 73:
 		mmDollar = mmS[mmpt-0 : mmpt+1]
 		{
 			mmVAL.reflist = nil
 		}
-	case 73:
+	case 74:
 		mmDollar = mmS[mmpt-3 : mmpt+1]
 		{
 			mmVAL.reflist = append(mmDollar[1].reflist, mmDollar[2].rexp)
 		}
-	case 74:
+	case 75:
 		mmDollar = mmS[mmpt-2 : mmpt+1]
 		{
 			mmVAL.calls = append(mmDollar[1].calls, mmDollar[2].call)
 		}
-	case 75:
+	case 76:
 		mmDollar = mmS[mmpt-1 : mmpt+1]
 		{
 			mmVAL.calls = []*CallStm{mmDollar[1].call}
 		}
-	case 76:
+	case 77:
 		mmDollar = mmS[mmpt-6 : mmpt+1]
 		{
 			id := mmDollar[3].intern.Get(mmDollar[3].val)
@@ -1230,7 +1245,7 @@ mmdefault:
 				Bindings:  mmDollar[5].bindings,
 			}
 		}
-	case 77:
+	case 78:
 		mmDollar = mmS[mmpt-8 : mmpt+1]
 		{
 			mmVAL.call = &CallStm{
@@ -1241,33 +1256,33 @@ mmdefault:
 				Bindings:  mmDollar[7].bindings,
 			}
 		}
-	case 78:
+	case 79:
 		mmDollar = mmS[mmpt-5 : mmpt+1]
 		{
 			mmDollar[1].call.Modifiers.Bindings = mmDollar[4].bindings
 			mmVAL.call = mmDollar[1].call
 		}
-	case 79:
+	case 80:
 		mmDollar = mmS[mmpt-0 : mmpt+1]
 		{
 			mmVAL.modifiers = new(Modifiers)
 		}
-	case 80:
+	case 81:
 		mmDollar = mmS[mmpt-2 : mmpt+1]
 		{
 			mmVAL.modifiers.Local = true
 		}
-	case 81:
+	case 82:
 		mmDollar = mmS[mmpt-2 : mmpt+1]
 		{
 			mmVAL.modifiers.Preflight = true
 		}
-	case 82:
+	case 83:
 		mmDollar = mmS[mmpt-2 : mmpt+1]
 		{
 			mmVAL.modifiers.Volatile = true
 		}
-	case 83:
+	case 84:
 		mmDollar = mmS[mmpt-0 : mmpt+1]
 		{
 			mmVAL.bindings = &BindStms{
@@ -1275,13 +1290,13 @@ mmdefault:
 				Table: make(map[string]*BindStm),
 			}
 		}
-	case 84:
+	case 85:
 		mmDollar = mmS[mmpt-2 : mmpt+1]
 		{
 			mmDollar[1].bindings.List = append(mmDollar[1].bindings.List, mmDollar[2].binding)
 			mmVAL.bindings = mmDollar[1].bindings
 		}
-	case 85:
+	case 86:
 		mmDollar = mmS[mmpt-4 : mmpt+1]
 		{
 			mmVAL.binding = &BindStm{
@@ -1290,7 +1305,7 @@ mmdefault:
 				Exp:  mmDollar[3].vexp,
 			}
 		}
-	case 86:
+	case 87:
 		mmDollar = mmS[mmpt-4 : mmpt+1]
 		{
 			mmVAL.binding = &BindStm{
@@ -1299,7 +1314,7 @@ mmdefault:
 				Exp:  mmDollar[3].vexp,
 			}
 		}
-	case 87:
+	case 88:
 		mmDollar = mmS[mmpt-4 : mmpt+1]
 		{
 			mmVAL.binding = &BindStm{
@@ -1308,7 +1323,7 @@ mmdefault:
 				Exp:  mmDollar[3].vexp,
 			}
 		}
-	case 88:
+	case 89:
 		mmDollar = mmS[mmpt-4 : mmpt+1]
 		{
 			mmVAL.binding = &BindStm{
@@ -1317,13 +1332,13 @@ mmdefault:
 				Exp:  mmDollar[3].rexp,
 			}
 		}
-	case 89:
+	case 90:
 		mmDollar = mmS[mmpt-2 : mmpt+1]
 		{
 			mmDollar[1].bindings.List = append(mmDollar[1].bindings.List, mmDollar[2].binding)
 			mmVAL.bindings = mmDollar[1].bindings
 		}
-	case 90:
+	case 91:
 		mmDollar = mmS[mmpt-1 : mmpt+1]
 		{
 			mmVAL.bindings = &BindStms{
@@ -1332,7 +1347,7 @@ mmdefault:
 				List:  []*BindStm{mmDollar[1].binding},
 			}
 		}
-	case 92:
+	case 93:
 		mmDollar = mmS[mmpt-0 : mmpt+1]
 		{
 			mmVAL.bindings = &BindStms{
@@ -1340,7 +1355,7 @@ mmdefault:
 				Table: make(map[string]*BindStm),
 			}
 		}
-	case 93:
+	case 94:
 		mmDollar = mmS[mmpt-4 : mmpt+1]
 		{
 			mmVAL.binding = &BindStm{
@@ -1349,21 +1364,8 @@ mmdefault:
 				Exp:  mmDollar[3].exp,
 			}
 		}
-	case 94:
-		mmDollar = mmS[mmpt-8 : mmpt+1]
-		{
-			mmVAL.binding = &BindStm{
-				Node: NewAstNode(mmDollar[1].loc, mmDollar[1].srcfile),
-				Id:   mmDollar[1].intern.Get(mmDollar[1].val),
-				Exp: &SweepExp{
-					valExp: valExp{Node: NewAstNode(mmDollar[1].loc, mmDollar[1].srcfile)},
-					Value:  mmDollar[5].exps,
-				},
-				Sweep: true,
-			}
-		}
 	case 95:
-		mmDollar = mmS[mmpt-7 : mmpt+1]
+		mmDollar = mmS[mmpt-8 : mmpt+1]
 		{
 			mmVAL.binding = &BindStm{
 				Node: NewAstNode(mmDollar[1].loc, mmDollar[1].srcfile),
@@ -1376,48 +1378,61 @@ mmdefault:
 			}
 		}
 	case 96:
+		mmDollar = mmS[mmpt-7 : mmpt+1]
+		{
+			mmVAL.binding = &BindStm{
+				Node: NewAstNode(mmDollar[1].loc, mmDollar[1].srcfile),
+				Id:   mmDollar[1].intern.Get(mmDollar[1].val),
+				Exp: &SweepExp{
+					valExp: valExp{Node: NewAstNode(mmDollar[1].loc, mmDollar[1].srcfile)},
+					Value:  mmDollar[5].exps,
+				},
+				Sweep: true,
+			}
+		}
+	case 97:
 		mmDollar = mmS[mmpt-3 : mmpt+1]
 		{
 			mmVAL.exps = append(mmDollar[1].exps, mmDollar[3].exp)
 		}
-	case 97:
+	case 98:
 		mmDollar = mmS[mmpt-1 : mmpt+1]
 		{
 			mmVAL.exps = []Exp{mmDollar[1].exp}
 		}
-	case 98:
+	case 99:
 		mmDollar = mmS[mmpt-5 : mmpt+1]
 		{
 			mmDollar[1].kvpairs[unquote(mmDollar[3].val)] = mmDollar[5].exp
 			mmVAL.kvpairs = mmDollar[1].kvpairs
 		}
-	case 99:
+	case 100:
 		mmDollar = mmS[mmpt-3 : mmpt+1]
 		{
 			mmVAL.kvpairs = map[string]Exp{unquote(mmDollar[1].val): mmDollar[3].exp}
 		}
-	case 100:
+	case 101:
 		mmDollar = mmS[mmpt-5 : mmpt+1]
 		{
 			mmDollar[1].kvpairs[mmDollar[3].intern.Get(mmDollar[3].val)] = mmDollar[5].exp
 			mmVAL.kvpairs = mmDollar[1].kvpairs
 		}
-	case 101:
+	case 102:
 		mmDollar = mmS[mmpt-3 : mmpt+1]
 		{
 			mmVAL.kvpairs = map[string]Exp{mmDollar[1].intern.Get(mmDollar[1].val): mmDollar[3].exp}
 		}
-	case 102:
+	case 103:
 		mmDollar = mmS[mmpt-1 : mmpt+1]
 		{
 			mmVAL.exp = mmDollar[1].vexp
 		}
-	case 103:
+	case 104:
 		mmDollar = mmS[mmpt-1 : mmpt+1]
 		{
 			mmVAL.exp = mmDollar[1].rexp
 		}
-	case 104:
+	case 105:
 		mmDollar = mmS[mmpt-1 : mmpt+1]
 		{ // Lexer guarantees parseable float strings.
 			f := parseFloat(mmDollar[1].val)
@@ -1426,7 +1441,7 @@ mmdefault:
 				Value:  f,
 			}
 		}
-	case 105:
+	case 106:
 		mmDollar = mmS[mmpt-1 : mmpt+1]
 		{ // Lexer guarantees parseable int strings.
 			i := parseInt(mmDollar[1].val)
@@ -1435,7 +1450,7 @@ mmdefault:
 				Value:  i,
 			}
 		}
-	case 106:
+	case 107:
 		mmDollar = mmS[mmpt-1 : mmpt+1]
 		{
 			mmVAL.vexp = &StringExp{
@@ -1444,14 +1459,14 @@ mmdefault:
 				Value:  unquote(mmDollar[1].val),
 			}
 		}
-	case 110:
+	case 111:
 		mmDollar = mmS[mmpt-1 : mmpt+1]
 		{
 			mmVAL.vexp = &NullExp{
 				valExp: valExp{Node: NewAstNode(mmDollar[1].loc, mmDollar[1].srcfile)},
 			}
 		}
-	case 111:
+	case 112:
 		mmDollar = mmS[mmpt-3 : mmpt+1]
 		{
 			mmVAL.vexp = &ArrayExp{
@@ -1459,7 +1474,7 @@ mmdefault:
 				Value:  mmDollar[2].exps,
 			}
 		}
-	case 112:
+	case 113:
 		mmDollar = mmS[mmpt-4 : mmpt+1]
 		{
 			mmVAL.vexp = &ArrayExp{
@@ -1467,7 +1482,7 @@ mmdefault:
 				Value:  mmDollar[2].exps,
 			}
 		}
-	case 114:
+	case 115:
 		mmDollar = mmS[mmpt-2 : mmpt+1]
 		{
 			mmVAL.vexp = &ArrayExp{
@@ -1475,7 +1490,7 @@ mmdefault:
 				Value:  make([]Exp, 0),
 			}
 		}
-	case 115:
+	case 116:
 		mmDollar = mmS[mmpt-3 : mmpt+1]
 		{
 			mmVAL.vexp = &MapExp{
@@ -1484,26 +1499,17 @@ mmdefault:
 				Value:  mmDollar[2].kvpairs,
 			}
 		}
-	case 116:
+	case 117:
 		mmDollar = mmS[mmpt-4 : mmpt+1]
 		{
 			mmVAL.vexp = &MapExp{
 				valExp: valExp{Node: NewAstNode(mmDollar[1].loc, mmDollar[1].srcfile)},
 				Kind:   KindMap,
-				Value:  mmDollar[2].kvpairs,
-			}
-		}
-	case 118:
-		mmDollar = mmS[mmpt-3 : mmpt+1]
-		{
-			mmVAL.vexp = &MapExp{
-				valExp: valExp{Node: NewAstNode(mmDollar[1].loc, mmDollar[1].srcfile)},
-				Kind:   KindStruct,
 				Value:  mmDollar[2].kvpairs,
 			}
 		}
 	case 119:
-		mmDollar = mmS[mmpt-4 : mmpt+1]
+		mmDollar = mmS[mmpt-3 : mmpt+1]
 		{
 			mmVAL.vexp = &MapExp{
 				valExp: valExp{Node: NewAstNode(mmDollar[1].loc, mmDollar[1].srcfile)},
@@ -1512,6 +1518,15 @@ mmdefault:
 			}
 		}
 	case 120:
+		mmDollar = mmS[mmpt-4 : mmpt+1]
+		{
+			mmVAL.vexp = &MapExp{
+				valExp: valExp{Node: NewAstNode(mmDollar[1].loc, mmDollar[1].srcfile)},
+				Kind:   KindStruct,
+				Value:  mmDollar[2].kvpairs,
+			}
+		}
+	case 121:
 		mmDollar = mmS[mmpt-2 : mmpt+1]
 		{
 			mmVAL.vexp = &MapExp{
@@ -1520,7 +1535,7 @@ mmdefault:
 				Value:  make(map[string]Exp, 0),
 			}
 		}
-	case 121:
+	case 122:
 		mmDollar = mmS[mmpt-1 : mmpt+1]
 		{
 			mmVAL.vexp = &BoolExp{
@@ -1528,22 +1543,12 @@ mmdefault:
 				Value:  true,
 			}
 		}
-	case 122:
+	case 123:
 		mmDollar = mmS[mmpt-1 : mmpt+1]
 		{
 			mmVAL.vexp = &BoolExp{
 				valExp: valExp{Node: NewAstNode(mmDollar[1].loc, mmDollar[1].srcfile)},
 				Value:  false,
-			}
-		}
-	case 123:
-		mmDollar = mmS[mmpt-3 : mmpt+1]
-		{
-			mmVAL.rexp = &RefExp{
-				Node:     NewAstNode(mmDollar[1].loc, mmDollar[1].srcfile),
-				Kind:     KindCall,
-				Id:       mmDollar[1].intern.Get(mmDollar[1].val),
-				OutputId: mmDollar[3].intern.Get(mmDollar[3].val),
 			}
 		}
 	case 124:
@@ -1553,10 +1558,20 @@ mmdefault:
 				Node:     NewAstNode(mmDollar[1].loc, mmDollar[1].srcfile),
 				Kind:     KindCall,
 				Id:       mmDollar[1].intern.Get(mmDollar[1].val),
-				OutputId: defaultOutName,
+				OutputId: mmDollar[3].intern.Get(mmDollar[3].val),
 			}
 		}
 	case 125:
+		mmDollar = mmS[mmpt-3 : mmpt+1]
+		{
+			mmVAL.rexp = &RefExp{
+				Node:     NewAstNode(mmDollar[1].loc, mmDollar[1].srcfile),
+				Kind:     KindCall,
+				Id:       mmDollar[1].intern.Get(mmDollar[1].val),
+				OutputId: defaultOutName,
+			}
+		}
+	case 126:
 		mmDollar = mmS[mmpt-1 : mmpt+1]
 		{
 			mmVAL.rexp = &RefExp{
@@ -1565,7 +1580,7 @@ mmdefault:
 				Id:   mmDollar[1].intern.Get(mmDollar[1].val),
 			}
 		}
-	case 126:
+	case 127:
 		mmDollar = mmS[mmpt-3 : mmpt+1]
 		{
 			mmVAL.rexp = &RefExp{
@@ -1574,7 +1589,7 @@ mmdefault:
 				Id:   mmDollar[3].intern.Get(mmDollar[3].val),
 			}
 		}
-	case 127:
+	case 128:
 		mmDollar = mmS[mmpt-5 : mmpt+1]
 		{
 			mmVAL.rexp = &RefExp{
