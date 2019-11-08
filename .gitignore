@@ -8,3 +8,4 @@ pkg
 /bazel-*
 coverage.out
 coverage.html
+/.vscode/
