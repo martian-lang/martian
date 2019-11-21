@@ -1,5 +1,7 @@
 // Copyright (c) 2017 10X Genomics, Inc. All rights reserved.
 
+// +build freebsd linux netbsd openbsd solaris
+
 package core
 
 //
@@ -250,16 +252,6 @@ const PIPESTANCE_MIN_INODES uint64 = 500
 // If the available space falls below this at any time during the run, the
 // the pipestance is killed.
 const PIPESTANCE_MIN_DISK uint64 = 50 * 1024 * 1024
-
-type DiskSpaceError struct {
-	Bytes   uint64
-	Inodes  uint64
-	Message string
-}
-
-func (self *DiskSpaceError) Error() string {
-	return self.Message
-}
 
 var disableDiskSpaceCheck = (os.Getenv("MRO_DISK_SPACE_CHECK") == "disable")
 

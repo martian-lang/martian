@@ -31,6 +31,10 @@ func GetProcessTreeMemory(pid int, includeParent bool, io map[int]*IoAmount) (me
 	return ObservedMemory{}, nil
 }
 
+func GetProcessTreeMemoryList(pid int) (ProcessTree, error) {
+	return ProcessTree{}, nil
+}
+
 // Gets the total vmem and rss memory of a running process by pid.
 func GetRunningMemory(pid int) (ObservedMemory, error) {
 	return ObservedMemory{}, nil
