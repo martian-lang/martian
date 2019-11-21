@@ -1,5 +1,13 @@
 load("@io_bazel_rules_go//go:def.bzl", "go_library", "go_test")
 
+genrule(
+    name = "grammar",
+    srcs = ["grammar.y"],
+    outs = ["grammar.go"],
+    cmd = "$(location @org_golang_x_tools//cmd/goyacc) -l -p mm -o $@ $<",
+    tools = ["@org_golang_x_tools//cmd/goyacc"],
+)
+
 go_library(
     name = "go_default_library",
     srcs = [
@@ -25,7 +33,6 @@ go_library(
         "format_exp_json.go",
         "format_types.go",
         "formatter.go",
-        "grammar.go",
         "lexer.go",
         "params.go",
         "parsenum.go",
@@ -40,6 +47,7 @@ go_library(
         "types.go",
         "user_file_type.go",
         "util.go",
+        ":grammar",
     ],
     importpath = "github.com/martian-lang/martian/martian/syntax",
     visibility = ["//visibility:public"],
