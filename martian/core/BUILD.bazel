@@ -30,6 +30,7 @@ go_library(
         "rlimit.go",
         "runtime.go",
         "stage.go",
+        "statfs.go",
         "statfs_unix.go",
         "storage.go",
     ],
