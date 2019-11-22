@@ -229,7 +229,7 @@ func totalCpu(ru *core.RusageInfo) float64 {
 func (self *runner) Complete() {
 	self.done()
 	target := core.CompleteFile
-	if self.monitoring {
+	if self.monitoring && self.jobInfo.RusageInfo != nil {
 		if t := time.Since(self.start); t > time.Minute*15 {
 			if threads := totalCpu(self.jobInfo.RusageInfo) /
 				t.Seconds(); threads > 1.5*float64(self.jobInfo.Threads) {
