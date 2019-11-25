@@ -9,6 +9,7 @@ package syntax
 import (
 	"strings"
 	"testing"
+	"unicode"
 )
 
 const fmtTestSrc = `# A super-simple test pipeline with forks.
@@ -468,6 +469,7 @@ func TestFormatTopoSort(t *testing.T) {
 
 // Produce a relatively debuggable side-by-side diff.
 func diffLines(src, formatted string, t *testing.T) {
+	t.Helper()
 	src_lines := strings.Split(src, "\n")
 	formatted_lines := strings.Split(formatted, "\n")
 	offset := 0
@@ -483,15 +485,33 @@ func diffLines(src, formatted string, t *testing.T) {
 	removeSpace := func(line string) string {
 		line = strings.TrimSpace(line)
 		if len(line) == 0 {
-			return line
+			return ""
 		}
-		flds := strings.Fields(line)
-		if len(flds) <= 1 {
-			return line
+		flds := strings.FieldsFunc(line, func(r rune) bool {
+			return r == ',' || unicode.IsSpace(r)
+		})
+		if len(flds) == 1 {
+			return flds[0]
 		}
 		return strings.Join(flds, "")
 	}
+	// Prevent overwhelming the console output
+	firstWrongLine := 0
 	for i, line := range src_lines {
+		if i >= len(formatted_lines) || line != formatted_lines[i] {
+			firstWrongLine = i
+			break
+		}
+	}
+	wrongLines := 0
+	lastWrongLine := 0
+	// Used to search for anchor lines.  If a line is unique in both sets,
+	// then we should match them up in the diff
+	var uniqueSrcLines, uniqueFmtLines map[string]int
+	for i, line := range src_lines {
+		if i < firstWrongLine-20 {
+			continue
+		}
 		pad := ""
 		if fmtLen := len(line) + strings.Count(line, "\t"); fmtLen < 30 {
 			// Add the tab count because when formatting we'll replace those
@@ -502,9 +522,68 @@ func diffLines(src, formatted string, t *testing.T) {
 			if line == formatted_lines[i+offset] {
 				line = trimLine(line)
 				t.Logf("%3d: %s %s= %s", i, line, pad, line)
+				if wrongLines > 20 || wrongLines > 0 && lastWrongLine < i-10 {
+					t.Logf("...")
+					return
+				}
 			} else if cline := removeSpace(line); cline == removeSpace(formatted_lines[i+offset]) {
-				t.Errorf("%3d: %s %s| %s", i, line, pad, formatted_lines[i+offset])
+				if strings.TrimLeftFunc(
+					line, unicode.IsSpace) == strings.TrimLeftFunc(
+					formatted_lines[i+offset], unicode.IsSpace) {
+					t.Errorf("%3d: %s %s| %s", i,
+						trimLine(line), pad, trimLine(formatted_lines[i+offset]))
+					wrongLines++
+					lastWrongLine = i
+				} else {
+					t.Errorf("%3d: %s %s| %s", i,
+						line, pad, formatted_lines[i+offset])
+					wrongLines++
+					lastWrongLine = i
+				}
+			} else if len(cline) == 0 {
+				t.Errorf("%3d: %s %s<", i, strings.Replace(line, "\t", "\\t", -1), pad)
+				wrongLines++
+				lastWrongLine = i
+				offset--
 			} else {
+				if uniqueSrcLines == nil {
+					uniqueSrcLines = make(map[string]int, (len(src_lines)-i)/2)
+					for j, line := range src_lines[i:] {
+						if _, ok := uniqueSrcLines[line]; ok {
+							uniqueSrcLines[line] = -1
+						} else {
+							uniqueSrcLines[line] = i + j
+						}
+					}
+				}
+				if uniqueFmtLines == nil {
+					uniqueFmtLines = make(map[string]int, (len(formatted_lines)-i-offset)/2)
+					for j, line := range formatted_lines[i+offset:] {
+						if _, ok := uniqueFmtLines[line]; ok {
+							uniqueFmtLines[line] = -1
+						} else {
+							uniqueFmtLines[line] = j + i + offset
+						}
+					}
+				}
+				if j, ok := uniqueSrcLines[line]; ok && j >= 0 {
+					if k, ok := uniqueFmtLines[line]; ok && k >= 0 {
+						for k > i+offset {
+							t.Errorf("%s > %s", strings.Repeat(" ", 35),
+								formatted_lines[i+offset])
+							wrongLines++
+							offset++
+							lastWrongLine = i
+						}
+						line = trimLine(line)
+						t.Logf("%3d: %s %s= %s", i, line, pad, line)
+						continue
+					} else if k == -1 {
+						uniqueFmtLines = nil
+					}
+				} else if j == -1 {
+					uniqueSrcLines = nil
+				}
 				forwardOffset := 0
 				for moreOffset, fline := range formatted_lines[i+offset:] {
 					if removeSpace(fline) == cline {
@@ -526,13 +605,19 @@ func diffLines(src, formatted string, t *testing.T) {
 				}
 				if forwardOffset == 0 && backwardOffset == 0 {
 					t.Errorf("%3d: %s %s| %s", i, line, pad, formatted_lines[i+offset])
+					wrongLines++
+					lastWrongLine = i
 				} else if (forwardOffset == 0 && backwardOffset != 0) ||
 					(backwardOffset > forwardOffset) {
 					t.Errorf("%3d: %s %s<", i, line, pad)
 					offset--
+					wrongLines++
+					lastWrongLine = i
 				} else {
 					for j := 0; j < forwardOffset; j++ {
 						t.Errorf("%s > %s", strings.Repeat(" ", 35), formatted_lines[i+j+offset])
+						wrongLines++
+						lastWrongLine = i
 					}
 					offset += forwardOffset
 					if line == formatted_lines[i+offset] {
@@ -540,11 +625,18 @@ func diffLines(src, formatted string, t *testing.T) {
 						t.Logf("%3d: %s %s= %s", i, line, pad, line)
 					} else {
 						t.Errorf("%3d: %s %s| %s", i, line, pad, formatted_lines[i+offset])
+						wrongLines++
+						lastWrongLine = i
 					}
 				}
 			}
 		} else {
 			t.Errorf("%3d: %s %s<", i, line, pad)
+			wrongLines++
+			if wrongLines > 30 {
+				t.Logf("...")
+				return
+			}
 		}
 	}
 	if len(formatted_lines) > len(src_lines)+offset {
