@@ -4,6 +4,7 @@ go_library(
     name = "go_default_library",
     srcs = [
         "ast.go",
+        "bindings.go",
         "builtin_types.go",
         "call.go",
         "callable.go",
@@ -26,6 +27,7 @@ go_library(
         "formatter.go",
         "grammar.go",
         "lexer.go",
+        "params.go",
         "parsenum.go",
         "parser.go",
         "resolve.go",
