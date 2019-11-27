@@ -198,8 +198,6 @@ func (s *StructType) IsValidExpression(exp Exp, pipeline *Pipeline, ast *Ast) er
 		} else {
 			return nil
 		}
-	case *SweepExp:
-		return isValidSweep(s, exp, pipeline, ast)
 	case *SplitExp:
 		return isValidSplit(s, exp, pipeline, ast)
 	case *NullExp:

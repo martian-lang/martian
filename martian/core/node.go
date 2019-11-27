@@ -67,7 +67,6 @@ type Node struct {
 	forks          []*Fork
 	state          MetadataState
 	local          bool
-	swept          bool
 	stagecode      *syntax.SrcParam
 	forkRoots      []syntax.MapCallSource
 	forkIds        ForkIdSet
@@ -421,7 +420,7 @@ func (self *Node) mkdirs() error {
 
 func (self *Node) buildForks() {
 	// Build out argument permutations.
-	if self.swept || self.call.Kind() != syntax.KindPipeline {
+	if self.call.Kind() != syntax.KindPipeline {
 		self.forkIds.MakeForkIds(self.top.allNodes, self.forkRoots)
 	}
 	if len(self.forkIds.List) == 0 {

@@ -82,61 +82,6 @@ func (e *ArrayExp) GoString() string {
 	return buf.String()
 }
 
-func (e *SweepExp) format(w stringWriter, prefix string) {
-	if e.Value == nil {
-		mustWriteString(w, "null")
-		return
-	}
-	values := e.Value
-	mustWriteString(w, "sweep(\n")
-	vindent := prefix + INDENT
-	for _, val := range values {
-		mustWriteString(w, vindent)
-		val.format(w, vindent)
-		mustWriteString(w, ",\n")
-	}
-	mustWriteString(w, prefix)
-	mustWriteRune(w, ')')
-}
-func (e *SweepExp) GoString() string {
-	if e == nil || e.Value == nil {
-		return "null"
-	}
-	if len(e.Value) == 0 {
-		return "[]"
-	}
-	var buf strings.Builder
-	if _, err := buf.WriteString("sweep("); err != nil {
-		panic(err)
-	}
-	for i, v := range e.Value {
-		if i < 2 || i >= len(e.Value)-2 {
-			if i != 0 {
-				if _, err := buf.WriteRune(','); err != nil {
-					panic(err)
-				}
-			}
-			if v == nil {
-				if _, err := buf.WriteString("null"); err != nil {
-					panic(err)
-				}
-			} else {
-				if _, err := buf.WriteString(v.GoString()); err != nil {
-					panic(err)
-				}
-			}
-		} else if i == 2 {
-			if _, err := buf.WriteString(",..."); err != nil {
-				panic(err)
-			}
-		}
-	}
-	if _, err := buf.WriteRune(')'); err != nil {
-		panic(err)
-	}
-	return buf.String()
-}
-
 func (e *SplitExp) format(w stringWriter, prefix string) {
 	if e.Value == nil {
 		mustWriteString(w, "null")

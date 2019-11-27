@@ -95,8 +95,6 @@ func (s *UserType) IsValidExpression(exp Exp, pipeline *Pipeline, ast *Ast) erro
 		} else {
 			return nil
 		}
-	case *SweepExp:
-		return isValidSweep(s, exp, pipeline, ast)
 	case *SplitExp:
 		return isValidSplit(s, exp, pipeline, ast)
 	case *NullExp:

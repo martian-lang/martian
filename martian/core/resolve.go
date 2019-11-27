@@ -152,7 +152,7 @@ func (node *TopNode) resolve(binding syntax.Exp, t syntax.Type,
 	if binding == nil {
 		return true, nil, nil
 	}
-	if !binding.HasRef() && !binding.HasSweep() && !binding.HasSplit() {
+	if !binding.HasRef() && !binding.HasSplit() {
 		return true, binding, nil
 	}
 	if len(fork) > 0 {
@@ -160,7 +160,7 @@ func (node *TopNode) resolve(binding syntax.Exp, t syntax.Type,
 			return true, nil, err
 		} else if binding != b {
 			binding = b
-			if !binding.HasRef() && !binding.HasSweep() && !binding.HasSplit() {
+			if !binding.HasRef() && !binding.HasSplit() {
 				return true, binding, nil
 			}
 		}
@@ -172,15 +172,6 @@ func (node *TopNode) resolve(binding syntax.Exp, t syntax.Type,
 		return node.resolveArray(binding, t, fork, readSize)
 	case *syntax.MapExp:
 		return node.resolveMap(binding, t, fork, readSize)
-	case *syntax.SweepExp:
-		for _, part := range fork {
-			if part.Source == binding {
-				return node.resolve(
-					binding.Value[part.Id.ArrayIndex()],
-					t, fork, readSize)
-			}
-		}
-		panic("sweep is not bound to this fork")
 	case *syntax.SplitExp:
 		return node.resolveSplit(binding, t, fork, readSize)
 	default:
@@ -245,7 +236,7 @@ func (node *TopNode) resolveSplit(binding *syntax.SplitExp, t syntax.Type,
 			r = rr
 		default:
 			var parser syntax.Parser
-			r, err = convertToExp(&parser, false, false, result, t.GetId(), node.types)
+			r, err = convertToExp(&parser, false, result, t.GetId(), node.types)
 			if err != nil {
 				return ready, binding, &elementError{
 					element: "unresolved split value",

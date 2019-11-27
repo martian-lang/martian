@@ -187,10 +187,7 @@ func keywordToken(b []byte) ([]byte, int) {
 			if v := bytesPrefixString(b, KindString); len(v) > 0 {
 				return v, STRING
 			}
-			if v := bytesPrefixString(b, `struct`); len(v) > 0 {
-				return v, STRUCT
-			}
-			return bytesPrefixString(b, KindSweep), SWEEP
+			return bytesPrefixString(b, `struct`), STRUCT
 		case 't':
 			if v := bytesPrefixString(b, `threads`); len(v) > 0 {
 				return v, THREADS

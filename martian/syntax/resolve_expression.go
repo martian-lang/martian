@@ -48,26 +48,6 @@ func (exp *ArrayExp) resolveRefs(self, siblings map[string]*ResolvedBinding,
 	return &result, errs.If()
 }
 
-func (exp *SweepExp) resolveRefs(self, siblings map[string]*ResolvedBinding,
-	lookup *TypeLookup) (Exp, error) {
-	var errs ErrorList
-	result := SweepExp{
-		valExp: valExp{Node: exp.Node},
-		Value:  make([]Exp, len(exp.Value)),
-	}
-	for i, subexp := range exp.Value {
-		e, err := subexp.resolveRefs(self, siblings, lookup)
-		if err != nil {
-			errs = append(errs, &bindingError{
-				Msg: fmt.Sprintf("element %d", i),
-				Err: err,
-			})
-		}
-		result.Value[i] = e
-	}
-	return &result, errs.If()
-}
-
 func (exp *SplitExp) resolveRefs(self, siblings map[string]*ResolvedBinding,
 	lookup *TypeLookup) (Exp, error) {
 	v, err := exp.Value.resolveRefs(self, siblings, lookup)
@@ -189,33 +169,6 @@ func (s *ArrayExp) BindingPath(bindPath string,
 	}
 	if !change {
 		return s, errs.If()
-	}
-	return &result, errs.If()
-}
-func (s *SweepExp) BindingPath(bindPath string,
-	fork map[MapCallSource]CollectionIndex,
-	index []CollectionIndex) (Exp, error) {
-	if bindPath == "" || s == nil || len(s.Value) == 0 {
-		return s, nil
-	}
-	// handle projection
-	result := SweepExp{
-		valExp: valExp{Node: s.Node},
-		Value:  make([]Exp, len(s.Value)),
-	}
-	var errs ErrorList
-	for i, sub := range s.Value {
-		e, err := sub.BindingPath(bindPath, fork, index)
-		if err != nil {
-			errs = append(errs, &wrapError{
-				innerError: &bindingError{
-					Msg: fmt.Sprint("element ", i),
-					Err: err,
-				},
-				loc: sub.getNode().Loc,
-			})
-		}
-		result.Value[i] = e
 	}
 	return &result, errs.If()
 }
@@ -497,41 +450,7 @@ func (s *ArrayExp) filter(t Type, lookup *TypeLookup) (Exp, error) {
 	}
 	return &result, errs.If()
 }
-func (s *SweepExp) filter(t Type, lookup *TypeLookup) (Exp, error) {
-	if _, ok := baseType(t).(*StructType); !ok {
-		return s, nil
-	}
-	if s == nil || len(s.Value) == 0 {
-		return s, nil
-	}
-	// handle projection
-	result := SweepExp{
-		valExp: valExp{Node: s.Node},
-		Value:  make([]Exp, len(s.Value)),
-	}
-	anyChange := false
-	var errs ErrorList
-	for i, sub := range s.Value {
-		e, err := sub.filter(t, lookup)
-		if err != nil {
-			errs = append(errs, &wrapError{
-				innerError: &bindingError{
-					Msg: fmt.Sprint("element ", i),
-					Err: err,
-				},
-				loc: sub.getNode().Loc,
-			})
-		}
-		result.Value[i] = e
-		if e != sub {
-			anyChange = true
-		}
-	}
-	if !anyChange {
-		return s, errs.If()
-	}
-	return &result, errs.If()
-}
+
 func (s *SplitExp) filter(t Type, lookup *TypeLookup) (Exp, error) {
 	if _, ok := baseType(t).(*StructType); !ok {
 		return s, nil

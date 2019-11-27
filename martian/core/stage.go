@@ -872,7 +872,7 @@ func (self *Fork) writeInvocation() {
 		}
 		invocation, _ := BuildCallSource(
 			self.node.call.Call().Id,
-			argBindings, nil, nil,
+			argBindings, nil,
 			self.node.call.Callable(),
 			self.node.top.types,
 			self.node.top.mroPaths)

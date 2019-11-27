@@ -199,7 +199,7 @@ pipeline AWESOME(
     in  string     key2,
     in  string     value2,
     in  POINTALISM struct_in,
-    out json       outfile    "The json file containing all of the keys and values."  "all_keys",
+    out json[]     outfile    "The json file containing all of the keys and values."  "all_keys",
     out HELPFUL    thing,
 )
 {
@@ -226,12 +226,12 @@ pipeline AWESOME(
         start    = ADD_KEY2.result,
     )
 
-    call ADD_KEY1 as ADD_KEY4(
+    map call ADD_KEY1 as ADD_KEY4(
         key      = "4",
-        value    = sweep(
+        value    = split [
             "four",
             "feir",
-        ),
+        ],
         failfile = "fail4",
         start    = ADD_KEY2.result,
     )
@@ -276,9 +276,9 @@ pipeline AWESOME(
         value = null,
     )
 
-    call MERGE_JSON(
+    map call MERGE_JSON(
         json1 = ADD_KEY3.result,
-        json2 = ADD_KEY4.result,
+        json2 = split ADD_KEY4.result,
     )
 
     call MERGE_JSON2(
@@ -286,16 +286,13 @@ pipeline AWESOME(
     )
 
     call MERGE_JSON2 as MERGE_JSON3(
-        input = [
-            ADD_KEY3.result,
-            ADD_KEY4.result,
-        ],
+        input = ADD_KEY4.result,
     )
 
     call MERGE_JSON2 as MERGE_JSON4(
         input = [
             "four",
-            ADD_KEY4.result,
+            ADD_KEY3.result,
         ],
     )
 
@@ -353,15 +350,15 @@ pipeline AWESOME(
     )
 }
 
-# Calls the pipelines, sweeping over two forks.
-call AWESOME(
+# Calls the pipelines, splitting over two forks.
+map call AWESOME(
     key1      = "1",
     value1    = "one",
     key2      = "2",
-    value2    = sweep(
+    value2    = split [
         "two",
         "deux",
-    ),
+    ],
     struct_in = {
         dest: "foo.json",
         point: {

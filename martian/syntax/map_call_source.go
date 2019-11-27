@@ -531,35 +531,6 @@ func (a *ArrayExp) Keys() map[string]Exp {
 }
 
 // CallMode Returns the call mode for a call which depends on this source.
-func (a *SweepExp) CallMode() CallMode {
-	return ModeArrayCall
-}
-
-// KnownLength returns true if the source is an array with a known length
-// or is a map with a known set of keys.
-func (a *SweepExp) KnownLength() bool {
-	return true
-}
-
-// If KnownLength is true and CallMode is ModeArrayCall, ArrayLength returns
-// the length of the array referred to by this source.  Otherwise it will
-// return -1.
-func (a *SweepExp) ArrayLength() int {
-	if a == nil {
-		return 0
-	}
-	return len(a.Value)
-}
-
-// If KnownLength is true and CallMode is ModeMapCall, MapKeys will return
-// a map[string]Exp with the same keys which any call mapping over this
-// source would have.  The values are arbitrary.  Otherwise, it will return
-// nil.
-func (a *SweepExp) Keys() map[string]Exp {
-	return nil
-}
-
-// CallMode Returns the call mode for a call which depends on this source.
 func (a *MapExp) CallMode() CallMode {
 	return ModeMapCall
 }

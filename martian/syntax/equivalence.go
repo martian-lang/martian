@@ -278,12 +278,6 @@ func (binding *BindStm) Equals(other *BindStm) bool {
 			binding.Id, other.Id)
 		return false
 	}
-	if binding.Sweep != other.Sweep {
-		util.PrintInfo("compare",
-			"Binding %s sweep status different.",
-			binding.Id)
-		return false
-	}
 	if binding.Exp == nil {
 		return other.Exp == nil
 	} else if other.Exp == nil {
@@ -414,27 +408,6 @@ func (exp *ArrayExp) equal(uother Exp) bool {
 	if !ok {
 		util.PrintInfo("compare",
 			"Values are not both arrays.  Other is %T",
-			other)
-		return false
-	}
-	if len(exp.Value) != len(other.Value) {
-		util.PrintInfo("compare",
-			"Array lengths differ: %d != %d",
-			len(exp.Value), len(other.Value))
-		return false
-	}
-	for i, v := range exp.Value {
-		if !v.equal(other.Value[i]) {
-			return false
-		}
-	}
-	return true
-}
-func (exp *SweepExp) equal(uother Exp) bool {
-	other, ok := uother.(*SweepExp)
-	if !ok {
-		util.PrintInfo("compare",
-			"Values are not both sweeps.  Other is %T",
 			other)
 		return false
 	}

@@ -10,7 +10,6 @@ package syntax
 const (
 	// Represents an array of expressions.
 	KindArray  = ExpKind("array")
-	KindSweep  = "sweep"
 	KindSplit  = "split"
 	KindMap    = "map"
 	KindFloat  = "float"
@@ -50,11 +49,8 @@ type (
 		// HasRef returns true if this expression or any sub-expression is a
 		// reference.
 		HasRef() bool
-		// HasSweep returns true if this expression or any sub-expression is
-		// a sweep.
-		HasSweep() bool
-		// HasSweep returns true if this expression or any sub-expression is
-		// a sweep.
+		// HasSplit returns true if this expression or any sub-expression is
+		// a split.
 		HasSplit() bool
 
 		// Returns an arbitrary SplitExp from within the expression, if one of
@@ -120,12 +116,6 @@ type (
 		Value []Exp
 	}
 
-	// A SweepExp represents a sweep over expressions.
-	SweepExp struct {
-		valExp
-		Value []Exp
-	}
-
 	// A SplitExp represents an expression which is either a typed map or array,
 	// where a call is made repeatedly, once for each element in the collection.
 	// Only top-level expressions can be split.
@@ -187,7 +177,6 @@ func (s *valExp) File() *SourceFile       { return s.Node.Loc.File }
 func (s *valExp) inheritComments() bool   { return false }
 func (*valExp) getSubnodes() []AstNodable { return nil }
 func (*valExp) HasRef() bool              { return false }
-func (*valExp) HasSweep() bool            { return false }
 func (*valExp) HasSplit() bool            { return false }
 func (*valExp) FindRefs() []*RefExp       { return nil }
 func (*valExp) FindSplit(*CallStm) *SplitExp {
@@ -195,7 +184,6 @@ func (*valExp) FindSplit(*CallStm) *SplitExp {
 }
 
 func (s *ArrayExp) getKind() ExpKind  { return KindArray }
-func (s *SweepExp) getKind() ExpKind  { return KindSweep }
 func (s *SplitExp) getKind() ExpKind  { return KindSplit }
 func (s *MapExp) getKind() ExpKind    { return s.Kind }
 func (s *StringExp) getKind() ExpKind { return s.Kind }
@@ -205,7 +193,6 @@ func (s *FloatExp) getKind() ExpKind  { return KindFloat }
 func (s *NullExp) getKind() ExpKind   { return KindNull }
 
 func (s *ArrayExp) val() interface{}  { return s.Value }
-func (s *SweepExp) val() interface{}  { return s.Value }
 func (s *SplitExp) val() interface{}  { return s.Value }
 func (s *MapExp) val() interface{}    { return s.Value }
 func (s *StringExp) val() interface{} { return s.Value }
@@ -221,13 +208,7 @@ func (s *ArrayExp) getSubnodes() []AstNodable {
 	}
 	return subs
 }
-func (s *SweepExp) getSubnodes() []AstNodable {
-	subs := make([]AstNodable, 0, len(s.Value))
-	for _, n := range s.Value {
-		subs = append(subs, n)
-	}
-	return subs
-}
+
 func (s *SplitExp) getSubnodes() []AstNodable {
 	return []AstNodable{s.Value}
 }
@@ -252,17 +233,6 @@ func (e *ArrayExp) HasRef() bool {
 	return false
 }
 
-func (e *ArrayExp) HasSweep() bool {
-	if e == nil {
-		return false
-	}
-	for _, exp := range e.Value {
-		if exp.HasSweep() {
-			return true
-		}
-	}
-	return false
-}
 func (e *ArrayExp) HasSplit() bool {
 	if e == nil {
 		return false
@@ -286,27 +256,11 @@ func (e *ArrayExp) FindSplit(c *CallStm) *SplitExp {
 	return nil
 }
 
-func (e *SweepExp) HasRef() bool {
-	if e == nil {
-		return false
-	}
-	for _, exp := range e.Value {
-		if exp.HasRef() {
-			return true
-		}
-	}
-	return false
-}
-
 func (e *SplitExp) HasRef() bool {
 	if e == nil || e.Value == nil {
 		return false
 	}
 	return e.Value.HasRef()
-}
-
-func (e *SweepExp) HasSweep() bool {
-	return true
 }
 
 func (e *SplitExp) HasSplit() bool {
@@ -339,17 +293,6 @@ func (e *MapExp) HasRef() bool {
 	return false
 }
 
-func (e *MapExp) HasSweep() bool {
-	if e == nil {
-		return false
-	}
-	for _, exp := range e.Value {
-		if exp.HasSweep() {
-			return true
-		}
-	}
-	return false
-}
 func (e *MapExp) HasSplit() bool {
 	if e == nil {
 		return false
@@ -387,20 +330,7 @@ func (e *ArrayExp) FindRefs() []*RefExp {
 	}
 	return result
 }
-func (e *SweepExp) FindRefs() []*RefExp {
-	var result []*RefExp
-	for _, v := range e.Value {
-		r := v.FindRefs()
-		if len(r) > 0 {
-			if len(result) == 0 {
-				result = r
-			} else {
-				result = append(result, r...)
-			}
-		}
-	}
-	return result
-}
+
 func (e *SplitExp) FindRefs() []*RefExp {
 	refs := e.Value.FindRefs()
 	if s, ok := e.Source.(Exp); ok && s != nil {
@@ -408,6 +338,7 @@ func (e *SplitExp) FindRefs() []*RefExp {
 	}
 	return refs
 }
+
 func (e *MapExp) FindRefs() []*RefExp {
 	var result []*RefExp
 	for _, v := range e.Value {

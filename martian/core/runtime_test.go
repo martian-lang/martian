@@ -29,7 +29,6 @@ func ExampleBuildCallSource() {
 			"input3": json.RawMessage(`{"foo":"bar"}`),
 		}),
 		nil,
-		nil,
 		&syntax.Stage{
 			Node: syntax.NewAstNode(15, &syntax.SourceFile{
 				FileName: "foo.mro",
@@ -244,7 +243,7 @@ func TestGetCallable(t *testing.T) {
 func TestInvocationDataFromSource(t *testing.T) {
 	const src = `@include "testdata/mock_stages.mro"
 
-call MOCK_PHASER_SVCALLER(
+map call MOCK_PHASER_SVCALLER(
     sample_def = [{
         "gem_group": null,
         "lanes": null,
@@ -257,10 +256,10 @@ call MOCK_PHASER_SVCALLER(
     downsample = {
         "subsample_rate": 1,
     },
-    unused     = sweep(
+    unused     = split [
         1,
         2,
-    ),
+    ],
 )
 `
 	invocationData, err := InvocationDataFromSource([]byte(src), []string{""})
@@ -277,13 +276,13 @@ call MOCK_PHASER_SVCALLER(
 		t.Errorf("Expected call MOCK_PHASER_SVCALLER, got %s",
 			invocationData.Call)
 	}
-	if len(invocationData.SweepArgs) != 1 {
-		t.Errorf("Expected 1 sweep arg, got %d", len(invocationData.SweepArgs))
+	if len(invocationData.SplitArgs) != 1 {
+		t.Errorf("Expected 1 split arg, got %d", len(invocationData.SplitArgs))
 	}
-	if len(invocationData.SweepArgs) > 0 &&
-		invocationData.SweepArgs[0] != "unused" {
-		t.Errorf("expected 'unused' as sweep arg, got %s",
-			invocationData.SweepArgs[0])
+	if len(invocationData.SplitArgs) > 0 &&
+		invocationData.SplitArgs[0] != "unused" {
+		t.Errorf("expected 'unused' as split arg, got %s",
+			invocationData.SplitArgs[0])
 	}
 	if invocationData.Include != "testdata/mock_stages.mro" {
 		t.Errorf("expected include 'testdata/mock_stages.mro', got %q",

@@ -104,8 +104,6 @@ func (s *ArrayType) IsValidExpression(exp Exp, pipeline *Pipeline, ast *Ast) err
 		} else {
 			return nil
 		}
-	case *SweepExp:
-		return isValidSweep(s, exp, pipeline, ast)
 	case *SplitExp:
 		return isValidSplit(s, exp, pipeline, ast)
 	case *NullExp:
@@ -392,8 +390,6 @@ func (s *TypedMapType) IsValidExpression(exp Exp, pipeline *Pipeline, ast *Ast) 
 		} else {
 			return nil
 		}
-	case *SweepExp:
-		return isValidSweep(s, exp, pipeline, ast)
 	case *SplitExp:
 		return isValidSplit(s, exp, pipeline, ast)
 	case *NullExp:

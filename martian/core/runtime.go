@@ -793,39 +793,20 @@ func fixExpressionTypes(exp syntax.Exp, tname syntax.TypeId, lookup *syntax.Type
 	}
 }
 
-func convertToExp(parser *syntax.Parser, split, sweep bool, val json.Marshaler,
+func convertToExp(parser *syntax.Parser, split bool, val json.Marshaler,
 	tname syntax.TypeId, lookup *syntax.TypeLookup) (syntax.ValExp, error) {
 	switch val := val.(type) {
 	case syntax.ValExp:
 		return val, nil
 	case json.RawMessage:
-		if sweep {
-			var jv struct {
-				Sweep []json.RawMessage `json:"sweep"`
-			}
-			if err := json.Unmarshal(val, &jv); err != nil {
-				return nil, err
-			}
-			sweepVal := make([]syntax.Exp, len(jv.Sweep))
-			for i, v := range jv.Sweep {
-				var err error
-				sweepVal[i], err = convertToExp(parser, false, false,
-					v, tname, lookup)
-				if err != nil {
-					return nil, err
-				}
-			}
-			return &syntax.SweepExp{
-				Value: sweepVal,
-			}, nil
-		} else if split {
+		if split {
 			var jv struct {
 				Split json.RawMessage `json:"split"`
 			}
 			if err := json.Unmarshal(val, &jv); err != nil {
 				return nil, err
 			}
-			exp, err := convertToExp(parser, false, false,
+			exp, err := convertToExp(parser, false,
 				jv.Split, tname, lookup)
 			return &syntax.SplitExp{
 				Value: exp,
@@ -846,7 +827,7 @@ func convertToExp(parser *syntax.Parser, split, sweep bool, val json.Marshaler,
 			tname.MapDim = 0
 		}
 		for k, v := range val {
-			if e, err := convertToExp(parser, false, false,
+			if e, err := convertToExp(parser, false,
 				v, tname, lookup); err != nil {
 				return &res, err
 			} else {
@@ -866,7 +847,7 @@ func convertToExp(parser *syntax.Parser, split, sweep bool, val json.Marshaler,
 			tname.MapDim = 0
 		}
 		for k, v := range val {
-			if e, err := convertToExp(parser, false, false,
+			if e, err := convertToExp(parser, false,
 				v, tname, lookup); err != nil {
 				return &res, err
 			} else {
@@ -882,7 +863,7 @@ func convertToExp(parser *syntax.Parser, split, sweep bool, val json.Marshaler,
 			tname.ArrayDim--
 		}
 		for _, v := range val {
-			if e, err := convertToExp(parser, false, false,
+			if e, err := convertToExp(parser, false,
 				v, tname, lookup); err != nil {
 				return &res, err
 			} else {
@@ -907,7 +888,6 @@ func BuildCallSource(
 	name string,
 	args MarshalerMap,
 	splitargs []string,
-	sweepargs []string,
 	callable syntax.Callable,
 	lookup *syntax.TypeLookup,
 	mroPaths []string) (string, error) {
@@ -935,12 +915,6 @@ func BuildCallSource(
 		binding := syntax.BindStm{
 			Id:    param.GetId(),
 			Tname: param.GetTname(),
-		}
-		for _, id := range sweepargs {
-			if id == param.GetId() {
-				binding.Sweep = true
-				break
-			}
 		}
 		split := false
 		for _, id := range splitargs {
@@ -974,6 +948,9 @@ func (invocation *InvocationData) BuildCallSource(mroPaths []string) (string, er
 	if invocation.Call == "" {
 		return "", fmt.Errorf("no pipeline or stage specified")
 	}
+	if len(invocation.SweepArgs) > 0 {
+		return "", fmt.Errorf("sweep is no longer supported - migrate to map call instead")
+	}
 	var callable syntax.Callable
 	var lookup *syntax.TypeLookup
 	if invocation.Include != "" {
@@ -1001,7 +978,6 @@ func (invocation *InvocationData) BuildCallSource(mroPaths []string) (string, er
 		invocation.Call,
 		invocation.Args.ToMarshalerMap(),
 		invocation.SplitArgs,
-		invocation.SweepArgs,
 		callable,
 		lookup,
 		mroPaths)
@@ -1043,16 +1019,13 @@ func BuildDataForAst(ast *syntax.Ast) (*InvocationData, error) {
 	}
 
 	args := make(LazyArgumentMap, len(ast.Call.Bindings.List))
-	var splitargs, sweepargs []string
+	var splitargs []string
 	for _, binding := range ast.Call.Bindings.List {
 		var err error
 		args[binding.Id], err = binding.Exp.MarshalJSON()
 		if err != nil {
 			return nil, fmt.Errorf("error serializing argument %s: %v",
 				binding.Id, err)
-		}
-		if binding.Sweep {
-			sweepargs = append(sweepargs, binding.Id)
 		}
 		if _, ok := binding.Exp.(*syntax.SplitExp); ok {
 			splitargs = append(splitargs, binding.Id)
@@ -1075,7 +1048,6 @@ func BuildDataForAst(ast *syntax.Ast) (*InvocationData, error) {
 	return &InvocationData{
 		Call:      ast.Call.DecId,
 		Args:      args,
-		SweepArgs: sweepargs,
 		SplitArgs: splitargs,
 		Include:   include,
 	}, nil

@@ -45,11 +45,6 @@ type (
 		List  []ForkId
 		Table map[syntax.MapCallSource][]*ForkSourcePart
 	}
-
-	expSetBuilder struct {
-		Exps []syntax.MapCallSource
-		set  map[syntax.MapCallSource]struct{}
-	}
 )
 
 func convertForkPart(f syntax.CollectionIndex) ForkIdPart {
@@ -71,101 +66,6 @@ func convertForkPart(f syntax.CollectionIndex) ForkIdPart {
 		return mapKeyFork(f.MapKey())
 	}
 	panic("invalid index")
-}
-
-func (s *expSetBuilder) Add(exp syntax.MapCallSource) {
-	if s.Exps == nil {
-		s.Exps = []syntax.MapCallSource{exp}
-	} else if len(s.Exps) == 0 {
-		s.Exps = append(s.Exps, exp)
-	}
-	if s.set == nil {
-		s.set = make(map[syntax.MapCallSource]struct{}, 1)
-		for _, e := range s.Exps {
-			s.set[e] = struct{}{}
-		}
-	}
-	if _, ok := s.set[exp]; !ok {
-		s.set[exp] = struct{}{}
-		s.Exps = append(s.Exps, exp)
-	}
-}
-
-func (s *expSetBuilder) AddMany(exp []syntax.MapCallSource) {
-	if len(exp) == 0 {
-		return
-	}
-	if len(s.Exps) == 0 {
-		s.Exps = exp
-	}
-	if s.set == nil {
-		s.set = make(map[syntax.MapCallSource]struct{}, len(s.Exps)+len(exp))
-		for _, e := range s.Exps {
-			s.set[e] = struct{}{}
-		}
-	}
-	for _, e := range exp {
-		if _, ok := s.set[e]; !ok {
-			s.set[e] = struct{}{}
-			s.Exps = append(s.Exps, e)
-		}
-	}
-}
-
-// Adds the expression or subexpressions of the given expression which
-// are fork roots.  This does not include reference expressions where the
-// reference might be forked.
-//
-// At the moment this just means sweep expressions.
-func (s *expSetBuilder) AddForkRoots(exp syntax.Exp) {
-	if exp == nil {
-		return
-	}
-	switch exp := exp.(type) {
-	case *syntax.SweepExp:
-		s.Add(exp)
-	case *syntax.ArrayExp:
-		for _, se := range exp.Value {
-			s.AddForkRoots(se)
-		}
-	case *syntax.MapExp:
-		for _, se := range exp.Value {
-			s.AddForkRoots(se)
-		}
-	}
-}
-
-func (s *expSetBuilder) AddPrenodes(prenodes map[string]Nodable) {
-	if len(prenodes) == 0 {
-		return
-	}
-	keys := make([]string, 0, len(prenodes))
-	for k, n := range prenodes {
-		if n == nil {
-			continue
-		}
-		if n := n.getNode(); n != nil && n.swept && len(n.forkRoots) > 0 {
-			keys = append(keys, k)
-		}
-	}
-	sort.Strings(keys)
-	for _, k := range keys {
-		s.AddMany(prenodes[k].getNode().forkRoots)
-	}
-}
-
-func (s *expSetBuilder) AddBindings(bindings map[string]*syntax.ResolvedBinding) {
-	if len(bindings) == 0 {
-		return
-	}
-	keys := make([]string, 0, len(bindings))
-	for k := range bindings {
-		keys = append(keys, k)
-	}
-	sort.Strings(keys)
-	for _, k := range keys {
-		s.AddForkRoots(bindings[k].Exp)
-	}
 }
 
 func (fork ForkId) SourceIndexMap() map[syntax.MapCallSource]syntax.CollectionIndex {

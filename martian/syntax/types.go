@@ -266,19 +266,6 @@ func (s *nullType) FilterJson(data json.RawMessage, _ *TypeLookup) (json.RawMess
 	return []byte("null"), false, s.IsValidJson(data, nil, nil)
 }
 
-func isValidSweep(s Type, exp *SweepExp, pipeline *Pipeline, ast *Ast) error {
-	var errs ErrorList
-	for i, subexp := range exp.Value {
-		if err := s.IsValidExpression(subexp, pipeline, ast); err != nil {
-			errs = append(errs, &IncompatibleTypeError{
-				Message: fmt.Sprintf("sweep element %d", i),
-				Reason:  err,
-			})
-		}
-	}
-	return errs.If()
-}
-
 func isValidSplit(s Type, exp *SplitExp, pipeline *Pipeline, ast *Ast) error {
 	if exp == nil {
 		return fmt.Errorf("cannot split on null")

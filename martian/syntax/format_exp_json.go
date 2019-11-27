@@ -262,54 +262,6 @@ func (e *ArrayExp) jsonSizeEstimate() int {
 	return s
 }
 
-func (e *SweepExp) MarshalJSON() ([]byte, error) {
-	if e == nil || e.Value == nil {
-		return []byte("null"), nil
-	}
-	if len(e.Value) == 0 {
-		return []byte(`{"sweep":[]}`), nil
-	}
-	var buf bytes.Buffer
-	buf.Grow(e.jsonSizeEstimate())
-	err := e.encodeJSON(&buf)
-	return buf.Bytes(), err
-}
-
-func (e *SweepExp) EncodeJSON(buf *bytes.Buffer) error {
-	if e == nil || e.Value == nil {
-		_, err := buf.WriteString("null")
-		return err
-	}
-	return e.encodeJSON(buf)
-}
-
-func (e *SweepExp) encodeJSON(buf *bytes.Buffer) error {
-	buf.WriteString(`{"sweep":[`)
-	for i, v := range e.Value {
-		if i != 0 {
-			if _, err := buf.WriteRune(','); err != nil {
-				return err
-			}
-		}
-		if err := v.EncodeJSON(buf); err != nil {
-			return err
-		}
-	}
-	_, err := buf.WriteString("]}")
-	return err
-}
-
-func (e *SweepExp) jsonSizeEstimate() int {
-	if e == nil {
-		return 4
-	}
-	s := len(`{"sweep":[`) + 1
-	for _, v := range e.Value {
-		s += jsonSizeEstimate(v) + 1
-	}
-	return s
-}
-
 func (e *SplitExp) MarshalJSON() ([]byte, error) {
 	if e == nil {
 		return []byte("null"), nil

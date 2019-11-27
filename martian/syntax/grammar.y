@@ -95,7 +95,7 @@ import (
 %token <val> THREADS MEM_GB VMEM_GB SPECIAL
 %token <val> ID LITSTRING NUM_FLOAT NUM_INT
 %token <val> PY EXEC COMPILED
-%token SELF SWEEP TRUE FALSE NULL DEFAULT
+%token SELF TRUE FALSE NULL DEFAULT
 
 %%
 file
@@ -683,26 +683,6 @@ bind_stm
             Node: NewAstNode($<loc>1, $<srcfile>1),
             Id: $<intern>1.Get($1),
             Exp: $3,
-        } }
-    | id '=' SWEEP '(' exp_list ',' ')' ','
-        { $$ = &BindStm{
-            Node: NewAstNode($<loc>1, $<srcfile>1),
-            Id: $<intern>1.Get($1),
-            Exp: &SweepExp{
-                valExp: valExp{Node: NewAstNode($<loc>3, $<srcfile>3)},
-                Value: $5,
-            },
-            Sweep: true,
-        } }
-    | id '=' SWEEP '(' exp_list ')' ','
-        { $$ = &BindStm{
-            Node: NewAstNode($<loc>1, $<srcfile>1),
-            Id: $<intern>1.Get($1),
-            Exp: &SweepExp{
-                valExp: valExp{Node: NewAstNode($<loc>3, $<srcfile>3)},
-                Value: $5,
-            },
-            Sweep: true,
         } }
     ;
 

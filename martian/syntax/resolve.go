@@ -818,8 +818,6 @@ func resolveDisableExp(r Exp, disable []Exp) ([]Exp, error) {
 			return []Exp{r}, nil
 		}
 		return disable, nil
-	case *SweepExp:
-		return resolveDisableArray(r, r.Value, disable)
 	case *SplitExp:
 		switch v := r.Value.(type) {
 		case *ArrayExp:
@@ -1563,27 +1561,6 @@ func (b *ResolvedBinding) FindRefs(lookup *TypeLookup) ([]*BoundReference, error
 			if refs, err := rb.FindRefs(lookup); err != nil {
 				errs = append(errs, &bindingError{
 					Msg: "in array",
-					Err: err,
-				})
-			} else if len(refs) > 0 {
-				result = append(result, refs...)
-			}
-		}
-		return result, errs.If()
-	case *SweepExp:
-		var errs ErrorList
-		result := make([]*BoundReference, 0, len(exp.Value))
-		for _, e := range exp.Value {
-			if !e.HasRef() {
-				continue
-			}
-			rb := ResolvedBinding{
-				Exp:  e,
-				Type: b.Type,
-			}
-			if refs, err := rb.FindRefs(lookup); err != nil {
-				errs = append(errs, &bindingError{
-					Msg: "in sweep",
 					Err: err,
 				})
 			} else if len(refs) > 0 {

@@ -65,17 +65,6 @@ func NewStagestance(parent Nodable, call *syntax.CallGraphStage) (*Stagestance, 
 			exps[i] = s.MapSource()
 		}
 		self.node.forkRoots = exps
-	} else {
-		var finder expSetBuilder
-		finder.AddPrenodes(self.node.prenodes)
-		finder.AddBindings(call.ResolvedInputs())
-		for _, exp := range self.node.call.Disabled() {
-			finder.AddForkRoots(exp)
-		}
-		self.node.forkRoots = finder.Exps
-		if len(self.node.forkRoots) > 0 {
-			self.node.swept = true
-		}
 	}
 	return self, self.buildForks()
 }
@@ -279,18 +268,6 @@ func NewPipestance(parent Nodable, call *syntax.CallGraphPipeline) (*Pipestance,
 			exps[i] = s.MapSource()
 		}
 		self.node.forkRoots = exps
-	} else {
-		var finder expSetBuilder
-		finder.AddPrenodes(self.node.prenodes)
-		finder.AddBindings(call.ResolvedInputs())
-		finder.AddForkRoots(call.ResolvedOutputs().Exp)
-		for _, exp := range self.node.call.Disabled() {
-			finder.AddForkRoots(exp)
-		}
-		self.node.forkRoots = finder.Exps
-		if len(self.node.forkRoots) > 0 {
-			self.node.swept = true
-		}
 	}
 	return self, self.buildForks()
 }

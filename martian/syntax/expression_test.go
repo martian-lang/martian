@@ -6,7 +6,7 @@ import (
 	"testing"
 )
 
-func TestHasSweep(t *testing.T) {
+func TestHasSplit(t *testing.T) {
 	exp := ArrayExp{
 		Value: []Exp{
 			new(IntExp),
@@ -19,10 +19,12 @@ func TestHasSweep(t *testing.T) {
 			&MapExp{
 				Value: map[string]Exp{
 					"foo": new(IntExp),
-					"bar": &SweepExp{
-						Value: []Exp{
-							new(IntExp),
-							new(FloatExp),
+					"bar": &SplitExp{
+						Value: &ArrayExp{
+							Value: []Exp{
+								new(IntExp),
+								new(FloatExp),
+							},
 						},
 					},
 				},
@@ -31,16 +33,18 @@ func TestHasSweep(t *testing.T) {
 			&ArrayExp{
 				Value: []Exp{new(IntExp)},
 			},
-			&SweepExp{
-				Value: []Exp{
-					new(IntExp),
-					new(FloatExp),
+			&SplitExp{
+				Value: &ArrayExp{
+					Value: []Exp{
+						new(IntExp),
+						new(FloatExp),
+					},
 				},
 			},
 			new(RefExp),
 		},
 	}
-	if !exp.HasSweep() {
+	if !exp.HasSplit() {
 		t.Error("expected true")
 	}
 	for i, e := range []bool{
@@ -53,7 +57,7 @@ func TestHasSweep(t *testing.T) {
 		true,  // array
 		false, // ref
 	} {
-		if exp.Value[i].HasSweep() != e {
+		if exp.Value[i].HasSplit() != e {
 			t.Errorf("expected %v for value %s",
 				e, exp.Value[i].GoString())
 		}
