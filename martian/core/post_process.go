@@ -234,7 +234,7 @@ func moveOutDir(w *bytes.Buffer, value json.RawMessage,
 		p.CacheIsFile(t.Elem)
 		for i, k := range keys {
 			writeKey(i, k)
-			p.OutName = k
+			p.Id = k
 			if err := moveOutFiles(w,
 				&p,
 				t.Elem.IsFile(),

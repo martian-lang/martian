@@ -206,10 +206,10 @@ func TestPostProcess(t *testing.T) {
 	check("inner/results1/c1/file2", "5")
 	check("inner/results1/c2/file1.txt", "6")
 	check("inner/output_name/c1/output_name.file", "7")
-	check("files1/0/c1", "8")
-	check("files1/0/c2", "9")
-	check("files1/1/c1", "10")
-	check("files1/1/c2", "11")
+	check("files1/0/c1.txt", "8")
+	check("files1/0/c2.txt", "9")
+	check("files1/1/c1.txt", "10")
+	check("files1/1/c2.txt", "11")
 	if _, err := os.Stat(filepath.Join(psOuts, "inner/output_name/c2")); err == nil {
 		t.Error("unexpected file inner/output_name/c2")
 	}
@@ -243,12 +243,12 @@ func TestPostProcess(t *testing.T) {
     }
 - files1:        [
     0: {
-      c1: outs/files1/0/c1
-      c2: outs/files1/0/c2
+      c1: outs/files1/0/c1.txt
+      c2: outs/files1/0/c2.txt
     }
     1: {
-      c1: outs/files1/1/c1
-      c2: outs/files1/1/c2
+      c1: outs/files1/1/c1.txt
+      c2: outs/files1/1/c2.txt
     }
   ]
 - some ints:     [2,3]
