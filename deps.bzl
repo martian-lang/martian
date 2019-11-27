@@ -1,7 +1,20 @@
 load("@bazel_tools//tools/build_defs/repo:http.bzl", "http_archive")
-load("@bazel_gazelle//:deps.bzl", "go_repository")
+load("@bazel_gazelle//:deps.bzl", "gazelle_dependencies", "go_repository")
 
 def martian_dependencies():
+    """Loads remote repositories required to build martian."""
+
+    # Do this before gazelle_dependencies because gazelle wants
+    # an older version.
+    _maybe(
+        go_repository,
+        name = "org_golang_x_sys",
+        commit = "fde4db37ae7ad8191b03d30d27f258b5291ae4e3",
+        importpath = "golang.org/x/sys",
+    )
+
+    gazelle_dependencies()
+
     _maybe(
         go_repository,
         name = "com_github_dustin_go_humanize",
@@ -31,19 +44,11 @@ def martian_dependencies():
     )
 
     _maybe(
-        go_repository,
-        name = "org_golang_x_sys",
-        commit = "d0b11bdaac8adb652bff00e49bcacf992835621a",
-        importpath = "golang.org/x/sys",
-        shallow_since = "1547471016 +0000",
-    )
-
-    _maybe(
         # This actually already brought in by rules_go, and
         # is included here mostly for clarity.
         go_repository,
         name = "org_golang_x_tools",
-        commit = "c8855242db9c1762032abe33c2dff50de3ec9d05",
+        commit = "65e3620a7ae7ac25e8494a60f0e5ef4e4fba03b3",
         importpath = "golang.org/x/tools",
     )
 

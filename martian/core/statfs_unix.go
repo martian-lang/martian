@@ -46,6 +46,8 @@ func FsTypeString(fsType int64) string {
 		return "befs"
 	case 0x1badface:
 		return "bfs"
+	case unix.BINDERFS_SUPER_MAGIC:
+		return "binderfs"
 	case unix.BINFMTFS_MAGIC:
 		return "binfmt"
 	case unix.BPF_FS_MAGIC:
