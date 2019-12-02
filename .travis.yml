@@ -17,6 +17,10 @@ matrix:
     dist: trusty
     before_install:
     - pyenv global 2.7
+    before_script:
+    - nvm install --lts node
+    - npm install -g npm@^6.10
+    - pip install --user pylint
   - name: "python3"
     go:
     - 1.12.x
@@ -24,18 +28,22 @@ matrix:
     dist: xenial
     before_install:
     - pyenv global 3.7
+    before_script:
+    - nvm install --lts node
+    - npm install -g npm@^6.10
+    - pip install --user pylint
   - name: "bazel"
     sudo: true
     dist: xenial
     before_install:
     - pyenv global 3.7
     - |
-      BAZEL_VERSION=0.28.1
+      BAZEL_VERSION=0.29.1
       OS="${TRAVIS_OS_NAME}"
       if [[ "${OS}" == "osx" ]]; then
         OS=darwin
       else
-        sysctl kernel.unprivileged_userns_clone=1
+        sudo sysctl kernel.unprivileged_userns_clone=1
       fi
       URL="https://github.com/bazelbuild/bazel/releases/download/${BAZEL_VERSION}/bazel-${BAZEL_VERSION}-installer-${OS}-x86_64.sh"
       wget -O install.sh "${URL}"
@@ -63,10 +71,6 @@ matrix:
 before_install:
 - python --version
 - pip --version
-before_script:
-- nvm install --lts node
-- npm install -g npm@^6.10
-- pip install --user pylint
 script:
 - "./.travis.gofmt.sh"
 - make test

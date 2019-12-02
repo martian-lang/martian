@@ -1,8 +1,17 @@
+"""Repository macro to load remote dependencies."""
+
 load("@bazel_tools//tools/build_defs/repo:http.bzl", "http_archive")
 load("@bazel_gazelle//:deps.bzl", "gazelle_dependencies", "go_repository")
 
-def martian_dependencies():
-    """Loads remote repositories required to build martian."""
+def martian_dependencies(
+        rules_nodejs_version = "0.42.1",
+        rules_nodejs_sha = "c612d6b76eaa17540e8b8c806e02701ed38891460f9ba3303f4424615437887a"):
+    """Loads remote repositories required to build martian.
+
+    Args:
+        rules_nodejs_version: Override the default version of rules_nodejs.
+        rules_nodejs_sha: Override the expected checksum for rules_nodejs.
+    """
 
     # Do this before gazelle_dependencies because gazelle wants
     # an older version.
@@ -55,8 +64,14 @@ def martian_dependencies():
     _maybe(
         http_archive,
         name = "build_bazel_rules_nodejs",
-        sha256 = "88e5e579fb9edfbd19791b8a3c6bfbe16ae3444dba4b428e5efd36856db7cf16",
-        urls = ["https://github.com/bazelbuild/rules_nodejs/releases/download/0.27.8/rules_nodejs-0.27.8.tar.gz"],
+        sha256 = rules_nodejs_sha,
+        urls = [
+            "https://github.com/bazelbuild/rules_nodejs/releases/download/" +
+            "{}/rules_nodejs-{}.tar.gz".format(
+                rules_nodejs_version,
+                rules_nodejs_version,
+            ),
+        ],
     )
 
 def _maybe(repo_rule, name, **kwargs):

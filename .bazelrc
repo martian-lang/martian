@@ -1,2 +1,29 @@
 build --workspace_status_command=./tools/status.sh
 test  --test_output errors
+# Bazel 1.0 migration
+build --incompatible_assignment_identifiers_have_local_scope
+build --incompatible_auto_configure_host_platform
+build --incompatible_disable_legacy_proto_provider
+build --incompatible_disable_nocopts
+build --incompatible_disable_partition_default_parameter
+build --incompatible_disable_proto_source_root
+build --incompatible_disable_static_cc_toolchains
+build --incompatible_disallow_hashing_frozen_mutables
+build --incompatible_disallow_legacy_java_provider
+build --incompatible_disallow_legacy_javainfo
+build --incompatible_disallow_rule_execution_platform_constraints_allowed
+build --incompatible_disallow_split_empty_separator
+build --incompatible_do_not_emit_buggy_external_repo_import
+build --incompatible_enable_profile_by_default
+build --incompatible_generated_protos_in_virtual_imports
+build --incompatible_make_thinlto_command_lines_standalone
+build --incompatible_no_target_output_group
+build --incompatible_remove_legacy_whole_archive
+build --incompatible_require_java_toolchain_header_compiler_direct
+build --incompatible_restrict_attribute_names
+build --incompatible_restrict_named_params
+build --incompatible_skip_genfiles_symlink
+build --incompatible_tls_enabled_removed
+build --incompatible_use_aapt2_by_default
+build --incompatible_use_native_patch
+build --incompatible_use_specific_tool_files
