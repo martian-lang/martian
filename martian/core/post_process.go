@@ -163,6 +163,7 @@ func moveOutFiles(w *bytes.Buffer, param *syntax.StructMember,
 func moveOutDir(w *bytes.Buffer, value json.RawMessage,
 	member *syntax.StructMember, lookup *syntax.TypeLookup,
 	pipestancePath, outsPath string) error {
+
 	t := lookup.Get(member.Tname)
 	outPath := path.Join(outsPath, member.GetOutFilename())
 	if err := os.Mkdir(outPath, 0775); err != nil {
@@ -253,10 +254,11 @@ func moveOutDir(w *bytes.Buffer, value json.RawMessage,
 		sort.Strings(keys)
 		for i, k := range keys {
 			writeKey(i, k)
+			m := t.Table[k]
 			if err := moveOutFiles(w,
-				t.Members[i],
-				t.Members[i].IsFile(),
-				valueMap[t.Members[i].Id],
+				m,
+				m.IsFile(),
+				valueMap[k],
 				lookup,
 				pipestancePath,
 				outPath); err != nil {
@@ -329,6 +331,10 @@ func moveOutFile(w *bytes.Buffer, param *syntax.StructMember,
 		if _, err := w.Write(value); err != nil {
 			return err
 		}
+		return err
+	}
+	if filePath == "" {
+		_, err := w.Write(nullBytes)
 		return err
 	}
 	// If file doesn't exist (e.g. stage just didn't create it)

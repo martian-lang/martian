@@ -59,13 +59,15 @@ pipeline INNER(
 }
 
 pipeline OUTER(
-    in  int        foo,
-    out txt        text    "one text file",
-    out INNER      inner,
-    out map<txt>[] files1,
-    out int[]      bars    "some ints"      "ints_with_names",
-    out FOO[]      strs,
-    out txt[]      texts   "some files"     "output_text_file_set",
+    in  int          foo,
+    out txt          text    "one text file",
+    out INNER        inner,
+    out map<txt>[]   files1,
+    out int[]        bars    "some ints"      "ints_with_names",
+    out FOO[]        strs,
+    out txt[]        texts   "some files"     "output_text_file_set",
+    out CREATOR      one,
+    out map<CREATOR> many    "many files"     "file_sets",
 )
 {
     call INNER(
@@ -99,6 +101,8 @@ pipeline OUTER(
             },
         ],
         texts  = [INNER.bar.file2],
+        one    = INNER.bar,
+        many   = INNER.results1,
     )
 }
 

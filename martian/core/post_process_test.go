@@ -31,12 +31,14 @@ type innerPipeline struct {
 }
 
 type outerPipeline struct {
-	Text   string              `json:"text"`
-	Inner  innerPipeline       `json:"inner"`
-	Files1 []map[string]string `json:"files1"`
-	Bars   []int               `json:"bars"`
-	Strs   []fooStruct         `json:"strs"`
-	Texts  []string            `json:"texts"`
+	Text   string                   `json:"text"`
+	Inner  innerPipeline            `json:"inner"`
+	Files1 []map[string]string      `json:"files1"`
+	Bars   []int                    `json:"bars"`
+	Strs   []fooStruct              `json:"strs"`
+	Texts  []string                 `json:"texts"`
+	One    *creatorStage            `json:"one"`
+	Many   map[string]*creatorStage `json:"many"`
 }
 
 func compareOutputText(t *testing.T, expected, actual string) {
@@ -144,14 +146,15 @@ func TestPostProcess(t *testing.T) {
 	c4 := creatorStage{
 		File3: files[7],
 	}
+	r1 := map[string]*creatorStage{
+		"c1": &c2,
+		"c2": &c3,
+	}
 	if err := fork.metadata.Write(OutsFile, &outerPipeline{
 		Text: files[0],
 		Inner: innerPipeline{
-			Bar: c1,
-			Results1: map[string]*creatorStage{
-				"c1": &c2,
-				"c2": &c3,
-			},
+			Bar:      c1,
+			Results1: r1,
 			Results2: map[string]*creatorStage{
 				"c1": &c4,
 				"c2": nil,
@@ -173,6 +176,8 @@ func TestPostProcess(t *testing.T) {
 			fooStruct{File1: "foo2"},
 		},
 		Texts: files[12:],
+		One:   &c3,
+		Many:  r1,
 	}); err != nil {
 		t.Error(err)
 	}
@@ -258,7 +263,24 @@ func TestPostProcess(t *testing.T) {
   ]
 - some files:    [
     0: outs/output_text_file_set/0.txt
-  ]`
+  ]
+- one:
+    bar:       null
+    file1:     outs/inner/results1/c2/file1.txt
+    file2:     null
+    help text: null
+- many files:    {
+    c1:
+      bar:       null
+      file1:     outs/inner/results1/c1/file1.txt
+      file2:     outs/inner/results1/c1/file2
+      help text: null
+    c2:
+      bar:       null
+      file1:     outs/inner/results1/c2/file1.txt
+      file2:     null
+      help text: null
+  }`
 	compareOutputText(t, expectSummary,
 		strings.Replace(buf.String(), psPath+"/", "", -1))
 	var outs outerPipeline
@@ -462,7 +484,9 @@ func TestPostProcessEmpties(t *testing.T) {
 - files1:        []
 - some ints:     null
 - strs:          []
-- some files:    null`, exeFile, exeFile)
+- some files:    null
+- one:           null
+- many files:    null`, exeFile, exeFile)
 	compareOutputText(t, expectSummary,
 		strings.Replace(buf.String(), psPath+"/", "", -1))
 }

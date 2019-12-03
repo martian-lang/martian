@@ -499,7 +499,7 @@ func (node *TopNode) resolveArray(binding *syntax.ArrayExp, t syntax.Type,
 		if ready, v, err := node.resolve(exp, t,
 			fork, readSize); err != nil {
 			allReady = ready && allReady
-			err = append(errs, err)
+			errs = append(errs, err)
 		} else if !ready {
 			allReady = false
 		} else {

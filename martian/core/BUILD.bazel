@@ -67,6 +67,7 @@ go_test(
         "testdata/mock_stages.mro",
         "testdata/stages.mro",
         "testdata/struct_pipeline.mro",
+        "testdata/simple_struct_pipeline.mro",
         "testdata/sub/stages.mro",
         "testdata/vsize.py",
     ],

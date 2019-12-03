@@ -181,8 +181,57 @@ func TestLazyArgumentMap_jsonPath(t *testing.T) {
 	}
 }
 
+func TestJsonPath(t *testing.T) {
+	result := jsonPath([]byte(`{
+		"foo1": {
+			"bar": 0,
+			"baz": [
+				{
+					"a": 1,
+					"b": {
+						"c": "2",
+						"d": 8
+					}
+				},
+				{
+					"a": 3,
+					"b": {
+						"c": "4"
+					},
+					"c": "bar"
+				},
+				null
+			]
+		},
+		"foo2": null
+	}`), "foo1.baz.a")
+	if b, err := json.Marshal(result); err != nil {
+		t.Error(err)
+	} else if string(b) != `[1,3,null]` {
+		t.Errorf("%q != [1,3,null]", b)
+	}
+	if b, err := json.Marshal(jsonPath([]byte(`null`), "foo1.baz.a")); err != nil {
+		t.Error(err)
+	} else if string(b) != "null" {
+		t.Errorf("%q != null", b)
+	}
+}
+
+// Compares the json form of a value to an expected one, after replacing
+// all instances of psPath with an empty string, and including line-by-line
+// information to make debugging easier.
+func checkJsonOutput(t *testing.T, result json.Marshaler, psPath, expected string) {
+	t.Helper()
+	by, err := json.MarshalIndent(result, "", "\t")
+	if err != nil {
+		t.Fatal(err)
+	}
+	compareOutputText(t, expected,
+		strings.Replace(string(by), psPath+"/", "", -1))
+}
+
 // Sets up a test pipestance.
-func setupTestPipestance(t *testing.T, name string) (*Pipestance, string) {
+func setupTestPipestance(t *testing.T, mro, name string) (*Pipestance, string) {
 	t.Helper()
 	util.MockSignalHandlersForTest()
 	psOuts, err := filepath.Abs(
@@ -200,7 +249,7 @@ func setupTestPipestance(t *testing.T, name string) (*Pipestance, string) {
 		t.Fatal(err)
 	}
 
-	src, err := ioutil.ReadFile("testdata/struct_pipeline.mro")
+	src, err := ioutil.ReadFile(mro)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -215,13 +264,143 @@ func setupTestPipestance(t *testing.T, name string) (*Pipestance, string) {
 	}
 	rt.JobManager = rt.LocalJobManager
 	_, _, pipestance, err := rt.instantiatePipeline(string(src),
-		"testdata/struct_pipeline.mro",
+		mro,
 		"test_struct_pipeline", psPath, nil,
 		"none", nil, false, context.Background())
 	if err != nil {
 		os.RemoveAll(psPath)
 		t.Fatal(err)
 	}
+	return pipestance, psPath
+}
+
+func touch(t *testing.T, md *Metadata, n string) string {
+	t.Helper()
+	fn := md.FilePath(n)
+	if f, err := os.Create(fn); err != nil {
+		t.Error(err)
+	} else {
+		defer f.Close()
+		if _, err := f.WriteString(n); err != nil {
+			t.Error(err)
+		}
+	}
+	return fn
+}
+
+func setupSimpleStructPipestance(t *testing.T, name string) (*Pipestance, string) {
+	t.Helper()
+	pipestance, psPath := setupTestPipestance(t,
+		"testdata/simple_struct_pipeline.mro", name)
+	type foo struct {
+		A string `json:"a"`
+		B string `json:"b"`
+		C string `json:"c"`
+		D string `json:"d"`
+	}
+	type fooBar struct {
+		Bar int `json:"bar"`
+		Foo foo `json:"foo"`
+	}
+	type makeFooBar struct {
+		FooBar fooBar `json:"foobar"`
+	}
+	node := pipestance.node
+	if fb := node.top.allNodes[node.GetFQName()+".MAKEFOOBAR"]; fb == nil {
+		os.RemoveAll(psPath)
+		t.Fatal("Could not get node for MAKEFOOBAR")
+	} else {
+		if err := fb.mkdirs(); err != nil {
+			t.Error(err)
+		}
+		md := fb.forks[0].metadata
+		outs := makeFooBar{
+			FooBar: fooBar{
+				Bar: 1,
+				Foo: foo{
+					A: touch(t, md, "a"),
+					B: touch(t, md, "b"),
+					C: touch(t, md, "c"),
+					D: touch(t, md, "d"),
+				},
+			},
+		}
+		if err := md.Write(OutsFile, &outs); err != nil {
+			t.Error(err)
+		}
+	}
+	return pipestance, psPath
+}
+
+func TestResolveSimplePipelineOutputs(t *testing.T) {
+	pipestance, psPath := setupSimpleStructPipestance(t, "resolve_simple_outputs")
+	defer func() {
+		if !t.Failed() {
+			os.RemoveAll(psPath)
+		}
+	}()
+	if pipestance == nil {
+		return
+	}
+	result, err := pipestance.node.resolvePipelineOutputs(nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	const expected = `{
+	"foobar": {
+		"bar": 1,
+		"foo": {
+			"a": "HELLO/MAKEFOOBAR/fork0/files/a",
+			"b": "HELLO/MAKEFOOBAR/fork0/files/b",
+			"c": "HELLO/MAKEFOOBAR/fork0/files/c",
+			"d": "HELLO/MAKEFOOBAR/fork0/files/d"
+		}
+	}
+}`
+	checkJsonOutput(t, result, psPath, expected)
+	// Now check that post-process won't mangle it too badly.
+	fork := pipestance.node.forks[0]
+	if err := fork.metadata.Write(OutsFile, result); err != nil {
+		t.Error(err)
+	}
+	var buf strings.Builder
+	util.SetPrintLogger(&buf)
+	if err := fork.postProcess(); err != nil {
+		t.Error(err)
+	}
+	util.SetPrintLogger(&devNull)
+	const expectSummary = `Outputs:
+- foobar:
+    foo:
+      a: outs/foobar/foo/a.csv
+      b: outs/foobar/foo/b.csv
+      c: outs/foobar/foo/c.csv
+      d: outs/foobar/foo/d.csv
+    bar: 1`
+	compareOutputText(t, expectSummary,
+		strings.Replace(buf.String(), psPath+"/", "", -1))
+	if b, err := fork.metadata.readRawBytes(OutsFile); err != nil {
+		t.Error(err)
+	} else {
+		const expectedUpdated = `{
+	"foobar": {
+		"bar": 1,
+		"foo": {
+			"a": "outs/foobar/foo/a.csv",
+			"b": "outs/foobar/foo/b.csv",
+			"c": "outs/foobar/foo/c.csv",
+			"d": "outs/foobar/foo/d.csv"
+		}
+	}
+}`
+		checkJsonOutput(t, json.RawMessage(b), psPath, expectedUpdated)
+	}
+}
+
+func setupTestStructPipestance(t *testing.T, name string) (*Pipestance, string) {
+	t.Helper()
+	pipestance, psPath := setupTestPipestance(t,
+		"testdata/struct_pipeline.mro", name)
 	type creator struct {
 		Bar   *int   `json:"bar"`
 		File1 string `json:"file1"`
@@ -240,9 +419,9 @@ func setupTestPipestance(t *testing.T, name string) (*Pipestance, string) {
 		b := 1
 		outs := creator{
 			Bar:   &b,
-			File1: md.FilePath("file1"),
-			File2: md.FilePath("file2"),
-			File3: md.FilePath("file3"),
+			File1: touch(t, md, "file1"),
+			File2: touch(t, md, "file2"),
+			File3: touch(t, md, "file3"),
 		}
 		if err := md.Write(OutsFile, &outs); err != nil {
 			t.Error(err)
@@ -257,8 +436,9 @@ func setupTestPipestance(t *testing.T, name string) (*Pipestance, string) {
 		}
 		md := c2.forks[0].metadata
 		outs := creator{
-			File1: md.FilePath("file1"),
-			File2: md.FilePath("file2"),
+			File1: touch(t, md, "file1"),
+			File2: touch(t, md, "file2"),
+			File3: md.FilePath("file3"), // file that does not exist.
 		}
 		if err := md.Write(OutsFile, &outs); err != nil {
 			t.Error(err)
@@ -278,21 +458,8 @@ func setupTestPipestance(t *testing.T, name string) (*Pipestance, string) {
 	return pipestance, psPath
 }
 
-// Compares the json form of a value to an expected one, after replacing
-// all instances of psPath with an empty string, and including line-by-line
-// information to make debugging easier.
-func checkJsonOutput(t *testing.T, result json.Marshaler, psPath, expected string) {
-	t.Helper()
-	by, err := json.MarshalIndent(result, "", "\t")
-	if err != nil {
-		t.Fatal(err)
-	}
-	compareOutputText(t, expected,
-		strings.Replace(string(by), psPath+"/", "", -1))
-}
-
 func TestResolvePipelineOutputs(t *testing.T) {
-	pipestance, psPath := setupTestPipestance(t, "resolve_pipeline_outputs")
+	pipestance, psPath := setupTestStructPipestance(t, "resolve_pipeline_outputs")
 	defer func() {
 		if !t.Failed() {
 			os.RemoveAll(psPath)
@@ -326,7 +493,7 @@ func TestResolvePipelineOutputs(t *testing.T) {
 			"bar": null,
 			"file1": "OUTER/INNER/C2/fork0/files/file1",
 			"file2": "OUTER/INNER/C2/fork0/files/file2",
-			"file3": ""
+			"file3": "OUTER/INNER/C2/fork0/files/file3"
 		},
 		"results1": {
 			"c1": {
@@ -339,7 +506,7 @@ func TestResolvePipelineOutputs(t *testing.T) {
 				"bar": null,
 				"file1": "OUTER/INNER/C2/fork0/files/file1",
 				"file2": "OUTER/INNER/C2/fork0/files/file2",
-				"file3": ""
+				"file3": "OUTER/INNER/C2/fork0/files/file3"
 			}
 		},
 		"results2": {
@@ -351,6 +518,26 @@ func TestResolvePipelineOutputs(t *testing.T) {
 			},
 			"c2": null
 		}
+	},
+	"many": {
+		"c1": {
+			"bar": 1,
+			"file1": "OUTER/INNER/C1/fork0/files/file1",
+			"file2": "OUTER/INNER/C1/fork0/files/file2",
+			"file3": "OUTER/INNER/C1/fork0/files/file3"
+		},
+		"c2": {
+			"bar": null,
+			"file1": "OUTER/INNER/C2/fork0/files/file1",
+			"file2": "OUTER/INNER/C2/fork0/files/file2",
+			"file3": "OUTER/INNER/C2/fork0/files/file3"
+		}
+	},
+	"one": {
+		"bar": null,
+		"file1": "OUTER/INNER/C2/fork0/files/file1",
+		"file2": "OUTER/INNER/C2/fork0/files/file2",
+		"file3": "OUTER/INNER/C2/fork0/files/file3"
 	},
 	"strs": [
 		{
@@ -366,10 +553,170 @@ func TestResolvePipelineOutputs(t *testing.T) {
 	]
 }`
 	checkJsonOutput(t, result, psPath, expected)
+	// Now check that post-process won't mangle it too badly.
+	fork := pipestance.node.forks[0]
+	if err := fork.metadata.Write(OutsFile, result); err != nil {
+		t.Error(err)
+	}
+	var buf strings.Builder
+	util.SetPrintLogger(&buf)
+	if err := fork.postProcess(); err != nil {
+		t.Error(err)
+	}
+	util.SetPrintLogger(&devNull)
+	const expectSummary = `Outputs:
+- one text file: outs/text.txt
+- inner:
+    bar:
+      bar:       null
+      file1:     outs/text.txt
+      file2:     outs/inner/bar/file2
+      help text: null
+    results1:    {
+      c1:
+        bar:       1
+        file1:     outs/inner/results1/c1/file1.txt
+        file2:     outs/inner/results1/c1/file2
+        help text: outs/inner/results1/c1/output_name.file
+      c2:
+        bar:       null
+        file1:     outs/text.txt
+        file2:     outs/inner/bar/file2
+        help text: null
+    }
+    description: {
+      c1:
+        bar:       1
+        file1:     outs/inner/results1/c1/file1.txt
+        file2:     outs/inner/results1/c1/file2
+        help text: outs/inner/results1/c1/output_name.file
+      c2: null
+    }
+- files1:        [
+    0: {
+      c1: outs/inner/results1/c1/file1.txt
+      c2: outs/text.txt
+    }
+    1: {
+      c1: outs/inner/results1/c1/file1.txt
+      c2: null
+    }
+  ]
+- some ints:     [null,3]
+- strs:          [
+    {"file1":"OUTER/INNER/C2/fork0/files/file1"}
+    {"file1":"foo"}
+  ]
+- some files:    [
+    0: outs/inner/bar/file2
+  ]
+- one:
+    bar:       null
+    file1:     outs/text.txt
+    file2:     outs/inner/bar/file2
+    help text: null
+- many files:    {
+    c1:
+      bar:       1
+      file1:     outs/inner/results1/c1/file1.txt
+      file2:     outs/inner/results1/c1/file2
+      help text: outs/inner/results1/c1/output_name.file
+    c2:
+      bar:       null
+      file1:     outs/text.txt
+      file2:     outs/inner/bar/file2
+      help text: null
+  }`
+	compareOutputText(t, expectSummary,
+		strings.Replace(buf.String(), psPath+"/", "", -1))
+	if b, err := fork.metadata.readRawBytes(OutsFile); err != nil {
+		t.Error(err)
+	} else {
+		const expectedUpdated = `{
+	"bars": [
+		null,
+		3
+	],
+	"files1": [
+		{
+			"c1": "outs/inner/results1/c1/file1.txt",
+			"c2": "outs/text.txt"
+		},
+		{
+			"c1": "outs/inner/results1/c1/file1.txt",
+			"c2": null
+		}
+	],
+	"inner": {
+		"bar": {
+			"bar": null,
+			"file1": "outs/text.txt",
+			"file2": "outs/inner/bar/file2",
+			"file3": null
+		},
+		"results1": {
+			"c1": {
+				"bar": 1,
+				"file1": "outs/inner/results1/c1/file1.txt",
+				"file2": "outs/inner/results1/c1/file2",
+				"file3": "outs/inner/results1/c1/output_name.file"
+			},
+			"c2": {
+				"bar": null,
+				"file1": "outs/text.txt",
+				"file2": "outs/inner/bar/file2",
+				"file3": null
+			}
+		},
+		"results2": {
+			"c1": {
+				"bar": 1,
+				"file1": "outs/inner/results1/c1/file1.txt",
+				"file2": "outs/inner/results1/c1/file2",
+				"file3": "outs/inner/results1/c1/output_name.file"
+			},
+			"c2": null
+		}
+	},
+	"many": {
+		"c1": {
+			"bar": 1,
+			"file1": "outs/inner/results1/c1/file1.txt",
+			"file2": "outs/inner/results1/c1/file2",
+			"file3": "outs/inner/results1/c1/output_name.file"
+		},
+		"c2": {
+			"bar": null,
+			"file1": "outs/text.txt",
+			"file2": "outs/inner/bar/file2",
+			"file3": null
+		}
+	},
+	"one": {
+		"bar": null,
+		"file1": "outs/text.txt",
+		"file2": "outs/inner/bar/file2",
+		"file3": null
+	},
+	"strs": [
+		{
+			"file1": "OUTER/INNER/C2/fork0/files/file1"
+		},
+		{
+			"file1": "foo"
+		}
+	],
+	"text": "outs/text.txt",
+	"texts": [
+		"outs/inner/bar/file2"
+	]
+}`
+		checkJsonOutput(t, json.RawMessage(b), psPath, expectedUpdated)
+	}
 }
 
 func TestResolveInputs(t *testing.T) {
-	pipestance, psPath := setupTestPipestance(t, "resolve_inputs")
+	pipestance, psPath := setupTestStructPipestance(t, "resolve_inputs")
 	defer func() {
 		if !t.Failed() {
 			os.RemoveAll(psPath)
@@ -402,4 +749,41 @@ func TestResolveInputs(t *testing.T) {
 	}
 }`
 	checkJsonOutput(t, result, psPath, expected)
+}
+
+func TestResolvePipelineStructOutput(t *testing.T) {
+	const src = `filetype csv;
+
+struct Foo(
+	csv a,
+	csv b,
+	csv c,
+	csv d,
+)
+
+struct FooBar(
+	Foo foo,
+	int bar,
+)
+
+stage MAKEFOOBAR(
+	out FooBar foobar,
+	src py     "makefoobar",
+)
+
+pipeline HELLO(
+	out FooBar foobar,
+)
+{
+	call MAKEFOOBAR(
+	)
+
+	return (
+		foobar = MAKEFOOBAR.foobar,
+	)
+}
+
+call HELLO(
+)
+`
 }

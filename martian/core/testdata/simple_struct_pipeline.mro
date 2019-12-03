@@ -1,0 +1,33 @@
+filetype csv;
+
+struct Foo(
+    csv a,
+    csv b,
+    csv c,
+    csv d,
+)
+
+struct FooBar(
+    Foo foo,
+    int bar,
+)
+
+stage MAKEFOOBAR(
+    out FooBar foobar,
+    src comp   "makefoobar",
+)
+
+pipeline HELLO(
+    out FooBar foobar,
+)
+{
+    call MAKEFOOBAR(
+    )
+
+    return (
+        foobar = MAKEFOOBAR.foobar,
+    )
+}
+
+call HELLO(
+)

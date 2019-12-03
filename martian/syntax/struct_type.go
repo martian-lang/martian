@@ -393,7 +393,7 @@ func (s *StructType) FilterJson(data json.RawMessage, lookup *TypeLookup) (json.
 		}
 	}
 	if !different {
-		return data, false, nil
+		return data, fatal, errs.If()
 	}
 	if _, err := buf.WriteRune('}'); err != nil {
 		panic(err)

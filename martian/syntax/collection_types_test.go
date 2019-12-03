@@ -13,16 +13,17 @@ func TestArrayFilterJson(t *testing.T) {
 	_, _, ast, err := ParseSourceBytes([]byte(`
 struct BAR(
     string c,
+    int    e,
 )
 
 struct BAZ(
-	int a,
-	BAR b,
+    int a,
+    BAR b,
 )
 
 struct FOO(
-	int   bar,
-	BAZ[] baz,
+    int   bar,
+    BAZ[] baz,
 )`), "example.mro", nil, false)
 	if err != nil {
 		t.Fatal(err)
@@ -40,13 +41,15 @@ struct FOO(
 					"a": 1.0,
 					"b": {
 						"c": "2",
-						"d": 8
+						"d": 8,
+						"e": 9
 					}
 				},
 				{
 					"a": 3,
 					"b": {
-						"c": "4"
+						"c": "4",
+						"e": 10
 					},
 					"c": "bar"
 				}
@@ -56,7 +59,7 @@ struct FOO(
 	if b, fatal, err := ty.FilterJson(j, lookup); err == nil {
 		t.Error("expected warning")
 	} else if fatal {
-		t.Error("expected non-fatal")
+		t.Error("expected non-fatal", err)
 	} else {
 		var buf bytes.Buffer
 		if err := json.Indent(&buf, b, "\t\t", "\t"); err != nil {
@@ -68,13 +71,15 @@ struct FOO(
 					{
 						"a": 1,
 						"b": {
-							"c": "2"
+							"c": "2",
+							"e": 9
 						}
 					},
 					{
 						"a": 3,
 						"b": {
-							"c": "4"
+							"c": "4",
+							"e": 10
 						}
 					}
 				]
@@ -82,6 +87,40 @@ struct FOO(
 		}` {
 			t.Error(s)
 		}
+	}
+
+	j = []byte(`{
+		"foo1": {
+			"bar": 0,
+			"baz": [
+				{
+					"a": 1.0,
+					"b": {
+						"c": "2",
+						"d": 8
+					}
+				},
+				{
+					"a": 3,
+					"b": {
+						"c": "4",
+						"e": 10
+					},
+					"c": "bar"
+				}
+			]
+		}
+	}`)
+	var messages strings.Builder
+	if err := ty.IsValidJson(j, &messages, lookup); err == nil {
+		t.Error("expected error")
+	}
+	if _, fatal, err := ty.FilterJson(j, lookup); err == nil {
+		t.Error("expected error")
+	} else if !fatal {
+		t.Error("expected fatal", err)
+	} else if !strings.Contains(err.Error(), "missing field") {
+		t.Error("expected missing field error, got", err)
 	}
 }
 
