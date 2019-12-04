@@ -26,10 +26,7 @@ export GOBIN=$(PWD)/bin
 #
 all: grammar all-bins web test mrs
 
-$(GOBIN)/goyacc: vendor/golang.org/x/tools/cmd/goyacc/yacc.go
-	go install -mod=vendor golang.org/x/tools/cmd/goyacc
-
-martian/syntax/grammar.go: $(GOBIN)/goyacc martian/syntax/grammar.y martian/syntax/lexer.go
+martian/syntax/grammar.go: martian/syntax/grammar.y martian/syntax/lexer.go
 	PATH="$(GOBIN):$(PATH)" go generate ./martian/syntax
 
 martian/test/sum_squares/types.go: PATH:=$(GOBIN):$(PATH)
