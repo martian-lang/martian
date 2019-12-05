@@ -12,6 +12,9 @@ import (
 
 func (params *InParams) compile(global *Ast) error {
 	var errs ErrorList
+	if len(params.List) > 0 {
+		params.Table = make(map[string]*InParam, len(params.List))
+	}
 	for _, param := range params.List {
 		// Check for duplicates
 		if _, ok := params.Table[param.GetId()]; ok {
@@ -88,6 +91,9 @@ func (param *OutParam) compile(global *Ast) error {
 
 func (params *OutParams) compile(global *Ast) error {
 	var errs ErrorList
+	if len(params.List) > 0 {
+		params.Table = make(map[string]*OutParam, len(params.List))
+	}
 	for _, param := range params.List {
 		// Check for duplicates
 		if _, ok := params.Table[param.GetId()]; ok {
@@ -225,18 +231,24 @@ func (exp *RefExp) resolveType(global *Ast, pipeline *Pipeline) (TypeId, MapCall
 			}
 		}
 		// Check referenced output is actually an output of the callable.
-		idParts := strings.SplitN(exp.OutputId, ".", 2)
-		param, ok := callable.GetOutParams().Table[idParts[0]]
+		dotIndex := strings.IndexRune(exp.OutputId, '.')
+		outputRoot := exp.OutputId
+		var suffix string
+		if dotIndex >= 0 {
+			suffix = outputRoot[dotIndex+1:]
+			outputRoot = outputRoot[:dotIndex]
+		}
+		param, ok := callable.GetOutParams().Table[outputRoot]
 		if !ok {
 			return TypeId{}, call.Mapping, global.err(exp,
 				"NoSuchOutputError: '%s' is not an output parameter of '%s'",
 				exp.OutputId, callable.GetId())
 		}
 		t := param.GetTname()
-		if len(idParts) > 1 {
+		if len(suffix) > 0 {
 			var err error
 			if t, err = fieldType(param.GetTname(),
-				&global.TypeTable, idParts[1]); err != nil {
+				&global.TypeTable, suffix); err != nil {
 				return t, call.Mapping, &StructFieldError{
 					Message: "could not evaluate " + exp.Id + "." + exp.OutputId,
 					InnerError: &wrapError{
@@ -264,6 +276,9 @@ func (exp *RefExp) resolveType(global *Ast, pipeline *Pipeline) (TypeId, MapCall
 func (bindings *BindStms) compile(global *Ast, pipeline *Pipeline, params *InParams) error {
 	// Check the bindings
 	var errs ErrorList
+	if len(bindings.List) > 0 {
+		bindings.Table = make(map[string]*BindStm, len(bindings.List))
+	}
 	for _, binding := range bindings.List {
 		// Collect bindings by id so we can check that all params are bound.
 		if _, ok := bindings.Table[binding.Id]; ok {
@@ -367,6 +382,9 @@ func (binding *BindStm) compileParam(global *Ast, pipeline *Pipeline, param Para
 func (bindings *BindStms) compileReturns(global *Ast, pipeline *Pipeline, params *OutParams) error {
 	// Check the bindings
 	var errs ErrorList
+	if len(bindings.List) > 0 {
+		bindings.Table = make(map[string]*BindStm, len(bindings.List))
+	}
 	for _, binding := range bindings.List {
 		// Collect bindings by id so we can check that all params are bound.
 		if _, ok := bindings.Table[binding.Id]; ok {
@@ -407,26 +425,34 @@ func (binding *BindStm) compileReturns(global *Ast, pipeline *Pipeline, params *
 	return binding.compileParam(global, pipeline, param)
 }
 
-func getBoundParamIds(exp Exp) []string {
+func getBoundParamIds(exp Exp, arr []string) []string {
 	switch exp := exp.(type) {
 	case *RefExp:
 		if exp.Kind == KindSelf {
-			return []string{exp.Id}
+			return append(arr, exp.Id)
 		}
 	case *ArrayExp:
-		ids := make([]string, 0, len(exp.Value))
-		for _, subExp := range exp.Value {
-			ids = append(ids, getBoundParamIds(subExp)...)
+		if cap(arr)*2 < len(arr)+len(exp.Value) {
+			narr := make([]string, len(arr), len(arr)+len(exp.Value))
+			copy(narr, arr)
+			arr = narr
 		}
-		return ids
+		for _, subExp := range exp.Value {
+			arr = append(arr, getBoundParamIds(subExp, arr)...)
+		}
+		return arr
 	case *MapExp:
-		ids := make([]string, 0, len(exp.Value))
-		for _, subExp := range exp.Value {
-			ids = append(ids, getBoundParamIds(subExp)...)
+		if cap(arr)*2 < len(arr)+len(exp.Value) {
+			narr := make([]string, len(arr), len(arr)+len(exp.Value))
+			copy(narr, arr)
+			arr = narr
 		}
-		return ids
+		for _, subExp := range exp.Value {
+			arr = append(arr, getBoundParamIds(subExp, arr)...)
+		}
+		return arr
 	case *SplitExp:
-		return getBoundParamIds(exp.Value)
+		return getBoundParamIds(exp.Value, arr)
 	}
-	return nil
+	return arr
 }

@@ -4,27 +4,8 @@ package syntax
 
 import (
 	"fmt"
-	"strings"
 	"testing"
 )
-
-// Checks that the source can be parsed but does not compile.
-func testBadCompile(t *testing.T, src, expect string) string {
-	t.Helper()
-	if ast, err := yaccParse([]byte(src), new(SourceFile), makeStringIntern()); err != nil {
-		t.Fatal(err.Error())
-		return ""
-	} else if err := ast.compile(); err == nil {
-		t.Error("Expected failure to compile.")
-		return ""
-	} else {
-		msg := err.Error()
-		if !strings.Contains(msg, expect) {
-			t.Errorf("Expected %q, got %q", expect, msg)
-		}
-		return msg
-	}
-}
 
 func TestMissingStageParam(t *testing.T) {
 	t.Parallel()

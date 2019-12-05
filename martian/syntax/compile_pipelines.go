@@ -209,8 +209,13 @@ func (pipeline *Pipeline) compile(global *Ast) error {
 	}
 
 	// Check calls.
-	if len(pipeline.Calls) > 0 && pipeline.Callables.Table == nil {
-		pipeline.Callables.Table = make(map[string]Callable, len(pipeline.Calls))
+	if len(pipeline.Calls) > 0 {
+		if pipeline.Callables == nil {
+			pipeline.Callables = new(Callables)
+		}
+		if pipeline.Callables.Table == nil {
+			pipeline.Callables.Table = make(map[string]Callable, len(pipeline.Calls))
+		}
 	}
 	for _, call := range pipeline.Calls {
 		// Check for duplicate calls.
@@ -275,9 +280,11 @@ func (global *Ast) compilePipelineArgs() error {
 	// error messages while writing a long pipeline declaration.
 	for _, pipeline := range global.Pipelines {
 		boundParamIds := make(map[string]struct{}, len(pipeline.InParams.List))
+		arr := make([]string, 0, len(pipeline.InParams.List))
 		for _, call := range pipeline.Calls {
 			for _, binding := range call.Bindings.List {
-				for _, id := range getBoundParamIds(binding.Exp) {
+				arr = getBoundParamIds(binding.Exp, arr[:0])
+				for _, id := range arr {
 					boundParamIds[id] = struct{}{}
 				}
 			}
@@ -291,7 +298,8 @@ func (global *Ast) compilePipelineArgs() error {
 			}
 		}
 		for _, binding := range pipeline.Ret.Bindings.List {
-			for _, id := range getBoundParamIds(binding.Exp) {
+			arr = getBoundParamIds(binding.Exp, arr[:0])
+			for _, id := range arr {
 				boundParamIds[id] = struct{}{}
 			}
 		}

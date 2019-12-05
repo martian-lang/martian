@@ -6,17 +6,6 @@ import (
 	"testing"
 )
 
-// Checks that the source cannot be parsed.
-func testBadGrammar(t *testing.T, src string) string {
-	t.Helper()
-	if _, err := yaccParse([]byte(src), new(SourceFile), makeStringIntern()); err == nil {
-		t.Error("Expected failure to parse, but got success.")
-		return ""
-	} else {
-		return err.Error()
-	}
-}
-
 // Check that a typo in a keyword causes the parser to fail.
 func TestBadSyntax(t *testing.T) {
 	testBadGrammar(t, `

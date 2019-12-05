@@ -874,7 +874,6 @@ mmdefault:
 				InParams:  mmDollar[4].i_params,
 				OutParams: mmDollar[5].o_params,
 				Calls:     mmDollar[8].calls,
-				Callables: &Callables{Table: make(map[string]Callable)},
 				Ret:       mmDollar[9].retstm,
 				Retain:    mmDollar[10].plretains,
 			}
@@ -1027,7 +1026,7 @@ mmdefault:
 	case 36:
 		mmDollar = mmS[mmpt-0 : mmpt+1]
 		{
-			mmVAL.i_params = &InParams{Table: make(map[string]*InParam)}
+			mmVAL.i_params = new(InParams)
 		}
 	case 37:
 		mmDollar = mmS[mmpt-2 : mmpt+1]
@@ -1057,7 +1056,7 @@ mmdefault:
 	case 40:
 		mmDollar = mmS[mmpt-0 : mmpt+1]
 		{
-			mmVAL.o_params = &OutParams{Table: make(map[string]*OutParam)}
+			mmVAL.o_params = new(OutParams)
 		}
 	case 41:
 		mmDollar = mmS[mmpt-2 : mmpt+1]
@@ -1183,8 +1182,8 @@ mmdefault:
 		{
 			mmVAL.par_tuple = paramsTuple{
 				Present: false,
-				Ins:     &InParams{Table: make(map[string]*InParam)},
-				Outs:    &OutParams{Table: make(map[string]*OutParam)},
+				Ins:     new(InParams),
+				Outs:    new(OutParams),
 			}
 		}
 	case 68:
@@ -1324,8 +1323,7 @@ mmdefault:
 		mmDollar = mmS[mmpt-0 : mmpt+1]
 		{
 			mmVAL.bindings = &BindStms{
-				Node:  NewAstNode(mmDollar[0].loc, mmDollar[0].srcfile),
-				Table: make(map[string]*BindStm),
+				Node: NewAstNode(mmDollar[0].loc, mmDollar[0].srcfile),
 			}
 		}
 	case 87:
@@ -1380,26 +1378,23 @@ mmdefault:
 		mmDollar = mmS[mmpt-1 : mmpt+1]
 		{
 			mmVAL.bindings = &BindStms{
-				Node:  NewAstNode(mmDollar[0].loc, mmDollar[0].srcfile),
-				Table: make(map[string]*BindStm),
-				List:  []*BindStm{mmDollar[1].binding},
+				Node: NewAstNode(mmDollar[0].loc, mmDollar[0].srcfile),
+				List: []*BindStm{mmDollar[1].binding},
 			}
 		}
 	case 95:
 		mmDollar = mmS[mmpt-0 : mmpt+1]
 		{
 			mmVAL.bindings = &BindStms{
-				Node:  NewAstNode(mmDollar[0].loc, mmDollar[0].srcfile),
-				Table: make(map[string]*BindStm),
+				Node: NewAstNode(mmDollar[0].loc, mmDollar[0].srcfile),
 			}
 		}
 	case 96:
 		mmDollar = mmS[mmpt-1 : mmpt+1]
 		{
 			mmVAL.bindings = &BindStms{
-				Node:  NewAstNode(mmDollar[0].loc, mmDollar[0].srcfile),
-				Table: make(map[string]*BindStm),
-				List:  []*BindStm{mmDollar[1].binding},
+				Node: NewAstNode(mmDollar[0].loc, mmDollar[0].srcfile),
+				List: []*BindStm{mmDollar[1].binding},
 			}
 		}
 	case 97:

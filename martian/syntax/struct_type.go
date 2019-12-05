@@ -482,16 +482,22 @@ func fieldType(id TypeId, lookup *TypeLookup, field string) (TypeId, error) {
 	if t, ok := t.(*StructType); !ok {
 		return id, fmt.Errorf("type %s is not a struct", id.String())
 	} else {
-		fieldParts := strings.SplitN(field, ".", 2)
-		if m := t.Table[fieldParts[0]]; m == nil {
+		dotIndex := strings.IndexRune(field, '.')
+		fieldRoot := field
+		var suffix string
+		if dotIndex >= 0 {
+			suffix = fieldRoot[dotIndex+1:]
+			fieldRoot = fieldRoot[:dotIndex]
+		}
+		if m := t.Table[fieldRoot]; m == nil {
 			return id, &StructFieldError{
-				Message: "no field " + fieldParts[0] + " in struct " + id.Tname + " (evaluating " + field + ")",
+				Message: "no field " + fieldRoot + " in struct " + id.Tname + " (evaluating " + field + ")",
 			}
-		} else if len(fieldParts) == 1 {
+		} else if len(suffix) == 0 {
 			return m.Tname, nil
-		} else if inner, err := fieldType(m.Tname, lookup, fieldParts[1]); err != nil {
+		} else if inner, err := fieldType(m.Tname, lookup, suffix); err != nil {
 			return inner, &StructFieldError{
-				Message:    "field " + fieldParts[0],
+				Message:    "field " + fieldRoot,
 				InnerError: err,
 			}
 		} else {

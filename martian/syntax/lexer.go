@@ -199,6 +199,9 @@ func parseExp(src []byte, file *SourceFile, intern *stringIntern) (ValExp, error
 }
 
 func attachComments(comments []*commentBlock, node *AstNode) []*commentBlock {
+	if len(comments) == 0 {
+		return nil
+	}
 	scopeComments := make([]*commentBlock, 0, len(comments))
 	nodeComments := make([]*commentBlock, 0, len(comments))
 	loc := node.Loc
@@ -223,9 +226,11 @@ func attachComments(comments []*commentBlock, node *AstNode) []*commentBlock {
 		nodeComments = nil
 	}
 	node.scopeComments = scopeComments
-	node.Comments = make([]string, 0, len(nodeComments))
-	for _, c := range nodeComments {
-		node.Comments = append(node.Comments, c.Value)
+	if len(nodeComments) > 0 {
+		node.Comments = make([]string, 0, len(nodeComments))
+		for _, c := range nodeComments {
+			node.Comments = append(node.Comments, c.Value)
+		}
 	}
 	return comments
 }

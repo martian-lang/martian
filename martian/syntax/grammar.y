@@ -182,7 +182,6 @@ pipeline
             InParams: $4,
             OutParams: $5,
             Calls: $8,
-            Callables: &Callables{Table: make(map[string]Callable)},
             Ret: $9,
             Retain: $10,
         } }
@@ -324,7 +323,7 @@ arr_list
 
 in_param_list
     :
-        { $$ = &InParams{Table: make(map[string]*InParam)} }
+        { $$ = new(InParams) }
     | in_param_list in_param
         {
             $1.List = append($1.List, $2)
@@ -350,7 +349,7 @@ in_param
 
 out_param_list
     :
-        { $$ = &OutParams{Table: make(map[string]*OutParam)} }
+        { $$ = new(OutParams) }
     | out_param_list out_param
         {
             $1.List = append($1.List, $2)
@@ -487,8 +486,8 @@ split_param_list
         {
             $$ = paramsTuple{
                 Present: false,
-                Ins: &InParams{Table: make(map[string]*InParam)},
-                Outs: &OutParams{Table: make(map[string]*OutParam)},
+                Ins: new(InParams),
+                Outs: new(OutParams),
             }
         }
     | SPLIT USING '(' in_param_list out_param_list ')'
@@ -594,7 +593,6 @@ modifier_stm_list
     :
         { $$ = &BindStms{
             Node: NewAstNode($<loc>0, $<srcfile>0),
-            Table: make(map[string]*BindStm),
         } }
     | modifier_stm_list modifier_stm
         {
@@ -639,7 +637,6 @@ nonempty_bind_stm_list
     | bind_stm
         { $$ = &BindStms{
             Node: NewAstNode($<loc>0, $<srcfile>0),
-            Table: make(map[string]*BindStm),
             List: []*BindStm{$1},
         } }
     ;
@@ -649,7 +646,6 @@ bind_stm_list
     |
         { $$ = &BindStms{
             Node: NewAstNode($<loc>0, $<srcfile>0),
-            Table: make(map[string]*BindStm),
         } }
     ;
 
@@ -657,7 +653,6 @@ split_bind_stm_list
     : split_bind_stm
         { $$ = &BindStms{
             Node: NewAstNode($<loc>0, $<srcfile>0),
-            Table: make(map[string]*BindStm),
             List: []*BindStm{$1},
         } }
     | nonempty_bind_stm_list split_bind_stm

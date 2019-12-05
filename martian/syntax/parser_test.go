@@ -7,48 +7,9 @@
 package syntax
 
 import (
-	"os"
 	"path/filepath"
 	"testing"
-
-	"github.com/martian-lang/martian/martian/util"
 )
-
-// Disable logging
-type nullWriter struct{}
-
-func (*nullWriter) Write(b []byte) (int, error) {
-	return len(b), nil
-}
-func (*nullWriter) WriteString(b string) (int, error) {
-	return len(b), nil
-}
-
-var devNull nullWriter
-
-func TestMain(m *testing.M) {
-	SetEnforcementLevel(EnforceError)
-	// Disable logging here, because otherwise the race detector can get unhappy
-	// when running parallel tests.
-	util.SetPrintLogger(&devNull)
-	util.LogTeeWriter(&devNull)
-	os.Exit(m.Run())
-}
-
-// Checks that the source can be parsed and compiled
-func testGood(t *testing.T, src string) *Ast {
-	t.Helper()
-	if ast, err := yaccParse([]byte(src), new(SourceFile),
-		makeStringIntern()); err != nil {
-		t.Fatal(err.Error())
-		return nil
-	} else if err := ast.compile(); err != nil {
-		t.Errorf("Failed to compile src: %v\n%s", err, err.Error())
-		return nil
-	} else {
-		return ast
-	}
-}
 
 func TestSimplePipe(t *testing.T) {
 	t.Parallel()
