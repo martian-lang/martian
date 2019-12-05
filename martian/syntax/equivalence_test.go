@@ -21,6 +21,7 @@ func TestEquivalenceIgnoresComments(t *testing.T) {
 # Stage comment
 # This describes the stage.
 stage SUM_SQUARES(
+    in  bool    good,
     in  float[] values,
     # sum comment
     out float   sum,
@@ -33,6 +34,7 @@ pipeline SUM_SQUARE_PIPELINE(
 )
 {
     call SUM_SQUARES(
+        good   = true,
         values = self.values,
     )
     return (
@@ -45,6 +47,7 @@ call SUM_SQUARE_PIPELINE(
 )
 `), testGood(t, `
 stage SUM_SQUARES(
+    in  bool    good,
     in  float[] values,
     out float   sum,
     src py      "stages/sum_squares",
@@ -56,6 +59,7 @@ pipeline SUM_SQUARE_PIPELINE(
 )
 {
     call SUM_SQUARES(
+        good   = true,
         values = self.values,
     )
     return (
@@ -264,6 +268,8 @@ func TestNumExpEquivalence(t *testing.T) {
 	f3 := FloatExp{
 		Value: parseFloat([]byte("1.1")),
 	}
+	b1 := BoolExp{Value: true}
+	b2 := BoolExp{Value: false}
 	if !exp.equal(&i1) {
 		t.Errorf("Expected 1 == 1")
 	}
@@ -290,5 +296,23 @@ func TestNumExpEquivalence(t *testing.T) {
 	}
 	if !f1.equal(&f1) {
 		t.Error("Expcted 1.0 == 1.0")
+	}
+	if exp.equal(&b1) {
+		t.Error("Expected 1 != true")
+	}
+	if b1.equal(&exp) {
+		t.Error("Expected true != 1")
+	}
+	if b2.equal(&exp) {
+		t.Error("Expected false != 1")
+	}
+	if !b1.equal(&b1) {
+		t.Error("Expected true == true")
+	}
+	if b1.equal(&b2) {
+		t.Error("Expected true != false")
+	}
+	if !b2.equal(&b2) {
+		t.Error("Expected false == false")
 	}
 }

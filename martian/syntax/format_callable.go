@@ -82,7 +82,7 @@ func paramFormat(printer *printer, param Param, modeWidth int, typeWidth int, id
 	// Add outname string if it exists.
 	if len(param.GetOutName()) > 0 {
 		if param.GetHelp() == "" {
-			printer.Printf("%s  ", idPad)
+			printer.Printf(`%s  ""`, idPad)
 		}
 		printer.Printf("%s  \"%s\"", helpPad, param.GetOutName())
 	}

@@ -146,14 +146,8 @@ func (s *RefExp) getSubnodes() []AstNodable {
 func (*RefExp) HasRef() bool {
 	return true
 }
-func (*RefExp) HasSweep() bool {
-	return false
-}
 func (*RefExp) HasSplit() bool {
 	return false
-}
-func (*RefExp) FindSplit(*CallStm) *SplitExp {
-	return nil
 }
 
 // Combine OutputIndex keys with MergeOver keys to select forks.

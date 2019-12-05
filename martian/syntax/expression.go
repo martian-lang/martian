@@ -53,10 +53,6 @@ type (
 		// a split.
 		HasSplit() bool
 
-		// Returns an arbitrary SplitExp from within the expression, if one of
-		// them is on the given call.
-		FindSplit(*CallStm) *SplitExp
-
 		// Recursively searches the expression for references.
 		FindRefs() []*RefExp
 
@@ -179,9 +175,6 @@ func (*valExp) getSubnodes() []AstNodable { return nil }
 func (*valExp) HasRef() bool              { return false }
 func (*valExp) HasSplit() bool            { return false }
 func (*valExp) FindRefs() []*RefExp       { return nil }
-func (*valExp) FindSplit(*CallStm) *SplitExp {
-	return nil
-}
 
 func (s *ArrayExp) getKind() ExpKind  { return KindArray }
 func (s *SplitExp) getKind() ExpKind  { return KindSplit }
@@ -244,17 +237,6 @@ func (e *ArrayExp) HasSplit() bool {
 	}
 	return false
 }
-func (e *ArrayExp) FindSplit(c *CallStm) *SplitExp {
-	if e == nil {
-		return nil
-	}
-	for _, exp := range e.Value {
-		if s := exp.FindSplit(c); s != nil {
-			return s
-		}
-	}
-	return nil
-}
 
 func (e *SplitExp) HasRef() bool {
 	if e == nil || e.Value == nil {
@@ -265,13 +247,6 @@ func (e *SplitExp) HasRef() bool {
 
 func (e *SplitExp) HasSplit() bool {
 	return true
-}
-
-func (e *SplitExp) FindSplit(c *CallStm) *SplitExp {
-	if e.Call == c {
-		return e
-	}
-	return e.Value.FindSplit(c)
 }
 
 func (e *SplitExp) CallMode() CallMode {
@@ -303,17 +278,6 @@ func (e *MapExp) HasSplit() bool {
 		}
 	}
 	return false
-}
-func (e *MapExp) FindSplit(c *CallStm) *SplitExp {
-	if e == nil {
-		return nil
-	}
-	for _, exp := range e.Value {
-		if s := exp.FindSplit(c); s != nil {
-			return s
-		}
-	}
-	return nil
 }
 
 func (e *ArrayExp) FindRefs() []*RefExp {

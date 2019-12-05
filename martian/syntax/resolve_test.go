@@ -549,3 +549,107 @@ call METRICS()
 		diffLines(expect, result, t)
 	}
 }
+
+func TestResolveDisableExp(t *testing.T) {
+	result, err := resolveDisableExp(&BoolExp{Value: true}, nil)
+	if err != nil {
+		t.Error(err)
+	}
+	if len(result) != 1 {
+		t.Errorf("len %d != 1", len(result))
+	} else if b, ok := result[0].(*BoolExp); !ok {
+		t.Errorf("Non-boolean %T %s", result[0], result[0].GoString())
+	} else if !b.Value {
+		t.Error("expected true")
+	}
+
+	result, err = resolveDisableExp(&SplitExp{
+		Value: &ArrayExp{
+			Value: []Exp{
+				&BoolExp{Value: true},
+				&BoolExp{Value: true},
+			},
+		},
+	}, nil)
+	if err != nil {
+		t.Error(err)
+	}
+	if len(result) != 1 {
+		t.Errorf("len %d != 1", len(result))
+	} else if b, ok := result[0].(*BoolExp); !ok {
+		t.Errorf("Non-boolean %T %s", result[0], result[0].GoString())
+	} else if !b.Value {
+		t.Error("expected true")
+	}
+
+	result, err = resolveDisableExp(&SplitExp{
+		Value: &ArrayExp{
+			Value: []Exp{
+				&BoolExp{Value: false},
+				&BoolExp{Value: false},
+			},
+		},
+	}, nil)
+	if err != nil {
+		t.Error(err)
+	}
+	if len(result) != 0 {
+		t.Errorf("len %d != 0", len(result))
+	}
+
+	result, err = resolveDisableExp(&SplitExp{
+		Value: &ArrayExp{
+			Value: []Exp{
+				&BoolExp{Value: true},
+				&BoolExp{Value: false},
+			},
+		},
+	}, nil)
+	if err != nil {
+		t.Error(err)
+	}
+	if len(result) != 1 {
+		t.Errorf("len %d != 1", len(result))
+	} else if _, ok := result[0].(*SplitExp); !ok {
+		t.Errorf("Non-split %T %s", result[0], result[0].GoString())
+	}
+
+	result, err = resolveDisableExp(&SplitExp{
+		Value: &ArrayExp{
+			Value: []Exp{
+				&BoolExp{Value: true},
+				&BoolExp{Value: true},
+			},
+		},
+	}, result)
+	if err != nil {
+		t.Error(err)
+	}
+	if len(result) != 1 {
+		t.Errorf("len %d != 1", len(result))
+	} else if b, ok := result[0].(*BoolExp); !ok {
+		t.Errorf("Non-boolean %T %s", result[0], result[0].GoString())
+	} else if !b.Value {
+		t.Error("expected true")
+	}
+
+	result, err = resolveDisableExp(&SplitExp{
+		Value: &MapExp{
+			Kind: KindMap,
+			Value: map[string]Exp{
+				"foo": &BoolExp{Value: true},
+				"bar": &BoolExp{Value: true},
+			},
+		},
+	}, nil)
+	if err != nil {
+		t.Error(err)
+	}
+	if len(result) != 1 {
+		t.Errorf("len %d != 1", len(result))
+	} else if b, ok := result[0].(*BoolExp); !ok {
+		t.Errorf("Non-boolean %T %s", result[0], result[0].GoString())
+	} else if !b.Value {
+		t.Error("expected true")
+	}
+}

@@ -54,7 +54,7 @@ stage ADD_KEY1(
     # for the job to send to itself.
     in  string failfile,
     # The output file.
-    out json   result,
+    out json   result    ""  "out name",
     # The source file.
     src py     "stages/add_key",
 )

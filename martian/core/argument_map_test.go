@@ -246,6 +246,24 @@ func TestUnmarshalMarshalerMap(t *testing.T) {
 	if len(m1) != len(m2) {
 		t.Errorf("len %d != len %d", len(m1), len(m2))
 	}
+	if m1.CallMode() != syntax.ModeMapCall {
+		t.Errorf("%s != map", m1.CallMode().String())
+	}
+	if m2.CallMode() != syntax.ModeMapCall {
+		t.Errorf("%s != map", m2.CallMode().String())
+	}
+	if !m1.KnownLength() {
+		t.Errorf("Expected known length")
+	}
+	if !m2.KnownLength() {
+		t.Errorf("Expected known length")
+	}
+	if len(m1.Keys()) != len(m1) {
+		t.Errorf("%d != %d", len(m1.Keys()), len(m1))
+	}
+	if len(m2.Keys()) != len(m1) {
+		t.Errorf("%d != %d", len(m2.Keys()), len(m1))
+	}
 	for k, v := range m2 {
 		if b, ok := v.(json.RawMessage); !ok {
 			t.Errorf("unexpected type %T", v)
