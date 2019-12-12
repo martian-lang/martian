@@ -98,8 +98,8 @@ func makeForkIdParts(src syntax.MapCallSource) []*ForkSourcePart {
 		}
 	case syntax.ModeMapCall:
 		keys := src.Keys()
-		re := make([]ForkSourcePart, len(keys))
-		result := make([]*ForkSourcePart, len(keys))
+		re := make([]ForkSourcePart, 0, len(keys))
+		result := make([]*ForkSourcePart, 0, len(keys))
 		for k := range keys {
 			r := mapKeyFork(k)
 			re = append(re, ForkSourcePart{
