@@ -75,10 +75,13 @@ func (bindings *BindStms) Equals(other *BindStms) bool {
 	if bindings == nil || len(bindings.List) == 0 {
 		return other == nil || len(other.List) == 0
 	} else if other == nil || other.Table == nil ||
-		len(other.Table) != len(bindings.List) {
+		len(other.List) != len(bindings.List) {
 		return false
 	}
 	for _, b := range bindings.List {
+		if b.Id == "*" {
+			continue
+		}
 		if ob := other.Table[b.Id]; ob == nil {
 			util.PrintInfo("compare",
 				"Binding ID %s not found",

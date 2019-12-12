@@ -69,7 +69,7 @@ pipeline OUTER(
 )
 {
     call INNER(
-        foo = self.foo,
+        * = self,
     )
 
     return (

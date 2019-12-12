@@ -80,7 +80,13 @@ func keywordToken(b []byte) ([]byte, int) {
 	if len(b) > 0 {
 		r := b[0]
 		switch r {
-		case '=', ':', ';', '.', ',', '(', ')', '{', '}', '[', ']', '<', '>':
+		case '(', ')',
+			'*',
+			',', '.',
+			':', ';',
+			'<', '=', '>',
+			'[', ']',
+			'{', '}':
 			// Puctuation marks
 			return b[:1:1], int(r)
 		case '"':
@@ -144,7 +150,10 @@ func keywordToken(b []byte) ([]byte, int) {
 			if v := bytesPrefixString(b, KindMap); len(v) > 0 {
 				return v, MAP
 			}
-			return tokMemRule(b)
+			if v := bytesPrefixString(b, "mem_gb"); len(v) > 0 {
+				return v, MEM_GB
+			}
+			return bytesPrefixString(b, "memgb"), MEM_GB
 		case 'n':
 			return bytesPrefixString(b, KindNull), NULL
 		case 'o':
@@ -199,7 +208,10 @@ func keywordToken(b []byte) ([]byte, int) {
 			if v := bytesPrefixString(b, volatile); len(v) > 0 {
 				return v, VOLATILE
 			}
-			return tokVMemRule(b)
+			if v := bytesPrefixString(b, "vmem_gb"); len(v) > 0 {
+				return v, VMEM_GB
+			}
+			return bytesPrefixString(b, "vmemgb"), VMEM_GB
 		}
 		if r > utf8.RuneSelf {
 			// Non-ASCII space
@@ -231,8 +243,6 @@ var (
 	)
 	tokFloatRule = regexpRule(`^-?\d+(:?(?:\.\d+)?[eE][+-]?|\.)\d+\b`, NUM_FLOAT)
 	tokIntRule   = regexpRule(`^-?0*\d{1,19}\b`, NUM_INT)
-	tokMemRule   = regexpRule(`^mem_?gb\b`, MEM_GB)
-	tokVMemRule  = regexpRule(`^vmem_?gb\b`, VMEM_GB)
 
 	// Identifiers for filetypes, stages, etc.
 	tokIdRule = regexpRule(`^_?[[:alpha:]]\w*\b`, ID)

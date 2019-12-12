@@ -172,6 +172,19 @@ stage MAP_CONSUMER(
     src comp                 "stages/structy",
 )
 
+stage PRODUCER_CONSUMER(
+    in  map<STRUCT_CONSUMER>[] array_of_map,
+    in  map<STRUCT_CONSUMER[]> map_of_array,
+    in  int                    foo,
+    src comp                   "whatever",
+)
+
+stage POINT_CONSUMER(
+    in  map<POINT> point,
+    in  map<json>  dest,
+    src comp       "whatever",
+)
+
 #
 stage _HAS_DEFAULT_OUT(
     out path,
@@ -187,6 +200,27 @@ pipeline USES_DEFAULT(
 
     return (
         something = _HAS_DEFAULT_OUT.default,
+    )
+}
+
+pipeline _RETURNS_WILD(
+    in  STRUCT_CONSUMER          input,
+    in  int                      x,
+    out int                      x,
+    out map<STRUCT_CONSUMER>     flat_map,
+    out map<STRUCT_CONSUMER>[]   array_of_map,
+    out map<STRUCT_CONSUMER[]>   map_of_array,
+    out map<STRUCT_CONSUMER[]>[] array_of_map_of_array,
+    out STRUCT_CONSUMER[]        array,
+)
+{
+    call MAP_PRODUCER(
+        * = self,
+    )
+
+    return (
+        x = self.x,
+        * = MAP_PRODUCER,
     )
 }
 
@@ -321,6 +355,15 @@ pipeline AWESOME(
 
     call MAP_PRODUCER(
         input = STRUCT_CONSUMER,
+    )
+
+    call PRODUCER_CONSUMER(
+        foo = 1,
+        *   = MAP_PRODUCER,
+    )
+
+    call POINT_CONSUMER(
+        * = MAP_PRODUCER.flat_map,
     )
 
     call MAP_CONSUMER(

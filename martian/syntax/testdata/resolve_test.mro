@@ -88,8 +88,7 @@ pipeline POINT_MAPPER(
     )
 
     call POINT_PIPE as PIPE2(
-        x = self.two.x,
-        y = self.two.y,
+        * = self.two,
     )
 
     call POINT_PIPE as PIPE3(

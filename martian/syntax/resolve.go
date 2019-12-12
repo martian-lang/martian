@@ -504,6 +504,10 @@ func (bindings *BindStms) resolve(self, calls map[string]*ResolvedBinding,
 	result := make(map[string]*ResolvedBinding, len(bindings.List))
 	var errs ErrorList
 	for _, binding := range bindings.List {
+		if binding.Id == "*" {
+			// Compilation should have expanded this one out.
+			continue
+		}
 		tid := binding.Tname
 		r, err := resolveExp(binding.Exp, tid, self, calls, lookup)
 		if err != nil {

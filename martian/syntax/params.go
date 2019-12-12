@@ -5,6 +5,17 @@
 package syntax
 
 type (
+	// Interface Params provides a common interface for input and output
+	// parameter sets.
+	Params interface {
+		// Returns the parameter with the given ID.
+		//
+		// The second return will be false if the id is not present or
+		// if the set has not been compiled.
+		GetParam(string) (Param, bool)
+		getWidths() (int, int, int, int)
+	}
+
 	// An ordered set of parameters.
 	InParams struct {
 		List []*InParam `json:"-"`
@@ -63,6 +74,15 @@ type (
 		Id   string
 	}
 )
+
+func (s *InParams) GetParam(id string) (Param, bool) {
+	p, ok := s.Table[id]
+	return p, ok
+}
+func (s *OutParams) GetParam(id string) (Param, bool) {
+	p, ok := s.Table[id]
+	return p, ok
+}
 
 func (p *RetainParams) getNode() *AstNode     { return &p.Node }
 func (s *RetainParams) File() *SourceFile     { return s.Node.Loc.File }

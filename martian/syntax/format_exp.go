@@ -223,7 +223,8 @@ func (e *IntExp) String() string {
 }
 
 func (e *FloatExp) format(w stringWriter, _ string) {
-	mustWriteString(w, strconv.FormatFloat(e.Value, 'g', -1, 64))
+	var buf [68]byte
+	mustWrite(w, strconv.AppendFloat(buf[:0], e.Value, 'g', -1, 64))
 }
 
 func (e *FloatExp) GoString() string {
@@ -289,6 +290,10 @@ func (e *RefExp) format(w stringWriter, prefix string) {
 	if e.Kind == KindCall {
 		mustWriteString(w, e.Id)
 	} else {
+		if e.Id == "" {
+			mustWriteString(w, string(KindSelf))
+			return
+		}
 		mustWriteString(w, "self.")
 		mustWriteString(w, e.Id)
 	}
@@ -303,6 +308,9 @@ func (self *RefExp) GoString() string {
 		return "null"
 	}
 	if self.Kind == KindSelf {
+		if self.Id == "" {
+			return string(KindSelf)
+		}
 		if self.OutputId == "" {
 			return "self." + self.Id
 		}

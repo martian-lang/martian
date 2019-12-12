@@ -33,9 +33,15 @@ func (self *BindStms) format(printer *printer, prefix string) {
 		if len(bindstm.Id) < 30 {
 			idWidth = max(idWidth, len(bindstm.Id))
 		}
+		if bindstm.Id == "*" {
+			break
+		}
 	}
 	for _, bindstm := range self.List {
 		bindstm.format(printer, prefix, idWidth)
+		if bindstm.Id == "*" {
+			break
+		}
 	}
 }
 
@@ -87,10 +93,6 @@ func paramFormat(printer *printer, param Param, modeWidth int, typeWidth int, id
 		printer.Printf("%s  \"%s\"", helpPad, param.GetOutName())
 	}
 	printer.mustWriteString(",\n")
-}
-
-type Params interface {
-	getWidths() (int, int, int, int)
 }
 
 func (self *InParams) getWidths() (int, int, int, int) {

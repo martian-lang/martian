@@ -158,7 +158,9 @@ func (self *Node) makeDirectPrenodes() {
 		}
 		var prenodes map[Nodable]struct{}
 		for i, binding := range allBindings {
-			prenodes = findDirectRefs(binding.Exp, parent, len(allBindings)-i, prenodes)
+			if binding.Id != "*" {
+				prenodes = findDirectRefs(binding.Exp, parent, len(allBindings)-i, prenodes)
+			}
 		}
 		if len(prenodes) == 0 {
 			self.directPrenodes = nil

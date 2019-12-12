@@ -13,10 +13,6 @@ type (
 		Id    string
 		Exp   Exp
 		Tname TypeId
-
-		// If true, the expression is an array and the pipeline will
-		// fork into versions for each value in the array.
-		Sweep bool
 	}
 
 	// An ordered set of BindStm objects.

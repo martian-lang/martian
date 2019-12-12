@@ -74,18 +74,21 @@ import (
 %type <vexp>      val_exp bool_exp
 %type <vexp>      array_exp nonempty_array_exp
 %type <vexp>      map_exp nonempty_map_exp
-%type <exps>      exp_list
-%type <kvpairs>   kvpair_list struct_vals_list
-%type <call>      call_stm
+%type <vexp>      nonempty_collection_exp
+%type <exps>      exp_list exp_list_partial
+%type <kvpairs>   kvpair_list kvpair_list_partial
+%type <kvpairs>   struct_vals_list struct_vals_list_partial
+%type <call>      call_stm call_stm_begin
 %type <calls>     call_stm_list
-%type <binding>   bind_stm split_bind_stm modifier_stm
+%type <binding>   bind_stm split_bind_stm wildcard_bind modifier_stm
 %type <bindings>  bind_stm_list nonempty_bind_stm_list
-%type <bindings>  split_bind_stm_list modifier_stm_list
+%type <bindings>  split_bind_stm_list_partial split_bind_stm_list
+%type <bindings>  modifier_stm_list
 %type <retstm>    return_stm
 %type <res>       resources resource_list
 
 %token SKIP COMMENT INVALID
-%token ';' ':' ',' '=' '.'
+%token ';' ':' ',' '=' '.' '*'
 %token '[' ']' '(' ')' '{' '}' '<' '>'
 %token INCLUDE_DIRECTIVE STAGE PIPELINE CALL RETURN
 %token IN OUT SRC AS
@@ -534,43 +537,36 @@ call_stm_list
         { $$ = []*CallStm{$1} }
     ;
 
+call_stm_begin
+    : CALL modifiers id
+        { id := $<intern>3.Get($3)
+          $$ = &CallStm{
+            Node: NewAstNode($<loc>1, $<srcfile>1),
+            Modifiers: $2,
+            Id: id,
+            DecId: id,
+        } }
+    | CALL modifiers id AS id
+        { $$ = &CallStm{
+            Node: NewAstNode($<loc>1, $<srcfile>1),
+            Modifiers: $2,
+            Id: $<intern>5.Get($5),
+            DecId: $<intern>3.Get($3),
+        } }
+
+
 call_stm
-    : CALL modifiers id '(' bind_stm_list ')'
-        { id := $<intern>3.Get($3)
-          $$ = &CallStm{
-            Node: NewAstNode($<loc>1, $<srcfile>1),
-            Modifiers: $2,
-            Id: id,
-            DecId: id,
-            Bindings: $5,
-        } }
-    | CALL modifiers id AS id '(' bind_stm_list ')'
-        { $$ = &CallStm{
-            Node: NewAstNode($<loc>1, $<srcfile>1),
-            Modifiers: $2,
-            Id: $<intern>5.Get($5),
-            DecId: $<intern>3.Get($3),
-            Bindings: $7,
-        } }
-    | MAP CALL id '(' split_bind_stm_list ')'
-        { id := $<intern>3.Get($3)
-          $$ = &CallStm{
-            Node: NewAstNode($<loc>1, $<srcfile>1),
-            Modifiers: new(Modifiers),
-            Id: id,
-            DecId: id,
-            Bindings: $5,
-            Mapping: &mapSourcePlaceholder,
-        } }
-    | MAP CALL id AS id '(' split_bind_stm_list ')'
-        { $$ = &CallStm{
-            Node: NewAstNode($<loc>1, $<srcfile>1),
-            Modifiers: new(Modifiers),
-            Id: $<intern>5.Get($5),
-            DecId: $<intern>3.Get($3),
-            Bindings: $7,
-            Mapping: &mapSourcePlaceholder,
-        } }
+    : call_stm_begin '(' bind_stm_list ')'
+        { 
+            $1.Bindings = $3
+            $$ = $1
+        }
+    | MAP call_stm_begin '(' split_bind_stm_list ')'
+        {
+            $2.Bindings = $4
+            $2.Mapping = &mapSourcePlaceholder
+            $$ = $2
+        }
     | call_stm USING '(' modifier_stm_list ')'
         {
             $1.Modifiers.Bindings = $4
@@ -643,13 +639,23 @@ nonempty_bind_stm_list
 
 bind_stm_list
     : nonempty_bind_stm_list
+    | nonempty_bind_stm_list wildcard_bind
+        {
+            $1.List = append($1.List, $2)
+            $$ = $1
+        }
+    | wildcard_bind
+        { $$ = &BindStms{
+            Node: NewAstNode($<loc>0, $<srcfile>0),
+            List: []*BindStm{$1},
+        } }
     |
         { $$ = &BindStms{
             Node: NewAstNode($<loc>0, $<srcfile>0),
         } }
     ;
 
-split_bind_stm_list
+split_bind_stm_list_partial
     : split_bind_stm
         { $$ = &BindStms{
             Node: NewAstNode($<loc>0, $<srcfile>0),
@@ -660,12 +666,21 @@ split_bind_stm_list
             $1.List = append($1.List, $2)
             $$ = $1
         }
-    | split_bind_stm_list split_bind_stm
+    | split_bind_stm_list_partial split_bind_stm
         {
             $1.List = append($1.List, $2)
             $$ = $1
         }
-    | split_bind_stm_list bind_stm
+    | split_bind_stm_list_partial bind_stm
+        {
+            $1.List = append($1.List, $2)
+            $$ = $1
+        }
+    ;
+
+split_bind_stm_list
+    : split_bind_stm_list_partial
+    | split_bind_stm_list_partial wildcard_bind
         {
             $1.List = append($1.List, $2)
             $$ = $1
@@ -681,18 +696,26 @@ bind_stm
         } }
     ;
 
-split_bind_stm
-    : id '=' SPLIT nonempty_array_exp ','
+wildcard_bind
+    : '*' '=' ref_exp ','
         { $$ = &BindStm{
             Node: NewAstNode($<loc>1, $<srcfile>1),
-            Id: $<intern>1.Get($1),
-            Exp: &SplitExp{
-                valExp: valExp{Node: NewAstNode($<loc>3, $<srcfile>3)},
-                Value: $4,
-                Source: $4.(MapCallSource),
-            },
+            Id: "*",
+            Exp: $3,
         } }
-    | id '=' SPLIT nonempty_map_exp ','
+    | '*' '=' SELF ','
+      { $$ = &BindStm{
+            Node: NewAstNode($<loc>1, $<srcfile>1),
+            Id: "*",
+            Exp: &RefExp{
+                Node: NewAstNode($<loc>3, $<srcfile>3),
+                Kind: KindSelf,
+            },
+       } }
+    ;
+
+split_bind_stm
+    : id '=' SPLIT nonempty_collection_exp ','
         { $$ = &BindStm{
             Node: NewAstNode($<loc>1, $<srcfile>1),
             Id: $<intern>1.Get($1),
@@ -712,15 +735,25 @@ split_bind_stm
             },
         } }
 
-exp_list
-    : exp_list ',' exp
+nonempty_collection_exp
+    : nonempty_array_exp
+    | nonempty_map_exp
+    ;
+
+exp_list_partial
+    : exp_list_partial ',' exp
         { $$ = append($1, $3) }
     | exp
         { $$ = []Exp{$1} }
     ;
 
-kvpair_list
-    : kvpair_list ',' LITSTRING ':' exp
+exp_list
+    : exp_list_partial ','
+    | exp_list_partial
+    ;
+
+kvpair_list_partial
+    : kvpair_list_partial ',' LITSTRING ':' exp
         {
             $1[unquote($3)] = $5
             $$ = $1
@@ -729,14 +762,24 @@ kvpair_list
         { $$ = map[string]Exp{unquote($1): $3} }
     ;
 
-struct_vals_list
-    : struct_vals_list ',' id ':' exp
+kvpair_list
+    : kvpair_list_partial ','
+    | kvpair_list_partial
+    ;
+
+struct_vals_list_partial
+    : struct_vals_list_partial ',' id ':' exp
         {
             $1[$<intern>3.Get($3)] = $5
             $$ = $1
         }
     | id ':' exp
         { $$ = map[string]Exp{$<intern>1.Get($1): $3} }
+    ;
+
+struct_vals_list
+    : struct_vals_list_partial ','
+    | struct_vals_list_partial
     ;
 
 exp
@@ -784,11 +827,6 @@ nonempty_array_exp
             valExp: valExp{Node: NewAstNode($<loc>1, $<srcfile>1)},
             Value: $2,
         } }
-    | '[' exp_list ',' ']'
-        { $$ = &ArrayExp{
-            valExp: valExp{Node: NewAstNode($<loc>1, $<srcfile>1)},
-            Value: $2,
-        } }
     ;
 
 array_exp
@@ -807,23 +845,11 @@ nonempty_map_exp
             Kind: KindMap,
             Value: $2,
         } }
-    | '{' kvpair_list ',' '}'
-        { $$ = &MapExp{
-            valExp: valExp{Node: NewAstNode($<loc>1, $<srcfile>1)},
-            Kind: KindMap,
-            Value: $2,
-        } }
     ;
 
 map_exp
     : nonempty_map_exp
     | '{' struct_vals_list '}'
-        { $$ = &MapExp{
-            valExp: valExp{Node: NewAstNode($<loc>1, $<srcfile>1)},
-            Kind: KindStruct,
-            Value: $2,
-        } }
-    | '{' struct_vals_list ',' '}'
         { $$ = &MapExp{
             valExp: valExp{Node: NewAstNode($<loc>1, $<srcfile>1)},
             Kind: KindStruct,

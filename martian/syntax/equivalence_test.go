@@ -3,14 +3,25 @@
 package syntax
 
 import (
+	"strings"
 	"testing"
+
+	"github.com/martian-lang/martian/martian/util"
 )
 
 func TestParsedEquivalence(t *testing.T) {
-	if ast1, ast2 := testGood(t, fmtTestSrc), testGood(t, fmtTestSrc); ast1 != nil && ast2 != nil {
+	if ast1, ast2 := testGood(t, fmtTestSrc),
+		testGood(t, fmtTestSrc); ast1 != nil &&
+		ast2 != nil {
+		var buf strings.Builder
+		util.SetPrintLogger(&buf)
+		defer util.SetPrintLogger(&devNull)
 		if !ast1.EquivalentCall(ast2) {
 			t.Errorf("Expected equivalent calls for identical source.")
+			t.Log(buf.String())
 		}
+	} else {
+		t.Error("nil ast")
 	}
 }
 
@@ -72,8 +83,12 @@ call SUM_SQUARE_PIPELINE(
         10.0, 2.0e1, 3.0e+1, 400.0e-1, 5e1, 6e+1, 700e-1],
 )
 `); ast1 != nil && ast2 != nil {
+		var buf strings.Builder
+		util.SetPrintLogger(&buf)
+		defer util.SetPrintLogger(&devNull)
 		if !ast1.EquivalentCall(ast2) {
 			t.Errorf("Expected equivalent calls for formatting changes.")
+			t.Log(buf.String())
 		}
 	}
 }

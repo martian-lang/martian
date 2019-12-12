@@ -311,12 +311,6 @@ func (global *Ast) compilePipelineArgs() error {
 			}
 		}
 
-		// Check all pipeline output params are returned.
-		returnedParamIds := map[string]bool{}
-		for _, binding := range pipeline.Ret.Bindings.List {
-			returnedParamIds[binding.Id] = true
-		}
-
 		// Check return bindings.
 		if err := pipeline.Ret.Bindings.compileReturns(global,
 			pipeline, pipeline.OutParams); err != nil {

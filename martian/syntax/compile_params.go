@@ -273,45 +273,150 @@ func (exp *RefExp) resolveType(global *Ast, pipeline *Pipeline) (TypeId, MapCall
 	panic("invalid ref kind")
 }
 
+func (bindings *BindStms) addBinding(global *Ast, pipeline *Pipeline,
+	binding *BindStm, params Params) error {
+	var errs ErrorList
+	// Collect bindings by id so we can check that all params are bound.
+	if _, ok := bindings.Table[binding.Id]; ok {
+		errs = append(errs, global.err(binding,
+			"DuplicateBinding: '%s' already bound in this call",
+			binding.Id))
+	}
+	// Building the bindings table could also happen in the grammar rules,
+	// but then we lose the ability to detect duplicate parameters as we're
+	// doing right above this comment. So leave this here.
+	bindings.Table[binding.Id] = binding
+
+	if err := binding.compile(global, pipeline, params); err != nil {
+		errs = append(errs, err)
+	}
+	return errs.If()
+}
+
 func (bindings *BindStms) compile(global *Ast, pipeline *Pipeline, params *InParams) error {
+	if len(bindings.List) > 0 && params == nil {
+		return global.err(bindings,
+			"No parameters to bind")
+	}
+	errs := bindings.compileGeneric(global, pipeline, params)
+	// Check that all input params of the called segment are bound.
+	for _, param := range params.List {
+		if _, ok := bindings.Table[param.GetId()]; !ok {
+			errs = append(errs, global.err(bindings,
+				"ArgumentNotSuppliedError: no argument supplied for parameter '%s'",
+				param.GetId()))
+		}
+	}
+	return errs.If()
+}
+
+func (bindings *BindStms) compileGeneric(global *Ast, pipeline *Pipeline, params Params) ErrorList {
 	// Check the bindings
 	var errs ErrorList
 	if len(bindings.List) > 0 {
 		bindings.Table = make(map[string]*BindStm, len(bindings.List))
 	}
 	for _, binding := range bindings.List {
-		// Collect bindings by id so we can check that all params are bound.
-		if _, ok := bindings.Table[binding.Id]; ok {
-			errs = append(errs, global.err(binding,
-				"DuplicateBinding: '%s' already bound in this call",
-				binding.Id))
-		}
-		// Building the bindings table could also happen in the grammar rules,
-		// but then we lose the ability to detect duplicate parameters as we're
-		// doing right above this comment. So leave this here.
-		bindings.Table[binding.Id] = binding
-
-		if err := binding.compile(global, pipeline, params); err != nil {
+		if binding.Id == "*" {
+			if err := bindings.compileWildcard(binding, global, pipeline, params); err != nil {
+				errs = append(errs, err)
+			}
+			break // the wildcard binding is always last.
+		} else if err := bindings.addBinding(global, pipeline,
+			binding, params); err != nil {
 			errs = append(errs, err)
 		}
 	}
+	return errs
+}
 
-	if params != nil {
-		// Check that all input params of the called segment are bound.
-		for _, param := range params.List {
-			if _, ok := bindings.Table[param.GetId()]; !ok {
-				errs = append(errs, global.err(bindings,
-					"ArgumentNotSuppliedError: no argument supplied for parameter '%s'",
-					param.GetId()))
+type wildcardError struct {
+	err error
+}
+
+func (err wildcardError) Error() string {
+	return "wildcard error: " + err.err.Error()
+}
+
+func (err wildcardError) writeTo(w stringWriter) {
+	mustWriteString(w, "wildcard error: ")
+	if e, ok := err.err.(errorWriter); ok {
+		e.writeTo(w)
+	} else {
+		mustWriteString(w, err.err.Error())
+	}
+}
+
+func (err wildcardError) Unwrap() error {
+	return err.err
+}
+func (bindings *BindStms) compileWildcard(binding *BindStm,
+	global *Ast, pipeline *Pipeline, params Params) error {
+	// type assertion is guaranteed by the syntax
+	ref := binding.Exp.(*RefExp)
+	var errs ErrorList
+	if ref.Kind == KindSelf && ref.Id == "" {
+		fakeBindings := make([]BindStm, len(pipeline.InParams.List))
+		for i, m := range pipeline.InParams.List {
+			if _, ok := params.GetParam(m.Id); !ok {
+				continue
 			}
+			fakeBindings[i] = *binding
+			r := *ref
+			r.Id = m.Id
+			fakeBindings[i].Exp = &r
+			fakeBindings[i].Id = m.Id
+			if err := bindings.addBinding(global, pipeline,
+				&fakeBindings[i], params); err != nil {
+				errs = append(errs, wildcardError{err: err})
+			}
+			bindings.List = append(bindings.List, &fakeBindings[i])
+		}
+	} else {
+		tid, _, err := ref.resolveType(global, pipeline)
+		if err != nil {
+			errs = append(errs, err)
+		}
+		tid.ArrayDim = 0
+		tid.MapDim = 0
+		t := global.TypeTable.Get(tid)
+		if t == nil {
+			return global.err(ref,
+				"TypeError: unknown type for wildcard binding: "+tid.Tname)
+		}
+		s, ok := t.(*StructType)
+		if !ok {
+			return global.err(ref,
+				"TypeError: wildcard binding must be a reference to a struct, but was a "+
+					tid.Tname)
+		}
+		fakeBindings := make([]BindStm, len(s.Members))
+		for i, m := range s.Members {
+			if _, ok := params.GetParam(m.Id); !ok {
+				continue
+			}
+			fakeBindings[i] = *binding
+			r := *ref
+			if r.OutputId == "" {
+				r.OutputId = m.Id
+			} else {
+				r.OutputId = r.OutputId + "." + m.Id
+			}
+			fakeBindings[i].Exp = &r
+			fakeBindings[i].Id = m.Id
+			if err := bindings.addBinding(global, pipeline,
+				&fakeBindings[i], params); err != nil {
+				errs = append(errs, wildcardError{err: err})
+			}
+			bindings.List = append(bindings.List, &fakeBindings[i])
 		}
 	}
 	return errs.If()
 }
 
-func (binding *BindStm) compile(global *Ast, pipeline *Pipeline, params *InParams) error {
+func (binding *BindStm) compile(global *Ast, pipeline *Pipeline, params Params) error {
 	// Make sure the bound-to id is a declared parameter of the callable.
-	param, ok := params.Table[binding.Id]
+	param, ok := params.GetParam(binding.Id)
 	if !ok {
 		return global.err(binding, "ArgumentError: '%s' is not a valid parameter",
 			binding.Id)
@@ -380,28 +485,11 @@ func (binding *BindStm) compileParam(global *Ast, pipeline *Pipeline, param Para
 }
 
 func (bindings *BindStms) compileReturns(global *Ast, pipeline *Pipeline, params *OutParams) error {
-	// Check the bindings
-	var errs ErrorList
-	if len(bindings.List) > 0 {
-		bindings.Table = make(map[string]*BindStm, len(bindings.List))
+	if len(bindings.List) > 0 && params == nil {
+		return global.err(bindings,
+			"No parameters to bind")
 	}
-	for _, binding := range bindings.List {
-		// Collect bindings by id so we can check that all params are bound.
-		if _, ok := bindings.Table[binding.Id]; ok {
-			errs = append(errs, global.err(binding,
-				"DuplicateBinding: '%s' already bound in this call",
-				binding.Id))
-		}
-		// Building the bindings table could also happen in the grammar rules,
-		// but then we lose the ability to detect duplicate parameters as we're
-		// doing right above this comment. So leave this here.
-		bindings.Table[binding.Id] = binding
-
-		if err := binding.compileReturns(global, pipeline, params); err != nil {
-			errs = append(errs, err)
-		}
-	}
-
+	errs := bindings.compileGeneric(global, pipeline, params)
 	if params != nil {
 		// Check that all input params of the called segment are bound.
 		for _, param := range params.List {
@@ -413,16 +501,6 @@ func (bindings *BindStms) compileReturns(global *Ast, pipeline *Pipeline, params
 		}
 	}
 	return errs.If()
-}
-
-func (binding *BindStm) compileReturns(global *Ast, pipeline *Pipeline, params *OutParams) error {
-	// Make sure the bound-to id is a declared parameter of the callable.
-	param, ok := params.Table[binding.Id]
-	if !ok {
-		return global.err(binding, "ArgumentError: '%s' is not a valid parameter",
-			binding.Id)
-	}
-	return binding.compileParam(global, pipeline, param)
 }
 
 func getBoundParamIds(exp Exp, arr []string) []string {

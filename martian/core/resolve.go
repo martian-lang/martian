@@ -30,21 +30,27 @@ type BindingInfo struct {
 
 func (node *Node) inputBindingInfo(fork ForkId) []BindingInfo {
 	readSize := node.top.rt.FreeMemBytes() / int64(len(node.prenodes)+1)
-	result := make([]BindingInfo, len(node.call.ResolvedInputs()))
-	for i, input := range node.call.Call().Bindings.List {
-		result[i].Id = input.Id
+	result := make([]BindingInfo, 0, len(node.call.ResolvedInputs()))
+	for _, input := range node.call.Call().Bindings.List {
+		if input.Id == "*" {
+			continue
+		}
+		result = append(result, BindingInfo{
+			Id: input.Id,
+		})
+		r := &result[len(result)-1]
 		rb := node.call.ResolvedInputs()[input.Id]
-		result[i].Type = input.Tname
+		r.Type = input.Tname
 		if refs, err := rb.FindRefs(node.top.types); err != nil {
 			panic(err)
 		} else if len(refs) == 1 {
-			result[i].Mode = "reference"
+			r.Mode = "reference"
 			fqname := node.top.allNodes[refs[0].Exp.Id].GetFQName()
-			result[i].Node = &fqname
+			r.Node = &fqname
 		}
 		ready, val, _ := node.top.resolve(rb.Exp, rb.Type, fork, readSize)
-		result[i].Value = val
-		result[i].Waiting = !ready
+		r.Value = val
+		r.Waiting = !ready
 	}
 	return result
 }

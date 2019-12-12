@@ -1740,3 +1740,124 @@ pipeline BAR(
 				`0123456789012345678901234567890123456789012345678901234567890123`),
 		"too long")
 }
+
+func TestWildcardFailures(t *testing.T) {
+	const stageSrc = `
+struct Foo(
+    int x,
+    int y,
+)
+
+stage STAGE1(
+    in  int  y,
+    in  int  z,
+    out Foo  foo,
+    out int  w,
+    src comp "blah",
+)
+
+stage STAGE2(
+    in  string y,
+    in  int    z,
+    out Foo    foo,
+    out int    w,
+    src comp   "blah",
+)
+
+pipeline PIPE(
+    in  int z,
+    in  Foo foo,
+    out int x,
+    out int w,
+)
+`
+	testGood(t, stageSrc+`{
+call STAGE1(
+    z = self.z,
+    * = self.foo,
+)
+
+return(
+    x = STAGE1.w,
+    * = STAGE1,
+)
+}`)
+	testGood(t, stageSrc+`{
+call STAGE1(
+    z = self.z,
+    * = self.foo,
+)
+
+return(
+    w = STAGE1.w,
+    * = STAGE1.foo,
+)
+}`)
+	testBadCompile(t, stageSrc+`{
+call STAGE2(
+    z = self.z,
+    * = self.foo,
+)
+
+return(
+    x = STAGE2.w,
+    * = STAGE2,
+)
+}`, "incompatible type")
+	testBadCompile(t, stageSrc+`{
+call STAGE1(
+    y = self.foo.x,
+    z = self.z,
+    * = self.foo,
+)
+
+return(
+    x = STAGE1.w,
+    * = STAGE1,
+)
+}`, "DuplicateBinding: 'y' already bound")
+	testBadCompile(t, stageSrc+`{
+call STAGE1(
+    z = self.z,
+    * = self.foo,
+)
+
+return(
+    * = STAGE1,
+)
+}`, "ArgumentNotSuppliedError")
+	testBadCompile(t, stageSrc+`{
+call STAGE1(
+    z = self.z,
+    * = self.foo,
+)
+
+return(
+    x = STAGE1.w,
+    w = STAGE1.w,
+    * = STAGE1,
+)
+}`, "DuplicateBinding: 'w' already bound")
+	testBadCompile(t, stageSrc+`{
+call STAGE1(
+    z = self.z,
+    * = self.foo,
+)
+
+return(
+    w = STAGE1.w,
+    * = STAGE1.w,
+)
+}`, "must be a reference to a struct")
+	testBadCompile(t, stageSrc+`{
+call STAGE1(
+    z = self.z,
+    * = self.z,
+)
+
+return(
+    x = STAGE1.w,
+    * = STAGE1.foo,
+)
+}`, "must be a reference to a struct")
+}

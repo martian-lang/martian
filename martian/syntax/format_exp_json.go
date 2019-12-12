@@ -440,7 +440,8 @@ func (e *FloatExp) MarshalJSON() ([]byte, error) {
 	if e == nil {
 		return []byte("null"), nil
 	}
-	return []byte(strconv.FormatFloat(e.Value, 'g', -1, 64)), nil
+	var buf [68]byte
+	return strconv.AppendFloat(buf[:0], e.Value, 'g', -1, 64), nil
 }
 
 func (e *FloatExp) jsonSizeEstimate() int {
@@ -452,7 +453,8 @@ func (e *FloatExp) EncodeJSON(buf *bytes.Buffer) error {
 		_, err := buf.WriteString("null")
 		return err
 	}
-	_, err := buf.WriteString(strconv.FormatFloat(e.Value, 'g', -1, 64))
+	var b [68]byte
+	_, err := buf.Write(strconv.AppendFloat(b[:0], e.Value, 'g', -1, 64))
 	return err
 }
 
