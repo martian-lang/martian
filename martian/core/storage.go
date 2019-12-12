@@ -41,20 +41,6 @@ type VDRKillReport struct {
 	Events    []*VdrEvent `json:"events,omitempty"`
 }
 
-type VDRByTimestamp []*VDRKillReport
-
-func (self VDRByTimestamp) Len() int {
-	return len(self)
-}
-
-func (self VDRByTimestamp) Swap(i, j int) {
-	self[i], self[j] = self[j], self[i]
-}
-
-func (self VDRByTimestamp) Less(i, j int) bool {
-	return self[i].Timestamp < self[j].Timestamp
-}
-
 // Merge events with the same timestamp.
 func (pr *VDRKillReport) mergeEvents() {
 	allEvents := pr.Events

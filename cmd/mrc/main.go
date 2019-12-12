@@ -13,12 +13,30 @@ import (
 	"path/filepath"
 	"regexp"
 
-	"github.com/martian-lang/martian/martian/core"
 	"github.com/martian-lang/martian/martian/syntax"
 	"github.com/martian-lang/martian/martian/util"
 
 	"github.com/martian-lang/docopt.go"
 )
+
+// Compile all the MRO files in mroPaths.
+func CompileAll(mroPaths []string, checkSrcPath bool) (int, []*syntax.Ast, error) {
+	fileNames := make([]string, 0, len(mroPaths)*3)
+	for _, mroPath := range mroPaths {
+		fpaths, _ := filepath.Glob(mroPath + "/[^_]*.mro")
+		fileNames = append(fileNames, fpaths...)
+	}
+	asts := make([]*syntax.Ast, 0, len(fileNames))
+	var parser syntax.Parser
+	for _, fpath := range fileNames {
+		if _, _, ast, err := parser.Compile(fpath, mroPaths, checkSrcPath); err != nil {
+			return 0, nil, err
+		} else {
+			asts = append(asts, ast)
+		}
+	}
+	return len(fileNames), asts, nil
+}
 
 func main() {
 	util.SetPrintLogger(os.Stderr)
@@ -73,7 +91,7 @@ Options:
 	wasErr := false
 	if opts["--all"].(bool) {
 		// Compile all MRO files in MRO path.
-		num, asts, err := core.CompileAll(mroPaths, checkSrcPath)
+		num, asts, err := CompileAll(mroPaths, checkSrcPath)
 
 		if err != nil {
 			fmt.Fprintln(os.Stderr, err.Error())

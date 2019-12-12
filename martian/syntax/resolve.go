@@ -1714,30 +1714,3 @@ func findStructRefs(lookup *TypeLookup, t *StructType, exp *MapExp, arr, typedMa
 	}
 	return result, errs.If()
 }
-
-// Returns a map containing the stages referenced by expression
-// (recursively) and the specific referenecd binding paths.
-func FindRefs(exp Exp) map[string][]string {
-	if !exp.HasRef() {
-		return nil
-	}
-	refs := exp.FindRefs()
-	collate := make(map[string]map[string]struct{})
-	for _, ref := range refs {
-		if r := collate[ref.Id]; r == nil {
-			collate[ref.Id] = map[string]struct{}{ref.OutputId: {}}
-		} else {
-			r[ref.OutputId] = struct{}{}
-		}
-	}
-	result := make(map[string][]string, len(collate))
-	for key, vals := range collate {
-		vlist := make([]string, 0, len(vals))
-		for v := range vals {
-			vlist = append(vlist, v)
-		}
-		sort.Strings(vlist)
-		result[key] = vlist
-	}
-	return result
-}

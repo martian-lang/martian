@@ -46,13 +46,6 @@ def martian_dependencies(
     )
 
     _maybe(
-        go_repository,
-        name = "com_github_satori_go_uuid",
-        commit = "0aa62d5ddceb",
-        importpath = "github.com/satori/go.uuid",
-    )
-
-    _maybe(
         # This actually already brought in by rules_go, and
         # is included here mostly for clarity.
         go_repository,

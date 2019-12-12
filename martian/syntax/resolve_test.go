@@ -143,43 +143,6 @@ func TestAstMakeCallGraph(t *testing.T) {
 	}
 }
 
-func TestCallGraphFindRefs(t *testing.T) {
-	src, err := ioutil.ReadFile("testdata/resolve_test.mro")
-	if err != nil {
-		t.Fatal(err)
-	}
-	_, _, ast, err := ParseSourceBytes(src, "resolve_test.mro", nil, false)
-	if err != nil {
-		t.Fatal(err)
-	}
-	graph, err := ast.MakeCallGraph("", ast.Call)
-	if err != nil {
-		t.Fatal(err)
-	}
-	refs := FindRefs(graph.ResolvedOutputs().Exp)
-	if len(refs) != 3 {
-		t.Errorf("Expected 3 bound stages, got %d", len(refs))
-	}
-	for _, s := range []string{
-		"POINT_MAPPER.PIPE1.POINT_MAKER",
-		"POINT_MAPPER.PIPE2.POINT_MAKER",
-		"POINT_MAPPER.PIPE3.POINT_MAKER",
-	} {
-		if p, ok := refs[s]; !ok {
-			t.Errorf("No reference to %s found", s)
-		} else if len(p) != 2 {
-			t.Errorf("Expected 2 binding paths, got %d", len(p))
-		} else {
-			if p[0] != "" && p[1] != "" {
-				t.Errorf("Expected root binding for %s", s)
-			}
-			if p[0] != "point.x" && p[1] != "point.x" {
-				t.Errorf("Expected binding %s.point.x", s)
-			}
-		}
-	}
-}
-
 func TestResolvedBindingFindRefs(t *testing.T) {
 	src, err := ioutil.ReadFile("testdata/resolve_test.mro")
 	if err != nil {

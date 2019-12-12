@@ -22,8 +22,6 @@ import (
 
 	"github.com/martian-lang/martian/martian/syntax"
 	"github.com/martian-lang/martian/martian/util"
-
-	uuid "github.com/satori/go.uuid"
 )
 
 const STAGE_TYPE_SPLIT = "split"
@@ -34,16 +32,7 @@ const forkPrintInterval = 5 * time.Minute
 
 // Helpers
 
-func ParseFQName(fqname string) (string, string) {
-	parts := strings.Split(fqname, ".")
-	return parts[2], parts[1]
-}
-
-func MakeFQName(pipeline string, psid string) string {
-	return fmt.Sprintf("ID.%s.%s", psid, pipeline)
-}
-
-func ParseTimestamp(data string) string {
+func parseTimestamp(data string) string {
 	// Backwards compatible with current and plain timestamp formats
 	timestamp := strings.Split(data, "\n")[0]
 	prefix := "start:"
@@ -60,22 +49,6 @@ func ParseVersions(data string) (string, string, error) {
 		return "", "", err
 	}
 	return versions.Martian, versions.Pipelines, nil
-}
-
-func ParseJobMode(data string) (string, string, string) {
-	jobmode := "local"
-	if m := regexp.MustCompile(`.*--jobmode=([^\s]+).*`).FindStringSubmatch(data); len(m) > 0 {
-		jobmode = m[1]
-	}
-	localcores := "max"
-	if m := regexp.MustCompile(`.*--localcores=([^\s]+).*`).FindStringSubmatch(data); len(m) > 0 {
-		localcores = m[1]
-	}
-	localmem := "max"
-	if m := regexp.MustCompile(`.*--localmem=([^\s]+).*`).FindStringSubmatch(data); len(m) > 0 {
-		localmem = m[1]
-	}
-	return jobmode, localcores, localmem
 }
 
 func VerifyVDRMode(vdrMode string) {
@@ -268,42 +241,6 @@ type Runtime struct {
 	jobConfig       *JobManagerJson
 }
 
-// Deprecated: use RuntimeConfig.NewRuntime() instead
-func NewRuntime(jobMode string, vdrMode string, profileMode ProfileMode, martianVersion string) *Runtime {
-	return NewRuntimeWithCores(jobMode, vdrMode, profileMode, martianVersion,
-		-1, -1, -1, -1, -1, "", false, false, false, false, false, false, false, "", nil, false)
-}
-
-// Deprecated: use RuntimeConfig.NewRuntime() instead
-func NewRuntimeWithCores(jobMode string, vdrMode string, profileMode ProfileMode, martianVersion string,
-	reqCores int, reqMem int, reqMemPerCore int, maxJobs int, jobFreqMillis int, jobQueues string,
-	fullStageReset bool, enableStackVars bool, enableZip bool, skipPreflight bool, enableMonitor bool,
-	debug bool, stest bool, onFinishExec string, overrides *PipestanceOverrides, limitLoadavg bool) *Runtime {
-	c := RuntimeOptions{
-		JobMode:         jobMode,
-		VdrMode:         vdrMode,
-		ProfileMode:     profileMode,
-		MartianVersion:  martianVersion,
-		LocalMem:        reqMem,
-		LocalCores:      reqCores,
-		MemPerCore:      reqMemPerCore,
-		MaxJobs:         maxJobs,
-		JobFreqMillis:   jobFreqMillis,
-		ResourceSpecial: jobQueues,
-		FullStageReset:  fullStageReset,
-		StackVars:       enableStackVars,
-		Zip:             enableZip,
-		SkipPreflight:   skipPreflight,
-		Monitor:         enableMonitor,
-		Debug:           debug,
-		StressTest:      stest,
-		OnFinishHandler: onFinishExec,
-		Overrides:       overrides,
-		LimitLoadavg:    limitLoadavg,
-	}
-	return c.NewRuntime()
-}
-
 func (c *RuntimeOptions) NewRuntime() *Runtime {
 	self := &Runtime{
 		Config:       c,
@@ -333,25 +270,6 @@ func (c *RuntimeOptions) NewRuntime() *Runtime {
 	}
 
 	return self
-}
-
-// Compile all the MRO files in mroPaths.
-func CompileAll(mroPaths []string, checkSrcPath bool) (int, []*syntax.Ast, error) {
-	fileNames := make([]string, 0, len(mroPaths)*3)
-	for _, mroPath := range mroPaths {
-		fpaths, _ := filepath.Glob(mroPath + "/[^_]*.mro")
-		fileNames = append(fileNames, fpaths...)
-	}
-	asts := make([]*syntax.Ast, 0, len(fileNames))
-	var parser syntax.Parser
-	for _, fpath := range fileNames {
-		if _, _, ast, err := parser.Compile(fpath, mroPaths, checkSrcPath); err != nil {
-			return 0, nil, err
-		} else {
-			asts = append(asts, ast)
-		}
-	}
-	return len(fileNames), asts, nil
 }
 
 // Instantiate a pipestance object given a psid, MRO source, and a
@@ -468,7 +386,7 @@ func (self *Runtime) InvokePipeline(src string, srcPath string, psid string,
 		return pipestance, err
 	}
 	if uid := os.Getenv("MRO_FORCE_UUID"); uid == "" {
-		if err := pipestance.SetUuid(uuid.NewV4().String()); err != nil {
+		if err := pipestance.SetUuid(NewUUID().String()); err != nil {
 			os.RemoveAll(pipestancePath)
 			return pipestance, err
 		}

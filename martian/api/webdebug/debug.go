@@ -4,7 +4,8 @@
 // Debug probe tools for processes.
 //
 
-package api
+// Package webdebug wraps net/http/pprof with basic authentication.
+package webdebug
 
 import (
 	"expvar"

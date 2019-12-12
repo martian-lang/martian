@@ -10,11 +10,9 @@ import (
 	"bytes"
 	"fmt"
 	"io/ioutil"
-	"os/exec"
 	"path"
 	"strconv"
 	"strings"
-	"syscall"
 )
 
 // Get the build version for this binary, as embedded by the build system.
@@ -61,14 +59,6 @@ func GetSakeVersion(dir string) (string, error) {
 		return "", err
 	}
 	return string(bytes.TrimSpace(data)), nil
-}
-
-func runGit(dir string, args ...string) (string, error) {
-	cmd := exec.Command("git", args...)
-	cmd.Dir = dir
-	cmd.SysProcAttr = Pdeathsig(&syscall.SysProcAttr{}, syscall.SIGKILL)
-	out, err := cmd.Output()
-	return string(bytes.TrimSpace(out)), err
 }
 
 // Returns the output of running 'git describe --tags --dirty --always'

@@ -122,22 +122,6 @@ func (self *Stagestance) Callable() syntax.Callable {
 	return self.node.Callable()
 }
 
-func (self *Stagestance) Step() bool {
-	if err := self.node.top.rt.JobManager.refreshResources(
-		self.node.top.rt.Config.JobMode == "local"); err != nil {
-		util.LogError(err, "runtime",
-			"Error refreshing resources: %s", err.Error())
-	}
-	return self.getNode().step()
-}
-
-func (self *Stagestance) CheckHeartbeats() { self.getNode().checkHeartbeats() }
-func (self *Stagestance) LoadMetadata()    { self.getNode().loadMetadata() }
-func (self *Stagestance) PostProcess()     { self.getNode().postProcess() }
-func (self *Stagestance) GetFatalError() (string, bool, string, string, MetadataFileName, []string) {
-	return self.getNode().getFatalError()
-}
-
 //=============================================================================
 // Pipestance
 //=============================================================================
@@ -775,7 +759,7 @@ func (self *Pipestance) VerifyJobMode() error {
 
 func (self *Pipestance) GetTimestamp() string {
 	data := self.metadata.readRaw(TimestampFile)
-	return ParseTimestamp(data)
+	return parseTimestamp(data)
 }
 
 func (self *Pipestance) GetVersions() (string, string, error) {

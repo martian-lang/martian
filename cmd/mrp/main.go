@@ -535,6 +535,50 @@ type mrpConfiguration struct {
 	noExit         bool
 }
 
+func parseMroFlags(opts map[string]interface{}, doc string, martianOptions []string, martianArguments []string) {
+	// Parse doc string for accepted arguments
+	// All accepted arguments start with `--` and contain only lowercase
+	// letters and dashes.
+	allowedOptions := make(map[string]struct{}, strings.Count(doc, "\n"))
+	dd := doc
+	for i := strings.Index(dd, "--"); i >= 0; i = strings.Index(dd, "--") {
+		dd = dd[i:]
+		if j := strings.IndexAny(dd, "= "); j > 2 {
+			allowedOptions[dd[:j]] = struct{}{}
+			dd = dd[j:]
+		} else {
+			break
+		}
+	}
+	// Filter options to ones which are allowed.
+	newMartianOptions := make([]string, 0, len(martianOptions)+len(martianArguments))
+	for _, option := range martianOptions {
+		o := option
+		if i := strings.IndexRune(option, '='); i > 0 {
+			o = option[:i]
+		}
+		if _, ok := allowedOptions[o]; ok {
+			newMartianOptions = append(newMartianOptions, option)
+		}
+	}
+	newMartianOptions = append(newMartianOptions, martianArguments...)
+	defopts, err := docopt.Parse(doc, newMartianOptions, false, "", true, false)
+	if err != nil {
+		util.LogInfo("environ", "EnvironError: MROFLAGS environment variable has incorrect format\n")
+		fmt.Println(doc)
+		os.Exit(1)
+	}
+	for id, defval := range defopts {
+		// Only use options
+		if !strings.HasPrefix(id, "--") {
+			continue
+		}
+		if val, ok := opts[id].(bool); (ok && !val) || (!ok && opts[id] == nil) {
+			opts[id] = defval
+		}
+	}
+}
+
 func configure() mrpConfiguration {
 	//=========================================================================
 	// Commandline argument and environment variables.
@@ -623,7 +667,7 @@ Options:
 	martianFlags := ""
 	if martianFlags = os.Getenv("MROFLAGS"); len(martianFlags) > 0 {
 		martianOptions := strings.Split(martianFlags, " ")
-		util.ParseMroFlags(opts, doc, martianOptions, []string{"call.mro", "pipestance"})
+		parseMroFlags(opts, doc, martianOptions, []string{"call.mro", "pipestance"})
 		util.LogInfo("environ", "MROFLAGS=%s", martianFlags)
 	}
 

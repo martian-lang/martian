@@ -10,6 +10,7 @@ go_library(
     visibility = ["//visibility:private"],
     deps = [
         "//martian/api:go_default_library",
+        "//martian/api/webdebug:go_default_library",
         "//martian/core:go_default_library",
         "//martian/syntax:go_default_library",
         "//martian/util:go_default_library",

@@ -4,9 +4,6 @@
 [submodule "src/github.com/martian-lang/docopt.go"]
 	path = vendor/github.com/martian-lang/docopt.go
 	url = https://github.com/martian-lang/docopt.go
-[submodule "src/github.com/satori/go.uuid"]
-	path = vendor/github.com/satori/go.uuid
-	url = https://github.com/satori/go.uuid
 [submodule "src/github.com/golang/tools"]
 	path = vendor/golang.org/x/tools
 	url = https://github.com/golang/tools

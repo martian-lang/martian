@@ -4,8 +4,6 @@ github.com/google/shlex v0.0.0-20150127133951-6f45313302b9 h1:JM174NTeGNJ2m/oLH3
 github.com/google/shlex v0.0.0-20150127133951-6f45313302b9/go.mod h1:RpwtwJQFrIEPstU94h88MWPXP2ektJZ8cZ0YntAmXiE=
 github.com/martian-lang/docopt.go v0.0.0-20180828184714-57cc8f5f669d h1:H9E5hH90ZABvmY6cJLUCzNKs1OKIsQ1eo7tFxzJKoI0=
 github.com/martian-lang/docopt.go v0.0.0-20180828184714-57cc8f5f669d/go.mod h1:jEIK8Vz86rqUBOIHF8l3bfxnaXafOY3KY4vGBghfIwQ=
-github.com/satori/go.uuid v1.1.1-0.20160713180306-0aa62d5ddceb h1:T3X8vQXH3/kJq4cD1P2pjIuz0Tfu2Vh10OCh9Rf6Hkw=
-github.com/satori/go.uuid v1.1.1-0.20160713180306-0aa62d5ddceb/go.mod h1:dA0hQrYB0VpLJoorglMZABFdXlWrHn1NEOzdhQKdks0=
 golang.org/x/crypto v0.0.0-20190308221718-c2843e01d9a2/go.mod h1:djNgcEr1/C05ACkg1iLfiJU5Ep61QUkGW8qpdssI0+w=
 golang.org/x/net v0.0.0-20190620200207-3b0461eec859/go.mod h1:z5CRVTTTmAJ677TzLLGU+0bjPO0LkuOLi4/5GtJWs/s=
 golang.org/x/sync v0.0.0-20190423024810-112230192c58/go.mod h1:RxMgew5VJxzue5/jJTE5uejpjVlOe/izrB70Jof72aM=

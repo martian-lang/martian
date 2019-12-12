@@ -24,6 +24,7 @@ import (
 	"time"
 
 	"github.com/martian-lang/martian/martian/api"
+	"github.com/martian-lang/martian/martian/api/webdebug"
 	"github.com/martian-lang/martian/martian/core"
 	"github.com/martian-lang/martian/martian/util"
 )
@@ -94,7 +95,7 @@ func (self *mrpWebServer) Start() {
 			self.serveGraphPage(w, req)
 		}
 	})
-	api.EnableDebug(sm, self.verifyAuth)
+	webdebug.EnableDebug(sm, self.verifyAuth)
 
 	self.pipestanceBox.server = &http.Server{
 		Handler:      sm,

@@ -252,8 +252,3 @@ func PrintInfo(component string, format string, v ...interface{}) {
 func PrintError(err error, component string, format string, v ...interface{}) {
 	formatError(&printWriter, err, component, format, v...)
 }
-
-// Surrounds the given string with ANSI color control characters.
-func Colorize(s string, c int) string {
-	return fmt.Sprintf("\033[%dm%s\033[0m", c, s)
-}

@@ -41,8 +41,8 @@ type WallClockInfo struct {
 type InvocationData struct {
 	Call      string          `json:"call"`
 	Args      LazyArgumentMap `json:"args"`
-	SweepArgs []string        `json:"sweepargs"`
-	SplitArgs []string        `json:"splitargs"`
+	SweepArgs []string        `json:"sweepargs,omitempty"`
+	SplitArgs []string        `json:"splitargs,omitempty"`
 	Include   string          `json:"mro_file,omitempty"`
 }
 

@@ -11,8 +11,6 @@ before_cache:
 matrix:
   include:
   - name: "python2"
-    go:
-    - 1.12.x
     sudo: false
     dist: trusty
     before_install:
@@ -73,6 +71,7 @@ before_install:
 - pip --version
 script:
 - "./.travis.gofmt.sh"
+- GO111MODULE=on GOOS=darwin go build ./cmd/...
 - make test
 - make longtests
 - pylint adapters/python/martian_shell.py

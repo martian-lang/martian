@@ -11,21 +11,15 @@
 package util // import "github.com/martian-lang/martian/martian/util"
 
 import (
-	"bytes"
-	"encoding/json"
 	"errors"
 	"fmt"
-	"html/template"
 	"math"
 	"os"
 	"path"
 	"path/filepath"
 	"regexp"
-	"strconv"
 	"strings"
 	"time"
-
-	"github.com/martian-lang/docopt.go"
 )
 
 func getExeBasePath() string {
@@ -66,32 +60,12 @@ func MkdirAll(p string) error {
 	return os.MkdirAll(p, 0777)
 }
 
-func MakeJSON(data interface{}) string {
-	bytes, err := json.Marshal(data)
-	if err != nil {
-		return err.Error()
-	}
-	return string(bytes)
-}
-
 func ParseMroPath(mroPath string) []string {
 	return strings.Split(mroPath, ":")
 }
 
 func FormatMroPath(mroPaths []string) string {
 	return strings.Join(mroPaths, ":")
-}
-
-func MakeTag(key string, value string) string {
-	return fmt.Sprintf("%s:%s", key, value)
-}
-
-func ParseTag(tag string) (string, string) {
-	tagList := strings.Split(tag, ":")
-	if len(tagList) < 2 {
-		return "", tag
-	}
-	return tagList[0], tagList[1]
 }
 
 type dirSizeCounter struct {
@@ -181,19 +155,6 @@ func ArrayToString(data []interface{}) []string {
 	return list
 }
 
-func Render(dir string, tname string, data interface{}) string {
-	tmpl, err := template.New(tname).Delims("[[", "]]").ParseFiles(RelPath(path.Join("..", dir, tname)))
-	if err != nil {
-		return err.Error()
-	}
-	var doc bytes.Buffer
-	err = tmpl.Execute(&doc, data)
-	if err != nil {
-		return err.Error()
-	}
-	return doc.String()
-}
-
 func ValidateID(id string) error {
 	if ok, _ := regexp.MatchString("^(\\d|\\w|-)+$", id); !ok {
 		return &MartianError{fmt.Sprintf("Invalid name: %s (only numbers, letters, dash, and underscore allowed)", id)}
@@ -265,24 +226,6 @@ func Atoi(s []byte) (int64, error) {
 	}
 }
 
-func GetFilenameWithSuffix(dir string, fname string) string {
-	suffix := 0
-	names, err := Readdirnames(dir)
-	if err != nil {
-		return fname + "-0"
-	}
-	re := regexp.MustCompile("^" + regexp.QuoteMeta(fname) + "-(\\d+)$")
-	for _, name := range names {
-		if m := re.FindStringSubmatch(name); m != nil {
-			infoSuffix, _ := strconv.Atoi(m[1])
-			if suffix <= infoSuffix {
-				suffix = infoSuffix + 1
-			}
-		}
-	}
-	return fname + "-" + strconv.Itoa(suffix)
-}
-
 func FormatEnv(envs map[string]string) []string {
 	l := []string{}
 	for key, value := range envs {
@@ -348,43 +291,6 @@ func ParseTagsOpt(opt string) []string {
 		}
 	}
 	return tags
-}
-
-func ParseMroFlags(opts map[string]interface{}, doc string, martianOptions []string, martianArguments []string) {
-	// Parse doc string for accepted arguments
-	r := regexp.MustCompile(`--\w+`)
-	s := r.FindAllString(doc, -1)
-
-	allowedOptions := make(map[string]struct{}, len(s))
-	for _, allowedOption := range s {
-		allowedOptions[allowedOption] = struct{}{}
-	}
-	// Remove unallowed options
-	newMartianOptions := make([]string, 0, len(martianOptions)+len(martianArguments))
-	for allowedOption := range allowedOptions {
-		for _, option := range martianOptions {
-			if strings.HasPrefix(option, allowedOption) {
-				newMartianOptions = append(newMartianOptions, option)
-				break
-			}
-		}
-	}
-	newMartianOptions = append(newMartianOptions, martianArguments...)
-	defopts, err := docopt.Parse(doc, newMartianOptions, false, "", true, false)
-	if err != nil {
-		LogInfo("environ", "EnvironError: MROFLAGS environment variable has incorrect format\n")
-		fmt.Println(doc)
-		os.Exit(1)
-	}
-	for id, defval := range defopts {
-		// Only use options
-		if !strings.HasPrefix(id, "--") {
-			continue
-		}
-		if val, ok := opts[id].(bool); (ok && !val) || (!ok && opts[id] == nil) {
-			opts[id] = defval
-		}
-	}
 }
 
 func Readdirnames(readPath string) (names []string, err error) {
