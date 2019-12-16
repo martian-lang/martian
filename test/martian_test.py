@@ -301,7 +301,10 @@ def compare_finalstate(output, expect, filename):
 
 
 def compare_vdrkill(output, expect, filename):
-    """Compare two _vdrkill json files. We do not compare events or the timestamp"""
+    """Compare two _vdrkill json files.
+
+    We do not compare events or the timestamp
+    """
     actual, expected, loaded = load_json(output, expect, filename)
     if not loaded:
         return False
@@ -380,13 +383,13 @@ _TRACEBACK_REGEX = re.compile(r', line \d+, in')
 
 
 def clean_errors(line):
-    """As clean_line, but also blur out traceback line numbers"""
+    """As clean_line, but also blur out traceback line numbers."""
     line = line.decode('utf-8', errors='ignore')
     return _TRACEBACK_REGEX.sub(', line LINENO, in', clean_line(line))
 
 
 def compare_errors(output, expect, filename):
-    """As compare_lines, but we also ignore traceback line-numbers"""
+    """As compare_lines, but we also ignore traceback line-numbers."""
     with open(os.path.join(output, filename), 'rb') as act:
         with open(os.path.join(expect, filename), 'rb') as exp:
             for actual, expected in zip_longest(act, exp):
@@ -494,6 +497,18 @@ def check_result(output_dir, expectation_dir, config):
     return result_ok
 
 
+def _encode(filename):
+    """Encode a filename as utf-8, but only in python 2."""
+    try:
+        if isinstance(filename, unicode):
+            return filename.encode('utf-8')
+    except NameError:
+        # Python3 has no type named unicode, because otherwise it would
+        # be too easy to migrate from 2 to 3.
+        pass
+    return filename
+
+
 def main(argv):
     """Execute the test case."""
     parser = argparse.ArgumentParser()
@@ -523,7 +538,7 @@ def main(argv):
         return 2
     expectation_dir = get_expectation_dir(config_filename, config)
     if output_dir and expectation_dir:
-        correct = check_result(output_dir, expectation_dir, config)
+        correct = check_result(_encode(output_dir), expectation_dir, config)
         if correct:
             sys.stderr.write('Output correct.\n')
             return 0

@@ -388,27 +388,31 @@ func (self *Node) attachToFileParents(fileParents map[Nodable]map[string]syntax.
 //
 func (self *Node) mkdirs() error {
 	if err := util.MkdirAll(self.path); err != nil {
-		msg := fmt.Sprintf("Could not create root directory for %s: %s", self.call.GetFqid(), err.Error())
+		msg := fmt.Sprintf("Could not create root directory for %s: %s",
+			self.call.GetFqid(), err.Error())
 		util.LogError(err, "runtime", msg)
 		self.metadata.WriteErrorString(msg)
 		return err
 	}
 	if err := util.Mkdir(self.top.journalPath); err != nil {
-		msg := fmt.Sprintf("Could not create directories for %s: %s", self.call.GetFqid(), err.Error())
+		msg := fmt.Sprintf("Could not create directories for %s: %s",
+			self.call.GetFqid(), err.Error())
 		util.LogError(err, "runtime", msg)
 		self.metadata.WriteErrorString(msg)
 		return err
 	}
 	if err := util.Mkdir(self.top.tmpPath); err != nil {
-		msg := fmt.Sprintf("Could not create directories for %s: %s", self.call.GetFqid(), err.Error())
+		msg := fmt.Sprintf("Could not create directories for %s: %s",
+			self.call.GetFqid(), err.Error())
 		util.LogError(err, "runtime", msg)
 		self.metadata.WriteErrorString(msg)
 		return err
 	}
 
 	var wg sync.WaitGroup
-	for _, fork := range self.forks {
-		wg.Add(1)
+	forks := self.forks
+	wg.Add(len(forks))
+	for _, fork := range forks {
 		go func(f *Fork) {
 			f.mkdirs()
 			wg.Done()
@@ -605,9 +609,16 @@ func (self *Node) removeMetadata() {
 	}
 }
 
-func (self *Node) getFork(index int) *Fork {
-	if index < len(self.forks) {
-		return self.forks[index]
+func (self *Node) getFork(index string) *Fork {
+	i, err := strconv.Atoi(index)
+	if err == nil && i >= 0 && i < len(self.forks) {
+		return self.forks[i]
+	}
+	l := len(self.call.GetFqid()) + 5
+	for _, f := range self.forks {
+		if len(f.fqname) > l && f.fqname[l:] == index {
+			return f
+		}
 	}
 	return nil
 }
@@ -875,18 +886,17 @@ func (self *Node) step() bool {
 // 3. The chunk index, if any.
 // 4. The job uniquifier, if any.
 // 5. The metadata file name.
-var jobJournalRe = regexp.MustCompile(`(.*)\.fork(\d+)(?:\.chnk(\d+))?(?:\.u([a-f0-9]{10}))?\.(.*)$`)
+var jobJournalRe = regexp.MustCompile(`(.*)\.fork([^.]+)(?:\.chnk(\d+))?(?:\.u([a-f0-9]{10}))?\.(.*)$`)
 
-func (self *Node) parseRunFilename(fqname string) (string, int, int, string, string) {
-	if match := jobJournalRe.FindStringSubmatch(fqname); match != nil {
-		forkIndex, _ := strconv.Atoi(match[2])
+func (self *Node) parseRunFilename(fqname string) (string, string, int, string, string) {
+	if match := jobJournalRe.FindStringSubmatch(fqname); len(match) >= 6 {
 		chunkIndex := -1
 		if match[3] != "" {
 			chunkIndex, _ = strconv.Atoi(match[3])
 		}
-		return match[1], forkIndex, chunkIndex, match[4], match[5]
+		return match[1], match[2], chunkIndex, match[4], match[5]
 	}
-	return "", -1, -1, "", ""
+	return "", "", -1, "", ""
 }
 
 func (self *Node) refreshState(readOnly bool) {
@@ -900,14 +910,18 @@ func (self *Node) refreshState(readOnly bool) {
 		}
 
 		fqname, forkIndex, chunkIndex, uniquifier, state := self.parseRunFilename(filename)
-		if node := self.find(fqname); node != nil {
+		if fqname == "" {
+			util.LogInfo("runtime",
+				"WARNING: failed to parse journal file name %s",
+				filename)
+		} else if node := self.find(fqname); node != nil {
 			if fork := node.getFork(forkIndex); fork != nil {
 				if chunkIndex >= 0 {
 					if chunk := fork.getChunk(chunkIndex); chunk != nil {
 						chunk.updateState(MetadataFileName(state), uniquifier)
 					} else {
 						util.LogInfo("runtime",
-							"WARNING: Journal update for unknown chunk %s.fork%d.chnk%d",
+							"WARNING: Journal update for unknown chunk %s.fork%s.chnk%d",
 							fqname, forkIndex, chunkIndex)
 					}
 				} else {
@@ -916,13 +930,13 @@ func (self *Node) refreshState(readOnly bool) {
 				updatedForks[fork] = struct{}{}
 			} else {
 				util.LogInfo("runtime",
-					"WARNING: Journal update for unknown fork %s.fork%d",
+					"WARNING: Journal update for unknown fork %s.fork%s",
 					fqname, forkIndex)
 			}
 		} else {
 			util.LogInfo("runtime",
-				"WARNING: Journal update for unknown node %s",
-				fqname)
+				"WARNING: Journal update for unknown node %s (%s)",
+				fqname, filename)
 		}
 		if !readOnly {
 			os.Remove(file)
@@ -1150,10 +1164,7 @@ func (self *Node) runJob(shellName string, fqname, stageType string, metadata *M
 	// Construct path to the shell.
 	shellCmd := ""
 	var argv []string
-	runFile := path.Join(self.top.journalPath, fqname)
-	if metadata.uniquifier != "" {
-		runFile += ".u" + metadata.uniquifier
-	}
+	runFile := metadata.journalFile()
 	version := &self.top.version
 	envs := self.top.envs
 	if td := metadata.TempDir(); td != "" {

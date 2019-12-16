@@ -156,6 +156,10 @@ func (ref *RefExp) Simplify() {
 		if ref.ForkIndex == nil {
 			ref.ForkIndex = make(map[MapCallSource]CollectionIndex, 1)
 		}
+		if ref.MergeOver[0].CallMode() != ref.OutputIndex[0].Mode() {
+			panic("merging over " + ref.MergeOver[0].GoString() +
+				" but with index of type " + ref.OutputIndex[0].Mode().String())
+		}
 		ref.ForkIndex[ref.MergeOver[0]] = ref.OutputIndex[0]
 		ref.MergeOver = ref.MergeOver[1:]
 		ref.OutputIndex = ref.OutputIndex[1:]

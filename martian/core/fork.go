@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
+	"net/url"
 	"reflect"
 	"sort"
 	"strconv"
@@ -188,6 +189,10 @@ func (f ForkId) Match(ref map[syntax.MapCallSource]syntax.CollectionIndex,
 						Id:     convertForkPart(j),
 						Source: src,
 					}
+					if result[i].Source.CallMode() != result[i].Id.Mode() {
+						// Should not be possible - checked during static analysis.
+						panic(result[i].GoString() + " from " + j.Mode().String())
+					}
 				} else {
 					return result, &elementError{
 						element: "unknown index for " + j.IndexSource().GoString(),
@@ -342,9 +347,33 @@ func (k mapKeyFork) String() string {
 	return k.forkString()
 }
 
+// makeKeySafe returns a "safe" version of the key.
+//
+// Keys are escaped using RFC 3986 "percent encoding" to make them safe to use
+// as path names.
+func makeKeySafe(k string) string {
+	return url.PathEscape(k)
+}
+
+// writeSafeKey writes a "safe" version of the key to te given buffer.
+//
+// Keys are escaped using RFC 3986 "percent encoding" to make them safe to use
+// as path names.
+func writeSafeKey(buf *strings.Builder, k string) {
+	k = url.PathEscape(k)
+	_, err := buf.WriteString(k)
+	if err != nil {
+		panic(err)
+	}
+}
+
 // forkString returns "fork.<key>".
+//
+// Keys are escaped using RFC 3986 "percent encoded" to make them safe to use
+// as path names, with '.' additionally being encoded according to the same
+// scheme (to %2E), because of the way journal files are parsed later.
 func (k mapKeyFork) forkString() string {
-	return "fork." + string(k)
+	return "fork_" + makeKeySafe(string(k))
 }
 
 func (mapKeyFork) ArrayIndex() int {
@@ -457,7 +486,7 @@ func (p *ForkSourcePart) GoString() string {
 	case syntax.ModeMapCall:
 		return p.Source.GoString() + ":" + p.Id.MapKey()
 	default:
-		return p.Source.GoString() + ":" + p.Id.String()
+		return p.Source.GoString() + ":unknown(" + p.Id.String() + ")"
 	}
 }
 
@@ -507,8 +536,9 @@ const defaultFork = "fork0"
 //   ...
 //   forkN*M*L: N      M      L
 //
-// Expressions which are of typed map type resolve to "fork.<key>"
-// for each map key.
+// Expressions which are of typed map type resolve to "fork_<key>"
+// for each map key, with keys "percent encoded" as per RFC 3986 to ensure
+// safety for use in path names.
 //
 // If there are multiple map sources, or both map and array sources,
 // IDs are concatenated with '/' as a separator character.
@@ -661,12 +691,10 @@ func (f ForkId) forkId(buf *strings.Builder, start int) (bool, error) {
 					return true, fmt.Errorf("no key %q in source",
 						part.Id.MapKey())
 				}
-				if _, err := buf.WriteString("fork."); err != nil {
+				if _, err := buf.WriteString("fork_"); err != nil {
 					return true, err
 				}
-				if _, err := buf.WriteString(part.Id.MapKey()); err != nil {
-					return true, err
-				}
+				writeSafeKey(buf, part.Id.MapKey())
 				if i < len(f)-1 {
 					if _, err := buf.WriteRune('/'); err != nil {
 						return true, err

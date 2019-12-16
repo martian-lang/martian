@@ -1,0 +1,8 @@
+@include "pipeline.mro"
+
+call ADD_KEY4(
+    key      = "4",
+    value    = "four",
+    start    = "/Users/testuser/repos/martian/test/fork_test/pipeline_test/AWESOME/ADD_KEY2/fork_fran%C3%A7aise/chnk0/files/result.json",
+    failfile = "fail4",
+)

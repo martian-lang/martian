@@ -1,14 +1,14 @@
-[
-    {
+{
+    "english": {
         "outfile": [
-            "/user/test/fork_test/pipeline_test/outs/0/outfile/0.json",
-            "/user/test/fork_test/pipeline_test/outs/0/outfile/1.json"
+            "/Users/testuser/repos/martian/test/fork_test/pipeline_test/outs/english/outfile/0.json",
+            "/Users/testuser/repos/martian/test/fork_test/pipeline_test/outs/english/outfile/1.json"
         ]
     },
-    {
+    "française": {
         "outfile": [
-            "/user/test/fork_test/pipeline_test/outs/1/outfile/0.json",
-            "/user/test/fork_test/pipeline_test/outs/1/outfile/1.json"
+            "/Users/testuser/repos/martian/test/fork_test/pipeline_test/outs/française/outfile/0.json",
+            "/Users/testuser/repos/martian/test/fork_test/pipeline_test/outs/française/outfile/1.json"
         ]
     }
-]
+}

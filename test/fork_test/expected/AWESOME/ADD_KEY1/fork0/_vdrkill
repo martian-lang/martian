@@ -1,7 +1,17 @@
 {
     "count": 0,
     "size": 0,
-    "timestamp": "2016-09-22 16:38:48",
+    "timestamp": "2019-12-15 22:08:30",
     "paths": null,
-    "errors": null
+    "errors": null,
+    "events": [
+        {
+            "Timestamp": "2019-12-15T22:08:11-08:00",
+            "DeltaBytes": 418
+        },
+        {
+            "Timestamp": "2019-12-15T22:08:30-08:00",
+            "DeltaBytes": 3623
+        }
+    ]
 }

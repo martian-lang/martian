@@ -342,7 +342,7 @@ func TestResolveSimplePipelineOutputs(t *testing.T) {
 	if pipestance == nil {
 		return
 	}
-	result, err := pipestance.node.resolvePipelineOutputs(nil)
+	result, typ, err := pipestance.node.resolvePipelineOutputs(nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -357,6 +357,11 @@ func TestResolveSimplePipelineOutputs(t *testing.T) {
 		}
 	}
 }`
+	if s, ok := typ.(*syntax.StructType); !ok {
+		t.Errorf("%T != struct", typ)
+	} else if s.Id != "HELLO" {
+		t.Errorf("%s != HELLO", s.Id)
+	}
 	checkJsonOutput(t, result, psPath, expected)
 	// Now check that post-process won't mangle it too badly.
 	fork := pipestance.node.forks[0]
@@ -468,9 +473,14 @@ func TestResolvePipelineOutputs(t *testing.T) {
 	if pipestance == nil {
 		return
 	}
-	result, err := pipestance.node.resolvePipelineOutputs(nil)
+	result, typ, err := pipestance.node.resolvePipelineOutputs(nil)
 	if err != nil {
 		t.Fatal(err)
+	}
+	if s, ok := typ.(*syntax.StructType); !ok {
+		t.Errorf("%T != struct", typ)
+	} else if s.Id != "OUTER" {
+		t.Errorf("%s != OUTER", s.Id)
 	}
 
 	const expected = `{

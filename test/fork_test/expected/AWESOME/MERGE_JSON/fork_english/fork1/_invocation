@@ -1,0 +1,6 @@
+@include "pipeline.mro"
+
+call MERGE_JSON(
+    json1 = "/Users/testuser/repos/martian/test/fork_test/pipeline_test/AWESOME/ADD_KEY3/fork_english/chnk0/files/result.json",
+    json2 = "/Users/testuser/repos/martian/test/fork_test/pipeline_test/AWESOME/ADD_KEY4/fork_english/fork1/chnk0/files/result.json",
+)

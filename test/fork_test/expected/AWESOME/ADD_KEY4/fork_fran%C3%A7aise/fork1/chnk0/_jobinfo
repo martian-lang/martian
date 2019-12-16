@@ -1,0 +1,120 @@
+{
+    "name": "ID.pipeline_test.AWESOME.ADD_KEY4.fork_fran%C3%A7aise%2Ffork1.chnk0",
+    "pid": 454083,
+    "host": "localhost",
+    "type": "local",
+    "cwd": "/Users/testuser/repos/martian/test/fork_test/pipeline_test/AWESOME/ADD_KEY4/fork_fran%C3%A7aise/fork1/chnk0/files",
+    "python": {
+        "binpath": "/usr/bin/python",
+        "version": "2.7.16 (default, Jun 18 2019, 18:29:12) \n[GCC 4.8.5 20150623 (Red Hat 4.8.5-28)]"
+    },
+    "rusage": {
+        "self": {
+            "ru_maxrss": 14180,
+            "ru_ixrss": 0,
+            "ru_idrss": 0,
+            "ru_minflt": 503,
+            "ru_majflt": 0,
+            "ru_nswap": 0,
+            "ru_utime": 0.004,
+            "ru_stime": 0,
+            "ru_inblock": 8,
+            "ru_oublock": 48,
+            "ru_msgsnd": 0,
+            "ru_msgrcv": 0,
+            "ru_nsignals": 0,
+            "ru_nivcsw": 1
+        },
+        "children": {
+            "ru_maxrss": 12428,
+            "ru_ixrss": 0,
+            "ru_idrss": 0,
+            "ru_minflt": 2963,
+            "ru_majflt": 0,
+            "ru_nswap": 0,
+            "ru_utime": 0.02,
+            "ru_stime": 0.012,
+            "ru_inblock": 8,
+            "ru_oublock": 40,
+            "ru_msgsnd": 0,
+            "ru_msgrcv": 0,
+            "ru_nsignals": 0,
+            "ru_nivcsw": 3
+        }
+    },
+    "used_bytes": {
+        "rss": 14520320,
+        "shared": 2174976,
+        "vmem": 108658688,
+        "text": 1277952,
+        "stack": 105721856,
+        "proc_count": 1
+    },
+    "io": {
+        "total": {
+            "read": {
+                "sysc": 6,
+                "bytes": 0
+            },
+            "write": {
+                "sysc": 0,
+                "bytes": 0
+            }
+        },
+        "max": {
+            "read": {
+                "sysc": 138.27815397373848,
+                "bytes": 0
+            },
+            "write": {
+                "sysc": 0,
+                "bytes": 0
+            }
+        },
+        "dev": {
+            "read": {
+                "sysc": 0,
+                "bytes": 0
+            },
+            "write": {
+                "sysc": 0,
+                "bytes": 0
+            }
+        }
+    },
+    "wallclock": {
+        "start": "2019-12-15 22:08:31",
+        "end": "2019-12-15 22:08:31",
+        "duration_seconds": 0.118801897
+    },
+    "threads": 1,
+    "memGB": 1,
+    "vmemGB": 4,
+    "profile_mode": "disable",
+    "stackvars_flag": "disable",
+    "monitor_flag": "disable",
+    "invocation": {
+        "call": "AWESOME",
+        "args": {
+            "key1": "1",
+            "key2": "2",
+            "value1": "one",
+            "value2": {
+                "call": "AWESOME",
+                "mode": "map",
+                "split": {
+                    "fran\u00e7aise": "deux",
+                    "english": "two"
+                }
+            }
+        },
+        "splitargs": [
+            "value2"
+        ],
+        "mro_file": "pipeline.mro"
+    },
+    "version": {
+        "martian": "<version not embedded>",
+        "pipelines": "<version not embedded>"
+    }
+}

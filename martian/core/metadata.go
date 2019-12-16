@@ -185,7 +185,7 @@ func NewMetadataRunWithJournalPath(fqname string, p string, filesPath string, jo
 
 func NewMetadataWithJournalPath(fqname string, p string, journalPath string) *Metadata {
 	self := NewMetadata(fqname, p)
-	self.journalPath = journalPath
+	self.journalPath = path.Join(journalPath, fqname)
 	return self
 }
 
@@ -237,7 +237,7 @@ func (self *Metadata) TempDir() string {
 
 func (self *Metadata) writeError(msg string, src error) {
 	msg = msg + self.fqname
-	util.LogError(src, "runtime", msg)
+	util.LogError(src, "runtime", "%s", msg)
 	if err := self.WriteRaw(Errors, msg+": "+src.Error()); err != nil {
 		util.PrintError(err, "runtime", "Could not write error message")
 	}
@@ -245,7 +245,7 @@ func (self *Metadata) writeError(msg string, src error) {
 
 func (self *Metadata) writeErrorNoLock(msg string, src error) {
 	msg = msg + self.fqname
-	util.LogError(src, "runtime", msg)
+	util.LogError(src, "runtime", "%s", msg)
 	if err := self._writeRawNoLock(Errors, msg+": "+src.Error()); err != nil {
 		util.PrintError(err, "runtime", "Could not write error message")
 	}
@@ -253,6 +253,18 @@ func (self *Metadata) writeErrorNoLock(msg string, src error) {
 
 func (self *Metadata) mkdirs() error {
 	if err := util.Mkdir(self.path); err != nil {
+		self.writeError("Could not create directories for ", err)
+		return err
+	}
+	if err := util.Mkdir(self.curFilesPath); err != nil {
+		self.writeError("Could not create directories for ", err)
+		return err
+	}
+	return nil
+}
+
+func (self *Metadata) mkForkDirs() error {
+	if err := util.MkdirAll(self.path); err != nil {
 		self.writeError("Could not create directories for ", err)
 		return err
 	}
@@ -597,7 +609,7 @@ func (self *Metadata) WriteRawBytes(name MetadataFileName, text []byte) error {
 	self.cache(name, self.uniquifier)
 	if err != nil {
 		msg := fmt.Sprintf("Could not write %s for %s: %s", name, self.fqname, err.Error())
-		util.LogError(err, "runtime", msg)
+		util.LogError(err, "runtime", "%s", msg)
 		if name != Errors {
 			self.WriteErrorString(msg)
 		}
@@ -629,7 +641,7 @@ func (self *Metadata) AppendAlarm(text string) error {
 	if err := self.appendRaw(AlarmFile, text); err != nil {
 		msg := fmt.Sprintf("Could not write alarm for %s: %s",
 			self.fqname, err.Error())
-		util.LogError(err, "runtime", msg)
+		util.LogError(err, "runtime", "%s", msg)
 		self.WriteErrorString(msg)
 		return err
 	}
@@ -681,7 +693,7 @@ func (self *Metadata) WriteAtomic(name MetadataFileName, object interface{}) err
 // or modified (except by the runtime itself), the change won't be "noticed"
 // until the journal is updated.
 func (self *Metadata) UpdateJournal(name MetadataFileName) error {
-	fname := path.Join(self.journalPath, self.fqname+"."+self.journalPrefix+string(name))
+	fname := self.journalPath + "." + self.journalPrefix + string(name)
 	if err := ioutil.WriteFile(fname+".tmp", []byte(util.Timestamp()), 0644); err != nil {
 		return err
 	}
@@ -804,14 +816,20 @@ func (self *Metadata) checkedReset() error {
 	return nil
 }
 
+func (self *Metadata) journalFile() string {
+	if self.uniquifier == "" {
+		return self.journalPath
+	} else if p := self.journalPath; p == "" {
+		return ""
+	} else {
+		return p + ".u" + self.uniquifier
+	}
+}
+
 func (self *Metadata) uncheckedReset() error {
 	// Remove all related files from journal directory.
 	if len(self.journalPath) > 0 {
-		journalPrefix := path.Join(self.journalPath, self.fqname)
-		if self.uniquifier != "" {
-			journalPrefix += ".u" + self.uniquifier
-		}
-		if files, err := filepath.Glob(journalPrefix + "*"); err == nil {
+		if files, err := filepath.Glob(self.journalFile() + "*"); err == nil {
 			for _, file := range files {
 				os.Remove(file)
 			}

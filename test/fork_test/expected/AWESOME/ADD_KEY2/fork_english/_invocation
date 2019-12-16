@@ -1,0 +1,8 @@
+@include "pipeline.mro"
+
+call ADD_KEY2(
+    key      = "2",
+    value    = "two",
+    start    = "/Users/testuser/repos/martian/test/fork_test/pipeline_test/AWESOME/ADD_KEY1/fork0/chnk0/files/result.json",
+    failfile = "fail2",
+)

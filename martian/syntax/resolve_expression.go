@@ -184,7 +184,7 @@ func (s *SplitExp) BindingPath(bindPath string,
 	}
 	if id, ok := fork[s.Source]; ok && id.IndexSource() == nil {
 		return s.Value.BindingPath(bindPath,
-			fork, append([]CollectionIndex{id}, index...))
+			fork, append(index, id))
 	}
 	if bindPath == "" {
 		if v, err := s.Value.BindingPath(bindPath, fork, index); v == s.Value {

@@ -1,0 +1,9 @@
+{
+    "__mem_gb": 1,
+    "__threads": 1,
+    "__vmem_gb": 4,
+    "failfile": "fail2",
+    "key": "2",
+    "start": "/Users/testuser/repos/martian/test/fork_test/pipeline_test/AWESOME/ADD_KEY1/fork0/chnk0/files/result.json",
+    "value": "deux"
+}

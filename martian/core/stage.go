@@ -115,6 +115,7 @@ func NewChunk(fork *Fork, index int,
 		chunkIndexWidth, index)
 	chunkPath := path.Join(fork.path, chnkNum)
 	self.fqname = fork.fqname + "." + chnkNum
+
 	self.metadata = NewMetadataWithJournalPath(self.fqname,
 		chunkPath, self.fork.node.top.journalPath)
 	self.metadata.discoverUniquify()
@@ -417,6 +418,12 @@ func NewFork(nodable Nodable, index int, id ForkId, args map[string]*syntax.Reso
 	return self
 }
 
+// The constraints on the fork part of the metadata journal file name are
+// a bit more than those on the fork ID - they can't use a slash to
+// separate nested fork components, and they can't contain a '.' character
+// as that would break the journal filename parsing scheme.
+var encodeJournalName = strings.NewReplacer(".", "%2E", "/", "%2F")
+
 func (self *Fork) updateId(id ForkId) {
 	self.forkId = id
 	if idx, err := id.ForkIdString(); err != nil {
@@ -425,12 +432,15 @@ func (self *Fork) updateId(id ForkId) {
 		self.id = idx
 	}
 	self.path = path.Join(self.node.path, self.id)
-	self.fqname = self.node.call.GetFqid() + "." + self.id
+	self.fqname = self.node.call.GetFqid() + "." + encodeJournalName.Replace(self.id)
 	self.metadata = NewMetadata(self.fqname, self.path)
 	self.split_metadata = NewMetadata(self.fqname+".split",
 		path.Join(self.path, "split"))
+	self.split_metadata.journalPath = path.Join(self.node.top.journalPath,
+		self.fqname)
 	self.join_metadata = NewMetadata(self.fqname+".join",
 		path.Join(self.path, "join"))
+	self.join_metadata.journalPath = self.split_metadata.journalPath
 	if self.Split() {
 		self.split_metadata.discoverUniquify()
 		self.join_metadata.finalFilePath = self.metadata.finalFilePath
@@ -564,7 +574,10 @@ func (self *Fork) removeMetadata() {
 }
 
 func (self *Fork) mkdirs() {
-	self.metadata.mkdirs()
+	// Use MkdirAll here in case of nested forking.
+	if err := self.metadata.mkForkDirs(); err != nil {
+		self.metadata.writeError("Could not create directories for ", err)
+	}
 	if state, ok := self.split_metadata.getState(); !disableUniquification &&
 		self.Split() &&
 		(!ok || (state != Complete && state != DisabledState)) {
@@ -709,27 +722,49 @@ func (self *Fork) verifyOutput(outs LazyArgumentMap) (bool, string) {
 	return true, ""
 }
 
-func (self *Fork) verifyPipelineOutput(outs MarshalerMap) (bool, string) {
-	outparams := self.OutParams()
-	if len(outparams.List) > 0 {
-		if err, alarms := outs.ValidatePipelineOutputs(
-			self.node.top.types, outparams); err != nil {
-			return false, err.Error() + alarms
-		} else if alarms != "" {
-			switch syntax.GetEnforcementLevel() {
-			case syntax.EnforceError:
-				return false, alarms
-			case syntax.EnforceAlarm:
-				return true, alarms
-			case syntax.EnforceLog:
-				util.PrintInfo("runtime",
-					"(outputs)         %s: WARNING: invalid output\n%s",
-					self.fqname, alarms)
-				fallthrough
-			default:
-				return true, ""
+func (self *Fork) verifyPipelineOutput(outs json.Marshaler, t syntax.Type) (bool, string) {
+	switch t := t.(type) {
+	case *syntax.TypedMapType:
+		if outs, ok := outs.(MarshalerMap); ok {
+			for _, v := range outs {
+				if ok, msg := self.verifyPipelineOutput(v, t.Elem); !ok {
+					return ok, msg
+				}
 			}
 		}
+	case *syntax.ArrayType:
+		if outs, ok := outs.(marshallerArray); ok {
+			for _, v := range outs {
+				if ok, msg := self.verifyPipelineOutput(v, t.Elem); !ok {
+					return ok, msg
+				}
+			}
+		}
+	case *syntax.StructType:
+		if outs, ok := outs.(MarshalerMap); ok {
+			if len(t.Members) > 0 {
+				if err, alarms := outs.ValidatePipelineOutputs(
+					self.node.top.types, t); err != nil {
+					return false, err.Error() + alarms
+				} else if alarms != "" {
+					switch syntax.GetEnforcementLevel() {
+					case syntax.EnforceError:
+						return false, alarms
+					case syntax.EnforceAlarm:
+						return true, alarms
+					case syntax.EnforceLog:
+						util.PrintInfo("runtime",
+							"(outputs)         %s: WARNING: invalid output\n%s",
+							self.fqname, alarms)
+						fallthrough
+					default:
+						return true, ""
+					}
+				}
+			}
+		}
+	default:
+		util.PrintInfo("runtime", "Invalid output type %T for pipeline", t)
 	}
 	return true, ""
 }
@@ -1127,25 +1162,23 @@ func (self *Fork) stepPipeline() {
 		return
 	}
 	self.writeInvocation()
-	if outs, err := self.node.resolvePipelineOutputs(self.forkId); err != nil {
+	if outs, t, err := self.node.resolvePipelineOutputs(self.forkId); err != nil {
 		util.PrintError(err, "runtime",
 			"Error resolving output argument bindings.")
 		self.metadata.WriteErrorString(err.Error())
-	} else if mapOuts, ok := outs.(MarshalerMap); !ok {
-		// If the outputs all resolved to constants, then we don't get
-		// a MarshalerMap and there's no need to do any conversions
-		// because the output types were already checked by the compiler.
-		self.metadata.Write(OutsFile, outs)
-		self.metadata.WriteTime(CompleteFile)
 	} else {
 		self.metadata.Write(OutsFile, outs)
-		if ok, msg := self.verifyPipelineOutput(mapOuts); ok {
-			if msg != "" {
-				self.metadata.AppendAlarm("Incorrect _outs: " + msg)
+		if len(self.OutParams().List) > 0 {
+			if ok, msg := self.verifyPipelineOutput(outs, t); ok {
+				if msg != "" {
+					self.metadata.AppendAlarm("Incorrect _outs: " + msg)
+				}
+				self.metadata.WriteTime(CompleteFile)
+			} else {
+				self.metadata.WriteErrorString(msg)
 			}
-			self.metadata.WriteTime(CompleteFile)
 		} else {
-			self.metadata.WriteErrorString(msg)
+			self.metadata.WriteTime(CompleteFile)
 		}
 	}
 }

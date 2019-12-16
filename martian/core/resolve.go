@@ -112,7 +112,7 @@ func (node *Node) outputBindingInfo(fork ForkId) []BindingInfo {
 	return nil
 }
 
-func (node *Node) resolvePipelineOutputs(fork ForkId) (json.Marshaler, error) {
+func (node *Node) resolvePipelineOutputs(fork ForkId) (json.Marshaler, syntax.Type, error) {
 	readSize := node.top.rt.FreeMemBytes() / int64(len(node.prenodes)+1)
 	ro := node.call.ResolvedOutputs()
 	t := ro.Type
@@ -140,7 +140,7 @@ func (node *Node) resolvePipelineOutputs(fork ForkId) (json.Marshaler, error) {
 			inner:   err,
 		}
 	}
-	return r, err
+	return r, t, err
 }
 
 // resolve will either return true and the concrete value represented by the
@@ -496,7 +496,8 @@ func (f *Fork) resolveRef(binding *syntax.RefExp, t syntax.Type,
 			inner:   err,
 		}
 	}
-	for _, index := range binding.OutputIndex {
+	for _, idx := range binding.OutputIndex {
+		index := idx
 		if s := index.IndexSource(); s != nil {
 			for _, part := range fork {
 				if part.Source == s {
