@@ -1132,9 +1132,6 @@ func unsplit(exp Exp, fork map[MapCallSource]CollectionIndex, call ForkRootList)
 	if len(call) == 0 {
 		return exp.BindingPath("", fork, nil)
 	}
-	//	if hasMerge(exp, call[0].MapSource()) {
-	//		return unsplit(exp, fork, call[1:])
-	//	}
 	// Deal with the simple cases, which do not need a length or key.
 	switch exp := exp.(type) {
 	case *SplitExp:
@@ -1287,18 +1284,19 @@ func (node *CallGraphPipeline) resolve(siblings map[string]*ResolvedBinding,
 		if len(node.Forks) > 0 {
 			m := make(map[MapCallSource]CollectionIndex, 1)
 			for i := len(node.Forks) - 1; i >= 0; i-- {
-				if node.Forks[i].MapSource() == nil {
-					panic(node.Forks[i].GetFqid() + " has no source")
+				fs := node.Forks[i]
+				if fs.MapSource() == nil {
+					panic(fs.GetFqid() + " has no source")
 				}
 
-				switch node.Forks[i].MapSource().CallMode() {
+				switch fs.MapSource().CallMode() {
 				case ModeArrayCall:
 					tid.ArrayDim++
 				case ModeMapCall:
 					tid.MapDim = tid.ArrayDim + 1
 					tid.ArrayDim = 0
 				}
-				if !hasMerge(exp, node.Forks[i].MapSource()) {
+				if !hasMerge(exp, fs.MapSource()) {
 					e, err := unsplit(exp, m, node.Forks[i:i+1])
 					if err != nil {
 						errs = append(errs, err)

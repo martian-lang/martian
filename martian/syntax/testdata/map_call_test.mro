@@ -91,6 +91,22 @@ pipeline LEN(
     )
 }
 
+pipeline ERROR(
+    in  float actual,
+    in  float expect,
+    out float error,
+)
+{
+    call SUBTRACT(
+        x = self.actual,
+        y = self.expect,
+    )
+
+    return (
+        error = SUBTRACT.z,
+    )
+}
+
 pipeline STATISTICS(
     in  float[] data,
     out float   mean,
@@ -111,15 +127,15 @@ pipeline STATISTICS(
         y = LEN.len,
     )
 
-    map call SUBTRACT as ERROR(
-        x = split self.data,
-        y = MEAN.z,
+    map call ERROR(
+        actual = split self.data,
+        expect = MEAN.z,
     )
 
     # Not using POW here because we want to test fusing two arrays.
     map call MULTIPLY as SQUARED_ERROR(
-        x = split ERROR.z,
-        y = split ERROR.z,
+        x = split ERROR.error,
+        y = split ERROR.error,
     )
 
     call SUM as TOTAL_VARIANCE(
