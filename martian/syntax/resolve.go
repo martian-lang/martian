@@ -1319,6 +1319,11 @@ func (node *CallGraphPipeline) resolve(siblings map[string]*ResolvedBinding,
 			Exp:  exp,
 			Type: lookup.Get(tid),
 		}
+	} else {
+		node.Outputs = &ResolvedBinding{
+			Exp:  &NullExp{valExp: valExp{Node: node.call.Node}},
+			Type: &builtinNull,
+		}
 	}
 	if r := node.pipeline.Retain; r != nil && len(r.Refs) > 0 {
 		node.Retain = make([]*RefExp, 0, len(r.Refs))
