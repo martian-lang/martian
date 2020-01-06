@@ -516,7 +516,7 @@ func getBoundParamIds(exp Exp, arr []string) []string {
 			arr = narr
 		}
 		for _, subExp := range exp.Value {
-			arr = append(arr, getBoundParamIds(subExp, arr)...)
+			arr = getBoundParamIds(subExp, arr)
 		}
 		return arr
 	case *MapExp:
@@ -526,7 +526,7 @@ func getBoundParamIds(exp Exp, arr []string) []string {
 			arr = narr
 		}
 		for _, subExp := range exp.Value {
-			arr = append(arr, getBoundParamIds(subExp, arr)...)
+			arr = getBoundParamIds(subExp, arr)
 		}
 		return arr
 	case *SplitExp:
