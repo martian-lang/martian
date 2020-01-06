@@ -1229,8 +1229,8 @@ func (node *CallGraphPipeline) resolve(siblings map[string]*ResolvedBinding,
 		mapped = append(mapped, node)
 	}
 	var childMap map[string]*ResolvedBinding
-	var errs ErrorList
 	if len(node.Children) > 0 {
+		var errs ErrorList
 		rootSet := make(map[CallGraphNode]struct{}, len(mapped)+1)
 		for _, n := range mapped {
 			rootSet[n] = struct{}{}
@@ -1261,6 +1261,27 @@ func (node *CallGraphPipeline) resolve(siblings map[string]*ResolvedBinding,
 			return err
 		}
 	}
+	errs := node.resolvePipelineOuts(childMap, lookup)
+	if r := node.pipeline.Retain; r != nil && len(r.Refs) > 0 {
+		node.Retain = make([]*RefExp, 0, len(r.Refs))
+		for _, ref := range r.Refs {
+			resolved, err := ref.resolveRefs(node.Inputs, childMap,
+				lookup)
+			if err != nil {
+				errs = append(errs, err)
+			}
+			if resolved != nil {
+				node.Retain = append(node.Retain, resolved.FindRefs()...)
+			}
+		}
+	}
+	return errs.If()
+}
+
+func (node *CallGraphPipeline) resolvePipelineOuts(
+	childMap map[string]*ResolvedBinding,
+	lookup *TypeLookup) ErrorList {
+	var errs ErrorList
 	if len(node.pipeline.Ret.Bindings.List) > 0 {
 		outs, err := node.pipeline.Ret.Bindings.resolve(node.Inputs, childMap,
 			lookup)
@@ -1325,20 +1346,7 @@ func (node *CallGraphPipeline) resolve(siblings map[string]*ResolvedBinding,
 			Type: &builtinNull,
 		}
 	}
-	if r := node.pipeline.Retain; r != nil && len(r.Refs) > 0 {
-		node.Retain = make([]*RefExp, 0, len(r.Refs))
-		for _, ref := range r.Refs {
-			resolved, err := ref.resolveRefs(node.Inputs, childMap,
-				lookup)
-			if err != nil {
-				errs = append(errs, err)
-			}
-			if resolved != nil {
-				node.Retain = append(node.Retain, resolved.FindRefs()...)
-			}
-		}
-	}
-	return errs.If()
+	return errs
 }
 
 func (node *CallGraphPipeline) unsplit() error {

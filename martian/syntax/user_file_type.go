@@ -19,6 +19,7 @@ func (*UserType) getDec() {}
 
 func (s *UserType) GetId() TypeId     { return TypeId{Tname: s.Id} }
 func (s *UserType) IsFile() FileKind  { return KindIsFile }
+func (*UserType) ElementType() Type   { return nil }
 func (s *UserType) getNode() *AstNode { return &s.Node }
 func (s *UserType) File() *SourceFile { return s.Node.Loc.File }
 

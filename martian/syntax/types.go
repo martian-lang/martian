@@ -19,6 +19,10 @@ type (
 		// Returns whether this type represents a file or directory in the stage
 		// outputs.
 		IsFile() FileKind
+
+		// For arrays or typed maps, the value type.  Otherwise nil.
+		ElementType() Type
+
 		// IsAssignableFrom returns nil if a parameter can accept a
 		// value of the given type.
 		//
@@ -239,6 +243,7 @@ func (s *nullType) GetId() TypeId {
 	return TypeId{Tname: KindNull}
 }
 func (s *nullType) IsFile() FileKind { return KindIsNotFile }
+func (*nullType) ElementType() Type  { return nil }
 func (s *nullType) IsAssignableFrom(other Type, lookup *TypeLookup) error {
 	panic("invalid type")
 }

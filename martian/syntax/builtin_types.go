@@ -47,6 +47,7 @@ func (s *BuiltinType) IsFile() FileKind {
 		return KindIsNotFile
 	}
 }
+func (*BuiltinType) ElementType() Type { return nil }
 func (s *BuiltinType) IsAssignableFrom(other Type, _ *TypeLookup) error {
 	switch other := other.(type) {
 	case *nullType:

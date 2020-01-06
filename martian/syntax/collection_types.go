@@ -27,11 +27,8 @@ type (
 
 // baseType returns the inner type after stripping off map or array wrappers.
 func baseType(t Type) Type {
-	switch t := t.(type) {
-	case *ArrayType:
-		return baseType(t.Elem)
-	case *TypedMapType:
-		return baseType(t.Elem)
+	for it := t.ElementType(); it != nil; it = t.ElementType() {
+		t = it
 	}
 	return t
 }
@@ -48,6 +45,7 @@ func (s *ArrayType) IsFile() FileKind {
 	}
 	return ft
 }
+func (s *ArrayType) ElementType() Type { return s.Elem }
 func (s *ArrayType) IsAssignableFrom(other Type, lookup *TypeLookup) error {
 	if s == other {
 		return nil
@@ -331,6 +329,7 @@ func (s *TypedMapType) IsFile() FileKind {
 	}
 	return KindMayContainPaths
 }
+func (s *TypedMapType) ElementType() Type { return s.Elem }
 func (s *TypedMapType) IsAssignableFrom(other Type, lookup *TypeLookup) error {
 	if s == other {
 		return nil

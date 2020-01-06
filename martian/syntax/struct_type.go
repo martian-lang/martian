@@ -92,6 +92,7 @@ func (s *StructMember) GetDisplayName() string {
 func (*StructType) getDec()             {}
 func (s *StructType) GetId() TypeId     { return TypeId{Tname: s.Id} }
 func (s *StructType) IsFile() FileKind  { return s.isFile }
+func (*StructType) ElementType() Type   { return nil }
 func (s *StructType) getNode() *AstNode { return &s.Node }
 func (s *StructType) File() *SourceFile { return s.Node.Loc.File }
 
