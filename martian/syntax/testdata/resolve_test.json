@@ -484,14 +484,6 @@
         },
         "type": "map<POINT_PIPE>"
       },
-      "fork_roots": [
-        {
-          "type": "map",
-          "keys": [
-            "three"
-          ]
-        }
-      ],
       "children": [
         {
           "fqid": "POINT_MAPPER.PIPE6.POINT_MAKER",

@@ -739,10 +739,10 @@ func (node *CallGraphStage) resolveForks(mapped []CallGraphNode, localRoot CallG
 	}
 	splits := make(map[*CallStm]struct{}, len(mapped))
 	for _, input := range node.Inputs {
-		findSplitCalls(input.Exp, splits)
+		findSplitCalls(input.Exp, splits, false)
 	}
 	for _, d := range node.Disable {
-		findSplitCalls(d, splits)
+		findSplitCalls(d, splits, false)
 	}
 	if len(splits) > 0 {
 		if localRoot == nil {
@@ -993,18 +993,20 @@ func (node *CallGraphStage) unsplit() error {
 	return nil
 }
 
-func findSplitCalls(exp Exp, result map[*CallStm]struct{}) {
+func findSplitCalls(exp Exp, result map[*CallStm]struct{}, onlyUnknown bool) {
 	switch exp := exp.(type) {
 	case *SplitExp:
-		result[exp.Call] = struct{}{}
-		findSplitCalls(exp.Value, result)
+		if !onlyUnknown || !exp.Source.KnownLength() {
+			result[exp.Call] = struct{}{}
+		}
+		findSplitCalls(exp.Value, result, onlyUnknown)
 	case *ArrayExp:
 		for _, v := range exp.Value {
-			findSplitCalls(v, result)
+			findSplitCalls(v, result, onlyUnknown)
 		}
 	case *MapExp:
 		for _, v := range exp.Value {
-			findSplitCalls(v, result)
+			findSplitCalls(v, result, onlyUnknown)
 		}
 	}
 }
@@ -1359,16 +1361,17 @@ func (node *CallGraphPipeline) unsplit() error {
 
 func (node *CallGraphPipeline) resolvePipelineForks(mapped []CallGraphNode) {
 	if len(mapped) == 0 {
+		node.Forks = nil
 		return
 	}
 	splits := make(map[*CallStm]struct{}, len(mapped))
-	findSplitCalls(node.Outputs.Exp, splits)
+	findSplitCalls(node.Outputs.Exp, splits, true)
 	for _, d := range node.Disable {
-		findSplitCalls(d, splits)
+		findSplitCalls(d, splits, true)
 	}
 	for _, m := range mapped {
 		if _, ok := splits[m.Call()]; !ok {
-			if hasMerge(node.Outputs.Exp, m.MapSource()) {
+			if !m.MapSource().KnownLength() && hasMerge(node.Outputs.Exp, m.MapSource()) {
 				splits[m.Call()] = struct{}{}
 			}
 		}

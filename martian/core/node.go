@@ -426,9 +426,7 @@ func (self *Node) mkdirs() error {
 
 func (self *Node) buildForks() {
 	// Build out argument permutations.
-	if self.call.Kind() != syntax.KindPipeline {
-		self.forkIds.MakeForkIds(self.top.allNodes, self.forkRoots)
-	}
+	self.forkIds.MakeForkIds(self.top.allNodes, self.forkRoots)
 	if len(self.forkIds.List) == 0 {
 		self.forks = []*Fork{NewFork(self, 0, nil, self.call.ResolvedInputs())}
 	} else {
@@ -958,7 +956,7 @@ func (self *Node) refreshState(readOnly bool) {
 // Serialization
 //
 func (self *Node) serializeState() *NodeInfo {
-	forks := []*ForkInfo{}
+	forks := make([]*ForkInfo, 0, len(self.forks))
 	for _, fork := range self.forks {
 		forks = append(forks, fork.serializeState())
 	}

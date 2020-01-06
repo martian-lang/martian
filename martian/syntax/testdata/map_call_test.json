@@ -634,12 +634,6 @@
             ],
             "type": "ERROR[]"
           },
-          "fork_roots": [
-            {
-              "type": "array",
-              "len": 5
-            }
-          ],
           "children": [
             {
               "fqid": "SOME_STATIC.VALUES1.ERROR.SUBTRACT",
@@ -770,12 +764,6 @@
                 ],
                 "type": "SUBTRACT[]"
               },
-              "fork_roots": [
-                {
-                  "type": "array",
-                  "len": 5
-                }
-              ],
               "children": [
                 {
                   "fqid": "SOME_STATIC.VALUES1.ERROR.SUBTRACT.NEG_Y",
