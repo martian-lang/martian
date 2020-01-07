@@ -1,7 +1,10 @@
 # This tests mrf --includes fixing type definitions.
 
+@include "structs.mro"
+
 stage MY_BROKEN_STAGE(
-    in  int info,
-    out bam result,
-    src py  "nope.py",
+    in  int          info,
+    in  SimpleStruct result_struct,
+    out bam          result,
+    src py           "nope.py",
 )

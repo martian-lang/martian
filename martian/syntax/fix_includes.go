@@ -114,12 +114,12 @@ func uncheckedMakeTables(top *Ast, included *Ast) error {
 // Get the set of includes which are required for this source AST,
 // as well as the set of types and callables which remain undefined.
 func getRequiredIncludes(source *Ast) (map[string]*SourceFile,
-	map[string]Type, map[string]struct{}) {
+	map[string]*UserType, map[string]struct{}) {
 	required := make(map[string]*SourceFile, 1+len(source.Includes))
 	for k, v := range source.Files {
 		required[k] = v
 	}
-	unknownTypes := make(map[string]Type)
+	unknownTypes := make(map[string]*UserType)
 	unknownCallables := make(map[string]struct{})
 	if source.Call != nil {
 		if call := source.Callables.Table[source.Call.DecId]; call != nil {
@@ -151,8 +151,15 @@ func getRequiredIncludes(source *Ast) (map[string]*SourceFile,
 					// Don't worry about builtin types
 					if tn, ok := t.(AstNodable); ok {
 						if srcFile := tn.getNode().Loc.File; srcFile != param.File() {
-							if _, ok := required[srcFile.FileName]; !ok {
-								unknownTypes[tName.Tname] = t
+							switch t := t.(type) {
+							case *UserType:
+								if _, ok := required[srcFile.FileName]; !ok {
+									// Just re-define it locally.
+									unknownTypes[tName.Tname] = t
+								}
+							default:
+								// Structs, etc
+								required[srcFile.FileName] = srcFile
 							}
 						}
 					}
@@ -173,8 +180,15 @@ func getRequiredIncludes(source *Ast) (map[string]*SourceFile,
 					// Don't worry about builtin types
 					if tn, ok := t.(AstNodable); ok {
 						if srcFile := tn.getNode().Loc.File; srcFile != param.File() {
-							if _, ok := required[srcFile.FileName]; !ok {
-								unknownTypes[tName.Tname] = t
+							switch t := t.(type) {
+							case *UserType:
+								if _, ok := required[srcFile.FileName]; !ok {
+									// Just re-define it locally.
+									unknownTypes[tName.Tname] = t
+								}
+							default:
+								// Structs, etc
+								required[srcFile.FileName] = srcFile
 							}
 						}
 					}
@@ -190,7 +204,7 @@ func getRequiredIncludes(source *Ast) (map[string]*SourceFile,
 }
 
 func (parser *Parser) findMissingIncludes(seenFiles map[string]*SourceFile,
-	neededTypes map[string]Type,
+	neededTypes map[string]*UserType,
 	neededCallables map[string]struct{},
 	incPaths []string) ([]*SourceFile, []Type, error) {
 	if len(neededTypes) == 0 && len(neededCallables) == 0 {
@@ -229,6 +243,15 @@ func (parser *Parser) findMissingIncludes(seenFiles map[string]*SourceFile,
 									delete(neededCallables, callable.GetId())
 								}
 							}
+							for _, st := range ast.StructTypes {
+								if _, ok := neededTypes[st.GetId().Tname]; ok {
+									util.PrintInfo("include",
+										"Found %s in %s\n",
+										st.Id, absPath)
+									needed = true
+									delete(neededTypes, st.Id)
+								}
+							}
 							if needed {
 								for _, t := range ast.UserTypes {
 									delete(neededTypes, t.Id)
@@ -237,22 +260,12 @@ func (parser *Parser) findMissingIncludes(seenFiles map[string]*SourceFile,
 							} else {
 								for _, ut := range ast.UserTypes {
 									if t, ok := neededTypes[ut.GetId().Tname]; ok {
-										if tn, ok := t.(AstNodable); ok {
-											if tn.getNode().Loc.File == nil {
-												neededTypes[t.GetId().Tname] = ut
-											}
+										if t.getNode().Loc.File == nil {
+											neededTypes[t.GetId().Tname] = ut
 										}
 									}
 								}
-								for _, st := range ast.StructTypes {
-									if t, ok := neededTypes[st.GetId().Tname]; ok {
-										if tn, ok := t.(AstNodable); ok {
-											if tn.getNode().Loc.File == nil {
-												neededTypes[t.GetId().Tname] = st
-											}
-										}
-									}
-								}
+
 							}
 						}
 					}

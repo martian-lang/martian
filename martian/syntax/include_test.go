@@ -360,14 +360,17 @@ func TestFixIncludesStageMissing(t *testing.T) {
 		[]string{"testdata"}); err != nil {
 		t.Error(err)
 	} else {
-		if src != `filetype bam;
+		if src != `# This tests mrf --includes fixing type definitions.
 
-# This tests mrf --includes fixing type definitions.
+@include "structs.mro"
+
+filetype bam;
 
 stage MY_BROKEN_STAGE(
-    in  int info,
-    out bam result,
-    src py  "nope.py",
+    in  int          info,
+    in  SimpleStruct result_struct,
+    out bam          result,
+    src py           "nope.py",
 )
 ` {
 			t.Errorf("Incorrect combined source.  Got \n%s", src)
