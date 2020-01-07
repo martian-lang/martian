@@ -1,0 +1,5 @@
+# Common struct definitions
+
+struct SimpleStruct(
+    file result,
+)
