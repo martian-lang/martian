@@ -162,35 +162,50 @@ func (tree ProcessTree) Format(indent string) string {
 }
 
 type PerfInfo struct {
-	NumJobs         int       `json:"num_jobs"`
-	NumThreads      int       `json:"num_threads"`
-	Duration        float64   `json:"duration"`
-	CoreHours       float64   `json:"core_hours"`
-	MaxRss          int       `json:"maxrss"`
-	MaxVmem         int       `json:"maxvmem"`
-	InBlocks        int       `json:"in_blocks"`
-	OutBlocks       int       `json:"out_blocks"`
-	TotalBlocks     int       `json:"total_blocks"`
-	InBlocksRate    float64   `json:"in_blocks_rate"`
-	OutBlocksRate   float64   `json:"out_blocks_rate"`
-	TotalBlocksRate float64   `json:"total_blocks_rate"`
-	InBytes         int64     `json:"in_bytes"`
-	OutBytes        int64     `json:"out_bytes"`
-	InBytesRate     float64   `json:"in_bytes_rate"`
-	OutBytesRate    float64   `json:"out_bytes_rate"`
-	InBytesPeak     float64   `json:"in_bytes_peak"`
-	OutBytesPeak    float64   `json:"out_bytes_peak"`
-	Start           time.Time `json:"start"`
-	End             time.Time `json:"end"`
-	WallTime        float64   `json:"walltime"`
-	UserTime        float64   `json:"usertime"`
-	SystemTime      float64   `json:"systemtime"`
-	TotalFiles      uint      `json:"total_files"`
-	TotalBytes      uint64    `json:"total_bytes"`
-	OutputFiles     uint      `json:"output_files"`
-	OutputBytes     uint64    `json:"output_bytes"`
-	VdrFiles        uint      `json:"vdr_files"`
-	VdrBytes        uint64    `json:"vdr_bytes"`
+	NumJobs    int `json:"num_jobs"`
+	NumThreads int `json:"num_threads"`
+
+	// For split/main/join nodes, this should be the same
+	// as WallTime.  For other nodes, it is the sum of the
+	// Durantions for child nodes.
+	Duration float64 `json:"duration"`
+
+	// For split/main/join nodes, Duration * NumThreads.
+	// For other nodes, it is the sum of the CoreHours for
+	// child nodes.
+	CoreHours       float64 `json:"core_hours"`
+	MaxRss          int     `json:"maxrss"`
+	MaxVmem         int     `json:"maxvmem"`
+	InBlocks        int     `json:"in_blocks"`
+	OutBlocks       int     `json:"out_blocks"`
+	TotalBlocks     int     `json:"total_blocks"`
+	InBlocksRate    float64 `json:"in_blocks_rate"`
+	OutBlocksRate   float64 `json:"out_blocks_rate"`
+	TotalBlocksRate float64 `json:"total_blocks_rate"`
+	InBytes         int64   `json:"in_bytes"`
+	OutBytes        int64   `json:"out_bytes"`
+	InBytesRate     float64 `json:"in_bytes_rate"`
+	OutBytesRate    float64 `json:"out_bytes_rate"`
+	InBytesPeak     float64 `json:"in_bytes_peak"`
+	OutBytesPeak    float64 `json:"out_bytes_peak"`
+	// The start time of this node, or the earliest start time
+	// of any of its child nodes.
+	Start time.Time `json:"start"`
+	// The end time of this node, or the latest end time of any
+	// of its child nodes.
+	End time.Time `json:"end"`
+	// End - Start (seconds)
+	WallTime float64 `json:"walltime"`
+
+	// Total user time from rusage.
+	UserTime    float64 `json:"usertime"`
+	SystemTime  float64 `json:"systemtime"`
+	TotalFiles  uint    `json:"total_files"`
+	TotalBytes  uint64  `json:"total_bytes"`
+	OutputFiles uint    `json:"output_files"`
+	OutputBytes uint64  `json:"output_bytes"`
+	VdrFiles    uint    `json:"vdr_files"`
+	VdrBytes    uint64  `json:"vdr_bytes"`
 
 	// Deviation for a single job is deviation over time as measured by mrjob.
 	// For node aggregates, it's the deviation between child nodes.
