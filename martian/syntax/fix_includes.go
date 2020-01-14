@@ -1,5 +1,5 @@
 //
-// Copyright (c) 2018 10X Genomics, Inc. All rights reserved.
+// Copyright (c) 2020 10X Genomics, Inc. All rights reserved.
 //
 // Fix includes, inspired by https://include-what-you-use.org/
 //

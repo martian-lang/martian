@@ -1,4 +1,4 @@
-// Copyright (c) 2019 10X Genomics, Inc. All rights reserved.
+// Copyright (c) 2020 10X Genomics, Inc. All rights reserved.
 
 // Run git with the given args, setting pdeathsig in case the parent dies.
 

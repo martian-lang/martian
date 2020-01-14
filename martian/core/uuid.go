@@ -1,4 +1,4 @@
-// Copyright (c) 2019 10X Genomics, Inc. All rights reserved.
+// Copyright (c) 2020 10X Genomics, Inc. All rights reserved.
 
 // Based on the API presented by github.com/satori/go.uuid, however only
 // implements creation of v4 uuids, and does not bring in as many

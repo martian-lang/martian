@@ -1,4 +1,4 @@
-// Copyright (c) 2018 10X Genomics, Inc. All rights reserved.
+// Copyright (c) 2020 10X Genomics, Inc. All rights reserved.
 
 package syntax
 

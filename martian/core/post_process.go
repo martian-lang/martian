@@ -1,5 +1,5 @@
 //
-// Copyright (c) 2019 10X Genomics, Inc. All rights reserved.
+// Copyright (c) 2020 10X Genomics, Inc. All rights reserved.
 //
 // Post-processing logic for pipelines.
 //
