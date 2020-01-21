@@ -4,8 +4,8 @@ load("@bazel_tools//tools/build_defs/repo:http.bzl", "http_archive")
 load("@bazel_gazelle//:deps.bzl", "gazelle_dependencies", "go_repository")
 
 def martian_dependencies(
-        rules_nodejs_version = "0.42.1",
-        rules_nodejs_sha = "c612d6b76eaa17540e8b8c806e02701ed38891460f9ba3303f4424615437887a"):
+        rules_nodejs_version = "1.1.0",
+        rules_nodejs_sha = "c97bf38546c220fa250ff2cc052c1a9eac977c662c1fc23eda797b0ce8e70a43"):
     """Loads remote repositories required to build martian.
 
     Args:
