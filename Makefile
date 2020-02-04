@@ -13,7 +13,7 @@ GOTESTS=$(GOLIBTESTS) $(GOBINTESTS) test-all
 VERSION=$(shell git describe --tags --always --dirty)
 RELEASE=false
 SRC_ROOT=$(abspath $(dir $(PWD))../..)
-GO_FLAGS=-ldflags "-X $(REPO)/martian/util.__VERSION__='$(VERSION)' -X $(REPO)/martian/util.__RELEASE__='$(RELEASE)'" -gcflags "-trimpath $(SRC_ROOT)" -mod=vendor
+GO_FLAGS=-ldflags "-X $(REPO)/martian/util.__VERSION__='$(VERSION)' -X $(REPO)/martian/util.__RELEASE__='$(RELEASE)'" -gcflags "-trimpath $(SRC_ROOT)"
 
 unexport GOPATH
 export GO111MODULE=on
