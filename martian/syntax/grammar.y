@@ -431,7 +431,7 @@ src_stm
     : SRC src_lang LITSTRING ','
         {
             cmd := strings.TrimSpace($<intern>3.unquote($3))
-            stagecodeParts := strings.Fields($<intern>3.unquote($3))
+            stagecodeParts := strings.Fields(cmd)
             $$ = &SrcParam{
                 Node: NewAstNode($<loc>1, $<srcfile>1),
                 Lang: StageLanguage($<intern>2.Get($2)),

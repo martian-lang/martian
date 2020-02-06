@@ -1144,7 +1144,7 @@ mmdefault:
 		mmDollar = mmS[mmpt-4 : mmpt+1]
 		{
 			cmd := strings.TrimSpace(mmDollar[3].intern.unquote(mmDollar[3].val))
-			stagecodeParts := strings.Fields(mmDollar[3].intern.unquote(mmDollar[3].val))
+			stagecodeParts := strings.Fields(cmd)
 			mmVAL.src = &SrcParam{
 				Node: NewAstNode(mmDollar[1].loc, mmDollar[1].srcfile),
 				Lang: StageLanguage(mmDollar[2].intern.Get(mmDollar[2].val)),
