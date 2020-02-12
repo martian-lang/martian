@@ -694,14 +694,7 @@ func (self *Metadata) WriteAtomic(name MetadataFileName, object interface{}) err
 // until the journal is updated.
 func (self *Metadata) UpdateJournal(name MetadataFileName) error {
 	fname := self.journalPath + "." + self.journalPrefix + string(name)
-	if err := ioutil.WriteFile(fname+".tmp", []byte(util.Timestamp()), 0644); err != nil {
-		return err
-	}
-	if err := os.Rename(fname+".tmp", fname); err == nil || os.IsNotExist(err) {
-		return nil
-	} else {
-		return err
-	}
+	return ioutil.WriteFile(fname, []byte(util.Timestamp()), 0644)
 }
 
 func (self *Metadata) remove(name MetadataFileName) error {

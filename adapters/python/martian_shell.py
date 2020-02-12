@@ -318,17 +318,8 @@ class _Metadata(object):
         a given file."""
         if self.journal_prefix and (force or name not in self.cache):
             run_file = self.journal_prefix + name
-            tmp_run_file = run_file + '.tmp'
-            with open(tmp_run_file, 'w') as tmp_file:
+            with open(run_file, 'w') as tmp_file:
                 tmp_file.write(self.make_timestamp_now())
-            try:
-                os.rename(tmp_run_file, run_file)
-            except OSError as err:
-                if err.errno == errno.ENOENT:
-                    self.log('warn',
-                             'Ignoring error moving temp-file %s' % err)
-                else:
-                    raise
             self.cache.add(name)
 
 
