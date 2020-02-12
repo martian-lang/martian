@@ -33,7 +33,10 @@ def execute(cmd):
     out, err = proc.communicate()
     if proc.returncode:
         raise OSError(err)
-    sys.stderr.write(out)
+    if len(out) < 500:
+        sys.stderr.write(out)
+    else:
+        sys.stderr.write(out[:496] + '...')
     return out
 
 
@@ -60,6 +63,7 @@ def main():
     for jobid in parse_output(execute(mkopts(get_ids()))):
         sys.stdout.write('%s\n' % jobid)
     return 0
+
 
 if __name__ == '__main__':
     sys.exit(main())
