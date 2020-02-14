@@ -318,8 +318,12 @@ class _Metadata(object):
         a given file."""
         if self.journal_prefix and (force or name not in self.cache):
             run_file = self.journal_prefix + name
-            with open(run_file, 'w') as tmp_file:
-                tmp_file.write(self.make_timestamp_now())
+            try:
+                with open(run_file, 'w') as tmp_file:
+                    tmp_file.write(self.make_timestamp_now())
+            except OSError as err:
+                if err.errno != errno.EEXIST:
+                    raise
             self.cache.add(name)
 
 
