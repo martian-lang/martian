@@ -321,7 +321,7 @@ class _Metadata(object):
             try:
                 with open(run_file, 'w') as tmp_file:
                     tmp_file.write(self.make_timestamp_now())
-            except OSError as err:
+            except (IOError, OSError) as err:
                 if err.errno != errno.EEXIST:
                     raise
             self.cache.add(name)
