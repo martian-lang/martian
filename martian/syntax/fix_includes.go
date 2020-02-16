@@ -42,18 +42,33 @@ func (parser *Parser) FixIncludes(source *Ast, mropath []string) error {
 			util.PrintError(err, "include", "WARNING: compile errors")
 			util.PrintInfo("include", "         Attempting to fix...")
 		}
-		needed, missingTypes, missingCalls := getRequiredIncludes(source)
+		var ut []*UserType
+		if closure != nil {
+			ut = closure.UserTypes
+		}
+		needed, missingTypes, missingCalls := getRequiredIncludes(source, ut)
 		extraIncs, extraTypes, err := parser.findMissingIncludes(seen,
 			missingTypes, missingCalls,
 			incPaths)
 		for _, file := range extraIncs {
-			if _, ok := needed[file.FileName]; !ok {
-				needed[file.FileName] = file
+			if _, ok := needed[file.FullPath]; !ok {
+				needed[file.FullPath] = file
 			}
 		}
 		delete(needed, srcFile.FileName)
 		delete(needed, srcFile.FullPath)
-		fixIncludes(source, needed, extraTypes)
+
+		incLookup := make(map[string]*SourceFile, len(source.Includes))
+		for _, f := range needed {
+			if len(f.IncludedFrom) > 0 && f.IncludedFrom[0].File == srcFile {
+				incLookup[f.FileName] = f
+			} else if p, _, err := IncludeFilePath(f.FullPath, incPaths); err == nil {
+				incLookup[p] = f
+			} else {
+				incLookup[f.FileName] = f
+			}
+		}
+		fixIncludes(source, incLookup, extraTypes)
 		return err
 	}
 }
@@ -71,10 +86,38 @@ func uncheckedMakeTables(top *Ast, included *Ast) error {
 		}
 	}
 	var errs ErrorList
-	if err := top.CompileTypes(); err != nil {
-		errs = append(errs, err)
+
+	for _, userType := range top.UserTypes {
+		if top.TypeTable.baseTypes == nil {
+			top.TypeTable.init(len(top.UserTypes) + len(top.StructTypes) + len(top.Callables.List))
+		}
+		if err := top.TypeTable.AddUserType(userType); err != nil {
+			errs = append(errs, err)
+		}
 	}
+	for _, structType := range top.StructTypes {
+		if top.TypeTable.baseTypes == nil {
+			top.TypeTable.init(len(top.UserTypes) + len(top.StructTypes) + len(top.Callables.List))
+		}
+		if err := top.TypeTable.AddStructType(structType); err != nil {
+			errs = append(errs, err)
+		}
+	}
+	for _, callable := range top.Callables.List {
+		if len(callable.GetOutParams().List) > 0 {
+			structType := structFromCallable(callable)
+			if top.TypeTable.baseTypes == nil {
+				top.TypeTable.init(len(top.UserTypes) + len(top.StructTypes) + len(top.Callables.List))
+			}
+			if err := top.TypeTable.AddStructType(structType); err != nil {
+				errs = append(errs, err)
+			}
+		}
+	}
+
 	if included != nil {
+		// Add included callables and types to table, but not to list.
+
 		for _, callable := range included.Callables.List {
 			if top.Callables.Table == nil {
 				top.Callables.Table = make(map[string]Callable, len(included.Callables.List))
@@ -108,22 +151,98 @@ func uncheckedMakeTables(top *Ast, included *Ast) error {
 			}
 		}
 	}
+	for _, structType := range top.StructTypes {
+		if err := structType.compile(top); err != nil {
+			errs = append(errs, err)
+		}
+	}
+	for _, callable := range top.Callables.List {
+		if len(callable.GetOutParams().List) > 0 {
+			structType := structFromCallable(callable)
+			if err := structType.compile(top); err != nil {
+				errs = append(errs, err)
+			}
+		}
+	}
 	return errs.If()
+}
+
+func addIncludesForInParamTypes(source *Ast, params *InParams,
+	unknownTypes map[string]*UserType, required map[string]*SourceFile) {
+	for _, param := range params.List {
+		tName := param.GetTname()
+		if t := source.TypeTable.Get(TypeId{Tname: tName.Tname}); t != nil {
+			// Don't worry about builtin types
+			if tn, ok := t.(AstNodable); ok {
+				if srcFile := tn.getNode().Loc.File; srcFile != param.File() {
+					switch t := t.(type) {
+					case *UserType:
+						if _, ok := required[srcFile.FullPath]; !ok {
+							// Just re-define it locally.
+							unknownTypes[tName.Tname] = t
+						}
+					default:
+						// Structs, etc
+						required[srcFile.FullPath] = srcFile
+					}
+				}
+			}
+		} else {
+			unknownTypes[tName.Tname] = &UserType{
+				Id: tName.Tname,
+			}
+		}
+	}
+}
+
+func addIncludesForOutParamTypes(source *Ast, params *OutParams,
+	unknownTypes map[string]*UserType, required map[string]*SourceFile) {
+	for _, param := range params.List {
+		addIncludesForMemberType(source, &param.StructMember, unknownTypes, required)
+	}
+}
+
+func addIncludesForMemberType(source *Ast, param *StructMember,
+	unknownTypes map[string]*UserType, required map[string]*SourceFile) {
+	tName := param.Tname
+	if t := source.TypeTable.Get(TypeId{Tname: tName.Tname}); t != nil {
+		// Don't worry about builtin types
+		if tn, ok := t.(AstNodable); ok {
+			if srcFile := tn.getNode().Loc.File; srcFile != param.File() {
+				switch t := t.(type) {
+				case *UserType:
+					if _, ok := required[srcFile.FullPath]; !ok {
+						// Just re-define it locally.
+						unknownTypes[tName.Tname] = t
+					}
+				default:
+					// Structs, etc
+					required[srcFile.FullPath] = srcFile
+				}
+			}
+		}
+	} else {
+		unknownTypes[tName.Tname] = &UserType{
+			Id: tName.Tname,
+		}
+	}
 }
 
 // Get the set of includes which are required for this source AST,
 // as well as the set of types and callables which remain undefined.
-func getRequiredIncludes(source *Ast) (map[string]*SourceFile,
+func getRequiredIncludes(source *Ast, userTypes []*UserType) (map[string]*SourceFile,
 	map[string]*UserType, map[string]struct{}) {
 	required := make(map[string]*SourceFile, 1+len(source.Includes))
 	for k, v := range source.Files {
 		required[k] = v
+		required[v.FullPath] = v
 	}
 	unknownTypes := make(map[string]*UserType)
 	unknownCallables := make(map[string]struct{})
 	if source.Call != nil {
 		if call := source.Callables.Table[source.Call.DecId]; call != nil {
-			required[call.getNode().Loc.File.FileName] = call.getNode().Loc.File
+			file := call.getNode().Loc.File
+			required[file.FullPath] = file
 		} else {
 			unknownCallables[source.Call.DecId] = struct{}{}
 		}
@@ -131,72 +250,61 @@ func getRequiredIncludes(source *Ast) (map[string]*SourceFile,
 	for _, pipeline := range source.Pipelines {
 		for _, call := range pipeline.Calls {
 			if c := source.Callables.Table[call.DecId]; c != nil {
-				required[c.getNode().Loc.File.FileName] = c.getNode().Loc.File
+				file := c.getNode().Loc.File
+				required[file.FullPath] = file
 			} else {
 				unknownCallables[call.DecId] = struct{}{}
 			}
 		}
 	}
+	for _, pipeline := range source.Pipelines {
+		addIncludesForInParamTypes(source, pipeline.InParams, unknownTypes, required)
+		addIncludesForOutParamTypes(source, pipeline.OutParams, unknownTypes, required)
+	}
 	// Check that the input and output types for all stages are declared.
-	// For pipelines, we can assume that their input/output types match
-	// those of the stages, meaning we don't need to worry about them.
 	for _, stage := range source.Stages {
-		for _, params := range []*InParams{
-			stage.InParams,
-			stage.ChunkIns,
-		} {
-			for _, param := range params.List {
-				tName := param.GetTname()
-				if t := source.TypeTable.Get(TypeId{Tname: tName.Tname}); t != nil {
-					// Don't worry about builtin types
-					if tn, ok := t.(AstNodable); ok {
-						if srcFile := tn.getNode().Loc.File; srcFile != param.File() {
-							switch t := t.(type) {
-							case *UserType:
-								if _, ok := required[srcFile.FileName]; !ok {
-									// Just re-define it locally.
-									unknownTypes[tName.Tname] = t
-								}
-							default:
-								// Structs, etc
-								required[srcFile.FileName] = srcFile
+		addIncludesForInParamTypes(source, stage.InParams, unknownTypes, required)
+		addIncludesForInParamTypes(source, stage.ChunkIns, unknownTypes, required)
+		addIncludesForOutParamTypes(source, stage.OutParams, unknownTypes, required)
+		addIncludesForOutParamTypes(source, stage.ChunkOuts, unknownTypes, required)
+	}
+	for _, structType := range source.StructTypes {
+		for _, member := range structType.Members {
+			addIncludesForMemberType(source, member, unknownTypes, required)
+		}
+	}
+	if len(unknownTypes) > 0 && len(userTypes) > 0 {
+		// Check that the required types weren't brought in by the includes for
+		// struct types.
+		var excess []string
+		isAlreadyIncluded := func(name string) bool {
+			if ty := source.TypeTable.Get(TypeId{Tname: name}); ty != nil {
+				if tn, ok := ty.(AstNodable); ok && required[tn.getNode().Loc.File.FullPath] != nil {
+					return true
+				} else if ok {
+					// The type may have been declared in other included files
+					// besides the first one which is listed on the type info.
+					for _, t := range userTypes {
+						if t.Id == name {
+							if required[t.Node.Loc.File.FullPath] != nil {
+								return true
 							}
 						}
-					}
-				} else {
-					unknownTypes[tName.Tname] = &UserType{
-						Id: tName.Tname,
 					}
 				}
 			}
+			return false
 		}
-		for _, params := range []*OutParams{
-			stage.OutParams,
-			stage.ChunkOuts,
-		} {
-			for _, param := range params.List {
-				tName := param.GetTname()
-				if t := source.TypeTable.Get(TypeId{Tname: tName.Tname}); t != nil {
-					// Don't worry about builtin types
-					if tn, ok := t.(AstNodable); ok {
-						if srcFile := tn.getNode().Loc.File; srcFile != param.File() {
-							switch t := t.(type) {
-							case *UserType:
-								if _, ok := required[srcFile.FileName]; !ok {
-									// Just re-define it locally.
-									unknownTypes[tName.Tname] = t
-								}
-							default:
-								// Structs, etc
-								required[srcFile.FileName] = srcFile
-							}
-						}
-					}
-				} else {
-					unknownTypes[tName.Tname] = &UserType{
-						Id: tName.Tname,
-					}
-				}
+		for name := range unknownTypes {
+			if isAlreadyIncluded(name) {
+				excess = append(excess, name)
+			}
+		}
+		if len(excess) == len(unknownTypes) {
+			unknownTypes = nil
+		} else {
+			for _, name := range excess {
+				delete(unknownTypes, name)
 			}
 		}
 	}
@@ -327,10 +435,24 @@ func fixIncludes(source *Ast, needed map[string]*SourceFile, extraTypes []Type) 
 		})
 	}
 	sort.Slice(newIncludes, func(i, j int) bool {
+		dir1, base1 := filepath.Split(newIncludes[i].Value)
+		dir2, base2 := filepath.Split(newIncludes[j].Value)
+		// Sort same-directory includes after ones from other directories.
+		if len(dir1) == 0 && len(dir2) > 0 {
+			return false
+		} else if len(dir2) == 0 && len(dir1) > 1 {
+			return true
+		}
+		// Sort by directories.
+		if dir1 < dir2 {
+			return true
+		} else if dir2 < dir1 {
+			return false
+		}
 		// Sort underscore-prefixed files after others.
 		// By convention these are "private".
-		p1 := strings.HasPrefix(newIncludes[i].Value, "_")
-		p2 := strings.HasPrefix(newIncludes[j].Value, "_")
+		p1 := strings.HasPrefix(base1, "_")
+		p2 := strings.HasPrefix(base2, "_")
 		if p1 != p2 {
 			return p2
 		}
@@ -339,8 +461,8 @@ func fixIncludes(source *Ast, needed map[string]*SourceFile, extraTypes []Type) 
 		// in
 		//   my_pipeline.mro
 		if selfName != "" {
-			p1 = strings.Contains(newIncludes[i].Value, selfName)
-			p2 = strings.Contains(newIncludes[j].Value, selfName)
+			p1 = strings.Contains(base1, selfName)
+			p2 = strings.Contains(base2, selfName)
 			if p1 != p2 {
 				return p2
 			}
