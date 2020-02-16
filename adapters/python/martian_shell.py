@@ -322,8 +322,11 @@ class _Metadata(object):
                 with open(run_file, 'w') as tmp_file:
                     tmp_file.write(self.make_timestamp_now())
             except (IOError, OSError) as err:
-                if err.errno != errno.EEXIST:
+                if err.errno == errno.ENOENT:
                     raise
+                if err.errno not in [errno.EEXIST, errno.ESTALE]:
+                    self.log('warn',
+                             'Error writing journal file: %s' % err)
             self.cache.add(name)
 
 
