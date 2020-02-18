@@ -313,10 +313,9 @@ func (self *Node) makeReturnBindings(directReturn []*syntax.BindStm) {
 		}
 		for id := range prenodes {
 			n := self.top.allNodes[self.call.GetFqid()+"."+id]
-			if n == nil {
-				panic("unknown node " + self.parent.getNode().call.GetFqid() + "." + id)
+			if n != nil {
+				self.directPrenodes = append(self.directPrenodes, n)
 			}
-			self.directPrenodes = append(self.directPrenodes, n)
 		}
 		sort.Slice(self.directPrenodes, func(i, j int) bool {
 			return self.directPrenodes[i].GetFQName() < self.directPrenodes[j].GetFQName()

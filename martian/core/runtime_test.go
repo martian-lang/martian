@@ -95,7 +95,7 @@ func TestMain(m *testing.M) {
 
 // Very basic invoke test.
 func TestInvoke(t *testing.T) {
-	src := `
+	invokeTest(`
 stage SUM_SQUARES(
     in  float[] values,
     in  int     threads,
@@ -133,7 +133,11 @@ pipeline SUM_SQUARE_PIPELINE(
 call SUM_SQUARE_PIPELINE(
     values = [1.0, 2.0, 3.0],
 )
-`
+`, t)
+}
+
+func invokeTest(src string, t *testing.T) {
+	t.Helper()
 	if d, err := ioutil.TempDir("", "pipestance"); err != nil {
 		t.Error(err)
 	} else {
@@ -197,6 +201,47 @@ call SUM_SQUARE_PIPELINE(
 			ps.Unlock()
 		}
 	}
+}
+
+func TestInvokeEmpty(t *testing.T) {
+	invokeTest(`
+stage FOO (
+	in  int  val,
+	out int  val,
+	src comp "foo",
+)
+
+pipeline CALL_FOO(
+    in  int val,
+    out int val,
+)
+{
+    call FOO(
+        val = self.val,
+    )
+    return (
+        val = FOO.val,
+    )
+}
+
+pipeline MAP_FOO(
+	in  int[] vals,
+	out int[] vals,
+)
+{
+	map call CALL_FOO(
+		val = split self.vals,
+	)
+
+	return (
+		vals = CALL_FOO.val,
+	)
+}
+
+call MAP_FOO(
+	vals = [],
+)
+`, t)
 }
 
 func TestGetCallableFrom(t *testing.T) {
