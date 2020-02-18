@@ -385,11 +385,22 @@ func (self *RetainParams) format(printer *printer) {
 
 func (self *SrcParam) format(printer *printer, modeWidth int, typeWidth int, idWidth int) {
 	printer.printComments(&self.Node, INDENT)
-	langPad := strings.Repeat(" ", typeWidth-len(string(self.Lang)))
-	modePad := strings.Repeat(" ", modeWidth-len("src"))
-	printer.Printf("%ssrc%s %v%s \"%s\",\n", INDENT,
-		modePad, self.Lang, langPad,
-		strings.Join(append([]string{self.Path}, self.Args...), " "))
+	printer.mustWriteString(INDENT)
+	printer.mustWriteString("src ")
+	for i := 0; i < modeWidth-len("src"); i++ {
+		printer.mustWriteRune(' ')
+	}
+	printer.mustWriteString(string(self.Lang))
+	for i := 0; i < typeWidth-len(string(self.Lang)); i++ {
+		printer.mustWriteRune(' ')
+	}
+	printer.mustWriteString(` "`)
+	printer.mustWriteString(self.Path)
+	for _, arg := range self.Args {
+		printer.mustWriteRune(' ')
+		printer.mustWriteString(arg)
+	}
+	printer.mustWriteString("\",\n")
 }
 
 //
