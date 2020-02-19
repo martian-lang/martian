@@ -46,7 +46,7 @@ func (parser *Parser) FixIncludes(source *Ast, mropath []string) error {
 		if closure != nil {
 			ut = closure.UserTypes
 		}
-		needed, missingTypes, missingCalls := getRequiredIncludes(source, ut)
+		needed, optional, missingTypes, missingCalls := getRequiredIncludes(source, ut)
 		extraIncs, extraTypes, err := parser.findMissingIncludes(seen,
 			missingTypes, missingCalls,
 			incPaths)
@@ -58,7 +58,7 @@ func (parser *Parser) FixIncludes(source *Ast, mropath []string) error {
 		delete(needed, srcFile.FileName)
 		delete(needed, srcFile.FullPath)
 
-		incLookup := make(map[string]*SourceFile, len(source.Includes))
+		incLookup := make(map[string]*SourceFile, len(needed))
 		for _, f := range needed {
 			if len(f.IncludedFrom) > 0 && f.IncludedFrom[0].File == srcFile {
 				incLookup[f.FileName] = f
@@ -68,7 +68,17 @@ func (parser *Parser) FixIncludes(source *Ast, mropath []string) error {
 				incLookup[f.FileName] = f
 			}
 		}
-		fixIncludes(source, incLookup, extraTypes)
+		optionalLookup := make(map[string]*SourceFile, len(optional))
+		for _, f := range optional {
+			if len(f.IncludedFrom) > 0 && f.IncludedFrom[0].File == srcFile {
+				optionalLookup[f.FileName] = f
+			} else if p, _, err := IncludeFilePath(f.FullPath, incPaths); err == nil {
+				optionalLookup[p] = f
+			} else {
+				optionalLookup[f.FileName] = f
+			}
+		}
+		fixIncludes(source, incLookup, optionalLookup, extraTypes)
 		return err
 	}
 }
@@ -167,8 +177,28 @@ func uncheckedMakeTables(top *Ast, included *Ast) error {
 	return errs.If()
 }
 
+func isTransitivelyIncluded(file *SourceFile, included, usedTransitively map[string]*SourceFile) bool {
+	if _, ok := included[file.FullPath]; ok {
+		return true
+	} else if _, ok := usedTransitively[file.FullPath]; ok {
+		return true
+	}
+	for _, from := range file.IncludedFrom {
+		if from != nil && from.File != nil &&
+			len(from.File.IncludedFrom) > 0 &&
+			isTransitivelyIncluded(from.File, included, nil) {
+			if usedTransitively != nil {
+				usedTransitively[file.FullPath] = file
+			}
+			return true
+		}
+	}
+	return false
+}
+
 func addIncludesForInParamTypes(source *Ast, params *InParams,
-	unknownTypes map[string]*UserType, required map[string]*SourceFile) {
+	unknownTypes map[string]*UserType,
+	required, usedTransitively map[string]*SourceFile, allowTransitive bool) {
 	for _, param := range params.List {
 		tName := param.GetTname()
 		if t := source.TypeTable.Get(TypeId{Tname: tName.Tname}); t != nil {
@@ -177,13 +207,17 @@ func addIncludesForInParamTypes(source *Ast, params *InParams,
 				if srcFile := tn.getNode().Loc.File; srcFile != param.File() {
 					switch t := t.(type) {
 					case *UserType:
-						if _, ok := required[srcFile.FullPath]; !ok {
+						if !allowTransitive || !isTransitivelyIncluded(srcFile,
+							required, nil) {
 							// Just re-define it locally.
 							unknownTypes[tName.Tname] = t
 						}
 					default:
-						// Structs, etc
-						required[srcFile.FullPath] = srcFile
+						if !allowTransitive || !isTransitivelyIncluded(srcFile,
+							required, usedTransitively) {
+							// Structs, etc
+							required[srcFile.FullPath] = srcFile
+						}
 					}
 				}
 			}
@@ -196,14 +230,17 @@ func addIncludesForInParamTypes(source *Ast, params *InParams,
 }
 
 func addIncludesForOutParamTypes(source *Ast, params *OutParams,
-	unknownTypes map[string]*UserType, required map[string]*SourceFile) {
+	unknownTypes map[string]*UserType,
+	required, usedTransitively map[string]*SourceFile, allowTransitive bool) {
 	for _, param := range params.List {
-		addIncludesForMemberType(source, &param.StructMember, unknownTypes, required)
+		addIncludesForMemberType(source, &param.StructMember, unknownTypes,
+			required, usedTransitively, allowTransitive)
 	}
 }
 
 func addIncludesForMemberType(source *Ast, param *StructMember,
-	unknownTypes map[string]*UserType, required map[string]*SourceFile) {
+	unknownTypes map[string]*UserType,
+	required, usedTransitively map[string]*SourceFile, allowTransitive bool) {
 	tName := param.Tname
 	if t := source.TypeTable.Get(TypeId{Tname: tName.Tname}); t != nil {
 		// Don't worry about builtin types
@@ -211,13 +248,17 @@ func addIncludesForMemberType(source *Ast, param *StructMember,
 			if srcFile := tn.getNode().Loc.File; srcFile != param.File() {
 				switch t := t.(type) {
 				case *UserType:
-					if _, ok := required[srcFile.FullPath]; !ok {
+					if !allowTransitive || !isTransitivelyIncluded(srcFile,
+						required, nil) {
 						// Just re-define it locally.
 						unknownTypes[tName.Tname] = t
 					}
 				default:
-					// Structs, etc
-					required[srcFile.FullPath] = srcFile
+					if !allowTransitive || !isTransitivelyIncluded(srcFile,
+						required, usedTransitively) {
+						// Structs, etc
+						required[srcFile.FullPath] = srcFile
+					}
 				}
 			}
 		}
@@ -230,15 +271,17 @@ func addIncludesForMemberType(source *Ast, param *StructMember,
 
 // Get the set of includes which are required for this source AST,
 // as well as the set of types and callables which remain undefined.
-func getRequiredIncludes(source *Ast, userTypes []*UserType) (map[string]*SourceFile,
-	map[string]*UserType, map[string]struct{}) {
-	required := make(map[string]*SourceFile, 1+len(source.Includes))
+func getRequiredIncludes(source *Ast, userTypes []*UserType) (
+	required, optional map[string]*SourceFile,
+	unknownTypes map[string]*UserType,
+	unknownCallables map[string]struct{}) {
+	required = make(map[string]*SourceFile, 1+len(source.Includes))
 	for k, v := range source.Files {
 		required[k] = v
 		required[v.FullPath] = v
 	}
-	unknownTypes := make(map[string]*UserType)
-	unknownCallables := make(map[string]struct{})
+	unknownTypes = make(map[string]*UserType)
+	unknownCallables = make(map[string]struct{})
 	if source.Call != nil {
 		if call := source.Callables.Table[source.Call.DecId]; call != nil {
 			file := call.getNode().Loc.File
@@ -257,20 +300,21 @@ func getRequiredIncludes(source *Ast, userTypes []*UserType) (map[string]*Source
 			}
 		}
 	}
+	optional = make(map[string]*SourceFile, len(source.Includes))
 	for _, pipeline := range source.Pipelines {
-		addIncludesForInParamTypes(source, pipeline.InParams, unknownTypes, required)
-		addIncludesForOutParamTypes(source, pipeline.OutParams, unknownTypes, required)
+		addIncludesForInParamTypes(source, pipeline.InParams, unknownTypes, required, optional, true)
+		addIncludesForOutParamTypes(source, pipeline.OutParams, unknownTypes, required, optional, true)
 	}
 	// Check that the input and output types for all stages are declared.
 	for _, stage := range source.Stages {
-		addIncludesForInParamTypes(source, stage.InParams, unknownTypes, required)
-		addIncludesForInParamTypes(source, stage.ChunkIns, unknownTypes, required)
-		addIncludesForOutParamTypes(source, stage.OutParams, unknownTypes, required)
-		addIncludesForOutParamTypes(source, stage.ChunkOuts, unknownTypes, required)
+		addIncludesForInParamTypes(source, stage.InParams, unknownTypes, required, optional, false)
+		addIncludesForInParamTypes(source, stage.ChunkIns, unknownTypes, required, optional, false)
+		addIncludesForOutParamTypes(source, stage.OutParams, unknownTypes, required, optional, false)
+		addIncludesForOutParamTypes(source, stage.ChunkOuts, unknownTypes, required, optional, false)
 	}
 	for _, structType := range source.StructTypes {
 		for _, member := range structType.Members {
-			addIncludesForMemberType(source, member, unknownTypes, required)
+			addIncludesForMemberType(source, member, unknownTypes, required, optional, false)
 		}
 	}
 	if len(unknownTypes) > 0 && len(userTypes) > 0 {
@@ -279,14 +323,15 @@ func getRequiredIncludes(source *Ast, userTypes []*UserType) (map[string]*Source
 		var excess []string
 		isAlreadyIncluded := func(name string) bool {
 			if ty := source.TypeTable.Get(TypeId{Tname: name}); ty != nil {
-				if tn, ok := ty.(AstNodable); ok && required[tn.getNode().Loc.File.FullPath] != nil {
+				if tn, ok := ty.(AstNodable); ok && isTransitivelyIncluded(
+					tn.getNode().Loc.File, required, optional) {
 					return true
 				} else if ok {
 					// The type may have been declared in other included files
 					// besides the first one which is listed on the type info.
 					for _, t := range userTypes {
 						if t.Id == name {
-							if required[t.Node.Loc.File.FullPath] != nil {
+							if isTransitivelyIncluded(t.Node.Loc.File, required, optional) {
 								return true
 							}
 						}
@@ -308,7 +353,7 @@ func getRequiredIncludes(source *Ast, userTypes []*UserType) (map[string]*Source
 			}
 		}
 	}
-	return required, unknownTypes, unknownCallables
+	return required, optional, unknownTypes, unknownCallables
 }
 
 func (parser *Parser) findMissingIncludes(seenFiles map[string]*SourceFile,
@@ -400,7 +445,7 @@ func (parser *Parser) findMissingIncludes(seenFiles map[string]*SourceFile,
 }
 
 // Add required includes, remove unnecessary ones, and sort them.
-func fixIncludes(source *Ast, needed map[string]*SourceFile, extraTypes []Type) {
+func fixIncludes(source *Ast, needed, optional map[string]*SourceFile, extraTypes []Type) {
 	// Grab the scope comments off the first node, so that we can reattach them post-sort.
 	var scopeComments []*commentBlock
 	if len(source.Includes) > 0 {
@@ -413,6 +458,9 @@ func fixIncludes(source *Ast, needed map[string]*SourceFile, extraTypes []Type) 
 		if _, ok := needed[inc.Value]; ok {
 			newIncludes = append(newIncludes, inc)
 			delete(needed, inc.Value)
+		} else if _, ok := optional[inc.Value]; ok {
+			newIncludes = append(newIncludes, inc)
+			delete(optional, inc.Value)
 		}
 		loc = inc.Node.Loc
 	}
