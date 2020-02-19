@@ -419,6 +419,8 @@ func makeFqid(prefix string, call *CallStm, parent *CallGraphPipeline) string {
 			}
 		}
 		fqid = buf.String()
+	} else if prefix != "" {
+		fqid = prefix + fqid
 	}
 	return fqid
 }

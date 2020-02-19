@@ -513,6 +513,59 @@ call METRICS()
 	}
 }
 
+func TestEmptyPipelineResolve(t *testing.T) {
+	t.Parallel()
+	ast := testGood(t, `
+pipeline DUMMY(
+	in  int foo,
+	out int foo,
+)
+{
+	return (
+		foo = self.foo,
+	)
+}
+
+call DUMMY(
+	foo = 0,
+)
+`)
+	if ast == nil {
+		return
+	}
+	graph, err := ast.MakeCallGraph("ID.", ast.Call)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var dest strings.Builder
+	enc := json.NewEncoder(&dest)
+	enc.SetEscapeHTML(false)
+	enc.SetIndent("\t", "\t")
+	if err := enc.Encode(graph); err != nil {
+		t.Fatal(err)
+	}
+	const expect = `{
+		"fqid": "ID.DUMMY",
+		"inputs": {
+			"foo": {
+				"expression": 0,
+				"type": "int"
+			}
+		},
+		"outputs": {
+			"expression": {
+				"foo": 0
+			},
+			"type": "DUMMY"
+		},
+		"children": null
+	}
+`
+	if s := dest.String(); expect != s {
+		diffLines(expect, s, t)
+	}
+}
+
 func TestResolveDisableExp(t *testing.T) {
 	result, err := resolveDisableExp(&BoolExp{Value: true}, nil)
 	if err != nil {
