@@ -994,6 +994,11 @@ func (self *Fork) expandForkPart(i int, part *ForkSourcePart,
 }
 
 func (self *Fork) expand() ([]ForkId, error) {
+	if d, err := self.disabled(); d {
+		return nil, nil
+	} else if err != nil {
+		return nil, err
+	}
 	if len(self.forkId) == 0 {
 		if src := self.node.call.MapSource(); src != nil && !src.KnownLength() {
 			part := &ForkSourcePart{

@@ -22,6 +22,7 @@ go_library(
         "compile_pipelines.go",
         "compile_stages.go",
         "compile_types.go",
+        "disabled_exp.go",
         "dot.go",
         "enforcement_level.go",
         "equivalence.go",

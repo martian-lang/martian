@@ -289,6 +289,66 @@ func TestSerializeMapCallGraph(t *testing.T) {
 	}
 }
 
+func TestSerializeDisableCallGraph(t *testing.T) {
+	src, err := ioutil.ReadFile("testdata/disable_pipeline.mro")
+	if err != nil {
+		t.Fatal(err)
+	}
+	_, _, ast, err := ParseSourceBytes(src, "disable_pipeline.mro", nil, false)
+	if err != nil {
+		t.Fatal(err)
+	}
+	graph, err := ast.MakeCallGraph("", ast.Call)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var dest strings.Builder
+	enc := json.NewEncoder(&dest)
+	enc.SetEscapeHTML(false)
+	enc.SetIndent("", "  ")
+	if err := enc.Encode(graph); err != nil {
+		t.Fatal(err)
+	}
+	expectB, err := ioutil.ReadFile("testdata/disable_pipeline.json")
+	if err != nil {
+		t.Fatal(err)
+	}
+	expect := string(expectB)
+	if s := dest.String(); expect != s {
+		diffLines(expect, s, t)
+	}
+}
+
+func TestSerializeDisableBindingCallGraph(t *testing.T) {
+	src, err := ioutil.ReadFile("testdata/disable_bindings.mro")
+	if err != nil {
+		t.Fatal(err)
+	}
+	_, _, ast, err := ParseSourceBytes(src, "disable_bindings.mro", nil, false)
+	if err != nil {
+		t.Fatal(err)
+	}
+	graph, err := ast.MakeCallGraph("", ast.Call)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var dest strings.Builder
+	enc := json.NewEncoder(&dest)
+	enc.SetEscapeHTML(false)
+	enc.SetIndent("", "  ")
+	if err := enc.Encode(graph); err != nil {
+		t.Fatal(err)
+	}
+	expectB, err := ioutil.ReadFile("testdata/disable_bindings.json")
+	if err != nil {
+		t.Fatal(err)
+	}
+	expect := string(expectB)
+	if s := dest.String(); expect != s {
+		diffLines(expect, s, t)
+	}
+}
+
 func makeSplitMapExp(t *testing.T, src string) (*MapExp, MapCallSource) {
 	t.Helper()
 	var parser Parser

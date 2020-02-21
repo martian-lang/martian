@@ -98,6 +98,8 @@ func (s *UserType) IsValidExpression(exp Exp, pipeline *Pipeline, ast *Ast) erro
 		}
 	case *SplitExp:
 		return isValidSplit(s, exp, pipeline, ast)
+	case *DisabledExp:
+		return s.IsValidExpression(exp.Value, pipeline, ast)
 	case *NullExp:
 		return nil
 	case *StringExp:

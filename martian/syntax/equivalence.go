@@ -438,6 +438,40 @@ func (exp *SplitExp) equal(uother Exp) bool {
 	return exp.Value.equal(other.Value)
 }
 
+func equivalentSource(s1, s2 MapCallSource) bool {
+	if s1 == s2 {
+		return true
+	}
+	if s1 == nil || s2 == nil {
+		return false
+	}
+	if s1.CallMode() != s2.CallMode() {
+		return false
+	}
+	if s1.KnownLength() {
+		if !s2.KnownLength() {
+			return false
+		}
+		switch s1.CallMode() {
+		case ModeSingleCall, ModeNullMapCall, ModeUnknownMapCall:
+			return true
+		case ModeArrayCall:
+			return s1.ArrayLength() == s2.ArrayLength()
+		case ModeMapCall:
+			k1, k2 := s1.Keys(), s2.Keys()
+			if len(k1) != len(k2) {
+				return false
+			}
+			for k := range k1 {
+				if _, ok := k2[k]; !ok {
+					return false
+				}
+			}
+		}
+	}
+	return true
+}
+
 func (exp *RefExp) equal(other Exp) bool {
 	if exp == nil {
 		return other == nil
@@ -453,7 +487,28 @@ func (exp *RefExp) equal(other Exp) bool {
 			"Reference type %v != %v",
 			exp.Kind, ov.Kind)
 		return false
+	} else if exp.Id != ov.Id || exp.OutputId != ov.OutputId {
+		return false
+	} else if len(exp.MergeOver) != len(ov.MergeOver) ||
+		len(exp.ForkIndex) != len(ov.ForkIndex) ||
+		len(exp.OutputIndex) != len(ov.OutputIndex) {
+		return false
 	} else {
-		return exp.Id == ov.Id && exp.OutputId == ov.OutputId
+		for i, v := range exp.MergeOver {
+			if o := ov.MergeOver[i]; !equivalentSource(v, o) {
+				return false
+			}
+		}
+		for i, v := range exp.ForkIndex {
+			if ov.ForkIndex[i] != v {
+				return false
+			}
+		}
+		for k, v := range exp.OutputIndex {
+			if ov.OutputIndex[k] != v {
+				return false
+			}
+		}
+		return true
 	}
 }

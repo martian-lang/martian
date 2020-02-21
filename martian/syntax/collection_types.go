@@ -104,6 +104,8 @@ func (s *ArrayType) IsValidExpression(exp Exp, pipeline *Pipeline, ast *Ast) err
 		}
 	case *SplitExp:
 		return isValidSplit(s, exp, pipeline, ast)
+	case *DisabledExp:
+		return s.IsValidExpression(exp.Value, pipeline, ast)
 	case *NullExp:
 		return nil
 	case *ArrayExp:
@@ -391,6 +393,8 @@ func (s *TypedMapType) IsValidExpression(exp Exp, pipeline *Pipeline, ast *Ast) 
 		}
 	case *SplitExp:
 		return isValidSplit(s, exp, pipeline, ast)
+	case *DisabledExp:
+		return s.IsValidExpression(exp.Value, pipeline, ast)
 	case *NullExp:
 		return nil
 	case *MapExp:

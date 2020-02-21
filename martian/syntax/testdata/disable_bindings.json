@@ -1,0 +1,119 @@
+{
+  "fqid": "P",
+  "inputs": null,
+  "outputs": {
+    "expression": {
+      "disable": {
+        "__disabled__": {
+          "__reference__": "P.DISABLER.disable"
+        },
+        "value": {
+          "__reference__": "P.P1.DISABLER.disable"
+        }
+      }
+    },
+    "type": "P"
+  },
+  "children": [
+    {
+      "fqid": "P.DISABLER",
+      "inputs": null,
+      "outputs": {
+        "expression": {
+          "__reference__": "P.DISABLER"
+        },
+        "type": "DISABLER"
+      }
+    },
+    {
+      "fqid": "P.P1",
+      "inputs": null,
+      "outputs": {
+        "expression": {
+          "__disabled__": {
+            "__reference__": "P.DISABLER.disable"
+          },
+          "value": {
+            "disable": {
+              "__reference__": "P.P1.DISABLER.disable"
+            }
+          }
+        },
+        "type": "P1"
+      },
+      "disabled": [
+        {
+          "__reference__": "P.DISABLER.disable"
+        }
+      ],
+      "children": [
+        {
+          "fqid": "P.P1.DISABLER",
+          "inputs": null,
+          "outputs": {
+            "expression": {
+              "__reference__": "P.P1.DISABLER"
+            },
+            "type": "DISABLER"
+          },
+          "disabled": [
+            {
+              "__reference__": "P.DISABLER.disable"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "fqid": "P.P2",
+      "inputs": {
+        "disable": {
+          "expression": {
+            "__disabled__": {
+              "__reference__": "P.DISABLER.disable"
+            },
+            "value": {
+              "__reference__": "P.P1.DISABLER.disable"
+            }
+          },
+          "type": "bool"
+        }
+      },
+      "outputs": {
+        "expression": {
+          "__disabled__": {
+            "__reference__": "P.DISABLER.disable"
+          },
+          "value": {
+            "disable": {
+              "__reference__": "P.P2.DISABLER.disable"
+            }
+          }
+        },
+        "type": "P2"
+      },
+      "disabled": [
+        {
+          "__reference__": "P.DISABLER.disable"
+        }
+      ],
+      "children": [
+        {
+          "fqid": "P.P2.DISABLER",
+          "inputs": null,
+          "outputs": {
+            "expression": {
+              "__reference__": "P.P2.DISABLER"
+            },
+            "type": "DISABLER"
+          },
+          "disabled": [
+            {
+              "__reference__": "P.DISABLER.disable"
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

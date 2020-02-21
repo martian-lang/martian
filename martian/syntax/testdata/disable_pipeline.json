@@ -1,0 +1,1402 @@
+{
+  "fqid": "TOP_CALL",
+  "inputs": {
+    "disable_always": {
+      "expression": true,
+      "type": "bool"
+    },
+    "empty": {
+      "expression": null,
+      "type": "int[]"
+    },
+    "foo": {
+      "expression": 1,
+      "type": "int"
+    },
+    "foos": {
+      "expression": [
+        2,
+        3
+      ],
+      "type": "int[]"
+    }
+  },
+  "outputs": {
+    "expression": {
+      "results": [
+        [
+          [
+            1
+          ],
+          [
+            2,
+            3
+          ],
+          {
+            "__disabled__": {
+              "__reference__": "TOP_CALL.RUNS_ENABLED.RUN_CREATOR.CREATE_DISABLE.disable"
+            },
+            "value": [
+              2,
+              3
+            ]
+          },
+          null,
+          null
+        ],
+        [
+          [
+            0
+          ],
+          null,
+          {
+            "__disabled__": {
+              "__reference__": "TOP_CALL.RUNS_DISABLED.RUN_CREATOR.CREATE_DISABLE.disable"
+            },
+            "value": [
+              2,
+              3
+            ]
+          },
+          null,
+          null
+        ],
+        {
+          "__disabled__": {
+            "__reference__": "TOP_CALL.RUNS_ENABLED.RUN_CREATOR.CREATE_DISABLE.disable"
+          },
+          "value": [
+            [
+              0
+            ],
+            [
+              2,
+              3
+            ],
+            {
+              "__disabled__": {
+                "__reference__": "TOP_CALL.RUNS_DISABLED_DYNAMIC.RUN_CREATOR.CREATE_DISABLE.disable"
+              },
+              "value": [
+                2,
+                3
+              ]
+            },
+            null,
+            null
+          ]
+        },
+        null
+      ]
+    },
+    "type": "TOP_CALL"
+  },
+  "children": [
+    {
+      "fqid": "TOP_CALL.RUNS_ENABLED",
+      "inputs": {
+        "disable": {
+          "expression": false,
+          "type": "bool"
+        },
+        "disable_one": {
+          "expression": false,
+          "type": "bool"
+        },
+        "empty": {
+          "expression": null,
+          "type": "int[]"
+        },
+        "foo": {
+          "expression": 1,
+          "type": "int"
+        },
+        "foos": {
+          "expression": [
+            2,
+            3
+          ],
+          "type": "int[]"
+        }
+      },
+      "outputs": {
+        "expression": {
+          "disable1": {
+            "__reference__": "TOP_CALL.RUNS_ENABLED.RUN_CREATOR.CREATE_DISABLE.disable"
+          },
+          "disable2": {
+            "__disabled__": {
+              "__reference__": "TOP_CALL.RUNS_ENABLED.RUN_CREATOR.CREATE_DISABLE.disable"
+            },
+            "value": {
+              "__reference__": "TOP_CALL.RUNS_ENABLED.RUN_CREATOR5.CREATE_DISABLE.disable"
+            }
+          },
+          "results": [
+            [
+              1
+            ],
+            [
+              2,
+              3
+            ],
+            {
+              "__disabled__": {
+                "__reference__": "TOP_CALL.RUNS_ENABLED.RUN_CREATOR.CREATE_DISABLE.disable"
+              },
+              "value": [
+                2,
+                3
+              ]
+            },
+            null,
+            null
+          ]
+        },
+        "type": "RUNS"
+      },
+      "children": [
+        {
+          "fqid": "TOP_CALL.RUNS_ENABLED.RUN_CREATOR",
+          "inputs": {
+            "disable": {
+              "expression": false,
+              "type": "bool"
+            },
+            "foo": {
+              "expression": 1,
+              "type": "int"
+            }
+          },
+          "outputs": {
+            "expression": {
+              "disable": {
+                "__reference__": "TOP_CALL.RUNS_ENABLED.RUN_CREATOR.CREATE_DISABLE.disable"
+              },
+              "foo": 1
+            },
+            "type": "RUN_CREATOR"
+          },
+          "children": [
+            {
+              "fqid": "TOP_CALL.RUNS_ENABLED.RUN_CREATOR.CREATE_DISABLE",
+              "inputs": {
+                "foo": {
+                  "expression": 1,
+                  "type": "int"
+                }
+              },
+              "outputs": {
+                "expression": {
+                  "__reference__": "TOP_CALL.RUNS_ENABLED.RUN_CREATOR.CREATE_DISABLE"
+                },
+                "type": "CREATE_DISABLE"
+              }
+            }
+          ]
+        },
+        {
+          "fqid": "TOP_CALL.RUNS_ENABLED.RUN_CREATOR1",
+          "inputs": {
+            "disable": {
+              "expression": false,
+              "type": "bool"
+            },
+            "foo": {
+              "expression": {
+                "call": "RUN_CREATOR1",
+                "mode": "array",
+                "split": [
+                  2,
+                  3
+                ]
+              },
+              "type": "int"
+            }
+          },
+          "outputs": {
+            "expression": [
+              {
+                "disable": {
+                  "__reference__": "TOP_CALL.RUNS_ENABLED.RUN_CREATOR1.CREATE_DISABLE.disable",
+                  "join": [
+                    {
+                      "type": "array",
+                      "len": 2
+                    }
+                  ],
+                  "fork": [
+                    {
+                      "source": {
+                        "type": "array",
+                        "len": 2
+                      },
+                      "index": 0
+                    }
+                  ]
+                },
+                "foo": 2
+              },
+              {
+                "disable": {
+                  "__reference__": "TOP_CALL.RUNS_ENABLED.RUN_CREATOR1.CREATE_DISABLE.disable",
+                  "join": [
+                    {
+                      "type": "array",
+                      "len": 2
+                    }
+                  ],
+                  "fork": [
+                    {
+                      "source": {
+                        "type": "array",
+                        "len": 2
+                      },
+                      "index": 1
+                    }
+                  ]
+                },
+                "foo": 3
+              }
+            ],
+            "type": "RUN_CREATOR[]"
+          },
+          "children": [
+            {
+              "fqid": "TOP_CALL.RUNS_ENABLED.RUN_CREATOR1.CREATE_DISABLE",
+              "inputs": {
+                "foo": {
+                  "expression": {
+                    "call": "RUN_CREATOR1",
+                    "mode": "array",
+                    "split": [
+                      2,
+                      3
+                    ]
+                  },
+                  "type": "int"
+                }
+              },
+              "outputs": {
+                "expression": {
+                  "__reference__": "TOP_CALL.RUNS_ENABLED.RUN_CREATOR1.CREATE_DISABLE",
+                  "join": [
+                    {
+                      "type": "array",
+                      "len": 2
+                    }
+                  ]
+                },
+                "type": "CREATE_DISABLE[]"
+              },
+              "fork_roots": [
+                {
+                  "type": "array",
+                  "len": 2
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "fqid": "TOP_CALL.RUNS_ENABLED.RUN_CREATOR2",
+          "inputs": {
+            "disable": {
+              "expression": false,
+              "type": "bool"
+            },
+            "foo": {
+              "expression": {
+                "call": "RUN_CREATOR2",
+                "mode": "array",
+                "split": [
+                  2,
+                  3
+                ]
+              },
+              "type": "int"
+            }
+          },
+          "outputs": {
+            "expression": {
+              "__disabled__": {
+                "__reference__": "TOP_CALL.RUNS_ENABLED.RUN_CREATOR.CREATE_DISABLE.disable",
+                "fork": [
+                  {
+                    "source": {
+                      "type": "array",
+                      "len": 2
+                    },
+                    "index": "unknown array"
+                  }
+                ]
+              },
+              "value": [
+                {
+                  "disable": {
+                    "__reference__": "TOP_CALL.RUNS_ENABLED.RUN_CREATOR2.CREATE_DISABLE.disable",
+                    "join": [
+                      {
+                        "type": "array",
+                        "len": 2
+                      }
+                    ],
+                    "fork": [
+                      {
+                        "source": {
+                          "type": "array",
+                          "len": 2
+                        },
+                        "index": 0
+                      }
+                    ]
+                  },
+                  "foo": 2
+                },
+                {
+                  "disable": {
+                    "__reference__": "TOP_CALL.RUNS_ENABLED.RUN_CREATOR2.CREATE_DISABLE.disable",
+                    "join": [
+                      {
+                        "type": "array",
+                        "len": 2
+                      }
+                    ],
+                    "fork": [
+                      {
+                        "source": {
+                          "type": "array",
+                          "len": 2
+                        },
+                        "index": 1
+                      }
+                    ]
+                  },
+                  "foo": 3
+                }
+              ]
+            },
+            "type": "RUN_CREATOR[]"
+          },
+          "disabled": [
+            {
+              "__reference__": "TOP_CALL.RUNS_ENABLED.RUN_CREATOR.CREATE_DISABLE.disable"
+            }
+          ],
+          "children": [
+            {
+              "fqid": "TOP_CALL.RUNS_ENABLED.RUN_CREATOR2.CREATE_DISABLE",
+              "inputs": {
+                "foo": {
+                  "expression": {
+                    "call": "RUN_CREATOR2",
+                    "mode": "array",
+                    "split": [
+                      2,
+                      3
+                    ]
+                  },
+                  "type": "int"
+                }
+              },
+              "outputs": {
+                "expression": {
+                  "__reference__": "TOP_CALL.RUNS_ENABLED.RUN_CREATOR2.CREATE_DISABLE",
+                  "join": [
+                    {
+                      "type": "array",
+                      "len": 2
+                    }
+                  ]
+                },
+                "type": "CREATE_DISABLE[]"
+              },
+              "disabled": [
+                {
+                  "__reference__": "TOP_CALL.RUNS_ENABLED.RUN_CREATOR.CREATE_DISABLE.disable"
+                }
+              ],
+              "fork_roots": [
+                {
+                  "type": "array",
+                  "len": 2
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "fqid": "TOP_CALL.RUNS_ENABLED.RUN_CREATOR3",
+          "inputs": {
+            "disable": {
+              "expression": false,
+              "type": "bool"
+            },
+            "foo": {
+              "expression": {
+                "call": "RUN_CREATOR3",
+                "mode": "array",
+                "split": null
+              },
+              "type": "int"
+            }
+          },
+          "outputs": {
+            "expression": null,
+            "type": "RUN_CREATOR"
+          },
+          "disabled": [
+            true
+          ],
+          "children": null
+        },
+        {
+          "fqid": "TOP_CALL.RUNS_ENABLED.RUN_CREATOR4",
+          "inputs": {
+            "disable": {
+              "expression": false,
+              "type": "bool"
+            },
+            "foo": {
+              "expression": {
+                "call": "RUN_CREATOR4",
+                "mode": "array",
+                "split": null
+              },
+              "type": "int"
+            }
+          },
+          "outputs": {
+            "expression": null,
+            "type": "RUN_CREATOR"
+          },
+          "disabled": [
+            true
+          ],
+          "children": null
+        },
+        {
+          "fqid": "TOP_CALL.RUNS_ENABLED.RUN_CREATOR5",
+          "inputs": {
+            "disable": {
+              "expression": false,
+              "type": "bool"
+            },
+            "foo": {
+              "expression": 1,
+              "type": "int"
+            }
+          },
+          "outputs": {
+            "expression": {
+              "__disabled__": {
+                "__reference__": "TOP_CALL.RUNS_ENABLED.RUN_CREATOR.CREATE_DISABLE.disable"
+              },
+              "value": {
+                "disable": {
+                  "__reference__": "TOP_CALL.RUNS_ENABLED.RUN_CREATOR5.CREATE_DISABLE.disable"
+                },
+                "foo": 1
+              }
+            },
+            "type": "RUN_CREATOR"
+          },
+          "disabled": [
+            {
+              "__reference__": "TOP_CALL.RUNS_ENABLED.RUN_CREATOR.CREATE_DISABLE.disable"
+            }
+          ],
+          "children": [
+            {
+              "fqid": "TOP_CALL.RUNS_ENABLED.RUN_CREATOR5.CREATE_DISABLE",
+              "inputs": {
+                "foo": {
+                  "expression": 1,
+                  "type": "int"
+                }
+              },
+              "outputs": {
+                "expression": {
+                  "__reference__": "TOP_CALL.RUNS_ENABLED.RUN_CREATOR5.CREATE_DISABLE"
+                },
+                "type": "CREATE_DISABLE"
+              },
+              "disabled": [
+                {
+                  "__reference__": "TOP_CALL.RUNS_ENABLED.RUN_CREATOR.CREATE_DISABLE.disable"
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "fqid": "TOP_CALL.RUNS_DISABLED",
+      "inputs": {
+        "disable": {
+          "expression": true,
+          "type": "bool"
+        },
+        "disable_one": {
+          "expression": false,
+          "type": "bool"
+        },
+        "empty": {
+          "expression": null,
+          "type": "int[]"
+        },
+        "foo": {
+          "expression": 0,
+          "type": "int"
+        },
+        "foos": {
+          "expression": [
+            2,
+            3
+          ],
+          "type": "int[]"
+        }
+      },
+      "outputs": {
+        "expression": {
+          "disable1": {
+            "__reference__": "TOP_CALL.RUNS_DISABLED.RUN_CREATOR.CREATE_DISABLE.disable"
+          },
+          "disable2": {
+            "__disabled__": {
+              "__reference__": "TOP_CALL.RUNS_DISABLED.RUN_CREATOR.CREATE_DISABLE.disable"
+            },
+            "value": {
+              "__reference__": "TOP_CALL.RUNS_DISABLED.RUN_CREATOR5.CREATE_DISABLE.disable"
+            }
+          },
+          "results": [
+            [
+              0
+            ],
+            null,
+            {
+              "__disabled__": {
+                "__reference__": "TOP_CALL.RUNS_DISABLED.RUN_CREATOR.CREATE_DISABLE.disable"
+              },
+              "value": [
+                2,
+                3
+              ]
+            },
+            null,
+            null
+          ]
+        },
+        "type": "RUNS"
+      },
+      "children": [
+        {
+          "fqid": "TOP_CALL.RUNS_DISABLED.RUN_CREATOR",
+          "inputs": {
+            "disable": {
+              "expression": false,
+              "type": "bool"
+            },
+            "foo": {
+              "expression": 0,
+              "type": "int"
+            }
+          },
+          "outputs": {
+            "expression": {
+              "disable": {
+                "__reference__": "TOP_CALL.RUNS_DISABLED.RUN_CREATOR.CREATE_DISABLE.disable"
+              },
+              "foo": 0
+            },
+            "type": "RUN_CREATOR"
+          },
+          "children": [
+            {
+              "fqid": "TOP_CALL.RUNS_DISABLED.RUN_CREATOR.CREATE_DISABLE",
+              "inputs": {
+                "foo": {
+                  "expression": 0,
+                  "type": "int"
+                }
+              },
+              "outputs": {
+                "expression": {
+                  "__reference__": "TOP_CALL.RUNS_DISABLED.RUN_CREATOR.CREATE_DISABLE"
+                },
+                "type": "CREATE_DISABLE"
+              }
+            }
+          ]
+        },
+        {
+          "fqid": "TOP_CALL.RUNS_DISABLED.RUN_CREATOR1",
+          "inputs": {
+            "disable": {
+              "expression": true,
+              "type": "bool"
+            },
+            "foo": {
+              "expression": {
+                "call": "RUN_CREATOR1",
+                "mode": "array",
+                "split": [
+                  2,
+                  3
+                ]
+              },
+              "type": "int"
+            }
+          },
+          "outputs": {
+            "expression": null,
+            "type": "RUN_CREATOR"
+          },
+          "disabled": [
+            true
+          ],
+          "children": null
+        },
+        {
+          "fqid": "TOP_CALL.RUNS_DISABLED.RUN_CREATOR2",
+          "inputs": {
+            "disable": {
+              "expression": true,
+              "type": "bool"
+            },
+            "foo": {
+              "expression": {
+                "call": "RUN_CREATOR2",
+                "mode": "array",
+                "split": [
+                  2,
+                  3
+                ]
+              },
+              "type": "int"
+            }
+          },
+          "outputs": {
+            "expression": {
+              "__disabled__": {
+                "__reference__": "TOP_CALL.RUNS_DISABLED.RUN_CREATOR.CREATE_DISABLE.disable"
+              },
+              "value": [
+                {
+                  "disable": null,
+                  "foo": 2
+                },
+                {
+                  "disable": null,
+                  "foo": 3
+                }
+              ]
+            },
+            "type": "RUN_CREATOR[]"
+          },
+          "disabled": [
+            {
+              "__reference__": "TOP_CALL.RUNS_DISABLED.RUN_CREATOR.CREATE_DISABLE.disable"
+            }
+          ],
+          "children": [
+            {
+              "fqid": "TOP_CALL.RUNS_DISABLED.RUN_CREATOR2.CREATE_DISABLE",
+              "inputs": {
+                "foo": {
+                  "expression": {
+                    "call": "RUN_CREATOR2",
+                    "mode": "array",
+                    "split": [
+                      2,
+                      3
+                    ]
+                  },
+                  "type": "int"
+                }
+              },
+              "outputs": {
+                "expression": null,
+                "type": "CREATE_DISABLE"
+              },
+              "disabled": [
+                true
+              ],
+              "fork_roots": [
+                {
+                  "type": "array",
+                  "len": 2
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "fqid": "TOP_CALL.RUNS_DISABLED.RUN_CREATOR3",
+          "inputs": {
+            "disable": {
+              "expression": true,
+              "type": "bool"
+            },
+            "foo": {
+              "expression": {
+                "call": "RUN_CREATOR3",
+                "mode": "array",
+                "split": null
+              },
+              "type": "int"
+            }
+          },
+          "outputs": {
+            "expression": null,
+            "type": "RUN_CREATOR"
+          },
+          "disabled": [
+            true
+          ],
+          "children": null
+        },
+        {
+          "fqid": "TOP_CALL.RUNS_DISABLED.RUN_CREATOR4",
+          "inputs": {
+            "disable": {
+              "expression": true,
+              "type": "bool"
+            },
+            "foo": {
+              "expression": {
+                "call": "RUN_CREATOR4",
+                "mode": "array",
+                "split": null
+              },
+              "type": "int"
+            }
+          },
+          "outputs": {
+            "expression": null,
+            "type": "RUN_CREATOR"
+          },
+          "disabled": [
+            true
+          ],
+          "children": null
+        },
+        {
+          "fqid": "TOP_CALL.RUNS_DISABLED.RUN_CREATOR5",
+          "inputs": {
+            "disable": {
+              "expression": false,
+              "type": "bool"
+            },
+            "foo": {
+              "expression": 0,
+              "type": "int"
+            }
+          },
+          "outputs": {
+            "expression": {
+              "__disabled__": {
+                "__reference__": "TOP_CALL.RUNS_DISABLED.RUN_CREATOR.CREATE_DISABLE.disable"
+              },
+              "value": {
+                "disable": {
+                  "__reference__": "TOP_CALL.RUNS_DISABLED.RUN_CREATOR5.CREATE_DISABLE.disable"
+                },
+                "foo": 0
+              }
+            },
+            "type": "RUN_CREATOR"
+          },
+          "disabled": [
+            {
+              "__reference__": "TOP_CALL.RUNS_DISABLED.RUN_CREATOR.CREATE_DISABLE.disable"
+            }
+          ],
+          "children": [
+            {
+              "fqid": "TOP_CALL.RUNS_DISABLED.RUN_CREATOR5.CREATE_DISABLE",
+              "inputs": {
+                "foo": {
+                  "expression": 0,
+                  "type": "int"
+                }
+              },
+              "outputs": {
+                "expression": {
+                  "__reference__": "TOP_CALL.RUNS_DISABLED.RUN_CREATOR5.CREATE_DISABLE"
+                },
+                "type": "CREATE_DISABLE"
+              },
+              "disabled": [
+                {
+                  "__reference__": "TOP_CALL.RUNS_DISABLED.RUN_CREATOR.CREATE_DISABLE.disable"
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "fqid": "TOP_CALL.RUNS_DISABLED_DYNAMIC",
+      "inputs": {
+        "disable": {
+          "expression": {
+            "__disabled__": {
+              "__reference__": "TOP_CALL.RUNS_ENABLED.RUN_CREATOR.CREATE_DISABLE.disable"
+            },
+            "value": {
+              "__reference__": "TOP_CALL.RUNS_ENABLED.RUN_CREATOR5.CREATE_DISABLE.disable"
+            }
+          },
+          "type": "bool"
+        },
+        "disable_one": {
+          "expression": {
+            "__disabled__": {
+              "__reference__": "TOP_CALL.RUNS_ENABLED.RUN_CREATOR.CREATE_DISABLE.disable"
+            },
+            "value": {
+              "__reference__": "TOP_CALL.RUNS_ENABLED.RUN_CREATOR5.CREATE_DISABLE.disable"
+            }
+          },
+          "type": "bool"
+        },
+        "empty": {
+          "expression": null,
+          "type": "int[]"
+        },
+        "foo": {
+          "expression": 0,
+          "type": "int"
+        },
+        "foos": {
+          "expression": [
+            2,
+            3
+          ],
+          "type": "int[]"
+        }
+      },
+      "outputs": {
+        "expression": {
+          "__disabled__": {
+            "__reference__": "TOP_CALL.RUNS_ENABLED.RUN_CREATOR.CREATE_DISABLE.disable"
+          },
+          "value": {
+            "disable1": {
+              "__reference__": "TOP_CALL.RUNS_DISABLED_DYNAMIC.RUN_CREATOR.CREATE_DISABLE.disable"
+            },
+            "disable2": {
+              "__disabled__": {
+                "__reference__": "TOP_CALL.RUNS_DISABLED_DYNAMIC.RUN_CREATOR.CREATE_DISABLE.disable"
+              },
+              "value": {
+                "__reference__": "TOP_CALL.RUNS_DISABLED_DYNAMIC.RUN_CREATOR5.CREATE_DISABLE.disable"
+              }
+            },
+            "results": [
+              [
+                0
+              ],
+              [
+                2,
+                3
+              ],
+              {
+                "__disabled__": {
+                  "__reference__": "TOP_CALL.RUNS_DISABLED_DYNAMIC.RUN_CREATOR.CREATE_DISABLE.disable"
+                },
+                "value": [
+                  2,
+                  3
+                ]
+              },
+              null,
+              null
+            ]
+          }
+        },
+        "type": "RUNS"
+      },
+      "disabled": [
+        {
+          "__reference__": "TOP_CALL.RUNS_ENABLED.RUN_CREATOR.CREATE_DISABLE.disable"
+        }
+      ],
+      "children": [
+        {
+          "fqid": "TOP_CALL.RUNS_DISABLED_DYNAMIC.RUN_CREATOR",
+          "inputs": {
+            "disable": {
+              "expression": false,
+              "type": "bool"
+            },
+            "foo": {
+              "expression": 0,
+              "type": "int"
+            }
+          },
+          "outputs": {
+            "expression": {
+              "disable": {
+                "__reference__": "TOP_CALL.RUNS_DISABLED_DYNAMIC.RUN_CREATOR.CREATE_DISABLE.disable"
+              },
+              "foo": 0
+            },
+            "type": "RUN_CREATOR"
+          },
+          "disabled": [
+            {
+              "__reference__": "TOP_CALL.RUNS_ENABLED.RUN_CREATOR.CREATE_DISABLE.disable"
+            }
+          ],
+          "children": [
+            {
+              "fqid": "TOP_CALL.RUNS_DISABLED_DYNAMIC.RUN_CREATOR.CREATE_DISABLE",
+              "inputs": {
+                "foo": {
+                  "expression": 0,
+                  "type": "int"
+                }
+              },
+              "outputs": {
+                "expression": {
+                  "__reference__": "TOP_CALL.RUNS_DISABLED_DYNAMIC.RUN_CREATOR.CREATE_DISABLE"
+                },
+                "type": "CREATE_DISABLE"
+              },
+              "disabled": [
+                {
+                  "__reference__": "TOP_CALL.RUNS_ENABLED.RUN_CREATOR.CREATE_DISABLE.disable"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "fqid": "TOP_CALL.RUNS_DISABLED_DYNAMIC.RUN_CREATOR1",
+          "inputs": {
+            "disable": {
+              "expression": {
+                "__disabled__": {
+                  "__reference__": "TOP_CALL.RUNS_ENABLED.RUN_CREATOR.CREATE_DISABLE.disable"
+                },
+                "value": {
+                  "__reference__": "TOP_CALL.RUNS_ENABLED.RUN_CREATOR5.CREATE_DISABLE.disable"
+                }
+              },
+              "type": "bool"
+            },
+            "foo": {
+              "expression": {
+                "call": "RUN_CREATOR1",
+                "mode": "array",
+                "split": [
+                  2,
+                  3
+                ]
+              },
+              "type": "int"
+            }
+          },
+          "outputs": {
+            "expression": [
+              {
+                "disable": {
+                  "__reference__": "TOP_CALL.RUNS_DISABLED_DYNAMIC.RUN_CREATOR1.CREATE_DISABLE.disable",
+                  "join": [
+                    {
+                      "type": "array",
+                      "len": 2
+                    }
+                  ],
+                  "fork": [
+                    {
+                      "source": {
+                        "type": "array",
+                        "len": 2
+                      },
+                      "index": 0
+                    }
+                  ]
+                },
+                "foo": 2
+              },
+              {
+                "disable": {
+                  "__reference__": "TOP_CALL.RUNS_DISABLED_DYNAMIC.RUN_CREATOR1.CREATE_DISABLE.disable",
+                  "join": [
+                    {
+                      "type": "array",
+                      "len": 2
+                    }
+                  ],
+                  "fork": [
+                    {
+                      "source": {
+                        "type": "array",
+                        "len": 2
+                      },
+                      "index": 1
+                    }
+                  ]
+                },
+                "foo": 3
+              }
+            ],
+            "type": "RUN_CREATOR[]"
+          },
+          "disabled": [
+            {
+              "__reference__": "TOP_CALL.RUNS_ENABLED.RUN_CREATOR.CREATE_DISABLE.disable"
+            }
+          ],
+          "children": [
+            {
+              "fqid": "TOP_CALL.RUNS_DISABLED_DYNAMIC.RUN_CREATOR1.CREATE_DISABLE",
+              "inputs": {
+                "foo": {
+                  "expression": {
+                    "call": "RUN_CREATOR1",
+                    "mode": "array",
+                    "split": [
+                      2,
+                      3
+                    ]
+                  },
+                  "type": "int"
+                }
+              },
+              "outputs": {
+                "expression": {
+                  "__reference__": "TOP_CALL.RUNS_DISABLED_DYNAMIC.RUN_CREATOR1.CREATE_DISABLE",
+                  "join": [
+                    {
+                      "type": "array",
+                      "len": 2
+                    }
+                  ]
+                },
+                "type": "CREATE_DISABLE[]"
+              },
+              "disabled": [
+                {
+                  "__reference__": "TOP_CALL.RUNS_ENABLED.RUN_CREATOR.CREATE_DISABLE.disable"
+                }
+              ],
+              "fork_roots": [
+                {
+                  "type": "array",
+                  "len": 2
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "fqid": "TOP_CALL.RUNS_DISABLED_DYNAMIC.RUN_CREATOR2",
+          "inputs": {
+            "disable": {
+              "expression": {
+                "__disabled__": {
+                  "__reference__": "TOP_CALL.RUNS_ENABLED.RUN_CREATOR.CREATE_DISABLE.disable"
+                },
+                "value": {
+                  "__reference__": "TOP_CALL.RUNS_ENABLED.RUN_CREATOR5.CREATE_DISABLE.disable"
+                }
+              },
+              "type": "bool"
+            },
+            "foo": {
+              "expression": {
+                "call": "RUN_CREATOR2",
+                "mode": "array",
+                "split": [
+                  2,
+                  3
+                ]
+              },
+              "type": "int"
+            }
+          },
+          "outputs": {
+            "expression": {
+              "__disabled__": {
+                "__reference__": "TOP_CALL.RUNS_DISABLED_DYNAMIC.RUN_CREATOR.CREATE_DISABLE.disable",
+                "fork": [
+                  {
+                    "source": {
+                      "type": "array",
+                      "len": 2
+                    },
+                    "index": "unknown array"
+                  }
+                ]
+              },
+              "value": [
+                {
+                  "disable": {
+                    "__reference__": "TOP_CALL.RUNS_DISABLED_DYNAMIC.RUN_CREATOR2.CREATE_DISABLE.disable",
+                    "join": [
+                      {
+                        "type": "array",
+                        "len": 2
+                      }
+                    ],
+                    "fork": [
+                      {
+                        "source": {
+                          "type": "array",
+                          "len": 2
+                        },
+                        "index": 0
+                      }
+                    ]
+                  },
+                  "foo": 2
+                },
+                {
+                  "disable": {
+                    "__reference__": "TOP_CALL.RUNS_DISABLED_DYNAMIC.RUN_CREATOR2.CREATE_DISABLE.disable",
+                    "join": [
+                      {
+                        "type": "array",
+                        "len": 2
+                      }
+                    ],
+                    "fork": [
+                      {
+                        "source": {
+                          "type": "array",
+                          "len": 2
+                        },
+                        "index": 1
+                      }
+                    ]
+                  },
+                  "foo": 3
+                }
+              ]
+            },
+            "type": "RUN_CREATOR[]"
+          },
+          "disabled": [
+            {
+              "__reference__": "TOP_CALL.RUNS_ENABLED.RUN_CREATOR.CREATE_DISABLE.disable"
+            },
+            {
+              "__reference__": "TOP_CALL.RUNS_DISABLED_DYNAMIC.RUN_CREATOR.CREATE_DISABLE.disable"
+            }
+          ],
+          "children": [
+            {
+              "fqid": "TOP_CALL.RUNS_DISABLED_DYNAMIC.RUN_CREATOR2.CREATE_DISABLE",
+              "inputs": {
+                "foo": {
+                  "expression": {
+                    "call": "RUN_CREATOR2",
+                    "mode": "array",
+                    "split": [
+                      2,
+                      3
+                    ]
+                  },
+                  "type": "int"
+                }
+              },
+              "outputs": {
+                "expression": {
+                  "__reference__": "TOP_CALL.RUNS_DISABLED_DYNAMIC.RUN_CREATOR2.CREATE_DISABLE",
+                  "join": [
+                    {
+                      "type": "array",
+                      "len": 2
+                    }
+                  ]
+                },
+                "type": "CREATE_DISABLE[]"
+              },
+              "disabled": [
+                {
+                  "__reference__": "TOP_CALL.RUNS_ENABLED.RUN_CREATOR.CREATE_DISABLE.disable"
+                },
+                {
+                  "__reference__": "TOP_CALL.RUNS_DISABLED_DYNAMIC.RUN_CREATOR.CREATE_DISABLE.disable"
+                }
+              ],
+              "fork_roots": [
+                {
+                  "type": "array",
+                  "len": 2
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "fqid": "TOP_CALL.RUNS_DISABLED_DYNAMIC.RUN_CREATOR3",
+          "inputs": {
+            "disable": {
+              "expression": {
+                "__disabled__": {
+                  "__reference__": "TOP_CALL.RUNS_ENABLED.RUN_CREATOR.CREATE_DISABLE.disable"
+                },
+                "value": {
+                  "__reference__": "TOP_CALL.RUNS_ENABLED.RUN_CREATOR5.CREATE_DISABLE.disable"
+                }
+              },
+              "type": "bool"
+            },
+            "foo": {
+              "expression": {
+                "call": "RUN_CREATOR3",
+                "mode": "array",
+                "split": null
+              },
+              "type": "int"
+            }
+          },
+          "outputs": {
+            "expression": null,
+            "type": "RUN_CREATOR"
+          },
+          "disabled": [
+            true
+          ],
+          "children": null
+        },
+        {
+          "fqid": "TOP_CALL.RUNS_DISABLED_DYNAMIC.RUN_CREATOR4",
+          "inputs": {
+            "disable": {
+              "expression": {
+                "__disabled__": {
+                  "__reference__": "TOP_CALL.RUNS_ENABLED.RUN_CREATOR.CREATE_DISABLE.disable"
+                },
+                "value": {
+                  "__reference__": "TOP_CALL.RUNS_ENABLED.RUN_CREATOR5.CREATE_DISABLE.disable"
+                }
+              },
+              "type": "bool"
+            },
+            "foo": {
+              "expression": {
+                "call": "RUN_CREATOR4",
+                "mode": "array",
+                "split": null
+              },
+              "type": "int"
+            }
+          },
+          "outputs": {
+            "expression": null,
+            "type": "RUN_CREATOR"
+          },
+          "disabled": [
+            true
+          ],
+          "children": null
+        },
+        {
+          "fqid": "TOP_CALL.RUNS_DISABLED_DYNAMIC.RUN_CREATOR5",
+          "inputs": {
+            "disable": {
+              "expression": false,
+              "type": "bool"
+            },
+            "foo": {
+              "expression": 0,
+              "type": "int"
+            }
+          },
+          "outputs": {
+            "expression": {
+              "__disabled__": {
+                "__reference__": "TOP_CALL.RUNS_DISABLED_DYNAMIC.RUN_CREATOR.CREATE_DISABLE.disable"
+              },
+              "value": {
+                "disable": {
+                  "__reference__": "TOP_CALL.RUNS_DISABLED_DYNAMIC.RUN_CREATOR5.CREATE_DISABLE.disable"
+                },
+                "foo": 0
+              }
+            },
+            "type": "RUN_CREATOR"
+          },
+          "disabled": [
+            {
+              "__reference__": "TOP_CALL.RUNS_ENABLED.RUN_CREATOR.CREATE_DISABLE.disable"
+            },
+            {
+              "__reference__": "TOP_CALL.RUNS_DISABLED_DYNAMIC.RUN_CREATOR.CREATE_DISABLE.disable"
+            }
+          ],
+          "children": [
+            {
+              "fqid": "TOP_CALL.RUNS_DISABLED_DYNAMIC.RUN_CREATOR5.CREATE_DISABLE",
+              "inputs": {
+                "foo": {
+                  "expression": 0,
+                  "type": "int"
+                }
+              },
+              "outputs": {
+                "expression": {
+                  "__reference__": "TOP_CALL.RUNS_DISABLED_DYNAMIC.RUN_CREATOR5.CREATE_DISABLE"
+                },
+                "type": "CREATE_DISABLE"
+              },
+              "disabled": [
+                {
+                  "__reference__": "TOP_CALL.RUNS_ENABLED.RUN_CREATOR.CREATE_DISABLE.disable"
+                },
+                {
+                  "__reference__": "TOP_CALL.RUNS_DISABLED_DYNAMIC.RUN_CREATOR.CREATE_DISABLE.disable"
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "fqid": "TOP_CALL.RUNS_DISABLED_ALWAYS",
+      "inputs": {
+        "disable": {
+          "expression": true,
+          "type": "bool"
+        },
+        "disable_one": {
+          "expression": false,
+          "type": "bool"
+        },
+        "empty": {
+          "expression": null,
+          "type": "int[]"
+        },
+        "foo": {
+          "expression": 0,
+          "type": "int"
+        },
+        "foos": {
+          "expression": [
+            2,
+            3
+          ],
+          "type": "int[]"
+        }
+      },
+      "outputs": {
+        "expression": null,
+        "type": "RUNS"
+      },
+      "disabled": [
+        true
+      ],
+      "children": null
+    }
+  ]
+}

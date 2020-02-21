@@ -1,0 +1,52 @@
+stage DISABLER(
+    out bool disable,
+    src comp "nope",
+)
+
+pipeline P1(
+    out bool disable,
+)
+{
+    call DISABLER()
+
+    return (
+        * = DISABLER,
+    )
+}
+
+pipeline P2(
+    in  bool disable,
+    out bool disable,
+)
+{
+    call DISABLER() using (
+        disabled = self.disable,
+    )
+
+    return (
+        * = DISABLER,
+    )
+}
+
+pipeline P(
+    out bool disable,
+)
+{
+    call DISABLER()
+
+    call P1() using (
+        disabled = DISABLER.disable,
+    )
+
+    call P2(
+        * = P1,
+    ) using (
+        disabled = DISABLER.disable,
+    )
+
+    return (
+        * = P1,
+    )
+}
+
+call P()

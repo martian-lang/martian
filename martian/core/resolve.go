@@ -180,11 +180,51 @@ func (node *TopNode) resolve(binding syntax.Exp, t syntax.Type,
 		return node.resolveMap(binding, t, fork, readSize)
 	case *syntax.SplitExp:
 		return node.resolveSplit(binding, t, fork, readSize)
+	case *syntax.DisabledExp:
+		return node.resolveDisabledExp(binding, t, fork, readSize)
 	default:
 		tid := t.GetId()
 		panic(fmt.Sprintf("unexpected ref or sweep type %T, wanted %s",
 			binding, tid.String()))
 	}
+}
+
+func (node *TopNode) resolveDisabledExp(binding *syntax.DisabledExp, t syntax.Type,
+	fork ForkId, readSize int64) (bool, json.Marshaler, error) {
+	ready, disabled, err := node.resolveRef(binding.Disabled,
+		node.Types().Get(syntax.TypeId{Tname: syntax.KindBool}), fork, readSize)
+	if err != nil {
+		return ready, nil, &elementError{
+			element: "disabled binding",
+			inner:   err,
+		}
+	} else if !ready {
+		return ready, nil, nil
+	}
+	switch disabled := disabled.(type) {
+	case *syntax.BoolExp:
+		if disabled.Value {
+			return true, nil, nil
+		}
+	case json.RawMessage:
+		var db bool
+		if err := json.Unmarshal(disabled, &db); err != nil {
+			return true, nil, &elementError{
+				element: "disabled binding",
+				inner:   err,
+			}
+		}
+		if db {
+			return true, nil, nil
+		}
+	default:
+		return true, nil, &elementError{
+			element: fmt.Sprintf(
+				"invalid type %T for disabled binding",
+				disabled),
+		}
+	}
+	return node.resolve(binding.Value, t, fork, readSize)
 }
 
 func (node *TopNode) resolveSplit(binding *syntax.SplitExp, t syntax.Type,

@@ -817,8 +817,9 @@ func (self *Fork) getState() MetadataState {
 	return Ready
 }
 
-func (self *Fork) disabled() bool {
+func (self *Fork) disabled() (bool, error) {
 	top := self.node.top
+	var err error
 	for _, bind := range self.node.call.Disabled() {
 		if ready, res, _ := top.resolve(bind,
 			top.types.Get(syntax.TypeId{
@@ -827,17 +828,27 @@ func (self *Fork) disabled() bool {
 			switch d := res.(type) {
 			case *syntax.BoolExp:
 				if d.Value {
-					return true
+					return true, nil
+				}
+			case *syntax.NullExp:
+				if err == nil {
+					err = fmt.Errorf(
+						"disabled is bound to a null value, which the compiler should not allow")
 				}
 			case json.RawMessage:
 				var v bool
-				if json.Unmarshal(d, &v) == nil && v {
-					return true
+				if uerr := json.Unmarshal(d, &v); uerr == nil && v {
+					return true, nil
+				} else if bytes.Equal(d, nullBytes) {
+					err = fmt.Errorf(
+						"disabled is bound to a null value, which is not permitted")
+				} else {
+					err = uerr
 				}
 			}
 		}
 	}
-	return false
+	return false, err
 }
 
 func (self *Fork) writeDisable() {
@@ -931,9 +942,12 @@ func (self *Fork) printState(state MetadataState) {
 }
 
 func (self *Fork) doSplit(getBindings func() MarshalerMap) MetadataState {
-	if self.disabled() {
+	if disabled, err := self.disabled(); disabled {
 		self.writeDisable()
 		return DisabledState
+	} else if err != nil {
+		self.metadata.writeError("Could not evaluate disabled state", err)
+		return Failed
 	}
 	self.writeInvocation()
 	self.split_metadata.Write(ArgsFile, getBindings())
@@ -1157,8 +1171,11 @@ func (self *Fork) doComplete() {
 }
 
 func (self *Fork) stepPipeline() {
-	if self.disabled() {
+	if disabled, err := self.disabled(); disabled {
 		self.writeDisable()
+		return
+	} else if err != nil {
+		self.metadata.writeError("Could not evaluate disabled state", err)
 		return
 	}
 	self.writeInvocation()

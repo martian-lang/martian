@@ -8,7 +8,7 @@ import (
 )
 
 func (exp *RefExp) resolveRefs(self, siblings map[string]*ResolvedBinding,
-	lookup *TypeLookup) (Exp, error) {
+	lookup *TypeLookup, keepSplit bool) (Exp, error) {
 	var res *ResolvedBinding
 	if exp.Kind == KindSelf {
 		res = self[exp.Id]
@@ -17,6 +17,7 @@ func (exp *RefExp) resolveRefs(self, siblings map[string]*ResolvedBinding,
 				Msg: "unknown parameter " + exp.Id,
 			}
 		}
+		return res.Exp.BindingPath(exp.OutputId, exp.ForkIndex, exp.OutputIndex)
 	} else {
 		res = siblings[exp.Id]
 		if res == nil {
@@ -24,19 +25,39 @@ func (exp *RefExp) resolveRefs(self, siblings map[string]*ResolvedBinding,
 				Msg: "unknown call name " + exp.Id,
 			}
 		}
+		res, err := res.Exp.BindingPath(exp.OutputId, exp.ForkIndex, exp.OutputIndex)
+		if !keepSplit && res != nil {
+			res = removeSplit(res, exp.Id)
+		}
+		return res, err
 	}
-	return res.Exp.BindingPath(exp.OutputId, exp.ForkIndex, exp.OutputIndex)
+}
+
+func removeSplit(exp Exp, id string) Exp {
+	switch exp := exp.(type) {
+	case *SplitExp:
+		if exp.Call.Id == id {
+			return exp.Value
+		}
+	case *DisabledExp:
+		e, err := exp.makeDisabledExp(exp.Disabled, removeSplit(exp.Value, id))
+		if err != nil {
+			panic(err)
+		}
+		return e
+	}
+	return exp
 }
 
 func (exp *ArrayExp) resolveRefs(self, siblings map[string]*ResolvedBinding,
-	lookup *TypeLookup) (Exp, error) {
+	lookup *TypeLookup, keepSplit bool) (Exp, error) {
 	var errs ErrorList
 	result := ArrayExp{
 		valExp: valExp{Node: exp.Node},
 		Value:  make([]Exp, len(exp.Value)),
 	}
 	for i, subexp := range exp.Value {
-		e, err := subexp.resolveRefs(self, siblings, lookup)
+		e, err := subexp.resolveRefs(self, siblings, lookup, keepSplit)
 		if err != nil {
 			errs = append(errs, &bindingError{
 				Msg: fmt.Sprintf("element %d", i),
@@ -49,8 +70,8 @@ func (exp *ArrayExp) resolveRefs(self, siblings map[string]*ResolvedBinding,
 }
 
 func (exp *SplitExp) resolveRefs(self, siblings map[string]*ResolvedBinding,
-	lookup *TypeLookup) (Exp, error) {
-	v, err := exp.Value.resolveRefs(self, siblings, lookup)
+	lookup *TypeLookup, keepSplit bool) (Exp, error) {
+	v, err := exp.Value.resolveRefs(self, siblings, lookup, keepSplit)
 	r := exp.Source
 	if rr, ok := v.(refMapResolver); ok && rr != nil {
 		r = rr.resolveMapSource(exp.CallMode())
@@ -68,7 +89,7 @@ func (exp *SplitExp) resolveRefs(self, siblings map[string]*ResolvedBinding,
 }
 
 func (exp *MapExp) resolveRefs(self, siblings map[string]*ResolvedBinding,
-	lookup *TypeLookup) (Exp, error) {
+	lookup *TypeLookup, keepSplit bool) (Exp, error) {
 	var errs ErrorList
 	result := MapExp{
 		valExp: valExp{Node: exp.Node},
@@ -76,7 +97,7 @@ func (exp *MapExp) resolveRefs(self, siblings map[string]*ResolvedBinding,
 		Value:  make(map[string]Exp, len(exp.Value)),
 	}
 	for i, subexp := range exp.Value {
-		e, err := subexp.resolveRefs(self, siblings, lookup)
+		e, err := subexp.resolveRefs(self, siblings, lookup, keepSplit)
 		if err != nil {
 			errs = append(errs, &bindingError{
 				Msg: "key " + i,
@@ -89,26 +110,26 @@ func (exp *MapExp) resolveRefs(self, siblings map[string]*ResolvedBinding,
 }
 
 func (exp *FloatExp) resolveRefs(self, siblings map[string]*ResolvedBinding,
-	lookup *TypeLookup) (Exp, error) {
+	lookup *TypeLookup, keepSplit bool) (Exp, error) {
 	return exp, nil
 }
 
 func (exp *IntExp) resolveRefs(self, siblings map[string]*ResolvedBinding,
-	lookup *TypeLookup) (Exp, error) {
+	lookup *TypeLookup, keepSplit bool) (Exp, error) {
 	return exp, nil
 }
 
 func (exp *BoolExp) resolveRefs(self, siblings map[string]*ResolvedBinding,
-	lookup *TypeLookup) (Exp, error) {
+	lookup *TypeLookup, keepSplit bool) (Exp, error) {
 	return exp, nil
 }
 func (exp *StringExp) resolveRefs(self, siblings map[string]*ResolvedBinding,
-	lookup *TypeLookup) (Exp, error) {
+	lookup *TypeLookup, keepSplit bool) (Exp, error) {
 	return exp, nil
 }
 
 func (exp *NullExp) resolveRefs(self, siblings map[string]*ResolvedBinding,
-	lookup *TypeLookup) (Exp, error) {
+	lookup *TypeLookup, keepSplit bool) (Exp, error) {
 	return exp, nil
 }
 

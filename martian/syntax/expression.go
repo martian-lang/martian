@@ -80,7 +80,7 @@ type (
 			fork map[MapCallSource]CollectionIndex,
 			index []CollectionIndex) (Exp, error)
 		resolveRefs(self, siblings map[string]*ResolvedBinding,
-			lookup *TypeLookup) (Exp, error)
+			lookup *TypeLookup, keepSplit bool) (Exp, error)
 		filter(t Type, lookup *TypeLookup) (Exp, error)
 
 		// Returns a json representation of the concrete value of a
@@ -348,7 +348,9 @@ func (e *SplitExp) IsEmpty() bool {
 	case *SplitExp:
 		return exp.IsEmpty()
 	}
-	return false
+	return e.Source.KnownLength() &&
+		len(e.Source.Keys()) == 0 &&
+		e.Source.ArrayLength() <= 0
 }
 
 func (s *StringExp) Type() (Type, int) { return &builtinString, 0 }

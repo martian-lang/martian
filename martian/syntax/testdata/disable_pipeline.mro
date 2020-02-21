@@ -1,0 +1,162 @@
+# This pipeline tests some edge cases for disabled sub-pipelines,
+# map calls, and structs.
+
+stage CREATE_DISABLE(
+    in  int  foo,
+    out bool disable,
+    src py   "disable",
+)
+
+pipeline RUN_CREATOR(
+    in  int  foo,
+    in  bool disable,
+    out int  foo,
+    out bool disable,
+)
+{
+    call CREATE_DISABLE(
+        * = self,
+    ) using (
+        disabled = self.disable,
+    )
+
+    return (
+        foo = self.foo,
+        *   = CREATE_DISABLE,
+    )
+}
+
+pipeline RUNS(
+    in  int     foo,
+    in  int[]   foos,
+    in  int[]   empty,
+    in  bool    disable,
+    in  bool    disable_one,
+    out int[][] results,
+    out bool    disable1,
+    out bool    disable2,
+)
+{
+    call RUN_CREATOR(
+        foo     = self.foo,
+        disable = false,
+    ) using (
+        disabled = self.disable_one,
+    )
+
+    map call RUN_CREATOR as RUN_CREATOR1(
+        foo     = split self.foos,
+        disable = self.disable,
+    ) using (
+        disabled = self.disable,
+    )
+
+    map call RUN_CREATOR as RUN_CREATOR2(
+        foo     = split self.foos,
+        disable = self.disable,
+    ) using (
+        disabled = RUN_CREATOR.disable,
+    )
+
+    # Always null
+    map call RUN_CREATOR as RUN_CREATOR3(
+        foo     = split self.empty,
+        disable = self.disable,
+    ) using (
+        disabled = self.disable,
+    )
+
+    # Always null
+    map call RUN_CREATOR as RUN_CREATOR4(
+        foo     = split self.empty,
+        disable = self.disable,
+    ) using (
+        disabled = RUN_CREATOR.disable,
+    )
+
+    call RUN_CREATOR as RUN_CREATOR5(
+        foo     = self.foo,
+        disable = false,
+    ) using (
+        disabled = RUN_CREATOR.disable,
+    )
+
+    return (
+        results  = [
+            [RUN_CREATOR.foo],
+            RUN_CREATOR1.foo,
+            RUN_CREATOR2.foo,
+            RUN_CREATOR3.foo,
+            RUN_CREATOR4.foo,
+        ],
+        disable1 = RUN_CREATOR.disable,
+        disable2 = RUN_CREATOR5.disable,
+    )
+}
+
+pipeline TOP_CALL(
+    in  int       foo,
+    in  int[]     foos,
+    in  int[]     empty,
+    in  bool      disable_always,
+    out int[][][] results,
+)
+{
+    # [self.foo],self.foos,null,null,null]
+    call RUNS as RUNS_ENABLED(
+        foo         = self.foo,
+        foos        = self.foos,
+        empty       = self.empty,
+        disable     = false,
+        disable_one = false,
+    )
+
+    # [[0],null,self.foos,null,null]
+    call RUNS as RUNS_DISABLED(
+        foo         = 0,
+        foos        = self.foos,
+        empty       = self.empty,
+        disable     = true,
+        disable_one = false,
+    )
+
+    call RUNS as RUNS_DISABLED_DYNAMIC(
+        foo         = 0,
+        foos        = self.foos,
+        empty       = self.empty,
+        disable     = RUNS_ENABLED.disable2,
+        disable_one = RUNS_ENABLED.disable2,
+    ) using (
+        disabled = RUNS_ENABLED.disable1,
+    )
+
+    # null
+    call RUNS as RUNS_DISABLED_ALWAYS(
+        foo         = 0,
+        foos        = self.foos,
+        empty       = self.empty,
+        disable     = true,
+        disable_one = false,
+    ) using (
+        disabled = self.disable_always,
+    )
+
+    return (
+        results = [
+            RUNS_ENABLED.results,
+            RUNS_DISABLED.results,
+            RUNS_DISABLED_DYNAMIC.results,
+            RUNS_DISABLED_ALWAYS.results,
+        ],
+    )
+}
+
+call TOP_CALL(
+    foo            = 1,
+    foos           = [
+        2,
+        3,
+    ],
+    empty          = null,
+    disable_always = true,
+)

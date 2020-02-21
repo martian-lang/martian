@@ -312,27 +312,32 @@
       },
       "outputs": {
         "expression": {
-          "disable_user": {
-            "__reference__": "POINT_MAPPER.PIPE5.POINT_MAKER.disable_user"
+          "__disabled__": {
+            "__reference__": "POINT_MAPPER.PIPE1.POINT_MAKER.disable_user"
           },
-          "w": {
-            "extra": "nope",
-            "point": {
-              "x": 20,
-              "y": 21
+          "value": {
+            "disable_user": {
+              "__reference__": "POINT_MAPPER.PIPE5.POINT_MAKER.disable_user"
             },
-            "points": [
-              {
-                "__reference__": "POINT_MAPPER.PIPE5.POINT_MAKER.point"
-              },
-              {
+            "w": {
+              "extra": "nope",
+              "point": {
                 "x": 20,
                 "y": 21
-              }
-            ]
-          },
-          "z": {
-            "__reference__": "POINT_MAPPER.PIPE5.POINT_MAKER"
+              },
+              "points": [
+                {
+                  "__reference__": "POINT_MAPPER.PIPE5.POINT_MAKER.point"
+                },
+                {
+                  "x": 20,
+                  "y": 21
+                }
+              ]
+            },
+            "z": {
+              "__reference__": "POINT_MAPPER.PIPE5.POINT_MAKER"
+            }
           }
         },
         "type": "POINT_PIPE"

@@ -128,10 +128,6 @@ func (lookup *TypeLookup) Get(id TypeId) Type {
 		lookup.baseTypes[id] = elem
 		return elem
 	} else {
-		println("unknown", id.Tname, "out of", len(lookup.baseTypes))
-		for id := range lookup.baseTypes {
-			println(id.Tname)
-		}
 		return nil
 	}
 }

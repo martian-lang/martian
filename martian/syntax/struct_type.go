@@ -201,6 +201,8 @@ func (s *StructType) IsValidExpression(exp Exp, pipeline *Pipeline, ast *Ast) er
 		}
 	case *SplitExp:
 		return isValidSplit(s, exp, pipeline, ast)
+	case *DisabledExp:
+		return s.IsValidExpression(exp.Value, pipeline, ast)
 	case *NullExp:
 		return nil
 	case *MapExp:
