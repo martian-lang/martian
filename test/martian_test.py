@@ -182,18 +182,27 @@ def compare_dicts(actual, expected, keys):
     return True
 
 
-def mysorted(lst):
-    """Just like sorted, but can also sorts dicts."""
+def _mysorted(lst):
+    """Just like sorted, but can also sorts dicts.
+
+    Also handles comparing NoneType with other types (undefined but
+    consistent order)."""
     if not lst:
         return lst
     try:
         return sorted(lst)
     except TypeError:
-        if lst[0] is None:
+        if lst is None:
             return lst
-        if isinstance(lst[0], dict):
-            return sorted(lst, key=lambda x: [[k, str(type(v)), v] for k, v in x.items()])
-        raise
+        def _mk_key(element):
+            if isinstance(element, list):
+                return ('list', [_mk_key(i) for i in element])
+            if isinstance(element, tuple):
+                return ('tuple', (_mk_key(i) for i in element))
+            if isinstance(element, dict):
+                return ('dict', [(k, _mk_key(v)) for k, v in element.items()])
+            return (repr(type(element)), repr(element))
+        return sorted(lst, key=_mk_key)
 
 
 def compare_objects(actual, expected):
@@ -219,7 +228,7 @@ def compare_objects(actual, expected):
     elif (isinstance(actual, list) and
           isinstance(expected, list)):
         for actual_item, expected_item in zip_longest(
-                mysorted(actual), mysorted(expected)):
+                _mysorted(actual), _mysorted(expected)):
             if not compare_objects(actual_item, expected_item):
                 return False
     elif actual != expected:
