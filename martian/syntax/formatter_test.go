@@ -195,8 +195,7 @@ pipeline USES_DEFAULT(
     out path something,
 )
 {
-    call _HAS_DEFAULT_OUT(
-    )
+    call _HAS_DEFAULT_OUT()
 
     return (
         something = _HAS_DEFAULT_OUT.default,

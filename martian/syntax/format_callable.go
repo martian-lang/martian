@@ -170,7 +170,9 @@ func (self *Pipeline) format(printer *printer) {
 		self.InParams, self.OutParams,
 	)
 
-	printer.Printf("pipeline %s(\n", self.Id)
+	printer.mustWriteString("pipeline ")
+	printer.mustWriteString(self.Id)
+	printer.mustWriteString("(\n")
 	self.InParams.format(printer, modeWidth, typeWidth, idWidth, helpWidth)
 	self.OutParams.format(printer, modeWidth, typeWidth, idWidth, helpWidth)
 	printer.mustWriteString(")\n{")
@@ -203,9 +205,12 @@ func (self *CallStm) format(printer *printer, prefix string) {
 		printer.mustWriteString(" as ")
 		printer.mustWriteString(self.Id)
 	}
-	printer.mustWriteString("(\n")
-	self.Bindings.format(printer, prefix)
-	printer.mustWriteString(prefix)
+	printer.mustWriteRune('(')
+	if len(self.Bindings.List) > 0 {
+		printer.mustWriteRune('\n')
+		self.Bindings.format(printer, prefix)
+		printer.mustWriteString(prefix)
+	}
 
 	if self.Modifiers != nil && (self.Modifiers.Bindings != nil &&
 		len(self.Modifiers.Bindings.List) > 0 ||

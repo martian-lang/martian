@@ -185,8 +185,7 @@ pipeline GENERATE_DISTRIBUTION(
     out float[] values,
 )
 {
-    call _BEGIN_CONST(
-    )
+    call _BEGIN_CONST()
 
     call SUM(
         x = [
