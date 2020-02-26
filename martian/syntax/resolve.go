@@ -1334,7 +1334,10 @@ func (node *CallGraphPipeline) resolve(siblings map[string]*ResolvedBinding,
 		childMap = make(map[string]*ResolvedBinding, len(node.Children))
 		for _, child := range node.Children {
 			if err := child.resolve(childMap, mapped, lookup); err != nil {
-				errs = append(errs, err)
+				errs = append(errs, &wrapError{
+					innerError: err,
+					loc:        node.Call().Node.Loc,
+				})
 			}
 			childMap[child.Call().Id] = child.ResolvedOutputs()
 			for _, f := range child.ForkRoots() {

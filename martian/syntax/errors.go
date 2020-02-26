@@ -145,8 +145,10 @@ func (err *wrapError) Unwrap() error {
 }
 
 func (err *wrapError) writeTo(w stringWriter) {
-	mustWriteString(w, "MRO ")
-	if ew, ok := err.innerError.(errorWriter); ok {
+	if ew, ok := err.innerError.(*wrapError); ok {
+		ew.writeTo(w)
+	} else if ew, ok := err.innerError.(errorWriter); ok {
+		mustWriteString(w, "MRO ")
 		ew.writeTo(w)
 	} else {
 		mustWriteString(w, err.innerError.Error())
