@@ -819,36 +819,43 @@ func (self *Fork) getState() MetadataState {
 
 func (self *Fork) disabled() (bool, error) {
 	top := self.node.top
-	var err error
+	var errs syntax.ErrorList
 	for _, bind := range self.node.call.Disabled() {
-		if ready, res, _ := top.resolve(bind,
+		if ready, res, err := top.resolve(bind,
 			top.types.Get(syntax.TypeId{
 				Tname: syntax.KindBool,
-			}), self.forkId, top.rt.FreeMemBytes()/2); ready && res != nil {
-			switch d := res.(type) {
-			case *syntax.BoolExp:
-				if d.Value {
-					return true, nil
+			}), self.forkId, top.rt.FreeMemBytes()/2); err != nil {
+			errs = append(errs, err)
+		} else if ready {
+			if res != nil {
+				switch d := res.(type) {
+				case *syntax.BoolExp:
+					if d.Value {
+						return true, nil
+					}
+				case *syntax.NullExp:
+					errs = append(errs, fmt.Errorf(
+						"disabled is bound to a null value, which the compiler should not allow"))
+				case json.RawMessage:
+					var v bool
+					if err := json.Unmarshal(d, &v); err == nil && v {
+						return true, nil
+					} else if err != nil {
+						if bytes.Equal(d, nullBytes) {
+							errs = append(errs, fmt.Errorf(
+								"disabled is bound to a null value, which is not permitted"))
+						} else {
+							errs = append(errs, err)
+						}
+					}
 				}
-			case *syntax.NullExp:
-				if err == nil {
-					err = fmt.Errorf(
-						"disabled is bound to a null value, which the compiler should not allow")
-				}
-			case json.RawMessage:
-				var v bool
-				if uerr := json.Unmarshal(d, &v); uerr == nil && v {
-					return true, nil
-				} else if bytes.Equal(d, nullBytes) {
-					err = fmt.Errorf(
-						"disabled is bound to a null value, which is not permitted")
-				} else {
-					err = uerr
-				}
+			} else {
+				errs = append(errs, fmt.Errorf(
+					"disabled is bound to a null value, which the compiler should not allow"))
 			}
 		}
 	}
-	return false, err
+	return false, errs.If()
 }
 
 func (self *Fork) writeDisable() {
