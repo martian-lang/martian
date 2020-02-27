@@ -55,7 +55,7 @@ pipeline RUNS(
         foo     = split self.foos,
         disable = self.disable,
     ) using (
-        disabled = RUN_CREATOR.disable,
+        disabled = self.disable,
     )
 
     # Always null
@@ -71,14 +71,14 @@ pipeline RUNS(
         foo     = split self.empty,
         disable = self.disable,
     ) using (
-        disabled = RUN_CREATOR.disable,
+        disabled = self.disable,
     )
 
     call RUN_CREATOR as RUN_CREATOR5(
         foo     = self.foo,
         disable = false,
     ) using (
-        disabled = RUN_CREATOR.disable,
+        disabled = self.disable,
     )
 
     return (

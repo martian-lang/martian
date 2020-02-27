@@ -110,6 +110,9 @@
           "disabled": [
             {
               "__reference__": "P.DISABLER.disable"
+            },
+            {
+              "__reference__": "P.P1.DISABLER.disable"
             }
           ]
         }

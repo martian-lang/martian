@@ -294,7 +294,7 @@ func TestSerializeDisableCallGraph(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	_, _, ast, err := ParseSourceBytes(src, "disable_pipeline.mro", nil, false)
+	_, _, ast, err := ParseSourceBytes(src, "testdata/disable_pipeline.mro", nil, false)
 	if err != nil {
 		t.Fatal(err)
 	}

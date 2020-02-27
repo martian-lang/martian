@@ -796,9 +796,13 @@ func (node *CallGraphStage) resolveDisable(disable []Exp,
 	if mod == nil {
 		return disable, nil
 	}
-	if len(disable) >= 1 &&
+	for len(disable) >= 1 &&
 		disable[0].getKind() == KindBool {
-		return disable[:1], nil
+		if disable[0].(*BoolExp).Value {
+			return disable[:1], nil
+		} else {
+			disable = disable[1:]
+		}
 	}
 	if node.call.KnownLength() {
 		// Map over an empty set is equivilent to disabled.
@@ -875,9 +879,8 @@ func resolveDisableExp(r Exp, disable []Exp) ([]Exp, error) {
 	case *DisabledExp:
 		for _, e := range disable {
 			if r.Disabled.equal(e) {
-				return disable, nil
+				return resolveDisableExp(r.Value, disable)
 			}
-			println(e.GoString(), "!=", r.Disabled.GoString())
 		}
 		return disable, &wrapError{
 			innerError: &bindingError{

@@ -32,15 +32,10 @@
             2,
             3
           ],
-          {
-            "__disabled__": {
-              "__reference__": "TOP_CALL.RUNS_ENABLED.RUN_CREATOR.CREATE_DISABLE.disable"
-            },
-            "value": [
-              2,
-              3
-            ]
-          },
+          [
+            2,
+            3
+          ],
           null,
           null
         ],
@@ -49,15 +44,7 @@
             0
           ],
           null,
-          {
-            "__disabled__": {
-              "__reference__": "TOP_CALL.RUNS_DISABLED.RUN_CREATOR.CREATE_DISABLE.disable"
-            },
-            "value": [
-              2,
-              3
-            ]
-          },
+          null,
           null,
           null
         ],
@@ -67,15 +54,25 @@
           },
           "value": [
             [
-              0
-            ],
-            [
-              2,
-              3
+              {
+                "__disabled__": {
+                  "__reference__": "TOP_CALL.RUNS_ENABLED.RUN_CREATOR5.CREATE_DISABLE.disable"
+                },
+                "value": 0
+              }
             ],
             {
               "__disabled__": {
-                "__reference__": "TOP_CALL.RUNS_DISABLED_DYNAMIC.RUN_CREATOR.CREATE_DISABLE.disable"
+                "__reference__": "TOP_CALL.RUNS_ENABLED.RUN_CREATOR5.CREATE_DISABLE.disable"
+              },
+              "value": [
+                2,
+                3
+              ]
+            },
+            {
+              "__disabled__": {
+                "__reference__": "TOP_CALL.RUNS_ENABLED.RUN_CREATOR5.CREATE_DISABLE.disable"
               },
               "value": [
                 2,
@@ -125,12 +122,7 @@
             "__reference__": "TOP_CALL.RUNS_ENABLED.RUN_CREATOR.CREATE_DISABLE.disable"
           },
           "disable2": {
-            "__disabled__": {
-              "__reference__": "TOP_CALL.RUNS_ENABLED.RUN_CREATOR.CREATE_DISABLE.disable"
-            },
-            "value": {
-              "__reference__": "TOP_CALL.RUNS_ENABLED.RUN_CREATOR5.CREATE_DISABLE.disable"
-            }
+            "__reference__": "TOP_CALL.RUNS_ENABLED.RUN_CREATOR5.CREATE_DISABLE.disable"
           },
           "results": [
             [
@@ -140,15 +132,10 @@
               2,
               3
             ],
-            {
-              "__disabled__": {
-                "__reference__": "TOP_CALL.RUNS_ENABLED.RUN_CREATOR.CREATE_DISABLE.disable"
-              },
-              "value": [
-                2,
-                3
-              ]
-            },
+            [
+              2,
+              3
+            ],
             null,
             null
           ]
@@ -318,71 +305,52 @@
             }
           },
           "outputs": {
-            "expression": {
-              "__disabled__": {
-                "__reference__": "TOP_CALL.RUNS_ENABLED.RUN_CREATOR.CREATE_DISABLE.disable",
-                "fork": [
-                  {
-                    "source": {
+            "expression": [
+              {
+                "disable": {
+                  "__reference__": "TOP_CALL.RUNS_ENABLED.RUN_CREATOR2.CREATE_DISABLE.disable",
+                  "join": [
+                    {
                       "type": "array",
                       "len": 2
-                    },
-                    "index": "unknown array"
-                  }
-                ]
-              },
-              "value": [
-                {
-                  "disable": {
-                    "__reference__": "TOP_CALL.RUNS_ENABLED.RUN_CREATOR2.CREATE_DISABLE.disable",
-                    "join": [
-                      {
+                    }
+                  ],
+                  "fork": [
+                    {
+                      "source": {
                         "type": "array",
                         "len": 2
-                      }
-                    ],
-                    "fork": [
-                      {
-                        "source": {
-                          "type": "array",
-                          "len": 2
-                        },
-                        "index": 0
-                      }
-                    ]
-                  },
-                  "foo": 2
+                      },
+                      "index": 0
+                    }
+                  ]
                 },
-                {
-                  "disable": {
-                    "__reference__": "TOP_CALL.RUNS_ENABLED.RUN_CREATOR2.CREATE_DISABLE.disable",
-                    "join": [
-                      {
+                "foo": 2
+              },
+              {
+                "disable": {
+                  "__reference__": "TOP_CALL.RUNS_ENABLED.RUN_CREATOR2.CREATE_DISABLE.disable",
+                  "join": [
+                    {
+                      "type": "array",
+                      "len": 2
+                    }
+                  ],
+                  "fork": [
+                    {
+                      "source": {
                         "type": "array",
                         "len": 2
-                      }
-                    ],
-                    "fork": [
-                      {
-                        "source": {
-                          "type": "array",
-                          "len": 2
-                        },
-                        "index": 1
-                      }
-                    ]
-                  },
-                  "foo": 3
-                }
-              ]
-            },
+                      },
+                      "index": 1
+                    }
+                  ]
+                },
+                "foo": 3
+              }
+            ],
             "type": "RUN_CREATOR[]"
           },
-          "disabled": [
-            {
-              "__reference__": "TOP_CALL.RUNS_ENABLED.RUN_CREATOR.CREATE_DISABLE.disable"
-            }
-          ],
           "children": [
             {
               "fqid": "TOP_CALL.RUNS_ENABLED.RUN_CREATOR2.CREATE_DISABLE",
@@ -411,11 +379,6 @@
                 },
                 "type": "CREATE_DISABLE[]"
               },
-              "disabled": [
-                {
-                  "__reference__": "TOP_CALL.RUNS_ENABLED.RUN_CREATOR.CREATE_DISABLE.disable"
-                }
-              ],
               "fork_roots": [
                 {
                   "type": "array",
@@ -489,23 +452,13 @@
           },
           "outputs": {
             "expression": {
-              "__disabled__": {
-                "__reference__": "TOP_CALL.RUNS_ENABLED.RUN_CREATOR.CREATE_DISABLE.disable"
+              "disable": {
+                "__reference__": "TOP_CALL.RUNS_ENABLED.RUN_CREATOR5.CREATE_DISABLE.disable"
               },
-              "value": {
-                "disable": {
-                  "__reference__": "TOP_CALL.RUNS_ENABLED.RUN_CREATOR5.CREATE_DISABLE.disable"
-                },
-                "foo": 1
-              }
+              "foo": 1
             },
             "type": "RUN_CREATOR"
           },
-          "disabled": [
-            {
-              "__reference__": "TOP_CALL.RUNS_ENABLED.RUN_CREATOR.CREATE_DISABLE.disable"
-            }
-          ],
           "children": [
             {
               "fqid": "TOP_CALL.RUNS_ENABLED.RUN_CREATOR5.CREATE_DISABLE",
@@ -520,12 +473,7 @@
                   "__reference__": "TOP_CALL.RUNS_ENABLED.RUN_CREATOR5.CREATE_DISABLE"
                 },
                 "type": "CREATE_DISABLE"
-              },
-              "disabled": [
-                {
-                  "__reference__": "TOP_CALL.RUNS_ENABLED.RUN_CREATOR.CREATE_DISABLE.disable"
-                }
-              ]
+              }
             }
           ]
         }
@@ -563,28 +511,13 @@
           "disable1": {
             "__reference__": "TOP_CALL.RUNS_DISABLED.RUN_CREATOR.CREATE_DISABLE.disable"
           },
-          "disable2": {
-            "__disabled__": {
-              "__reference__": "TOP_CALL.RUNS_DISABLED.RUN_CREATOR.CREATE_DISABLE.disable"
-            },
-            "value": {
-              "__reference__": "TOP_CALL.RUNS_DISABLED.RUN_CREATOR5.CREATE_DISABLE.disable"
-            }
-          },
+          "disable2": null,
           "results": [
             [
               0
             ],
             null,
-            {
-              "__disabled__": {
-                "__reference__": "TOP_CALL.RUNS_DISABLED.RUN_CREATOR.CREATE_DISABLE.disable"
-              },
-              "value": [
-                2,
-                3
-              ]
-            },
+            null,
             null,
             null
           ]
@@ -679,59 +612,13 @@
             }
           },
           "outputs": {
-            "expression": {
-              "__disabled__": {
-                "__reference__": "TOP_CALL.RUNS_DISABLED.RUN_CREATOR.CREATE_DISABLE.disable"
-              },
-              "value": [
-                {
-                  "disable": null,
-                  "foo": 2
-                },
-                {
-                  "disable": null,
-                  "foo": 3
-                }
-              ]
-            },
-            "type": "RUN_CREATOR[]"
+            "expression": null,
+            "type": "RUN_CREATOR"
           },
           "disabled": [
-            {
-              "__reference__": "TOP_CALL.RUNS_DISABLED.RUN_CREATOR.CREATE_DISABLE.disable"
-            }
+            true
           ],
-          "children": [
-            {
-              "fqid": "TOP_CALL.RUNS_DISABLED.RUN_CREATOR2.CREATE_DISABLE",
-              "inputs": {
-                "foo": {
-                  "expression": {
-                    "call": "RUN_CREATOR2",
-                    "mode": "array",
-                    "split": [
-                      2,
-                      3
-                    ]
-                  },
-                  "type": "int"
-                }
-              },
-              "outputs": {
-                "expression": null,
-                "type": "CREATE_DISABLE"
-              },
-              "disabled": [
-                true
-              ],
-              "fork_roots": [
-                {
-                  "type": "array",
-                  "len": 2
-                }
-              ]
-            }
-          ]
+          "children": null
         },
         {
           "fqid": "TOP_CALL.RUNS_DISABLED.RUN_CREATOR3",
@@ -796,46 +683,13 @@
             }
           },
           "outputs": {
-            "expression": {
-              "__disabled__": {
-                "__reference__": "TOP_CALL.RUNS_DISABLED.RUN_CREATOR.CREATE_DISABLE.disable"
-              },
-              "value": {
-                "disable": {
-                  "__reference__": "TOP_CALL.RUNS_DISABLED.RUN_CREATOR5.CREATE_DISABLE.disable"
-                },
-                "foo": 0
-              }
-            },
+            "expression": null,
             "type": "RUN_CREATOR"
           },
           "disabled": [
-            {
-              "__reference__": "TOP_CALL.RUNS_DISABLED.RUN_CREATOR.CREATE_DISABLE.disable"
-            }
+            true
           ],
-          "children": [
-            {
-              "fqid": "TOP_CALL.RUNS_DISABLED.RUN_CREATOR5.CREATE_DISABLE",
-              "inputs": {
-                "foo": {
-                  "expression": 0,
-                  "type": "int"
-                }
-              },
-              "outputs": {
-                "expression": {
-                  "__reference__": "TOP_CALL.RUNS_DISABLED.RUN_CREATOR5.CREATE_DISABLE"
-                },
-                "type": "CREATE_DISABLE"
-              },
-              "disabled": [
-                {
-                  "__reference__": "TOP_CALL.RUNS_DISABLED.RUN_CREATOR.CREATE_DISABLE.disable"
-                }
-              ]
-            }
-          ]
+          "children": null
         }
       ]
     },
@@ -844,23 +698,13 @@
       "inputs": {
         "disable": {
           "expression": {
-            "__disabled__": {
-              "__reference__": "TOP_CALL.RUNS_ENABLED.RUN_CREATOR.CREATE_DISABLE.disable"
-            },
-            "value": {
-              "__reference__": "TOP_CALL.RUNS_ENABLED.RUN_CREATOR5.CREATE_DISABLE.disable"
-            }
+            "__reference__": "TOP_CALL.RUNS_ENABLED.RUN_CREATOR5.CREATE_DISABLE.disable"
           },
           "type": "bool"
         },
         "disable_one": {
           "expression": {
-            "__disabled__": {
-              "__reference__": "TOP_CALL.RUNS_ENABLED.RUN_CREATOR.CREATE_DISABLE.disable"
-            },
-            "value": {
-              "__reference__": "TOP_CALL.RUNS_ENABLED.RUN_CREATOR5.CREATE_DISABLE.disable"
-            }
+            "__reference__": "TOP_CALL.RUNS_ENABLED.RUN_CREATOR5.CREATE_DISABLE.disable"
           },
           "type": "bool"
         },
@@ -887,11 +731,16 @@
           },
           "value": {
             "disable1": {
-              "__reference__": "TOP_CALL.RUNS_DISABLED_DYNAMIC.RUN_CREATOR.CREATE_DISABLE.disable"
+              "__disabled__": {
+                "__reference__": "TOP_CALL.RUNS_ENABLED.RUN_CREATOR5.CREATE_DISABLE.disable"
+              },
+              "value": {
+                "__reference__": "TOP_CALL.RUNS_DISABLED_DYNAMIC.RUN_CREATOR.CREATE_DISABLE.disable"
+              }
             },
             "disable2": {
               "__disabled__": {
-                "__reference__": "TOP_CALL.RUNS_DISABLED_DYNAMIC.RUN_CREATOR.CREATE_DISABLE.disable"
+                "__reference__": "TOP_CALL.RUNS_ENABLED.RUN_CREATOR5.CREATE_DISABLE.disable"
               },
               "value": {
                 "__reference__": "TOP_CALL.RUNS_DISABLED_DYNAMIC.RUN_CREATOR5.CREATE_DISABLE.disable"
@@ -899,15 +748,25 @@
             },
             "results": [
               [
-                0
-              ],
-              [
-                2,
-                3
+                {
+                  "__disabled__": {
+                    "__reference__": "TOP_CALL.RUNS_ENABLED.RUN_CREATOR5.CREATE_DISABLE.disable"
+                  },
+                  "value": 0
+                }
               ],
               {
                 "__disabled__": {
-                  "__reference__": "TOP_CALL.RUNS_DISABLED_DYNAMIC.RUN_CREATOR.CREATE_DISABLE.disable"
+                  "__reference__": "TOP_CALL.RUNS_ENABLED.RUN_CREATOR5.CREATE_DISABLE.disable"
+                },
+                "value": [
+                  2,
+                  3
+                ]
+              },
+              {
+                "__disabled__": {
+                  "__reference__": "TOP_CALL.RUNS_ENABLED.RUN_CREATOR5.CREATE_DISABLE.disable"
                 },
                 "value": [
                   2,
@@ -941,16 +800,24 @@
           },
           "outputs": {
             "expression": {
-              "disable": {
-                "__reference__": "TOP_CALL.RUNS_DISABLED_DYNAMIC.RUN_CREATOR.CREATE_DISABLE.disable"
+              "__disabled__": {
+                "__reference__": "TOP_CALL.RUNS_ENABLED.RUN_CREATOR5.CREATE_DISABLE.disable"
               },
-              "foo": 0
+              "value": {
+                "disable": {
+                  "__reference__": "TOP_CALL.RUNS_DISABLED_DYNAMIC.RUN_CREATOR.CREATE_DISABLE.disable"
+                },
+                "foo": 0
+              }
             },
             "type": "RUN_CREATOR"
           },
           "disabled": [
             {
               "__reference__": "TOP_CALL.RUNS_ENABLED.RUN_CREATOR.CREATE_DISABLE.disable"
+            },
+            {
+              "__reference__": "TOP_CALL.RUNS_ENABLED.RUN_CREATOR5.CREATE_DISABLE.disable"
             }
           ],
           "children": [
@@ -971,6 +838,9 @@
               "disabled": [
                 {
                   "__reference__": "TOP_CALL.RUNS_ENABLED.RUN_CREATOR.CREATE_DISABLE.disable"
+                },
+                {
+                  "__reference__": "TOP_CALL.RUNS_ENABLED.RUN_CREATOR5.CREATE_DISABLE.disable"
                 }
               ]
             }
@@ -981,12 +851,7 @@
           "inputs": {
             "disable": {
               "expression": {
-                "__disabled__": {
-                  "__reference__": "TOP_CALL.RUNS_ENABLED.RUN_CREATOR.CREATE_DISABLE.disable"
-                },
-                "value": {
-                  "__reference__": "TOP_CALL.RUNS_ENABLED.RUN_CREATOR5.CREATE_DISABLE.disable"
-                }
+                "__reference__": "TOP_CALL.RUNS_ENABLED.RUN_CREATOR5.CREATE_DISABLE.disable"
               },
               "type": "bool"
             },
@@ -1003,55 +868,72 @@
             }
           },
           "outputs": {
-            "expression": [
-              {
-                "disable": {
-                  "__reference__": "TOP_CALL.RUNS_DISABLED_DYNAMIC.RUN_CREATOR1.CREATE_DISABLE.disable",
-                  "join": [
-                    {
+            "expression": {
+              "__disabled__": {
+                "__reference__": "TOP_CALL.RUNS_ENABLED.RUN_CREATOR5.CREATE_DISABLE.disable",
+                "fork": [
+                  {
+                    "source": {
                       "type": "array",
                       "len": 2
-                    }
-                  ],
-                  "fork": [
-                    {
-                      "source": {
-                        "type": "array",
-                        "len": 2
-                      },
-                      "index": 0
-                    }
-                  ]
-                },
-                "foo": 2
+                    },
+                    "index": "unknown array"
+                  }
+                ]
               },
-              {
-                "disable": {
-                  "__reference__": "TOP_CALL.RUNS_DISABLED_DYNAMIC.RUN_CREATOR1.CREATE_DISABLE.disable",
-                  "join": [
-                    {
-                      "type": "array",
-                      "len": 2
-                    }
-                  ],
-                  "fork": [
-                    {
-                      "source": {
+              "value": [
+                {
+                  "disable": {
+                    "__reference__": "TOP_CALL.RUNS_DISABLED_DYNAMIC.RUN_CREATOR1.CREATE_DISABLE.disable",
+                    "join": [
+                      {
                         "type": "array",
                         "len": 2
-                      },
-                      "index": 1
-                    }
-                  ]
+                      }
+                    ],
+                    "fork": [
+                      {
+                        "source": {
+                          "type": "array",
+                          "len": 2
+                        },
+                        "index": 0
+                      }
+                    ]
+                  },
+                  "foo": 2
                 },
-                "foo": 3
-              }
-            ],
+                {
+                  "disable": {
+                    "__reference__": "TOP_CALL.RUNS_DISABLED_DYNAMIC.RUN_CREATOR1.CREATE_DISABLE.disable",
+                    "join": [
+                      {
+                        "type": "array",
+                        "len": 2
+                      }
+                    ],
+                    "fork": [
+                      {
+                        "source": {
+                          "type": "array",
+                          "len": 2
+                        },
+                        "index": 1
+                      }
+                    ]
+                  },
+                  "foo": 3
+                }
+              ]
+            },
             "type": "RUN_CREATOR[]"
           },
           "disabled": [
             {
               "__reference__": "TOP_CALL.RUNS_ENABLED.RUN_CREATOR.CREATE_DISABLE.disable"
+            },
+            {
+              "__reference__": "TOP_CALL.RUNS_ENABLED.RUN_CREATOR5.CREATE_DISABLE.disable"
             }
           ],
           "children": [
@@ -1085,6 +967,9 @@
               "disabled": [
                 {
                   "__reference__": "TOP_CALL.RUNS_ENABLED.RUN_CREATOR.CREATE_DISABLE.disable"
+                },
+                {
+                  "__reference__": "TOP_CALL.RUNS_ENABLED.RUN_CREATOR5.CREATE_DISABLE.disable"
                 }
               ],
               "fork_roots": [
@@ -1101,12 +986,7 @@
           "inputs": {
             "disable": {
               "expression": {
-                "__disabled__": {
-                  "__reference__": "TOP_CALL.RUNS_ENABLED.RUN_CREATOR.CREATE_DISABLE.disable"
-                },
-                "value": {
-                  "__reference__": "TOP_CALL.RUNS_ENABLED.RUN_CREATOR5.CREATE_DISABLE.disable"
-                }
+                "__reference__": "TOP_CALL.RUNS_ENABLED.RUN_CREATOR5.CREATE_DISABLE.disable"
               },
               "type": "bool"
             },
@@ -1125,7 +1005,7 @@
           "outputs": {
             "expression": {
               "__disabled__": {
-                "__reference__": "TOP_CALL.RUNS_DISABLED_DYNAMIC.RUN_CREATOR.CREATE_DISABLE.disable",
+                "__reference__": "TOP_CALL.RUNS_ENABLED.RUN_CREATOR5.CREATE_DISABLE.disable",
                 "fork": [
                   {
                     "source": {
@@ -1188,7 +1068,7 @@
               "__reference__": "TOP_CALL.RUNS_ENABLED.RUN_CREATOR.CREATE_DISABLE.disable"
             },
             {
-              "__reference__": "TOP_CALL.RUNS_DISABLED_DYNAMIC.RUN_CREATOR.CREATE_DISABLE.disable"
+              "__reference__": "TOP_CALL.RUNS_ENABLED.RUN_CREATOR5.CREATE_DISABLE.disable"
             }
           ],
           "children": [
@@ -1224,7 +1104,7 @@
                   "__reference__": "TOP_CALL.RUNS_ENABLED.RUN_CREATOR.CREATE_DISABLE.disable"
                 },
                 {
-                  "__reference__": "TOP_CALL.RUNS_DISABLED_DYNAMIC.RUN_CREATOR.CREATE_DISABLE.disable"
+                  "__reference__": "TOP_CALL.RUNS_ENABLED.RUN_CREATOR5.CREATE_DISABLE.disable"
                 }
               ],
               "fork_roots": [
@@ -1241,12 +1121,7 @@
           "inputs": {
             "disable": {
               "expression": {
-                "__disabled__": {
-                  "__reference__": "TOP_CALL.RUNS_ENABLED.RUN_CREATOR.CREATE_DISABLE.disable"
-                },
-                "value": {
-                  "__reference__": "TOP_CALL.RUNS_ENABLED.RUN_CREATOR5.CREATE_DISABLE.disable"
-                }
+                "__reference__": "TOP_CALL.RUNS_ENABLED.RUN_CREATOR5.CREATE_DISABLE.disable"
               },
               "type": "bool"
             },
@@ -1273,12 +1148,7 @@
           "inputs": {
             "disable": {
               "expression": {
-                "__disabled__": {
-                  "__reference__": "TOP_CALL.RUNS_ENABLED.RUN_CREATOR.CREATE_DISABLE.disable"
-                },
-                "value": {
-                  "__reference__": "TOP_CALL.RUNS_ENABLED.RUN_CREATOR5.CREATE_DISABLE.disable"
-                }
+                "__reference__": "TOP_CALL.RUNS_ENABLED.RUN_CREATOR5.CREATE_DISABLE.disable"
               },
               "type": "bool"
             },
@@ -1315,7 +1185,7 @@
           "outputs": {
             "expression": {
               "__disabled__": {
-                "__reference__": "TOP_CALL.RUNS_DISABLED_DYNAMIC.RUN_CREATOR.CREATE_DISABLE.disable"
+                "__reference__": "TOP_CALL.RUNS_ENABLED.RUN_CREATOR5.CREATE_DISABLE.disable"
               },
               "value": {
                 "disable": {
@@ -1331,7 +1201,7 @@
               "__reference__": "TOP_CALL.RUNS_ENABLED.RUN_CREATOR.CREATE_DISABLE.disable"
             },
             {
-              "__reference__": "TOP_CALL.RUNS_DISABLED_DYNAMIC.RUN_CREATOR.CREATE_DISABLE.disable"
+              "__reference__": "TOP_CALL.RUNS_ENABLED.RUN_CREATOR5.CREATE_DISABLE.disable"
             }
           ],
           "children": [
@@ -1354,7 +1224,7 @@
                   "__reference__": "TOP_CALL.RUNS_ENABLED.RUN_CREATOR.CREATE_DISABLE.disable"
                 },
                 {
-                  "__reference__": "TOP_CALL.RUNS_DISABLED_DYNAMIC.RUN_CREATOR.CREATE_DISABLE.disable"
+                  "__reference__": "TOP_CALL.RUNS_ENABLED.RUN_CREATOR5.CREATE_DISABLE.disable"
                 }
               ]
             }
