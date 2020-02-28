@@ -123,7 +123,7 @@ func NewAstNode(loc int, file *SourceFile) AstNode {
 	}
 }
 
-// Gets the name of the file that defines the node.
+// DefiningFile returns the absolute path to the file that defines the node.
 func DefiningFile(node AstNodable) string {
 	return node.getNode().Loc.File.FullPath
 }

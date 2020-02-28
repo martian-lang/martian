@@ -119,14 +119,18 @@ func (s *ReturnStm) getSubnodes() []AstNodable {
 	return []AstNodable{s.Bindings}
 }
 
-func (*Stage) getDec()                    {}
-func (*Pipeline) getDec()                 {}
+func (*Stage) getDec()    {}
+func (*Pipeline) getDec() {}
+
+// GetId returns the name of the stage.
 func (s *Stage) GetId() string            { return s.Id }
 func (s *Stage) getNode() *AstNode        { return &s.Node }
 func (s *Stage) File() *SourceFile        { return s.Node.Loc.File }
 func (s *Stage) GetInParams() *InParams   { return s.InParams }
 func (s *Stage) GetOutParams() *OutParams { return s.OutParams }
-func (s *Stage) Type() string             { return "stage" }
+
+// Type returns "stage".
+func (s *Stage) Type() string { return KindStage.str() }
 
 func (s *Stage) inheritComments() bool { return false }
 func (s *Stage) getSubnodes() []AstNodable {
@@ -178,6 +182,7 @@ func (s *Resources) getSubnodes() []AstNodable {
 	return subs
 }
 
+// GetId returns the name of the pipeline.
 func (s *Pipeline) GetId() string {
 	if s == nil {
 		return ""
@@ -188,7 +193,9 @@ func (s *Pipeline) getNode() *AstNode        { return &s.Node }
 func (s *Pipeline) File() *SourceFile        { return s.Node.Loc.File }
 func (s *Pipeline) GetInParams() *InParams   { return s.InParams }
 func (s *Pipeline) GetOutParams() *OutParams { return s.OutParams }
-func (s *Pipeline) Type() string             { return "pipeline" }
+
+// Type returns "pipeline"
+func (s *Pipeline) Type() string { return KindPipeline.str() }
 
 func (s *Pipeline) inheritComments() bool { return false }
 func (s *Pipeline) getSubnodes() []AstNodable {
