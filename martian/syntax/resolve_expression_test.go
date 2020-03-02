@@ -95,3 +95,67 @@ func TestExpBindingPathIndex(t *testing.T) {
 		t.Error("expected failure")
 	}
 }
+
+func TestResolvedBindingBindingPath(t *testing.T) {
+	var parser Parser
+	exp, err := parser.ParseValExp([]byte(`{
+	a: {b: "foo"},
+	c: {
+		"d": {
+			e: "bar",
+		},
+		"f": {
+			e: "baz",
+		},
+	},
+	d: [
+		{e:"bar"},
+		{e:"baz"},
+	],
+}`))
+	if err != nil {
+		t.Fatal(err)
+	}
+	ast := testGood(t, `
+struct Es(
+	string e,
+)
+
+struct As(
+	string b,
+)
+
+struct Top(
+	As a,
+	map<Es> c,
+	Es[] d,
+)
+`)
+	if ast == nil {
+		return
+	}
+	rb := ResolvedBinding{
+		Exp:  exp,
+		Type: ast.TypeTable.Get(TypeId{Tname: "Top"}),
+	}
+	if rb.Type == nil {
+		t.Fatal("could not get type")
+	}
+	check := func(p, e string) {
+		t.Helper()
+		actual, err := rb.BindingPath(p, nil, nil, &ast.TypeTable)
+		if err != nil {
+			t.Error(err)
+			return
+		}
+		expected, err := parser.ParseValExp([]byte(e))
+		if err != nil {
+			t.Error(err)
+		} else if !actual.Exp.equal(expected) {
+			t.Errorf("%s != %s", actual.Exp.GoString(), expected.GoString())
+		}
+	}
+	check("a.b", `"foo"`)
+	check("c.e", `{"d":"bar", "f":"baz"}`)
+	check("d.e", `["bar", "baz"]`)
+}

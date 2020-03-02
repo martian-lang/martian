@@ -143,6 +143,119 @@ func TestAstMakeCallGraph(t *testing.T) {
 	}
 }
 
+func TestAstMakeCallGraphFailures(t *testing.T) {
+	t.Parallel()
+	// First check that assignment of struct to map works if it doesn't
+	// contain a reference.
+	ast := testGood(t, `
+struct Foo(
+	int foo,
+)
+
+stage BAZ(
+	in  map  foo,
+	out int  foo,
+	src comp "nope",
+)
+
+pipeline FINE(
+	in  Foo foo,
+	out int foo,
+)
+{
+	call BAZ(
+		foo = self.foo,
+	)
+
+	return (
+		foo = BAZ.foo,
+	)
+}
+
+pipeline ALSO_FINE(
+	out int foo,
+)
+{
+	call FINE(
+		foo = {
+			foo: 1,
+		},
+	)
+
+	return(
+		foo = FINE.foo,
+	)
+}
+
+call ALSO_FINE()
+`)
+	if ast == nil {
+		return
+	}
+	if _, err := ast.MakeCallGraph("", ast.Call); err != nil {
+		t.Error(err)
+	}
+
+	ast = testGood(t, `
+struct Foo(
+	int foo,
+)
+
+stage BAR(
+	out int  foo,
+	out int  bar,
+	src comp "nope",
+)
+
+stage BAZ(
+	in  map  foo,
+	out int  foo,
+	src comp "nope",
+)
+
+pipeline FINE(
+	in  Foo foo,
+	out int foo,
+)
+{
+	call BAZ(
+		foo = self.foo,
+	)
+
+	return (
+		foo = BAZ.foo,
+	)
+}
+
+pipeline BROKEN(
+	out int foo,
+)
+{
+	call BAR()
+
+	call FINE(
+		foo = {
+			foo: BAR.foo,
+		},
+	)
+
+	return(
+		foo = FINE.foo,
+	)
+}
+
+call BROKEN()
+`)
+	if ast == nil {
+		return
+	}
+	if _, err := ast.MakeCallGraph("", ast.Call); err == nil {
+		t.Error("expected failure")
+	} else if s := err.Error(); !strings.Contains(s, "contains reference") {
+		t.Error("expected failure due to contains reference, got", s)
+	}
+}
+
 func TestResolvedBindingFindRefs(t *testing.T) {
 	src, err := ioutil.ReadFile("testdata/resolve_test.mro")
 	if err != nil {

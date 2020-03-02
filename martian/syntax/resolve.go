@@ -1658,7 +1658,9 @@ func (b *ResolvedBinding) BindingPath(p string,
 // with types attached.
 //
 // This is distsinct from Exp.FindRefs() in that it propagates type information,
-// which is relevent if any type conversions are taking place.
+// which is relevent if any type conversions are taking place.  However, any
+// references inside a type a untyped map will not have complete type
+// information.
 func (b *ResolvedBinding) FindRefs(lookup *TypeLookup) ([]*BoundReference, error) {
 	if !b.Exp.HasRef() {
 		return nil, nil
@@ -1687,7 +1689,7 @@ func (b *ResolvedBinding) FindRefs(lookup *TypeLookup) ([]*BoundReference, error
 		var errs ErrorList
 		result := make([]*BoundReference, 0, len(exp.Value))
 		for _, e := range exp.Value {
-			if !e.HasRef() {
+			if e == nil || !e.HasRef() {
 				continue
 			}
 			rb := ResolvedBinding{
@@ -1766,12 +1768,14 @@ func (b *ResolvedBinding) FindRefs(lookup *TypeLookup) ([]*BoundReference, error
 				}
 			}
 			var errs ErrorList
-			result := make([]*BoundReference, 0, len(exp.Value))
 			keys := make([]string, 0, len(exp.Value))
-			for key := range exp.Value {
-				keys = append(keys, key)
+			for key, val := range exp.Value {
+				if val != nil && val.HasRef() {
+					keys = append(keys, key)
+				}
 			}
 			sort.Strings(keys)
+			result := make([]*BoundReference, 0, len(keys))
 			for _, key := range keys {
 				e := exp.Value[key]
 				if e == nil || !e.HasRef() {
@@ -1808,6 +1812,40 @@ func (b *ResolvedBinding) FindRefs(lookup *TypeLookup) ([]*BoundReference, error
 				},
 				loc: exp.Node.Loc,
 			}
+		case *BuiltinType:
+			if t.Id != KindMap {
+				return nil, &wrapError{
+					innerError: &bindingError{
+						Msg: "unexpected " + string(exp.Kind) +
+							" (expected " + t.GetId().str() + ")",
+					},
+					loc: exp.Node.Loc,
+				}
+			}
+			// Untyped map type.  Generally this can't be allowed.
+			refs := exp.FindRefs()
+			result := make([]*BoundReference, 0, len(refs))
+			for _, r := range refs {
+				if r.OutputId == "" && (r.Kind == KindCall || r.Id == "") {
+					// In these cases we know it's a struct so we can tolerate.
+					result = append(result, &BoundReference{
+						Exp:  r,
+						Type: &builtinMap,
+					})
+				} else {
+					return nil, &wrapError{
+						innerError: &wrapError{
+							innerError: &bindingError{
+								Msg: "reference " + r.GoString() +
+									" cannot be bound inside an untyped map",
+							},
+							loc: r.Node.Loc,
+						},
+						loc: exp.Node.Loc,
+					}
+				}
+			}
+			return result, nil
 		default:
 			return nil, &wrapError{
 				innerError: &bindingError{

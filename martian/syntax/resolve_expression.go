@@ -544,7 +544,20 @@ func (s *MapExp) filter(t Type, lookup *TypeLookup) (Exp, error) {
 		}
 		return &result, nil
 	}
-	if s == nil || len(s.Value) == 0 || t == &builtinMap {
+	if s == nil || len(s.Value) == 0 {
+		return s, nil
+	}
+	if t == &builtinMap {
+		if s.HasRef() {
+			refs := s.FindRefs()
+			return s, &IncompatibleTypeError{
+				Message: fmt.Sprintf(
+					"%s cannot be assinged to untyped map: "+
+						"contains reference to %s",
+					s.Kind,
+					refs[0].GoString()),
+			}
+		}
 		return s, nil
 	}
 	if _, ok := baseType(t).(*StructType); !ok {

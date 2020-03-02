@@ -165,6 +165,23 @@ func (s *BuiltinType) IsValidExpression(exp Exp, pipeline *Pipeline, ast *Ast) e
 		return &IncompatibleTypeError{
 			Message: fmt.Sprintf("cannot assign float to %s", s.Id),
 		}
+	case *MapExp:
+		if k := exp.getKind(); k != KindMap || s.Id != KindMap {
+			return &IncompatibleTypeError{
+				Message: fmt.Sprintf("cannot assign %s literal to %s",
+					exp.getKind(), s.Id),
+			}
+		} else if exp.HasRef() {
+			refs := exp.FindRefs()
+			return &IncompatibleTypeError{
+				Message: fmt.Sprintf(
+					"%s literal cannot be assinged to untyped map: "+
+						"contains reference to %s",
+					k,
+					refs[0].GoString()),
+			}
+		}
+		return nil
 	default:
 		if k := exp.getKind(); k != ExpKind(s.Id) {
 			return &IncompatibleTypeError{

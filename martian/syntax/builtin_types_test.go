@@ -106,6 +106,24 @@ func TestBuiltinIsValidExpression(t *testing.T) {
 	}, nil, nil); err != nil {
 		t.Error(err)
 	}
+	if err := builtinMap.IsValidExpression(&MapExp{
+		Kind: KindStruct,
+		Value: map[string]Exp{
+			"foo": &StringExp{Value: "bar"},
+		},
+	}, nil, nil); err == nil {
+		t.Error("cannot assign struct to map")
+	}
+	if err := builtinMap.IsValidExpression(&MapExp{
+		Kind: KindMap,
+		Value: map[string]Exp{
+			"foo": &RefExp{
+				Kind: KindSelf,
+				Id:   "foo"},
+		},
+	}, nil, nil); err == nil {
+		t.Error("cannot assign map with references to untyped map")
+	}
 }
 
 func TestBuiltinFilterJson(t *testing.T) {
