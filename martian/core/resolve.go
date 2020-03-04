@@ -83,13 +83,17 @@ func baseType(t syntax.Type) *syntax.StructType {
 		return t
 	}
 	tid := t.GetId()
-	panic("Unexpected resolved output type %s" + tid.String())
+	panic("Unexpected resolved output type " + tid.String())
 }
 
 func (node *Node) outputBindingInfo(fork ForkId) []BindingInfo {
 	readSize := node.top.rt.FreeMemBytes() / int64(len(node.prenodes)+1)
 	ro := node.call.ResolvedOutputs()
-	if ro == nil {
+	if ro == nil || ro.Type == nil ||
+		ro.Type.GetId().Tname == syntax.KindNull || ro.Exp == nil {
+		return nil
+	}
+	if _, ok := ro.Exp.(*syntax.NullExp); ok {
 		return nil
 	}
 	members := baseType(ro.Type).Members

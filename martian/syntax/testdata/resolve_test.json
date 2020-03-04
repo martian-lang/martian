@@ -291,7 +291,7 @@
       },
       "outputs": {
         "expression": null,
-        "type": "POINT_PIPE"
+        "type": "null"
       },
       "disabled": [
         true

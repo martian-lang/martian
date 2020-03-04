@@ -1316,7 +1316,7 @@ func (node *CallGraphPipeline) resolve(siblings map[string]*ResolvedBinding,
 			Exp: &NullExp{
 				valExp: valExp{Node: node.pipeline.Node},
 			},
-			Type: lookup.Get(TypeId{Tname: node.pipeline.Id}),
+			Type: &builtinNull,
 		}
 		node.Disable = alwaysDisable(node.Disable)
 		return nil
