@@ -56,6 +56,8 @@ func (m *StructMember) setIsFile(k FileKind)    { m.isFile = k }
 func (m *StructMember) IsFile() FileKind        { return m.isFile }
 func (m *StructMember) getNode() *AstNode       { return &m.Node }
 func (m *StructMember) File() *SourceFile       { return m.Node.Loc.File }
+func (m *StructMember) Line() int               { return m.Node.Loc.Line }
+func (m *StructMember) GetId() string           { return m.Id }
 func (*StructMember) inheritComments() bool     { return false }
 func (*StructMember) getSubnodes() []AstNodable { return nil }
 
@@ -90,11 +92,13 @@ func (s *StructMember) GetDisplayName() string {
 }
 
 func (*StructType) getDec()             {}
-func (s *StructType) GetId() TypeId     { return TypeId{Tname: s.Id} }
+func (s *StructType) GetId() string     { return s.Id }
+func (s *StructType) TypeId() TypeId    { return TypeId{Tname: s.Id} }
 func (s *StructType) IsFile() FileKind  { return s.isFile }
 func (*StructType) ElementType() Type   { return nil }
 func (s *StructType) getNode() *AstNode { return &s.Node }
 func (s *StructType) File() *SourceFile { return s.Node.Loc.File }
+func (s *StructType) Line() int         { return s.Node.Loc.Line }
 
 func (*StructType) inheritComments() bool { return false }
 func (s *StructType) getSubnodes() []AstNodable {
@@ -170,7 +174,7 @@ func (s *StructType) IsAssignableFrom(other Type, typeTable *TypeLookup) error {
 		return &IncompatibleTypeError{
 			Message: fmt.Sprintf(
 				"cannot assign non-struct type %s to struct %s",
-				other.GetId().str(), s.Id),
+				other.TypeId().str(), s.Id),
 		}
 	}
 }
@@ -234,7 +238,7 @@ func (s *StructType) IsValidExpression(exp Exp, pipeline *Pipeline, ast *Ast) er
 		return &IncompatibleTypeError{
 			Message: fmt.Sprintf(
 				"cannot assign %s to %s",
-				exp.getKind(), s.GetId().str()),
+				exp.getKind(), s.TypeId().str()),
 		}
 	}
 }
@@ -242,7 +246,7 @@ func (s *StructType) IsValidExpression(exp Exp, pipeline *Pipeline, ast *Ast) er
 func (s *StructType) CheckEqual(other Type) error {
 	if other, ok := other.(*StructType); !ok {
 		return &IncompatibleTypeError{
-			Message: other.GetId().str() + " is not a struct type",
+			Message: other.TypeId().str() + " is not a struct type",
 		}
 	} else {
 		var errs ErrorList

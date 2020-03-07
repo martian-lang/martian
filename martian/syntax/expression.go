@@ -170,8 +170,9 @@ type (
 
 func (e *valExp) getNode() *AstNode       { return &e.Node }
 func (s *valExp) File() *SourceFile       { return s.Node.Loc.File }
-func (s *valExp) inheritComments() bool   { return false }
+func (s *valExp) Line() int               { return s.Node.Loc.Line }
 func (*valExp) getSubnodes() []AstNodable { return nil }
+func (s *valExp) inheritComments() bool   { return false }
 func (*valExp) HasRef() bool              { return false }
 func (*valExp) HasSplit() bool            { return false }
 func (*valExp) FindRefs() []*RefExp       { return nil }

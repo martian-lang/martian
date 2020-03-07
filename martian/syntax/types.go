@@ -15,7 +15,7 @@ type (
 	FileKind int
 
 	Type interface {
-		GetId() TypeId
+		TypeId() TypeId
 		// Returns whether this type represents a file or directory in the stage
 		// outputs.
 		IsFile() FileKind
@@ -239,7 +239,7 @@ func (k *FileKind) String() string {
 	}
 }
 
-func (s *nullType) GetId() TypeId {
+func (s *nullType) TypeId() TypeId {
 	return TypeId{Tname: KindNull}
 }
 func (s *nullType) IsFile() FileKind { return KindIsNotFile }
@@ -255,7 +255,7 @@ func (s *nullType) CheckEqual(other Type) error {
 		return nil
 	}
 	return &IncompatibleTypeError{
-		Message: other.GetId().str() + " is not null",
+		Message: other.TypeId().str() + " is not null",
 	}
 }
 func (s *nullType) CanFilter() bool {

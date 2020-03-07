@@ -1633,7 +1633,7 @@ func bindingType(p string, t Type, lookup *TypeLookup) (Type, error) {
 		return bindingType(rest, lookup.Get(member.Tname), lookup)
 	}
 	return t, &bindingError{
-		Msg: "can't resolve path through " + t.GetId().str(),
+		Msg: "can't resolve path through " + t.TypeId().str(),
 	}
 }
 
@@ -1672,7 +1672,7 @@ func (b *ResolvedBinding) FindRefs(lookup *TypeLookup) ([]*BoundReference, error
 			Type: b.Type,
 		}}, nil
 	case *ArrayExp:
-		t := b.Type.GetId()
+		t := b.Type.TypeId()
 		if t.ArrayDim == 0 {
 			return nil, &wrapError{
 				innerError: &bindingError{
@@ -1718,7 +1718,7 @@ func (b *ResolvedBinding) FindRefs(lookup *TypeLookup) ([]*BoundReference, error
 			Type: &builtinBool,
 		}), nil
 	case *SplitExp:
-		t := b.Type.GetId()
+		t := b.Type.TypeId()
 		var innerType Type
 		switch exp.InnerValue().(type) {
 		case *MapExp:
@@ -1808,7 +1808,7 @@ func (b *ResolvedBinding) FindRefs(lookup *TypeLookup) ([]*BoundReference, error
 			return nil, &wrapError{
 				innerError: &bindingError{
 					Msg: "unexpected " + string(exp.Kind) +
-						" (expected " + t.GetId().str() + ")",
+						" (expected " + t.TypeId().str() + ")",
 				},
 				loc: exp.Node.Loc,
 			}
@@ -1817,7 +1817,7 @@ func (b *ResolvedBinding) FindRefs(lookup *TypeLookup) ([]*BoundReference, error
 				return nil, &wrapError{
 					innerError: &bindingError{
 						Msg: "unexpected " + string(exp.Kind) +
-							" (expected " + t.GetId().str() + ")",
+							" (expected " + t.TypeId().str() + ")",
 					},
 					loc: exp.Node.Loc,
 				}
@@ -1850,7 +1850,7 @@ func (b *ResolvedBinding) FindRefs(lookup *TypeLookup) ([]*BoundReference, error
 			return nil, &wrapError{
 				innerError: &bindingError{
 					Msg: "unexpected " + string(exp.Kind) +
-						" (expected " + t.GetId().str() + ")",
+						" (expected " + t.TypeId().str() + ")",
 				},
 				loc: exp.Node.Loc,
 			}

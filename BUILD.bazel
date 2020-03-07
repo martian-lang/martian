@@ -18,6 +18,13 @@ copy_binary(
 )
 
 copy_binary(
+    name = "mrdr",
+    src = "//cmd/mrdr",
+    dest = "bin/mrdr",
+    visibility = ["//visibility:public"],
+)
+
+copy_binary(
     name = "mrf",
     src = "//cmd/mrf",
     dest = "bin/mrf",

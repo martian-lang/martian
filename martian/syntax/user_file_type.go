@@ -17,11 +17,13 @@ type UserType struct {
 
 func (*UserType) getDec() {}
 
-func (s *UserType) GetId() TypeId     { return TypeId{Tname: s.Id} }
+func (s *UserType) TypeId() TypeId    { return TypeId{Tname: s.Id} }
+func (s *UserType) GetId() string     { return s.Id }
 func (s *UserType) IsFile() FileKind  { return KindIsFile }
 func (*UserType) ElementType() Type   { return nil }
 func (s *UserType) getNode() *AstNode { return &s.Node }
 func (s *UserType) File() *SourceFile { return s.Node.Loc.File }
+func (s *UserType) Line() int         { return s.Node.Loc.Line }
 
 func (s *UserType) inheritComments() bool     { return false }
 func (s *UserType) getSubnodes() []AstNodable { return nil }
@@ -55,19 +57,19 @@ func (s *UserType) IsAssignableFrom(other Type, _ *TypeLookup) error {
 		return &IncompatibleTypeError{
 			Message: fmt.Sprintf(
 				"cannot assign array %s to singleton %s",
-				t.Elem.GetId().str(), s.Id),
+				t.Elem.TypeId().str(), s.Id),
 		}
 	case *TypedMapType:
 		return &IncompatibleTypeError{
 			Message: fmt.Sprintf(
 				"cannot assign map<%s> to singleton %s",
-				t.Elem.GetId().str(), s.Id),
+				t.Elem.TypeId().str(), s.Id),
 		}
 	default:
 		return &IncompatibleTypeError{
 			Message: fmt.Sprintf(
 				"%T type %s cannot be assigned to user-defined file type %s",
-				t, t.GetId().str(), s.Id),
+				t, t.TypeId().str(), s.Id),
 		}
 	}
 }

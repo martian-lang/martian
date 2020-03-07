@@ -434,12 +434,12 @@ func (s *ArrayExp) filter(t Type, lookup *TypeLookup) (Exp, error) {
 	}
 	if at, ok := t.(*ArrayType); !ok {
 		return s, &IncompatibleTypeError{
-			Message: t.GetId().str() + " is not an array",
+			Message: t.TypeId().str() + " is not an array",
 		}
 	} else if at.Dim == 1 {
 		t = at.Elem
 	} else {
-		id := t.GetId()
+		id := t.TypeId()
 		id.ArrayDim--
 		t = lookup.Get(id)
 	}
@@ -535,7 +535,7 @@ func (s *MapExp) filter(t Type, lookup *TypeLookup) (Exp, error) {
 			return s, &bindingError{
 				Msg: "filtering " +
 					FormatExp(s, "          ") +
-					"\n          as " + t.GetId().str(),
+					"\n          as " + t.TypeId().str(),
 				Err: err,
 			}
 		}
@@ -566,7 +566,7 @@ func (s *MapExp) filter(t Type, lookup *TypeLookup) (Exp, error) {
 	if at, ok := t.(*TypedMapType); !ok {
 		return s, &IncompatibleTypeError{
 			Message: fmt.Sprintf("unexpected map expression for %s\n%s",
-				t.GetId().str(),
+				t.TypeId().str(),
 				FormatExp(s, "")),
 		}
 	} else {

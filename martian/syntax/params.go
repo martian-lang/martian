@@ -33,11 +33,10 @@ type (
 	}
 
 	Param interface {
-		AstNodable
+		NamedNode
 		getMode() string
 		GetTname() TypeId
 		GetArrayDim() int
-		GetId() string
 		GetHelp() string
 		GetOutName() string
 		IsFile() FileKind
@@ -86,6 +85,7 @@ func (s *OutParams) GetParam(id string) (Param, bool) {
 
 func (p *RetainParams) getNode() *AstNode     { return &p.Node }
 func (s *RetainParams) File() *SourceFile     { return s.Node.Loc.File }
+func (s *RetainParams) Line() int             { return s.Node.Loc.Line }
 func (s *RetainParams) inheritComments() bool { return true }
 func (s *RetainParams) getSubnodes() []AstNodable {
 	params := make([]AstNodable, 0, len(s.Params))
@@ -97,11 +97,13 @@ func (s *RetainParams) getSubnodes() []AstNodable {
 
 func (s *RetainParam) getNode() *AstNode         { return &s.Node }
 func (s *RetainParam) File() *SourceFile         { return s.Node.Loc.File }
+func (s *RetainParam) Line() int                 { return s.Node.Loc.Line }
 func (s *RetainParam) getSubnodes() []AstNodable { return nil }
 func (s *RetainParam) inheritComments() bool     { return false }
 
 func (s *InParam) getNode() *AstNode    { return &s.Node }
 func (s *InParam) File() *SourceFile    { return s.Node.Loc.File }
+func (s *InParam) Line() int            { return s.Node.Loc.Line }
 func (s *InParam) getMode() string      { return "in" }
 func (s *InParam) GetTname() TypeId     { return s.Tname }
 func (s *InParam) GetArrayDim() int     { return int(s.Tname.ArrayDim) }
@@ -118,6 +120,7 @@ func (s *InParam) getSubnodes() []AstNodable {
 
 func (s *OutParam) getNode() *AstNode { return &s.Node }
 func (s *OutParam) File() *SourceFile { return s.Node.Loc.File }
+func (s *OutParam) Line() int         { return s.Node.Loc.Line }
 func (s *OutParam) getMode() string   { return "out" }
 func (s *OutParam) GetTname() TypeId  { return s.Tname }
 func (s *OutParam) GetArrayDim() int  { return int(s.Tname.ArrayDim) }

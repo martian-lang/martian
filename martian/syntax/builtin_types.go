@@ -35,7 +35,7 @@ var builtinTypes = [...]*BuiltinType{
 	&builtinMap,
 }
 
-func (s *BuiltinType) GetId() TypeId     { return TypeId{Tname: s.Id} }
+func (s *BuiltinType) TypeId() TypeId    { return TypeId{Tname: s.Id} }
 func (s *BuiltinType) IsDirectory() bool { return false }
 func (s *BuiltinType) IsFile() FileKind {
 	switch s.Id {
@@ -87,7 +87,7 @@ func (s *BuiltinType) IsAssignableFrom(other Type, _ *TypeLookup) error {
 	case *ArrayType:
 		return &IncompatibleTypeError{
 			Message: fmt.Sprintf("cannot assign array of %s to singleton %s",
-				other.Elem.GetId().str(), s.Id),
+				other.Elem.TypeId().str(), s.Id),
 		}
 	case *TypedMapType:
 		if s.Id == KindMap {
@@ -95,12 +95,12 @@ func (s *BuiltinType) IsAssignableFrom(other Type, _ *TypeLookup) error {
 		}
 		return &IncompatibleTypeError{
 			Message: fmt.Sprintf("map<%s> cannot be assigned to %s",
-				other.Elem.GetId().str(), s.Id),
+				other.Elem.TypeId().str(), s.Id),
 		}
 	default:
 		return &IncompatibleTypeError{
 			Message: fmt.Sprintf("%T type %s cannot be assigned to %s",
-				other, other.GetId().str(), s.Id),
+				other, other.TypeId().str(), s.Id),
 		}
 	}
 }
@@ -194,7 +194,7 @@ func (s *BuiltinType) IsValidExpression(exp Exp, pipeline *Pipeline, ast *Ast) e
 func (s *BuiltinType) CheckEqual(other Type) error {
 	if other, ok := other.(*BuiltinType); !ok {
 		return &IncompatibleTypeError{
-			Message: other.GetId().str() + " is not a " + s.Id,
+			Message: other.TypeId().str() + " is not a " + s.Id,
 		}
 	} else if other.Id != s.Id {
 		return &IncompatibleTypeError{

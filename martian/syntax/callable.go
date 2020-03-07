@@ -7,8 +7,7 @@ package syntax
 type (
 	// A Callable object is a stage or pipeline which can be called.
 	Callable interface {
-		AstNodable
-		GetId() string
+		NamedNode
 		GetInParams() *InParams
 		GetOutParams() *OutParams
 		Type() string
@@ -105,6 +104,7 @@ type (
 
 func (p *PipelineRetains) getNode() *AstNode     { return &p.Node }
 func (s *PipelineRetains) File() *SourceFile     { return s.Node.Loc.File }
+func (s *PipelineRetains) Line() int             { return s.Node.Loc.Line }
 func (s *PipelineRetains) inheritComments() bool { return true }
 func (s *PipelineRetains) getSubnodes() []AstNodable {
 	params := make([]AstNodable, 0, len(s.Refs))
@@ -126,6 +126,7 @@ func (*Pipeline) getDec() {}
 func (s *Stage) GetId() string            { return s.Id }
 func (s *Stage) getNode() *AstNode        { return &s.Node }
 func (s *Stage) File() *SourceFile        { return s.Node.Loc.File }
+func (s *Stage) Line() int                { return s.Node.Loc.Line }
 func (s *Stage) GetInParams() *InParams   { return s.InParams }
 func (s *Stage) GetOutParams() *OutParams { return s.OutParams }
 
@@ -161,6 +162,7 @@ func (s *Stage) getSubnodes() []AstNodable {
 
 func (s *Resources) getNode() *AstNode     { return &s.Node }
 func (s *Resources) File() *SourceFile     { return s.Node.Loc.File }
+func (s *Resources) Line() int             { return s.Node.Loc.Line }
 func (s *Resources) inheritComments() bool { return false }
 func (s *Resources) getSubnodes() []AstNodable {
 	subs := make([]AstNodable, 0, 3)
@@ -191,6 +193,7 @@ func (s *Pipeline) GetId() string {
 }
 func (s *Pipeline) getNode() *AstNode        { return &s.Node }
 func (s *Pipeline) File() *SourceFile        { return s.Node.Loc.File }
+func (s *Pipeline) Line() int                { return s.Node.Loc.Line }
 func (s *Pipeline) GetInParams() *InParams   { return s.InParams }
 func (s *Pipeline) GetOutParams() *OutParams { return s.OutParams }
 
@@ -228,8 +231,10 @@ func (s *Pipeline) findCall(id string) *CallStm {
 
 func (s *SrcParam) getNode() *AstNode         { return &s.Node }
 func (s *SrcParam) File() *SourceFile         { return s.Node.Loc.File }
+func (s *SrcParam) Line() int                 { return s.Node.Loc.Line }
 func (s *SrcParam) inheritComments() bool     { return false }
 func (s *SrcParam) getSubnodes() []AstNodable { return nil }
 
 func (s *ReturnStm) getNode() *AstNode { return &s.Node }
 func (s *ReturnStm) File() *SourceFile { return s.Node.Loc.File }
+func (s *ReturnStm) Line() int         { return s.Node.Loc.Line }

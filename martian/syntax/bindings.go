@@ -25,8 +25,10 @@ type (
 
 func (s *BindStm) getNode() *AstNode  { return &s.Node }
 func (s *BindStm) File() *SourceFile  { return s.Node.Loc.File }
+func (s *BindStm) Line() int          { return s.Node.Loc.Line }
 func (s *BindStms) getNode() *AstNode { return &s.Node }
 func (s *BindStms) File() *SourceFile { return s.Node.Loc.File }
+func (s *BindStms) Line() int         { return s.Node.Loc.Line }
 
 func (s *BindStm) inheritComments() bool { return false }
 func (s *BindStm) getSubnodes() []AstNodable {

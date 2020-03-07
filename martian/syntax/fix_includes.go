@@ -397,7 +397,7 @@ func (parser *Parser) findMissingIncludes(seenFiles map[string]*SourceFile,
 								}
 							}
 							for _, st := range ast.StructTypes {
-								if _, ok := neededTypes[st.GetId().Tname]; ok {
+								if _, ok := neededTypes[st.GetId()]; ok {
 									util.PrintInfo("include",
 										"Found %s in %s\n",
 										st.Id, absPath)
@@ -412,9 +412,9 @@ func (parser *Parser) findMissingIncludes(seenFiles map[string]*SourceFile,
 								neededFiles = append(neededFiles, &srcFile)
 							} else {
 								for _, ut := range ast.UserTypes {
-									if t, ok := neededTypes[ut.GetId().Tname]; ok {
+									if t, ok := neededTypes[ut.GetId()]; ok {
 										if t.getNode().Loc.File == nil {
-											neededTypes[t.GetId().Tname] = ut
+											neededTypes[t.GetId()] = ut
 										}
 									}
 								}
@@ -536,7 +536,7 @@ func fixIncludes(source *Ast, needed, optional map[string]*SourceFile, extraType
 			} else if _, ok := extraTypes[j].(*UserType); ok {
 				return false
 			}
-			return extraTypes[i].GetId().Tname < extraTypes[j].GetId().Tname
+			return extraTypes[i].TypeId().Tname < extraTypes[j].TypeId().Tname
 		})
 		for _, t := range extraTypes {
 			switch t := t.(type) {

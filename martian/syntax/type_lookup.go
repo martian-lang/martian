@@ -19,7 +19,7 @@ func NewTypeLookup() *TypeLookup {
 func (lookup *TypeLookup) init(count int) {
 	lookup.baseTypes = make(map[TypeId]Type, len(builtinTypes)+count*2)
 	for _, t := range builtinTypes {
-		lookup.baseTypes[t.GetId()] = t
+		lookup.baseTypes[t.TypeId()] = t
 	}
 }
 
@@ -36,8 +36,8 @@ var (
 )
 
 func (lookup *TypeLookup) AddUserType(t *UserType) error {
-	if existing, ok := lookup.baseTypes[t.GetId()]; !ok {
-		lookup.baseTypes[t.GetId()] = t
+	if existing, ok := lookup.baseTypes[t.TypeId()]; !ok {
+		lookup.baseTypes[t.TypeId()] = t
 		return nil
 	} else {
 		switch existing := existing.(type) {
@@ -58,8 +58,8 @@ func (lookup *TypeLookup) AddUserType(t *UserType) error {
 }
 
 func (lookup *TypeLookup) AddStructType(t *StructType) error {
-	if existing, ok := lookup.baseTypes[t.GetId()]; !ok {
-		lookup.baseTypes[t.GetId()] = t
+	if existing, ok := lookup.baseTypes[t.TypeId()]; !ok {
+		lookup.baseTypes[t.TypeId()] = t
 		return nil
 	} else {
 		switch existing := existing.(type) {
@@ -133,7 +133,7 @@ func (lookup *TypeLookup) Get(id TypeId) Type {
 }
 
 func (lookup *TypeLookup) GetMap(t Type) *TypedMapType {
-	id := t.GetId()
+	id := t.TypeId()
 	if id.MapDim != 0 {
 		panic("map<map> is not allowed!")
 	}
@@ -154,7 +154,7 @@ func (lookup *TypeLookup) GetArray(t Type, dim int16) Type {
 	if dim == 0 {
 		return t
 	}
-	id := t.GetId()
+	id := t.TypeId()
 	id.ArrayDim += dim
 	return lookup.Get(id)
 }

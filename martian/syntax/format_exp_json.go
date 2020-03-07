@@ -38,7 +38,7 @@ func (binding *ResolvedBinding) MarshalJSON() ([]byte, error) {
 	}
 	var buf bytes.Buffer
 	buf.Grow(jsonSizeEstimate(binding.Exp) +
-		binding.Type.GetId().jsonSizeEstimate() +
+		binding.Type.TypeId().jsonSizeEstimate() +
 		len(`{"expression":,"type":}`))
 	err := binding.encodeJSON(&buf)
 	return buf.Bytes(), err
@@ -50,7 +50,7 @@ func (binding *ResolvedBinding) jsonSizeEstimate() int {
 	}
 	return jsonSizeEstimate(binding.Exp) +
 		len(`{"expression":,"type":}`) +
-		binding.Type.GetId().jsonSizeEstimate()
+		binding.Type.TypeId().jsonSizeEstimate()
 }
 
 // EncodeJSON writes a json representation of the object to a buffer.
@@ -72,7 +72,7 @@ func (binding *ResolvedBinding) encodeJSON(buf *bytes.Buffer) error {
 	if _, err := buf.WriteString(`,"type":`); err != nil {
 		return err
 	}
-	if err := binding.Type.GetId().EncodeJSON(buf); err != nil {
+	if err := binding.Type.TypeId().EncodeJSON(buf); err != nil {
 		return err
 	}
 	_, err := buf.WriteRune('}')
@@ -159,7 +159,7 @@ func (binding *BoundReference) MarshalJSON() ([]byte, error) {
 	var buf bytes.Buffer
 	bidLen := len(binding.Exp.Id) +
 		len(binding.Exp.OutputId) +
-		binding.Type.GetId().jsonSizeEstimate()
+		binding.Type.TypeId().jsonSizeEstimate()
 	buf.Grow(bidLen + len(`{"ref":".","type":}`))
 	err := binding.encodeJSON(&buf)
 	return buf.Bytes(), err
@@ -170,7 +170,7 @@ func (binding *BoundReference) jsonSizeEstimate() int {
 		return 4
 	}
 	return jsonSizeEstimate(binding.Exp) +
-		binding.Type.GetId().jsonSizeEstimate() + len(`{"ref":".","type":}`)
+		binding.Type.TypeId().jsonSizeEstimate() + len(`{"ref":".","type":}`)
 }
 
 // EncodeJSON writes a json representation of the object to a buffer.
@@ -201,7 +201,7 @@ func (binding *BoundReference) encodeJSON(buf *bytes.Buffer) error {
 	if _, err := buf.WriteString(`","type":"`); err != nil {
 		return err
 	}
-	if err := binding.Type.GetId().EncodeJSON(buf); err != nil {
+	if err := binding.Type.TypeId().EncodeJSON(buf); err != nil {
 		return err
 	}
 	_, err := buf.WriteString(`"}`)

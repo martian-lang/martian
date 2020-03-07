@@ -82,15 +82,15 @@ func baseType(t syntax.Type) *syntax.StructType {
 	case *syntax.StructType:
 		return t
 	}
-	tid := t.GetId()
-	panic("Unexpected resolved output type " + tid.String())
+	tid := t.TypeId()
+	panic("Unexpected resolved output type" + tid.String())
 }
 
 func (node *Node) outputBindingInfo(fork ForkId) []BindingInfo {
 	readSize := node.top.rt.FreeMemBytes() / int64(len(node.prenodes)+1)
 	ro := node.call.ResolvedOutputs()
 	if ro == nil || ro.Type == nil ||
-		ro.Type.GetId().Tname == syntax.KindNull || ro.Exp == nil {
+		ro.Type.TypeId().Tname == syntax.KindNull || ro.Exp == nil {
 		return nil
 	}
 	if _, ok := ro.Exp.(*syntax.NullExp); ok {
@@ -104,7 +104,7 @@ func (node *Node) outputBindingInfo(fork ForkId) []BindingInfo {
 			rb, err := ro.BindingPath(member.Id, fm, nil, node.top.types)
 			if err == nil {
 				result[i].Id = member.Id
-				result[i].Type = rb.Type.GetId()
+				result[i].Type = rb.Type.TypeId()
 				if refs, err := rb.FindRefs(node.top.types); err != nil {
 					panic(err)
 				} else if len(refs) == 1 {
@@ -144,7 +144,7 @@ func (node *Node) resolvePipelineOutputs(fork ForkId) (json.Marshaler, syntax.Ty
 	}
 	_, r, err := node.top.resolve(ro.Exp, t, fork, readSize)
 	if err != nil {
-		tid := t.GetId()
+		tid := t.TypeId()
 		err = &elementError{
 			element: node.GetFQName() + " fork " + fork.GoString() + " (" + tid.String() + ")",
 			inner:   err,
@@ -187,7 +187,7 @@ func (node *TopNode) resolve(binding syntax.Exp, t syntax.Type,
 	case *syntax.DisabledExp:
 		return node.resolveDisabledExp(binding, t, fork, readSize)
 	default:
-		tid := t.GetId()
+		tid := t.TypeId()
 		panic(fmt.Sprintf("unexpected ref or sweep type %T, wanted %s",
 			binding, tid.String()))
 	}
@@ -286,7 +286,7 @@ func (node *TopNode) resolveSplit(binding *syntax.SplitExp, t syntax.Type,
 			r = rr
 		default:
 			var parser syntax.Parser
-			r, err = convertToExp(&parser, false, result, t.GetId(), node.types)
+			r, err = convertToExp(&parser, false, result, t.TypeId(), node.types)
 			if err != nil {
 				return ready, binding, &elementError{
 					element: "unresolved split value",
@@ -1039,7 +1039,7 @@ func (node *TopNode) resolveArray(binding *syntax.ArrayExp, t syntax.Type,
 	readSize int64) (bool, json.Marshaler, error) {
 	result := make(marshallerArray, len(binding.Value))
 	if at, ok := t.(*syntax.ArrayType); !ok {
-		id := t.GetId()
+		id := t.TypeId()
 		return true, nil, &syntax.IncompatibleTypeError{
 			Message: id.String() + " is not an array type",
 		}

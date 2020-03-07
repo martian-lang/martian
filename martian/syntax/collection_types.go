@@ -33,8 +33,8 @@ func baseType(t Type) Type {
 	return t
 }
 
-func (s *ArrayType) GetId() TypeId {
-	id := s.Elem.GetId()
+func (s *ArrayType) TypeId() TypeId {
+	id := s.Elem.TypeId()
 	id.ArrayDim += s.Dim
 	return id
 }
@@ -71,7 +71,7 @@ func (s *ArrayType) IsAssignableFrom(other Type, lookup *TypeLookup) error {
 		return &IncompatibleTypeError{
 			Message: fmt.Sprintf(
 				"cannot assign %s to an array value",
-				other.GetId().str()),
+				other.TypeId().str()),
 		}
 	}
 }
@@ -133,14 +133,14 @@ func (s *ArrayType) IsValidExpression(exp Exp, pipeline *Pipeline, ast *Ast) err
 		return &IncompatibleTypeError{
 			Message: fmt.Sprintf(
 				"BindingError: cannot assign %s to %s",
-				exp.getKind(), s.GetId().str()),
+				exp.getKind(), s.TypeId().str()),
 		}
 	}
 }
 func (s *ArrayType) CheckEqual(other Type) error {
 	if other, ok := other.(*ArrayType); !ok {
 		return &IncompatibleTypeError{
-			Message: other.GetId().str() + " is not an array",
+			Message: other.TypeId().str() + " is not an array",
 		}
 	} else if err := s.Elem.CheckEqual(other.Elem); err != nil {
 		return &IncompatibleTypeError{
@@ -219,7 +219,7 @@ func (s *ArrayType) IsValidJson(data json.RawMessage,
 	}
 	var subtype Type
 	if s.Dim > 1 {
-		id := s.GetId()
+		id := s.TypeId()
 		id.ArrayDim--
 		subtype = lookup.Get(id)
 	} else {
@@ -315,8 +315,8 @@ func (s *ArrayType) FilterJson(data json.RawMessage, lookup *TypeLookup) (json.R
 	}
 }
 
-func (s *TypedMapType) GetId() TypeId {
-	id := s.Elem.GetId()
+func (s *TypedMapType) TypeId() TypeId {
+	id := s.Elem.TypeId()
 	return TypeId{
 		Tname:  id.Tname,
 		MapDim: 1 + id.ArrayDim,
@@ -366,7 +366,7 @@ func (s *TypedMapType) IsAssignableFrom(other Type, lookup *TypeLookup) error {
 		return &IncompatibleTypeError{
 			Message: fmt.Sprintf(
 				"cannot assign %s to a typed map value",
-				other.GetId().str()),
+				other.TypeId().str()),
 		}
 	}
 }
@@ -426,14 +426,14 @@ func (s *TypedMapType) IsValidExpression(exp Exp, pipeline *Pipeline, ast *Ast) 
 		return &IncompatibleTypeError{
 			Message: fmt.Sprintf(
 				"cannot assign %s to %s",
-				exp.getKind(), s.GetId().str()),
+				exp.getKind(), s.TypeId().str()),
 		}
 	}
 }
 func (s *TypedMapType) CheckEqual(other Type) error {
 	if other, ok := other.(*TypedMapType); !ok {
 		return &IncompatibleTypeError{
-			Message: other.GetId().str() + " is not a typed map",
+			Message: other.TypeId().str() + " is not a typed map",
 		}
 	} else if err := s.Elem.CheckEqual(other.Elem); err != nil {
 		return &IncompatibleTypeError{

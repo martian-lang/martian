@@ -38,6 +38,12 @@ type (
 		// Patterned after code in Go's ast.go.
 		getNode() *AstNode
 		File() *SourceFile
+		Line() int
+	}
+
+	NamedNode interface {
+		AstNodable
+		GetId() string
 	}
 
 	nodeContainer interface {
@@ -128,6 +134,14 @@ func DefiningFile(node AstNodable) string {
 	return node.getNode().Loc.File.FullPath
 }
 
+// GetComments returns the comments attached to a node.
+func GetComments(node AstNodable) []string {
+	if n := node.getNode(); n != nil {
+		return n.Comments
+	}
+	return nil
+}
+
 func (s *Ast) inheritComments() bool { return false }
 func (s *Ast) getSubnodes() []AstNodable {
 	subs := make([]AstNodable, 0,
@@ -157,11 +171,13 @@ func (s *AstNode) getNode() *AstNode         { return s }
 func (s *AstNode) getSubnodes() []AstNodable { return nil }
 func (s *AstNode) inheritComments() bool     { return false }
 func (s *AstNode) File() *SourceFile         { return s.Loc.File }
+func (s *AstNode) Line() int                 { return s.Loc.Line }
 
 func (s *Include) getNode() *AstNode         { return &s.Node }
 func (s *Include) getSubnodes() []AstNodable { return nil }
 func (s *Include) inheritComments() bool     { return false }
 func (s *Include) File() *SourceFile         { return s.Node.Loc.File }
+func (s *Include) Line() int                 { return s.Node.Loc.Line }
 
 func (ast *Ast) merge(other *Ast) error {
 	ast.UserTypes = append(other.UserTypes, ast.UserTypes...)

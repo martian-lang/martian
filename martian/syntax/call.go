@@ -51,6 +51,8 @@ type (
 
 func (s *CallStm) getNode() *AstNode { return &s.Node }
 func (s *CallStm) File() *SourceFile { return s.Node.Loc.File }
+func (s *CallStm) Line() int         { return s.Node.Loc.Line }
+func (s *CallStm) GetId() string     { return s.Id }
 
 func (s *CallStm) inheritComments() bool { return false }
 func (s *CallStm) getSubnodes() []AstNodable {

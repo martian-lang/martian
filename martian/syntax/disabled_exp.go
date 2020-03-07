@@ -17,6 +17,9 @@ func (s *DisabledExp) getNode() *AstNode {
 func (s *DisabledExp) File() *SourceFile {
 	return s.Value.File()
 }
+func (s *DisabledExp) Line() int {
+	return s.Value.Line()
+}
 func (s *DisabledExp) inheritComments() bool {
 	return s.Value.inheritComments()
 }

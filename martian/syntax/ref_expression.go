@@ -136,6 +136,7 @@ type (
 
 func (s *RefExp) getNode() *AstNode { return &s.Node }
 func (s *RefExp) File() *SourceFile { return s.Node.Loc.File }
+func (s *RefExp) Line() int         { return s.Node.Loc.Line }
 func (s *RefExp) getKind() ExpKind  { return s.Kind }
 
 func (s *RefExp) inheritComments() bool { return false }

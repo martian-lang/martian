@@ -337,7 +337,7 @@ func TestResolvedBindingFindRefs(t *testing.T) {
 		}
 		if refs[i].Type != expect.Type {
 			t.Errorf("[%d].Type: %q != %q", i,
-				refs[i].Type.GetId().str(), expect.Type.GetId().str())
+				refs[i].Type.TypeId().str(), expect.Type.TypeId().str())
 		}
 	}
 }

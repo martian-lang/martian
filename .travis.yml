@@ -21,7 +21,7 @@ matrix:
     - pip install --user pylint
   - name: "python3"
     go:
-    - 1.12.x
+    - 1.13.x
     sudo: false
     dist: xenial
     before_install:

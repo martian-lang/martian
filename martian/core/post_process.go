@@ -300,7 +300,7 @@ func moveOutDir(w *bytes.Buffer, value json.RawMessage,
 		}
 		sort.Strings(keys)
 		p := syntax.StructMember{
-			Tname: t.Elem.GetId(),
+			Tname: t.Elem.TypeId(),
 		}
 		p.CacheIsFile(t.Elem)
 		for i, k := range keys {
@@ -364,7 +364,7 @@ func moveOutArrayDir(w *bytes.Buffer, value json.RawMessage,
 		return err
 	}
 	p := syntax.StructMember{
-		Tname: t.Elem.GetId(),
+		Tname: t.Elem.TypeId(),
 	}
 	p.CacheIsFile(t.Elem)
 	width := util.WidthForInt(len(valueArr))
@@ -712,7 +712,7 @@ func printOutDir(w *bytes.Buffer, value json.RawMessage,
 		sort.Strings(keys)
 		newIndent := makeNewIndent(indent, keyLen)
 		p := syntax.StructMember{
-			Tname: t.Elem.GetId(),
+			Tname: t.Elem.TypeId(),
 		}
 		p.CacheIsFile(t.Elem)
 		for _, k := range keys {
@@ -810,7 +810,7 @@ func printOutArrayDir(w *bytes.Buffer, value json.RawMessage,
 	width := util.WidthForInt(len(valueArr))
 	newIndent := makeNewIndent(indent, width)
 	p := syntax.StructMember{
-		Tname: t.Elem.GetId(),
+		Tname: t.Elem.TypeId(),
 	}
 	p.CacheIsFile(t.Elem)
 	var errs syntax.ErrorList

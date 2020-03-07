@@ -1,0 +1,19 @@
+load("@io_bazel_rules_go//go:def.bzl", "go_binary", "go_library")
+
+go_library(
+    name = "go_default_library",
+    srcs = ["main.go"],
+    importpath = "github.com/martian-lang/martian/cmd/mrdr",
+    visibility = ["//visibility:private"],
+    deps = [
+        "//martian/syntax:go_default_library",
+        "//martian/syntax/refactoring:go_default_library",
+        "//martian/util:go_default_library",
+    ],
+)
+
+go_binary(
+    name = "mrdr",
+    embed = [":go_default_library"],
+    visibility = ["//visibility:public"],
+)
