@@ -7,6 +7,7 @@
 package syntax
 
 import (
+	"errors"
 	"fmt"
 	"io"
 	"os"
@@ -212,6 +213,22 @@ func (err *ParseError) Error() string {
 	return buff.String()
 }
 
+// An ErrorList can be used to collect and return multiple errors.
+//
+// Example usage:
+//
+//     func foo(things []int) error {
+//         var errs ErrorList
+//         for _, thing := range things {
+//             if err := bar(thing); err != nil {
+//                 errs = append(errs, err)
+//             }
+//         }
+//         return errs.If()  // Important!
+//    }
+//
+// It is very important to note that the .If() in the return statement
+// is crucial.  See https://golang.org/doc/faq#nil_error.
 type ErrorList []error
 
 func (errList ErrorList) Error() string {
@@ -244,10 +261,23 @@ func (errList ErrorList) writeTo(buf stringWriter) {
 	}
 }
 
-// Collapse the error list down, and remove any nil errors.
-// Returns nil if the list is empty.
+// If flattens an ErrorList, appending any contained ErrorLists and removing nil
+// elements.  If the result is a single element, that element is returned
+// without a slice wrapper.  If there are no elements, nil is returned.
+//
+// Note that this it is critical to use this method when returning type error,
+// as returning a nil-valued ErrorList as an error will result in a non-nil
+// error.  See https://golang.org/doc/faq#nil_error
 func (errList ErrorList) If() error {
-	if len(errList) > 0 {
+	// Common case, if there's only one error in the list, return it without
+	// allocating a new list.
+	if len(errList) == 1 {
+		err := errList[0]
+		if list, ok := err.(ErrorList); ok {
+			return list.If()
+		}
+		return err
+	} else if len(errList) > 0 {
 		errs := make(ErrorList, 0, len(errList))
 		for _, err := range errList {
 			if err != nil {
@@ -267,6 +297,36 @@ func (errList ErrorList) If() error {
 			return errs
 		} else if len(errs) == 1 {
 			return errs[0]
+		}
+	}
+	return nil
+}
+
+// As returns true if any error in the list satisfies errors.As(err, target).
+func (errs ErrorList) As(target interface{}) bool {
+	for _, err := range errs {
+		if errors.As(err, target) {
+			return true
+		}
+	}
+	return false
+}
+
+// As returns true if any error in the list satisfies errors.Is(err, target).
+func (errs ErrorList) Is(target error) bool {
+	for _, err := range errs {
+		if errors.Is(err, target) {
+			return true
+		}
+	}
+	return false
+}
+
+// Returns the first non-nil error in the list, or nil.
+func (errs ErrorList) Unwrap() error {
+	for _, err := range errs {
+		if err != nil {
+			return err
 		}
 	}
 	return nil
