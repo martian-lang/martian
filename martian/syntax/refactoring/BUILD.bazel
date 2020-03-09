@@ -5,6 +5,7 @@ go_library(
     srcs = [
         "edit.go",
         "find_unused_callables.go",
+        "find_unused_outputs.go",
         "pragma.go",
         "refactor.go",
         "remove_calls.go",

@@ -76,7 +76,7 @@ func main() {
 	}
 
 	var removeParams, topCalls refactoring.StringSet
-	var listUnused, removeCalls, rewrite bool
+	var listUnusedCallables, removeCalls, rewrite bool
 	flags.Var(stringListValue{set: &removeParams}, "remove-input",
 		"Remove an input parameter from a stage, e.g. `STAGE.input_name`."+
 			"  Multiple parameters may be provided, separated with commas.")
@@ -86,7 +86,7 @@ func main() {
 	flags.Var(stringListValue{set: &topCalls}, "top-calls",
 		"A comma-separated `list` of pipeline names to treat as top-level "+
 			"calls for unused output analysis.")
-	flags.BoolVar(&listUnused, "list-unused", false,
+	flags.BoolVar(&listUnusedCallables, "list-unused", false,
 		"Print a list of stages or pipelines which are not called "+
 			"from any of the given top-calls.")
 	flags.BoolVar(&rewrite, "rewrite", false,
@@ -126,41 +126,90 @@ func main() {
 		os.Exit(10)
 	}
 
-	if listUnused && len(topCalls) > 0 {
-		unused := refactoring.FindUnusedCallables(topCalls, compiledAsts)
+	if edit != nil {
+		for i, fname := range flags.Args() {
+			editFile(fileBytes[i], fname, mroPaths, edit, rewrite, &parser)
+		}
+	}
+
+	if len(topCalls) > 0 {
 		pwd, _ := os.Getwd()
 		if pwd != "" {
 			pwd += "/"
 		}
-		width := 0
-		for _, c := range unused {
-			if w := len(c.GetId()); w > width {
-				width = w
-			}
-		}
-		if width > 30 {
-			width = 30
-		}
-		for _, c := range unused {
-			var p string
-			if len(mroPaths) < 2 {
-				// Use path relative to MROPATH or current directory.
-				p, _, _ = syntax.IncludeFilePath(c.File().FullPath, mroPaths)
-			} else {
-				// Use absolute path or path relative to current directory.
-				p = c.File().FullPath
-				if strings.HasPrefix(p, pwd) {
-					p = p[len(pwd):]
+		if listUnusedCallables {
+			unused := refactoring.FindUnusedCallables(topCalls, compiledAsts)
+			width := 0
+			for _, c := range unused {
+				if w := len(c.GetId()); w > width {
+					width = w
 				}
 			}
-			fmt.Fprintf(os.Stderr, "Unused %-8s %-*s defined at %s:%d\n",
-				c.Type(), width, c.GetId(), p, c.Line())
+			if width > 30 {
+				width = 30
+			}
+			for _, c := range unused {
+				var p string
+				if len(mroPaths) < 2 {
+					// Use path relative to MROPATH or current directory.
+					p, _, _ = syntax.IncludeFilePath(c.File().FullPath, mroPaths)
+				} else {
+					// Use absolute path or path relative to current directory.
+					p = c.File().FullPath
+					if strings.HasPrefix(p, pwd) {
+						p = p[len(pwd):]
+					}
+				}
+				fmt.Fprintf(os.Stderr, "Unused %-8s %-*s defined at %s:%d\n",
+					c.Type(), width, c.GetId(), p, c.Line())
+			}
 		}
-	}
-
-	if edit != nil {
-		for i, fname := range flags.Args() {
-			editFile(fileBytes[i], fname, mroPaths, edit, rewrite, &parser)
+		// Print unused outputs from stages.
+		if unused, err := refactoring.FindUnusedStageOutputs(topCalls, compiledAsts); err != nil {
+			fmt.Fprintln(os.Stderr,
+				"Error finding unused stage outputs:",
+				err.Error())
+			os.Exit(11)
+		} else if len(unused) > 0 {
+			fmt.Fprintln(os.Stderr,
+				"Stage outputs not used in top-level outs or other stage inputs:")
+			var swidth, pwidth int
+			for _, c := range unused {
+				if w := len(c.Stage.GetId()); w > swidth {
+					swidth = w
+				}
+				if w := len(c.Output.Id); w > pwidth {
+					pwidth = w
+				}
+			}
+			if swidth > 30 {
+				swidth = 30
+			}
+			if pwidth > 26 {
+				pwidth = 26
+			}
+			for _, param := range unused {
+				var p string
+				if len(mroPaths) < 2 {
+					// Use path relative to MROPATH or current directory.
+					p, _, _ = syntax.IncludeFilePath(param.Output.File().FullPath, mroPaths)
+				} else {
+					// Use absolute path or path relative to current directory.
+					p = param.Output.File().FullPath
+					if strings.HasPrefix(p, pwd) {
+						p = p[len(pwd):]
+					}
+				}
+				pw := pwidth
+				if over := len(param.Stage.Id) - swidth; over > 0 {
+					pw -= over
+				}
+				fmt.Fprintf(os.Stderr,
+					"Stage %-*s output %-*s %s:%d\n",
+					swidth, param.Stage.Id,
+					pw, param.Output.Id,
+					p, param.Output.Line())
+			}
 		}
 	}
 }
