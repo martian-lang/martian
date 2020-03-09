@@ -266,7 +266,7 @@ func setupTestPipestance(t *testing.T, mro, name string) (*Pipestance, string) {
 	_, _, pipestance, err := rt.instantiatePipeline(string(src),
 		mro,
 		"test_struct_pipeline", psPath, nil,
-		"none", nil, false, context.Background())
+		"none", nil, true, false, context.Background())
 	if err != nil {
 		os.RemoveAll(psPath)
 		t.Fatal(err)

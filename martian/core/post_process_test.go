@@ -113,7 +113,7 @@ func TestPostProcess(t *testing.T) {
 	_, _, pipestance, err := rt.instantiatePipeline(string(src),
 		"testdata/struct_pipeline.mro",
 		"test_struct_pipeline", psPath, nil,
-		"none", nil, false, context.Background())
+		"none", nil, false, false, context.Background())
 	if err != nil {
 		os.RemoveAll(psPath)
 		t.Fatal(err)
@@ -362,7 +362,7 @@ func TestPostProcessEmpties(t *testing.T) {
 	_, _, pipestance, err := rt.instantiatePipeline(string(src),
 		"testdata/struct_pipeline.mro",
 		"test_struct_pipeline", psPath, nil,
-		"none", nil, false, context.Background())
+		"none", nil, false, false, context.Background())
 	if err != nil {
 		os.RemoveAll(psPath)
 		t.Fatal(err)

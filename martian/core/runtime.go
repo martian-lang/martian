@@ -277,12 +277,12 @@ func (c *RuntimeOptions) NewRuntime() *Runtime {
 // public InvokeWithSource and Reattach methods.
 func (self *Runtime) instantiatePipeline(src string, srcPath string, psid string,
 	pipestancePath string, mroPaths []string, mroVersion string,
-	envs map[string]string, readOnly bool,
+	envs map[string]string, checkSrc, readOnly bool,
 	ctx context.Context) (string, *syntax.Ast, *Pipestance, error) {
 	r := trace.StartRegion(ctx, "instantiatePipeline")
 	defer r.End()
 	// Parse the invocation source.
-	postsrc, _, ast, err := syntax.ParseSource(src, srcPath, mroPaths, !readOnly)
+	postsrc, _, ast, err := syntax.ParseSource(src, srcPath, mroPaths, checkSrc)
 	if err != nil {
 		return "", nil, nil, err
 	}
@@ -353,7 +353,7 @@ func (self *Runtime) InvokePipeline(src string, srcPath string, psid string,
 	src = os.ExpandEnv(src)
 	readOnly := false
 	postsrc, _, pipestance, err := self.instantiatePipeline(src, srcPath, psid, pipestancePath, mroPaths,
-		mroVersion, envs, readOnly, context.Background())
+		mroVersion, envs, false, readOnly, context.Background())
 	if err != nil {
 		// If instantiation failed, delete the pipestance folder.
 		os.RemoveAll(pipestancePath)
@@ -458,7 +458,7 @@ func (self *Runtime) reattachToPipestance(psid string, pipestancePath string,
 	_, ast, pipestance, err := self.instantiatePipeline(
 		src, invocationPath,
 		psid, pipestancePath, mroPaths,
-		mroVersion, envs, readOnly, ctx)
+		mroVersion, envs, checkSrc, readOnly, ctx)
 	if err != nil {
 		return nil, err
 	}
