@@ -269,6 +269,13 @@ func (errList ErrorList) writeTo(buf stringWriter) {
 // as returning a nil-valued ErrorList as an error will result in a non-nil
 // error.  See https://golang.org/doc/faq#nil_error
 func (errList ErrorList) If() error {
+	// Trim nils off the start/end.
+	for len(errList) > 0 && errList[0] == nil {
+		errList = errList[1:]
+	}
+	for len(errList) > 1 && errList[len(errList)-1] == nil {
+		errList = errList[:len(errList)-1]
+	}
 	// Common case, if there's only one error in the list, return it without
 	// allocating a new list.
 	if len(errList) == 1 {
@@ -278,17 +285,22 @@ func (errList ErrorList) If() error {
 		}
 		return err
 	} else if len(errList) > 0 {
-		errs := make(ErrorList, 0, len(errList))
-		for _, err := range errList {
-			if err != nil {
-				if list, ok := err.(ErrorList); ok {
-					err = list.If()
-				}
+		var errs ErrorList
+		for i, err := range errList {
+			if list, ok := err.(ErrorList); ok {
+				err = list.If()
 			}
 			if err != nil {
 				if list, ok := err.(ErrorList); ok {
-					errs = append(errs, list...)
+					if errs == nil {
+						errs = list
+					} else {
+						errs = append(errs, list...)
+					}
 				} else {
+					if errs == nil {
+						errs = make(ErrorList, 0, len(errList)-i)
+					}
 					errs = append(errs, err)
 				}
 			}
@@ -303,6 +315,8 @@ func (errList ErrorList) If() error {
 }
 
 // As returns true if any error in the list satisfies errors.As(err, target).
+//
+// Target will be set to the first error in the list for which this is true.
 func (errs ErrorList) As(target interface{}) bool {
 	for _, err := range errs {
 		if errors.As(err, target) {
