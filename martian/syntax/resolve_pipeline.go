@@ -12,6 +12,11 @@ type CallGraphPipeline struct {
 	Retain   []*RefExp `json:"retained,omitempty"`
 }
 
+// Kind returns KindPipeline.
+func (c *CallGraphPipeline) Kind() CallGraphNodeType {
+	return KindPipeline
+}
+
 // Returns the nodes of any stages or subpipelines called by this pipeline.
 func (c *CallGraphPipeline) GetChildren() []CallGraphNode {
 	return c.Children
