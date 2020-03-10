@@ -109,18 +109,15 @@ func FindUnusedStageOutputs(topCalls StringSet, asts []*syntax.Ast) ([]*StageOut
 				for _, disable := range node.Disabled() {
 					removeNodeOutputs(disable, nodes, outputs)
 				}
-			} else if pipe, ok := node.Callable().(*syntax.Pipeline); ok &&
-				pipe != nil && pipe.Retain != nil {
-				// Keep retained outputs.
-				for _, ref := range pipe.Retain.Refs {
-					pnode := nodes[ref.Id]
-					if ref.OutputId == "" {
-						delete(outputs, makeDecId(pnode.Callable()))
-					} else {
-						removeOutputId(
-							outputs[makeDecId(pnode.Callable())],
-							ref.OutputId)
-					}
+			}
+			for _, ref := range node.Retained() {
+				pnode := nodes[ref.Id]
+				if ref.OutputId == "" {
+					delete(outputs, makeDecId(pnode.Callable()))
+				} else {
+					removeOutputId(
+						outputs[makeDecId(pnode.Callable())],
+						ref.OutputId)
 				}
 			}
 			// Also remove outputs which feed top-level outputs.
