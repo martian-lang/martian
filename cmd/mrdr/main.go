@@ -153,12 +153,9 @@ func main() {
 			unused := refactoring.FindUnusedCallables(topCalls, compiledAsts)
 			width := 0
 			for _, c := range unused {
-				if w := len(c.GetId()); w > width {
+				if w := len(c.GetId()); w > width && w <= 30 {
 					width = w
 				}
-			}
-			if width > 30 {
-				width = 30
 			}
 			for _, c := range unused {
 				var p string
@@ -185,20 +182,11 @@ func main() {
 		} else if len(unused) > 0 {
 			fmt.Fprintln(os.Stderr,
 				"Stage outputs not used in top-level outs or other stage inputs:")
-			var swidth, pwidth int
+			var width int
 			for _, c := range unused {
-				if w := len(c.Stage.GetId()); w > swidth {
-					swidth = w
+				if w := len(c.Stage.Id) + len(c.Output.Id); w > width && w <= 55 {
+					width = w
 				}
-				if w := len(c.Output.Id); w > pwidth {
-					pwidth = w
-				}
-			}
-			if swidth > 30 {
-				swidth = 30
-			}
-			if pwidth > 26 {
-				pwidth = 26
 			}
 			for _, param := range unused {
 				var p string
@@ -212,13 +200,13 @@ func main() {
 						p = p[len(pwd):]
 					}
 				}
-				pw := pwidth
-				if over := len(param.Stage.Id) - swidth; over > 0 {
-					pw -= over
+				pw := width - len(param.Stage.Id)
+				if pw < 1 {
+					pw = 1
 				}
 				fmt.Fprintf(os.Stderr,
-					"Stage %-*s output %-*s %s:%d\n",
-					swidth, param.Stage.Id,
+					"Unused output %s.%-*s %s:%d\n",
+					param.Stage.Id,
 					pw, param.Output.Id,
 					p, param.Output.Line())
 			}
