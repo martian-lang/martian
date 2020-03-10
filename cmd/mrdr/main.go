@@ -75,10 +75,14 @@ func main() {
 		flags.PrintDefaults()
 	}
 
-	var removeParams, topCalls refactoring.StringSet
-	var listUnusedCallables, removeCalls, rewrite bool
+	var removeParams, removeOutputs, topCalls refactoring.StringSet
+	var listUnusedCallables, noRemoveUnusedOuts, removeCalls, rewrite bool
 	flags.Var(stringListValue{set: &removeParams}, "remove-input",
 		"Remove an input parameter from a stage, e.g. `STAGE.input_name`."+
+			"  Multiple parameters may be provided, separated with commas.")
+	flags.Var(stringListValue{set: &removeOutputs}, "remove-output",
+		"Remove an output parameter from a stage or pipeline, e.g. "+
+			"`STAGE.output_name`."+
 			"  Multiple parameters may be provided, separated with commas.")
 	flags.BoolVar(&removeCalls, "remove-unused-calls", false,
 		"Remove calls in pipelines if the called stage or pipeline "+
@@ -93,6 +97,8 @@ func main() {
 		"Write the modified content back to the original file.")
 	flags.BoolVar(&rewrite, "w", rewrite,
 		"Write the modified content back to the original file.")
+	flags.BoolVar(&noRemoveUnusedOuts, "no-remove-outs", false,
+		"Do not remove unused outputs from pipelines (ignored unless top-calls is specified).")
 	version := flags.Bool("v", false, "Print the version and exit.")
 	if err := flags.Parse(os.Args[1:]); err != nil {
 		panic(err)
@@ -117,8 +123,14 @@ func main() {
 	fileBytes, compiledAsts := loadFiles(flags.Args(), mroPaths, &parser)
 
 	edit, err := refactoring.Refactor(compiledAsts,
-		topCalls,
+		func(topCalls refactoring.StringSet, noRemoveUnusedOuts bool) refactoring.StringSet {
+			if noRemoveUnusedOuts {
+				return nil
+			}
+			return topCalls
+		}(topCalls, noRemoveUnusedOuts),
 		validateParams(removeParams, &flags),
+		validateParams(removeOutputs, &flags),
 		removeCalls)
 	if err != nil {
 		fmt.Fprintln(flags.Output(),
@@ -254,7 +266,7 @@ func validateParams(params refactoring.StringSet, flags *flag.FlagSet) []refacto
 		i := strings.IndexByte(param, '.')
 		if i < 1 {
 			fmt.Fprintln(flags.Output(),
-				"Parameter name must be specified as PIPELINE.input_name")
+				"Parameter name must be specified as PIPELINE.argument_name")
 			flags.Usage()
 			os.Exit(4)
 		}

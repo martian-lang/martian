@@ -36,10 +36,10 @@ type CallableParam struct {
 //
 // The returned Edit will apply the same changes to another Ast.
 func Refactor(asts []*syntax.Ast,
-	topCalls StringSet, removeParams []CallableParam,
+	topCalls StringSet, removeInParams, removeOutParams []CallableParam,
 	removeCalls bool) (Edit, error) {
 	edits := make(editSet, 0, 2+len(topCalls))
-	for _, removeParam := range removeParams {
+	for _, removeParam := range removeInParams {
 		cname := removeParam.Callable
 		param := removeParam.Param
 		callable := getCallable(cname, asts)
@@ -47,6 +47,30 @@ func Refactor(asts []*syntax.Ast,
 			return edits, fmt.Errorf("callable %s not found", cname)
 		}
 		edit := RemoveInputParam(callable, param, asts)
+		if edit != nil {
+			edits = append(edits, edit)
+			if removeCalls || len(topCalls) > 0 {
+				for _, ast := range asts {
+					// Run this on the compiled ASTs so removeCalls has
+					// an up-to-date version of the pipelines.
+					if _, err := edit.Apply(ast); err != nil {
+						return edits, fmt.Errorf("applying edit: %w", err)
+					}
+				}
+			}
+		}
+	}
+	for _, removeParam := range removeOutParams {
+		cname := removeParam.Callable
+		param := removeParam.Param
+		callable := getCallable(cname, asts)
+		if callable == nil {
+			return edits, fmt.Errorf("callable %s not found", cname)
+		}
+		edit, err := RemoveOutputParam(callable, param, asts)
+		if err != nil {
+			return edits, err
+		}
 		if edit != nil {
 			edits = append(edits, edit)
 			if removeCalls || len(topCalls) > 0 {
