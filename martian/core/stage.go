@@ -80,7 +80,7 @@ func makeOutArgs(outParams *syntax.OutParams, filesPath string, nullAll bool, lo
 
 // Escape hatch for this feature in case of weird nfs servers which don't
 // work for whatever reason.
-var disableUniquification = (os.Getenv("MRO_UNIQUIFIED_DIRECTORIES") == "disable")
+var disableUniquification = (os.Getenv("MRO_UNIQUIFIED_DIRECTORIES") == disable)
 
 //=============================================================================
 // Chunk
@@ -1133,7 +1133,7 @@ func (self *Fork) doComplete() {
 	} else {
 		self.metadata.WriteRaw(OutsFile, "{}")
 	}
-	if self.node.top.rt.Config.VdrMode == "post" {
+	if self.node.top.rt.Config.VdrMode == VdrPost {
 		// Still clean up tmp, but run before we've declared
 		// the stage maybe complete.
 		func() {
@@ -1165,7 +1165,7 @@ func (self *Fork) doComplete() {
 		self.metadata.WriteErrorString(msg)
 	}
 	self.removeEmptyFileArgs(joinOut)
-	if self.node.top.rt.Config.VdrMode != "post" {
+	if self.node.top.rt.Config.VdrMode != VdrPost {
 		go func() {
 			func() {
 				self.storageLock.Lock()

@@ -409,7 +409,7 @@ func (node *CallGraphStage) resolveDisable(disable []Exp,
 		}
 	}
 	if node.call.KnownLength() {
-		// Map over an empty set is equivilent to disabled.
+		// Map over an empty set is equivalent to disabled.
 		switch node.call.CallMode() {
 		case ModeArrayCall:
 			if node.call.ArrayLength() == 0 {

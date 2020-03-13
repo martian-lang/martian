@@ -14,7 +14,7 @@ import (
 // not bound in any reference, and the pipeline in question is not listed in
 // topCalls.
 //
-// The asts must be fully compiled, and in order to be accurite should contian
+// The asts must be fully compiled, and in order to be accurite should contain
 // the entire set of mros.
 //
 // Pipelines will only be edited if they're in the call graph for one or more

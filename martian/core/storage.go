@@ -195,7 +195,7 @@ func (self *Fork) vdrKillSome(partial *PartialVdrKillReport, done bool) (*VDRKil
 	} else {
 		self.updateParamFileCache()
 	}
-	if self.node.top.rt.Config.VdrMode == "disable" ||
+	if self.node.top.rt.Config.VdrMode == VdrDisable ||
 		!self.node.top.rt.overrides.GetOverride(
 			self.node, "force_volatile", true).(bool) {
 		if partial == nil {
@@ -649,8 +649,8 @@ func (self *Fork) cleanSplitTemp(partial *PartialVdrKillReport) *PartialVdrKillR
 				if err == nil {
 					partial.Size += uint64(info.Size())
 					partial.Count++
-					startEvent.DeltaBytes += int64(info.Size())
-					cleanupEvent.DeltaBytes -= int64(info.Size())
+					startEvent.DeltaBytes += info.Size()
+					cleanupEvent.DeltaBytes -= info.Size()
 				} else {
 					partial.Errors = append(partial.Errors, err.Error())
 				}
@@ -662,7 +662,7 @@ func (self *Fork) cleanSplitTemp(partial *PartialVdrKillReport) *PartialVdrKillR
 		for _, p := range filesPaths {
 			if err := util.Walk(p, func(tpath string, info os.FileInfo, err error) error {
 				if err == nil {
-					startEvent.DeltaBytes += int64(info.Size())
+					startEvent.DeltaBytes += info.Size()
 				} else {
 					partial.Errors = append(partial.Errors, err.Error())
 				}
@@ -676,7 +676,7 @@ func (self *Fork) cleanSplitTemp(partial *PartialVdrKillReport) *PartialVdrKillR
 			if info, err := os.Lstat(md); err != nil {
 				partial.Errors = append(partial.Errors, err.Error())
 			} else {
-				startEvent.DeltaBytes += int64(info.Size())
+				startEvent.DeltaBytes += info.Size()
 			}
 		}
 		if self.node.top.rt.Config.Debug {
@@ -742,8 +742,8 @@ func (self *Fork) cleanChunkTemp(partial *PartialVdrKillReport) *PartialVdrKillR
 			if err == nil {
 				partial.Size += uint64(info.Size())
 				partial.Count++
-				startEvent.DeltaBytes += int64(info.Size())
-				cleanupEvent.DeltaBytes -= int64(info.Size())
+				startEvent.DeltaBytes += info.Size()
+				cleanupEvent.DeltaBytes -= info.Size()
 			} else {
 				partial.Errors = append(partial.Errors, err.Error())
 			}
@@ -755,7 +755,7 @@ func (self *Fork) cleanChunkTemp(partial *PartialVdrKillReport) *PartialVdrKillR
 	for _, p := range files {
 		if err := util.Walk(p, func(tpath string, info os.FileInfo, err error) error {
 			if err == nil {
-				startEvent.DeltaBytes += int64(info.Size())
+				startEvent.DeltaBytes += info.Size()
 			} else {
 				partial.Errors = append(partial.Errors, err.Error())
 			}
@@ -770,7 +770,7 @@ func (self *Fork) cleanChunkTemp(partial *PartialVdrKillReport) *PartialVdrKillR
 			if info, err := os.Lstat(md); err != nil {
 				partial.Errors = append(partial.Errors, err.Error())
 			} else {
-				startEvent.DeltaBytes += int64(info.Size())
+				startEvent.DeltaBytes += info.Size()
 			}
 		}
 	}
@@ -830,8 +830,8 @@ func (self *Fork) cleanJoinTemp(partial *PartialVdrKillReport) *PartialVdrKillRe
 				if err == nil {
 					partial.Size += uint64(info.Size())
 					partial.Count++
-					startEvent.DeltaBytes += int64(info.Size())
-					cleanupEvent.DeltaBytes -= int64(info.Size())
+					startEvent.DeltaBytes += info.Size()
+					cleanupEvent.DeltaBytes -= info.Size()
 				} else {
 					partial.Errors = append(partial.Errors, err.Error())
 				}
@@ -841,7 +841,7 @@ func (self *Fork) cleanJoinTemp(partial *PartialVdrKillReport) *PartialVdrKillRe
 		for _, p := range filesPaths {
 			util.Walk(p, func(tpath string, info os.FileInfo, err error) error {
 				if err == nil {
-					startEvent.DeltaBytes += int64(info.Size())
+					startEvent.DeltaBytes += info.Size()
 				} else {
 					partial.Errors = append(partial.Errors, err.Error())
 				}
@@ -850,7 +850,7 @@ func (self *Fork) cleanJoinTemp(partial *PartialVdrKillReport) *PartialVdrKillRe
 		}
 		for _, md := range self.join_metadata.glob() {
 			if info, err := os.Lstat(md); err == nil {
-				startEvent.DeltaBytes += int64(info.Size())
+				startEvent.DeltaBytes += info.Size()
 			} else {
 				partial.Errors = append(partial.Errors, err.Error())
 			}
@@ -890,7 +890,7 @@ func (self *Fork) cleanJoinTemp(partial *PartialVdrKillReport) *PartialVdrKillRe
 // through partialVdrKill in order to ensure accounting information is
 // correctly preserved.
 func (self *Fork) vdrKill(partialKill *PartialVdrKillReport) *VDRKillReport {
-	if self.node.top.rt.Config.VdrMode == "disable" {
+	if self.node.top.rt.Config.VdrMode == VdrDisable {
 		return nil
 	}
 	if killReport, ok := self.getVdrKillReport(); ok {

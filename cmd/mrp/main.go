@@ -199,8 +199,8 @@ func flushChannel(c <-chan struct{}) {
 //=============================================================================
 // Pipestance runner.
 //=============================================================================
-func runLoop(pipestanceBox *pipestanceHolder, stepSecs time.Duration, vdrMode string,
-	noExit bool, localJobDone <-chan struct{}) {
+func runLoop(pipestanceBox *pipestanceHolder, stepSecs time.Duration,
+	vdrMode core.VdrMode, noExit bool, localJobDone <-chan struct{}) {
 	pipestanceBox.getPipestance().LoadMetadata(context.Background())
 
 	t := time.NewTimer(0)
@@ -221,7 +221,8 @@ func runLoop(pipestanceBox *pipestanceHolder, stepSecs time.Duration, vdrMode st
 					<-t.C
 				}
 			}
-			if !pipestanceBox.lastLogCheck.IsZero() && time.Since(pipestanceBox.lastLogCheck) > time.Minute {
+			if !pipestanceBox.lastLogCheck.IsZero() &&
+				time.Since(pipestanceBox.lastLogCheck) > time.Minute {
 				if err := util.VerifyLogFile(); err != nil {
 					util.PrintError(err, "runtime",
 						"Pipestance directory seems to have disappeared.")
@@ -239,7 +240,8 @@ func runLoop(pipestanceBox *pipestanceHolder, stepSecs time.Duration, vdrMode st
 	}
 }
 
-func loopBody(pipestanceBox *pipestanceHolder, vdrMode string, noExit bool) bool {
+func loopBody(pipestanceBox *pipestanceHolder,
+	vdrMode core.VdrMode, noExit bool) bool {
 	pipestance := pipestanceBox.getPipestance()
 	ctx, task := trace.NewTask(context.Background(), "update")
 	defer task.End()
@@ -316,7 +318,9 @@ func attemptRetry(pipestance *core.Pipestance, pipestanceBox *pipestanceHolder,
 
 		pipestance.Unlock()
 		if transient_log != "" {
-			util.LogInfo("runtime", "Transient error detected.  Log content:\n\n%s\n", transient_log)
+			util.LogInfo("runtime",
+				"Transient error detected.  Log content:\n\n%s\n",
+				transient_log)
 		}
 		util.LogInfo("runtime", "Attempting retry.")
 		if err := pipestanceBox.restart(ctx); err != nil {
@@ -328,7 +332,7 @@ func attemptRetry(pipestance *core.Pipestance, pipestanceBox *pipestanceHolder,
 }
 
 func cleanupCompleted(pipestance *core.Pipestance, pipestanceBox *pipestanceHolder,
-	vdrMode string, noExit bool, ctx context.Context) {
+	vdrMode core.VdrMode, noExit bool, ctx context.Context) {
 	r := trace.StartRegion(ctx, "cleanupCompleted")
 	defer r.End()
 	if pipestanceBox.readOnly {
@@ -338,7 +342,7 @@ func cleanupCompleted(pipestance *core.Pipestance, pipestanceBox *pipestanceHold
 	}
 	pipestanceBox.cleanupLock.Lock()
 	defer pipestanceBox.cleanupLock.Unlock()
-	if vdrMode == "disable" {
+	if vdrMode == core.VdrDisable {
 		util.LogInfo("runtime", "VDR disabled. No files killed.")
 	} else {
 		killReport := pipestance.VDRKill()
@@ -754,42 +758,40 @@ Options:
 		}
 	}
 
-	// Max parallel jobs.
 	if config.JobMode != "local" {
+		// Max parallel jobs.
 		config.MaxJobs = 64
-	}
-	if value := opts["--maxjobs"]; value != nil {
-		if value, err := strconv.Atoi(value.(string)); err == nil {
-			config.MaxJobs = value
-		} else {
-			util.PrintError(err, "options",
-				"Could not parse --maxjobs value \"%s\"",
-				opts["--maxjobs"].(string))
-			os.Exit(1)
+		if value := opts["--maxjobs"]; value != nil {
+			if value, err := strconv.Atoi(value.(string)); err == nil {
+				config.MaxJobs = value
+			} else {
+				util.PrintError(err, "options",
+					"Could not parse --maxjobs value \"%s\"",
+					opts["--maxjobs"].(string))
+				os.Exit(1)
+			}
 		}
-	}
-	util.LogInfo("options", "--maxjobs=%d", config.MaxJobs)
+		util.LogInfo("options", "--maxjobs=%d", config.MaxJobs)
 
-	// frequency (in milliseconds) that jobs will be sent to the queue
-	// (this is a minimum bound, as it may take longer to emit jobs)
-	if config.JobMode != "local" {
+		// frequency (in milliseconds) that jobs will be sent to the queue
+		// (this is a minimum bound, as it may take longer to emit jobs)
 		config.JobFreqMillis = 100
-	}
-	if value := opts["--jobinterval"]; value != nil {
-		if value, err := strconv.Atoi(value.(string)); err == nil {
-			config.JobFreqMillis = value
-		} else {
-			util.PrintError(err, "options",
-				"Could not parse --jobinterval value \"%s\"",
-				opts["--jobinterval"].(string))
-			os.Exit(1)
+		if value := opts["--jobinterval"]; value != nil {
+			if value, err := strconv.Atoi(value.(string)); err == nil {
+				config.JobFreqMillis = value
+			} else {
+				util.PrintError(err, "options",
+					"Could not parse --jobinterval value \"%s\"",
+					opts["--jobinterval"].(string))
+				os.Exit(1)
+			}
 		}
+		util.LogInfo("options", "--jobinterval=%d", config.JobFreqMillis)
 	}
-	util.LogInfo("options", "--jobinterval=%d", config.JobFreqMillis)
 
 	// Compute vdrMode.
 	if value := opts["--vdrmode"]; value != nil {
-		config.VdrMode = value.(string)
+		config.VdrMode = core.VdrMode(value.(string))
 	}
 	util.LogInfo("options", "--vdrmode=%s", config.VdrMode)
 	core.VerifyVDRMode(config.VdrMode)
@@ -833,7 +835,8 @@ Options:
 	} else if c.enableUI {
 		key := make([]byte, 32)
 		if _, err := rand.Read(key); err != nil {
-			util.PrintError(err, "webserv", "Failed to generate an authentication key.")
+			util.PrintError(err, "webserv",
+				"Failed to generate an authentication key.")
 			os.Exit(1)
 		}
 		c.authKey = base64.RawURLEncoding.EncodeToString(key)

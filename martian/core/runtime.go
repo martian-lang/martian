@@ -51,20 +51,22 @@ func ParseVersions(data string) (string, string, error) {
 	return versions.Martian, versions.Pipelines, nil
 }
 
-func VerifyVDRMode(vdrMode string) {
-	validModes := []string{"rolling", "post", "disable"}
-	for _, validMode := range validModes {
-		if validMode == vdrMode {
-			return
-		}
+func VerifyVDRMode(vdrMode VdrMode) {
+	switch vdrMode {
+	case VdrRolling, VdrPost, VdrDisable:
+		return
 	}
-	util.PrintInfo("runtime", "Invalid VDR mode: %s. Valid VDR modes: %s", vdrMode, strings.Join(validModes, ", "))
+	util.PrintInfo("runtime",
+		"Invalid VDR mode: %s. Valid VDR modes: rolling, post, disable",
+		vdrMode)
 	os.Exit(1)
 }
 
 func VerifyOnFinish(onfinish string) {
 	if _, err := exec.LookPath(onfinish); err != nil {
-		util.PrintInfo("runtime", "Invalid onfinish hook executable (%v): %v", err, onfinish)
+		util.PrintInfo("runtime",
+			"Invalid onfinish hook executable (%v): %v",
+			err, onfinish)
 		os.Exit(1)
 	}
 }
@@ -109,6 +111,16 @@ func DefaultRetries() int {
 // Runtime
 //=============================================================================
 
+const disable = "disable"
+
+type VdrMode string
+
+const (
+	VdrDisable = disable
+	VdrPost    = "post"
+	VdrRolling = "rolling"
+)
+
 // Configuration required to initialize a Runtime object.
 type RuntimeOptions struct {
 	// The runtime mode (required): either "local" or a named mode from
@@ -117,7 +129,7 @@ type RuntimeOptions struct {
 
 	// The volatile disk recovery mode (required): either "post",
 	// "rolling", or "disable".
-	VdrMode string
+	VdrMode VdrMode
 
 	// The profiling mode (required): "disable" or one of the available
 	// constants.
@@ -143,23 +155,25 @@ type RuntimeOptions struct {
 	NeverLocal      bool
 }
 
+const localMode = "local"
+
 func DefaultRuntimeOptions() RuntimeOptions {
 	return RuntimeOptions{
 		MartianVersion: util.GetVersion(),
 		ProfileMode:    DisableProfile,
-		JobMode:        "local",
-		VdrMode:        "rolling",
+		JobMode:        localMode,
+		VdrMode:        VdrRolling,
 	}
 }
 
 // returns the set of command line flags which would set these options.
 func (config *RuntimeOptions) ToFlags() []string {
 	var flags []string
-	if config.JobMode != "local" {
+	if config.JobMode != localMode {
 		flags = append(flags, "--jobmode="+config.JobMode)
 	}
-	if config.VdrMode != "post" {
-		flags = append(flags, "--vdrmode="+config.VdrMode)
+	if config.VdrMode != VdrRolling {
+		flags = append(flags, "--vdrmode="+string(config.VdrMode))
 	}
 	if config.ProfileMode != DisableProfile {
 		flags = append(flags, fmt.Sprintf("--profile=%v",
@@ -253,9 +267,9 @@ func (c *RuntimeOptions) NewRuntime() *Runtime {
 		c.LocalMem, c.LocalVMem,
 		c.Debug,
 		c.LimitLoadavg,
-		c.JobMode != "local",
+		c.JobMode != localMode,
 		self.jobConfig)
-	if c.JobMode == "local" {
+	if c.JobMode == localMode {
 		self.JobManager = self.LocalJobManager
 	} else {
 		self.JobManager = NewRemoteJobManager(c.JobMode, c.MemPerCore, c.MaxJobs,

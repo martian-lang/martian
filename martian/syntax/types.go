@@ -42,7 +42,7 @@ type (
 		CanFilter() bool
 
 		// CheckJson returns true if the given json message is a superset of
-		// what is requried for the type, and a non-nil error if the given json
+		// what is required for the type, and a non-nil error if the given json
 		// message cannot be parsed as this type.  If it can, but is malformed,
 		// non-fatal errors are written to the given strings.Builder.
 		IsValidJson(json.RawMessage, *strings.Builder, *TypeLookup) error
@@ -78,7 +78,7 @@ const (
 	KindIsNotFile FileKind = iota
 	// Types which do not represent files formally, but may contain paths.
 	// Such files do not get copied to the final output directory but are still
-	// relevent for VDR.
+	// relevant for VDR.
 	KindMayContainPaths FileKind = iota
 	// Types which refer directly to files.
 	KindIsFile FileKind = iota

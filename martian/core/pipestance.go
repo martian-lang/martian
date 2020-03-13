@@ -427,7 +427,7 @@ func (self *Pipestance) RestartLocalJobs(jobMode string) error {
 				return err
 			}
 		}
-		if node.state == Running && (jobMode == "local" || node.local) {
+		if node.state == Running && (jobMode == localMode || node.local) {
 			util.PrintInfo("runtime", "Found orphaned local stage: %s", node.GetFQName())
 			if err := node.restartLocalJobs(); err != nil {
 				return err
@@ -587,7 +587,7 @@ func (self *Pipestance) StepNodes(ctx context.Context) bool {
 		}
 	}
 	if err := self.node.top.rt.LocalJobManager.refreshResources(
-		self.node.top.rt.Config.JobMode == "local"); err != nil {
+		self.node.top.rt.Config.JobMode == localMode); err != nil {
 		util.LogError(err, "runtime",
 			"Error refreshing local resources: %s", err.Error())
 	}

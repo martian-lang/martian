@@ -41,17 +41,6 @@ func (e editSet) Apply(ast *syntax.Ast) (int, error) {
 	return count, errs.If()
 }
 
-func makeEditSet(m map[decId]Edit) editSet {
-	if len(m) == 0 {
-		return nil
-	}
-	set := make(editSet, 0, len(m))
-	for _, v := range m {
-		set = append(set, v)
-	}
-	return set
-}
-
 // A Matcher is used to determine whether an edit applies to a given Ast.
 type matcher func(*syntax.Ast) bool
 

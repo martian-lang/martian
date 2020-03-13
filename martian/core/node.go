@@ -1149,13 +1149,13 @@ func (self *Node) runJob(shellName string, fqname, stageType string, metadata *M
 	res *JobResources) {
 
 	// Configure local variable dumping.
-	stackVars := "disable"
+	stackVars := disable
 	if self.top.rt.Config.StackVars {
 		stackVars = "stackvars"
 	}
 
 	// Configure memory monitoring.
-	monitor := "disable"
+	monitor := disable
 	if self.top.rt.Config.Monitor {
 		monitor = "monitor"
 	}
@@ -1208,7 +1208,7 @@ func (self *Node) runJob(shellName string, fqname, stageType string, metadata *M
 	jobMode := self.top.rt.Config.JobMode
 	jobManager := self.top.rt.JobManager
 	if self.local {
-		jobMode = "local"
+		jobMode = localMode
 		jobManager = self.top.rt.LocalJobManager
 	}
 	jobModeLabel := strings.Replace(jobMode, ".template", "", -1)

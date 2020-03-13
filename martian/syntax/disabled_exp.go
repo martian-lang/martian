@@ -87,7 +87,7 @@ func (s *DisabledExp) MarshalJSON() ([]byte, error) {
 
 func (s *DisabledExp) GoString() string {
 	if s == nil {
-		return "null"
+		return KindNull
 	}
 	return s.Value.GoString() + " unless " + s.Disabled.GoString()
 }

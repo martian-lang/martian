@@ -44,7 +44,7 @@ func checkJsonType(types *syntax.TypeLookup, val json.RawMessage,
 // lists from MRO.
 type LazyArgumentMap map[string]json.RawMessage
 
-var nullBytes = []byte("null")
+var nullBytes = []byte(syntax.KindNull)
 
 // Validate that all of the arguments in the map are declared parameters, and
 // that all declared parameters are set in the arguments to a value of the

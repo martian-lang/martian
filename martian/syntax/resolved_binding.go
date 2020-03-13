@@ -184,7 +184,7 @@ func (b *ResolvedBinding) BindingPath(p string,
 // with types attached.
 //
 // This is distsinct from Exp.FindRefs() in that it propagates type information,
-// which is relevent if any type conversions are taking place.  However, any
+// which is relevant if any type conversions are taking place.  However, any
 // references inside a type a untyped map will not have complete type
 // information.
 func (b *ResolvedBinding) FindRefs(lookup *TypeLookup) ([]*BoundReference, error) {

@@ -338,7 +338,7 @@ func (parser *Parser) getIncludes(srcFile *SourceFile, includes []*Include, incP
 }
 
 // Get the mropath-relative and absolute paths for a file name,
-// which may or may not be an aboslute file name.
+// which may or may not be an absolute file name.
 func IncludeFilePath(filename string, mroPaths []string) (rel, abs string, err error) {
 	abs, err = filepath.Abs(filename)
 	if err != nil || len(mroPaths) == 0 {

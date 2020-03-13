@@ -255,7 +255,7 @@ const PIPESTANCE_MIN_INODES uint64 = 500
 // the pipestance is killed.
 const PIPESTANCE_MIN_DISK uint64 = 50 * 1024 * 1024
 
-var disableDiskSpaceCheck = (os.Getenv("MRO_DISK_SPACE_CHECK") == "disable")
+var disableDiskSpaceCheck = (os.Getenv("MRO_DISK_SPACE_CHECK") == disable)
 
 // Returns an error if the current available space on the disk drive is
 // very low.

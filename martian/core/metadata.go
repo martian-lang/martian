@@ -95,7 +95,7 @@ const (
 )
 
 func (self MetadataState) Prefixed(prefix string) MetadataState {
-	return MetadataState(string(prefix) + string(self))
+	return MetadataState(prefix + string(self))
 }
 
 func (self MetadataState) HasPrefix(prefix string) bool {

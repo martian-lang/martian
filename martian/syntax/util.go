@@ -36,7 +36,7 @@ func GenerateCall(target Callable, args map[string]Exp) *CallStm {
 }
 
 // GenerateAbstractCall creates a CallStm calling the given Callable with
-// arbitrary simulated inputs appropraite for static analysis of call graphs.
+// arbitrary simulated inputs appropriate for static analysis of call graphs.
 //
 // Because some arguments may be mapped over or used to disable sub-pipelines,
 // rather than just giving null as inputs the arguments given to each pipeline

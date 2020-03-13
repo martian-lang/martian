@@ -169,7 +169,7 @@ func getJobConfig(profileMode ProfileMode) *JobManagerJson {
 }
 
 func verifyJobManager(jobMode string, jobJson *JobManagerJson, memGBPerCore int) jobManagerConfig {
-	if jobMode == "local" {
+	if jobMode == localMode {
 		// Local job mode only needs to verify settings parameters
 		return jobManagerConfig{
 			jobSettings: jobJson.JobSettings,

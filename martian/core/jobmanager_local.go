@@ -260,8 +260,8 @@ func (self *LocalJobManager) refreshResources(localMode bool) error {
 	}
 	self.highMem.IncreaseTo(usedMem)
 	memDiff := self.memMBSem.UpdateFreeUsed(
-		(int64(sysMem.ActualFree)+(1024*1024-1))/(1024*1024),
-		(usedMem.Rss+(1024*1024-1))/(1024*1024))
+		(sysMem.ActualFree+1024*1024-1)/(1024*1024),
+		(usedMem.Rss+1024*1024-1)/(1024*1024))
 	if memDiff < -int64(self.maxMemGB)*1024/8 &&
 		memDiff/128 < self.lastMemDiff &&
 		(localMode || sysMem.ActualFree < 2*1024*1024*1024) {

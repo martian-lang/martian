@@ -20,7 +20,7 @@ func FormatExp(exp Exp, prefix string) string {
 
 func (e *ArrayExp) format(w stringWriter, prefix string) {
 	if e.Value == nil {
-		mustWriteString(w, "null")
+		mustWriteString(w, KindNull)
 		return
 	}
 	values := e.Value
@@ -45,7 +45,7 @@ func (e *ArrayExp) format(w stringWriter, prefix string) {
 }
 func (e *ArrayExp) GoString() string {
 	if e == nil || e.Value == nil {
-		return "null"
+		return KindNull
 	}
 	if len(e.Value) == 0 {
 		return "[]"
@@ -62,7 +62,7 @@ func (e *ArrayExp) GoString() string {
 				}
 			}
 			if v == nil {
-				if _, err := buf.WriteString("null"); err != nil {
+				if _, err := buf.WriteString(KindNull); err != nil {
 					panic(err)
 				}
 			} else {
@@ -84,7 +84,7 @@ func (e *ArrayExp) GoString() string {
 
 func (e *SplitExp) format(w stringWriter, prefix string) {
 	if e.Value == nil {
-		mustWriteString(w, "null")
+		mustWriteString(w, KindNull)
 		return
 	}
 	mustWriteString(w, "split ")
@@ -92,14 +92,14 @@ func (e *SplitExp) format(w stringWriter, prefix string) {
 }
 func (e *SplitExp) GoString() string {
 	if e == nil || e.Value == nil {
-		return "null"
+		return KindNull
 	}
 	return "split " + e.Value.GoString()
 }
 
 func (e *MapExp) format(w stringWriter, prefix string) {
 	if e.Value == nil {
-		mustWriteString(w, "null")
+		mustWriteString(w, KindNull)
 	}
 	if len(e.Value) > 0 {
 		mustWriteString(w, "{\n")
@@ -149,7 +149,7 @@ func (e *MapExp) format(w stringWriter, prefix string) {
 
 func (e *MapExp) GoString() string {
 	if e == nil || e.Value == nil {
-		return "null"
+		return KindNull
 	}
 	if len(e.Value) == 0 {
 		return "{}"
@@ -188,7 +188,7 @@ func (e *MapExp) GoString() string {
 			}
 			v := e.Value[k]
 			if v == nil {
-				if _, err := buf.WriteString("null"); err != nil {
+				if _, err := buf.WriteString(KindNull); err != nil {
 					panic(err)
 				}
 			} else {
@@ -214,7 +214,7 @@ func (e *IntExp) format(w stringWriter, _ string) {
 
 func (e *IntExp) GoString() string {
 	if e == nil {
-		return "null"
+		return KindNull
 	}
 	return strconv.FormatInt(e.Value, 10)
 }
@@ -229,7 +229,7 @@ func (e *FloatExp) format(w stringWriter, _ string) {
 
 func (e *FloatExp) GoString() string {
 	if e == nil {
-		return "null"
+		return KindNull
 	}
 	return strconv.FormatFloat(e.Value, 'g', -1, 64)
 }
@@ -243,7 +243,7 @@ func (e *StringExp) format(w stringWriter, _ string) {
 
 func (e *StringExp) GoString() string {
 	if e == nil {
-		return "null"
+		return KindNull
 	}
 	if len(e.Value) < 24 {
 		return `"` + e.Value + `"`
@@ -258,7 +258,7 @@ func (e *StringExp) GoString() string {
 }
 func (e *StringExp) String() string {
 	if e == nil {
-		return "null"
+		return KindNull
 	}
 	return e.Value
 }
@@ -268,7 +268,7 @@ func (e *BoolExp) format(w stringWriter, _ string) {
 
 func (e *BoolExp) GoString() string {
 	if e == nil {
-		return "null"
+		return KindNull
 	}
 	return strconv.FormatBool(e.Value)
 }
@@ -276,11 +276,11 @@ func (e *BoolExp) String() string {
 	return e.GoString()
 }
 func (e *NullExp) format(w stringWriter, _ string) {
-	mustWriteString(w, "null")
+	mustWriteString(w, KindNull)
 }
 
 func (e *NullExp) GoString() string {
-	return "null"
+	return KindNull
 }
 func (e *NullExp) String() string {
 	return e.GoString()
@@ -305,7 +305,7 @@ func (e *RefExp) format(w stringWriter, prefix string) {
 
 func (self *RefExp) GoString() string {
 	if self == nil {
-		return "null"
+		return KindNull
 	}
 	if self.Kind == KindSelf {
 		if self.Id == "" {
