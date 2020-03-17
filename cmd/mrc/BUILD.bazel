@@ -7,6 +7,7 @@ go_library(
     visibility = ["//visibility:private"],
     deps = [
         "//martian/syntax:go_default_library",
+        "//martian/syntax/graph:go_default_library",
         "//martian/util:go_default_library",
         "@com_github_martian_lang_docopt_go//:go_default_library",
     ],

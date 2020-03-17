@@ -359,3 +359,70 @@ func (s *BoolExp) Type() (Type, int)   { return &builtinBool, 0 }
 func (s *IntExp) Type() (Type, int)    { return &builtinInt, 0 }
 func (s *FloatExp) Type() (Type, int)  { return &builtinFloat, 0 }
 func (s *NullExp) Type() (Type, int)   { return &builtinNull, 0 }
+
+type skipWalkError struct{}
+
+func (skipWalkError) Error() string {
+	return "skipped"
+}
+
+// SkipExp is returned by ExpVisitor functions to indicate that WalkExp should
+// not decend into subexpressions.
+var SkipExp error = skipWalkError{}
+
+// An ExpVisitor function is a callback to be passed to WalkExp.
+//
+// The bindingPath is the string which would be used to bind the given struct
+// element in mro syntax.
+//
+// For more information, see WalkExp.
+type ExpVisitor func(exp Exp, bindingPath string) error
+
+// WalkExp calls the given visitor function for the given expression and every
+// subexpression (e.g. array, map, or struct element).  If the function returns
+// SkipExp, the walk will not decend into subexpressions of that expression.
+// If it returns any other error, the walk will be aborted and that error will
+// be returned.
+func WalkExp(exp Exp, visitor ExpVisitor) error {
+	return walkExp(exp, visitor, "")
+}
+
+func walkExp(exp Exp, visitor ExpVisitor, path string) error {
+	if err := visitor(exp, path); err != nil {
+		if err == SkipExp {
+			return nil
+		}
+		return err
+	}
+	switch exp := exp.(type) {
+	case *SplitExp:
+		return walkExp(exp.Value, visitor, path)
+	case *DisabledExp:
+		if err := visitor(exp.Disabled, path); err != nil &&
+			err != SkipExp {
+			return err
+		}
+		return walkExp(exp.Value, visitor, path)
+	case *ArrayExp:
+		for _, val := range exp.Value {
+			if err := walkExp(val, visitor, path); err != nil {
+				return err
+			}
+		}
+	case *MapExp:
+		for k, val := range exp.Value {
+			p := path
+			if exp.Kind == KindStruct {
+				if p == "" {
+					p = k
+				} else if k != "" {
+					p = p + "." + k
+				}
+			}
+			if err := walkExp(val, visitor, p); err != nil {
+				return err
+			}
+		}
+	}
+	return nil
+}

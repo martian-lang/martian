@@ -14,6 +14,7 @@ import (
 	"regexp"
 
 	"github.com/martian-lang/martian/martian/syntax"
+	"github.com/martian-lang/martian/martian/syntax/graph"
 	"github.com/martian-lang/martian/martian/util"
 
 	"github.com/martian-lang/docopt.go"
@@ -106,9 +107,14 @@ Options:
 		}
 		if mkdot {
 			for _, ast := range asts {
-				if len(ast.Pipelines) > 0 {
-					p := ast.Pipelines[len(ast.Pipelines)-1]
-					fmt.Println(p.RenderDot(p.Id, ast.Callables.Table, "", "  "))
+				if c := getBestCall(ast); c != nil {
+					if cg, err := ast.MakeCallGraph("", c); err != nil {
+						fmt.Fprintln(os.Stderr, err.Error())
+						wasErr = true
+					} else if cg, ok := cg.(*syntax.CallGraphPipeline); ok {
+						graph.RenderDot(cg, os.Stdout, "", "  ",
+							"packmode = clust")
+					}
 				}
 			}
 		}
@@ -151,9 +157,15 @@ Options:
 				if mkjson || callgraph {
 					asts = append(asts, ast)
 				}
-				if mkdot && len(ast.Pipelines) > 0 {
-					p := ast.Pipelines[len(ast.Pipelines)-1]
-					fmt.Println(p.RenderDot(p.Id, ast.Callables.Table, "", "  "))
+				if mkdot {
+					if c := getBestCall(ast); c != nil {
+						if cg, err := ast.MakeCallGraph("", c); err != nil {
+							fmt.Fprintln(os.Stderr, err.Error())
+							wasErr = true
+						} else if cg, ok := cg.(*syntax.CallGraphPipeline); ok {
+							graph.RenderDot(cg, os.Stdout, "", "  ")
+						}
+					}
 				}
 				count++
 			}
