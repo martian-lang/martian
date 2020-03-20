@@ -21,18 +21,18 @@ func diffLine(t *testing.T, expected, actual string) {
 	if st, tt := strings.TrimSpace(expected), strings.TrimSpace(actual); st == tt {
 		if strings.TrimLeftFunc(expected, unicode.IsSpace) == strings.TrimLeftFunc(actual, unicode.IsSpace) {
 			lead := len(expected) - len(st)
-			if len(actual) > len(expected) {
-				lead = len(actual) - len(st)
+			if len(st) > len(expected) {
+				lead = 0
 			}
-			if lead > len(expected) {
-				lead = len(expected)
+			eLead := expected[:lead]
+			lead = len(actual) - len(st)
+			if len(st) > len(actual) {
+				lead = 0
 			}
-			if lead > len(actual) {
-				lead = len(actual)
-			}
+			aLead := actual[:lead]
 			t.Error("(leading whitespace differences)",
-				strconv.QuoteToGraphic(expected[:lead]), "!=",
-				strconv.QuoteToGraphic(actual[:lead]))
+				strconv.QuoteToGraphic(eLead), "!=",
+				strconv.QuoteToGraphic(aLead))
 		} else if strings.TrimRightFunc(expected, unicode.IsSpace) == strings.TrimRightFunc(actual, unicode.IsSpace) {
 			if len(actual) > len(expected) {
 				t.Error(st, "trailing whitespace differences >", strconv.QuoteToGraphic(actual))

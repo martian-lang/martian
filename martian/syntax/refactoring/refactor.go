@@ -25,21 +25,101 @@ type CallableParam struct {
 	Param    string
 }
 
+type Rename struct {
+	Callable string
+	NewName  string
+}
+
+type RenameParam struct {
+	CallableParam
+	NewName string
+}
+
+// RefactorConfig contains options to be passed to Refactor.
+type RefactorConfig struct {
+	// If topCalls is non-empty, the RemoveUnusedOutputs will be applied repeatedly
+	// until no further changes are made.  If RemoveCalls is also specified, the
+	// calls to RemoveAllUnusedCalls and RemoveUnusedOutputs are alternated.
+	TopCalls StringSet
+
+	// Remove the given input parameters.
+	RemoveInParams []CallableParam
+
+	// Remove the given output parameters.
+	RemoveOutParams []CallableParam
+
+	// If removeCalls is true, RemoveAllUnusedCalls is applied repeatedly until
+	// no further changes are made.
+	RemoveCalls bool
+
+	// Rename the given callable objects.
+	Rename []Rename
+
+	// Rename the given input parameters.
+	RenameInParam []RenameParam
+
+	// Rename the given output parameters.
+	RenameOutParam []RenameParam
+}
+
 // Refactor modifies a set of ASTs.
-//
-// If removeCalls is true, RemoveAllUnusedCalls is applied repeatedly until
-// no further changes are made.
-//
-// If topCalls is non-empty, the RemoveUnusedOutputs will be applied repeatedly
-// until no further changes are made.  If removeCalls is also specified, the
-// calls to RemoveAllUnusedCalls and RemoveUnusedOutputs are alternated.
 //
 // The returned Edit will apply the same changes to another Ast.
 func Refactor(asts []*syntax.Ast,
-	topCalls StringSet, removeInParams, removeOutParams []CallableParam,
-	removeCalls bool) (Edit, error) {
-	edits := make(editSet, 0, 2+len(topCalls))
-	for _, removeParam := range removeInParams {
+	opt RefactorConfig) (Edit, error) {
+	edits := make(editSet, 0, 2+len(opt.TopCalls))
+	for _, rename := range opt.Rename {
+		callable := getCallable(rename.Callable, asts)
+		if callable == nil {
+			return edits, fmt.Errorf("callable %s not found", rename.Callable)
+		}
+		edit := RenameCallable(callable, rename.NewName, asts)
+		if edit != nil {
+			edits = append(edits, edit)
+			for _, ast := range asts {
+				// Run this on the compiled ASTs so removeCalls has
+				// an up-to-date version of the pipelines.
+				if _, err := edit.Apply(ast); err != nil {
+					return edits, fmt.Errorf("applying edit: %w", err)
+				}
+			}
+		}
+	}
+	for _, rename := range opt.RenameInParam {
+		callable := getCallable(rename.Callable, asts)
+		if callable == nil {
+			return edits, fmt.Errorf("callable %s not found", rename.Callable)
+		}
+		edit := RenameInput(callable, rename.Param, rename.NewName, asts)
+		if edit != nil {
+			edits = append(edits, edit)
+			for _, ast := range asts {
+				// Run this on the compiled ASTs so removeCalls has
+				// an up-to-date version of the pipelines.
+				if _, err := edit.Apply(ast); err != nil {
+					return edits, fmt.Errorf("applying edit: %w", err)
+				}
+			}
+		}
+	}
+	for _, rename := range opt.RenameOutParam {
+		callable := getCallable(rename.Callable, asts)
+		if callable == nil {
+			return edits, fmt.Errorf("callable %s not found", rename.Callable)
+		}
+		edit := RenameOutput(callable, rename.Param, rename.NewName, asts)
+		if edit != nil {
+			edits = append(edits, edit)
+			for _, ast := range asts {
+				// Run this on the compiled ASTs so removeCalls has
+				// an up-to-date version of the pipelines.
+				if _, err := edit.Apply(ast); err != nil {
+					return edits, fmt.Errorf("applying edit: %w", err)
+				}
+			}
+		}
+	}
+	for _, removeParam := range opt.RemoveInParams {
 		cname := removeParam.Callable
 		param := removeParam.Param
 		callable := getCallable(cname, asts)
@@ -49,7 +129,7 @@ func Refactor(asts []*syntax.Ast,
 		edit := RemoveInputParam(callable, param, asts)
 		if edit != nil {
 			edits = append(edits, edit)
-			if removeCalls || len(topCalls) > 0 {
+			if opt.RemoveCalls || len(opt.TopCalls) > 0 {
 				for _, ast := range asts {
 					// Run this on the compiled ASTs so removeCalls has
 					// an up-to-date version of the pipelines.
@@ -60,7 +140,7 @@ func Refactor(asts []*syntax.Ast,
 			}
 		}
 	}
-	for _, removeParam := range removeOutParams {
+	for _, removeParam := range opt.RemoveOutParams {
 		cname := removeParam.Callable
 		param := removeParam.Param
 		callable := getCallable(cname, asts)
@@ -73,7 +153,7 @@ func Refactor(asts []*syntax.Ast,
 		}
 		if edit != nil {
 			edits = append(edits, edit)
-			if removeCalls || len(topCalls) > 0 {
+			if opt.RemoveCalls || len(opt.TopCalls) > 0 {
 				for _, ast := range asts {
 					// Run this on the compiled ASTs so removeCalls has
 					// an up-to-date version of the pipelines.
@@ -84,11 +164,11 @@ func Refactor(asts []*syntax.Ast,
 			}
 		}
 	}
-	if removeCalls || len(topCalls) > 0 {
+	if opt.RemoveCalls || len(opt.TopCalls) > 0 {
 		changes := true
 		for changes {
 			changes = false
-			if removeCalls {
+			if opt.RemoveCalls {
 				edit := RemoveAllUnusedCalls(asts)
 				if edit != nil {
 					count := 0
@@ -108,8 +188,8 @@ func Refactor(asts []*syntax.Ast,
 					}
 				}
 			}
-			if len(topCalls) > 0 {
-				edit := RemoveUnusedOutputs(topCalls, asts)
+			if len(opt.TopCalls) > 0 {
+				edit := RemoveUnusedOutputs(opt.TopCalls, asts)
 				if edit != nil {
 					count := 0
 					for _, ast := range asts {

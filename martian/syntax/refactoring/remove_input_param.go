@@ -70,7 +70,9 @@ func (e removeCallInput) Apply(ast *syntax.Ast) (int, error) {
 		if ast.Call != nil &&
 			ast.Call.DecId == e.Call.DecId &&
 			ast.Call.File().FullPath == e.Call.File().FullPath {
-			e.remove(ast.Call.Bindings)
+			if err := e.remove(ast.Call.Bindings); err != nil {
+				return count, err
+			}
 			return 1, nil
 		}
 		return 0, nil

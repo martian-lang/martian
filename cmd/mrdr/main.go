@@ -75,8 +75,10 @@ func main() {
 		flags.PrintDefaults()
 	}
 
+	var conf refactoring.RefactorConfig
 	var removeParams, removeOutputs, topCalls refactoring.StringSet
-	var listUnusedCallables, noRemoveUnusedOuts, removeCalls, rewrite bool
+	var rename, renameInput, renameOutput refactoring.StringSet
+	var listUnusedCallables, noRemoveUnusedOuts, rewrite bool
 	flags.Var(stringListValue{set: &removeParams}, "remove-input",
 		"Remove an input parameter from a stage, e.g. `STAGE.input_name`."+
 			"  Multiple parameters may be provided, separated with commas.")
@@ -84,7 +86,7 @@ func main() {
 		"Remove an output parameter from a stage or pipeline, e.g. "+
 			"`STAGE.output_name`."+
 			"  Multiple parameters may be provided, separated with commas.")
-	flags.BoolVar(&removeCalls, "remove-unused-calls", false,
+	flags.BoolVar(&conf.RemoveCalls, "remove-unused-calls", false,
 		"Remove calls in pipelines if the called stage or pipeline "+
 			"has outputs but none of them are used.")
 	flags.Var(stringListValue{set: &topCalls}, "top-calls",
@@ -98,7 +100,17 @@ func main() {
 	flags.BoolVar(&rewrite, "w", rewrite,
 		"Write the modified content back to the original file.")
 	flags.BoolVar(&noRemoveUnusedOuts, "no-remove-outs", false,
-		"Do not remove unused outputs from pipelines (ignored unless top-calls is specified).")
+		"Do not remove unused outputs from pipelines "+
+			"(ignored unless top-calls is specified).")
+	flags.Var(stringListValue{set: &rename}, "rename",
+		"Rename the given stages or pipelines.  "+
+			"Comma-separated list of `OLDNAME=NEWNAME`.")
+	flags.Var(stringListValue{set: &renameInput}, "rename-input",
+		"Rename the given stage or pipeline inputs.  "+
+			"Comma-separated list of `STAGE.oldname=newName`.")
+	flags.Var(stringListValue{set: &renameOutput}, "rename-output",
+		"Rename the given stage or pipeline outputs.  "+
+			"Comma-separated list of `STAGE.oldname=newName`.")
 	version := flags.Bool("v", false, "Print the version and exit.")
 	if err := flags.Parse(os.Args[1:]); err != nil {
 		panic(err)
@@ -122,16 +134,16 @@ func main() {
 	var parser syntax.Parser
 	fileBytes, compiledAsts := loadFiles(flags.Args(), mroPaths, &parser)
 
-	edit, err := refactoring.Refactor(compiledAsts,
-		func(topCalls refactoring.StringSet, noRemoveUnusedOuts bool) refactoring.StringSet {
-			if noRemoveUnusedOuts {
-				return nil
-			}
-			return topCalls
-		}(topCalls, noRemoveUnusedOuts),
-		validateParams(removeParams, &flags),
-		validateParams(removeOutputs, &flags),
-		removeCalls)
+	if !noRemoveUnusedOuts {
+		conf.TopCalls = topCalls
+	}
+	conf.RemoveInParams = validateParams(removeParams, &flags)
+	conf.RemoveOutParams = validateParams(removeOutputs, &flags)
+	conf.Rename = validateRename(rename, &flags)
+	conf.RenameInParam = validateParamRename(renameInput, &flags)
+	conf.RenameOutParam = validateParamRename(renameOutput, &flags)
+
+	edit, err := refactoring.Refactor(compiledAsts, conf)
 	if err != nil {
 		fmt.Fprintln(flags.Output(),
 			err.Error())
@@ -164,10 +176,7 @@ func main() {
 					p, _, _ = syntax.IncludeFilePath(c.File().FullPath, mroPaths)
 				} else {
 					// Use absolute path or path relative to current directory.
-					p = c.File().FullPath
-					if strings.HasPrefix(p, pwd) {
-						p = p[len(pwd):]
-					}
+					p = strings.TrimPrefix(c.File().FullPath, pwd)
 				}
 				fmt.Fprintf(os.Stderr, "Unused %-8s %-*s defined at %s:%d\n",
 					c.Type(), width, c.GetId(), p, c.Line())
@@ -195,10 +204,7 @@ func main() {
 					p, _, _ = syntax.IncludeFilePath(param.Output.File().FullPath, mroPaths)
 				} else {
 					// Use absolute path or path relative to current directory.
-					p = param.Output.File().FullPath
-					if strings.HasPrefix(p, pwd) {
-						p = p[len(pwd):]
-					}
+					p = strings.TrimPrefix(param.Output.File().FullPath, pwd)
 				}
 				pw := width - len(param.Stage.Id)
 				if pw < 1 {
@@ -262,6 +268,62 @@ func validateParams(params refactoring.StringSet, flags *flag.FlagSet) []refacto
 			Callable: param[:i],
 			Param:    param[i+1:],
 		})
+	}
+	return result
+}
+
+func validateRename(params refactoring.StringSet, flags *flag.FlagSet) []refactoring.Rename {
+	if len(params) == 0 {
+		return nil
+	}
+	result := make([]refactoring.Rename, 0, len(params))
+	for param := range params {
+		i := strings.IndexByte(param, '=')
+		if i < 1 {
+			fmt.Fprintln(flags.Output(),
+				"Parameter name must be specified as OLDNAME=NEWNAME")
+			flags.Usage()
+			os.Exit(4)
+		}
+		result = append(result, refactoring.Rename{
+			Callable: param[:i],
+			NewName:  param[i+1:],
+		})
+	}
+	return result
+}
+
+func validateParamRename(params refactoring.StringSet, flags *flag.FlagSet) []refactoring.RenameParam {
+	if len(params) == 0 {
+		return nil
+	}
+	result := make([]refactoring.RenameParam, 0, len(params))
+	for param := range params {
+		i := strings.IndexByte(param, '.')
+		if i < 1 {
+			fmt.Fprintln(flags.Output(),
+				"Parameter name must be specified as STAGE.oldname=newname")
+			flags.Usage()
+			os.Exit(4)
+		}
+		cname := param[:i]
+		param = param[i+1:]
+		i = strings.IndexByte(param, '=')
+		if i < 1 {
+			fmt.Fprintln(flags.Output(),
+				"Parameter name must be specified as STAGE.oldname=newname")
+			flags.Usage()
+			os.Exit(4)
+		}
+
+		result = append(result,
+			refactoring.RenameParam{
+				CallableParam: refactoring.CallableParam{
+					Callable: cname,
+					Param:    param[:i],
+				},
+				NewName: param[i+1:],
+			})
 	}
 	return result
 }

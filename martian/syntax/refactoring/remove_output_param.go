@@ -65,6 +65,7 @@ type (
 		Pipeline *syntax.Pipeline
 		Call     *syntax.CallStm
 		Binding  *syntax.BindStm
+		Mods     bool
 		Exp      syntax.Exp
 	}
 )
@@ -237,7 +238,11 @@ func (e editBinding) Apply(ast *syntax.Ast) (int, error) {
 func (e editBinding) applyToCalls(calls []*syntax.CallStm) int {
 	for _, call := range calls {
 		if call.Id == e.Call.Id {
-			return e.apply(call.Bindings.List)
+			if e.Mods {
+				return e.apply(call.Modifiers.Bindings.List)
+			} else {
+				return e.apply(call.Bindings.List)
+			}
 		}
 	}
 	return 0
@@ -258,6 +263,9 @@ func isCallRefTo(ref *syntax.RefExp, pipe *syntax.Pipeline,
 	if ref.Kind == syntax.KindCall {
 		if c := pipe.Callables.Table[ref.Id]; c != nil &&
 			c.GetId() == callable.GetId() {
+			if param == "" {
+				return true
+			}
 			if ref.OutputId == "" {
 				return param == ""
 			} else if i := strings.IndexByte(ref.OutputId, '.'); i < 0 {
