@@ -24,9 +24,11 @@ import (
 	"github.com/martian-lang/martian/martian/util"
 )
 
-const STAGE_TYPE_SPLIT = "split"
-const STAGE_TYPE_CHUNK = "chunk"
-const STAGE_TYPE_JOIN = "join"
+const (
+	STAGE_TYPE_SPLIT = "split"
+	STAGE_TYPE_CHUNK = "chunk"
+	STAGE_TYPE_JOIN  = "join"
+)
 
 const forkPrintInterval = 5 * time.Minute
 
@@ -366,7 +368,8 @@ func (self *Runtime) InvokePipeline(src string, srcPath string, psid string,
 	// Expand env vars in invocation source and instantiate.
 	src = os.ExpandEnv(src)
 	readOnly := false
-	postsrc, _, pipestance, err := self.instantiatePipeline(src, srcPath, psid, pipestancePath, mroPaths,
+	postsrc, _, pipestance, err := self.instantiatePipeline(src, srcPath, psid,
+		pipestancePath, mroPaths,
 		mroVersion, envs, false, readOnly, context.Background())
 	if err != nil {
 		// If instantiation failed, delete the pipestance folder.

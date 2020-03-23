@@ -196,8 +196,8 @@ func (self *Fork) vdrKillSome(partial *PartialVdrKillReport, done bool) (*VDRKil
 		self.updateParamFileCache()
 	}
 	if self.node.top.rt.Config.VdrMode == VdrDisable ||
-		!self.node.top.rt.overrides.GetOverride(
-			self.node, "force_volatile", true).(bool) {
+		!self.node.top.rt.overrides.GetForceVolatile(
+			self.node.GetFQName(), true) {
 		if partial == nil {
 			return nil, false
 		} else {
@@ -899,10 +899,12 @@ func (self *Fork) vdrKill(partialKill *PartialVdrKillReport) *VDRKillReport {
 
 	var killPaths []string
 	// For volatile nodes, kill fork-level files.
-	if self.node.top.rt.overrides.GetOverride(self.node, "force_volatile", self.node.call.Call().Modifiers.Volatile).(bool) {
+	if self.node.top.rt.overrides.GetForceVolatile(self.node.GetFQName(),
+		self.node.call.Call().Modifiers.Volatile) {
 		rep, _ := self.vdrKillSome(partialKill, true)
 		return rep
-	} else if self.Split() && self.node.top.rt.overrides.GetOverride(self.node, "force_volatile", true).(bool) {
+	} else if self.Split() && self.node.top.rt.overrides.GetForceVolatile(
+		self.node.GetFQName(), true) {
 		// If the node splits, kill chunk-level files.
 		// Must check for split here, otherwise we'll end up deleting
 		// output files of non-volatile nodes because single-chunk nodes

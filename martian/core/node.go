@@ -1048,38 +1048,7 @@ func (self *Node) getJobReqs(jobDef *JobResources, stageType string) JobResource
 	}
 
 	// Override with job manager caps specified from commandline
-	overrideThreads := self.top.rt.overrides.GetOverride(self,
-		fmt.Sprintf("%s.threads", stageType),
-		float64(res.Threads))
-	if overrideThreadsNum, ok := overrideThreads.(float64); ok {
-		res.Threads = int(overrideThreadsNum)
-	} else {
-		util.PrintInfo("runtime",
-			"Invalid value for %s %s.threads: %v",
-			self.call.GetFqid(), stageType, overrideThreads)
-	}
-
-	overrideMem := self.top.rt.overrides.GetOverride(self,
-		fmt.Sprintf("%s.mem_gb", stageType),
-		float64(res.MemGB))
-	if overrideMemFloat, ok := overrideMem.(float64); ok {
-		res.MemGB = int(overrideMemFloat)
-	} else {
-		util.PrintInfo("runtime",
-			"Invalid value for %s %s.mem_gb: %v",
-			self.call.GetFqid(), stageType, overrideMem)
-	}
-
-	overrideVMem := self.top.rt.overrides.GetOverride(self,
-		fmt.Sprintf("%s.vmem_gb", stageType),
-		float64(res.VMemGB))
-	if overrideVMemFloat, ok := overrideVMem.(float64); ok {
-		res.VMemGB = int(overrideVMemFloat)
-	} else {
-		util.PrintInfo("runtime",
-			"Invalid value for %s %s.vmem_gb: %v",
-			self.call.GetFqid(), stageType, overrideVMem)
-	}
+	self.top.rt.overrides.GetResources(self.GetFQName(), stageType, &res)
 
 	if self.local {
 		return self.top.rt.LocalJobManager.GetSystemReqs(&res)
@@ -1089,23 +1058,9 @@ func (self *Node) getJobReqs(jobDef *JobResources, stageType string) JobResource
 }
 
 func (self *Node) getProfileMode(stageType string) ProfileMode {
-	p := self.top.rt.overrides.GetOverride(self,
-		fmt.Sprintf("%s.profile", stageType),
-		nil)
-	if p == nil {
-		return self.top.rt.Config.ProfileMode
-	} else if ps, ok := p.(string); ok {
-		if ps == "" {
-			return self.top.rt.Config.ProfileMode
-		} else {
-			return ProfileMode(ps)
-		}
-	} else {
-		util.PrintInfo("runtime",
-			"Invalid value for %s %s.profile: %v",
-			self.call.GetFqid(), stageType, p)
-		return self.top.rt.Config.ProfileMode
-	}
+	return self.top.rt.overrides.GetProfile(self.GetFQName(),
+		stageType,
+		self.top.rt.Config.ProfileMode)
 }
 
 func (self *Node) setJobReqs(jobDef *JobResources, stageType string) JobResources {
