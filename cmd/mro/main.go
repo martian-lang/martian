@@ -10,6 +10,7 @@ import (
 	"github.com/martian-lang/martian/cmd/mro/check"
 	"github.com/martian-lang/martian/cmd/mro/edit"
 	"github.com/martian-lang/martian/cmd/mro/format"
+	"github.com/martian-lang/martian/martian/util"
 )
 
 const usage = "Usage: mro [help] [check | edit | format] ..."
@@ -28,7 +29,8 @@ func main() {
 	case "mrf":
 		format.Main(os.Args[1:])
 	}
-	if os.Args[1] == "help" {
+	switch os.Args[1] {
+	case "help":
 		if len(os.Args) == 2 {
 			fmt.Fprintln(os.Stderr, usage+`
 
@@ -40,10 +42,16 @@ func main() {
 
 	format:
 		Reformat an mro file according to the canonical formatting.
+	
+	version:
+		Print the version and exit.
 `)
 		} else {
 			delegateMain(append([]string{os.Args[2], "--help"}, os.Args[3:]...))
 		}
+	case "version":
+		fmt.Println(util.GetVersion())
+		os.Exit(0)
 	}
 	delegateMain(os.Args[1:])
 }

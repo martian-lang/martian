@@ -9,6 +9,7 @@ go_library(
         "//cmd/mro/check:go_default_library",
         "//cmd/mro/edit:go_default_library",
         "//cmd/mro/format:go_default_library",
+        "//martian/util:go_default_library",
     ],
 )
 
