@@ -76,7 +76,10 @@ Options:
 				fmt.Fprintln(os.Stderr)
 				os.Exit(1)
 			}
-			ioutil.WriteFile(fname, []byte(fsrc), 0644)
+			if err := ioutil.WriteFile(fname, []byte(fsrc), 0644); err != nil {
+				fmt.Fprintf(os.Stderr, "Error writing to %s: %s\n",
+					fname, err.Error())
+			}
 		}
 		fmt.Printf("Successfully reformatted %d files.\n", len(fileNames))
 	} else {
@@ -90,7 +93,10 @@ Options:
 				os.Exit(1)
 			}
 			if opts["--rewrite"].(bool) {
-				ioutil.WriteFile(fname, []byte(fsrc), 0644)
+				if err := ioutil.WriteFile(fname, []byte(fsrc), 0644); err != nil {
+					fmt.Fprintf(os.Stderr, "Error writing to %s: %s\n",
+						fname, err.Error())
+				}
 			} else {
 				fmt.Print(fsrc)
 			}
