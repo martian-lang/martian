@@ -29,7 +29,6 @@ import (
 
 func Main(argv []string) {
 	util.SetPrintLogger(os.Stderr)
-	util.SetupSignalHandlers()
 	// Command-line arguments.
 	doc := `Martian Formatter.
 
@@ -60,13 +59,23 @@ Options:
 		fileNames := make([]string, 0, len(mroPaths)*3)
 		for _, mroPath := range mroPaths {
 			fnames, err := filepath.Glob(mroPath + "/*.mro")
-			util.DieIf(err)
+			if err != nil {
+				fmt.Fprintln(os.Stderr)
+				fmt.Fprintln(os.Stderr, err.Error())
+				fmt.Fprintln(os.Stderr)
+				os.Exit(1)
+			}
 			fileNames = append(fileNames, fnames...)
 		}
 		var parser syntax.Parser
 		for _, fname := range fileNames {
 			fsrc, err := parser.FormatFile(fname, fixIncludes, mroPaths)
-			util.DieIf(err)
+			if err != nil {
+				fmt.Fprintln(os.Stderr)
+				fmt.Fprintln(os.Stderr, err.Error())
+				fmt.Fprintln(os.Stderr)
+				os.Exit(1)
+			}
 			ioutil.WriteFile(fname, []byte(fsrc), 0644)
 		}
 		fmt.Printf("Successfully reformatted %d files.\n", len(fileNames))
@@ -74,7 +83,12 @@ Options:
 		// Format just the specified MRO files.
 		for _, fname := range opts["<file.mro>"].([]string) {
 			fsrc, err := syntax.FormatFile(fname, fixIncludes, mroPaths)
-			util.DieIf(err)
+			if err != nil {
+				fmt.Fprintln(os.Stderr)
+				fmt.Fprintln(os.Stderr, err.Error())
+				fmt.Fprintln(os.Stderr)
+				os.Exit(1)
+			}
 			if opts["--rewrite"].(bool) {
 				ioutil.WriteFile(fname, []byte(fsrc), 0644)
 			} else {

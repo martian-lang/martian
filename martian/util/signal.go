@@ -9,6 +9,7 @@ package util
 import (
 	"os"
 	"os/signal"
+	"runtime"
 	"sync"
 	"syscall"
 )
@@ -23,15 +24,15 @@ type HandlerObject interface {
 	HandleSignal(sig os.Signal)
 }
 
-type SignalHandler struct {
+type sigHandler struct {
 	criticalSection sync.RWMutex
 	mutex           sync.Mutex
 	block           chan int
 	sigchan         chan os.Signal
-	objects         map[HandlerObject]bool
+	objects         map[HandlerObject]struct{}
 }
 
-var signalHandler *SignalHandler = nil
+var signalHandler sigHandler
 
 // EnterCriticalSection should be called before performing a sequence of
 // operations which should be logically atomic with respect to signals.
@@ -56,7 +57,7 @@ func ExitCriticalSection() {
 // complete before the process terminates due to a handled signal.
 func RegisterSignalHandler(object HandlerObject) {
 	signalHandler.mutex.Lock()
-	signalHandler.objects[object] = true
+	signalHandler.objects[object] = struct{}{}
 	signalHandler.mutex.Unlock()
 }
 
@@ -66,16 +67,14 @@ func UnregisterSignalHandler(object HandlerObject) {
 	signalHandler.mutex.Unlock()
 }
 
-func newSignalHandler() *SignalHandler {
-	return &SignalHandler{
-		block:   make(chan int),
-		objects: make(map[HandlerObject]bool),
-		sigchan: make(chan os.Signal, len(HANDLED_SIGNALS)+1),
-	}
+func (self *sigHandler) init() {
+	self.block = make(chan int)
+	self.objects = make(map[HandlerObject]struct{})
+	self.sigchan = make(chan os.Signal, len(HANDLED_SIGNALS)+1)
 }
 
 // Notify this handler of signals.
-func (self *SignalHandler) Notify() {
+func (self *sigHandler) Notify() {
 	for _, sig := range HANDLED_SIGNALS {
 		if sig != syscall.SIGHUP || !signal.Ignored(syscall.SIGHUP) {
 			signal.Notify(self.sigchan, sig)
@@ -84,10 +83,13 @@ func (self *SignalHandler) Notify() {
 }
 
 // Kill this process cleanly, after waiting for critical sections
-// and handlers to complete.
+// and handlers to complete.  Note that this method may return.
 func Suicide(success bool) {
 	Println("%s Shutting down.", Timestamp())
-	if signalHandler == nil {
+	if signalHandler.sigchan == nil {
+		if success {
+			os.Exit(0)
+		}
 		os.Exit(1)
 	}
 	if success {
@@ -95,19 +97,23 @@ func Suicide(success bool) {
 	} else {
 		signalHandler.sigchan <- syscall.Signal(-2)
 	}
+	// We don't want to exit immediately, since handlers may still need to
+	// run, but we also don't want to return, because that would be
+	// surprising.
+	runtime.Goexit()
 }
 
 // Set up a signal handler object to support testing of code which
 // requires it, without actually registering for signal notifications.
 func MockSignalHandlersForTest() {
-	if signalHandler == nil {
-		signalHandler = newSignalHandler()
+	if signalHandler.sigchan == nil {
+		signalHandler.init()
 	}
 }
 
 // Initializes the global signal handler.
 func SetupSignalHandlers() {
-	signalHandler = newSignalHandler()
+	signalHandler.init()
 	signalHandler.Notify()
 	sigchan := signalHandler.sigchan
 

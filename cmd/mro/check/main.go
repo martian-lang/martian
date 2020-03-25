@@ -42,7 +42,6 @@ func CompileAll(mroPaths []string, checkSrcPath bool) (int, []*syntax.Ast, error
 
 func Main(argv []string) {
 	util.SetPrintLogger(os.Stderr)
-	util.SetupSignalHandlers()
 	// Command-line arguments.
 	doc := `Martian Compiler.
 
