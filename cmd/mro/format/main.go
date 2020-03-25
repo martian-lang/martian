@@ -2,7 +2,8 @@
 // Copyright (c) 2014 10X Genomics, Inc. All rights reserved.
 //
 
-// Martian command-line code formatter for MRO files.
+// Package format implements the command-line front end for the MRO formatting
+// tool.
 //
 // Most of the time, it is invoked with a command line such as
 //
@@ -12,7 +13,7 @@
 // configurable.  This is a deliberate choice.  By preventing users from
 // making different style choices, pointless whitespace-only diffs should
 // be prevented and arguments about style can be avoided.
-package main
+package format
 
 import (
 	"fmt"
@@ -26,7 +27,7 @@ import (
 	"github.com/martian-lang/martian/martian/util"
 )
 
-func main() {
+func Main(argv []string) {
 	util.SetPrintLogger(os.Stderr)
 	util.SetupSignalHandlers()
 	// Command-line arguments.
@@ -44,7 +45,7 @@ Options:
     -h --help     Show this message.
     --version     Show version.`
 	martianVersion := util.GetVersion()
-	opts, _ := docopt.Parse(doc, nil, true, martianVersion, false)
+	opts, _ := docopt.Parse(doc, argv, true, martianVersion, false)
 
 	// Martian environment variables.
 	cwd, _ := filepath.Abs(path.Dir(os.Args[0]))

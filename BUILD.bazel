@@ -1,4 +1,6 @@
 load("@bazel_gazelle//:def.bzl", "gazelle")
+load("@bazel_tools//tools/build_defs/pkg:pkg.bzl", "pkg_tar")
+load(":copy_binary.bzl", "copy_binary", "symlink_binary")
 
 # gazelle:resolve go github.com/martian-lang/martian/martian/api @martian//martian/api:go_default_library
 # gazelle:resolve go github.com/martian-lang/martian/martian/core @martian//martian/core:go_default_library
@@ -8,26 +10,31 @@ load("@bazel_gazelle//:def.bzl", "gazelle")
 # gazelle:exclude vendor
 gazelle(name = "gazelle")
 
-load(":copy_binary.bzl", "copy_binary")
-
-copy_binary(
+symlink_binary(
     name = "mrc",
-    src = "//cmd/mrc",
+    src = ":mro",
     dest = "bin/mrc",
     visibility = ["//visibility:public"],
 )
 
-copy_binary(
+symlink_binary(
     name = "mrdr",
-    src = "//cmd/mrdr",
+    src = ":mro",
     dest = "bin/mrdr",
     visibility = ["//visibility:public"],
 )
 
-copy_binary(
+symlink_binary(
     name = "mrf",
-    src = "//cmd/mrf",
+    src = ":mro",
     dest = "bin/mrf",
+    visibility = ["//visibility:public"],
+)
+
+copy_binary(
+    name = "mro",
+    src = "//cmd/mro",
+    dest = "bin/mro",
     visibility = ["//visibility:public"],
 )
 
@@ -65,8 +72,6 @@ copy_binary(
     dest = "bin/mrstat",
     visibility = ["//visibility:public"],
 )
-
-load("@bazel_tools//tools/build_defs/pkg:pkg.bzl", "pkg_tar")
 
 pkg_tar(
     name = "bin_cs",

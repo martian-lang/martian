@@ -1,11 +1,11 @@
 // Copyright (c) 2020 10X Genomics, Inc. All rights reserved.
 //
 
-// Martian command-line code refactoring tool.
+// Package edit implements the command line for the martian refactoring tools.
 //
-// mrdr makes semantic edits to pipelines, including removing input parameters,
-// eliminating unused calls, and so on.
-package main
+// The tool makes semantic edits to pipelines, including removing input
+// parameters, eliminating unused calls, and so on.
+package edit
 
 import (
 	"flag"
@@ -62,7 +62,7 @@ func (s stringListValue) Set(v string) error {
 	return nil
 }
 
-func main() {
+func Main(argv []string) {
 	util.SetPrintLogger(os.Stderr)
 	util.SetupSignalHandlers()
 
@@ -112,7 +112,7 @@ func main() {
 		"Rename the given stage or pipeline outputs.  "+
 			"Comma-separated list of `STAGE.oldname=newName`.")
 	version := flags.Bool("v", false, "Print the version and exit.")
-	if err := flags.Parse(os.Args[1:]); err != nil {
+	if err := flags.Parse(argv); err != nil {
 		panic(err)
 	}
 	if *version {

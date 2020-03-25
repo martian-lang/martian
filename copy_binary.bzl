@@ -1,3 +1,5 @@
+"""Defines a rule for making a copy of an executable in a new location."""
+
 def _copy_binary_impl(ctx):
     if not ctx.executable.src:
         fail("binary must be specified", attr = "src")
@@ -72,4 +74,98 @@ rule allows a user to place the binary in a new location.
 """,
     executable = True,
     implementation = _copy_binary_impl,
+)
+
+def _dir(p):
+    i = p.rfind("/")
+    if i == 0:
+        return "/"
+    if i > 0:
+        return p[:i]
+    return ""
+
+def _relpath(dest, src):
+    dest = _dir(dest)
+    if not dest:
+        return src
+    if src.startswith(dest + "/"):
+        return src[len(dest) + 1:]
+    parts = dest.split("/")
+    prefix = "../"
+    for part in parts:
+        dest = _dir(dest)
+        if src.startswith(dest + "/"):
+            return prefix + src[len(dest) + 1:]
+        prefix += "../"
+    fail(
+        "failed to compute a relative path from '{}' to '{}'".format(dest, src),
+        "dest",
+    )
+
+def _symlink_binary_impl(ctx):
+    exe = ctx.attr.src[DefaultInfo].files_to_run.executable
+    if not exe:
+        fail("binary must be specified", attr = "src")
+    basename = exe.basename
+    ctx.actions.run_shell(
+        outputs = [ctx.outputs.dest],
+        inputs = [exe],
+        command = "ln -s \"$1\" \"$2\"",
+        arguments = [
+            _relpath(
+                ctx.outputs.dest.short_path,
+                exe.short_path,
+            ),
+            ctx.outputs.dest.path,
+        ],
+        mnemonic = "SymlinkExe",
+    )
+    files = [ctx.outputs.dest] + ctx.files.src
+    runfiles = ctx.runfiles(
+        files = files,
+        transitive_files = depset(transitive = [
+            dep[DefaultInfo].files
+            for dep in ctx.attr.data
+        ]),
+    )
+    data_runfiles = runfiles.merge(
+        ctx.attr.src[DefaultInfo].data_runfiles,
+    )
+    default_runfiles = runfiles.merge(
+        ctx.attr.src[DefaultInfo].default_runfiles,
+    )
+    for dep in ctx.attr.data:
+        info = dep[DefaultInfo]
+        data_runfiles = data_runfiles.merge(info.data_runfiles)
+        default_runfiles = default_runfiles.merge(info.default_runfiles)
+    return [DefaultInfo(
+        data_runfiles = data_runfiles,
+        default_runfiles = default_runfiles,
+        executable = ctx.outputs.dest,
+        files = depset(files),
+    )]
+
+symlink_binary = rule(
+    attrs = {
+        "src": attr.label(
+            doc = "The executable target to symlink.",
+            mandatory = True,
+        ),
+        "data": attr.label_list(
+            doc = "Additional items to add to the runfiles for this target.",
+            allow_files = True,
+        ),
+        "dest": attr.output(
+            doc = "The package-relative location for this file.",
+            mandatory = True,
+        ),
+    },
+    doc = """Creates a symlink to an executable.
+
+Sometimes it is desireable to run a binary from a different name using a
+symlink.  This rule creates a symlink to the given `src`, with the same
+runfiles.
+""",
+    executable = True,
+    implementation = _symlink_binary_impl,
 )

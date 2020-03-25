@@ -14,17 +14,21 @@ VERSION=$(shell git describe --tags --always --dirty)
 RELEASE=false
 SRC_ROOT=$(abspath $(dir $(PWD))../..)
 GO_FLAGS=-ldflags "-X $(REPO)/martian/util.__VERSION__='$(VERSION)' -X $(REPO)/martian/util.__RELEASE__='$(RELEASE)'" -gcflags "-trimpath $(SRC_ROOT)"
+GOBIN_LINKS=mrc mrf mrdr
 
 unexport GOPATH
 export GO111MODULE=on
 export GOBIN=$(PWD)/bin
 
-.PHONY: $(GOBINS) grammar web $(GOTESTS) coverage.out govet all-bins $(GOBIN)/sum_squares longtests mrs integration_prereqs
+.PHONY: $(GOBINS) grammar web $(GOTESTS) coverage.out govet all-bins $(GOBIN)/sum_squares longtests mrs integration_prereqs $(GOBIN_LINKS)
 
 #
 # Targets for development builds.
 #
-all: grammar all-bins web test mrs
+all: grammar all-bins web test mrs $(GOBIN_LINKS)
+
+$(GOBIN_LINKS): mro
+	ln -sf mro $(GOBIN)/$@
 
 martian/syntax/grammar.go: martian/syntax/grammar.y martian/syntax/lexer.go
 	go generate ./martian/syntax
@@ -76,7 +80,7 @@ JOBMANAGERS=$(wildcard jobmanagers/*.py) \
 
 PRODUCT_NAME:=martian-$(VERSION)-$(shell uname -is | tr "A-Z " "a-z-")
 
-$(PRODUCT_NAME).tar.%: $(addprefix bin/, $(GOBINS)) $(ADAPTERS) $(JOBMANAGERS) $(WEB_FILES)
+$(PRODUCT_NAME).tar.%: $(addprefix bin/, $(GOBINS) $(GOBIN_LINKS)) $(ADAPTERS) $(JOBMANAGERS) $(WEB_FILES)
 	git status || echo "no git status"
 	tar --owner=0 --group=0 --transform "s/^./$(PRODUCT_NAME)/" -caf $@ $(addprefix ./, $^)
 

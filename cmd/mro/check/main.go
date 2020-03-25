@@ -1,9 +1,10 @@
-//
 // Copyright (c) 2020 10X Genomics, Inc. All rights reserved.
+
+// Package check implements the command line interface for static verification
+// of pipeline definitions.
 //
-// Martian command-line compiler. Primarily used for unit testing.
-//
-package main
+// Primarily used for unit testing.
+package check
 
 import (
 	"encoding/json"
@@ -39,7 +40,7 @@ func CompileAll(mroPaths []string, checkSrcPath bool) (int, []*syntax.Ast, error
 	return len(fileNames), asts, nil
 }
 
-func main() {
+func Main(argv []string) {
 	util.SetPrintLogger(os.Stderr)
 	util.SetupSignalHandlers()
 	// Command-line arguments.
@@ -61,7 +62,7 @@ Options:
     -h --help       Show this message.
     --version       Show version.`
 	martianVersion := util.GetVersion()
-	opts, _ := docopt.Parse(doc, nil, true, martianVersion, false)
+	opts, _ := docopt.Parse(doc, argv, true, martianVersion, false)
 
 	// Martian environment variables.
 	cwd, _ := os.Getwd()
@@ -112,8 +113,11 @@ Options:
 						fmt.Fprintln(os.Stderr, err.Error())
 						wasErr = true
 					} else if cg, ok := cg.(*syntax.CallGraphPipeline); ok {
-						graph.RenderDot(cg, os.Stdout, "", "  ",
-							"packmode = clust")
+						if err := graph.RenderDot(cg, os.Stdout, "", "  ",
+							"packmode = clust"); err != nil {
+							fmt.Fprintln(os.Stderr, "Error writing graph:",
+								err.Error())
+						}
 					}
 				}
 			}
