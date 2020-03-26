@@ -206,9 +206,9 @@ func invokeTest(src string, t *testing.T) {
 func TestInvokeEmpty(t *testing.T) {
 	invokeTest(`
 stage FOO (
-	in  int  val,
-	out int  val,
-	src comp "foo",
+    in  int  val,
+    out int  val,
+    src comp "foo",
 )
 
 pipeline CALL_FOO(
@@ -225,21 +225,21 @@ pipeline CALL_FOO(
 }
 
 pipeline MAP_FOO(
-	in  int[] vals,
-	out int[] vals,
+    in  int[] vals,
+    out int[] vals,
 )
 {
-	map call CALL_FOO(
-		val = split self.vals,
-	)
+    map call CALL_FOO(
+        val = split self.vals,
+    )
 
-	return (
-		vals = CALL_FOO.val,
-	)
+    return (
+        vals = CALL_FOO.val,
+    )
 }
 
 call MAP_FOO(
-	vals = [],
+    vals = [],
 )
 `, t)
 }
@@ -289,15 +289,17 @@ func TestInvocationDataFromSource(t *testing.T) {
 	const src = `@include "testdata/mock_stages.mro"
 
 map call MOCK_PHASER_SVCALLER(
-    sample_def = [{
-        "gem_group": null,
-        "lanes": null,
-        "read_path": "testdata/manager/bclprocessor",
-        "sample_indices": [
-            "AAAGCATA",
-            "TCCAATAA",
-        ],
-    }],
+    sample_def = [
+        {
+            "gem_group": null,
+            "lanes": null,
+            "read_path": "testdata/manager/bclprocessor",
+            "sample_indices": [
+                "AAAGCATA",
+                "TCCAATAA",
+            ],
+        },
+    ],
     downsample = {
         "subsample_rate": 1,
     },

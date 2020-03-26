@@ -89,10 +89,12 @@ func TestAstMakeCallGraph(t *testing.T) {
 	if n := nodes["POINT_MAPPER.POINT_USER"]; n == nil {
 		t.Error("No bound node for POINT_MAPPER.POINT_USER")
 	} else {
-		if ins := FormatExp(n.ResolvedInputs()["points"].Exp, ""); ins != `[{
-    x: 5,
-    y: 6,
-}]` {
+		if ins := FormatExp(n.ResolvedInputs()["points"].Exp, ""); ins != `[
+    {
+        x: 5,
+        y: 6,
+    },
+]` {
 			t.Errorf(
 				"Incorrect inputs POINT_MAPPER.PIPE1.POINT_MAKER.points:\n%s",
 				ins)

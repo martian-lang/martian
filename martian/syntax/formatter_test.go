@@ -36,8 +36,10 @@ struct POINTALISM(
 )
 
 struct HELPFUL(
-    int  d2           "foo",
-    file d3_is_a_file ""    "blargh",
+    int    d2           "foo",
+    file   d3_is_a_file ""    "blargh",
+    map    m,
+    bool[] a,
 )
 
 # Adds a key to the json in a file.
@@ -380,8 +382,10 @@ pipeline AWESOME(
     return (
         outfile = MERGE_JSON.result,
         thing   = {
+            a:            [true],
             d2:           1,
             d3_is_a_file: "foo.bar",
+            m:            {},
         },
     )
 

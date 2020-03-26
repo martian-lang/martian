@@ -17,7 +17,9 @@ func (self *StructType) format(printer *printer) {
 		helpWidth = max(helpWidth, len(m.Help))
 	}
 
-	printer.Printf("struct %s(\n", self.Id)
+	printer.mustWriteString("struct ")
+	printer.mustWriteString(self.Id)
+	printer.mustWriteString("(\n")
 	for _, m := range self.Members {
 		m.format(printer, typeWidth, idWidth, helpWidth)
 	}
@@ -57,5 +59,7 @@ func (member *StructMember) format(printer *printer, typeWidth, idWidth, helpWid
 //
 func (self *UserType) format(printer *printer) {
 	printer.printComments(&self.Node, "")
-	printer.Printf("filetype %s;\n", self.Id)
+	printer.mustWriteString("filetype ")
+	printer.mustWriteString(self.Id)
+	printer.mustWriteString(";\n")
 }

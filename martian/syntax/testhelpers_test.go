@@ -156,6 +156,27 @@ func diffLines(src, formatted string, t *testing.T) {
 				lastWrongLine = i
 				offset--
 			} else {
+				// Look one line ahead or behind
+				if len(formatted_lines) > i+offset+1 {
+					if formatted_lines[i+offset+1] == line {
+						t.Errorf("%s > %s", strings.Repeat(" ", 35),
+							formatted_lines[i+offset])
+						wrongLines++
+						offset++
+						lastWrongLine = i
+						line = trimLine(line)
+						t.Logf("%3d: %s %s= %s", i, line, pad, line)
+						continue
+					}
+				}
+				if src_lines[i+1] == formatted_lines[i+offset] {
+					t.Errorf("%3d: %s %s<", i, line, pad)
+					wrongLines++
+					lastWrongLine = i
+					offset--
+					continue
+				}
+				// Try to find the next unique source line which matches.
 				if uniqueSrcLines == nil {
 					uniqueSrcLines = make(map[string]int, (len(src_lines)-i)/2)
 					for j, line := range src_lines[i:] {

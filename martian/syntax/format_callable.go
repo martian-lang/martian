@@ -15,12 +15,14 @@ import (
 func (self *BindStm) format(printer *printer, prefix string, idWidth int) {
 	printer.printComments(self.getNode(), prefix+INDENT)
 	printer.printComments(self.Exp.getNode(), prefix+INDENT)
-	idPad := ""
-	if len(self.Id) < idWidth {
-		idPad = strings.Repeat(" ", idWidth-len(self.Id))
+
+	printer.mustWriteString(prefix)
+	printer.mustWriteString(INDENT)
+	printer.mustWriteString(self.Id)
+	for i := len(self.Id); i < idWidth; i++ {
+		printer.mustWriteRune(' ')
 	}
-	printer.Printf("%s%s%s%s = ", prefix, INDENT,
-		self.Id, idPad)
+	printer.mustWriteString(" = ")
 	self.Exp.format(printer, prefix+INDENT)
 	printer.mustWriteRune(',')
 	printer.mustWriteString(NEWLINE)
@@ -56,41 +58,53 @@ func paramFormat(printer *printer, param Param, modeWidth int, typeWidth int, id
 	}
 
 	// Generate column alignment paddings.
-	modePad := strings.Repeat(" ", modeWidth-len(param.getMode()))
 	tname := param.GetTname()
 	typePad := strings.Repeat(" ", typeWidth-tname.strlen())
-	idPad := ""
-	if idWidth > len(id) {
-		idPad = strings.Repeat(" ", idWidth-len(id))
-	}
-	helpPad := ""
-	if helpWidth > len(param.GetHelp()) {
-		helpPad = strings.Repeat(" ", helpWidth-len(param.GetHelp()))
-	}
 
 	// Common columns up to type name.
-	printer.Printf("%s%s%s %s", INDENT,
-		param.getMode(), modePad, tname.str())
+	printer.mustWriteString(INDENT)
+	printer.mustWriteString(param.getMode())
+	for i := len(param.getMode()); i < modeWidth; i++ {
+		printer.mustWriteRune(' ')
+	}
+	printer.mustWriteRune(' ')
+	printer.mustWriteString(tname.str())
 
 	// Add id if not default.
 	if id != "" {
-		printer.Printf("%s %s", typePad, id)
+		printer.mustWriteString(typePad)
+		printer.mustWriteRune(' ')
+		printer.mustWriteString(id)
 	}
 
 	// Add help string if it exists.
 	if len(param.GetHelp()) > 0 {
 		if id == "" {
-			printer.Printf("%s ", typePad)
+			printer.mustWriteString(typePad)
+			printer.mustWriteRune(' ')
 		}
-		printer.Printf("%s  \"%s\"", idPad, param.GetHelp())
+		for i := len(id); i < idWidth; i++ {
+			printer.mustWriteRune(' ')
+		}
+		printer.mustWriteString(`  "`)
+		printer.mustWriteString(param.GetHelp())
+		printer.mustWriteRune('"')
 	}
 
 	// Add outname string if it exists.
 	if len(param.GetOutName()) > 0 {
 		if param.GetHelp() == "" {
-			printer.Printf(`%s  ""`, idPad)
+			for i := len(id); i < idWidth; i++ {
+				printer.mustWriteRune(' ')
+			}
+			printer.mustWriteString(`  ""`)
 		}
-		printer.Printf("%s  \"%s\"", helpPad, param.GetOutName())
+		for i := len(param.GetHelp()); i < helpWidth; i++ {
+			printer.mustWriteRune(' ')
+		}
+		printer.mustWriteString(`  "`)
+		printer.mustWriteString(param.GetOutName())
+		printer.mustWriteRune('"')
 	}
 	printer.mustWriteString(",\n")
 }
@@ -311,7 +325,9 @@ func (self *Stage) format(printer *printer) {
 	)
 	modeWidth = max(modeWidth, len("src"))
 
-	printer.Printf("stage %s(\n", self.Id)
+	printer.mustWriteString("stage ")
+	printer.mustWriteString(self.Id)
+	printer.mustWriteString("(\n")
 	self.InParams.format(printer, modeWidth, typeWidth, idWidth, helpWidth)
 	self.OutParams.format(printer, modeWidth, typeWidth, idWidth, helpWidth)
 	self.Src.format(printer, modeWidth, typeWidth, idWidth)
@@ -353,22 +369,32 @@ func (self *Resources) format(printer *printer) {
 	if self.MemNode != nil {
 		printer.printComments(self.MemNode, INDENT)
 		printer.mustWriteString(INDENT)
-		printer.Printf("mem_gb%s = %d,\n", memPad, self.MemGB)
+		printer.mustWriteString("mem_gb")
+		printer.mustWriteString(memPad)
+		printer.Printf(" = %d,\n", self.MemGB)
 	}
 	if self.SpecialNode != nil {
 		printer.printComments(self.SpecialNode, INDENT)
 		printer.mustWriteString(INDENT)
-		printer.Printf("special%s = \"%s\",\n", threadPad, self.Special)
+		printer.mustWriteString("special")
+		printer.mustWriteString(threadPad)
+		printer.mustWriteString(` = "`)
+		printer.mustWriteString(self.Special)
+		printer.mustWriteString("\",\n")
 	}
 	if self.ThreadNode != nil {
 		printer.printComments(self.ThreadNode, INDENT)
 		printer.mustWriteString(INDENT)
-		printer.Printf("threads%s = %d,\n", threadPad, self.Threads)
+		printer.mustWriteString("threads")
+		printer.mustWriteString(threadPad)
+		printer.Printf(" = %d,\n", self.Threads)
 	}
 	if self.VMemNode != nil {
 		printer.printComments(self.VMemNode, INDENT)
 		printer.mustWriteString(INDENT)
-		printer.Printf("vmem_gb%s = %d,\n", threadPad, self.VMemGB)
+		printer.mustWriteString("vmem_gb")
+		printer.mustWriteString(threadPad)
+		printer.Printf(" = %d,\n", self.VMemGB)
 	}
 	if self.VolatileNode != nil {
 		printer.printComments(self.VolatileNode, INDENT)

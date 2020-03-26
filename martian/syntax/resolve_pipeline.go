@@ -330,6 +330,9 @@ func (node *CallGraphPipeline) resolvePipelineOuts(
 	var errs ErrorList
 	if len(node.pipeline.Ret.Bindings.List) > 0 {
 		exp, err := node.makeOutExp(childMap, lookup)
+		if err != nil {
+			errs = append(errs, err)
+		}
 
 		tid := TypeId{Tname: node.pipeline.Id}
 

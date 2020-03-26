@@ -26,7 +26,7 @@ func (e *ArrayExp) format(w stringWriter, prefix string) {
 	values := e.Value
 	if len(values) == 0 {
 		mustWriteString(w, "[]")
-	} else if len(values) == 1 {
+	} else if e.singleLineFormat() {
 		// Place single-element arrays on a single line.
 		mustWriteRune(w, '[')
 		values[0].format(w, prefix)
@@ -43,6 +43,16 @@ func (e *ArrayExp) format(w stringWriter, prefix string) {
 		mustWriteRune(w, ']')
 	}
 }
+
+func (e *ArrayExp) singleLineFormat() bool {
+	if v := e.Value; len(v) == 0 {
+		return true
+	} else if len(v) == 1 {
+		return singleLineFormat(v[0])
+	}
+	return false
+}
+
 func (e *ArrayExp) GoString() string {
 	if e == nil || e.Value == nil {
 		return KindNull
@@ -108,13 +118,9 @@ func (e *MapExp) format(w stringWriter, prefix string) {
 		maxKeyLen := 0
 		for key, val := range e.Value {
 			keys = append(keys, key)
-			if e.Kind == KindStruct {
-				switch val.(type) {
-				case *ArrayExp, *MapExp:
-				default:
-					if len(key) > maxKeyLen {
-						maxKeyLen = len(key)
-					}
+			if e.Kind == KindStruct && singleLineFormat(val) {
+				if len(key) > maxKeyLen {
+					maxKeyLen = len(key)
 				}
 			}
 		}
@@ -128,13 +134,9 @@ func (e *MapExp) format(w stringWriter, prefix string) {
 			}
 			mustWriteString(w, `: `)
 			v := e.Value[key]
-			if e.Kind == KindStruct {
-				switch v.(type) {
-				case *ArrayExp, *MapExp:
-				default:
-					for i := len(key); i < maxKeyLen; i++ {
-						mustWriteRune(w, ' ')
-					}
+			if e.Kind == KindStruct && singleLineFormat(v) {
+				for i := len(key); i < maxKeyLen; i++ {
+					mustWriteRune(w, ' ')
 				}
 			}
 			v.format(w, vindent)
@@ -145,6 +147,21 @@ func (e *MapExp) format(w stringWriter, prefix string) {
 	} else {
 		mustWriteString(w, "{}")
 	}
+}
+
+// singleLineFormat returns true if exp.format() will not contain any newlines.
+func singleLineFormat(v Exp) bool {
+	switch v := v.(type) {
+	case *ArrayExp:
+		return v.singleLineFormat()
+	case *MapExp:
+		return v.singleLineFormat()
+	}
+	return true
+}
+
+func (e *MapExp) singleLineFormat() bool {
+	return e == nil || len(e.Value) == 0
 }
 
 func (e *MapExp) GoString() string {
