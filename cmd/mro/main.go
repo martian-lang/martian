@@ -57,13 +57,13 @@ func main() {
 }
 
 func delegateMain(argv []string) {
-	switch os.Args[1] {
+	switch argv[0] {
 	case "check":
-		check.Main(os.Args[1:])
+		check.Main(argv[1:])
 	case "edit":
-		check.Main(os.Args[1:])
+		edit.Main(argv[1:])
 	case "format":
-		check.Main(os.Args[1:])
+		format.Main(argv[1:])
 	default:
 		fmt.Fprintln(os.Stderr, usage)
 		os.Exit(1)
