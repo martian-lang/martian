@@ -12,7 +12,6 @@ import (
 	"fmt"
 	"io/ioutil"
 	"os"
-	"path"
 	"path/filepath"
 	"sort"
 	"strings"
@@ -125,7 +124,7 @@ func Main(argv []string) {
 		os.Exit(1)
 	}
 
-	cwd, _ := filepath.Abs(path.Dir(os.Args[0]))
+	cwd, _ := os.Getwd()
 	mroPaths := util.ParseMroPath(cwd)
 	if value := os.Getenv("MROPATH"); len(value) > 0 {
 		mroPaths = util.ParseMroPath(value)

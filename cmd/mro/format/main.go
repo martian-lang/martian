@@ -19,7 +19,6 @@ import (
 	"fmt"
 	"io/ioutil"
 	"os"
-	"path"
 	"path/filepath"
 
 	"github.com/martian-lang/docopt.go"
@@ -47,7 +46,7 @@ Options:
 	opts, _ := docopt.Parse(doc, argv, true, martianVersion, false)
 
 	// Martian environment variables.
-	cwd, _ := filepath.Abs(path.Dir(os.Args[0]))
+	cwd, _ := os.Getwd()
 	mroPaths := util.ParseMroPath(cwd)
 	if value := os.Getenv("MROPATH"); len(value) > 0 {
 		mroPaths = util.ParseMroPath(value)
