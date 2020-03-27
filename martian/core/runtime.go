@@ -324,12 +324,17 @@ func (self *Runtime) instantiatePipeline(src string, srcPath string, psid string
 	if err != nil {
 		return "", nil, nil, err
 	}
+	var srcPaths []string
+	if checkSrc || !readOnly {
+		srcPaths = append(mroPaths,
+			filepath.SplitList(os.Getenv("PATH"))...)
+	}
 	pipestance, err := NewPipestance(
 		NewTopNode(self, callGraph.GetFqid()[:3+len(psid)], pipestancePath,
 			mroPaths, mroVersion,
 			envs, invocationData,
 			&ast.TypeTable),
-		callGraph)
+		callGraph, srcPaths)
 	if err != nil {
 		return "", nil, nil, err
 	}

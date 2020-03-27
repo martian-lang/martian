@@ -32,13 +32,13 @@ type Stagestance struct {
 	node *Node
 }
 
-func NewStagestance(parent Nodable, call *syntax.CallGraphStage) (*Stagestance, error) {
+func NewStagestance(parent Nodable, call *syntax.CallGraphStage, srcPaths []string) (*Stagestance, error) {
 	self := &Stagestance{}
 	self.node = NewNode(parent, call)
 	stage := call.Callable().(*syntax.Stage)
 
-	stagecodePath, err := stage.Src.FindPath(append(self.node.top.mroPaths, filepath.SplitList(os.Getenv("PATH"))...))
-	if err != nil {
+	stagecodePath, err := stage.Src.FindPath(srcPaths)
+	if err != nil && len(srcPaths) > 0 {
 		util.PrintError(err, "runtime", "WARNING: stage code not found")
 	}
 	self.node.resolvedCmd = stagecodePath
@@ -196,7 +196,7 @@ func (self *Pipestance) OnFinishHook(outerCtx context.Context) {
 	}
 }
 
-func NewPipestance(parent Nodable, call *syntax.CallGraphPipeline) (*Pipestance, error) {
+func NewPipestance(parent Nodable, call *syntax.CallGraphPipeline, srcPaths []string) (*Pipestance, error) {
 	self := &Pipestance{}
 	self.node = NewNode(parent, call)
 	self.metadata = NewMetadata(self.node.parent.GetFQName(), self.GetPath())
@@ -207,7 +207,7 @@ func NewPipestance(parent Nodable, call *syntax.CallGraphPipeline) (*Pipestance,
 	for _, subcall := range call.Children {
 		switch subcall := subcall.(type) {
 		case *syntax.CallGraphStage:
-			if s, err := NewStagestance(self.node, subcall); err != nil {
+			if s, err := NewStagestance(self.node, subcall, srcPaths); err != nil {
 				return nil, err
 			} else {
 				self.node.subnodes[subcall.Call().Id] = s
@@ -223,7 +223,7 @@ func NewPipestance(parent Nodable, call *syntax.CallGraphPipeline) (*Pipestance,
 				}
 			}
 		case *syntax.CallGraphPipeline:
-			if p, err := NewPipestance(self.node, subcall); err != nil {
+			if p, err := NewPipestance(self.node, subcall, srcPaths); err != nil {
 				return nil, err
 			} else {
 				self.node.subnodes[subcall.Call().Id] = p
