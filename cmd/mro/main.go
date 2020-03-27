@@ -24,10 +24,13 @@ func main() {
 	switch path.Base(os.Args[0]) {
 	case "mrc":
 		check.Main(os.Args[1:])
+		os.Exit(0)
 	case "mrdr":
 		edit.Main(os.Args[1:])
+		os.Exit(0)
 	case "mrf":
 		format.Main(os.Args[1:])
+		os.Exit(0)
 	}
 	switch os.Args[1] {
 	case "help":
@@ -60,10 +63,13 @@ func delegateMain(argv []string) {
 	switch argv[0] {
 	case "check":
 		check.Main(argv[1:])
+		os.Exit(0)
 	case "edit":
 		edit.Main(argv[1:])
+		os.Exit(0)
 	case "format":
 		format.Main(argv[1:])
+		os.Exit(0)
 	default:
 		fmt.Fprintln(os.Stderr, usage)
 		os.Exit(1)
