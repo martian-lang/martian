@@ -3,7 +3,10 @@ load("@io_bazel_rules_go//go:def.bzl", "go_binary", "go_library")
 go_library(
     name = "go_default_library",
     srcs = [
+        "configure.go",
+        "env.go",
         "main.go",
+        "runloop.go",
         "webserver.go",
     ],
     importpath = "github.com/martian-lang/martian/cmd/mrp",
