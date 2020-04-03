@@ -9,34 +9,31 @@ package syntax
 import (
 	"bytes"
 	"errors"
+	"sort"
 	"strings"
 )
 
 type mmLexInfo struct {
-	src      []byte // All the data we're scanning
-	pos      int    // Position of the scan head
-	loc      int    // Keep track of the line number
-	previous []byte //
-	token    []byte // Cache the last token for error messaging
-	err      string // errors reported by the parser
+	src      []byte    // All the data we're scanning
+	pos      int       // Position of the scan head
+	loc      SourceLoc // Keep track of the line number
+	previous []byte    //
+	token    []byte    // Cache the last token for error messaging
+	err      string    // errors reported by the parser
 	global   *Ast
 	exp      ValExp // If parsing an expression, rather than an AST.
-	srcfile  *SourceFile
 	comments []*commentBlock
 	// for many byte->string conversions, the same string is expected
 	// to show up frequently.  For example the stage name will usually
 	// appear at least 3 times: when it's declared, when it's called, and
 	// when its output is referenced.  So we coalesce those allocations.
 	intern *stringIntern
+	// True if the column number needs to be incremented.
+	incCol bool
 }
 
-var newlineBytes = []byte("\n")
-
 func (self *mmLexInfo) Loc() SourceLoc {
-	return SourceLoc{
-		Line: self.loc,
-		File: self.srcfile,
-	}
+	return self.loc
 }
 
 func (self *mmLexInfo) Lex(lval *mmSymType) int {
@@ -53,19 +50,32 @@ func (self *mmLexInfo) Lex(lval *mmSymType) int {
 		tokid, val := nextToken(head)
 		// Advance the cursor pos.
 		self.pos += len(val)
+		if self.incCol {
+			self.loc.Col += len(self.token)
+		}
 
 		// If whitespace or comment, advance line count by counting newlines.
 		if tokid == SKIP {
-			self.loc += bytes.Count(val, newlineBytes)
+			for _, b := range val {
+				if b == '\n' {
+					self.loc.Line++
+					self.loc.Col = 0
+				}
+				self.loc.Col++
+			}
+			self.incCol = false
 			continue
 		} else if tokid == COMMENT {
 			self.comments = append(self.comments, &commentBlock{
 				self.Loc(),
 				string(bytes.TrimSpace(val)),
 			})
-			self.loc++
+			self.loc.Line++
+			self.loc.Col = 1
+			self.incCol = false
 			continue
 		}
+		self.incCol = true
 
 		// If got parseable token, pass it and line number to parser.
 		self.previous = self.token
@@ -73,8 +83,6 @@ func (self *mmLexInfo) Lex(lval *mmSymType) int {
 		lval.val = self.token
 		lval.loc = self.loc // give grammar rules access to loc
 
-		// give NewAstNode access to file to generate file-local locations
-		lval.srcfile = self.srcfile
 		lval.global = self.global
 		lval.intern = self.intern
 
@@ -82,9 +90,9 @@ func (self *mmLexInfo) Lex(lval *mmSymType) int {
 	}
 }
 
-func (self *mmLexInfo) getLine() (int, []byte) {
+func (self *mmLexInfo) getLine() []byte {
 	if self.pos >= len(self.src) {
-		return 0, nil
+		return nil
 	}
 	lineStart := bytes.LastIndexByte(self.src[:self.pos], '\n')
 	lineEnd := bytes.IndexByte(self.src[self.pos:], '\n')
@@ -92,9 +100,9 @@ func (self *mmLexInfo) getLine() (int, []byte) {
 		lineStart = 0
 	}
 	if lineEnd == -1 {
-		return lineStart, self.src[lineStart:]
+		return self.src[lineStart:]
 	} else {
-		return lineStart, self.src[lineStart : self.pos+lineEnd]
+		return self.src[lineStart : self.pos+lineEnd]
 	}
 }
 
@@ -119,11 +127,11 @@ func (err *mmLexError) writeTo(w stringWriter) {
 		mustWrite(w, err.info.previous)
 		mustWriteRune(w, '\'')
 	}
-	if lineStart, line := err.info.getLine(); len(line) > 0 {
+	if line := err.info.getLine(); len(line) > 0 {
 		mustWriteString(w, "\n")
 		mustWrite(w, line)
 		mustWriteRune(w, '\n')
-		for i := 0; i < err.info.pos-len(err.info.token)-lineStart; i++ {
+		for i := 0; i < err.info.loc.Col-1; i++ {
 			mustWriteRune(w, ' ')
 		}
 		mustWriteString(w, "^\n    at ")
@@ -159,11 +167,14 @@ func init() {
 func yaccParseAny(src []byte, file *SourceFile, intern *stringIntern) (int, mmLexError) {
 	lexinfo := mmLexError{
 		info: mmLexInfo{
-			src:     src,
-			pos:     0,
-			loc:     1,
-			srcfile: file,
-			intern:  intern,
+			src: src,
+			pos: 0,
+			loc: SourceLoc{
+				Line: 1,
+				Col:  1,
+				File: file,
+			},
+			intern: intern,
 		},
 	}
 	result := mmParse(&lexinfo.info)
@@ -237,6 +248,11 @@ func attachComments(comments []*commentBlock, node *AstNode) []*commentBlock {
 
 func compileComments(comments []*commentBlock, node nodeContainer) []*commentBlock {
 	nodes := node.getSubnodes()
+	// It is very important for this purpose to evaluate the nodes in the order
+	// they appeared in the AST.
+	sort.Slice(nodes, func(i, j int) bool {
+		return nodes[i].Line() < nodes[j].Line()
+	})
 	for _, n := range nodes {
 		comments = attachComments(comments, n.getNode())
 		comments = compileComments(comments, n)

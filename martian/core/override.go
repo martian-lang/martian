@@ -166,15 +166,15 @@ func (pse *PipestanceOverrides) GetResources(node string, phase string, res *Job
 // pqn is the partially qualified node name
 //
 // def  is the default value to use if the value is not overridden
-func (pse *PipestanceOverrides) getThreads(pqn string, phase string, def int) int {
+func (pse *PipestanceOverrides) getThreads(pqn string, phase string, def float64) float64 {
 	for pqn != "" {
 		val := pse.overridesbystage[pqn].GetThreads(phase)
 		if val == nil {
 			pqn = getParent(pqn)
 		} else {
-			util.LogInfo("overide", "At [%s.threads:%s] replace %d with %d",
-				phase, pqn, def, int(*val))
-			return int(*val)
+			util.LogInfo("overide", "At [%s.threads:%s] replace %g with %g",
+				phase, pqn, def, *val)
+			return *val
 		}
 	}
 	// We didn't find any parent of node that existed and defined the key we're looking
@@ -188,15 +188,15 @@ func (pse *PipestanceOverrides) getThreads(pqn string, phase string, def int) in
 // pqn is the partially qualified node name
 //
 // def  is the default value to use if the value is not overridden
-func (pse *PipestanceOverrides) getMem(pqn string, phase string, def int) int {
+func (pse *PipestanceOverrides) getMem(pqn string, phase string, def float64) float64 {
 	for pqn != "" {
 		val := pse.overridesbystage[pqn].GetMem(phase)
 		if val == nil {
 			pqn = getParent(pqn)
 		} else {
-			util.LogInfo("overide", "At [%s.mem_gb:%s] replace %d with %d",
-				phase, pqn, def, int(*val))
-			return int(*val)
+			util.LogInfo("overide", "At [%s.mem_gb:%s] replace %g with %g",
+				phase, pqn, def, *val)
+			return *val
 		}
 	}
 	// We didn't find any parent of node that existed and defined the key we're looking
@@ -210,15 +210,15 @@ func (pse *PipestanceOverrides) getMem(pqn string, phase string, def int) int {
 // pqn is the partially qualified node name
 //
 // def  is the default value to use if the value is not overridden
-func (pse *PipestanceOverrides) getVMem(pqn string, phase string, def int) int {
+func (pse *PipestanceOverrides) getVMem(pqn string, phase string, def float64) float64 {
 	for pqn != "" {
 		val := pse.overridesbystage[pqn].GetVMem(phase)
 		if val == nil {
 			pqn = getParent(pqn)
 		} else {
-			util.LogInfo("overide", "At [%s.vmem_gb:%s] replace %d with %d",
-				phase, pqn, def, int(*val))
-			return int(*val)
+			util.LogInfo("overide", "At [%s.vmem_gb:%s] replace %g with %g",
+				phase, pqn, def, *val)
+			return *val
 		}
 	}
 	// We didn't find any parent of node that existed and defined the key we're looking

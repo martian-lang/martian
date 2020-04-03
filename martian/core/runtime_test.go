@@ -30,9 +30,12 @@ func ExampleBuildCallSource() {
 		}),
 		nil,
 		&syntax.Stage{
-			Node: syntax.NewAstNode(15, &syntax.SourceFile{
-				FileName: "foo.mro",
-				FullPath: "/path/to/foo.mro",
+			Node: syntax.NewAstNode(syntax.SourceLoc{
+				Line: 15,
+				File: &syntax.SourceFile{
+					FileName: "foo.mro",
+					FullPath: "/path/to/foo.mro",
+				},
 			}),
 			Id: "STAGE_NAME",
 			InParams: &syntax.InParams{

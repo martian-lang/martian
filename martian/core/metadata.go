@@ -944,7 +944,7 @@ func (self *Metadata) serializeState() *MetadataInfo {
 	}
 }
 
-func (self *Metadata) serializePerf(numThreads int) *PerfInfo {
+func (self *Metadata) serializePerf(numThreads float64) *PerfInfo {
 	if self.exists(CompleteFile) && self.exists(JobInfoFile) {
 		jobInfo := JobInfo{}
 		if err := self.ReadInto(JobInfoFile, &jobInfo); err == nil {

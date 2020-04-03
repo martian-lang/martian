@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"os"
 	"sort"
+	"strconv"
 	"strings"
 )
 
@@ -371,7 +372,9 @@ func (self *Resources) format(printer *printer) {
 		printer.mustWriteString(INDENT)
 		printer.mustWriteString("mem_gb")
 		printer.mustWriteString(memPad)
-		printer.Printf(" = %d,\n", self.MemGB)
+		printer.mustWriteString(" = ")
+		formatGB(&printer.buf, self.MemGB)
+		printer.mustWriteString(",\n")
 	}
 	if self.SpecialNode != nil {
 		printer.printComments(self.SpecialNode, INDENT)
@@ -387,19 +390,83 @@ func (self *Resources) format(printer *printer) {
 		printer.mustWriteString(INDENT)
 		printer.mustWriteString("threads")
 		printer.mustWriteString(threadPad)
-		printer.Printf(" = %d,\n", self.Threads)
+		printer.Printf(" = %g,\n", self.Threads)
 	}
 	if self.VMemNode != nil {
 		printer.printComments(self.VMemNode, INDENT)
 		printer.mustWriteString(INDENT)
 		printer.mustWriteString("vmem_gb")
 		printer.mustWriteString(threadPad)
-		printer.Printf(" = %d,\n", self.VMemGB)
+		printer.mustWriteString(" = ")
+		formatGB(&printer.buf, self.VMemGB)
+		printer.mustWriteString(",\n")
 	}
 	if self.VolatileNode != nil {
 		printer.printComments(self.VolatileNode, INDENT)
 		printer.mustWriteString(INDENT)
-		printer.mustWriteString("volatile = strict,\n")
+		if self.StrictVolatile {
+			printer.mustWriteString("volatile = strict,\n")
+		} else {
+			printer.mustWriteString("volatile = false,\n")
+		}
+	}
+}
+
+// formatGB prints a floating point value, without exponential representation,
+// using the minimum number of decimal digits required such that
+//
+//     formatGB(buf, roundUpTo(gb, 1024))
+//     return roundUpTo(parseFloat32(buf.Bytes()), 1024)
+//
+// leaves the value unchanged.
+func formatGB(buf *strings.Builder, gb float32) {
+	if gb == 0 {
+		if err := buf.WriteByte('0'); err != nil {
+			panic(err)
+		}
+		return
+	} else if gb < 0 {
+		if err := buf.WriteByte('-'); err != nil {
+			panic(err)
+		}
+		gb = -gb
+	}
+	mb := int64(gb * 1024)
+	var b [20]byte
+	if _, err := buf.Write(strconv.AppendInt(b[:0], mb/1024, 10)); err != nil {
+		panic(err)
+	}
+	mb = mb % 1024
+	if mb == 0 {
+		return
+	}
+	// The fractional part of a GB, as a fixed point number 0.XXXX
+	// Under all circumstances, 4 digits is sufficient accuracy.
+	decFrac := (mb * 10000) / 1024
+	digits := 4
+	scale := int64(10000)
+	// Figure out how many digits are actually required.
+	for digits > 0 && ((decFrac-decFrac%10)*1024+scale-1)/scale == mb {
+		scale /= 10
+		decFrac /= 10
+		digits--
+	}
+	if digits == 0 {
+		return
+	}
+	if err := buf.WriteByte('.'); err != nil {
+		panic(err)
+	}
+	for i := digits - 1; i >= 0; i-- {
+		v := byte(decFrac % 10)
+		if v == 0 && i+1 == digits {
+			digits = i
+		}
+		b[i] = v + '0'
+		decFrac = decFrac / 10
+	}
+	if _, err := buf.Write(b[:digits]); err != nil {
+		panic(err)
 	}
 }
 

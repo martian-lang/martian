@@ -23,6 +23,7 @@ type (
 
 	SourceLoc struct {
 		Line int
+		Col  int
 		File *SourceFile
 	}
 
@@ -120,12 +121,9 @@ func NewAst(decs []Dec, call *CallStm, srcFile *SourceFile) *Ast {
 	return self
 }
 
-func NewAstNode(loc int, file *SourceFile) AstNode {
+func NewAstNode(loc SourceLoc) AstNode {
 	return AstNode{
-		Loc: SourceLoc{
-			Line: loc,
-			File: file,
-		},
+		Loc: loc,
 	}
 }
 

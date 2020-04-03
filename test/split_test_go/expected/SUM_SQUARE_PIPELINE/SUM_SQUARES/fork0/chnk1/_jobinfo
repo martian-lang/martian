@@ -18,7 +18,7 @@
         "martian": "'77b3550-dirty'", 
         "pipelines": "a167627"
     }, 
-    "threads": 1, 
+    "threads": 0.01,
     "memGB": 1, 
     "invocation": {
         "incpaths": [], 

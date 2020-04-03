@@ -68,10 +68,12 @@ func TestChunkDefUnmarshal(t *testing.T) {
 		t.Errorf("Expected resources, got nil.")
 	} else {
 		if def.Resources.Threads != 4 {
-			t.Errorf("Incorrect threads: expected 3, got %d", def.Resources.Threads)
+			t.Errorf("Incorrect threads: expected 3, got %g",
+				def.Resources.Threads)
 		}
 		if def.Resources.MemGB != 3 {
-			t.Errorf("Incorrect mem_gb: expected 3, got %d", def.Resources.MemGB)
+			t.Errorf("Incorrect mem_gb: expected 3, got %g",
+				def.Resources.MemGB)
 		}
 	}
 	if len(def.Args) != 2 {

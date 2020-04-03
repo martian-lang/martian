@@ -5,6 +5,7 @@
 package syntax
 
 import (
+	"math"
 	"strconv"
 )
 
@@ -59,6 +60,31 @@ func parseFloat(s []byte) float64 {
 		panic(err)
 	}
 	return f
+}
+
+// parseFloat parses bytes as a 32-bit float.
+//
+// Unlike with parseInt, there are a lot more edge cases for floats so this
+// just eats the overhead of copying to string and calling the standard library,
+// except in a few common cases.
+func parseFloat32(s []byte) float32 {
+	f, err := strconv.ParseFloat(string(s), 32)
+	if err != nil {
+		panic(err)
+	}
+	return float32(f)
+}
+
+// roundUpTo rounds a value away from zero to the nearest 1/granularity.
+//
+// For example, roundUpTo(0.0001, 100) -> 0.01
+func roundUpTo(value float32, granularity float64) float32 {
+	if value > 0 {
+		return float32(math.Ceil(float64(value)*granularity) / granularity)
+	} else if value < 0 {
+		return float32(math.Floor(float64(value)*granularity) / granularity)
+	}
+	return 0
 }
 
 func unhex(c byte) byte {

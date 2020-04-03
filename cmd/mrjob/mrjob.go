@@ -10,6 +10,7 @@ package main
 
 import (
 	"fmt"
+	"math"
 	"os"
 	"os/exec"
 	"path"
@@ -97,17 +98,17 @@ func (self *runner) Init() {
 		uint64(self.jobInfo.VMemGB) * 1024 * 1024 * 1024)
 	self.setRlimit()
 	if cgLim, cgSoftLim, _ := util.GetCgroupMemoryLimit(); cgLim > 0 {
-		if int(cgLim/(1024*1024*1024)) < self.jobInfo.MemGB {
+		if cgLim < int64(math.Ceil(self.jobInfo.MemGB*(1024*1024*1024))) {
 			util.LogInfo("monitor",
-				"WARNING: cgroup memory limit of %d bytes is less than the requested %d GB",
+				"WARNING: cgroup memory limit of %d bytes is less than the requested %g GB",
 				cgLim, self.jobInfo.MemGB)
 		} else {
 			util.LogInfo("monitor",
 				"cgroup memory limit of %d bytes detected", cgLim)
 		}
-		if cgSoftLim != 0 && cgSoftLim < int64(self.jobInfo.MemGB)*1024*1024*1024 {
+		if cgSoftLim != 0 && cgSoftLim < int64(math.Ceil(self.jobInfo.MemGB*1024*1024*1024)) {
 			util.LogInfo("monitor",
-				"WARNING: cgroup soft memory limit of %d bytes is less than the requested %d GB",
+				"WARNING: cgroup soft memory limit of %d bytes is less than the requested %g GB",
 				cgSoftLim, self.jobInfo.MemGB)
 		}
 	}
@@ -232,22 +233,24 @@ func (self *runner) Complete() {
 	if self.monitoring && self.jobInfo.RusageInfo != nil {
 		if t := time.Since(self.start); t > time.Minute*15 {
 			if threads := totalCpu(self.jobInfo.RusageInfo) /
-				t.Seconds(); threads > 1.5*float64(self.jobInfo.Threads) {
+				t.Seconds(); threads > 1.5*self.jobInfo.Threads {
 				target = core.Errors
 				if writeError := self.metadata.WriteRaw(target, fmt.Sprintf(
-					"Stage exceeded its threads quota (using %.1f, allowed %d)",
+					"Stage exceeded its threads quota (using %.1f, allowed %g)",
 					threads,
 					self.jobInfo.Threads)); writeError != nil {
-					util.PrintError(writeError, "monitor", "Could not write errors file.")
+					util.PrintError(writeError, "monitor",
+						"Could not write errors file.")
 				}
 			}
-		} else if self.jobInfo.RusageInfo.Children.MaxRss > self.jobInfo.MemGB*1024*1024 {
+		} else if kb := int(math.Ceil(self.jobInfo.MemGB * 1024 * 1024)); self.jobInfo.RusageInfo.Children.MaxRss > kb {
 			target = core.Errors
 			if writeError := self.metadata.WriteRaw(target, fmt.Sprintf(
-				"Stage exceeded its memory quota (using %.1f, allowed %d)",
+				"Stage exceeded its memory quota (using %.1f, allowed %g)",
 				float64(self.jobInfo.RusageInfo.Children.MaxRss)/(1024*1024),
 				self.jobInfo.MemGB)); writeError != nil {
-				util.PrintError(writeError, "monitor", "Could not write errors file.")
+				util.PrintError(writeError, "monitor",
+					"Could not write errors file.")
 			}
 		}
 	}
@@ -562,11 +565,11 @@ func (self *runner) monitor(lastHeartbeat *time.Time) error {
 			}
 			self.job.Process.Kill()
 			return fmt.Errorf(
-				"Stage exceeded its memory quota (using %.1f, allowed %dG)",
+				"Stage exceeded its memory quota (using %.1f, allowed %gG)",
 				rss, self.jobInfo.MemGB)
 		} else {
 			util.LogInfo("monitor",
-				"Stage exceeded its memory quota (using %.1f, allowed %dG)",
+				"Stage exceeded its memory quota (using %.1f, allowed %gG)",
 				rss, self.jobInfo.MemGB)
 		}
 	} else if self.jobInfo.VMemGB > 0 && vmem > float64(self.jobInfo.VMemGB) {
@@ -574,11 +577,11 @@ func (self *runner) monitor(lastHeartbeat *time.Time) error {
 		if self.monitoring {
 			self.job.Process.Kill()
 			return fmt.Errorf(
-				"Stage exceeded its address space quota (using %.1f, allowed %dG)",
+				"Stage exceeded its address space quota (using %.1f, allowed %gG)",
 				vmem, self.jobInfo.VMemGB)
 		} else {
 			util.LogInfo("monitor",
-				"Stage exceeded its address space quota (using %.1f, allowed %dG)",
+				"Stage exceeded its address space quota (using %.1f, allowed %gG)",
 				vmem, self.jobInfo.VMemGB)
 		}
 	}

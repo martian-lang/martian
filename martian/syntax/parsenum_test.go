@@ -3,6 +3,7 @@
 package syntax
 
 import (
+	"math"
 	"testing"
 )
 
@@ -111,6 +112,25 @@ func BenchmarkParseFloat(b *testing.B) {
 			if f := parseFloat(s); f != 0.0 {
 				b.Errorf("Expected 0.0, got %g", f)
 			}
+		}
+	}
+}
+
+func TestRoundUpTo(t *testing.T) {
+	for _, v := range [...]float32{
+		0.001,
+		0.05,
+		2.5,
+		1,
+		4,
+		10.2,
+	} {
+		expected := int(math.Ceil(float64(v) * 1024))
+		actualF := roundUpTo(v, 1024)
+		actual := int(actualF * 1024)
+		if actual != expected {
+			t.Errorf("Expected %g == %d MB, got %d MB from %g",
+				v, expected, actual, actualF)
 		}
 	}
 }

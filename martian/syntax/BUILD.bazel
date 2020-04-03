@@ -68,6 +68,7 @@ go_test(
         "compile_params_test.go",
         "equivalence_test.go",
         "expression_test.go",
+        "format_callable_test.go",
         "format_exp_test.go",
         "formatter_test.go",
         "include_test.go",

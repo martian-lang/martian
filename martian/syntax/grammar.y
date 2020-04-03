@@ -15,9 +15,8 @@ import (
 
 %union{
     global    *Ast
-    srcfile   *SourceFile
     arr       int16
-    loc       int
+    loc       SourceLoc
     val       []byte
     modifiers *Modifiers
     dec       Dec
@@ -48,6 +47,7 @@ import (
     reflist   []*RefExp
     includes  []*Include
     intern    *stringIntern
+    f32       float32
 }
 
 %type <includes>  includes
@@ -86,6 +86,7 @@ import (
 %type <bindings>  modifier_stm_list
 %type <retstm>    return_stm
 %type <res>       resources resource_list
+%type <f32>       float_32
 
 %token SKIP COMMENT INVALID
 %token ';' ':' ',' '=' '.' '*'
@@ -104,40 +105,40 @@ import (
 file
     : includes dec_list
         {
-            global := NewAst($2, nil, $<srcfile>2)
+            global := NewAst($2, nil, $<loc>2.File)
             global.Includes = $1
             mmlex.(*mmLexInfo).global = global
         }
     | includes dec_list call_stm
         {
-            global := NewAst($2, $3, $<srcfile>2)
+            global := NewAst($2, $3, $<loc>2.File)
             global.Includes = $1
             mmlex.(*mmLexInfo).global = global
         }
     | includes call_stm
         {
-            global := NewAst(nil, $2, $<srcfile>2)
+            global := NewAst(nil, $2, $<loc>2.File)
             global.Includes = $1
             mmlex.(*mmLexInfo).global = global
         }
     | dec_list
         {
-            global := NewAst($1, nil, $<srcfile>1)
+            global := NewAst($1, nil, $<loc>1.File)
             mmlex.(*mmLexInfo).global = global
         }
     | dec_list call_stm
         {
-            global := NewAst($1, $2, $<srcfile>1)
+            global := NewAst($1, $2, $<loc>1.File)
             mmlex.(*mmLexInfo).global = global
         }
     | call_stm
         {
-            global := NewAst(nil, $1, $<srcfile>1)
+            global := NewAst(nil, $1, $<loc>1.File)
             mmlex.(*mmLexInfo).global = global
         }
     | val_exp
         {
-            global := NewAst(nil, nil, $<srcfile>1)
+            global := NewAst(nil, nil, $<loc>1.File)
             mmlex.(*mmLexInfo).global = global
             mmlex.(*mmLexInfo).exp = $1
         }
@@ -146,14 +147,14 @@ file
 includes
     : includes INCLUDE_DIRECTIVE LITSTRING
         { $$ = append($1, &Include{
-            Node: NewAstNode($<loc>2, $<srcfile>2),
+            Node: NewAstNode($<loc>2),
             Value: $<intern>3.unquote($3),
            })
         }
     | INCLUDE_DIRECTIVE LITSTRING
         { $$ = []*Include{
               &Include{
-                  Node: NewAstNode($<loc>1, $<srcfile>1),
+                  Node: NewAstNode($<loc>1),
                   Value: $<intern>2.unquote($2),
               },
            }
@@ -169,7 +170,7 @@ dec_list
 dec
     : FILETYPE id_list ';'
         { $$ = &UserType{
-            Node: NewAstNode($<loc>2, $<srcfile>2),
+            Node: NewAstNode($<loc>2),
             Id: $<intern>2.Get($2),
         } }
     | stage
@@ -180,7 +181,7 @@ dec
 pipeline
     : PIPELINE id '(' in_param_list out_param_list ')' '{' call_stm_list return_stm pipeline_retain '}'
         { $$ = &Pipeline{
-            Node: NewAstNode($<loc>2, $<srcfile>2),
+            Node: NewAstNode($<loc>2),
             Id: $<intern>2.Get($2),
             InParams: $4,
             OutParams: $5,
@@ -190,7 +191,7 @@ pipeline
         } }
     | PIPELINE id '(' in_param_list out_param_list ')' '{' return_stm pipeline_retain '}'
         { $$ = &Pipeline{
-            Node: NewAstNode($<loc>2, $<srcfile>2),
+            Node: NewAstNode($<loc>2),
             Id: $<intern>2.Get($2),
             InParams: $4,
             OutParams: $5,
@@ -203,7 +204,7 @@ pipeline
 stage
     : STAGE id '(' in_param_list out_param_list src_stm ')' split_param_list resources stage_retain
         { $$ = &Stage{
-                Node: NewAstNode($<loc>2, $<srcfile>2),
+                Node: NewAstNode($<loc>2),
                 Id: $<intern>2.Get($2),
                 InParams: $4,
                 OutParams: $5,
@@ -220,7 +221,7 @@ stage
 struct
    : STRUCT id '(' struct_field_list ')'
         { $$ = &StructType{
-                Node: NewAstNode($<loc>2, $<srcfile>2),
+                Node: NewAstNode($<loc>2),
                 Id: $<intern>2.Get($2),
                 Members: $4,
            }
@@ -231,7 +232,7 @@ resources
         { $$ = nil }
     | USING '(' resource_list ')'
         {
-            $3.Node = NewAstNode($<loc>1, $<srcfile>1)
+            $3.Node = NewAstNode($<loc>1)
             $$ = $3
         }
     ;
@@ -239,44 +240,55 @@ resources
 resource_list
     :
         { $$ = new(Resources) }
-    | resource_list THREADS '=' NUM_INT ','
+    | resource_list THREADS '=' float_32 ','
         {
-            n := NewAstNode($<loc>2, $<srcfile>2)
+            n := NewAstNode($<loc>2)
             $1.ThreadNode = &n
-            i := parseInt($4)
-            $1.Threads = int16(i)
+            $1.Threads = roundUpTo($4, 100)
             $$ = $1
         }
-    | resource_list MEM_GB '=' NUM_INT ','
+    | resource_list MEM_GB '=' float_32 ','
         {
-            n := NewAstNode($<loc>2, $<srcfile>2)
+            n := NewAstNode($<loc>2)
             $1.MemNode = &n
-            i := parseInt($4)
-            $1.MemGB = int16(i)
+            $1.MemGB = roundUpTo($4, 1024)
             $$ = $1
         }
-    | resource_list VMEM_GB '=' NUM_INT ','
+    | resource_list VMEM_GB '=' float_32 ','
         {
-            n := NewAstNode($<loc>2, $<srcfile>2)
+            n := NewAstNode($<loc>2)
             $1.VMemNode = &n
-            i := parseInt($4)
-            $1.VMemGB = int16(i)
+            $1.VMemGB = roundUpTo($4, 1024)
             $$ = $1
         }
     | resource_list SPECIAL '=' LITSTRING ','
         {
-            n := NewAstNode($<loc>2, $<srcfile>2)
+            n := NewAstNode($<loc>2)
             $1.SpecialNode = &n
             $1.Special = $<intern>4.unquote($4)
             $$ = $1
         }
     | resource_list VOLATILE '=' STRICT ','
         {
-            n := NewAstNode($<loc>2, $<srcfile>2)
+            n := NewAstNode($<loc>2)
             $1.VolatileNode = &n
             $1.StrictVolatile = true
             $$ = $1
         }
+    | resource_list VOLATILE '=' FALSE ','
+        {
+            n := NewAstNode($<loc>2)
+            $1.VolatileNode = &n
+            $1.StrictVolatile = false
+            $$ = $1
+        }
+    ;
+
+float_32
+    : NUM_INT
+        { $$ = float32(parseInt($1)) }
+    | NUM_FLOAT
+        { $$ = parseFloat32($1) }
     ;
 
 stage_retain
@@ -285,7 +297,7 @@ stage_retain
     | RETAIN '(' stage_retain_list ')'
         {
             $$ = &RetainParams{
-                Node: NewAstNode($<loc>1, $<srcfile>1),
+                Node: NewAstNode($<loc>1),
                 Params: $3,
              }
          }
@@ -297,7 +309,7 @@ stage_retain_list
     | stage_retain_list id ','
         {
             $$ = append($1, &RetainParam{
-                Node: NewAstNode($<loc>2, $<srcfile>2),
+                Node: NewAstNode($<loc>2),
                 Id: $<intern>2.Get($2),
             })
         }
@@ -337,14 +349,14 @@ in_param_list
 in_param
     : IN type_id id help ','
         { $$ = &InParam{
-            Node: NewAstNode($<loc>1, $<srcfile>1),
+            Node: NewAstNode($<loc>1),
             Tname: $2,
             Id: $<intern>3.Get($3),
             Help: unquote($4),
         } }
     | IN type_id id ','
         { $$ = &InParam{
-            Node: NewAstNode($<loc>1, $<srcfile>1),
+            Node: NewAstNode($<loc>1),
             Tname: $2,
             Id: $<intern>3.Get($3),
         } }
@@ -364,7 +376,7 @@ out_param
     : OUT type_id ','
         { $$ = &OutParam{
             StructMember: StructMember{
-                Node: NewAstNode($<loc>1, $<srcfile>1),
+                Node: NewAstNode($<loc>1),
                 Tname: $2,
                 Id: defaultOutName,
             },
@@ -372,7 +384,7 @@ out_param
     | OUT type_id help ','
         { $$ = &OutParam{
             StructMember: StructMember{
-                Node: NewAstNode($<loc>1, $<srcfile>1),
+                Node: NewAstNode($<loc>1),
                 Tname: $2,
                 Id: defaultOutName,
                 Help: unquote($3),
@@ -381,7 +393,7 @@ out_param
     | OUT type_id help outname ','
         { $$ = &OutParam{
             StructMember: StructMember{
-                Node: NewAstNode($<loc>1, $<srcfile>1),
+                Node: NewAstNode($<loc>1),
                 Tname: $2,
                 Id: defaultOutName,
                 OutName: $<intern>5.unquote($4),
@@ -406,20 +418,20 @@ struct_field_list
 struct_field
     : type_id id ','
         { $$ = &StructMember{
-            Node: NewAstNode($<loc>1, $<srcfile>1),
+            Node: NewAstNode($<loc>1),
             Tname: $1,
             Id: $<intern>2.Get($2),
         } }
     | type_id id help ','
         { $$ = &StructMember{
-            Node: NewAstNode($<loc>1, $<srcfile>1),
+            Node: NewAstNode($<loc>1),
             Tname: $1,
             Id: $<intern>2.Get($2),
             Help: unquote($3),
         } }
     | type_id id help outname ','
         { $$ = &StructMember{
-            Node: NewAstNode($<loc>1, $<srcfile>1),
+            Node: NewAstNode($<loc>1),
             Tname: $1,
             Id: $<intern>2.Get($2),
             OutName: $<intern>4.unquote($4),
@@ -433,7 +445,7 @@ src_stm
             cmd := strings.TrimSpace($<intern>3.unquote($3))
             stagecodeParts := strings.Fields(cmd)
             $$ = &SrcParam{
-                Node: NewAstNode($<loc>1, $<srcfile>1),
+                Node: NewAstNode($<loc>1),
                 Lang: StageLanguage($<intern>2.Get($2)),
                 cmd:  cmd,
                 Path: stagecodeParts[0],
@@ -510,7 +522,7 @@ split_param_list
 return_stm
     : RETURN '(' bind_stm_list ')'
         { $$ = &ReturnStm{
-            Node: NewAstNode($<loc>1, $<srcfile>1),
+            Node: NewAstNode($<loc>1),
             Bindings: $3,
         } }
     ;
@@ -520,7 +532,7 @@ pipeline_retain
         { $$ = nil }
     | RETAIN '(' pipeline_retain_list ')'
         { $$ = &PipelineRetains{
-            Node: NewAstNode($<loc>1, $<srcfile>1),
+            Node: NewAstNode($<loc>1),
             Refs: $3,
         } }
 
@@ -541,14 +553,14 @@ call_stm_begin
     : CALL modifiers id
         { id := $<intern>3.Get($3)
           $$ = &CallStm{
-            Node: NewAstNode($<loc>1, $<srcfile>1),
+            Node: NewAstNode($<loc>1),
             Modifiers: $2,
             Id: id,
             DecId: id,
         } }
     | CALL modifiers id AS id
         { $$ = &CallStm{
-            Node: NewAstNode($<loc>1, $<srcfile>1),
+            Node: NewAstNode($<loc>1),
             Modifiers: $2,
             Id: $<intern>5.Get($5),
             DecId: $<intern>3.Get($3),
@@ -588,7 +600,7 @@ modifiers
 modifier_stm_list
     :
         { $$ = &BindStms{
-            Node: NewAstNode($<loc>0, $<srcfile>0),
+            Node: NewAstNode($<loc>0),
         } }
     | modifier_stm_list modifier_stm
         {
@@ -600,25 +612,25 @@ modifier_stm_list
 modifier_stm
     : LOCAL '=' bool_exp ','
         { $$ = &BindStm{
-            Node: NewAstNode($<loc>1, $<srcfile>1),
+            Node: NewAstNode($<loc>1),
             Id: local,
             Exp: $3,
         } }
     | PREFLIGHT '=' bool_exp ','
         { $$ = &BindStm{
-            Node: NewAstNode($<loc>1, $<srcfile>1),
+            Node: NewAstNode($<loc>1),
             Id: preflight,
             Exp: $3,
         } }
     | VOLATILE '=' bool_exp ','
         { $$ = &BindStm{
-            Node: NewAstNode($<loc>1, $<srcfile>1),
+            Node: NewAstNode($<loc>1),
             Id: volatile,
             Exp: $3,
         } }
     | DISABLED '=' ref_exp ','
         { $$ = &BindStm{
-            Node: NewAstNode($<loc>1, $<srcfile>1),
+            Node: NewAstNode($<loc>1),
             Id: disabled,
             Exp: $3,
         } }
@@ -632,7 +644,7 @@ nonempty_bind_stm_list
         }
     | bind_stm
         { $$ = &BindStms{
-            Node: NewAstNode($<loc>0, $<srcfile>0),
+            Node: NewAstNode($<loc>0),
             List: []*BindStm{$1},
         } }
     ;
@@ -646,19 +658,19 @@ bind_stm_list
         }
     | wildcard_bind
         { $$ = &BindStms{
-            Node: NewAstNode($<loc>0, $<srcfile>0),
+            Node: NewAstNode($<loc>0),
             List: []*BindStm{$1},
         } }
     |
         { $$ = &BindStms{
-            Node: NewAstNode($<loc>0, $<srcfile>0),
+            Node: NewAstNode($<loc>0),
         } }
     ;
 
 split_bind_stm_list_partial
     : split_bind_stm
         { $$ = &BindStms{
-            Node: NewAstNode($<loc>0, $<srcfile>0),
+            Node: NewAstNode($<loc>0),
             List: []*BindStm{$1},
         } }
     | nonempty_bind_stm_list split_bind_stm
@@ -690,7 +702,7 @@ split_bind_stm_list
 bind_stm
     : id '=' exp ','
         { $$ = &BindStm{
-            Node: NewAstNode($<loc>1, $<srcfile>1),
+            Node: NewAstNode($<loc>1),
             Id: $<intern>1.Get($1),
             Exp: $3,
         } }
@@ -699,16 +711,16 @@ bind_stm
 wildcard_bind
     : '*' '=' ref_exp ','
         { $$ = &BindStm{
-            Node: NewAstNode($<loc>1, $<srcfile>1),
+            Node: NewAstNode($<loc>1),
             Id: "*",
             Exp: $3,
         } }
     | '*' '=' SELF ','
       { $$ = &BindStm{
-            Node: NewAstNode($<loc>1, $<srcfile>1),
+            Node: NewAstNode($<loc>1),
             Id: "*",
             Exp: &RefExp{
-                Node: NewAstNode($<loc>3, $<srcfile>3),
+                Node: NewAstNode($<loc>3),
                 Kind: KindSelf,
             },
        } }
@@ -717,20 +729,20 @@ wildcard_bind
 split_bind_stm
     : id '=' SPLIT nonempty_collection_exp ','
         { $$ = &BindStm{
-            Node: NewAstNode($<loc>1, $<srcfile>1),
+            Node: NewAstNode($<loc>1),
             Id: $<intern>1.Get($1),
             Exp: &SplitExp{
-                valExp: valExp{Node: NewAstNode($<loc>3, $<srcfile>3)},
+                valExp: valExp{Node: NewAstNode($<loc>3)},
                 Value: $4,
                 Source: $4.(MapCallSource),
             },
         } }
     | id '=' SPLIT ref_exp ','
         { $$ = &BindStm{
-            Node: NewAstNode($<loc>1, $<srcfile>1),
+            Node: NewAstNode($<loc>1),
             Id: $<intern>1.Get($1),
             Exp: &SplitExp{
-                valExp: valExp{Node: NewAstNode($<loc>3, $<srcfile>3)},
+                valExp: valExp{Node: NewAstNode($<loc>3)},
                 Value: $4,
             },
         } }
@@ -794,7 +806,7 @@ val_exp
         { // Lexer guarantees parseable float strings.
           f := parseFloat($1)
           $$ = &FloatExp{
-              valExp: valExp{Node: NewAstNode($<loc>1, $<srcfile>1)},
+              valExp: valExp{Node: NewAstNode($<loc>1)},
               Value: f,
           }
         }
@@ -802,13 +814,13 @@ val_exp
         {  // Lexer guarantees parseable int strings.
             i := parseInt($1)
             $$ = &IntExp{
-                valExp: valExp{Node: NewAstNode($<loc>1, $<srcfile>1)},
+                valExp: valExp{Node: NewAstNode($<loc>1)},
                 Value: i,
             }
         }
     | LITSTRING
         { $$ = &StringExp{
-            valExp: valExp{Node: NewAstNode($<loc>1, $<srcfile>1)},
+            valExp: valExp{Node: NewAstNode($<loc>1)},
             Kind: KindString,
             Value: unquote($1),
         } }
@@ -817,14 +829,14 @@ val_exp
     | bool_exp
     | NULL
         { $$ = &NullExp{
-            valExp: valExp{Node: NewAstNode($<loc>1, $<srcfile>1)},
+            valExp: valExp{Node: NewAstNode($<loc>1)},
         } }
     ;
 
 nonempty_array_exp
     : '[' exp_list ']'
         { $$ = &ArrayExp{
-            valExp: valExp{Node: NewAstNode($<loc>1, $<srcfile>1)},
+            valExp: valExp{Node: NewAstNode($<loc>1)},
             Value: $2,
         } }
     ;
@@ -833,7 +845,7 @@ array_exp
     : nonempty_array_exp
     | '[' ']'
         { $$ = &ArrayExp{
-            valExp: valExp{Node: NewAstNode($<loc>1, $<srcfile>1)},
+            valExp: valExp{Node: NewAstNode($<loc>1)},
             Value: make([]Exp, 0),
         } }
     ;
@@ -841,7 +853,7 @@ array_exp
 nonempty_map_exp
     : '{' kvpair_list '}'
         { $$ = &MapExp{
-            valExp: valExp{Node: NewAstNode($<loc>1, $<srcfile>1)},
+            valExp: valExp{Node: NewAstNode($<loc>1)},
             Kind: KindMap,
             Value: $2,
         } }
@@ -851,13 +863,13 @@ map_exp
     : nonempty_map_exp
     | '{' struct_vals_list '}'
         { $$ = &MapExp{
-            valExp: valExp{Node: NewAstNode($<loc>1, $<srcfile>1)},
+            valExp: valExp{Node: NewAstNode($<loc>1)},
             Kind: KindStruct,
             Value: $2,
         } }
     | '{' '}'
         { $$ = &MapExp{
-            valExp: valExp{Node: NewAstNode($<loc>1, $<srcfile>1)},
+            valExp: valExp{Node: NewAstNode($<loc>1)},
             Kind: KindMap,
             Value: make(map[string]Exp, 0),
         } }
@@ -866,12 +878,12 @@ map_exp
 bool_exp
     : TRUE
         { $$ = &BoolExp{
-            valExp: valExp{Node: NewAstNode($<loc>1, $<srcfile>1)},
+            valExp: valExp{Node: NewAstNode($<loc>1)},
             Value: true,
         } }
     | FALSE
         { $$ = &BoolExp{
-            valExp: valExp{Node: NewAstNode($<loc>1, $<srcfile>1)},
+            valExp: valExp{Node: NewAstNode($<loc>1)},
             Value: false,
         } }
     ;
@@ -879,7 +891,7 @@ bool_exp
 ref_exp
     : id '.' id_list
         { $$ = &RefExp{
-            Node: NewAstNode($<loc>1, $<srcfile>1),
+            Node: NewAstNode($<loc>1),
             Kind: KindCall,
             Id: $<intern>1.Get($1),
             OutputId: $<intern>3.Get($3),
@@ -887,26 +899,26 @@ ref_exp
     | id '.' DEFAULT
         {
             $$ = &RefExp{
-            Node: NewAstNode($<loc>1, $<srcfile>1),
+            Node: NewAstNode($<loc>1),
             Kind: KindCall,
             Id: $<intern>1.Get($1),
             OutputId: defaultOutName,
         } }
     | id
         { $$ = &RefExp{
-            Node: NewAstNode($<loc>1, $<srcfile>1),
+            Node: NewAstNode($<loc>1),
             Kind: KindCall,
             Id: $<intern>1.Get($1),
         } }
     | SELF '.' id
         { $$ = &RefExp{
-            Node: NewAstNode($<loc>1, $<srcfile>1),
+            Node: NewAstNode($<loc>1),
             Kind: KindSelf,
             Id: $<intern>3.Get($3),
         } }
     | SELF '.' id '.' id_list
         { $$ = &RefExp{
-            Node: NewAstNode($<loc>1, $<srcfile>1),
+            Node: NewAstNode($<loc>1),
             Kind: KindSelf,
             Id: $<intern>3.Get($3),
             OutputId: $<intern>5.Get($5),

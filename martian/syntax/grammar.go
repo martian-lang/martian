@@ -16,9 +16,8 @@ import (
 type mmSymType struct {
 	yys       int
 	global    *Ast
-	srcfile   *SourceFile
 	arr       int16
-	loc       int
+	loc       SourceLoc
 	val       []byte
 	modifiers *Modifiers
 	dec       Dec
@@ -49,6 +48,7 @@ type mmSymType struct {
 	reflist   []*RefExp
 	includes  []*Include
 	intern    *stringIntern
+	f32       float32
 }
 
 const SKIP = 57346
@@ -170,186 +170,192 @@ var mmExca = [...]int{
 	1, -1,
 	-2, 0,
 	-1, 91,
-	15, 151,
-	29, 151,
-	-2, 83,
-	-1, 92,
 	15, 154,
 	29, 154,
-	-2, 84,
+	-2, 86,
+	-1, 92,
+	15, 157,
+	29, 157,
+	-2, 87,
 	-1, 93,
-	15, 162,
-	29, 162,
-	-2, 85,
+	15, 165,
+	29, 165,
+	-2, 88,
 }
 
 const mmPrivate = 57344
 
-const mmLast = 744
+const mmLast = 783
 
 var mmAct = [...]int{
 
-	66, 65, 161, 81, 128, 245, 169, 230, 4, 212,
-	188, 32, 34, 132, 131, 24, 22, 15, 41, 141,
-	84, 82, 135, 63, 115, 83, 74, 26, 27, 75,
-	76, 77, 204, 205, 206, 289, 288, 40, 287, 86,
-	78, 290, 240, 228, 224, 73, 124, 165, 79, 211,
-	37, 187, 291, 246, 250, 36, 236, 223, 119, 238,
+	66, 287, 161, 81, 65, 128, 245, 169, 4, 230,
+	212, 32, 34, 188, 131, 132, 24, 22, 41, 15,
+	135, 82, 84, 63, 267, 115, 74, 293, 141, 75,
+	76, 77, 26, 27, 246, 83, 204, 205, 206, 86,
+	78, 292, 294, 289, 288, 224, 40, 165, 73, 240,
+	272, 228, 211, 187, 268, 269, 270, 271, 124, 250,
 	90, 46, 133, 136, 137, 139, 138, 140, 53, 57,
 	51, 47, 50, 58, 44, 54, 55, 56, 48, 49,
-	52, 42, 237, 86, 213, 189, 45, 43, 117, 163,
-	118, 213, 267, 189, 21, 232, 7, 41, 123, 21,
-	35, 9, 125, 109, 184, 183, 168, 41, 110, 116,
-	129, 263, 256, 148, 191, 117, 121, 117, 272, 120,
-	157, 234, 268, 269, 270, 271, 126, 127, 35, 99,
-	98, 41, 164, 167, 210, 153, 150, 109, 265, 152,
-	154, 155, 28, 29, 21, 166, 33, 28, 29, 21,
-	17, 9, 284, 202, 151, 17, 9, 274, 108, 41,
-	186, 259, 257, 184, 41, 30, 252, 251, 184, 41,
-	30, 184, 247, 106, 105, 195, 142, 185, 178, 197,
-	150, 104, 87, 179, 180, 41, 209, 80, 192, 193,
-	194, 190, 38, 199, 198, 215, 94, 214, 207, 208,
-	144, 145, 146, 147, 191, 175, 88, 97, 167, 89,
-	89, 158, 97, 96, 46, 283, 282, 281, 226, 231,
-	227, 53, 57, 51, 47, 50, 58, 44, 54, 55,
-	56, 48, 49, 52, 42, 280, 241, 243, 244, 45,
-	43, 248, 279, 253, 173, 122, 23, 61, 86, 255,
-	25, 258, 172, 171, 170, 156, 262, 261, 112, 111,
-	296, 295, 294, 46, 273, 293, 276, 278, 292, 286,
-	53, 57, 51, 47, 50, 58, 44, 54, 55, 56,
-	48, 49, 52, 42, 12, 10, 11, 8, 45, 43,
-	67, 26, 27, 16, 23, 285, 254, 39, 25, 242,
-	239, 233, 221, 220, 219, 218, 217, 216, 176, 174,
-	101, 46, 100, 95, 160, 159, 103, 102, 53, 57,
+	52, 42, 223, 86, 79, 37, 45, 43, 117, 238,
+	118, 213, 36, 189, 213, 189, 236, 41, 123, 21,
+	232, 119, 125, 184, 183, 109, 9, 41, 163, 116,
+	21, 129, 237, 284, 168, 117, 148, 117, 110, 120,
+	157, 28, 29, 21, 184, 121, 126, 127, 191, 17,
+	9, 41, 164, 167, 7, 234, 150, 153, 35, 109,
+	152, 263, 155, 274, 30, 166, 33, 28, 29, 21,
+	154, 186, 256, 210, 184, 17, 9, 99, 98, 41,
+	265, 202, 184, 151, 41, 108, 35, 259, 257, 41,
+	30, 252, 251, 247, 106, 105, 215, 142, 195, 185,
+	150, 104, 197, 179, 180, 41, 209, 178, 87, 190,
+	192, 193, 194, 80, 199, 198, 38, 94, 214, 208,
+	207, 144, 145, 146, 147, 191, 88, 175, 167, 97,
+	89, 89, 158, 97, 96, 283, 282, 281, 280, 231,
+	279, 226, 173, 227, 172, 171, 170, 156, 112, 111,
+	8, 300, 299, 298, 297, 296, 295, 241, 244, 243,
+	39, 286, 248, 285, 253, 254, 242, 239, 86, 233,
+	255, 258, 221, 220, 219, 218, 262, 160, 261, 217,
+	216, 23, 61, 176, 273, 25, 174, 278, 101, 276,
+	100, 95, 159, 103, 102, 1, 3, 260, 46, 31,
+	64, 5, 290, 291, 235, 53, 57, 51, 47, 50,
+	58, 44, 54, 55, 56, 48, 49, 52, 42, 12,
+	10, 11, 107, 45, 43, 67, 26, 27, 16, 23,
+	113, 114, 143, 25, 229, 72, 69, 71, 68, 62,
+	60, 196, 14, 13, 181, 222, 46, 130, 264, 249,
+	266, 182, 162, 53, 57, 51, 47, 50, 58, 44,
+	54, 55, 56, 48, 49, 52, 42, 12, 10, 11,
+	20, 45, 43, 67, 26, 27, 16, 23, 19, 18,
+	59, 25, 203, 134, 2, 0, 0, 0, 0, 0,
+	0, 0, 0, 0, 46, 0, 0, 0, 0, 0,
+	0, 177, 57, 51, 47, 50, 58, 44, 54, 55,
+	56, 48, 49, 52, 42, 12, 10, 11, 0, 45,
+	43, 67, 26, 27, 16, 46, 133, 136, 137, 139,
+	138, 140, 53, 57, 51, 47, 50, 58, 44, 54,
+	55, 56, 48, 49, 52, 42, 46, 0, 0, 0,
+	45, 43, 0, 53, 57, 51, 47, 50, 58, 44,
+	54, 55, 56, 48, 49, 52, 42, 0, 0, 0,
+	0, 45, 43, 0, 0, 0, 46, 122, 136, 137,
+	139, 138, 140, 53, 57, 51, 47, 50, 58, 44,
+	54, 55, 56, 48, 49, 52, 42, 0, 0, 200,
+	0, 45, 43, 201, 0, 0, 0, 0, 0, 0,
+	0, 0, 0, 0, 0, 0, 46, 0, 0, 0,
+	0, 0, 0, 53, 57, 51, 47, 50, 58, 44,
+	54, 55, 56, 48, 49, 52, 42, 275, 0, 0,
+	0, 45, 43, 67, 0, 0, 0, 0, 0, 0,
+	0, 46, 225, 0, 0, 0, 0, 0, 53, 57,
 	51, 47, 50, 58, 44, 54, 55, 56, 48, 49,
-	52, 42, 12, 10, 11, 1, 45, 43, 67, 26,
-	27, 16, 23, 260, 3, 235, 25, 31, 64, 5,
-	107, 113, 114, 143, 229, 72, 69, 71, 68, 46,
-	62, 60, 196, 14, 13, 181, 177, 57, 51, 47,
+	52, 42, 0, 46, 0, 0, 45, 43, 67, 0,
+	53, 57, 51, 47, 50, 58, 44, 54, 55, 56,
+	48, 49, 52, 42, 189, 46, 0, 0, 45, 43,
+	0, 0, 53, 57, 51, 47, 50, 58, 44, 54,
+	55, 56, 48, 49, 52, 42, 46, 0, 0, 0,
+	45, 43, 67, 53, 57, 51, 47, 50, 58, 44,
+	54, 55, 56, 48, 49, 52, 42, 70, 0, 0,
+	0, 45, 43, 149, 0, 0, 0, 0, 0, 46,
+	0, 0, 0, 0, 0, 0, 53, 57, 51, 47,
 	50, 58, 44, 54, 55, 56, 48, 49, 52, 42,
-	12, 10, 11, 222, 45, 43, 67, 26, 27, 16,
-	46, 133, 136, 137, 139, 138, 140, 53, 57, 51,
-	47, 50, 58, 44, 54, 55, 56, 48, 49, 52,
-	42, 130, 264, 249, 266, 45, 43, 46, 182, 136,
-	137, 139, 138, 140, 53, 57, 51, 47, 50, 58,
-	44, 54, 55, 56, 48, 49, 52, 42, 162, 20,
-	200, 19, 45, 43, 201, 18, 59, 203, 134, 2,
-	0, 0, 0, 0, 0, 0, 0, 46, 0, 0,
-	0, 0, 0, 0, 53, 57, 51, 47, 50, 58,
-	44, 54, 55, 56, 48, 49, 52, 42, 275, 0,
-	0, 0, 45, 43, 67, 0, 0, 0, 0, 0,
-	0, 0, 46, 225, 0, 0, 0, 0, 0, 53,
-	57, 51, 47, 50, 58, 44, 54, 55, 56, 48,
-	49, 52, 42, 0, 46, 0, 0, 45, 43, 67,
+	73, 0, 23, 0, 45, 43, 25, 0, 0, 0,
+	6, 28, 29, 21, 0, 0, 0, 0, 0, 17,
+	9, 0, 0, 0, 0, 0, 0, 0, 0, 277,
+	0, 0, 0, 0, 30, 0, 0, 0, 0, 0,
+	12, 10, 11, 46, 0, 0, 85, 26, 27, 16,
+	53, 57, 51, 47, 50, 58, 44, 54, 55, 56,
+	48, 49, 52, 42, 46, 0, 0, 0, 45, 43,
 	0, 53, 57, 51, 47, 50, 58, 44, 54, 55,
-	56, 48, 49, 52, 42, 189, 46, 0, 0, 45,
-	43, 0, 0, 53, 57, 51, 47, 50, 58, 44,
-	54, 55, 56, 48, 49, 52, 42, 46, 0, 0,
-	0, 45, 43, 67, 53, 57, 51, 47, 50, 58,
-	44, 54, 55, 56, 48, 49, 52, 42, 70, 0,
-	0, 0, 45, 43, 149, 0, 0, 0, 0, 0,
-	46, 0, 0, 0, 0, 0, 0, 53, 57, 51,
-	47, 50, 58, 44, 54, 55, 56, 48, 49, 52,
-	42, 73, 0, 23, 0, 45, 43, 25, 0, 0,
-	0, 6, 28, 29, 21, 0, 0, 0, 0, 0,
-	17, 9, 0, 0, 0, 0, 0, 0, 0, 0,
-	277, 0, 0, 0, 0, 30, 0, 0, 0, 0,
-	0, 12, 10, 11, 46, 0, 0, 85, 26, 27,
-	16, 53, 57, 51, 47, 50, 58, 44, 54, 55,
 	56, 48, 49, 52, 42, 46, 0, 0, 0, 45,
 	43, 0, 53, 57, 51, 47, 50, 58, 44, 54,
 	55, 56, 48, 49, 52, 42, 46, 0, 0, 0,
-	45, 43, 0, 53, 57, 51, 47, 50, 58, 44,
-	54, 55, 56, 48, 49, 52, 42, 46, 0, 0,
-	0, 45, 43, 0, 53, 57, 51, 91, 92, 93,
-	44, 54, 55, 56, 48, 49, 52, 42, 0, 0,
-	0, 0, 45, 43,
+	45, 43, 0, 53, 57, 51, 91, 92, 93, 44,
+	54, 55, 56, 48, 49, 52, 42, 0, 0, 0,
+	0, 45, 43,
 }
 var mmPact = [...]int{
 
-	600, -1000, 125, 120, 17, -1000, -1, -1000, 177, 75,
-	-1000, -1000, -1000, -1000, -1000, -1000, -1000, 666, -1000, -1000,
-	-1000, -1000, -1000, 233, -1000, 560, -1000, -1000, 666, 666,
-	666, 120, 17, -3, 17, -1000, 172, -1000, 645, 167,
+	639, -1000, 125, 99, 54, -1000, 34, -1000, 181, 86,
+	-1000, -1000, -1000, -1000, -1000, -1000, -1000, 705, -1000, -1000,
+	-1000, -1000, -1000, 248, -1000, 599, -1000, -1000, 705, 705,
+	705, 99, 54, 33, 54, -1000, 178, -1000, 684, 173,
 	199, -1000, -1000, -1000, -1000, -1000, -1000, -1000, -1000, -1000,
-	-1000, -1000, -1000, -1000, -1000, -1000, -1000, -1000, -1000, 687,
-	182, -1000, 304, -1000, -1000, -1000, 202, 201, 112, 111,
-	-1000, 303, 301, 309, 308, 166, 159, 158, 17, -1000,
-	-1000, 142, 645, -1000, -1000, 249, 248, 666, -1000, 666,
-	29, -1000, -1000, -1000, -1000, 281, 184, 666, -1000, -1000,
-	-5, 666, 281, 281, -1000, -1000, 360, 160, -1000, -1000,
-	-1000, 527, 281, 138, 645, -1000, 666, 245, -1000, 666,
-	-1000, 198, -1000, 200, 307, 306, -1000, -1000, 63, 63,
-	31, -1000, 666, 87, -1000, -1000, -1000, -1000, -1000, -1000,
-	-1000, 198, -1000, -1000, 244, 243, 242, 234, 300, 196,
-	299, -1000, -1000, -1000, -1000, -1000, 329, -1000, 666, 281,
-	281, 77, -1000, 360, 144, -1000, -1000, 42, 387, 191,
-	-31, -31, -31, 506, -1000, -1000, -1000, 427, 198, -1000,
-	-1000, 137, -1000, -22, 360, 666, 117, -1000, 40, -1000,
-	-1000, 181, 298, 297, 296, 295, 294, 293, -1000, -1000,
-	281, -6, 20, -7, -1000, -1000, -1000, 484, -1000, 34,
-	70, -1000, 292, -1000, 101, -1000, -1000, -1000, -1000, -1000,
-	-1000, -1000, 18, 44, 291, -1000, 33, 290, -1000, 70,
-	14, 17, 157, -1000, -1000, 15, 152, 151, -1000, -1000,
-	-1000, 287, -1000, 14, 17, 94, 147, 645, 191, -1000,
-	146, -1000, -1000, 63, -1000, 93, -1000, -1000, 122, -1000,
-	76, 63, 141, -1000, 462, -1000, 624, -1000, 232, 225,
-	207, 206, 205, 136, -1000, -1000, 286, -1000, 260, -15,
-	-17, -18, -10, 8, -1000, -1000, -1000, 259, 256, 253,
-	252, 251, -1000, -1000, -1000, -1000, -1000,
+	-1000, -1000, -1000, -1000, -1000, -1000, -1000, -1000, -1000, 726,
+	183, -1000, 262, -1000, -1000, -1000, 203, 202, 140, 139,
+	-1000, 261, 259, 266, 265, 166, 160, 159, 54, -1000,
+	-1000, 149, 684, -1000, -1000, 219, 218, 705, -1000, 705,
+	72, -1000, -1000, -1000, -1000, 296, 396, 705, -1000, -1000,
+	7, 705, 296, 296, -1000, -1000, 375, 161, -1000, -1000,
+	-1000, 566, 296, 147, 684, -1000, 705, 217, -1000, 705,
+	-1000, 200, -1000, 201, 264, 249, -1000, -1000, 82, 82,
+	31, -1000, 705, 95, -1000, -1000, -1000, -1000, -1000, -1000,
+	-1000, 200, -1000, -1000, 216, 215, 214, 212, 257, 198,
+	254, -1000, -1000, -1000, -1000, -1000, 344, -1000, 705, 296,
+	296, 76, -1000, 375, 135, -1000, -1000, 44, 426, 192,
+	-26, -26, -26, 545, -1000, -1000, -1000, 466, 200, -1000,
+	-1000, 145, -1000, -18, 375, 705, 136, -1000, 43, -1000,
+	-1000, 162, 251, 250, 246, 245, 244, 243, -1000, -1000,
+	296, -3, 45, -6, -1000, -1000, -1000, 523, -1000, 42,
+	75, -1000, 240, -1000, 115, -1000, -1000, -1000, -1000, -1000,
+	-1000, -1000, 58, 74, 238, -1000, 40, 237, -1000, 75,
+	-5, 54, 158, -1000, -1000, 20, 157, 156, -1000, -1000,
+	-1000, 236, -1000, -5, 54, 134, 153, 684, 192, -1000,
+	152, -1000, -1000, 82, -1000, 123, -1000, -1000, 144, -1000,
+	8, 82, 127, -1000, 501, -1000, 663, -1000, 210, 208,
+	207, 206, 205, 97, -1000, -1000, 234, -1000, 232, -9,
+	-9, -9, -10, -17, -1000, -1000, -1000, 227, -1000, -1000,
+	226, 225, 224, 223, 222, -1000, -1000, -1000, -1000, -1000,
+	-1000,
 }
 var mmPgo = [...]int{
 
-	0, 449, 0, 19, 22, 448, 10, 447, 9, 446,
-	6, 96, 445, 441, 439, 344, 438, 418, 14, 414,
-	413, 412, 5, 4, 2, 411, 383, 365, 13, 23,
-	1, 348, 17, 364, 16, 363, 15, 362, 361, 360,
-	358, 357, 356, 355, 8, 287, 354, 20, 24, 25,
-	353, 3, 21, 352, 351, 350, 7, 345, 343, 335,
+	0, 364, 0, 28, 20, 363, 13, 362, 10, 360,
+	7, 134, 359, 358, 350, 276, 332, 331, 14, 330,
+	329, 328, 6, 5, 2, 327, 325, 324, 15, 23,
+	4, 280, 19, 323, 17, 322, 16, 321, 320, 319,
+	318, 317, 316, 315, 8, 230, 314, 22, 25, 35,
+	312, 3, 21, 311, 310, 302, 9, 284, 277, 1,
+	275,
 }
 var mmR1 = [...]int{
 
-	0, 59, 59, 59, 59, 59, 59, 59, 1, 1,
+	0, 60, 60, 60, 60, 60, 60, 60, 1, 1,
 	15, 15, 11, 11, 11, 11, 13, 13, 12, 14,
-	57, 57, 58, 58, 58, 58, 58, 58, 20, 20,
-	19, 19, 3, 3, 10, 10, 23, 23, 16, 16,
-	24, 24, 17, 17, 17, 17, 25, 25, 18, 18,
-	18, 27, 6, 8, 5, 5, 4, 4, 4, 4,
-	4, 4, 28, 28, 7, 7, 7, 26, 26, 26,
-	56, 22, 22, 21, 21, 46, 46, 45, 45, 44,
-	44, 44, 9, 9, 9, 9, 55, 55, 50, 50,
-	50, 50, 52, 52, 51, 51, 51, 51, 53, 53,
-	53, 53, 54, 54, 47, 49, 49, 48, 48, 37,
-	37, 39, 39, 38, 38, 41, 41, 40, 40, 43,
-	43, 42, 42, 29, 29, 31, 31, 31, 31, 31,
-	31, 31, 34, 33, 33, 36, 35, 35, 35, 32,
-	32, 30, 30, 30, 30, 30, 2, 2, 2, 2,
+	57, 57, 58, 58, 58, 58, 58, 58, 58, 59,
+	59, 20, 20, 19, 19, 3, 3, 10, 10, 23,
+	23, 16, 16, 24, 24, 17, 17, 17, 17, 25,
+	25, 18, 18, 18, 27, 6, 8, 5, 5, 4,
+	4, 4, 4, 4, 4, 28, 28, 7, 7, 7,
+	26, 26, 26, 56, 22, 22, 21, 21, 46, 46,
+	45, 45, 44, 44, 44, 9, 9, 9, 9, 55,
+	55, 50, 50, 50, 50, 52, 52, 51, 51, 51,
+	51, 53, 53, 53, 53, 54, 54, 47, 49, 49,
+	48, 48, 37, 37, 39, 39, 38, 38, 41, 41,
+	40, 40, 43, 43, 42, 42, 29, 29, 31, 31,
+	31, 31, 31, 31, 31, 34, 33, 33, 36, 35,
+	35, 35, 32, 32, 30, 30, 30, 30, 30, 2,
 	2, 2, 2, 2, 2, 2, 2, 2, 2, 2,
-	2, 2, 2,
+	2, 2, 2, 2, 2, 2,
 }
 var mmR2 = [...]int{
 
 	0, 2, 3, 2, 1, 2, 1, 1, 3, 2,
 	2, 1, 3, 1, 1, 1, 11, 10, 10, 5,
-	0, 4, 0, 5, 5, 5, 5, 5, 0, 4,
-	0, 3, 3, 1, 0, 3, 0, 2, 5, 4,
-	0, 2, 3, 4, 5, 2, 1, 2, 3, 4,
-	5, 4, 1, 1, 1, 1, 1, 1, 1, 1,
-	1, 1, 6, 2, 1, 1, 1, 0, 6, 5,
-	4, 0, 4, 0, 3, 2, 1, 3, 5, 4,
-	5, 5, 0, 2, 2, 2, 0, 2, 4, 4,
-	4, 4, 2, 1, 1, 2, 1, 0, 1, 2,
-	2, 2, 1, 2, 4, 4, 4, 5, 5, 1,
-	1, 3, 1, 2, 1, 5, 3, 2, 1, 5,
-	3, 2, 1, 1, 1, 1, 1, 1, 1, 1,
-	1, 1, 3, 1, 2, 3, 1, 3, 2, 1,
-	1, 3, 3, 1, 3, 5, 1, 1, 1, 1,
+	0, 4, 0, 5, 5, 5, 5, 5, 5, 1,
+	1, 0, 4, 0, 3, 3, 1, 0, 3, 0,
+	2, 5, 4, 0, 2, 3, 4, 5, 2, 1,
+	2, 3, 4, 5, 4, 1, 1, 1, 1, 1,
+	1, 1, 1, 1, 1, 6, 2, 1, 1, 1,
+	0, 6, 5, 4, 0, 4, 0, 3, 2, 1,
+	3, 5, 4, 5, 5, 0, 2, 2, 2, 0,
+	2, 4, 4, 4, 4, 2, 1, 1, 2, 1,
+	0, 1, 2, 2, 2, 1, 2, 4, 4, 4,
+	5, 5, 1, 1, 3, 1, 2, 1, 5, 3,
+	2, 1, 5, 3, 2, 1, 1, 1, 1, 1,
+	1, 1, 1, 1, 1, 3, 1, 2, 3, 1,
+	3, 2, 1, 1, 3, 3, 1, 3, 5, 1,
 	1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
-	1, 1, 1,
+	1, 1, 1, 1, 1, 1,
 }
 var mmChk = [...]int{
 
-	-1000, -59, -1, -15, -44, -31, 21, -11, -45, 31,
+	-1000, -60, -1, -15, -44, -31, 21, -11, -45, 31,
 	52, 53, 51, -33, -35, -32, 60, 30, -12, -13,
 	-14, 24, -34, 13, -36, 17, 58, 59, 22, 23,
 	45, -15, -44, 21, -44, -11, 38, 51, 15, -45,
@@ -377,41 +383,43 @@ var mmChk = [...]int{
 	39, 15, 15, -23, 9, -22, 18, 15, -51, 15,
 	-58, -23, -24, 18, -21, 16, -19, 16, 46, 47,
 	48, 49, 42, -24, 16, 16, -30, 16, -2, 10,
-	10, 10, 10, 10, 16, 9, 9, 53, 53, 53,
-	51, 44, 9, 9, 9, 9, 9,
+	10, 10, 10, 10, 16, 9, 9, -59, 53, 52,
+	-59, -59, 51, 44, 59, 9, 9, 9, 9, 9,
+	9,
 }
 var mmDef = [...]int{
 
 	0, -2, 0, 4, 6, 7, 0, 11, 0, 0,
-	125, 126, 127, 128, 129, 130, 131, 0, 13, 14,
-	15, 82, 133, 0, 136, 0, 139, 140, 0, 0,
-	0, 1, 3, 0, 5, 10, 0, 9, 97, 0,
-	0, 33, 146, 147, 148, 149, 150, 151, 152, 153,
-	154, 155, 156, 157, 158, 159, 160, 161, 162, 0,
-	0, 134, 114, 112, 123, 124, 143, 0, 0, 0,
-	138, 118, 122, 0, 0, 0, 0, 0, 2, 8,
-	86, 0, 94, 96, 93, 0, 0, 0, 12, 0,
-	77, -2, -2, -2, 132, 113, 0, 0, 135, 137,
-	117, 121, 0, 0, 36, 36, 0, 0, 79, 92,
-	95, 0, 0, 0, 102, 98, 0, 0, 32, 0,
-	111, 141, 142, 144, 0, 0, 116, 120, 40, 40,
-	0, 46, 0, 55, 34, 54, 56, 57, 58, 59,
-	60, 61, 81, 87, 0, 0, 0, 0, 0, 0,
-	0, 80, 100, 101, 103, 99, 0, 78, 0, 0,
-	0, 0, 37, 0, 0, 19, 47, 0, 0, 63,
-	0, 0, 0, 0, 105, 106, 104, 157, 145, 115,
-	119, 0, 41, 0, 0, 0, 0, 48, 0, 52,
-	34, 0, 0, 0, 0, 0, 0, 0, 109, 110,
-	0, 0, 67, 0, 64, 65, 66, 0, 45, 0,
-	0, 49, 0, 53, 0, 35, 88, 89, 90, 91,
-	107, 108, 20, 0, 0, 42, 0, 0, 39, 0,
-	71, 76, 0, 50, 34, 28, 0, 0, 36, 51,
-	43, 0, 38, 71, 75, 0, 0, 97, 62, 18,
-	0, 22, 36, 40, 44, 0, 17, 73, 0, 30,
-	0, 40, 0, 16, 0, 70, 0, 21, 0, 0,
-	0, 0, 0, 0, 69, 72, 0, 29, 0, 0,
-	0, 0, 0, 0, 68, 74, 31, 0, 0, 0,
-	0, 0, 23, 24, 25, 26, 27,
+	128, 129, 130, 131, 132, 133, 134, 0, 13, 14,
+	15, 85, 136, 0, 139, 0, 142, 143, 0, 0,
+	0, 1, 3, 0, 5, 10, 0, 9, 100, 0,
+	0, 36, 149, 150, 151, 152, 153, 154, 155, 156,
+	157, 158, 159, 160, 161, 162, 163, 164, 165, 0,
+	0, 137, 117, 115, 126, 127, 146, 0, 0, 0,
+	141, 121, 125, 0, 0, 0, 0, 0, 2, 8,
+	89, 0, 97, 99, 96, 0, 0, 0, 12, 0,
+	80, -2, -2, -2, 135, 116, 0, 0, 138, 140,
+	120, 124, 0, 0, 39, 39, 0, 0, 82, 95,
+	98, 0, 0, 0, 105, 101, 0, 0, 35, 0,
+	114, 144, 145, 147, 0, 0, 119, 123, 43, 43,
+	0, 49, 0, 58, 37, 57, 59, 60, 61, 62,
+	63, 64, 84, 90, 0, 0, 0, 0, 0, 0,
+	0, 83, 103, 104, 106, 102, 0, 81, 0, 0,
+	0, 0, 40, 0, 0, 19, 50, 0, 0, 66,
+	0, 0, 0, 0, 108, 109, 107, 160, 148, 118,
+	122, 0, 44, 0, 0, 0, 0, 51, 0, 55,
+	37, 0, 0, 0, 0, 0, 0, 0, 112, 113,
+	0, 0, 70, 0, 67, 68, 69, 0, 48, 0,
+	0, 52, 0, 56, 0, 38, 91, 92, 93, 94,
+	110, 111, 20, 0, 0, 45, 0, 0, 42, 0,
+	74, 79, 0, 53, 37, 31, 0, 0, 39, 54,
+	46, 0, 41, 74, 78, 0, 0, 100, 65, 18,
+	0, 22, 39, 43, 47, 0, 17, 76, 0, 33,
+	0, 43, 0, 16, 0, 73, 0, 21, 0, 0,
+	0, 0, 0, 0, 72, 75, 0, 32, 0, 0,
+	0, 0, 0, 0, 71, 77, 34, 0, 29, 30,
+	0, 0, 0, 0, 0, 23, 24, 25, 26, 27,
+	28,
 }
 var mmTok1 = [...]int{
 
@@ -779,46 +787,46 @@ mmdefault:
 	case 1:
 		mmDollar = mmS[mmpt-2 : mmpt+1]
 		{
-			global := NewAst(mmDollar[2].decs, nil, mmDollar[2].srcfile)
+			global := NewAst(mmDollar[2].decs, nil, mmDollar[2].loc.File)
 			global.Includes = mmDollar[1].includes
 			mmlex.(*mmLexInfo).global = global
 		}
 	case 2:
 		mmDollar = mmS[mmpt-3 : mmpt+1]
 		{
-			global := NewAst(mmDollar[2].decs, mmDollar[3].call, mmDollar[2].srcfile)
+			global := NewAst(mmDollar[2].decs, mmDollar[3].call, mmDollar[2].loc.File)
 			global.Includes = mmDollar[1].includes
 			mmlex.(*mmLexInfo).global = global
 		}
 	case 3:
 		mmDollar = mmS[mmpt-2 : mmpt+1]
 		{
-			global := NewAst(nil, mmDollar[2].call, mmDollar[2].srcfile)
+			global := NewAst(nil, mmDollar[2].call, mmDollar[2].loc.File)
 			global.Includes = mmDollar[1].includes
 			mmlex.(*mmLexInfo).global = global
 		}
 	case 4:
 		mmDollar = mmS[mmpt-1 : mmpt+1]
 		{
-			global := NewAst(mmDollar[1].decs, nil, mmDollar[1].srcfile)
+			global := NewAst(mmDollar[1].decs, nil, mmDollar[1].loc.File)
 			mmlex.(*mmLexInfo).global = global
 		}
 	case 5:
 		mmDollar = mmS[mmpt-2 : mmpt+1]
 		{
-			global := NewAst(mmDollar[1].decs, mmDollar[2].call, mmDollar[1].srcfile)
+			global := NewAst(mmDollar[1].decs, mmDollar[2].call, mmDollar[1].loc.File)
 			mmlex.(*mmLexInfo).global = global
 		}
 	case 6:
 		mmDollar = mmS[mmpt-1 : mmpt+1]
 		{
-			global := NewAst(nil, mmDollar[1].call, mmDollar[1].srcfile)
+			global := NewAst(nil, mmDollar[1].call, mmDollar[1].loc.File)
 			mmlex.(*mmLexInfo).global = global
 		}
 	case 7:
 		mmDollar = mmS[mmpt-1 : mmpt+1]
 		{
-			global := NewAst(nil, nil, mmDollar[1].srcfile)
+			global := NewAst(nil, nil, mmDollar[1].loc.File)
 			mmlex.(*mmLexInfo).global = global
 			mmlex.(*mmLexInfo).exp = mmDollar[1].vexp
 		}
@@ -826,7 +834,7 @@ mmdefault:
 		mmDollar = mmS[mmpt-3 : mmpt+1]
 		{
 			mmVAL.includes = append(mmDollar[1].includes, &Include{
-				Node:  NewAstNode(mmDollar[2].loc, mmDollar[2].srcfile),
+				Node:  NewAstNode(mmDollar[2].loc),
 				Value: mmDollar[3].intern.unquote(mmDollar[3].val),
 			})
 		}
@@ -835,7 +843,7 @@ mmdefault:
 		{
 			mmVAL.includes = []*Include{
 				{
-					Node:  NewAstNode(mmDollar[1].loc, mmDollar[1].srcfile),
+					Node:  NewAstNode(mmDollar[1].loc),
 					Value: mmDollar[2].intern.unquote(mmDollar[2].val),
 				},
 			}
@@ -854,7 +862,7 @@ mmdefault:
 		mmDollar = mmS[mmpt-3 : mmpt+1]
 		{
 			mmVAL.dec = &UserType{
-				Node: NewAstNode(mmDollar[2].loc, mmDollar[2].srcfile),
+				Node: NewAstNode(mmDollar[2].loc),
 				Id:   mmDollar[2].intern.Get(mmDollar[2].val),
 			}
 		}
@@ -862,7 +870,7 @@ mmdefault:
 		mmDollar = mmS[mmpt-11 : mmpt+1]
 		{
 			mmVAL.dec = &Pipeline{
-				Node:      NewAstNode(mmDollar[2].loc, mmDollar[2].srcfile),
+				Node:      NewAstNode(mmDollar[2].loc),
 				Id:        mmDollar[2].intern.Get(mmDollar[2].val),
 				InParams:  mmDollar[4].i_params,
 				OutParams: mmDollar[5].o_params,
@@ -875,7 +883,7 @@ mmdefault:
 		mmDollar = mmS[mmpt-10 : mmpt+1]
 		{
 			mmVAL.dec = &Pipeline{
-				Node:      NewAstNode(mmDollar[2].loc, mmDollar[2].srcfile),
+				Node:      NewAstNode(mmDollar[2].loc),
 				Id:        mmDollar[2].intern.Get(mmDollar[2].val),
 				InParams:  mmDollar[4].i_params,
 				OutParams: mmDollar[5].o_params,
@@ -888,7 +896,7 @@ mmdefault:
 		mmDollar = mmS[mmpt-10 : mmpt+1]
 		{
 			mmVAL.dec = &Stage{
-				Node:      NewAstNode(mmDollar[2].loc, mmDollar[2].srcfile),
+				Node:      NewAstNode(mmDollar[2].loc),
 				Id:        mmDollar[2].intern.Get(mmDollar[2].val),
 				InParams:  mmDollar[4].i_params,
 				OutParams: mmDollar[5].o_params,
@@ -904,7 +912,7 @@ mmdefault:
 		mmDollar = mmS[mmpt-5 : mmpt+1]
 		{
 			mmVAL.dec = &StructType{
-				Node:    NewAstNode(mmDollar[2].loc, mmDollar[2].srcfile),
+				Node:    NewAstNode(mmDollar[2].loc),
 				Id:      mmDollar[2].intern.Get(mmDollar[2].val),
 				Members: mmDollar[4].s_members,
 			}
@@ -917,7 +925,7 @@ mmdefault:
 	case 21:
 		mmDollar = mmS[mmpt-4 : mmpt+1]
 		{
-			mmDollar[3].res.Node = NewAstNode(mmDollar[1].loc, mmDollar[1].srcfile)
+			mmDollar[3].res.Node = NewAstNode(mmDollar[1].loc)
 			mmVAL.res = mmDollar[3].res
 		}
 	case 22:
@@ -928,34 +936,31 @@ mmdefault:
 	case 23:
 		mmDollar = mmS[mmpt-5 : mmpt+1]
 		{
-			n := NewAstNode(mmDollar[2].loc, mmDollar[2].srcfile)
+			n := NewAstNode(mmDollar[2].loc)
 			mmDollar[1].res.ThreadNode = &n
-			i := parseInt(mmDollar[4].val)
-			mmDollar[1].res.Threads = int16(i)
+			mmDollar[1].res.Threads = roundUpTo(mmDollar[4].f32, 100)
 			mmVAL.res = mmDollar[1].res
 		}
 	case 24:
 		mmDollar = mmS[mmpt-5 : mmpt+1]
 		{
-			n := NewAstNode(mmDollar[2].loc, mmDollar[2].srcfile)
+			n := NewAstNode(mmDollar[2].loc)
 			mmDollar[1].res.MemNode = &n
-			i := parseInt(mmDollar[4].val)
-			mmDollar[1].res.MemGB = int16(i)
+			mmDollar[1].res.MemGB = roundUpTo(mmDollar[4].f32, 1024)
 			mmVAL.res = mmDollar[1].res
 		}
 	case 25:
 		mmDollar = mmS[mmpt-5 : mmpt+1]
 		{
-			n := NewAstNode(mmDollar[2].loc, mmDollar[2].srcfile)
+			n := NewAstNode(mmDollar[2].loc)
 			mmDollar[1].res.VMemNode = &n
-			i := parseInt(mmDollar[4].val)
-			mmDollar[1].res.VMemGB = int16(i)
+			mmDollar[1].res.VMemGB = roundUpTo(mmDollar[4].f32, 1024)
 			mmVAL.res = mmDollar[1].res
 		}
 	case 26:
 		mmDollar = mmS[mmpt-5 : mmpt+1]
 		{
-			n := NewAstNode(mmDollar[2].loc, mmDollar[2].srcfile)
+			n := NewAstNode(mmDollar[2].loc)
 			mmDollar[1].res.SpecialNode = &n
 			mmDollar[1].res.Special = mmDollar[4].intern.unquote(mmDollar[4].val)
 			mmVAL.res = mmDollar[1].res
@@ -963,129 +968,147 @@ mmdefault:
 	case 27:
 		mmDollar = mmS[mmpt-5 : mmpt+1]
 		{
-			n := NewAstNode(mmDollar[2].loc, mmDollar[2].srcfile)
+			n := NewAstNode(mmDollar[2].loc)
 			mmDollar[1].res.VolatileNode = &n
 			mmDollar[1].res.StrictVolatile = true
 			mmVAL.res = mmDollar[1].res
 		}
 	case 28:
+		mmDollar = mmS[mmpt-5 : mmpt+1]
+		{
+			n := NewAstNode(mmDollar[2].loc)
+			mmDollar[1].res.VolatileNode = &n
+			mmDollar[1].res.StrictVolatile = false
+			mmVAL.res = mmDollar[1].res
+		}
+	case 29:
+		mmDollar = mmS[mmpt-1 : mmpt+1]
+		{
+			mmVAL.f32 = float32(parseInt(mmDollar[1].val))
+		}
+	case 30:
+		mmDollar = mmS[mmpt-1 : mmpt+1]
+		{
+			mmVAL.f32 = parseFloat32(mmDollar[1].val)
+		}
+	case 31:
 		mmDollar = mmS[mmpt-0 : mmpt+1]
 		{
 			mmVAL.stretains = nil
 		}
-	case 29:
+	case 32:
 		mmDollar = mmS[mmpt-4 : mmpt+1]
 		{
 			mmVAL.stretains = &RetainParams{
-				Node:   NewAstNode(mmDollar[1].loc, mmDollar[1].srcfile),
+				Node:   NewAstNode(mmDollar[1].loc),
 				Params: mmDollar[3].retains,
 			}
 		}
-	case 30:
+	case 33:
 		mmDollar = mmS[mmpt-0 : mmpt+1]
 		{
 			mmVAL.retains = nil
 		}
-	case 31:
+	case 34:
 		mmDollar = mmS[mmpt-3 : mmpt+1]
 		{
 			mmVAL.retains = append(mmDollar[1].retains, &RetainParam{
-				Node: NewAstNode(mmDollar[2].loc, mmDollar[2].srcfile),
+				Node: NewAstNode(mmDollar[2].loc),
 				Id:   mmDollar[2].intern.Get(mmDollar[2].val),
 			})
 		}
-	case 32:
+	case 35:
 		mmDollar = mmS[mmpt-3 : mmpt+1]
 		{
 			mmVAL.val = append(append(mmDollar[1].val, '.'), mmDollar[3].val...)
 		}
-	case 33:
+	case 36:
 		mmDollar = mmS[mmpt-1 : mmpt+1]
 		{
 			// set capacity == length so append doesn't overwrite
 			// other parts of the buffer later.
 			mmVAL.val = mmDollar[1].val[:len(mmDollar[1].val):len(mmDollar[1].val)]
 		}
-	case 34:
+	case 37:
 		mmDollar = mmS[mmpt-0 : mmpt+1]
 		{
 			mmVAL.arr = 0
 		}
-	case 35:
+	case 38:
 		mmDollar = mmS[mmpt-3 : mmpt+1]
 		{
 			mmVAL.arr++
 		}
-	case 36:
+	case 39:
 		mmDollar = mmS[mmpt-0 : mmpt+1]
 		{
 			mmVAL.i_params = new(InParams)
 		}
-	case 37:
+	case 40:
 		mmDollar = mmS[mmpt-2 : mmpt+1]
 		{
 			mmDollar[1].i_params.List = append(mmDollar[1].i_params.List, mmDollar[2].inparam)
 			mmVAL.i_params = mmDollar[1].i_params
 		}
-	case 38:
+	case 41:
 		mmDollar = mmS[mmpt-5 : mmpt+1]
 		{
 			mmVAL.inparam = &InParam{
-				Node:  NewAstNode(mmDollar[1].loc, mmDollar[1].srcfile),
+				Node:  NewAstNode(mmDollar[1].loc),
 				Tname: mmDollar[2].type_id,
 				Id:    mmDollar[3].intern.Get(mmDollar[3].val),
 				Help:  unquote(mmDollar[4].val),
 			}
 		}
-	case 39:
+	case 42:
 		mmDollar = mmS[mmpt-4 : mmpt+1]
 		{
 			mmVAL.inparam = &InParam{
-				Node:  NewAstNode(mmDollar[1].loc, mmDollar[1].srcfile),
+				Node:  NewAstNode(mmDollar[1].loc),
 				Tname: mmDollar[2].type_id,
 				Id:    mmDollar[3].intern.Get(mmDollar[3].val),
 			}
 		}
-	case 40:
+	case 43:
 		mmDollar = mmS[mmpt-0 : mmpt+1]
 		{
 			mmVAL.o_params = new(OutParams)
 		}
-	case 41:
+	case 44:
 		mmDollar = mmS[mmpt-2 : mmpt+1]
 		{
 			mmDollar[1].o_params.List = append(mmDollar[1].o_params.List, mmDollar[2].outparam)
 			mmVAL.o_params = mmDollar[1].o_params
 		}
-	case 42:
+	case 45:
 		mmDollar = mmS[mmpt-3 : mmpt+1]
 		{
 			mmVAL.outparam = &OutParam{
 				StructMember: StructMember{
-					Node:  NewAstNode(mmDollar[1].loc, mmDollar[1].srcfile),
+					Node:  NewAstNode(mmDollar[1].loc),
 					Tname: mmDollar[2].type_id,
 					Id:    defaultOutName,
 				},
 			}
 		}
-	case 43:
+	case 46:
 		mmDollar = mmS[mmpt-4 : mmpt+1]
 		{
 			mmVAL.outparam = &OutParam{
 				StructMember: StructMember{
-					Node:  NewAstNode(mmDollar[1].loc, mmDollar[1].srcfile),
+					Node:  NewAstNode(mmDollar[1].loc),
 					Tname: mmDollar[2].type_id,
 					Id:    defaultOutName,
 					Help:  unquote(mmDollar[3].val),
 				},
 			}
 		}
-	case 44:
+	case 47:
 		mmDollar = mmS[mmpt-5 : mmpt+1]
 		{
 			mmVAL.outparam = &OutParam{
 				StructMember: StructMember{
-					Node:    NewAstNode(mmDollar[1].loc, mmDollar[1].srcfile),
+					Node:    NewAstNode(mmDollar[1].loc),
 					Tname:   mmDollar[2].type_id,
 					Id:      defaultOutName,
 					OutName: mmDollar[5].intern.unquote(mmDollar[4].val),
@@ -1093,67 +1116,67 @@ mmdefault:
 				},
 			}
 		}
-	case 45:
+	case 48:
 		mmDollar = mmS[mmpt-2 : mmpt+1]
 		{
 			mmVAL.outparam = &OutParam{
 				StructMember: *mmDollar[2].s_member,
 			}
 		}
-	case 46:
+	case 49:
 		mmDollar = mmS[mmpt-1 : mmpt+1]
 		{
 			mmVAL.s_members = []*StructMember{mmDollar[1].s_member}
 		}
-	case 47:
+	case 50:
 		mmDollar = mmS[mmpt-2 : mmpt+1]
 		{
 			mmVAL.s_members = append(mmDollar[1].s_members, mmDollar[2].s_member)
 		}
-	case 48:
+	case 51:
 		mmDollar = mmS[mmpt-3 : mmpt+1]
 		{
 			mmVAL.s_member = &StructMember{
-				Node:  NewAstNode(mmDollar[1].loc, mmDollar[1].srcfile),
+				Node:  NewAstNode(mmDollar[1].loc),
 				Tname: mmDollar[1].type_id,
 				Id:    mmDollar[2].intern.Get(mmDollar[2].val),
 			}
 		}
-	case 49:
+	case 52:
 		mmDollar = mmS[mmpt-4 : mmpt+1]
 		{
 			mmVAL.s_member = &StructMember{
-				Node:  NewAstNode(mmDollar[1].loc, mmDollar[1].srcfile),
+				Node:  NewAstNode(mmDollar[1].loc),
 				Tname: mmDollar[1].type_id,
 				Id:    mmDollar[2].intern.Get(mmDollar[2].val),
 				Help:  unquote(mmDollar[3].val),
 			}
 		}
-	case 50:
+	case 53:
 		mmDollar = mmS[mmpt-5 : mmpt+1]
 		{
 			mmVAL.s_member = &StructMember{
-				Node:    NewAstNode(mmDollar[1].loc, mmDollar[1].srcfile),
+				Node:    NewAstNode(mmDollar[1].loc),
 				Tname:   mmDollar[1].type_id,
 				Id:      mmDollar[2].intern.Get(mmDollar[2].val),
 				OutName: mmDollar[4].intern.unquote(mmDollar[4].val),
 				Help:    unquote(mmDollar[3].val),
 			}
 		}
-	case 51:
+	case 54:
 		mmDollar = mmS[mmpt-4 : mmpt+1]
 		{
 			cmd := strings.TrimSpace(mmDollar[3].intern.unquote(mmDollar[3].val))
 			stagecodeParts := strings.Fields(cmd)
 			mmVAL.src = &SrcParam{
-				Node: NewAstNode(mmDollar[1].loc, mmDollar[1].srcfile),
+				Node: NewAstNode(mmDollar[1].loc),
 				Lang: StageLanguage(mmDollar[2].intern.Get(mmDollar[2].val)),
 				cmd:  cmd,
 				Path: stagecodeParts[0],
 				Args: stagecodeParts[1:],
 			}
 		}
-	case 62:
+	case 65:
 		mmDollar = mmS[mmpt-6 : mmpt+1]
 		{
 			mmVAL.type_id = TypeId{
@@ -1162,7 +1185,7 @@ mmdefault:
 				MapDim:   1 + mmDollar[4].arr,
 			}
 		}
-	case 63:
+	case 66:
 		mmDollar = mmS[mmpt-2 : mmpt+1]
 		{
 			mmVAL.type_id = TypeId{
@@ -1170,7 +1193,7 @@ mmdefault:
 				ArrayDim: mmDollar[2].arr,
 			}
 		}
-	case 67:
+	case 70:
 		mmDollar = mmS[mmpt-0 : mmpt+1]
 		{
 			mmVAL.par_tuple = paramsTuple{
@@ -1179,7 +1202,7 @@ mmdefault:
 				Outs:    new(OutParams),
 			}
 		}
-	case 68:
+	case 71:
 		mmDollar = mmS[mmpt-6 : mmpt+1]
 		{
 			mmVAL.par_tuple = paramsTuple{
@@ -1188,7 +1211,7 @@ mmdefault:
 				Outs:    mmDollar[5].o_params,
 			}
 		}
-	case 69:
+	case 72:
 		mmDollar = mmS[mmpt-5 : mmpt+1]
 		{
 			mmVAL.par_tuple = paramsTuple{
@@ -1197,168 +1220,154 @@ mmdefault:
 				Outs:    mmDollar[4].o_params,
 			}
 		}
-	case 70:
+	case 73:
 		mmDollar = mmS[mmpt-4 : mmpt+1]
 		{
 			mmVAL.retstm = &ReturnStm{
-				Node:     NewAstNode(mmDollar[1].loc, mmDollar[1].srcfile),
+				Node:     NewAstNode(mmDollar[1].loc),
 				Bindings: mmDollar[3].bindings,
 			}
 		}
-	case 71:
+	case 74:
 		mmDollar = mmS[mmpt-0 : mmpt+1]
 		{
 			mmVAL.plretains = nil
 		}
-	case 72:
+	case 75:
 		mmDollar = mmS[mmpt-4 : mmpt+1]
 		{
 			mmVAL.plretains = &PipelineRetains{
-				Node: NewAstNode(mmDollar[1].loc, mmDollar[1].srcfile),
+				Node: NewAstNode(mmDollar[1].loc),
 				Refs: mmDollar[3].reflist,
 			}
 		}
-	case 73:
+	case 76:
 		mmDollar = mmS[mmpt-0 : mmpt+1]
 		{
 			mmVAL.reflist = nil
 		}
-	case 74:
+	case 77:
 		mmDollar = mmS[mmpt-3 : mmpt+1]
 		{
 			mmVAL.reflist = append(mmDollar[1].reflist, mmDollar[2].rexp)
 		}
-	case 75:
+	case 78:
 		mmDollar = mmS[mmpt-2 : mmpt+1]
 		{
 			mmVAL.calls = append(mmDollar[1].calls, mmDollar[2].call)
 		}
-	case 76:
+	case 79:
 		mmDollar = mmS[mmpt-1 : mmpt+1]
 		{
 			mmVAL.calls = []*CallStm{mmDollar[1].call}
 		}
-	case 77:
+	case 80:
 		mmDollar = mmS[mmpt-3 : mmpt+1]
 		{
 			id := mmDollar[3].intern.Get(mmDollar[3].val)
 			mmVAL.call = &CallStm{
-				Node:      NewAstNode(mmDollar[1].loc, mmDollar[1].srcfile),
+				Node:      NewAstNode(mmDollar[1].loc),
 				Modifiers: mmDollar[2].modifiers,
 				Id:        id,
 				DecId:     id,
 			}
 		}
-	case 78:
+	case 81:
 		mmDollar = mmS[mmpt-5 : mmpt+1]
 		{
 			mmVAL.call = &CallStm{
-				Node:      NewAstNode(mmDollar[1].loc, mmDollar[1].srcfile),
+				Node:      NewAstNode(mmDollar[1].loc),
 				Modifiers: mmDollar[2].modifiers,
 				Id:        mmDollar[5].intern.Get(mmDollar[5].val),
 				DecId:     mmDollar[3].intern.Get(mmDollar[3].val),
 			}
 		}
-	case 79:
+	case 82:
 		mmDollar = mmS[mmpt-4 : mmpt+1]
 		{
 			mmDollar[1].call.Bindings = mmDollar[3].bindings
 			mmVAL.call = mmDollar[1].call
 		}
-	case 80:
+	case 83:
 		mmDollar = mmS[mmpt-5 : mmpt+1]
 		{
 			mmDollar[2].call.Bindings = mmDollar[4].bindings
 			mmDollar[2].call.Mapping = &mapSourcePlaceholder
 			mmVAL.call = mmDollar[2].call
 		}
-	case 81:
+	case 84:
 		mmDollar = mmS[mmpt-5 : mmpt+1]
 		{
 			mmDollar[1].call.Modifiers.Bindings = mmDollar[4].bindings
 			mmVAL.call = mmDollar[1].call
 		}
-	case 82:
+	case 85:
 		mmDollar = mmS[mmpt-0 : mmpt+1]
 		{
 			mmVAL.modifiers = new(Modifiers)
 		}
-	case 83:
+	case 86:
 		mmDollar = mmS[mmpt-2 : mmpt+1]
 		{
 			mmVAL.modifiers.Local = true
 		}
-	case 84:
+	case 87:
 		mmDollar = mmS[mmpt-2 : mmpt+1]
 		{
 			mmVAL.modifiers.Preflight = true
 		}
-	case 85:
+	case 88:
 		mmDollar = mmS[mmpt-2 : mmpt+1]
 		{
 			mmVAL.modifiers.Volatile = true
 		}
-	case 86:
+	case 89:
 		mmDollar = mmS[mmpt-0 : mmpt+1]
 		{
 			mmVAL.bindings = &BindStms{
-				Node: NewAstNode(mmDollar[0].loc, mmDollar[0].srcfile),
+				Node: NewAstNode(mmDollar[0].loc),
 			}
 		}
-	case 87:
+	case 90:
 		mmDollar = mmS[mmpt-2 : mmpt+1]
 		{
 			mmDollar[1].bindings.List = append(mmDollar[1].bindings.List, mmDollar[2].binding)
 			mmVAL.bindings = mmDollar[1].bindings
-		}
-	case 88:
-		mmDollar = mmS[mmpt-4 : mmpt+1]
-		{
-			mmVAL.binding = &BindStm{
-				Node: NewAstNode(mmDollar[1].loc, mmDollar[1].srcfile),
-				Id:   local,
-				Exp:  mmDollar[3].vexp,
-			}
-		}
-	case 89:
-		mmDollar = mmS[mmpt-4 : mmpt+1]
-		{
-			mmVAL.binding = &BindStm{
-				Node: NewAstNode(mmDollar[1].loc, mmDollar[1].srcfile),
-				Id:   preflight,
-				Exp:  mmDollar[3].vexp,
-			}
-		}
-	case 90:
-		mmDollar = mmS[mmpt-4 : mmpt+1]
-		{
-			mmVAL.binding = &BindStm{
-				Node: NewAstNode(mmDollar[1].loc, mmDollar[1].srcfile),
-				Id:   volatile,
-				Exp:  mmDollar[3].vexp,
-			}
 		}
 	case 91:
 		mmDollar = mmS[mmpt-4 : mmpt+1]
 		{
 			mmVAL.binding = &BindStm{
-				Node: NewAstNode(mmDollar[1].loc, mmDollar[1].srcfile),
-				Id:   disabled,
-				Exp:  mmDollar[3].rexp,
+				Node: NewAstNode(mmDollar[1].loc),
+				Id:   local,
+				Exp:  mmDollar[3].vexp,
 			}
 		}
 	case 92:
-		mmDollar = mmS[mmpt-2 : mmpt+1]
+		mmDollar = mmS[mmpt-4 : mmpt+1]
 		{
-			mmDollar[1].bindings.List = append(mmDollar[1].bindings.List, mmDollar[2].binding)
-			mmVAL.bindings = mmDollar[1].bindings
+			mmVAL.binding = &BindStm{
+				Node: NewAstNode(mmDollar[1].loc),
+				Id:   preflight,
+				Exp:  mmDollar[3].vexp,
+			}
 		}
 	case 93:
-		mmDollar = mmS[mmpt-1 : mmpt+1]
+		mmDollar = mmS[mmpt-4 : mmpt+1]
 		{
-			mmVAL.bindings = &BindStms{
-				Node: NewAstNode(mmDollar[0].loc, mmDollar[0].srcfile),
-				List: []*BindStm{mmDollar[1].binding},
+			mmVAL.binding = &BindStm{
+				Node: NewAstNode(mmDollar[1].loc),
+				Id:   volatile,
+				Exp:  mmDollar[3].vexp,
+			}
+		}
+	case 94:
+		mmDollar = mmS[mmpt-4 : mmpt+1]
+		{
+			mmVAL.binding = &BindStm{
+				Node: NewAstNode(mmDollar[1].loc),
+				Id:   disabled,
+				Exp:  mmDollar[3].rexp,
 			}
 		}
 	case 95:
@@ -1371,38 +1380,40 @@ mmdefault:
 		mmDollar = mmS[mmpt-1 : mmpt+1]
 		{
 			mmVAL.bindings = &BindStms{
-				Node: NewAstNode(mmDollar[0].loc, mmDollar[0].srcfile),
+				Node: NewAstNode(mmDollar[0].loc),
 				List: []*BindStm{mmDollar[1].binding},
-			}
-		}
-	case 97:
-		mmDollar = mmS[mmpt-0 : mmpt+1]
-		{
-			mmVAL.bindings = &BindStms{
-				Node: NewAstNode(mmDollar[0].loc, mmDollar[0].srcfile),
 			}
 		}
 	case 98:
+		mmDollar = mmS[mmpt-2 : mmpt+1]
+		{
+			mmDollar[1].bindings.List = append(mmDollar[1].bindings.List, mmDollar[2].binding)
+			mmVAL.bindings = mmDollar[1].bindings
+		}
+	case 99:
 		mmDollar = mmS[mmpt-1 : mmpt+1]
 		{
 			mmVAL.bindings = &BindStms{
-				Node: NewAstNode(mmDollar[0].loc, mmDollar[0].srcfile),
+				Node: NewAstNode(mmDollar[0].loc),
 				List: []*BindStm{mmDollar[1].binding},
 			}
 		}
-	case 99:
-		mmDollar = mmS[mmpt-2 : mmpt+1]
-		{
-			mmDollar[1].bindings.List = append(mmDollar[1].bindings.List, mmDollar[2].binding)
-			mmVAL.bindings = mmDollar[1].bindings
-		}
 	case 100:
-		mmDollar = mmS[mmpt-2 : mmpt+1]
+		mmDollar = mmS[mmpt-0 : mmpt+1]
 		{
-			mmDollar[1].bindings.List = append(mmDollar[1].bindings.List, mmDollar[2].binding)
-			mmVAL.bindings = mmDollar[1].bindings
+			mmVAL.bindings = &BindStms{
+				Node: NewAstNode(mmDollar[0].loc),
+			}
 		}
 	case 101:
+		mmDollar = mmS[mmpt-1 : mmpt+1]
+		{
+			mmVAL.bindings = &BindStms{
+				Node: NewAstNode(mmDollar[0].loc),
+				List: []*BindStm{mmDollar[1].binding},
+			}
+		}
+	case 102:
 		mmDollar = mmS[mmpt-2 : mmpt+1]
 		{
 			mmDollar[1].bindings.List = append(mmDollar[1].bindings.List, mmDollar[2].binding)
@@ -1415,238 +1426,250 @@ mmdefault:
 			mmVAL.bindings = mmDollar[1].bindings
 		}
 	case 104:
+		mmDollar = mmS[mmpt-2 : mmpt+1]
+		{
+			mmDollar[1].bindings.List = append(mmDollar[1].bindings.List, mmDollar[2].binding)
+			mmVAL.bindings = mmDollar[1].bindings
+		}
+	case 106:
+		mmDollar = mmS[mmpt-2 : mmpt+1]
+		{
+			mmDollar[1].bindings.List = append(mmDollar[1].bindings.List, mmDollar[2].binding)
+			mmVAL.bindings = mmDollar[1].bindings
+		}
+	case 107:
 		mmDollar = mmS[mmpt-4 : mmpt+1]
 		{
 			mmVAL.binding = &BindStm{
-				Node: NewAstNode(mmDollar[1].loc, mmDollar[1].srcfile),
+				Node: NewAstNode(mmDollar[1].loc),
 				Id:   mmDollar[1].intern.Get(mmDollar[1].val),
 				Exp:  mmDollar[3].exp,
 			}
 		}
-	case 105:
+	case 108:
 		mmDollar = mmS[mmpt-4 : mmpt+1]
 		{
 			mmVAL.binding = &BindStm{
-				Node: NewAstNode(mmDollar[1].loc, mmDollar[1].srcfile),
+				Node: NewAstNode(mmDollar[1].loc),
 				Id:   "*",
 				Exp:  mmDollar[3].rexp,
 			}
 		}
-	case 106:
+	case 109:
 		mmDollar = mmS[mmpt-4 : mmpt+1]
 		{
 			mmVAL.binding = &BindStm{
-				Node: NewAstNode(mmDollar[1].loc, mmDollar[1].srcfile),
+				Node: NewAstNode(mmDollar[1].loc),
 				Id:   "*",
 				Exp: &RefExp{
-					Node: NewAstNode(mmDollar[3].loc, mmDollar[3].srcfile),
+					Node: NewAstNode(mmDollar[3].loc),
 					Kind: KindSelf,
 				},
 			}
 		}
-	case 107:
+	case 110:
 		mmDollar = mmS[mmpt-5 : mmpt+1]
 		{
 			mmVAL.binding = &BindStm{
-				Node: NewAstNode(mmDollar[1].loc, mmDollar[1].srcfile),
+				Node: NewAstNode(mmDollar[1].loc),
 				Id:   mmDollar[1].intern.Get(mmDollar[1].val),
 				Exp: &SplitExp{
-					valExp: valExp{Node: NewAstNode(mmDollar[3].loc, mmDollar[3].srcfile)},
+					valExp: valExp{Node: NewAstNode(mmDollar[3].loc)},
 					Value:  mmDollar[4].vexp,
 					Source: mmDollar[4].vexp.(MapCallSource),
 				},
 			}
 		}
-	case 108:
+	case 111:
 		mmDollar = mmS[mmpt-5 : mmpt+1]
 		{
 			mmVAL.binding = &BindStm{
-				Node: NewAstNode(mmDollar[1].loc, mmDollar[1].srcfile),
+				Node: NewAstNode(mmDollar[1].loc),
 				Id:   mmDollar[1].intern.Get(mmDollar[1].val),
 				Exp: &SplitExp{
-					valExp: valExp{Node: NewAstNode(mmDollar[3].loc, mmDollar[3].srcfile)},
+					valExp: valExp{Node: NewAstNode(mmDollar[3].loc)},
 					Value:  mmDollar[4].rexp,
 				},
 			}
 		}
-	case 111:
+	case 114:
 		mmDollar = mmS[mmpt-3 : mmpt+1]
 		{
 			mmVAL.exps = append(mmDollar[1].exps, mmDollar[3].exp)
 		}
-	case 112:
+	case 115:
 		mmDollar = mmS[mmpt-1 : mmpt+1]
 		{
 			mmVAL.exps = []Exp{mmDollar[1].exp}
 		}
-	case 115:
+	case 118:
 		mmDollar = mmS[mmpt-5 : mmpt+1]
 		{
 			mmDollar[1].kvpairs[unquote(mmDollar[3].val)] = mmDollar[5].exp
 			mmVAL.kvpairs = mmDollar[1].kvpairs
 		}
-	case 116:
+	case 119:
 		mmDollar = mmS[mmpt-3 : mmpt+1]
 		{
 			mmVAL.kvpairs = map[string]Exp{unquote(mmDollar[1].val): mmDollar[3].exp}
 		}
-	case 119:
+	case 122:
 		mmDollar = mmS[mmpt-5 : mmpt+1]
 		{
 			mmDollar[1].kvpairs[mmDollar[3].intern.Get(mmDollar[3].val)] = mmDollar[5].exp
 			mmVAL.kvpairs = mmDollar[1].kvpairs
 		}
-	case 120:
+	case 123:
 		mmDollar = mmS[mmpt-3 : mmpt+1]
 		{
 			mmVAL.kvpairs = map[string]Exp{mmDollar[1].intern.Get(mmDollar[1].val): mmDollar[3].exp}
 		}
-	case 123:
+	case 126:
 		mmDollar = mmS[mmpt-1 : mmpt+1]
 		{
 			mmVAL.exp = mmDollar[1].vexp
 		}
-	case 124:
+	case 127:
 		mmDollar = mmS[mmpt-1 : mmpt+1]
 		{
 			mmVAL.exp = mmDollar[1].rexp
 		}
-	case 125:
+	case 128:
 		mmDollar = mmS[mmpt-1 : mmpt+1]
 		{ // Lexer guarantees parseable float strings.
 			f := parseFloat(mmDollar[1].val)
 			mmVAL.vexp = &FloatExp{
-				valExp: valExp{Node: NewAstNode(mmDollar[1].loc, mmDollar[1].srcfile)},
+				valExp: valExp{Node: NewAstNode(mmDollar[1].loc)},
 				Value:  f,
 			}
 		}
-	case 126:
+	case 129:
 		mmDollar = mmS[mmpt-1 : mmpt+1]
 		{ // Lexer guarantees parseable int strings.
 			i := parseInt(mmDollar[1].val)
 			mmVAL.vexp = &IntExp{
-				valExp: valExp{Node: NewAstNode(mmDollar[1].loc, mmDollar[1].srcfile)},
+				valExp: valExp{Node: NewAstNode(mmDollar[1].loc)},
 				Value:  i,
 			}
 		}
-	case 127:
+	case 130:
 		mmDollar = mmS[mmpt-1 : mmpt+1]
 		{
 			mmVAL.vexp = &StringExp{
-				valExp: valExp{Node: NewAstNode(mmDollar[1].loc, mmDollar[1].srcfile)},
+				valExp: valExp{Node: NewAstNode(mmDollar[1].loc)},
 				Kind:   KindString,
 				Value:  unquote(mmDollar[1].val),
 			}
 		}
-	case 131:
+	case 134:
 		mmDollar = mmS[mmpt-1 : mmpt+1]
 		{
 			mmVAL.vexp = &NullExp{
-				valExp: valExp{Node: NewAstNode(mmDollar[1].loc, mmDollar[1].srcfile)},
-			}
-		}
-	case 132:
-		mmDollar = mmS[mmpt-3 : mmpt+1]
-		{
-			mmVAL.vexp = &ArrayExp{
-				valExp: valExp{Node: NewAstNode(mmDollar[1].loc, mmDollar[1].srcfile)},
-				Value:  mmDollar[2].exps,
-			}
-		}
-	case 134:
-		mmDollar = mmS[mmpt-2 : mmpt+1]
-		{
-			mmVAL.vexp = &ArrayExp{
-				valExp: valExp{Node: NewAstNode(mmDollar[1].loc, mmDollar[1].srcfile)},
-				Value:  make([]Exp, 0),
+				valExp: valExp{Node: NewAstNode(mmDollar[1].loc)},
 			}
 		}
 	case 135:
 		mmDollar = mmS[mmpt-3 : mmpt+1]
 		{
+			mmVAL.vexp = &ArrayExp{
+				valExp: valExp{Node: NewAstNode(mmDollar[1].loc)},
+				Value:  mmDollar[2].exps,
+			}
+		}
+	case 137:
+		mmDollar = mmS[mmpt-2 : mmpt+1]
+		{
+			mmVAL.vexp = &ArrayExp{
+				valExp: valExp{Node: NewAstNode(mmDollar[1].loc)},
+				Value:  make([]Exp, 0),
+			}
+		}
+	case 138:
+		mmDollar = mmS[mmpt-3 : mmpt+1]
+		{
 			mmVAL.vexp = &MapExp{
-				valExp: valExp{Node: NewAstNode(mmDollar[1].loc, mmDollar[1].srcfile)},
+				valExp: valExp{Node: NewAstNode(mmDollar[1].loc)},
 				Kind:   KindMap,
 				Value:  mmDollar[2].kvpairs,
 			}
 		}
-	case 137:
+	case 140:
 		mmDollar = mmS[mmpt-3 : mmpt+1]
 		{
 			mmVAL.vexp = &MapExp{
-				valExp: valExp{Node: NewAstNode(mmDollar[1].loc, mmDollar[1].srcfile)},
+				valExp: valExp{Node: NewAstNode(mmDollar[1].loc)},
 				Kind:   KindStruct,
 				Value:  mmDollar[2].kvpairs,
 			}
 		}
-	case 138:
+	case 141:
 		mmDollar = mmS[mmpt-2 : mmpt+1]
 		{
 			mmVAL.vexp = &MapExp{
-				valExp: valExp{Node: NewAstNode(mmDollar[1].loc, mmDollar[1].srcfile)},
+				valExp: valExp{Node: NewAstNode(mmDollar[1].loc)},
 				Kind:   KindMap,
 				Value:  make(map[string]Exp, 0),
 			}
 		}
-	case 139:
-		mmDollar = mmS[mmpt-1 : mmpt+1]
-		{
-			mmVAL.vexp = &BoolExp{
-				valExp: valExp{Node: NewAstNode(mmDollar[1].loc, mmDollar[1].srcfile)},
-				Value:  true,
-			}
-		}
-	case 140:
-		mmDollar = mmS[mmpt-1 : mmpt+1]
-		{
-			mmVAL.vexp = &BoolExp{
-				valExp: valExp{Node: NewAstNode(mmDollar[1].loc, mmDollar[1].srcfile)},
-				Value:  false,
-			}
-		}
-	case 141:
-		mmDollar = mmS[mmpt-3 : mmpt+1]
-		{
-			mmVAL.rexp = &RefExp{
-				Node:     NewAstNode(mmDollar[1].loc, mmDollar[1].srcfile),
-				Kind:     KindCall,
-				Id:       mmDollar[1].intern.Get(mmDollar[1].val),
-				OutputId: mmDollar[3].intern.Get(mmDollar[3].val),
-			}
-		}
 	case 142:
-		mmDollar = mmS[mmpt-3 : mmpt+1]
+		mmDollar = mmS[mmpt-1 : mmpt+1]
 		{
-			mmVAL.rexp = &RefExp{
-				Node:     NewAstNode(mmDollar[1].loc, mmDollar[1].srcfile),
-				Kind:     KindCall,
-				Id:       mmDollar[1].intern.Get(mmDollar[1].val),
-				OutputId: defaultOutName,
+			mmVAL.vexp = &BoolExp{
+				valExp: valExp{Node: NewAstNode(mmDollar[1].loc)},
+				Value:  true,
 			}
 		}
 	case 143:
 		mmDollar = mmS[mmpt-1 : mmpt+1]
 		{
-			mmVAL.rexp = &RefExp{
-				Node: NewAstNode(mmDollar[1].loc, mmDollar[1].srcfile),
-				Kind: KindCall,
-				Id:   mmDollar[1].intern.Get(mmDollar[1].val),
+			mmVAL.vexp = &BoolExp{
+				valExp: valExp{Node: NewAstNode(mmDollar[1].loc)},
+				Value:  false,
 			}
 		}
 	case 144:
 		mmDollar = mmS[mmpt-3 : mmpt+1]
 		{
 			mmVAL.rexp = &RefExp{
-				Node: NewAstNode(mmDollar[1].loc, mmDollar[1].srcfile),
+				Node:     NewAstNode(mmDollar[1].loc),
+				Kind:     KindCall,
+				Id:       mmDollar[1].intern.Get(mmDollar[1].val),
+				OutputId: mmDollar[3].intern.Get(mmDollar[3].val),
+			}
+		}
+	case 145:
+		mmDollar = mmS[mmpt-3 : mmpt+1]
+		{
+			mmVAL.rexp = &RefExp{
+				Node:     NewAstNode(mmDollar[1].loc),
+				Kind:     KindCall,
+				Id:       mmDollar[1].intern.Get(mmDollar[1].val),
+				OutputId: defaultOutName,
+			}
+		}
+	case 146:
+		mmDollar = mmS[mmpt-1 : mmpt+1]
+		{
+			mmVAL.rexp = &RefExp{
+				Node: NewAstNode(mmDollar[1].loc),
+				Kind: KindCall,
+				Id:   mmDollar[1].intern.Get(mmDollar[1].val),
+			}
+		}
+	case 147:
+		mmDollar = mmS[mmpt-3 : mmpt+1]
+		{
+			mmVAL.rexp = &RefExp{
+				Node: NewAstNode(mmDollar[1].loc),
 				Kind: KindSelf,
 				Id:   mmDollar[3].intern.Get(mmDollar[3].val),
 			}
 		}
-	case 145:
+	case 148:
 		mmDollar = mmS[mmpt-5 : mmpt+1]
 		{
 			mmVAL.rexp = &RefExp{
-				Node:     NewAstNode(mmDollar[1].loc, mmDollar[1].srcfile),
+				Node:     NewAstNode(mmDollar[1].loc),
 				Kind:     KindSelf,
 				Id:       mmDollar[3].intern.Get(mmDollar[3].val),
 				OutputId: mmDollar[5].intern.Get(mmDollar[5].val),

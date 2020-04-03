@@ -175,6 +175,13 @@ func Pluralize(n int) string {
 	return "s"
 }
 
+func PluralizeFloat(n float64) string {
+	if n == 1 {
+		return ""
+	}
+	return "s"
+}
+
 // Gets the number of digits required to display a given integer in base 10.
 // Optimizes for the common cases.
 func WidthForInt(max int) int {

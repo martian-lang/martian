@@ -122,7 +122,7 @@ func TestDeserialize(t *testing.T) {
 			},
 		})
 	if obj.Threads != 4 {
-		t.Errorf("Expected 4 threads, got %d", obj.Threads)
+		t.Errorf("Expected 4 threads, got %g", obj.Threads)
 	}
 }
 

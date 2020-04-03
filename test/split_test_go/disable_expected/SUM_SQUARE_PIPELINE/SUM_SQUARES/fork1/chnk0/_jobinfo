@@ -48,7 +48,7 @@
         "end": "2017-11-27 16:51:08",
         "duration_seconds": 0.02741194
     },
-    "threads": 1,
+    "threads": 0.01,
     "memGB": 1,
     "profile_mode": "disable",
     "stackvars_flag": "disable",

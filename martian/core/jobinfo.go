@@ -15,9 +15,9 @@ type JobInfo struct {
 	MemoryUsage   *ObservedMemory   `json:"used_bytes,omitempty"`
 	IoStats       *IoStats          `json:"io,omitempty"`
 	WallClockInfo *WallClockInfo    `json:"wallclock,omitempty"`
-	Threads       int               `json:"threads,omitempty"`
-	MemGB         int               `json:"memGB,omitempty"`
-	VMemGB        int               `json:"vmemGB,omitempty"`
+	Threads       float64           `json:"threads,omitempty"`
+	MemGB         float64           `json:"memGB,omitempty"`
+	VMemGB        float64           `json:"vmemGB,omitempty"`
 	ProfileConfig *ProfileConfig    `json:"profile_config,omitempty"`
 	ProfileMode   ProfileMode       `json:"profile_mode,omitempty"`
 	Stackvars     string            `json:"stackvars_flag,omitempty"`

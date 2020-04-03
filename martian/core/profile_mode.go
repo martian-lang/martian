@@ -9,6 +9,7 @@ package core
 import (
 	"fmt"
 	"os"
+	"sort"
 	"strconv"
 	"strings"
 )
@@ -33,6 +34,7 @@ func allProfileModes(validProfileModes map[ProfileMode]*ProfileConfig) string {
 	for validMode := range validProfileModes {
 		profileModeStrings = append(profileModeStrings, string(validMode))
 	}
+	sort.Strings(profileModeStrings)
 	return strings.Join(profileModeStrings, ", ")
 }
 

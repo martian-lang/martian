@@ -5,6 +5,7 @@ package core
 import (
 	"context"
 	"encoding/json"
+	"math"
 	"os"
 	"os/exec"
 	"runtime"
@@ -47,7 +48,7 @@ type LocalJobManager struct {
 	maxMemGB    int
 	maxVmemMB   int64
 	jobSettings *JobManagerSettings
-	coreSem     *ResourceSemaphore
+	centcoreSem *ResourceSemaphore
 	memMBSem    *ResourceSemaphore
 	vmemMBSem   *ResourceSemaphore
 	procsSem    *ResourceSemaphore
@@ -150,7 +151,8 @@ func (self *LocalJobManager) setMaxMem(userMaxMemGB, userMaxVMemGB int, clusterM
 				sysMemGB = 1
 			}
 			self.maxMemGB = sysMemGB
-			util.LogInfo("jobmngr", "Using %d GB, %d%% of system memory.", self.maxMemGB,
+			util.LogInfo("jobmngr", "Using %d GB, %d%% of system memory.",
+				self.maxMemGB,
 				int(MAXMEM_FRACTION*100))
 		}
 	}
@@ -199,7 +201,7 @@ func (self *LocalJobManager) setMaxMem(userMaxMemGB, userMaxVMemGB int, clusterM
 }
 
 func (self *LocalJobManager) setupSemaphores() {
-	self.coreSem = NewResourceSemaphore(int64(self.maxCores), "threads")
+	self.centcoreSem = NewResourceSemaphore(int64(self.maxCores)*100, "centi-threads")
 	self.memMBSem = NewResourceSemaphore(int64(self.maxMemGB)*1024, "MB of memory")
 	if self.maxVmemMB > 0 {
 		self.vmemMBSem = NewResourceSemaphore(self.maxVmemMB,
@@ -298,10 +300,12 @@ func (self *LocalJobManager) refreshResources(localMode bool) error {
 		if err := load.Get(); err != nil {
 			return err
 		}
-		if diff := self.coreSem.UpdateActual(int64(
-			float64(runtime.NumCPU()) - load.One + 0.9)); diff < -int64(self.maxCores)/4 &&
+		if diff := self.centcoreSem.UpdateActual(
+			int64((float64(runtime.NumCPU()) - load.One + 0.9) * 100),
+		); diff < -int64(self.maxCores)*100/4 &&
 			localMode {
-			util.LogInfo("jobmngr", "%d fewer core%s than expected were free.", -diff, util.Pluralize(int(-diff)))
+			util.LogInfo("jobmngr", "%g fewer core%s than expected were free.",
+				-float64(diff)/100, util.Pluralize(int(-diff)))
 		}
 	}
 	if self.procsSem != nil {
@@ -329,53 +333,73 @@ func (self *LocalJobManager) HandleSignal(sig os.Signal) {
 func (self *LocalJobManager) GetSystemReqs(request *JobResources) JobResources {
 	result := *request
 	// Sanity check and cap to self.maxCores.
-	if result.Threads == 0 {
-		result.Threads = self.jobSettings.ThreadsPerJob
-	} else if result.Threads < 0 {
-		result.Threads = self.maxCores
+	var centiCores int
+	if result.Threads < 0 {
+		centiCores = int(math.Floor(result.Threads))
+	} else {
+		centiCores = int(math.Ceil(result.Threads))
 	}
-	if result.Threads > self.maxCores {
+	if centiCores == 0 {
+		centiCores = self.jobSettings.ThreadsPerJob * 100
+	} else if centiCores < 0 {
+		centiCores = self.maxCores * 100
+	}
+	if centiCores > self.maxCores*100 {
 		if self.debug {
-			util.LogInfo("jobmngr", "Need %d core%s but settling for %d.",
+			util.LogInfo("jobmngr", "Need %g core%s but settling for %d.",
 				result.Threads,
-				util.Pluralize(result.Threads), self.maxCores)
+				util.Pluralize(centiCores/100), self.maxCores)
 		}
-		result.Threads = self.maxCores
+		result.Threads = float64(self.maxCores) / 100
+	} else {
+		result.Threads = float64(centiCores) / 100
 	}
 
 	// Sanity check and cap to self.maxMemGB.
-	if result.MemGB == 0 {
-		result.MemGB = self.jobSettings.MemGBPerJob
-	}
+	var memMb, vmemMb int64
 	if result.MemGB < 0 {
-		avail := int(self.memMBSem.CurrentSize() / 1024)
-		if avail < 1 || avail < -result.MemGB {
-			result.MemGB = -result.MemGB
-		} else {
-			if self.debug {
-				util.LogInfo("jobmngr",
-					"Adaptive request for at least %d GB being given %d.",
-					-result.MemGB, avail)
-			}
-			result.MemGB = avail
-		}
+		memMb = int64(math.Floor(result.MemGB * 1024))
+	} else {
+		memMb = int64(math.Ceil(result.MemGB * 1024))
 	}
-
-	if result.VMemGB == 0 {
-		result.VMemGB = result.MemGB + self.jobSettings.ExtraVmemGB
-	}
-	if result.VMemGB < 0 {
-		if self.vmemMBSem != nil {
-			avail := int(self.vmemMBSem.CurrentSize() / 1024)
-			if avail < 1 || avail < -result.VMemGB {
-				result.VMemGB = -result.VMemGB
+	if memMb == 0 {
+		memMb = int64(self.jobSettings.MemGBPerJob) * 1024
+	} else {
+		if memMb < 0 {
+			avail := self.memMBSem.CurrentSize()
+			if avail < 1 || avail < -memMb {
+				memMb = -memMb
 			} else {
 				if self.debug {
 					util.LogInfo("jobmngr",
-						"Adaptive request for at least %d vmem GB being given %d.",
-						-result.VMemGB, avail)
+						"Adaptive request for at least %d MB being given %d.",
+						-memMb, avail)
 				}
-				result.VMemGB = avail
+				memMb = avail
+			}
+		}
+	}
+
+	if result.VMemGB < 0 {
+		vmemMb = int64(math.Floor(result.VMemGB * 1024))
+	} else {
+		vmemMb = int64(math.Ceil(result.VMemGB * 1024))
+	}
+	if vmemMb == 0 {
+		vmemMb = memMb + int64(self.jobSettings.ExtraVmemGB)*1024
+	}
+	if vmemMb < 0 {
+		if self.vmemMBSem != nil {
+			avail := self.vmemMBSem.CurrentSize()
+			if avail < 1 || avail < -vmemMb {
+				vmemMb = -vmemMb
+			} else {
+				if self.debug {
+					util.LogInfo("jobmngr",
+						"Adaptive request for at least %d vmem MB being given %d.",
+						-vmemMb, avail)
+				}
+				vmemMb = avail
 			}
 		}
 	}
@@ -383,39 +407,41 @@ func (self *LocalJobManager) GetSystemReqs(request *JobResources) JobResources {
 	// TODO: Stop allowing stages to ask for more than the max.  Require
 	// stages which can adapt to the available memory to ask for a negative
 	// amount as a sentinel.
-	if result.MemGB > self.maxMemGB {
+	if memMb > int64(self.maxMemGB)*1024 {
 		if self.debug {
 			util.LogInfo("jobmngr",
-				"Need %d GB but settling for %d.",
-				result.MemGB,
+				"Need %d MB but settling for %d GB.",
+				memMb,
 				self.maxMemGB)
 		}
 		util.LogInfo(
 			"jobmngr",
-			"Job asked for %d GB but is being given %d.\n"+
+			"Job asked for %d MB but is being given %d GB.\n"+
 				"This behavior is deprecated - jobs which can adapt "+
-				"their memory usage should ask for -%d.",
-			result.MemGB, self.maxMemGB, result.MemGB)
-		result.MemGB = self.maxMemGB
+				"their memory usage should ask for -%g.",
+			memMb, self.maxMemGB, result.MemGB)
+		memMb = int64(self.maxMemGB) * 1024
 	}
-	if self.maxVmemMB > 0 && int64(result.VMemGB)*1024 > self.maxVmemMB {
+	if self.maxVmemMB > 0 && vmemMb > self.maxVmemMB {
 		if self.debug {
 			util.LogInfo("jobmngr",
-				"Need %d GB of vmem but settling for %d.",
-				result.VMemGB,
-				self.maxVmemMB/1024)
+				"Need %d MB of vmem but settling for %d.",
+				vmemMb,
+				self.maxVmemMB)
 		}
 		util.LogInfo(
 			"jobmngr",
-			"Job asked for %d GB but is being given %d of vmem.\n"+
+			"Job asked for %d MB but is being given %d of vmem.\n"+
 				"This behavior is deprecated - jobs which can adapt "+
-				"their memory usage should ask for -%d.",
-			result.VMemGB, self.maxVmemMB/1024, result.VMemGB)
-		result.VMemGB = int(self.maxVmemMB / 1024)
+				"their memory usage should ask for -%g.",
+			vmemMb, self.maxVmemMB, result.VMemGB)
+		vmemMb = self.maxVmemMB
 	}
-	if result.VMemGB > 0 && result.VMemGB < result.MemGB {
-		result.VMemGB = result.MemGB
+	if vmemMb > 0 && vmemMb < memMb {
+		vmemMb = memMb
 	}
+	result.MemGB = float64(memMb) / 1024
+	result.VMemGB = float64(vmemMb) / 1024
 
 	return result
 }
@@ -449,7 +475,8 @@ func (self *LocalJobManager) Enqueue(shellCmd string, argv []string,
 			// If, and only if, the user specified a core limit less than the
 			// detected core count, make sure jobs actually don't use more
 			// threads than they're supposed to.
-			cmd.Env = util.MergeEnv(threadEnvs(self, res.Threads, envs))
+			cmd.Env = util.MergeEnv(threadEnvs(self,
+				int(math.Ceil(res.Threads)), envs))
 		} else {
 			// In this case it's ok if we oversubscribe a bit since we're
 			// (probably) not sharing the machine.
@@ -462,60 +489,68 @@ func (self *LocalJobManager) Enqueue(shellCmd string, argv []string,
 		// Acquire cores.
 		if self.debug {
 			util.LogInfo("jobmngr",
-				"Waiting for %d core%s",
+				"Waiting for %g core%s",
 				res.Threads,
-				util.Pluralize(res.Threads))
+				util.PluralizeFloat(res.Threads))
 		}
-		if err := self.coreSem.Acquire(int64(res.Threads)); err != nil {
+		centiCores := int64(math.Ceil(res.Threads * 100))
+		if err := self.centcoreSem.Acquire(centiCores); err != nil {
 			util.LogError(err, "jobmngr",
-				"%s requested %d threads, but the job manager was only configured to use %d.",
+				"%s requested %g threads, but the job manager was only configured to use %d.",
 				metadata.fqname, res.Threads, self.maxCores)
 			metadata.WriteErrorString(err.Error())
 			return
 		}
-		defer func(threads int) {
+		defer func(centiCores int64) {
 			// Release cores.
-			self.coreSem.Release(int64(threads))
+			self.centcoreSem.Release(centiCores)
 			if self.debug {
-				util.LogInfo("jobmngr", "Released %d core%s (%d/%d in use)", threads,
-					util.Pluralize(threads), self.coreSem.InUse(), self.maxCores)
+				threads := float64(centiCores) / 100
+				util.LogInfo("jobmngr", "Released %g core%s (%g/%d in use)",
+					threads,
+					util.PluralizeFloat(threads),
+					float64(self.centcoreSem.InUse())/100,
+					self.maxCores)
 			}
-		}(res.Threads)
+		}(centiCores)
 
 		if self.debug {
+			threads := float64(centiCores) / 100
 			util.LogInfo("jobmngr",
-				"Acquired %d core%s (%d/%d in use)",
-				res.Threads,
-				util.Pluralize(res.Threads),
-				self.coreSem.InUse(),
+				"Acquired %g core%s (%g/%d in use)",
+				threads,
+				util.PluralizeFloat(threads),
+				float64(self.centcoreSem.InUse())/100,
 				self.maxCores)
 		}
 
 		// Acquire memory.
 		if self.debug {
 			util.LogInfo("jobmngr",
-				"Waiting for %d GB",
+				"Waiting for %g GB",
 				res.MemGB)
 		}
-		if err := self.memMBSem.Acquire(int64(res.MemGB) * 1024); err != nil {
+		memMb := int64(math.Ceil(res.MemGB * 1024))
+		if err := self.memMBSem.Acquire(memMb); err != nil {
 			util.LogError(err, "jobmngr",
-				"%s requested %d GB of memory, but the job manager was only configured to use %d.",
+				"%s requested %g GB of memory, but the job manager was only configured to use %d.",
 				metadata.fqname, res.MemGB, self.maxMemGB)
 			metadata.WriteErrorString(err.Error())
 			return
 		}
-		defer func(memGB int) {
+		defer func(memMb int64) {
 			// Release memory.
-			self.memMBSem.Release(int64(memGB) * 1024)
+			self.memMBSem.Release(memMb)
 			if self.debug {
-				util.LogInfo("jobmngr", "Released %d GB (%.1f/%d in use)", memGB,
+				util.LogInfo("jobmngr", "Released %g GB (%.1f/%d in use)",
+					float64(memMb)/1024,
 					float64(self.memMBSem.InUse())/1024, self.maxMemGB)
 			}
-		}(res.MemGB)
+		}(memMb)
 
 		if self.debug {
 			util.LogInfo("jobmngr",
-				"Acquired %d GB (%.1f/%d in use)",
+				"Acquired %g GB (%.1f/%d in use)",
 				res.MemGB,
 				float64(self.memMBSem.InUse())/1024, self.maxMemGB)
 		}
@@ -543,7 +578,7 @@ func (self *LocalJobManager) Enqueue(shellCmd string, argv []string,
 			}(vmem, sem)
 			if self.debug {
 				util.LogInfo("jobmngr",
-					"Acquired %d virtual GB (%.1f/%.1f in use)",
+					"Acquired %.1f virtual GB (%.1f/%.1f in use)",
 					res.VMemGB,
 					float64(sem.InUse())/1024,
 					float64(self.maxVmemMB)/1024)
@@ -555,7 +590,7 @@ func (self *LocalJobManager) Enqueue(shellCmd string, argv []string,
 		}
 
 		if self.procsSem != nil {
-			procEstimate := int64(procsPerJob + res.Threads)
+			procEstimate := int64(procsPerJob + (centiCores+99)/100)
 			// Acquire processes
 			if self.debug {
 				util.LogInfo("jobmngr", "Waiting for %d processes", procEstimate)
@@ -608,7 +643,8 @@ func (self *LocalJobManager) Enqueue(shellCmd string, argv []string,
 				util.LogInfo("jobmngr",
 					"Job failed: %s. Retrying job %s in %d seconds",
 					err.Error(), fqname, waitTime)
-				self.Enqueue(shellCmd, argv, envs, metadata, resRequest, fqname, retries,
+				self.Enqueue(shellCmd, argv, envs, metadata, resRequest,
+					fqname, retries,
 					waitTime, localpreflight)
 			}
 		} else {

@@ -70,9 +70,9 @@ type (
 		VolatileNode *AstNode
 
 		Special        string
-		Threads        int16
-		MemGB          int16
-		VMemGB         int16
+		Threads        float32
+		MemGB          float32
+		VMemGB         float32
 		StrictVolatile bool
 	}
 
@@ -165,21 +165,27 @@ func (s *Resources) File() *SourceFile     { return s.Node.Loc.File }
 func (s *Resources) Line() int             { return s.Node.Loc.Line }
 func (s *Resources) inheritComments() bool { return false }
 func (s *Resources) getSubnodes() []AstNodable {
-	subs := make([]AstNodable, 0, 3)
-	if s.ThreadNode != nil {
-		subs = append(subs, s.ThreadNode)
+	subnodes := [...]*AstNode{
+		s.MemNode,
+		s.SpecialNode,
+		s.ThreadNode,
+		s.VMemNode,
+		s.VolatileNode,
 	}
-	if s.MemNode != nil {
-		subs = append(subs, s.MemNode)
+	n := 0
+	for _, node := range subnodes {
+		if node != nil {
+			n++
+		}
 	}
-	if s.VMemNode != nil {
-		subs = append(subs, s.VMemNode)
+	if n == 0 {
+		return nil
 	}
-	if s.SpecialNode != nil {
-		subs = append(subs, s.SpecialNode)
-	}
-	if s.VolatileNode != nil {
-		subs = append(subs, s.VolatileNode)
+	subs := make([]AstNodable, 0, n)
+	for _, node := range subnodes {
+		if node != nil {
+			subs = append(subs, node)
+		}
 	}
 	return subs
 }

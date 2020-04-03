@@ -5,6 +5,7 @@ package core
 import (
 	"bytes"
 	"context"
+	"math"
 	"os"
 	"os/exec"
 	"path"
@@ -16,14 +17,6 @@ import (
 
 	"github.com/martian-lang/martian/martian/util"
 )
-
-func max(a, b int) int {
-	if a > b {
-		return a
-	} else {
-		return b
-	}
-}
 
 type RemoteJobManager struct {
 	jobMode              string
@@ -97,7 +90,7 @@ func (self *RemoteJobManager) GetSystemReqs(resRequest *JobResources) JobResourc
 	res := *resRequest
 	// Sanity check the thread count.
 	if res.Threads == 0 {
-		res.Threads = self.config.jobSettings.ThreadsPerJob
+		res.Threads = float64(self.config.jobSettings.ThreadsPerJob)
 	} else if res.Threads < 0 {
 		res.Threads = -res.Threads
 	}
@@ -108,21 +101,27 @@ func (self *RemoteJobManager) GetSystemReqs(resRequest *JobResources) JobResourc
 		// For remote jobs, at least for now, give reserve the minimum usable.
 		res.MemGB = -res.MemGB
 	}
-	if res.MemGB < 1 {
-		res.MemGB = self.config.jobSettings.MemGBPerJob
+	if res.MemGB == 0 {
+		res.MemGB = float64(self.config.jobSettings.MemGBPerJob)
 	}
 	if res.VMemGB < 1 {
-		res.VMemGB = res.MemGB + self.config.jobSettings.ExtraVmemGB
+		res.VMemGB = res.MemGB + float64(self.config.jobSettings.ExtraVmemGB)
 	}
 
 	// Compute threads needed based on memory requirements.
 	if self.memGBPerCore > 0 {
-		res.Threads = max(res.Threads, (res.MemGB+self.memGBPerCore-1)/self.memGBPerCore)
+		if threadsForMemory := res.MemGB /
+			float64(self.memGBPerCore); threadsForMemory > res.Threads {
+			res.Threads = threadsForMemory
+		}
 	}
 
 	// If threading is disabled, use only 1 thread.
 	if !self.config.threadingEnabled {
 		res.Threads = 1
+	} else {
+		// Remote job managers generally only support integer thread granularity.
+		res.Threads = math.Ceil(res.Threads)
 	}
 
 	return res
@@ -178,7 +177,7 @@ func (self *RemoteJobManager) jobScript(
 
 	// figure out per-thread memory requirements for the template.
 	// ceil to make sure that we're not starving a job.
-	vmemGBPerThread := (res.VMemGB + res.Threads - 1) / res.Threads
+	vmemGBPerThread := int(math.Ceil(res.VMemGB / res.Threads))
 	if self.memGBPerCore > vmemGBPerThread {
 		vmemGBPerThread = self.memGBPerCore
 	}
@@ -186,7 +185,7 @@ func (self *RemoteJobManager) jobScript(
 	if self.config.alwaysVmem && res.VMemGB > res.MemGB {
 		res.MemGB = res.VMemGB
 	} else {
-		memGBPerThread = (res.MemGB + res.Threads - 1) / res.Threads
+		memGBPerThread = int(math.Ceil(res.MemGB / res.Threads))
 		if self.memGBPerCore > memGBPerThread {
 			memGBPerThread = self.memGBPerCore
 		}
@@ -205,30 +204,31 @@ func (self *RemoteJobManager) jobScript(
 		}
 	}
 
+	threads := int(math.Ceil(res.Threads))
 	argv = append(
-		util.FormatEnv(threadEnvs(self, res.Threads, envs)),
+		util.FormatEnv(threadEnvs(self, threads, envs)),
 		append([]string{shellCmd},
 			argv...)...,
 	)
 	params := map[string]string{
 		"JOB_NAME":           fqname + "." + shellName,
-		"THREADS":            strconv.Itoa(res.Threads),
+		"THREADS":            strconv.Itoa(threads),
 		"STDOUT":             metadata.MetadataFilePath("stdout"),
 		"STDERR":             metadata.MetadataFilePath("stderr"),
 		"JOB_WORKDIR":        metadata.curFilesPath,
 		"CMD":                strings.Join(argv, " \\\n  "),
-		"MEM_GB":             strconv.Itoa(res.MemGB),
-		"MEM_MB":             strconv.Itoa(res.MemGB * 1024),
-		"MEM_KB":             strconv.Itoa(res.MemGB * 1024 * 1024),
-		"MEM_B":              strconv.Itoa(res.MemGB * 1024 * 1024 * 1024),
+		"MEM_GB":             strconv.Itoa(int(math.Ceil(res.MemGB))),
+		"MEM_MB":             strconv.Itoa(int(math.Ceil(res.MemGB * 1024))),
+		"MEM_KB":             strconv.Itoa(int(math.Ceil(res.MemGB * 1024 * 1024))),
+		"MEM_B":              strconv.Itoa(int(math.Ceil(res.MemGB * 1024 * 1024 * 1024))),
 		"MEM_GB_PER_THREAD":  strconv.Itoa(memGBPerThread),
 		"MEM_MB_PER_THREAD":  strconv.Itoa(memGBPerThread * 1024),
 		"MEM_KB_PER_THREAD":  strconv.Itoa(memGBPerThread * 1024 * 1024),
 		"MEM_B_PER_THREAD":   strconv.Itoa(memGBPerThread * 1024 * 1024 * 1024),
-		"VMEM_GB":            strconv.Itoa(res.VMemGB),
-		"VMEM_MB":            strconv.Itoa(res.VMemGB * 1024),
-		"VMEM_KB":            strconv.Itoa(res.VMemGB * 1024 * 1024),
-		"VMEM_B":             strconv.Itoa(res.VMemGB * 1024 * 1024 * 1024),
+		"VMEM_GB":            strconv.Itoa(int(math.Ceil(res.VMemGB))),
+		"VMEM_MB":            strconv.Itoa(int(math.Ceil(res.VMemGB * 1024))),
+		"VMEM_KB":            strconv.Itoa(int(math.Ceil(res.VMemGB * 1024 * 1024))),
+		"VMEM_B":             strconv.Itoa(int(math.Ceil(res.VMemGB * 1024 * 1024 * 1024))),
 		"VMEM_GB_PER_THREAD": strconv.Itoa(vmemGBPerThread),
 		"VMEM_MB_PER_THREAD": strconv.Itoa(vmemGBPerThread * 1024),
 		"VMEM_KB_PER_THREAD": strconv.Itoa(vmemGBPerThread * 1024 * 1024),

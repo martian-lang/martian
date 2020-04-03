@@ -39,36 +39,6 @@ call SUM_SQUARE_PIPELINE(
 `)
 }
 
-// Checks that non-integer mem_gb is a parse failure.
-func TestBadMemGB(t *testing.T) {
-	t.Parallel()
-	testBadGrammar(t, `
-stage SUM_SQUARES(
-    in  float[] values,
-    out float   sum,
-    src py      "stages/sum_squares",
-) using (
-    threads = 2,
-    mem_gb = 1.5,
-)
-`)
-}
-
-// Checks that non-integer threads is a parse failure.
-func TestBadThreads(t *testing.T) {
-	t.Parallel()
-	testBadGrammar(t, `
-stage SUM_SQUARES(
-    in  float[] values,
-    out float   sum,
-    src py      "stages/sum_squares",
-) using (
-    threads = 2.2,
-    mem_gb = 1,
-)
-`)
-}
-
 // Tests that disabled cannot be set to a constant value.
 func TestConstDisable(t *testing.T) {
 	t.Parallel()

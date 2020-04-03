@@ -59,7 +59,8 @@ type JobManager interface {
 
 // Set environment variables which control thread count.  Do not override
 // envs from above.
-func threadEnvs(self JobManager, threads int, envs map[string]string) map[string]string {
+func threadEnvs(self JobManager, threads int,
+	envs map[string]string) map[string]string {
 	thr := strconv.Itoa(threads)
 	newEnvs := make(map[string]string)
 	for _, env := range self.GetSettings().ThreadEnvs {
@@ -121,7 +122,8 @@ func getJobConfig(profileMode ProfileMode) *JobManagerJson {
 	// Check for existence of job manager JSON file
 	jobJsonFile := path.Join(jobPath, "config.json")
 	if _, err := os.Stat(jobJsonFile); os.IsNotExist(err) {
-		util.PrintInfo("jobmngr", "Job manager config file %s does not exist.", jobJsonFile)
+		util.PrintInfo("jobmngr", "Job manager config file %s does not exist.",
+			jobJsonFile)
 		os.Exit(1)
 	}
 	util.LogInfo("jobmngr", "Job config = %s", jobJsonFile)
@@ -184,7 +186,9 @@ func verifyJobManager(jobMode string, jobJson *JobManagerJson, memGBPerCore int)
 		jobPath := util.RelPath(path.Join("..", "jobmanagers"))
 		jobTemplateFile = path.Join(jobPath, jobMode+".template")
 		exampleJobTemplateFile := jobTemplateFile + ".example"
-		jobErrorMsg = fmt.Sprintf("Job manager template file %s does not exist.\n\nTo set up a job manager template, please follow instructions in %s.",
+		jobErrorMsg = fmt.Sprintf(`Job manager template file %s does not exist.
+
+To set up a job manager template, please follow instructions in %s.`,
 			jobTemplateFile, exampleJobTemplateFile)
 	} else {
 		jobTemplateFile = jobMode
@@ -192,21 +196,28 @@ func verifyJobManager(jobMode string, jobJson *JobManagerJson, memGBPerCore int)
 
 		jobModeJson, ok = jobJson.JobModes[jobMode]
 		if !strings.HasSuffix(jobTemplateFile, ".template") || !ok {
-			util.PrintInfo("jobmngr", "Job manager template file %s must be named <name_of_job_manager>.template.", jobTemplateFile)
+			util.PrintInfo("jobmngr",
+				"Job manager template file %s must be named <name_of_job_manager>.template.",
+				jobTemplateFile)
 			os.Exit(1)
 		}
-		jobErrorMsg = fmt.Sprintf("Job manager template file %s does not exist.", jobTemplateFile)
+		jobErrorMsg = fmt.Sprintf(
+			"Job manager template file %s does not exist.",
+			jobTemplateFile)
 	}
 
 	jobCmd := jobModeJson.Cmd
 	if len(jobModeJson.Args) == 0 {
-		util.LogInfo("jobmngr", "Job submit command = %s", jobCmd)
+		util.LogInfo("jobmngr", "Job submit command = %s",
+			jobCmd)
 	} else {
-		util.LogInfo("jobmngr", "Job submit comand = %s %s", jobCmd, strings.Join(jobModeJson.Args, " "))
+		util.LogInfo("jobmngr", "Job submit comand = %s %s",
+			jobCmd, strings.Join(jobModeJson.Args, " "))
 	}
 
 	jobResourcesOpt := jobModeJson.ResourcesOpt
-	util.LogInfo("jobmngr", "Job submit resources option = %s", jobResourcesOpt)
+	util.LogInfo("jobmngr", "Job submit resources option = %s",
+		jobResourcesOpt)
 
 	// Check for existence of job manager template file
 	if _, err := os.Stat(jobTemplateFile); os.IsNotExist(err) {
@@ -221,11 +232,26 @@ func verifyJobManager(jobMode string, jobJson *JobManagerJson, memGBPerCore int)
 	jobThreadingEnabled := false
 	if strings.Contains(jobTemplate, "__MRO_THREADS__") {
 		jobThreadingEnabled = true
+	} else if memGBPerCore > 0 {
+		util.Println(`
+CLUSTER MODE WARNING:
+   Thread reservations are not enabled in your job template.  The
+   --mempercore option will have no effect.
+Please consult the documentation for details.
+`)
 	}
 
 	// Check if memory reservations or mempercore are enabled
-	if !strings.Contains(jobTemplate, "__MRO_MEM_GB") && !strings.Contains(jobTemplate, "__MRO_MEM_MB") && memGBPerCore <= 0 {
-		util.Println("\nCLUSTER MODE WARNING:\n   Memory reservations are not enabled in your job template.\n   To avoid memory over-subscription, we highly recommend that you enable\n   memory reservations on your cluster, or use the --mempercore option.\nPlease consult the documentation for details.\n")
+	if !strings.Contains(jobTemplate, "__MRO_MEM_GB") &&
+		!strings.Contains(jobTemplate, "__MRO_MEM_MB") &&
+		memGBPerCore <= 0 {
+		util.Println(`
+CLUSTER MODE WARNING:
+   Memory reservations are not enabled in your job template.
+   To avoid memory over-subscription, we highly recommend that you enable
+   memory reservations on your cluster, or use the --mempercore option.
+Please consult the documentation for details.
+`)
 	}
 
 	// Verify job command exists

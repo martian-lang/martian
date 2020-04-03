@@ -57,6 +57,13 @@ call SUM_SQUARE_PIPELINE(
 						s.getNode().Comments[1])
 				}
 			}
+			loc := s.getNode().Loc
+			if loc.Line != 6 {
+				t.Errorf("Expected stage on line 6, got %d", loc.Line)
+			}
+			if loc.Col != 7 {
+				t.Errorf("Expected stage in column 7, got %d", loc.Col)
+			}
 			o := s.(*Stage).OutParams
 			if len(o.Table) != 1 {
 				t.Errorf("Incorrect out param count %d", len(o.Table))
@@ -73,6 +80,13 @@ call SUM_SQUARE_PIPELINE(
 				}
 				if h := p.GetDisplayName(); h != "description of output" {
 					t.Errorf("'%s' != 'description of output'", h)
+				}
+				loc = p.Node.Loc
+				if loc.Line != 9 {
+					t.Errorf("Expected sum decl on line 9, got %d", loc.Line)
+				}
+				if loc.Col != 9 {
+					t.Errorf("Expected sum decl at column 9, got %d", loc.Col)
 				}
 			}
 		}
@@ -97,6 +111,15 @@ call SUM_SQUARE_PIPELINE(
 				t.Errorf("Expected 8-element array, got %d elements.",
 					len(arr.Value))
 			} else {
+				loc := arr.Node.Loc
+				if loc.Line != 27 {
+					t.Errorf("Expected array decl on line 27, got %d",
+						loc.Line)
+				}
+				if loc.Col != 14 {
+					t.Errorf("Expected array decl at column 14, got %d",
+						loc.Col)
+				}
 				for i, v := range arr.Value {
 					if f, ok := v.(*FloatExp); !ok {
 						t.Errorf("Expected floating point number, got %T",
@@ -511,7 +534,7 @@ stage SUM_SQUARES(
     in  int     foo,
     out int     bar,
 ) using (
-    threads = 2,
+    threads = 2.5,
     mem_gb = 3,
 )
 `); ast != nil {
@@ -523,12 +546,20 @@ stage SUM_SQUARES(
 			if res.StrictVolatile {
 				t.Error("Should not be strict volatile.")
 			}
-			if res.Threads != 2 {
-				t.Errorf("Expected 2 threads, saw %d",
+			if res.Threads != 2.5 {
+				t.Errorf("Expected 2.5 threads, saw %g",
 					res.Threads)
 			}
+			if res.ThreadNode.Loc.Line != 10 {
+				t.Errorf("Expected threads on line 10, saw %d",
+					res.ThreadNode.Loc.Line)
+			}
+			if res.ThreadNode.Loc.Col != 5 {
+				t.Errorf("Expected threads at column 5, saw %d",
+					res.ThreadNode.Loc.Col)
+			}
 			if res.MemGB != 3 {
-				t.Errorf("Expected 3gb, saw %d",
+				t.Errorf("Expected 3gb, saw %g",
 					res.MemGB)
 			}
 		}

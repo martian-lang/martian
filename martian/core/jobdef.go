@@ -11,28 +11,53 @@ import (
 	"fmt"
 	"strconv"
 
-	"github.com/martian-lang/martian/martian/syntax"
 	"github.com/martian-lang/martian/martian/util"
 )
 
 // Defines resources used by a stage.
 type JobResources struct {
-	Threads int    `json:"__threads,omitempty"`
-	MemGB   int    `json:"__mem_gb,omitempty"`
-	VMemGB  int    `json:"__vmem_gb,omitempty"`
-	Special string `json:"__special,omitempty"`
+	Threads float64 `json:"__threads,omitempty"`
+	MemGB   float64 `json:"__mem_gb,omitempty"`
+	VMemGB  float64 `json:"__vmem_gb,omitempty"`
+	Special string  `json:"__special,omitempty"`
 }
 
 func (self *JobResources) ToLazyMap() LazyArgumentMap {
+	var buf []byte
+	formatFloat := func(f float64, buf []byte) (json.RawMessage, []byte) {
+		var result []byte
+		if f < 999.5 && f > -999.5 {
+			// Use 'g', formatting, which omits trailing 0s.
+			result = strconv.AppendFloat(buf, f, 'g', 3, 64)
+		} else {
+			// Use 'f' formatting, because we don't want to print exponents.
+			result = strconv.AppendFloat(buf, f, 'f', 0, 64)
+		}
+		if len(result) < len(buf) {
+			buf = buf[len(result):]
+		} else {
+			buf = nil
+		}
+		return result, buf
+	}
+	if self.Threads != 0 || self.MemGB != 0 || self.VMemGB != 0 {
+		buf = make([]byte, 0, 25)
+	}
 	r := make(LazyArgumentMap, 3)
 	if self.Threads != 0 {
-		r["__threads"] = json.RawMessage(strconv.Itoa(self.Threads))
+		var m json.RawMessage
+		m, buf = formatFloat(self.Threads, buf)
+		r["__threads"] = m
 	}
 	if self.MemGB != 0 {
-		r["__mem_gb"] = json.RawMessage(strconv.Itoa(self.MemGB))
+		var m json.RawMessage
+		m, buf = formatFloat(self.MemGB, buf)
+		r["__mem_gb"] = m
 	}
 	if self.VMemGB != 0 {
-		r["__vmem_gb"] = json.RawMessage(strconv.Itoa(self.VMemGB))
+		var m json.RawMessage
+		m, buf = formatFloat(self.VMemGB, buf)
+		r["__vmem_gb"] = m
 	}
 	if self.Special != "" {
 		r["__special"], _ = json.Marshal(self.Special)
@@ -44,49 +69,21 @@ func (self *JobResources) updateFromLazyArgs(args LazyArgumentMap) error {
 	if args == nil {
 		return nil
 	}
-	getInt := func(v json.RawMessage, key string) (int, error) {
-		var result int
-		if err := json.Unmarshal(v, &result); err == nil {
-			return result, nil
-		} else if level := syntax.GetEnforcementLevel(); level == syntax.EnforceError {
-			return result, err
-		} else {
-			var resultFloat float64
-			if json.Unmarshal(v, &resultFloat) != nil {
-				return result, err
-			} else if level == syntax.EnforceLog {
-				util.LogInfo("runtime",
-					"WARNING: value %q for %s was not of integer type",
-					v, key)
-			} else if level == syntax.EnforceAlarm {
-				util.PrintInfo("runtime",
-					"WARNING: value %q for %s was not of integer type",
-					v, key)
-			}
-			return int(resultFloat), nil
-		}
-	}
 	if v, ok := args["__threads"]; ok {
-		if n, err := getInt(v, "__threads"); err != nil {
+		if err := json.Unmarshal(v, &self.Threads); err != nil {
 			return err
-		} else {
-			self.Threads = n
 		}
 		delete(args, "__threads")
 	}
 	if v, ok := args["__mem_gb"]; ok {
-		if n, err := getInt(v, "__mem_gb"); err != nil {
+		if err := json.Unmarshal(v, &self.MemGB); err != nil {
 			return err
-		} else {
-			self.MemGB = n
 		}
 		delete(args, "__mem_gb")
 	}
 	if v, ok := args["__vmem_gb"]; ok {
-		if n, err := getInt(v, "__vmem_gb"); err != nil {
+		if err := json.Unmarshal(v, &self.VMemGB); err != nil {
 			return err
-		} else {
-			self.VMemGB = n
 		}
 		delete(args, "__vmem_gb")
 	}

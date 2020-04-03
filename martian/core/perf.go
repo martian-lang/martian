@@ -162,8 +162,8 @@ func (tree ProcessTree) Format(indent string) string {
 }
 
 type PerfInfo struct {
-	NumJobs    int `json:"num_jobs"`
-	NumThreads int `json:"num_threads"`
+	NumJobs    int     `json:"num_jobs"`
+	NumThreads float64 `json:"num_threads"`
 
 	// For split/main/join nodes, this should be the same
 	// as WallTime.  For other nodes, it is the sum of the
@@ -249,7 +249,15 @@ type NodePerfInfo struct {
 	HighMem   *ObservedMemory          `json:"highmem,omitempty"`
 }
 
-func reduceJobInfo(jobInfo *JobInfo, outputPaths []string, numThreads int) *PerfInfo {
+func max(a, b int) int {
+	if a > b {
+		return a
+	} else {
+		return b
+	}
+}
+
+func reduceJobInfo(jobInfo *JobInfo, outputPaths []string, numThreads float64) *PerfInfo {
 	perfInfo := PerfInfo{}
 	timeLayout := "2006-01-02 15:04:05"
 

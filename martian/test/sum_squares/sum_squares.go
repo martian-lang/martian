@@ -4,6 +4,7 @@ package main
 
 import (
 	"fmt"
+
 	"github.com/martian-lang/martian/martian/adapter"
 	"github.com/martian-lang/martian/martian/core"
 )
@@ -52,7 +53,7 @@ func chunk(metadata *core.Metadata) (interface{}, error) {
 	if err := metadata.ReadInto(core.ArgsFile, &args); err != nil {
 		return nil, err
 	} else if err := metadata.WriteRaw(core.ProgressFile, fmt.Sprintf(
-		"Running with %d threads and %dGB of memory.",
+		"Running with %g threads and %gGB of memory.",
 		adapter.GetJobInfo().Threads, adapter.GetJobInfo().MemGB)); err != nil {
 		return nil, err
 	} else if err := metadata.UpdateJournal(core.ProgressFile); err != nil {

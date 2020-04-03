@@ -21,7 +21,7 @@ func Equal(t *testing.T, value, expected, message string) {
 // Tests that floating point expressions are correctly formatted.
 func TestFormatFloatExpression(t *testing.T) {
 	ve := FloatExp{
-		valExp: valExp{Node: AstNode{SourceLoc{0, new(SourceFile)}, nil, nil}},
+		valExp: valExp{Node: AstNode{SourceLoc{File: new(SourceFile)}, nil, nil}},
 	}
 	var buff strings.Builder
 
@@ -58,7 +58,7 @@ func TestFormatFloatExpression(t *testing.T) {
 // Tests that integer expressions are correctly formatted.
 func TestFormatIntExpression(t *testing.T) {
 	ve := IntExp{
-		valExp: valExp{Node: AstNode{SourceLoc{0, new(SourceFile)}, nil, nil}},
+		valExp: valExp{Node: AstNode{SourceLoc{File: new(SourceFile)}, nil, nil}},
 	}
 	var buff strings.Builder
 
@@ -80,7 +80,7 @@ func TestFormatIntExpression(t *testing.T) {
 // Tests that string expressions are correctly formatted.
 func TestFormatStringExpression(t *testing.T) {
 	ve := StringExp{
-		valExp: valExp{Node: AstNode{SourceLoc{0, new(SourceFile)}, nil, nil}},
+		valExp: valExp{Node: AstNode{SourceLoc{File: new(SourceFile)}, nil, nil}},
 	}
 	var buff strings.Builder
 	ve.Value = "blah"
@@ -96,7 +96,7 @@ func TestFormatStringExpression(t *testing.T) {
 // Tests that null expressions are correctly formatted.
 func TestFormatNullExpression(t *testing.T) {
 	ve := NullExp{
-		valExp: valExp{Node: AstNode{SourceLoc{0, new(SourceFile)}, nil, nil}},
+		valExp: valExp{Node: AstNode{SourceLoc{File: new(SourceFile)}, nil, nil}},
 	}
 	Equal(t, FormatExp(&ve, ""), "null", "Nil value is 'null'.")
 }

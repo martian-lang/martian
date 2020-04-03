@@ -107,7 +107,7 @@ stage SUM_SQUARES(
     # For some reason this uses lots of memory.
     mem_gb   = 4,
     # This doesn't generate files anyway.
-    volatile = strict,
+    volatile = false,
 )
 
 # Takes two files containing json dictionaries and merges them.
@@ -116,6 +116,11 @@ stage MERGE_JSON(
     in  json json2,
     out json result,
     src py   "stages/merge_json",
+) using (
+    # This stage does almost nothing.
+    mem_gb  = 0.05,
+    # Perhaps it sleeps a while.
+    threads = 0.01,
 )
 
 stage MERGE_JSON2(
