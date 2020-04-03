@@ -357,6 +357,7 @@ func cleanupCompleted(pipestance *core.Pipestance, pipestanceBox *pipestanceHold
 		util.Println("Pipestance completed successfully, staying alive because --noexit given.\n")
 		runtime.GC()
 		// Don't return; otherwise we'll repeatedly try to clean up.
+		go completedLogCheck()
 		runtime.Goexit()
 	} else {
 		if pipestanceBox.enableUI {
@@ -369,6 +370,20 @@ func cleanupCompleted(pipestance *core.Pipestance, pipestanceBox *pipestanceHold
 			<-updateComplete
 		}
 		util.Suicide(true)
+	}
+}
+
+// Check to see if the pipestance directory was deleted.  If it was, exit.
+// This is used when mrp is lanuched with `--noexit` to make sure mrp doesn't
+// outlive its usefulness.
+func completedLogCheck() {
+	for {
+		time.Sleep(time.Minute)
+		if err := util.VerifyLogFile(); err != nil {
+			util.PrintError(err, "runtime",
+				"Pipestance directory seems to have disappeared.")
+			util.Suicide(true)
+		}
 	}
 }
 

@@ -128,7 +128,7 @@ func getParent(n string) string {
 	return ""
 }
 
-// Compute the value to use for a stage's volatility, which might be overriden.
+// Compute the value to use for a stage's volatility, which might be overridden.
 //
 // node is the fully qualified node name
 //
@@ -161,7 +161,7 @@ func (pse *PipestanceOverrides) GetResources(node string, phase string, res *Job
 }
 
 // Compute the value to use for a stage's thread reservation, which might be
-// overriden.
+// overridden.
 //
 // pqn is the partially qualified node name
 //
@@ -183,7 +183,7 @@ func (pse *PipestanceOverrides) getThreads(pqn string, phase string, def int) in
 }
 
 // Compute the value to use for a stage's memory reservation, which might be
-// overriden.
+// overridden.
 //
 // pqn is the partially qualified node name
 //
@@ -205,7 +205,7 @@ func (pse *PipestanceOverrides) getMem(pqn string, phase string, def int) int {
 }
 
 // Compute the value to use for a stage's memory reservation, which might be
-// overriden.
+// overridden.
 //
 // pqn is the partially qualified node name
 //
@@ -227,7 +227,7 @@ func (pse *PipestanceOverrides) getVMem(pqn string, phase string, def int) int {
 }
 
 // Compute the value to use for a stage's profile mode, which might be
-// overriden.
+// overridden.
 //
 // |node| is the fully-qualified node name
 //
