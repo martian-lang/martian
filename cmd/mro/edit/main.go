@@ -66,10 +66,10 @@ func Main(argv []string) {
 	util.SetupSignalHandlers()
 
 	var flags flag.FlagSet
-	flags.Init("mrdr", flag.ExitOnError)
+	flags.Init("mro edit", flag.ExitOnError)
 	flags.Usage = func() {
 		fmt.Fprintln(flags.Output(),
-			"Usage: mrdr [options] <file1.mro> [<file2.mro>...]")
+			"Usage: mro edit [options] <file1.mro> [<file2.mro>...]")
 		fmt.Fprintln(flags.Output())
 		flags.PrintDefaults()
 	}

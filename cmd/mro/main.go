@@ -10,6 +10,7 @@ import (
 	"github.com/martian-lang/martian/cmd/mro/check"
 	"github.com/martian-lang/martian/cmd/mro/edit"
 	"github.com/martian-lang/martian/cmd/mro/format"
+	"github.com/martian-lang/martian/cmd/mro/graph"
 	"github.com/martian-lang/martian/martian/util"
 )
 
@@ -45,7 +46,10 @@ func main() {
 
 	format:
 		Reformat an mro file according to the canonical formatting.
-	
+
+	graph:
+		Render a call graph, or query information about it.
+
 	version:
 		Print the version and exit.
 `)
@@ -70,6 +74,8 @@ func delegateMain(argv []string) {
 	case "format":
 		format.Main(argv[1:])
 		os.Exit(0)
+	case "graph":
+		graph.Main(argv[1:])
 	default:
 		fmt.Fprintln(os.Stderr, usage)
 		os.Exit(1)

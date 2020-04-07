@@ -237,5 +237,5 @@ func getBestCall(ast *syntax.Ast) *syntax.CallStm {
 	if found == nil {
 		return nil
 	}
-	return syntax.GenerateCall(found, nil)
+	return syntax.GenerateAbstractCall(found, &ast.TypeTable)
 }
