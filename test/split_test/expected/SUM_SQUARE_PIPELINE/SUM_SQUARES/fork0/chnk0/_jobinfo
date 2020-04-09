@@ -1,75 +1,111 @@
 {
-    "stackvars_flag": "disable", 
-    "name": "ID.pipeline_test.SUM_SQUARE_PIPELINE.SUM_SQUARES.fork0.chnk0", 
+    "name": "ID.pipeline_test.SUM_SQUARE_PIPELINE.SUM_SQUARES.fork0.chnk0",
+    "pid": 615967,
+    "host": "localhost",
+    "type": "local",
+    "cwd": "/Users/testuser/repos/martian/test/split_test/pipeline_test/SUM_SQUARE_PIPELINE/SUM_SQUARES/fork0/chnk0/files",
     "python": {
-        "binpath": "/usr/bin/python", 
-        "version": "2.7.12 (default, Sep  1 2016, 22:14:00) \n[GCC 4.8.3 20140911 (Red Hat 4.8.3-9)]"
-    }, 
-    "monitor_flag": "disable", 
-    "pid": 109435, 
-    "cwd": "martian/test/split_test/pipeline_test/SUM_SQUARE_PIPELINE/SUM_SQUARES/fork0/chnk0/files", 
-    "wallclock": {
-        "start": "2017-07-12 16:12:27", 
-        "end": "2017-07-12 16:12:27", 
-        "duration_seconds": 0.03362703323364258
-    }, 
-    "host": "bespin1.fuzzplex.com", 
-    "version": {
-        "martian": "'77b3550-dirty'", 
-        "pipelines": "a167627"
-    }, 
-    "threads": 0.01,
-    "memGB": 1, 
-    "invocation": {
-        "incpaths": [], 
-        "args": {
-            "values": [
-                1, 
-                2, 
-                3
-            ]
-        }, 
-        "call": "SUM_SQUARE_PIPELINE", 
-        "sweepargs": []
-    }, 
-    "profile_mode": "disable", 
-    "type": "local", 
+        "binpath": "/usr/bin/python",
+        "version": "2.7.16 (default, Nov  9 2019, 00:53:10) \n[GCC 7.3.1 20180712 (Red Hat 7.3.1-6)]"
+    },
     "rusage": {
         "self": {
-            "ru_msgrcv": 0, 
-            "ru_utime": 0.032, 
-            "ru_majflt": 0, 
-            "ru_isrss": 0, 
-            "ru_nsignals": 0, 
-            "ru_msgsnd": 0, 
-            "ru_idrss": 0, 
-            "ru_stime": 0.004, 
-            "ru_inblock": 0, 
-            "ru_minflt": 2221, 
-            "ru_nivcsw": 4, 
-            "ru_maxrss": 13120, 
-            "ru_nvcsw": 84, 
-            "ru_nswap": 0, 
-            "ru_oublock": 88, 
-            "ru_ixrss": 0
-        }, 
+            "ru_maxrss": 13864,
+            "ru_ixrss": 0,
+            "ru_idrss": 0,
+            "ru_minflt": 710,
+            "ru_majflt": 0,
+            "ru_nswap": 0,
+            "ru_utime": 0.003029,
+            "ru_stime": 0.003029,
+            "ru_inblock": 8,
+            "ru_oublock": 48,
+            "ru_msgsnd": 0,
+            "ru_msgrcv": 0,
+            "ru_nsignals": 0,
+            "ru_nivcsw": 0
+        },
         "children": {
-            "ru_msgrcv": 0, 
-            "ru_utime": 0.0, 
-            "ru_majflt": 0, 
-            "ru_isrss": 0, 
-            "ru_nsignals": 0, 
-            "ru_msgsnd": 0, 
-            "ru_idrss": 0, 
-            "ru_stime": 0.0, 
-            "ru_inblock": 0, 
-            "ru_minflt": 0, 
-            "ru_nivcsw": 0, 
-            "ru_maxrss": 0, 
-            "ru_nvcsw": 0, 
-            "ru_nswap": 0, 
-            "ru_oublock": 0, 
-            "ru_ixrss": 0
+            "ru_maxrss": 12420,
+            "ru_ixrss": 0,
+            "ru_idrss": 0,
+            "ru_minflt": 2985,
+            "ru_majflt": 0,
+            "ru_nswap": 0,
+            "ru_utime": 0.023618,
+            "ru_stime": 0.007947,
+            "ru_inblock": 8,
+            "ru_oublock": 32,
+            "ru_msgsnd": 0,
+            "ru_msgrcv": 0,
+            "ru_nsignals": 0,
+            "ru_nivcsw": 2
         }
+    },
+    "used_bytes": {
+        "rss": 14196736,
+        "shared": 2367488,
+        "vmem": 723607552,
+        "text": 1323008,
+        "stack": 107241472,
+        "proc_count": 1
+    },
+    "io": {
+        "total": {
+            "read": {
+                "sysc": 6,
+                "bytes": 0
+            },
+            "write": {
+                "sysc": 0,
+                "bytes": 0
+            }
+        },
+        "max": {
+            "read": {
+                "sysc": 246.04362870228513,
+                "bytes": 0
+            },
+            "write": {
+                "sysc": 0,
+                "bytes": 0
+            }
+        },
+        "dev": {
+            "read": {
+                "sysc": 0,
+                "bytes": 0
+            },
+            "write": {
+                "sysc": 0,
+                "bytes": 0
+            }
+        }
+    },
+    "wallclock": {
+        "start": "2020-04-08 19:19:47",
+        "end": "2020-04-08 19:19:47",
+        "duration_seconds": 0.08177229
+    },
+    "threads": 1,
+    "memGB": 1,
+    "vmemGB": 4,
+    "profile_mode": "disable",
+    "stackvars_flag": "disable",
+    "monitor_flag": "disable",
+    "invocation": {
+        "call": "SUM_SQUARE_PIPELINE",
+        "args": {
+            "values": [
+                1,
+                2,
+                3
+            ]
+        },
+        "mro_file": "pipeline.mro"
+    },
+    "version": {
+        "martian": "<version not embedded>",
+        "pipelines": "<version not embedded>"
     }
 }

@@ -19,7 +19,8 @@ stage REPORT(
     in  float   sum,
     src py      "stages/report",
 ) using (
-    mem_gb = 1,
+    mem_gb  = 1,
+    threads = 0.5,
 )
 
 # Runs the stage.

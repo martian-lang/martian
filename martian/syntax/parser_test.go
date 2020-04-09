@@ -511,16 +511,31 @@ pipeline PIPE(
 
 func TestResources(t *testing.T) {
 	t.Parallel()
-	testGood(t, `
+	ast := testGood(t, `
 stage SUM_SQUARES(
     in  float[] values,
     out float   sum,
     src py      "stages/sum_squares",
-) using (
-    threads = 2,
-    mem_gb = 1,
+) split () using (
+    threads = 4,
+	mem_gb = 6,
+	volatile = strict,
 )
 `)
+	if ast == nil {
+		t.Skip()
+	}
+	stage := ast.Callables.Table["SUM_SQUARES"].(*Stage)
+	resources := stage.Resources
+	if resources.Threads != 4 {
+		t.Errorf("%f != 4", resources.Threads)
+	}
+	if resources.MemGB != 6 {
+		t.Errorf("%f != 6", resources.MemGB)
+	}
+	if !resources.StrictVolatile {
+		t.Error("expected volatile")
+	}
 }
 
 func TestResourcesWithSplit(t *testing.T) {

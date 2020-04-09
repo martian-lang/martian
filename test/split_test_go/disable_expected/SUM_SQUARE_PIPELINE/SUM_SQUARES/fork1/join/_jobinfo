@@ -1,80 +1,118 @@
 {
     "name": "ID.disable_pipeline_test.SUM_SQUARE_PIPELINE.SUM_SQUARES.fork1",
-    "pid": 44034,
-    "host": "bespin1.fuzzplex.com",
+    "pid": 683346,
+    "host": "localhost",
     "type": "local",
-    "cwd": "/user/martian/test/split_test_go/disable_pipeline_test/SUM_SQUARE_PIPELINE/SUM_SQUARES/fork1/join-uaba31cb2f6/files",
+    "cwd": "/Users/testuser/repos/martian/test/split_test_go/disable_pipeline_test/SUM_SQUARE_PIPELINE/SUM_SQUARES/fork1/join/files",
     "rusage": {
         "self": {
-            "ru_maxrss": 12788,
+            "ru_maxrss": 14180,
             "ru_ixrss": 0,
             "ru_idrss": 0,
-            "ru_minflt": 594,
+            "ru_minflt": 665,
             "ru_majflt": 0,
             "ru_nswap": 0,
-            "ru_utime": 0.004,
-            "ru_stime": 0,
-            "ru_inblock": 8,
+            "ru_utime": 0.000296,
+            "ru_stime": 0.004419,
+            "ru_inblock": 0,
             "ru_oublock": 48,
             "ru_msgsnd": 0,
             "ru_msgrcv": 0,
-            "ru_nsignals": 0
+            "ru_nsignals": 0,
+            "ru_nivcsw": 0
         },
         "children": {
-            "ru_maxrss": 4900,
+            "ru_maxrss": 4280,
             "ru_ixrss": 0,
             "ru_idrss": 0,
-            "ru_minflt": 525,
+            "ru_minflt": 565,
             "ru_majflt": 0,
             "ru_nswap": 0,
-            "ru_utime": 0.004,
+            "ru_utime": 0.004183,
             "ru_stime": 0,
-            "ru_inblock": 0,
+            "ru_inblock": 8,
             "ru_oublock": 16,
             "ru_msgsnd": 0,
             "ru_msgrcv": 0,
-            "ru_nsignals": 0
+            "ru_nsignals": 0,
+            "ru_nivcsw": 0
         }
     },
     "used_bytes": {
-        "rss": 13094912,
-        "shared": 0,
-        "vmem": 3489792,
-        "text": 1540096,
-        "stack": 417792
+        "rss": 14520320,
+        "shared": 2367488,
+        "vmem": 725889024,
+        "text": 2564096,
+        "stack": 106999808,
+        "proc_count": 1
+    },
+    "io": {
+        "total": {
+            "read": {
+                "sysc": 2,
+                "bytes": 0
+            },
+            "write": {
+                "sysc": 0,
+                "bytes": 0
+            }
+        },
+        "max": {
+            "read": {
+                "sysc": 130.51144957370394,
+                "bytes": 0
+            },
+            "write": {
+                "sysc": 0,
+                "bytes": 0
+            }
+        },
+        "dev": {
+            "read": {
+                "sysc": 0,
+                "bytes": 0
+            },
+            "write": {
+                "sysc": 0,
+                "bytes": 0
+            }
+        }
     },
     "wallclock": {
-        "start": "2017-11-27 16:51:11",
-        "end": "2017-11-27 16:51:12",
-        "duration_seconds": 0.019428634
+        "start": "2020-04-08 20:08:31",
+        "end": "2020-04-08 20:08:31",
+        "duration_seconds": 0.026341575
     },
-    "threads": 0.01,
+    "threads": 1,
     "memGB": 1,
+    "vmemGB": 4,
     "profile_mode": "disable",
     "stackvars_flag": "disable",
     "monitor_flag": "disable",
     "invocation": {
         "call": "SUM_SQUARE_PIPELINE",
         "args": {
-            "disable_sq": [
-                true,
-                false
-            ],
+            "disable_sq": {
+                "call": "SUM_SQUARE_PIPELINE",
+                "mode": "array",
+                "split": [
+                    true,
+                    false
+                ]
+            },
             "values": [
                 1,
                 2,
                 3
             ]
         },
-        "sweepargs": [
+        "splitargs": [
             "disable_sq"
         ],
-        "incpaths": [
-            "pipeline_stages.mro"
-        ]
+        "mro_file": "pipeline_stages.mro"
     },
     "version": {
-        "martian": "'v2.3.0-rc3-48-gd2e35e7c-dirty'",
-        "pipelines": "v2.3.0-rc3-48-gd2e35e7c-dirty"
+        "martian": "<version not embedded>",
+        "pipelines": "<version not embedded>"
     }
 }

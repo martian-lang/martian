@@ -335,9 +335,9 @@ func (self *LocalJobManager) GetSystemReqs(request *JobResources) JobResources {
 	// Sanity check and cap to self.maxCores.
 	var centiCores int
 	if result.Threads < 0 {
-		centiCores = int(math.Floor(result.Threads))
+		centiCores = int(math.Floor(result.Threads * 100))
 	} else {
-		centiCores = int(math.Ceil(result.Threads))
+		centiCores = int(math.Ceil(result.Threads * 100))
 	}
 	if centiCores == 0 {
 		centiCores = self.jobSettings.ThreadsPerJob * 100
@@ -350,7 +350,7 @@ func (self *LocalJobManager) GetSystemReqs(request *JobResources) JobResources {
 				result.Threads,
 				util.Pluralize(centiCores/100), self.maxCores)
 		}
-		result.Threads = float64(self.maxCores) / 100
+		result.Threads = float64(self.maxCores)
 	} else {
 		result.Threads = float64(centiCores) / 100
 	}
