@@ -28,20 +28,6 @@ genrule(
     ],
 )
 
-genrule(
-    name = "coffee",
-    srcs = [
-        "client/graph.coffee",
-    ],
-    outs = [
-        "client/graph.js",
-    ],
-    cmd = "$(execpath @martian_npm//coffeescript/bin:coffee) --no-header -o $(@D) $<",
-    tools = [
-        "@martian_npm//coffeescript/bin:coffee",
-    ],
-)
-
 # Pick out the one file we need from the npm package.
 EXTRACT_FILE = """
 for f in $(SRCS); do
@@ -105,7 +91,7 @@ genrule(
         "res/js/ui-bootstrap-tpls-0.10.0.min.js",
         ":lodash",
         "res/js/ng-google-chart.js",
-        ":coffee",
+        "client/graph.js",
     ],
     outs = [
         "serve/graph.js",

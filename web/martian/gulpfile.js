@@ -1,21 +1,13 @@
 var gulp = require('gulp');
 
-var coffee = require('gulp-coffee');
 var pug = require('gulp-pug');
 var gzip = require('gulp-zopfli-green');
 var cleanCSS = require('gulp-clean-css');
 var concat = require('gulp-concat');
 
 var paths = {
-    coffee: 'client/**/*.coffee',
     pages:  'templates/**/*.pug'
 };
-
-gulp.task('coffee', function() {
-    return gulp.src(paths.coffee)
-        .pipe(coffee())
-        .pipe(gulp.dest('client'));
-});
 
 gulp.task('merge-scripts', function() {
     return gulp.src([
@@ -29,11 +21,6 @@ gulp.task('merge-scripts', function() {
         .pipe(concat('graph.js'))
         .pipe(gulp.dest('build'));
 });
-
-gulp.task('scripts', gulp.series(
-    'coffee',
-    'merge-scripts',
-));
 
 gulp.task('pages', function() {
     return gulp.src(paths.pages)
@@ -57,7 +44,7 @@ gulp.task('run_gzip', function() {
 });
 
 gulp.task('compress', gulp.series(gulp.parallel(
-    'scripts',
+    'merge-scripts',
     'css',
 ), 'run_gzip'));
 
@@ -65,10 +52,5 @@ gulp.task('build', gulp.parallel(
     'pages', 
     'compress',
 ));
-
-gulp.task('watch', gulp.series('build', function() {
-    gulp.watch(paths.coffee).on('change', gulp.series('coffee'));
-    gulp.watch(paths.pages).on('change', gulp.series('pages'));
-}));
 
 gulp.task('default', gulp.series('build'));
