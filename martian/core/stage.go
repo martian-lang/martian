@@ -974,7 +974,7 @@ func (self *Fork) doSplit(getBindings func() MarshalerMap) MetadataState {
 
 func (self *Fork) doChunks(state MetadataState, getBindings func() MarshalerMap) MetadataState {
 	self.node.top.rt.JobManager.endJob(self.split_metadata)
-	if self.node.call.Call().Modifiers.Volatile {
+	if self.isVolatile() {
 		lockAquired := make(chan struct{}, 1)
 		go func() {
 			self.storageLock.Lock()

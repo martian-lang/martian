@@ -20,8 +20,7 @@ stage ADD_KEY(
     # The source file.
     src py     "stages/add_key",
 ) using (
-    mem_gb   = 1,
-    volatile = strict,
+    mem_gb = 1,
 )
 
 # Takes two files containing json dictionaries and merges them.

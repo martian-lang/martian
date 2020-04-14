@@ -86,6 +86,47 @@ func mergeVDRKillReports(killReports []*VDRKillReport) *VDRKillReport {
 	return allKillReport
 }
 
+func (self *Fork) isVolatile() bool {
+	if self.node.top.rt.Config.VdrMode == VdrDisable {
+		return false
+	}
+	if !self.node.top.rt.overrides.GetForceVolatile(
+		self.node.GetFQName(), true) {
+		return false
+	}
+	if self.isStrictVolatile() {
+		return true
+	}
+	return self.node.call.Call().Modifiers.Volatile
+}
+
+func (self *Fork) isStrictVolatile() bool {
+	if self.node.top.rt.Config.VdrMode == VdrDisable {
+		return false
+	}
+	stage, ok := self.node.call.Callable().(*syntax.Stage)
+	if !ok {
+		return false
+	}
+	if !self.node.top.rt.overrides.GetForceVolatile(
+		self.node.GetFQName(), true) {
+		return false
+	}
+	if stage.Resources != nil && stage.Resources.StrictVolatile {
+		return true
+	}
+	if self.node.top.rt.Config.VdrMode == VdrStrict {
+		if stage.Resources == nil || stage.Resources.VolatileNode == nil {
+			return true
+		}
+	}
+	if self.node.top.rt.overrides.GetForceVolatile(
+		self.node.GetFQName(), false) {
+		return true
+	}
+	return false
+}
+
 func (self *Fork) partialVdrKill() (*VDRKillReport, bool) {
 	self.storageLock.Lock()
 	defer self.storageLock.Unlock()
@@ -138,8 +179,7 @@ func (self *Fork) partialVdrKill() (*VDRKillReport, bool) {
 						"Running full vdr on %s",
 						self.node.GetFQName())
 				}
-				if stage, ok := self.node.call.Callable().(*syntax.Stage); ok &&
-					stage.Resources != nil && stage.Resources.StrictVolatile {
+				if self.isStrictVolatile() {
 					return self.vdrKillSome(partial, true)
 				}
 				return self.vdrKill(partial), true
@@ -165,8 +205,7 @@ func (self *Fork) partialVdrKill() (*VDRKillReport, bool) {
 						}
 					}
 				}
-				if stage, ok := self.node.call.Callable().(*syntax.Stage); ok &&
-					stage.Resources != nil && stage.Resources.StrictVolatile {
+				if self.isStrictVolatile() {
 					return self.vdrKillSome(partial, false)
 				}
 			}
@@ -900,7 +939,7 @@ func (self *Fork) vdrKill(partialKill *PartialVdrKillReport) *VDRKillReport {
 	var killPaths []string
 	// For volatile nodes, kill fork-level files.
 	if self.node.top.rt.overrides.GetForceVolatile(self.node.GetFQName(),
-		self.node.call.Call().Modifiers.Volatile) {
+		self.isVolatile()) {
 		rep, _ := self.vdrKillSome(partialKill, true)
 		return rep
 	} else if self.Split() && self.node.top.rt.overrides.GetForceVolatile(

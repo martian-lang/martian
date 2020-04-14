@@ -858,12 +858,10 @@ func (self *Node) step() bool {
 		}
 		self.addFrontierNode(self)
 	case Complete:
-		if self.top.rt.Config.VdrMode == "rolling" {
+		if vdr := self.top.rt.Config.VdrMode; vdr == VdrRolling || vdr == VdrStrict {
 			for _, node := range self.prenodes {
-				node.getNode().vdrKill()
 				node.getNode().cachePerf()
 			}
-			self.vdrKill()
 			self.cachePerf()
 		}
 		fallthrough

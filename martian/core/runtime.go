@@ -55,11 +55,11 @@ func ParseVersions(data string) (string, string, error) {
 
 func VerifyVDRMode(vdrMode VdrMode) {
 	switch vdrMode {
-	case VdrRolling, VdrPost, VdrDisable:
+	case VdrRolling, VdrPost, VdrDisable, VdrStrict:
 		return
 	}
 	util.PrintInfo("runtime",
-		"Invalid VDR mode: %s. Valid VDR modes: rolling, post, disable",
+		"Invalid VDR mode: %s. Valid VDR modes: rolling, post, disable, strict",
 		vdrMode)
 	os.Exit(1)
 }
@@ -121,6 +121,7 @@ const (
 	VdrDisable = disable
 	VdrPost    = "post"
 	VdrRolling = "rolling"
+	VdrStrict  = "strict"
 )
 
 // Configuration required to initialize a Runtime object.
@@ -130,7 +131,7 @@ type RuntimeOptions struct {
 	JobMode string
 
 	// The volatile disk recovery mode (required): either "post",
-	// "rolling", or "disable".
+	// "rolling", "strict", or "disable".
 	VdrMode VdrMode
 
 	// The profiling mode (required): "disable" or one of the available

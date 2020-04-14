@@ -22,7 +22,7 @@ import (
 type ProfileMode string
 
 const (
-	DisableProfile    ProfileMode = "disable"
+	DisableProfile    ProfileMode = disable
 	CpuProfile        ProfileMode = "cpu"
 	LineProfile       ProfileMode = "line"
 	MemProfile        ProfileMode = "mem"
