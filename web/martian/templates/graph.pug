@@ -38,9 +38,9 @@ html(ng-app="app" ng-controller="MartianGraphCtrl" lang="en")
                     | [[end]][[if not .Release]]
                     .navbar-views
                         .btn-group
-                            button.btn.btn-default(ng-model="perf" btn-radio="false" style="margin-top: -7px") Details
+                            button.btn.btn-default(ng-model="perf" uib-btn-radio="false" style="margin-top: -7px") Details
                             | &nbsp;
-                            .btn.btn-default(ng-model="perf" btn-radio="true" style="margin-top: -7px") Performance
+                            .btn.btn-default(ng-model="perf" uib-btn-radio="true" style="margin-top: -7px") Performance
                     | [[end]]
         #graph(style="margin-left: 10px; margin-top: 60px;")
             svg(width="750px" height="1000px" ng-click="alert('l')")
@@ -111,9 +111,9 @@ html(ng-app="app" ng-controller="MartianGraphCtrl" lang="en")
                     td(style="width: 85px") Forks
                     td(colspan="5")
                         .btn-group
-                            button.btn.btn-default(type="button" ng-model="$parent.$parent.forki" ng-repeat="fork in pnode.forks" btn-radio="fork.index") {{fork.index}}
-            tabset.tbs-hor
-                tab(heading="Summary" active="tabs.summary")
+                            button.btn.btn-default(type="button" ng-model="$parent.$parent.forki" ng-repeat="fork in pnode.forks" uib-btn-radio="fork.index") {{fork.index}}
+            uib-tabset.tbs-hor
+                uib-tab(heading="Summary" active="tabs.summary")
                     table.table.info(style="float:left; position: relative; top: 5px")
                         tr
                             td(style="border: 0px") Walltime
@@ -154,17 +154,17 @@ html(ng-app="app" ng-controller="MartianGraphCtrl" lang="en")
                         tr(ng-show="pnode.fqname==topnode.fqname")
                             td Max Bytes
                             td {{ humanizeFromNode('maxbytes', 'bytes') }}
-                tab(heading="Core Hours" active="tabs.cpu")
-                tab(heading="Time" active="tabs.time")
-                tab(heading="IO" active="tabs.io")
-                tab(heading="IO Rate" active="tabs.iorate")
-                tab(heading="Memory" active="tabs.memory")
-                tab(heading="Jobs" active="tabs.jobs" ng-if="pnode.type == 'pipeline'")
-                tab(heading="VDR" active="tabs.vdr" ng-if="pnode.type == 'pipeline'")
+                uib-tab(heading="Core Hours" active="tabs.cpu")
+                uib-tab(heading="Time" active="tabs.time")
+                uib-tab(heading="IO" active="tabs.io")
+                uib-tab(heading="IO Rate" active="tabs.iorate")
+                uib-tab(heading="Memory" active="tabs.memory")
+                uib-tab(heading="Jobs" active="tabs.jobs" ng-if="pnode.type == 'pipeline'")
+                uib-tab(heading="VDR" active="tabs.vdr" ng-if="pnode.type == 'pipeline'")
             span(ng-if="!tabs.summary")
-                tabset.tbs-vert(vertical="true")
-                    tab(heading="Graph" ng-click="setChartType('BarChart')")
-                    tab(heading="Table" ng-click="setChartType('Table')")
+                uib-tabset.tbs-vert(vertical="true")
+                    uib-tab(heading="Graph" ng-click="setChartType('BarChart')")
+                    uib-tab(heading="Table" ng-click="setChartType('Table')")
                 div(google-chart chart="charts[forki]" ng-if="charts[forki]")
         .details#stage(ng-show="!perf && node")
             h4.stagename
@@ -228,7 +228,7 @@ html(ng-app="app" ng-controller="MartianGraphCtrl" lang="en")
                     td(style="width: 85px") Forks
                     td(colspan="5")
                         .btn-group
-                            button.btn.btn-default(type="button" ng-model="$parent.forki" ng-repeat="fork in node.forks" btn-radio="fork.index") {{fork.index}}
+                            button.btn.btn-default(type="button" ng-model="$parent.forki" ng-repeat="fork in node.forks" uib-btn-radio="fork.index") {{fork.index}}
                 tr
                     td(style="width: 85px") State
                     td
@@ -297,7 +297,7 @@ html(ng-app="app" ng-controller="MartianGraphCtrl" lang="en")
                     td(style="width: 85px") Chunks
                     td
                         .btn-group
-                            button.btn.btn-default(ng-class="chunk.state" type="button" ng-model="$parent.chunki" ng-repeat="chunk in node.forks[forki].chunks" btn-radio="chunk.index") {{chunk.index}}
+                            button.btn.btn-default(ng-class="chunk.state" type="button" ng-model="$parent.chunki" ng-repeat="chunk in node.forks[forki].chunks" uib-btn-radio="chunk.index") {{chunk.index}}
                 tr
                     td(style="width: 85px") State
                     td

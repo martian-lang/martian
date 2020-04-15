@@ -7,6 +7,7 @@
   "dependencies": {
     "angular": "^1.7.9",
     "angular-google-chart": "^0.1.0",
+    "angular-ui-bootstrap": "^0.14.3",
     "dagre-d3": "^0.6.3"
   },
   "scripts": {},
@@ -18,6 +19,7 @@
     "gulp-clean-css": "^3.9.4",
     "gulp-concat": "^2.6.1",
     "gulp-pug": "^4.0.1",
+    "gulp-uglify": "^3.0.2",
     "gulp-zopfli-green": "^3.0.0",
     "pug-cli": "^1.0.0-alpha6"
   }

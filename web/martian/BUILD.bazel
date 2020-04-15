@@ -92,6 +92,17 @@ genrule(
     cmd = EXTRACT_FILE,
 )
 
+genrule(
+    name = "ui_bootstrap_tpls",
+    srcs = [
+        "@martian_npm//angular-ui-bootstrap:angular-ui-bootstrap__files",
+    ],
+    outs = [
+        "build/ui-bootstrap-tpls.min.js",
+    ],
+    cmd = EXTRACT_FILE,
+)
+
 # Merge the js together.
 genrule(
     name = "merged_js",
@@ -99,7 +110,7 @@ genrule(
         ":d3",
         ":dagre_d3",
         ":angular",
-        "res/js/ui-bootstrap-tpls-0.10.0.min.js",
+        ":ui_bootstrap_tpls",
         ":lodash",
         ":ng_google_chart",
         "client/graph.js",
@@ -107,7 +118,12 @@ genrule(
     outs = [
         "serve/graph.js",
     ],
-    cmd = "cat $(SRCS) | gzip --best > \"$@\"",
+    cmd = "cat $(SRCS) | " +
+          "$(execpath @martian_npm//uglify-js/bin:uglifyjs) -c -- - | " +
+          "gzip --best > \"$@\"",
+    tools = [
+        "@martian_npm//uglify-js/bin:uglifyjs",
+    ],
 )
 
 COMPRESS = "gzip --best -c $$(readlink -f $<) > $@"

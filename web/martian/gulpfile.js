@@ -4,9 +4,10 @@ var pug = require('gulp-pug');
 var gzip = require('gulp-zopfli-green');
 var cleanCSS = require('gulp-clean-css');
 var concat = require('gulp-concat');
+var uglify = require('gulp-uglify');
 
 var paths = {
-    pages:  'templates/**/*.pug'
+    pages: 'templates/**/*.pug'
 };
 
 gulp.task('merge-scripts', function() {
@@ -14,11 +15,12 @@ gulp.task('merge-scripts', function() {
             'node_modules/d3/build/d3.min.js',
             'node_modules/dagre-d3/dist/dagre-d3.min.js',
             'node_modules/angular/angular.min.js',
-            'res/js/ui-bootstrap-tpls-0.10.0.min.js',
+            'node_modules/angular-ui-bootstrap/ui-bootstrap-tpls.min.js',
             'node_modules/lodash/lodash.min.js',
             'node_modules/angular-google-chart/ng-google-chart.min.js',
             'client/graph.js'])
         .pipe(concat('graph.js'))
+        .pipe(uglify({mangle:false}))
         .pipe(gulp.dest('build'));
 });
 
@@ -49,7 +51,7 @@ gulp.task('compress', gulp.series(gulp.parallel(
 ), 'run_gzip'));
 
 gulp.task('build', gulp.parallel(
-    'pages', 
+    'pages',
     'compress',
 ));
 
