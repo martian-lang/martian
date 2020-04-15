@@ -133,7 +133,7 @@
   };
 
   _humanizeBytes = function(num) {
-    return _humanizeWithSuffix(num, ['B', 'KB', 'MB', 'GB', 'TB'], 1024, 2);
+    return _humanizeWithSuffix(num, ['B', 'KB', 'MB', 'GB', 'TB'], 1024, 0);
   };
 
   _humanizeUnits = function(num, units) {
