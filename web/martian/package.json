@@ -6,6 +6,7 @@
   "main": "",
   "dependencies": {
     "angular": "^1.7.9",
+    "angular-google-chart": "^0.1.0",
     "dagre-d3": "^0.6.3"
   },
   "scripts": {},

@@ -81,6 +81,17 @@ genrule(
     cmd = EXTRACT_FILE,
 )
 
+genrule(
+    name = "ng_google_chart",
+    srcs = [
+        "@martian_npm//angular-google-chart:angular-google-chart__files",
+    ],
+    outs = [
+        "build/ng-google-chart.min.js",
+    ],
+    cmd = EXTRACT_FILE,
+)
+
 # Merge the js together.
 genrule(
     name = "merged_js",
@@ -90,7 +101,7 @@ genrule(
         ":angular",
         "res/js/ui-bootstrap-tpls-0.10.0.min.js",
         ":lodash",
-        "res/js/ng-google-chart.js",
+        ":ng_google_chart",
         "client/graph.js",
     ],
     outs = [

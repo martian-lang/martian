@@ -16,7 +16,7 @@ gulp.task('merge-scripts', function() {
             'node_modules/angular/angular.min.js',
             'res/js/ui-bootstrap-tpls-0.10.0.min.js',
             'node_modules/lodash/lodash.min.js',
-            'res/js/ng-google-chart.js',
+            'node_modules/angular-google-chart/ng-google-chart.min.js',
             'client/graph.js'])
         .pipe(concat('graph.js'))
         .pipe(gulp.dest('build'));
