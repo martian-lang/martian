@@ -133,7 +133,8 @@
   };
 
   _humanizeBytes = function(num) {
-    return _humanizeWithSuffix(num, ['B', 'KB', 'MB', 'GB', 'TB'], 1024, 0);
+    var precision = (num > 1073741824) ? 1 : 0;
+    return _humanizeWithSuffix(num, ['B', 'KB', 'MB', 'GB', 'TB'], 1024, precision);
   };
 
   _humanizeUnits = function(num, units) {
