@@ -37,23 +37,8 @@ func (s jsonString) MarshalJSON() ([]byte, error) {
 // An empty array is returned for arrays.  An empty map is returned for maps.
 // A map with recursively-populated fields is returned for struct types.
 // Nil is returned for any other type.
-func makeOutArg(field *syntax.StructMember, filesPath string, lookup *syntax.TypeLookup, brokenFileArrays bool) json.Marshaler {
+func makeOutArg(field *syntax.StructMember, filesPath string, lookup *syntax.TypeLookup) json.Marshaler {
 	if field.Tname.ArrayDim > 0 {
-		if brokenFileArrays && field.Tname.MapDim == 0 {
-			if field.IsFile() == syntax.KindIsDirectory {
-				// TODO(azarchs): Don't put file names in arrays.  Except we have
-				// released pipelines which depend on this incorrect behavior.  It can
-				// be fixed once we have an Enterprise-based solution for running
-				// flowcells so breaking backwards compatibility will be ok.
-				tn := field.Tname
-				tn.ArrayDim = 0
-				if lookup.Get(tn).IsFile() == syntax.KindIsFile {
-					if fn := field.GetOutFilename(); fn != "" {
-						return jsonString(path.Join(filesPath, fn))
-					}
-				}
-			}
-		}
 		return marshallerArray{}
 	} else if field.Tname.MapDim > 0 {
 		return MarshalerMap{}
@@ -67,12 +52,11 @@ func makeOutArg(field *syntax.StructMember, filesPath string, lookup *syntax.Typ
 
 func makeOutArgs(outParams *syntax.OutParams, filesPath string, nullAll bool, lookup *syntax.TypeLookup) MarshalerMap {
 	args := make(MarshalerMap, len(outParams.List))
-	brokenFileArrays := syntax.GetEnforcementLevel() < syntax.EnforceError
 	for _, param := range outParams.List {
 		if nullAll {
 			args[param.Id] = nil
 		} else {
-			args[param.Id] = makeOutArg(&param.StructMember, filesPath, lookup, brokenFileArrays)
+			args[param.Id] = makeOutArg(&param.StructMember, filesPath, lookup)
 		}
 	}
 	return args
