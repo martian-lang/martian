@@ -192,7 +192,7 @@ To set up a job manager template, please follow instructions in %s.`,
 			jobTemplateFile, exampleJobTemplateFile)
 	} else {
 		jobTemplateFile = jobMode
-		jobMode = strings.Replace(path.Base(jobTemplateFile), ".template", "", 1)
+		jobMode = strings.TrimSuffix(path.Base(jobTemplateFile), ".template")
 
 		jobModeJson, ok = jobJson.JobModes[jobMode]
 		if !strings.HasSuffix(jobTemplateFile, ".template") || !ok {

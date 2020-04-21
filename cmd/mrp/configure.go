@@ -98,7 +98,9 @@ Usage:
 
 Options:
     --jobmode=MODE      Job manager to use. Valid options:
-                            local (default), sge, lsf, or a .template file
+                            local (default)
+                            A cluster job mode listed such as sge, lsf, or slurm
+                            A file <jobmode>.template
     --localcores=NUM    Set max cores the pipeline may request at one time.
                             Only applies to local jobs.
     --localmem=NUM      Set max GB the pipeline may request at one time.
