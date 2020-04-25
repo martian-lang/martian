@@ -7,6 +7,7 @@ package main
 
 import (
 	"context"
+	"crypto/tls"
 	"fmt"
 	"io/ioutil"
 	"net"
@@ -43,6 +44,7 @@ type pipestanceHolder struct {
 	cleanupLock      sync.Mutex
 	lock             sync.Mutex
 	readOnly         bool
+	https            bool
 	retryWait        time.Duration
 	server           *http.Server
 	lastLogCheck     time.Time
@@ -123,11 +125,18 @@ func (self *pipestanceHolder) Register() chan struct{} {
 	if enterpriseHost := os.Getenv("MARTIAN_ENTERPRISE"); enterpriseHost != "" {
 		u := url.URL{
 			Scheme: "http",
-			Host:   enterpriseHost,
+			Host:   strings.TrimPrefix(enterpriseHost, "http://"),
 			Path:   api.QueryRegisterEnterprise,
+		}
+		if strings.HasPrefix(enterpriseHost, "https://") {
+			u.Host = enterpriseHost[len("https://"):]
+			u.Scheme = "https"
 		}
 		form := self.info.AsForm()
 		form.Set("authkey", self.authKey)
+		if self.https {
+			form.Set("https", "true")
+		}
 		self.lastRegister = time.Now()
 		complete := make(chan struct{})
 		go func() {
@@ -144,6 +153,7 @@ func (self *pipestanceHolder) Register() chan struct{} {
 				if res.StatusCode >= http.StatusBadRequest {
 					util.LogInfo("mrenter", "Registration failed with %s.", res.Status)
 				}
+				println(res.Status)
 			} else {
 				util.LogError(err, "mrenter", "Registration to %s failed", u.Host)
 			}
@@ -207,6 +217,7 @@ func (pipestanceBox *pipestanceHolder) Configure(c *mrpConfiguration, invocation
 	pipestanceBox.remainingRetries = c.retries
 	pipestanceBox.readOnly = c.readOnly
 	pipestanceBox.retryWait = c.retryWait
+	pipestanceBox.https = c.cert != nil
 
 	return reattaching, rt
 }
@@ -246,7 +257,8 @@ func (c *mrpConfiguration) checkSpace() {
 
 }
 
-func (c *mrpConfiguration) getListener(hostname string, pipestanceBox *pipestanceHolder) net.Listener {
+func (c *mrpConfiguration) getListener(hostname string,
+	pipestanceBox *pipestanceHolder, conf *tls.Config) net.Listener {
 	// Attempt to open the UI port.  If the port was not automatically
 	// assigned, fail mrp if it cannot be opened.  Otherwise, log a message
 	// and continue.
@@ -271,6 +283,10 @@ func (c *mrpConfiguration) getListener(hostname string, pipestanceBox *pipestanc
 			u := url.URL{
 				Scheme: "http",
 				Host:   listener.Addr().String(),
+			}
+			if conf != nil {
+				listener = tls.NewListener(listener, conf)
+				u.Scheme = "https"
 			}
 			c.uiport = u.Port()
 			u.Host = net.JoinHostPort(hostname, c.uiport)
@@ -334,7 +350,7 @@ func main() {
 	c.checkSpace()
 
 	uuid, _ := pipestanceBox.pipestance.GetUuid()
-	listener := c.getListener(hostname, &pipestanceBox)
+	listener := c.getListener(hostname, &pipestanceBox, c.cert)
 
 	//=========================================================================
 	// Collect pipestance static info.

@@ -6,6 +6,7 @@ package main
 
 import (
 	"crypto/rand"
+	"crypto/tls"
 	"encoding/base64"
 	"fmt"
 	"os"
@@ -38,6 +39,7 @@ type mrpConfiguration struct {
 	authKey        string
 	requireAuth    bool
 	noExit         bool
+	cert           *tls.Config
 }
 
 func parseMroFlags(opts map[string]interface{}, doc string, martianOptions []string, martianArguments []string) {
@@ -131,7 +133,13 @@ Options:
     --require-auth      Always require authentication (this is the default
                         if --uiport is not set).
     --auth-key=KEY      Set the authentication key required for accessing the
-                        web UI.
+                            web UI.
+    --https-cert=FILE   Set path to a file containing the TLS certificate to use
+                        for the user interface.
+                            If set, https-key must also be provided.
+                            The UI will then use https.
+    --https-key=FILE    Set the path to the file containing the private key for
+                        serving the UI over https.
     --noexit            Keep UI running after pipestance completes or fails.
     --onfinish=EXEC     Run this when pipeline finishes, success or fail.
     --zip               Zip metadata files after pipestance completes.
@@ -418,6 +426,43 @@ Options:
 					"Could not parse --retry-wait value \"%s\"", opts["--retry-wait"].(string))
 				os.Exit(1)
 			}
+		}
+	}
+	var certFile, keyFile string
+	if value := opts["--https-cert"]; value != nil {
+		if p, ok := value.(string); ok && p != "" {
+			if filepath.IsAbs(p) {
+				certFile = p
+			} else {
+				certFile = path.Join(cwd, p)
+			}
+			util.LogInfo("options", "--https-cert=%s", certFile)
+		}
+	}
+	if value := opts["--https-key"]; value != nil {
+		if p, ok := value.(string); ok && p != "" {
+			if filepath.IsAbs(p) {
+				keyFile = p
+			} else {
+				keyFile = path.Join(cwd, p)
+			}
+			util.LogInfo("options", "--https-key=%s", keyFile)
+		}
+	}
+	if certFile != "" && keyFile == "" {
+		util.PrintInfo("options", "--https-cert provided, but no --https-key.")
+		os.Exit(1)
+	} else if certFile == "" && keyFile != "" {
+		util.PrintInfo("options", "--https-key provided, but no --https-cert.")
+		os.Exit(1)
+	} else if certFile != "" {
+		cert, err := tls.LoadX509KeyPair(certFile, keyFile)
+		if err != nil {
+			util.PrintError(err, "options", "Failed to read https key pair.")
+			os.Exit(1)
+		}
+		c.cert = &tls.Config{
+			Certificates: []tls.Certificate{cert},
 		}
 	}
 	return c
