@@ -61,7 +61,7 @@ ifeq ($(CI),true)
 endif
 
 web:
-	(cd web/martian && npm $(NPM_CMD) && node_modules/gulp/bin/gulp.js)
+	(cd web/martian && npm $(NPM_CMD) && npm run-script build)
 
 $(GOLIBTESTS): test-%:
 	go test -v ./martian/$*

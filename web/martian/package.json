@@ -1,20 +1,25 @@
 {
   "name": "martian-web",
-  "version": "0.0.2",
+  "version": "0.0.4",
   "description": "Martian UI",
   "private": true,
-  "main": "",
-  "dependencies": {
+  "homepage": "https://martian-lang.org",
+  "scripts": {
+    "build": "npx gulp"
+  },
+  "author": "10X Genomics",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/martian-lang/martian.git",
+    "directory": "martian/web/martian"
+  },
+  "devDependencies": {
     "angular": "^1.7.9",
     "angular-google-chart": "^0.1.0",
     "angular-ui-bootstrap": "^0.14.3",
-    "dagre-d3": "^0.6.3"
-  },
-  "scripts": {},
-  "author": "",
-  "license": "",
-  "devDependencies": {
     "clean-css-cli": "^4.2.1",
+    "dagre-d3": "^0.6.3",
     "gulp": "^4.0.0",
     "gulp-clean-css": "^3.9.4",
     "gulp-concat": "^2.6.1",
