@@ -28,21 +28,21 @@ def martian_dependencies(
     maybe(
         go_repository,
         name = "com_github_dustin_go_humanize",
-        commit = "9f541cc9db5d",
+        commit = "9f541cc9db5d55bce703bd99987c9d5cb8eea45e",
         importpath = "github.com/dustin/go-humanize",
     )
 
     maybe(
         go_repository,
         name = "com_github_google_shlex",
-        commit = "6f45313302b9",
+        commit = "e7afc7fbc51079733e9468cdfd1efcd7d196cd1d",
         importpath = "github.com/google/shlex",
     )
 
     maybe(
         go_repository,
         name = "com_github_martian_lang_docopt_go",
-        commit = "57cc8f5f669d",
+        commit = "57cc8f5f669dae55ae1beb7a6310ea2f58ea61d5",
         importpath = "github.com/martian-lang/docopt.go",
     )
 
