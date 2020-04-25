@@ -1,11 +1,12 @@
 """Repository macro to load remote dependencies."""
 
 load("@bazel_tools//tools/build_defs/repo:http.bzl", "http_archive")
+load("@bazel_tools//tools/build_defs/repo:utils.bzl", "maybe")
 load("@bazel_gazelle//:deps.bzl", "gazelle_dependencies", "go_repository")
 
 def martian_dependencies(
-        rules_nodejs_version = "1.1.0",
-        rules_nodejs_sha = "c97bf38546c220fa250ff2cc052c1a9eac977c662c1fc23eda797b0ce8e70a43"):
+        rules_nodejs_version = "1.6.0",
+        rules_nodejs_sha = "f9e7b9f42ae202cc2d2ce6d698ccb49a9f7f7ea572a78fd451696d03ef2ee116"):
     """Loads remote repositories required to build martian.
 
     Args:
@@ -15,7 +16,7 @@ def martian_dependencies(
 
     # Do this before gazelle_dependencies because gazelle wants
     # an older version.
-    _maybe(
+    maybe(
         go_repository,
         name = "org_golang_x_sys",
         commit = "fde4db37ae7ad8191b03d30d27f258b5291ae4e3",
@@ -24,28 +25,28 @@ def martian_dependencies(
 
     gazelle_dependencies()
 
-    _maybe(
+    maybe(
         go_repository,
         name = "com_github_dustin_go_humanize",
         commit = "9f541cc9db5d",
         importpath = "github.com/dustin/go-humanize",
     )
 
-    _maybe(
+    maybe(
         go_repository,
         name = "com_github_google_shlex",
         commit = "6f45313302b9",
         importpath = "github.com/google/shlex",
     )
 
-    _maybe(
+    maybe(
         go_repository,
         name = "com_github_martian_lang_docopt_go",
         commit = "57cc8f5f669d",
         importpath = "github.com/martian-lang/docopt.go",
     )
 
-    _maybe(
+    maybe(
         # This actually already brought in by rules_go, and
         # is included here mostly for clarity.
         go_repository,
@@ -54,7 +55,7 @@ def martian_dependencies(
         importpath = "golang.org/x/tools",
     )
 
-    _maybe(
+    maybe(
         http_archive,
         name = "build_bazel_rules_nodejs",
         sha256 = rules_nodejs_sha,
@@ -66,7 +67,3 @@ def martian_dependencies(
             ),
         ],
     )
-
-def _maybe(repo_rule, name, **kwargs):
-    if name not in native.existing_rules():
-        repo_rule(name = name, **kwargs)
