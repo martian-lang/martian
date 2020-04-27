@@ -925,7 +925,7 @@ func (self *Fork) printState(state MetadataState) {
 		fqname = self.fqname
 	}
 	self.lastPrint = time.Now()
-	if self.node.call.Call().Modifiers.Preflight {
+	if self.node.call.Call().Modifiers.Preflight || state == DisabledState {
 		util.LogInfo("runtime", "(%s)%s %s", state, statePad, fqname)
 	} else {
 		util.PrintInfo("runtime", "(%s)%s %s", state, statePad, fqname)
