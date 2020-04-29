@@ -4,7 +4,8 @@ def _copy_binary_impl(ctx):
     if not ctx.executable.src:
         fail("binary must be specified", attr = "src")
     basename = ctx.executable.src.basename
-    dest_list = [ctx.outputs.dest]
+    dest_file = ctx.actions.declare_file(ctx.attr.dest or ctx.attr.name)
+    dest_list = [dest_file]
     ctx.actions.run(
         executable = "install",
         inputs = [ctx.executable.src],
@@ -12,13 +13,13 @@ def _copy_binary_impl(ctx):
         arguments = [
             "-DTp",
             ctx.executable.src.path,
-            ctx.outputs.dest.path,
+            dest_file.path,
         ],
         tools = [],
         mnemonic = "CopyBinary",
         progress_message = "Copying {} to {}.".format(
             ctx.executable.src.short_path,
-            ctx.outputs.dest.short_path,
+            dest_file.short_path,
         ),
     )
     data_runfiles = ctx.attr.src.data_runfiles.files.to_list()
@@ -45,7 +46,7 @@ def _copy_binary_impl(ctx):
     return [DefaultInfo(
         data_runfiles = data_runfiles,
         default_runfiles = default_runfiles,
-        executable = ctx.outputs.dest,
+        executable = dest_file,
         files = depset(dest_list),
     )]
 
@@ -61,9 +62,9 @@ copy_binary = rule(
             doc = "Additional items to add to the runfiles for this target.",
             allow_files = True,
         ),
-        "dest": attr.output(
-            doc = "The package-relative location for this file.",
-            mandatory = True,
+        "dest": attr.string(
+            doc = "The package-relative location for this file.  " +
+                  "This will default to the name of the target.",
         ),
     },
     doc = """Copies an executable to new location.
@@ -107,20 +108,21 @@ def _symlink_binary_impl(ctx):
     if not exe:
         fail("binary must be specified", attr = "src")
     basename = exe.basename
+    dest_file = ctx.actions.declare_file(ctx.attr.dest or ctx.attr.name)
     ctx.actions.run_shell(
-        outputs = [ctx.outputs.dest],
+        outputs = [dest_file],
         inputs = [exe],
         command = "ln -s \"$1\" \"$2\"",
         arguments = [
             _relpath(
-                ctx.outputs.dest.short_path,
+                dest_file.short_path,
                 exe.short_path,
             ),
-            ctx.outputs.dest.path,
+            dest_file.path,
         ],
         mnemonic = "SymlinkExe",
     )
-    files = [ctx.outputs.dest] + ctx.files.src
+    files = [dest_file] + ctx.files.src
     runfiles = ctx.runfiles(
         files = files,
         transitive_files = depset(transitive = [
@@ -141,7 +143,7 @@ def _symlink_binary_impl(ctx):
     return [DefaultInfo(
         data_runfiles = data_runfiles,
         default_runfiles = default_runfiles,
-        executable = ctx.outputs.dest,
+        executable = dest_file,
         files = depset(files),
     )]
 
@@ -155,9 +157,9 @@ symlink_binary = rule(
             doc = "Additional items to add to the runfiles for this target.",
             allow_files = True,
         ),
-        "dest": attr.output(
-            doc = "The package-relative location for this file.",
-            mandatory = True,
+        "dest": attr.string(
+            doc = "The package-relative location for this file.  " +
+                  "This will default to the name of the target.",
         ),
     },
     doc = """Creates a symlink to an executable.
