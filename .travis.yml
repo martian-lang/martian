@@ -36,7 +36,7 @@ matrix:
     before_install:
     - pyenv global 3.7
     - |
-      BAZEL_VERSION=2.0.0
+      BAZEL_VERSION=3.1.0
       OS="${TRAVIS_OS_NAME}"
       if [[ "${OS}" == "osx" ]]; then
         OS=darwin
@@ -55,7 +55,8 @@ matrix:
         --host_jvm_args=-Xmx500m \
         --host_jvm_args=-Xms500m \
         test \
-        --local_resources=400,1,1.0 \
+        --local_ram_resources=400 \
+        --local_cpu_resources=1 \
         //...
     - |
       bazel \
@@ -63,7 +64,8 @@ matrix:
         --host_jvm_args=-Xmx500m \
         --host_jvm_args=-Xms500m \
         build \
-        --local_resources=400,1,1.0 \
+        --local_ram_resources=400 \
+        --local_cpu_resources=1 \
         -c opt \
         //:martian
 before_install:
