@@ -355,6 +355,12 @@ repository:
           '3':
           - include: '#string'
           '4': {name: punctuation.other.comma}
+      - match: '(volatile)\s*(=)\s*(true|false|strict)\s*(,)'
+        captures:
+          '1': {name: variable.language.mro.volatile}
+          '2': {name: keyword.operator.assignment}
+          '3': {name: constant.language.mro}
+          '4': {name: punctuation.other.comma}
     - name: meta.struct.mro
       begin: '\b(struct)\s+(_?[a-zA-Z][a-zA-z0-9_]*)\s*(\()'
       beginCaptures:

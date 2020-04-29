@@ -823,6 +823,23 @@
                   "name": "punctuation.other.comma"
                 }
               }
+            },
+            {
+              "match": "(volatile)\\s*(=)\\s*(true|false|strict)\\s*(,)",
+              "captures": {
+                "1": {
+                  "name": "variable.language.mro.volatile"
+                },
+                "2": {
+                  "name": "keyword.operator.assignment"
+                },
+                "3": {
+                  "name": "constant.language.mro"
+                },
+                "4": {
+                  "name": "punctuation.other.comma"
+                }
+              }
             }
           ]
         },

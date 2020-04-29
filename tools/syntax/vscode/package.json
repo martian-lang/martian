@@ -20,6 +20,10 @@
                 "extensions": [
                     ".mro"
                 ],
+                "filenames": [
+                    "_invocation",
+                    "_mrosource"
+                ],
                 "configuration": "./language-configuration.json"
             }
         ],
