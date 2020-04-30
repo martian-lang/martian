@@ -153,7 +153,6 @@ func (self *pipestanceHolder) Register() chan struct{} {
 				if res.StatusCode >= http.StatusBadRequest {
 					util.LogInfo("mrenter", "Registration failed with %s.", res.Status)
 				}
-				println(res.Status)
 			} else {
 				util.LogError(err, "mrenter", "Registration to %s failed", u.Host)
 			}
