@@ -52,3 +52,16 @@ node_repositories(package_json = ["//web/martian:package.json"])
 load("//:npm.bzl", "martian_npm_repo")
 
 martian_npm_repo()
+
+# Development only, not required by dependent projects:
+
+_STARDOC_COMMIT = "8d076b25d4f66a7a37125f62dab6357e4d46603e"
+
+http_archive(
+    name = "io_bazel_stardoc",
+    sha256 = "d3b602c511a1a918953c0458cf93ee22a6467ed51aa4c24cc13cd6fd48b27dac",
+    strip_prefix = "stardoc-" + _STARDOC_COMMIT,
+    urls = [
+        "https://github.com/bazelbuild/stardoc/archive/{}.tar.gz".format(_STARDOC_COMMIT),
+    ],
+)

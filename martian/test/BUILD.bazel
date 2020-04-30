@@ -1,8 +1,25 @@
 load("@io_bazel_rules_go//go:def.bzl", "go_library")
+load("//tools:mro_rules.bzl", "mrf_test", "mro_library", "mro_test")
 
 go_library(
     name = "go_default_library",
     srcs = ["doc.go"],
     importpath = "github.com/martian-lang/martian/martian/test",
     visibility = ["//visibility:public"],
+)
+
+mro_library(
+    name = "sum_squares",
+    srcs = ["sum_squares.mro"],
+)
+
+mro_test(
+    name = "sum_squares_test",
+    srcs = [":sum_squares"],
+    flags = ["--no-check-src"],
+)
+
+mrf_test(
+    name = "sum_squares_format",
+    srcs = [":sum_squares"],
 )

@@ -23,6 +23,17 @@ def martian_dependencies(
         importpath = "golang.org/x/sys",
     )
 
+    # Also do this before gazelle_dependencies, which pulls version 0.5.0.
+    maybe(
+        http_archive,
+        name = "bazel_skylib",
+        urls = [
+            "https://mirror.bazel.build/github.com/bazelbuild/bazel-skylib/releases/download/1.0.2/bazel-skylib-1.0.2.tar.gz",
+            "https://github.com/bazelbuild/bazel-skylib/releases/download/1.0.2/bazel-skylib-1.0.2.tar.gz",
+        ],
+        sha256 = "97e70364e9249702246c0e9444bccdc4b847bed1eb03c5a3ece4f83dfe6abc44",
+    )
+
     gazelle_dependencies()
 
     maybe(
@@ -64,6 +75,19 @@ def martian_dependencies(
             "{}/rules_nodejs-{}.tar.gz".format(
                 rules_nodejs_version,
                 rules_nodejs_version,
+            ),
+        ],
+    )
+
+    python_rules_commit = "748aa53d7701e71101dfd15d800e100f6ff8e5d1"
+    maybe(
+        http_archive,
+        name = "rules_python",
+        sha256 = "64a3c26f95db470c32ad86c924b23a821cd16c3879eed732a7841779a32a60f8",
+        strip_prefix = "rules_python-" + python_rules_commit,
+        urls = [
+            "https://github.com/bazelbuild/rules_python/archive/{}.tar.gz".format(
+                python_rules_commit,
             ),
         ],
     )

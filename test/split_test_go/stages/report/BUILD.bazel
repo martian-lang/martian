@@ -1,0 +1,9 @@
+load("@rules_python//python:defs.bzl", "py_library")
+
+py_library(
+    name = "report",
+    testonly = True,
+    srcs = ["__init__.py"],
+    visibility = ["//test/split_test_go:__pkg__"],
+    deps = ["//adapters/python:martian"],
+)

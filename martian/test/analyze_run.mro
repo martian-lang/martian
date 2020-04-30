@@ -1,5 +1,0 @@
-@include "_bcl_processor_stages.mro"
-
-call ANALYZE_RUN(
-    run_path = "$MROTEST/mnt/sequencing/sequencers/miseq00V/mini-bcl",
-)

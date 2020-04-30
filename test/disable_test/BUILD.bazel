@@ -1,0 +1,29 @@
+load("//tools:mro_rules.bzl", "mrf_test", "mro_library", "mro_test")
+load("//test:integration_test.bzl", "integration_test")
+
+mro_library(
+    name = "pipeline",
+    testonly = True,
+    srcs = ["pipeline.mro"],
+    deps = [
+        "//test/disable_test/disable",
+    ],
+)
+
+mro_test(
+    name = "pipeline_test",
+    srcs = [":pipeline"],
+)
+
+mrf_test(
+    name = "pipeline_format",
+    srcs = [":pipeline"],
+)
+
+integration_test(
+    name = "disable_test",
+    config = "disable_test.json",
+    expectation = glob(["expected/**"]),
+    pipeline = ":pipeline",
+    runner = "run_test.sh",
+)

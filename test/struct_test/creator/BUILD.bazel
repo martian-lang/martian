@@ -1,0 +1,9 @@
+load("@rules_python//python:defs.bzl", "py_library")
+
+py_library(
+    name = "creator",
+    testonly = True,
+    srcs = ["__init__.py"],
+    visibility = ["//test/struct_test:__pkg__"],
+    deps = ["//adapters/python:martian"],
+)

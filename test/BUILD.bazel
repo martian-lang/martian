@@ -1,0 +1,9 @@
+load("@rules_python//python:defs.bzl", "py_binary")
+
+py_binary(
+    name = "martian_test",
+    testonly = True,
+    srcs = ["martian_test.py"],
+    legacy_create_init = False,
+    visibility = ["//test:__subpackages__"],
+)

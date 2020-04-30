@@ -1,0 +1,41 @@
+load("@bazel_skylib//:bzl_library.bzl", "bzl_library")
+
+bzl_library(
+    name = "mrf_rules",
+    srcs = ["mrf_rules.bzl"],
+    visibility = [
+        "//tools:__pkg__",
+        "//tools/docs:__pkg__",
+    ],
+    deps = [
+        "//tools:providers",
+        "//tools:util",
+        "@bazel_skylib//lib:shell",
+    ],
+)
+
+bzl_library(
+    name = "mro_library",
+    srcs = ["mro_library.bzl"],
+    visibility = [
+        "//tools:__pkg__",
+        "//tools/docs:__pkg__",
+    ],
+    deps = [
+        "//tools:providers",
+        "//tools:util",
+        "@bazel_skylib//lib:paths",
+    ],
+)
+
+bzl_library(
+    name = "mro_test",
+    srcs = ["mro_test.bzl"],
+    visibility = [
+        "//tools:__pkg__",
+        "//tools/docs:__pkg__",
+    ],
+    deps = [
+        "//tools:providers",
+    ],
+)

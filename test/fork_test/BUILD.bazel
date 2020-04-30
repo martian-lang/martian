@@ -1,0 +1,78 @@
+load(
+    "//tools:mro_rules.bzl",
+    "mrf_test",
+    "mro_library",
+    "mro_test",
+)
+load("//test:integration_test.bzl", "integration_test")
+
+mro_library(
+    name = "pipeline",
+    testonly = True,
+    srcs = ["pipeline.mro"],
+    deps = [
+        "//test/fork_test/stages/add_key",
+        "//test/fork_test/stages/merge_json",
+    ],
+)
+
+mro_test(
+    name = "pipeline_test",
+    size = "small",
+    srcs = [":pipeline"],
+)
+
+mrf_test(
+    name = "pipeline_format",
+    srcs = [":pipeline"],
+)
+
+filegroup(
+    name = "pass_expect",
+    srcs = glob(["expected/**"]),
+)
+
+filegroup(
+    name = "fail_expect",
+    srcs = glob(["expected_fail1/**"]),
+)
+
+integration_test(
+    name = "fork_test",
+    config = "fork_test.json",
+    expectation = [":pass_expect"],
+    pipeline = ":pipeline",
+    runner = "run_test.sh",
+)
+
+integration_test(
+    name = "autoretry_fail",
+    config = "autoretry_fail.json",
+    expectation = [":fail_expect"],
+    pipeline = ":pipeline",
+    runner = "autoretry_fail_test.sh",
+)
+
+integration_test(
+    name = "autoretry_pass",
+    config = "autoretry_pass.json",
+    expectation = [":pass_expect"],
+    pipeline = ":pipeline",
+    runner = "autoretry_pass_test.sh",
+)
+
+integration_test(
+    name = "fail1_test",
+    config = "fail1_test.json",
+    expectation = [":fail_expect"],
+    pipeline = ":pipeline",
+    runner = "run_fail1_test.sh",
+)
+
+integration_test(
+    name = "retry_test",
+    config = "retry_test.json",
+    expectation = [":pass_expect"],
+    pipeline = ":pipeline",
+    runner = "retry_test.sh",
+)

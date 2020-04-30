@@ -1,4 +1,4 @@
-"""Defines a rule for making a copy of an executable in a new location."""
+"""Defines a rules for making a copy of an executable in a new location."""
 
 def _copy_binary_impl(ctx):
     if not ctx.executable.src:

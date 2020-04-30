@@ -1,0 +1,74 @@
+load(
+    "//tools:mro_rules.bzl",
+    "mrf_test",
+    "mro_library",
+    "mro_test",
+)
+load("//test:integration_test.bzl", "integration_test")
+
+mro_library(
+    name = "disable_pipeline",
+    testonly = True,
+    srcs = ["disable_pipeline.mro"],
+    deps = [":pipeline_stages"],
+)
+
+mro_test(
+    name = "disable_pipeline_test",
+    size = "small",
+    srcs = [":disable_pipeline"],
+)
+
+mro_library(
+    name = "pipeline",
+    testonly = True,
+    srcs = ["pipeline.mro"],
+    deps = [":pipeline_stages"],
+)
+
+mro_test(
+    name = "pipeline_test",
+    size = "small",
+    srcs = [":pipeline"],
+)
+
+mro_library(
+    name = "pipeline_stages",
+    testonly = True,
+    srcs = ["pipeline_stages.mro"],
+    deps = [
+        "//:sum_squares",
+        "//test/split_test_go/stages/report",
+    ],
+)
+
+mro_test(
+    name = "pipeline_stages_test",
+    size = "small",
+    srcs = [":pipeline_stages"],
+)
+
+mrf_test(
+    name = "pipeline_format",
+    srcs = [
+        ":disable_pipeline",
+        ":pipeline",
+    ],
+)
+
+integration_test(
+    name = "split_test_go",
+    config = "split_test.json",
+    data = ["overrides.json"],
+    expectation = glob(["expected/**"]),
+    pipeline = ":pipeline",
+    runner = "run_test.sh",
+)
+
+integration_test(
+    name = "disable_test",
+    config = "disable_test.json",
+    expectation = glob(["disable_expected/**"]),
+    pipeline = ":disable_pipeline",
+    runner = "run_disable_test.sh",
+)

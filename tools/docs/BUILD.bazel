@@ -1,0 +1,31 @@
+load("@bazel_skylib//:bzl_library.bzl", "bzl_library")
+load("@io_bazel_stardoc//stardoc:stardoc.bzl", "stardoc")
+
+# This is a separate package from //tools because we don't want to require
+# repositories which use //tools to require a dependency on stardoc.
+
+filegroup(
+    name = "docs",
+    data = [
+        ":mro_rules_docs",
+    ],
+)
+
+bzl_library(
+    name = "mro_rules",
+    srcs = ["_mro_rules_doc.bzl"],
+    visibility = ["//visibility:private"],
+    deps = [
+        "//tools:mro_rules",
+        "//tools/private:mrf_rules",
+        "//tools/private:mro_library",
+        "//tools/private:mro_test",
+    ],
+)
+
+stardoc(
+    name = "mro_rules_docs",
+    out = "mro_rules.md",
+    input = "_mro_rules_doc.bzl",
+    deps = [":mro_rules"],
+)

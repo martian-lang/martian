@@ -1,0 +1,38 @@
+load(
+    "//tools:mro_rules.bzl",
+    "mrf_test",
+    "mro_library",
+    "mro_test",
+)
+load("//test:integration_test.bzl", "integration_test")
+
+mro_library(
+    name = "pipeline",
+    testonly = True,
+    srcs = ["pipeline.mro"],
+    deps = [
+        "//test/map_test/stages/multiply",
+        "//test/map_test/stages/pow",
+        "//test/map_test/stages/range",
+        "//test/map_test/stages/sum",
+    ],
+)
+
+mro_test(
+    name = "pipeline_test",
+    size = "small",
+    srcs = [":pipeline"],
+)
+
+mrf_test(
+    name = "pipeline_format",
+    srcs = [":pipeline"],
+)
+
+integration_test(
+    name = "map_test",
+    config = "map_test.json",
+    expectation = glob(["expected/**"]),
+    pipeline = ":pipeline",
+    runner = "run_test.sh",
+)

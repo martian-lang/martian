@@ -1,3 +1,4 @@
+load("@rules_python//python:defs.bzl", "py_library")
 load("@bazel_tools//tools/build_defs/pkg:pkg.bzl", "pkg_tar")
 
 filegroup(
@@ -40,4 +41,9 @@ pkg_tar(
     include_runfiles = 1,
     package_dir = "adapters/python",
     visibility = ["//:__pkg__"],
+)
+
+py_library(
+    name = "check",
+    srcs = ["check.py"],
 )
