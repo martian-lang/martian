@@ -10,7 +10,7 @@ before_cache:
 - rm -f $HOME/.npm/anonymous-cli-metrics.json
 matrix:
   include:
-  - name: "python2"
+  - name: python2
     sudo: false
     dist: trusty
     before_install:
@@ -19,7 +19,7 @@ matrix:
     - nvm install --lts node
     - npm install -g npm@^6.10
     - pip install --user pylint
-  - name: "python3"
+  - name: python3
     go:
     - 1.13.x
     sudo: false
@@ -30,7 +30,7 @@ matrix:
     - nvm install --lts node
     - npm install -g npm@^6.10
     - pip install --user pylint
-  - name: "bazel"
+  - name: bazel
     sudo: true
     dist: xenial
     before_install:
@@ -84,7 +84,7 @@ deploy:
   skip_cleanup: true
   provider: releases
   api_key:
-    secure: dBZPhakddKqoQhvJseeIHpbWyyrmZjdZ1oOsa+dR8v+yyIw1Lf9tVk4+3cearrbelxYf65ZqkQXQPWw2uZYvCQbNzMtU9hhzOwBi8/Wb8gWXlcNDjQso8iLP3Z77DeuyYg4CA7EiSbvIIFaFcUtucTAu5b0Wa0uPj7/PX37CT/6oGM9h4jdocSeI65XmB0YuraSNDAHaurWcwLZZG9PNeENTgbjvS218SUkg2HFFTeApLZCaNyxWYxEfsUcu5VXKCpSpsLm82u7XGuNVDhavMjxvH6SG1PgIdPf31N0ok5UocUVl0z4lrlT2/YEwLbI5XyLxFvqcdDN1MKvQREirPCOMMSdJivDTv87gLZGHev/C6+rEJaSXhqF158KN7VWSf9YCjNCiWgi5/E5RDdVDzmlGsLCWn+M1owWFbKAkdM0xCntcfN8Yx3jFCd2NxhKFsQOlpYZMCKmD0PWDqCUFIizkpli2jXeRJvm5NNu5iyjIJ5xJCfH56vBJMksQK9cdE4jqjz1ZuXo7AQrM8NHPOeAlp+GkfHkBdfja5kFvoP9mYANzViXinvYqxK/qnoo+Jd8XzVE+R/D0t6V9bHuoRDDc/nbvXJPxqSxhnPNUvzJpTkT5UYE3XC3Y5HicHBq09ulbMItKHWAu6J0nyefLNvnLmptTa0WqjSefPJv9kIo=
+    secure: U2h7wxc6OvQYQJi0X7vh312ruP8So/t6YwF8OFDy9xqZi/WbgHviQd5WvODAooIHZzk/4DriCSAqeYrUCtIrG5f29qWhxy4OJ91P+NzZhcboItBmlhw12VdgaqoDFd+AhEAS4WB6HfCICXbI2wKLN/acTviBTBN75XqYZDGPXN3PviQ8W39cVq5L9uDaiuQRi7Pj7Jv2jRPCEyf75oebdi9olDaHDbm7TbUvQ2KSDyaMV1FCM2kZtQJt1tf+Nmm33W667nqzIZpXUw07l+l7woDJmCBeH35nmygPbtAogSmTk4BGtAP8ucza/Mpx+QITOXMvjPdYtoACpQFAQ4ZkYhIU1pSfkFlh63/mSmp6F3Su9OXb/QBKpnCCyu5WwFf5DErDRjyKCM7Chi2yrZ2xpJZ60lzKlro9ppkAkf60u47yJCHJlNrNf70d8q8TUnab216hAphCxVzfYlELz6rs+aNxx59acIWPqJ0ZsbV7RZ3kqfLtJEtH9l2B08JWhqBdhTT2vgsmMUYZUqqE3UEhrGilOSy06coGBsHMJ3InmzPgRnpJaNTufZauJmU+bwY0SIy/jhlABl/5LguAoSpkLf5bMGZVyaEhauX0E8TOKzozvsGj2b+jy59Kb/PbzGwV/xt8z/jky9eJjoLiueJbODzFD+QeUS6GKny6EgjrnR0=
   file_glob: true
   file: martian-$TRAVIS_TAG-*.tar.*z
   on:
