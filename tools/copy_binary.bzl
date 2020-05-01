@@ -7,11 +7,13 @@ def _copy_binary_impl(ctx):
     dest_file = ctx.actions.declare_file(ctx.attr.dest or ctx.attr.name)
     dest_list = [dest_file]
     ctx.actions.run(
-        executable = "install",
+        executable = "cp",
         inputs = [ctx.executable.src],
         outputs = dest_list,
         arguments = [
-            "-DTp",
+            "-LT",
+            "--preserve=mode,timestamps",
+            "--reflink=auto",
             ctx.executable.src.path,
             dest_file.path,
         ],
@@ -106,7 +108,10 @@ def _relpath(dest, src):
 def _symlink_binary_impl(ctx):
     exe = ctx.attr.src[DefaultInfo].files_to_run.executable
     if not exe:
-        fail("binary must be specified", attr = "src")
+        if len(ctx.files.src) == 1:
+            exe = ctx.files.src[0]
+        else:
+            fail("binary must be specified", attr = "src")
     basename = exe.basename
     dest_file = ctx.actions.declare_file(ctx.attr.dest or ctx.attr.name)
     ctx.actions.run_shell(
