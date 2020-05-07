@@ -565,7 +565,15 @@ func (self *Node) allNodes() []*Node {
 }
 
 func (self *Node) find(fqname string) *Node {
-	if self.call.GetFqid() == fqname {
+	sn := self.call.GetFqid()
+	// test sn == self.top.fqname + "." + fqname
+	// without allocating a new string for it.
+	if len(sn) == len(self.top.fqname)+len(fqname)+1 &&
+		sn[len(self.top.fqname)] == '.' &&
+		sn[:len(self.top.fqname)] == self.top.fqname &&
+		sn[len(self.top.fqname)+1:] == fqname {
+		return self
+	} else if sn == fqname {
 		return self
 	}
 	for _, subnode := range self.subnodes {
@@ -665,7 +673,9 @@ func (self *Node) reset() error {
 			return err
 		}
 		// Remove all related files from journal directory.
-		if files, err := filepath.Glob(path.Join(self.top.journalPath, self.call.GetFqid()+"*")); err == nil {
+		if files, err := filepath.Glob(path.Join(self.top.journalPath,
+			strings.TrimPrefix(strings.TrimPrefix(self.call.GetFqid(),
+				self.top.fqname), ".")+"*")); err == nil {
 			for _, file := range files {
 				os.Remove(file)
 			}
@@ -898,7 +908,10 @@ func (self *Node) parseRunFilename(fqname string) (string, string, int, string, 
 
 func (self *Node) refreshState(readOnly bool) {
 	startTime := time.Now().Add(-self.top.rt.JobManager.queueCheckGrace())
-	files, _ := filepath.Glob(path.Join(self.top.journalPath, "*"))
+	files, err := util.Readdirnames(self.top.journalPath)
+	if err != nil {
+		util.LogError(err, "runtime", "Could not read journal directory.")
+	}
 	updatedForks := make(map[*Fork]struct{})
 	for _, file := range files {
 		filename := path.Base(file)
@@ -936,7 +949,7 @@ func (self *Node) refreshState(readOnly bool) {
 				fqname, filename)
 		}
 		if !readOnly {
-			os.Remove(file)
+			os.Remove(path.Join(self.top.journalPath, file))
 		}
 	}
 	for _, node := range self.getFrontierNodes() {

@@ -174,7 +174,8 @@ func NewMetadata(fqname string, p string) *Metadata {
 }
 
 func NewMetadataRunWithJournalPath(fqname string, p string, filesPath string, journalPath string, runType string) *Metadata {
-	self := NewMetadataWithJournalPath(fqname, p, journalPath)
+	self := NewMetadata(fqname, p)
+	self.journalPath = path.Join(journalPath, fqname)
 	self.curFilesPath = filesPath
 	self.finalFilePath = filesPath
 	if runType != "main" {
@@ -183,9 +184,9 @@ func NewMetadataRunWithJournalPath(fqname string, p string, filesPath string, jo
 	return self
 }
 
-func NewMetadataWithJournalPath(fqname string, p string, journalPath string) *Metadata {
+func newMetadataWithJournalPath(fqname, journalName string, p string, journalPath string) *Metadata {
 	self := NewMetadata(fqname, p)
-	self.journalPath = path.Join(journalPath, fqname)
+	self.journalPath = path.Join(journalPath, journalName)
 	return self
 }
 

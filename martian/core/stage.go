@@ -100,7 +100,8 @@ func NewChunk(fork *Fork, index int,
 	chunkPath := path.Join(fork.path, chnkNum)
 	self.fqname = fork.fqname + "." + chnkNum
 
-	self.metadata = NewMetadataWithJournalPath(self.fqname,
+	journalName := strings.TrimPrefix(strings.TrimPrefix(self.fqname, self.fork.node.top.fqname), ".")
+	self.metadata = newMetadataWithJournalPath(self.fqname, journalName,
 		chunkPath, self.fork.node.top.journalPath)
 	self.metadata.discoverUniquify()
 	// HACK: Sometimes we need to load older pipestances with newer martian
@@ -113,8 +114,9 @@ func NewChunk(fork *Fork, index int,
 		if legacyPath != chunkPath {
 			if info, err := os.Stat(legacyPath); err == nil && info != nil {
 				if info.IsDir() {
-					self.metadata = NewMetadataWithJournalPath(
-						self.fqname, legacyPath, self.fork.node.top.journalPath)
+					self.metadata = newMetadataWithJournalPath(
+						self.fqname, journalName,
+						legacyPath, self.fork.node.top.journalPath)
 				}
 			}
 		}
@@ -421,7 +423,8 @@ func (self *Fork) updateId(id ForkId) {
 	self.split_metadata = NewMetadata(self.fqname+".split",
 		path.Join(self.path, "split"))
 	self.split_metadata.journalPath = path.Join(self.node.top.journalPath,
-		self.fqname)
+		strings.TrimPrefix(strings.TrimPrefix(
+			self.fqname, self.node.top.fqname), "."))
 	self.join_metadata = NewMetadata(self.fqname+".join",
 		path.Join(self.path, "join"))
 	self.join_metadata.journalPath = self.split_metadata.journalPath
