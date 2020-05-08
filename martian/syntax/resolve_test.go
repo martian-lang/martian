@@ -844,3 +844,72 @@ func TestResolveDisableExp(t *testing.T) {
 		t.Error("expected true")
 	}
 }
+
+func TestGraphNameLengthCheck(t *testing.T) {
+	ast := testGood(t, `
+stage VERY_DEEP_PIPELINE_STAGE(
+	out int foo,
+	src comp "nope",
+)
+
+pipeline VERY_DEEP_PIPELINE_PIPELINE1(
+	out int foo,
+)
+{
+	call VERY_DEEP_PIPELINE_STAGE()
+
+	return (
+		* = VERY_DEEP_PIPELINE_STAGE,
+	)
+}
+
+pipeline VERY_DEEP_PIPELINE_PIPELINE2(
+	out int foo,
+)
+{
+	call VERY_DEEP_PIPELINE_PIPELINE1 as SUPER_DUPER_EXTRA_LONG_RIDICULOUS_VERY_DEEP_PIPELINE_PIPELINE()
+
+	return (
+		* = SUPER_DUPER_EXTRA_LONG_RIDICULOUS_VERY_DEEP_PIPELINE_PIPELINE,
+	)
+}
+
+
+pipeline VERY_DEEP_PIPELINE_PIPELINE3(
+	out int foo,
+)
+{
+	call VERY_DEEP_PIPELINE_PIPELINE2 as SUPER_DUPER_EXTRA_LONG_RIDICULOUS_VERY_DEEP_PIPELINE_PIPELINE()
+
+	return (
+		* = SUPER_DUPER_EXTRA_LONG_RIDICULOUS_VERY_DEEP_PIPELINE_PIPELINE,
+	)
+}
+
+pipeline VERY_DEEP_PIPELINE_PIPELINE4(
+	out int foo,
+)
+{
+	call VERY_DEEP_PIPELINE_PIPELINE3 as SUPER_DUPER_EXTRA_LONG_RIDICULOUS_VERY_DEEP_PIPELINE_PIPELINE()
+
+	return (
+		* = SUPER_DUPER_EXTRA_LONG_RIDICULOUS_VERY_DEEP_PIPELINE_PIPELINE,
+	)
+}
+
+call VERY_DEEP_PIPELINE_PIPELINE4()
+`)
+	if ast == nil {
+		return
+	}
+	g, err := ast.MakeCallGraph("irrelivent.", ast.Call)
+	if err == nil {
+		for len(g.GetChildren()) > 0 {
+			g = g.GetChildren()[0]
+		}
+		t.Log(len(g.GetFqid()), ":", g.GetFqid())
+		t.Error("Expected an error.")
+	} else if !strings.Contains(err.Error(), "length of id string") {
+		t.Errorf("Expected string too long error, got %q", err.Error())
+	}
+}

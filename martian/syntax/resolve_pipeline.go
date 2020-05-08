@@ -81,9 +81,10 @@ func (pipe *CallGraphPipeline) makeChildNodes(prefix string, ast *Ast) error {
 			cid := pipe.Children[0].GetFqid()
 			// slice a child fqid, share the memory for it.
 			pipe.Fqid = cid[:len(cid)-1-len(pipe.Children[0].Call().Id)]
-		} else if err := errs.If(); err != nil {
+		}
+		if err := errs.If(); err != nil {
 			return err
-		} else {
+		} else if pipe.Children[0] == nil {
 			panic("nil child")
 		}
 	} else {

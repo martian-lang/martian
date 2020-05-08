@@ -158,6 +158,15 @@ func (ast *Ast) makeCallGraphNodes(prefix string,
 			call:   call,
 			stage:  callable,
 		}
+		// Most filesystems have a file name length limit of 255 characters.
+		// The journal files are written out as e.g.
+		// FQID.fork0.chnk123.u0123456789.errors
+		// Make it an error to have too deep a nesting for this to work.
+		if len(fqid) > 222+len(prefix) {
+			return &st, fmt.Errorf(
+				"length of id string %s (%d) exceeds %d characters",
+				fqid, len(fqid), 222+len(prefix))
+		}
 		return &st, nil
 	case *Pipeline:
 		pipe := CallGraphPipeline{
