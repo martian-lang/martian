@@ -246,13 +246,25 @@ func attachComments(comments []*commentBlock, node *AstNode) []*commentBlock {
 	return comments
 }
 
+type nodesSortByLine []AstNodable
+
+func (arr nodesSortByLine) Len() int {
+	return len(arr)
+}
+
+func (arr nodesSortByLine) Less(i, j int) bool {
+	return arr[i].Line() < arr[j].Line()
+}
+
+func (arr nodesSortByLine) Swap(i, j int) {
+	arr[i], arr[j] = arr[j], arr[i]
+}
+
 func compileComments(comments []*commentBlock, node nodeContainer) []*commentBlock {
 	nodes := node.getSubnodes()
 	// It is very important for this purpose to evaluate the nodes in the order
 	// they appeared in the AST.
-	sort.Slice(nodes, func(i, j int) bool {
-		return nodes[i].Line() < nodes[j].Line()
-	})
+	sort.Sort(nodesSortByLine(nodes))
 	for _, n := range nodes {
 		comments = attachComments(comments, n.getNode())
 		comments = compileComments(comments, n)
