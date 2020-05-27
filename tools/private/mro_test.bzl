@@ -2,17 +2,22 @@
 
 load("//tools:providers.bzl", "MroInfo")
 
-def _run_mrc(mro, mropath, mrofiles, flags):
+def _run_mrc(workspace, mro, mropath, mrofiles, flags):
     return """#!/usr/bin/env bash
-export MROPATH="{}"
+if [[ -e "${{BASH_SOURCE[0]}}.runfiles/{workspace}" ]]; then
+    echo "Running in ${{BASH_SOURCE[0]}}.runfiles/{workspace}"
+    cd "${{BASH_SOURCE[0]}}.runfiles/{workspace}"
+fi
+export MROPATH="{mropath}"
 echo $MROPATH
-exec -a {} "{}" check{} {}
+exec -a {basename} "{cmd}" check{strict} {args}
 """.format(
-        mropath,
-        mro.basename,
-        mro.short_path,
-        " " + " ".join(flags) if flags else "",
-        " ".join([
+        workspace = workspace,
+        mropath = mropath,
+        basename = mro.basename,
+        cmd = mro.short_path,
+        strict = " " + " ".join(flags) if flags else "",
+        args = " ".join([
             "\"" + f.short_path + "\""
             for f in mrofiles
         ]),
@@ -30,6 +35,7 @@ def _mro_test_impl(ctx):
     if ctx.attr.strict and "--strict" not in flags:
         flags = flags + ["--strict"]
     script = _run_mrc(
+        ctx.workspace_name or "__main__",
         mro,
         mropath,
         ctx.files.srcs,

@@ -5,8 +5,8 @@ load("@bazel_tools//tools/build_defs/repo:utils.bzl", "maybe")
 load("@bazel_gazelle//:deps.bzl", "gazelle_dependencies", "go_repository")
 
 def martian_dependencies(
-        rules_nodejs_version = "1.6.0",
-        rules_nodejs_sha = "f9e7b9f42ae202cc2d2ce6d698ccb49a9f7f7ea572a78fd451696d03ef2ee116"):
+        rules_nodejs_version = "1.6.1",
+        rules_nodejs_sha = "d14076339deb08e5460c221fae5c5e9605d2ef4848eee1f0c81c9ffdc1ab31c1"):
     """Loads remote repositories required to build martian.
 
     Args:
@@ -79,11 +79,11 @@ def martian_dependencies(
         ],
     )
 
-    python_rules_commit = "748aa53d7701e71101dfd15d800e100f6ff8e5d1"
+    python_rules_commit = "a0fbf98d4e3a232144df4d0d80b577c7a693b570"
     maybe(
         http_archive,
         name = "rules_python",
-        sha256 = "64a3c26f95db470c32ad86c924b23a821cd16c3879eed732a7841779a32a60f8",
+        sha256 = "76a8fd4e7eca2a3590f816958faa0d83c9b2ce9c32634c5c375bcccf161d3bb5",
         strip_prefix = "rules_python-" + python_rules_commit,
         urls = [
             "https://github.com/bazelbuild/rules_python/archive/{}.tar.gz".format(
