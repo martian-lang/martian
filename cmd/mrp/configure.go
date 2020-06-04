@@ -145,8 +145,9 @@ Options:
     --zip               Zip metadata files after pipestance completes.
     --tags=TAGS         Tag pipestance with comma-separated key:value pairs.
 
-    --profile=MODE      Enables stage performance profiling. Valid options:
-                            disable (default), cpu, mem, or line
+    --profile=MODE      Enables stage performance profiling.  Configurable.
+                        See documentation for details.  Standard options:
+                              disabled (default), cpu, mem, perf
     --stackvars         Print local variables in stage code stack trace.
     --monitor           Kill jobs that exceed requested memory resources.
     --inspect           Inspect pipestance without resetting failed stages.
