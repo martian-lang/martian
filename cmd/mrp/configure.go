@@ -309,6 +309,9 @@ Options:
 	if value := opts["--profile"]; value != nil {
 		config.ProfileMode = core.ProfileMode(value.(string))
 	}
+	if config.ProfileMode != "" {
+		util.LogInfo("options", "--profile=%s", config.ProfileMode)
+	}
 
 	// Compute UI port.
 	if value := opts["--uiport"]; value != nil {
