@@ -21,7 +21,7 @@
     "clean-css-cli": "^4.2.1",
     "dagre-d3": "^0.6.3",
     "gulp": "^4.0.0",
-    "gulp-clean-css": "^3.9.4",
+    "gulp-clean-css": "^4.3.0",
     "gulp-concat": "^2.6.1",
     "gulp-pug": "^4.0.1",
     "gulp-uglify": "^3.0.2",
