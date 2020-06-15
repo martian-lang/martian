@@ -36,7 +36,7 @@ matrix:
     before_install:
     - pyenv global 3.7
     - |
-      BAZEL_VERSION=3.1.0
+      BAZEL_VERSION=3.2.0
       OS="${TRAVIS_OS_NAME}"
       if [[ "${OS}" == "osx" ]]; then
         OS=darwin
