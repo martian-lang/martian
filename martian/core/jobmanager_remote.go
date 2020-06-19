@@ -210,9 +210,9 @@ func (self *RemoteJobManager) jobScript(
 	params := map[string]string{
 		"JOB_NAME":           fqname + "." + shellName,
 		"THREADS":            strconv.Itoa(threads),
-		"STDOUT":             metadata.MetadataFilePath("stdout"),
-		"STDERR":             metadata.MetadataFilePath("stderr"),
-		"JOB_WORKDIR":        metadata.curFilesPath,
+		"STDOUT":             shellSafeQuote(metadata.MetadataFilePath("stdout")),
+		"STDERR":             shellSafeQuote(metadata.MetadataFilePath("stderr")),
+		"JOB_WORKDIR":        shellSafeQuote(metadata.curFilesPath),
 		"CMD":                argsStr,
 		"MEM_GB":             strconv.Itoa(int(math.Ceil(res.MemGB))),
 		"MEM_MB":             strconv.Itoa(int(math.Ceil(res.MemGB * 1024))),

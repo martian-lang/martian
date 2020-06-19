@@ -54,3 +54,8 @@ func appendShellSafeQuote(buf []byte, s string) []byte {
 	}
 	return append(buf, '"')
 }
+
+func shellSafeQuote(s string) string {
+	buf := make([]byte, 0, len(s)+8)
+	return string(appendShellSafeQuote(buf, s))
+}
