@@ -10,6 +10,7 @@ import (
 	"os/exec"
 	"path"
 	"runtime/trace"
+	"sort"
 	"strconv"
 	"strings"
 	"sync"
@@ -205,18 +206,14 @@ func (self *RemoteJobManager) jobScript(
 	}
 
 	threads := int(math.Ceil(res.Threads))
-	argv = append(
-		util.FormatEnv(threadEnvs(self, threads, envs)),
-		append([]string{shellCmd},
-			argv...)...,
-	)
+	argsStr := formatArgs(threadEnvs(self, threads, envs), shellCmd, argv)
 	params := map[string]string{
 		"JOB_NAME":           fqname + "." + shellName,
 		"THREADS":            strconv.Itoa(threads),
 		"STDOUT":             metadata.MetadataFilePath("stdout"),
 		"STDERR":             metadata.MetadataFilePath("stderr"),
 		"JOB_WORKDIR":        metadata.curFilesPath,
-		"CMD":                strings.Join(argv, " \\\n  "),
+		"CMD":                argsStr,
 		"MEM_GB":             strconv.Itoa(int(math.Ceil(res.MemGB))),
 		"MEM_MB":             strconv.Itoa(int(math.Ceil(res.MemGB * 1024))),
 		"MEM_KB":             strconv.Itoa(int(math.Ceil(res.MemGB * 1024 * 1024))),
@@ -255,6 +252,39 @@ func (self *RemoteJobManager) jobScript(
 	}
 	r := strings.NewReplacer(args...)
 	return r.Replace(template)
+}
+
+// Format a shell command line to set environment variables and run the command.
+//
+// Handles quoting things as required.
+func formatArgs(envs map[string]string, shellCmd string, argv []string) string {
+	// Estimate the size of the buffer that will be required.
+	argsLen := 9 + len(shellCmd)
+	for _, arg := range argv {
+		argsLen += 9 + len(arg)
+	}
+	envStrs := make([]string, 0, len(envs))
+	for k, v := range envs {
+		s := make([]byte, 0, len(k)+5+len(v))
+		s = append(s, k...)
+		s = append(s, '=')
+		s = appendShellSafeQuote(s, v)
+		argsLen += len(s) + 5
+		envStrs = append(envStrs, string(s))
+	}
+	// Ensure consistent ordering.
+	sort.Strings(envStrs)
+	argsStr := make([]byte, 0, argsLen)
+	for _, s := range envStrs {
+		argsStr = append(argsStr, s...)
+		argsStr = append(argsStr, " \\\n  "...)
+	}
+	argsStr = appendShellSafeQuote(argsStr, shellCmd)
+	for _, arg := range argv {
+		argsStr = append(argsStr, " \\\n  "...)
+		argsStr = appendShellSafeQuote(argsStr, arg)
+	}
+	return string(argsStr)
 }
 
 func (self *RemoteJobManager) sendJob(shellCmd string, argv []string, envs map[string]string,
