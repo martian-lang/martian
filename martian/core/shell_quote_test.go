@@ -2,7 +2,13 @@
 
 package core
 
-import "testing"
+import (
+	"strings"
+	"testing"
+	"testing/quick"
+
+	"github.com/google/shlex"
+)
 
 func TestAppendShellSafeQuote(t *testing.T) {
 	buf := make([]byte, 0, 48)
@@ -13,5 +19,19 @@ func TestAppendShellSafeQuote(t *testing.T) {
 	}
 	check(`abc123`, `"abc123"`)
 	check(`a"$\bc`, `"a\"\$\\bc"`)
-	check("\a\b\n\t\r\v☺\277", `"\a\b\n\t\r\v☺\277"`)
+	check("\a\b\n\t\r\v☺\277", "\"\a\b\n\t\r\v☺\\277\"")
+}
+
+func TestShellSafeQuote(t *testing.T) {
+	if err := quick.CheckEqual(func(s string) string {
+		return s
+	}, func(s string) string {
+		sp, err := shlex.Split(shellSafeQuote(s))
+		if err != nil {
+			return s
+		}
+		return strings.Join(sp, " ")
+	}, nil); err != nil {
+		t.Error(err)
+	}
 }

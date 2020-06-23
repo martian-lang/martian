@@ -30,19 +30,6 @@ func appendShellSafeQuote(buf []byte, s string) []byte {
 				buf = append(buf, `\"`...)
 			case '$':
 				buf = append(buf, `\$`...)
-			// Escape sequences which bash knows about
-			case '\a':
-				buf = append(buf, `\a`...)
-			case '\b':
-				buf = append(buf, `\b`...)
-			case '\n':
-				buf = append(buf, `\n`...)
-			case '\r':
-				buf = append(buf, `\r`...)
-			case '\t':
-				buf = append(buf, `\t`...)
-			case '\v':
-				buf = append(buf, `\v`...)
 			default:
 				buf = append(buf, byte(r))
 			}
