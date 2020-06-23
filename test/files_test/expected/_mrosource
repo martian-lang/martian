@@ -1,8 +1,7 @@
 #
-# @include "pipeline.mro"
+# @include "stages/stages.mro"
 #
 
-# A super-simple test pipeline with forks.
 # Files storing json.
 filetype json;
 
@@ -17,7 +16,7 @@ stage ADD_KEY(
     # The output file.
     out json   result,
     # The source file.
-    src py     "stages/add_key",
+    src py     "add_key",
 ) using (
     mem_gb = 1,
 )
@@ -26,10 +25,14 @@ stage ADD_KEY(
 stage MERGE_JSON(
     in  json[] inputs,
     out json   result  "The final merged result."  "merged.json",
-    src py     "stages/merge_json",
+    src py     "merge_json",
 ) using (
     mem_gb = 1,
 )
+
+#
+# @include "pipeline.mro"
+#
 
 # Adds some keys to some json files and then merges them.
 pipeline AWESOME(

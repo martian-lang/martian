@@ -1,7 +1,7 @@
-@include "pipeline.mro"
+@include "stages/stages.mro"
 
 call ADD_KEY as ADD_KEY4(
     key   = "4",
     value = "four",
-    start = "/user/test/files_test/pipeline_test/AWESOME/ADD_KEY2/fork0/files/result.json",
+    start = "/user/test/files_test/pipeline_test/AWESOME/ADD_KEY2/fork0/chnk0/files/result.json",
 )

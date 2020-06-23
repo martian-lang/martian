@@ -4,6 +4,6 @@ py_library(
     name = "add_key",
     testonly = True,
     srcs = ["__init__.py"],
-    visibility = ["//test/files_test:__pkg__"],
+    visibility = ["//test/files_test/stages:__pkg__"],
     deps = ["//adapters/python:martian"],
 )

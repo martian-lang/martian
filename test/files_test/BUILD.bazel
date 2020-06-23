@@ -24,8 +24,7 @@ mro_library(
     testonly = True,
     srcs = ["pipeline.mro"],
     deps = [
-        "//test/files_test/stages/add_key",
-        "//test/files_test/stages/merge_json",
+        "//test/files_test/stages",
     ],
 )
 

@@ -1,0 +1,27 @@
+# Files storing json.
+filetype json;
+
+# Adds a key to the json in a file.
+stage ADD_KEY(
+    # The key to add
+    in  string key,
+    # The value to add for this key.
+    in  string value,
+    # The file to read the initial dictionary from.
+    in  json   start,
+    # The output file.
+    out json   result,
+    # The source file.
+    src py     "add_key",
+) using (
+    mem_gb = 1,
+)
+
+# Takes two files containing json dictionaries and merges them.
+stage MERGE_JSON(
+    in  json[] inputs,
+    out json   result  "The final merged result."  "merged.json",
+    src py     "merge_json",
+) using (
+    mem_gb = 1,
+)
