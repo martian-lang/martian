@@ -145,6 +145,21 @@ func TestAstMakeCallGraph(t *testing.T) {
 	}
 }
 
+func TestAstMakeStageCallGraph(t *testing.T) {
+	src, err := ioutil.ReadFile("testdata/call_stage.mro")
+	if err != nil {
+		t.Fatal(err)
+	}
+	_, _, ast, err := ParseSourceBytes(src, "testdata/call_stage.mro", nil, false)
+	if err != nil {
+		t.Fatal(err)
+	}
+	_, err = ast.MakePipelineCallGraph("", ast.Call)
+	if err != nil {
+		t.Fatal(err)
+	}
+}
+
 func TestAstMakeCallGraphFailures(t *testing.T) {
 	t.Parallel()
 	// First check that assignment of struct to map works if it doesn't

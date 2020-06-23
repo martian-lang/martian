@@ -1,0 +1,7 @@
+# This file contains a top-level call to an aliased stage.
+
+@include "stages.mro"
+
+call MY_STAGE as MY_RENAMED_STAGE(
+    info = 0,
+)

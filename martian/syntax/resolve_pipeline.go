@@ -40,7 +40,7 @@ func wrapStageAsPipeline(call *CallStm, stage *Stage) *Pipeline {
 			Tname: param.Tname,
 			Exp: &RefExp{
 				Kind:     KindCall,
-				Id:       stage.Id,
+				Id:       call.Id,
 				OutputId: param.Id,
 			},
 		}
