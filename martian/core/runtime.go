@@ -843,8 +843,9 @@ func BuildCallSource(
 		},
 	}
 	if f := callable.File(); f != nil && f.FileName != "" {
-		rel, _, err := syntax.IncludeFilePath(f.FileName, mroPaths)
-		if err != nil && rel == "" {
+		rel, _, err := syntax.IncludeFilePath(f.FullPath, mroPaths)
+		if (err != nil && rel == "") ||
+			(filepath.IsAbs(rel) && !filepath.IsAbs(f.FileName)) {
 			rel = f.FileName
 		}
 		ast.Includes = []*syntax.Include{{Value: rel}}

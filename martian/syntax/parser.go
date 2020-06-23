@@ -52,6 +52,12 @@ func (global *Ast) compile() error {
 	return nil
 }
 
+// Find the source file.
+//
+// The file might be an absolute path, or it might be relative to the file where
+// the stage was defined, or it might be relative to one of the search paths.
+//
+// Returns the absolute path to the source file, or an error.
 func (src *SrcParam) FindPath(searchPaths []string) (string, error) {
 	if filepath.IsAbs(src.Path) {
 		_, err := os.Stat(src.Path)
@@ -373,6 +379,7 @@ func IncludeFilePath(filename string, mroPaths []string) (rel, abs string, err e
 				return abs[len(p)+1:], abs, nil
 			}
 		}
+		// Re-check the absolute path.
 		ap, err := filepath.Abs(p)
 		if err != nil {
 			return filename, abs, err

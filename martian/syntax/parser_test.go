@@ -1228,10 +1228,12 @@ func TestIncludeFilePath(t *testing.T) {
 	}
 	check(t, "foo.mro", nil, "foo.mro")
 	check(t, "testdata/foo.mro", nil, "testdata/foo.mro")
+	check(t, "testdata/foo.mro", []string{"not-testdata"}, "testdata/foo.mro")
 	check(t, "testdata/foo.mro", []string{""}, "testdata/foo.mro")
 	check(t, "testdata/foo.mro", []string{"testdata"}, "foo.mro")
 	check(t, "testdata/foo.mro", []string{"", "testdata"}, "foo.mro")
 	check(t, "testdata/foo.mro", []string{"testdata", ""}, "foo.mro")
+	check(t, "testdata/foo.mro", []string{"testdata/", ""}, "foo.mro")
 	abs, err := filepath.Abs("")
 	if err != nil {
 		t.Fatal(err)
@@ -1240,6 +1242,11 @@ func TestIncludeFilePath(t *testing.T) {
 	check(t, "testdata/foo.mro", []string{filepath.Join(abs, "testdata")}, "foo.mro")
 	check(t, "testdata/foo.mro", []string{"", filepath.Join(abs, "testdata")}, "foo.mro")
 	check(t, "testdata/foo.mro", []string{"testdata", abs}, "foo.mro")
+	absMro := filepath.Join(abs, "testdata/foo.mro")
+	check(t, absMro, nil, absMro)
+	check(t, absMro, []string{"testdata"}, "foo.mro")
+	check(t, absMro, []string{""}, "testdata/foo.mro")
+	check(t, absMro, []string{abs}, "testdata/foo.mro")
 }
 
 func BenchmarkParse(b *testing.B) {
