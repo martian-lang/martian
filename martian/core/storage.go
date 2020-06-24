@@ -711,7 +711,8 @@ func (self *Fork) cleanSplitTemp(partial *PartialVdrKillReport) *PartialVdrKillR
 			}
 		}
 		// Add metadata file sizes.
-		for _, md := range self.split_metadata.glob() {
+		mdFiles, _ := self.split_metadata.glob()
+		for _, md := range mdFiles {
 			if info, err := os.Lstat(md); err != nil {
 				partial.Errors = append(partial.Errors, err.Error())
 			} else {
@@ -805,7 +806,8 @@ func (self *Fork) cleanChunkTemp(partial *PartialVdrKillReport) *PartialVdrKillR
 	}
 	// Add metadata file sizes.
 	for _, chunk := range self.chunks {
-		for _, md := range chunk.metadata.glob() {
+		mdFiles, _ := chunk.metadata.glob()
+		for _, md := range mdFiles {
 			if info, err := os.Lstat(md); err != nil {
 				partial.Errors = append(partial.Errors, err.Error())
 			} else {
@@ -887,7 +889,8 @@ func (self *Fork) cleanJoinTemp(partial *PartialVdrKillReport) *PartialVdrKillRe
 				return nil
 			})
 		}
-		for _, md := range self.join_metadata.glob() {
+		mdFiles, _ := self.join_metadata.glob()
+		for _, md := range mdFiles {
 			if info, err := os.Lstat(md); err == nil {
 				startEvent.DeltaBytes += info.Size()
 			} else {

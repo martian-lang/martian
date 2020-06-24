@@ -13,6 +13,7 @@ import (
 	"path"
 	"path/filepath"
 	"regexp"
+	"strings"
 
 	"github.com/martian-lang/martian/martian/syntax"
 	"github.com/martian-lang/martian/martian/syntax/graph"
@@ -25,8 +26,12 @@ import (
 func CompileAll(mroPaths []string, checkSrcPath bool) (int, []*syntax.Ast, error) {
 	fileNames := make([]string, 0, len(mroPaths)*3)
 	for _, mroPath := range mroPaths {
-		fpaths, _ := filepath.Glob(mroPath + "/[^_]*.mro")
-		fileNames = append(fileNames, fpaths...)
+		fpaths, _ := util.Readdirnames(mroPath)
+		for _, f := range fpaths {
+			if strings.HasSuffix(f, ".mro") && !strings.HasPrefix(f, "_") {
+				fileNames = append(fileNames, path.Join(mroPath, f))
+			}
+		}
 	}
 	asts := make([]*syntax.Ast, 0, len(fileNames))
 	var parser syntax.Parser

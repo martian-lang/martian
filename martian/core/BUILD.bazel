@@ -59,6 +59,7 @@ go_test(
         "fork_test.go",
         "iostats_test.go",
         "jobdef_test.go",
+        "metadata_test.go",
         "post_process_test.go",
         "resolve_test.go",
         "resource_semaphore_test.go",
@@ -89,5 +90,6 @@ go_test(
     deps = [
         "//martian/syntax:go_default_library",
         "//martian/util:go_default_library",
+        "@com_github_google_shlex//:go_default_library",
     ],
 )

@@ -190,9 +190,18 @@ func newMetadataWithJournalPath(fqname, journalName string, p string, journalPat
 	return self
 }
 
-func (self *Metadata) glob() []string {
-	paths, _ := filepath.Glob(path.Join(self.path, AnyFile.FileName()))
-	return paths
+func (self *Metadata) glob() ([]string, error) {
+	paths, err := util.Readdirnames(self.path)
+	if err != nil {
+		return nil, err
+	}
+	matches := make([]string, 0, len(paths))
+	for _, p := range paths {
+		if strings.HasPrefix(p, MetadataFilePrefix) {
+			matches = append(matches, path.Join(self.path, p))
+		}
+	}
+	return matches, nil
 }
 
 // Gets the locations of the symlinks pointing to uniquified directories.
@@ -212,14 +221,22 @@ func (self *Metadata) symlinks() []string {
 }
 
 func (self *Metadata) enumerateFiles() ([]string, error) {
-	return filepath.Glob(path.Join(self.curFilesPath, "*"))
+	paths, err := util.Readdirnames(self.curFilesPath)
+	for i, p := range paths {
+		paths[i] = path.Join(self.curFilesPath, p)
+	}
+	return paths, err
 }
 
 func (self *Metadata) enumerateTemp() ([]string, error) {
 	if td := self.TempDir(); td == "" {
 		return nil, nil
 	} else {
-		return filepath.Glob(path.Join(td, "*"))
+		paths, err := util.Readdirnames(td)
+		for i, p := range paths {
+			paths[i] = path.Join(td, p)
+		}
+		return paths, err
 	}
 }
 
@@ -459,10 +476,13 @@ func (self *Metadata) discoverUniquifier() string {
 
 func (self *Metadata) loadCache() {
 	self.discoverUniquify()
-	paths := self.glob()
+	paths, err := self.glob()
+	if err != nil {
+		return
+	}
 	self.mutex.Lock()
 	if len(self.contents) > 0 {
-		self.contents = make(map[MetadataFileName]struct{})
+		self.contents = make(map[MetadataFileName]struct{}, len(paths))
 	}
 	if len(self.readCache) > 0 {
 		self.readCache = make(map[MetadataFileName]LazyArgumentMap)
@@ -479,7 +499,10 @@ func (self *Metadata) loadCache() {
 // accordingly.  It does not remove files from the cache, because for
 // example heartbeat files aren't expected to be seen there anyway.
 func (self *Metadata) poll() {
-	paths := self.glob()
+	paths, _ := self.glob()
+	if len(paths) == 0 {
+		return
+	}
 	self.mutex.Lock()
 	for _, p := range paths {
 		self.contents[metadataFileNameFromPath(p)] = struct{}{}
@@ -827,9 +850,11 @@ func (self *Metadata) journalFile() string {
 func (self *Metadata) uncheckedReset() error {
 	// Remove all related files from journal directory.
 	if len(self.journalPath) > 0 {
-		if files, err := filepath.Glob(self.journalFile() + "*"); err == nil {
-			for _, file := range files {
-				os.Remove(file)
+		dir, base := filepath.Split(self.journalFile())
+		paths, _ := util.Readdirnames(dir)
+		for _, p := range paths {
+			if strings.HasPrefix(p, base) {
+				os.Remove(path.Join(dir, p))
 			}
 		}
 	}

@@ -11,7 +11,6 @@ import (
 	"math"
 	"os"
 	"path"
-	"path/filepath"
 	"regexp"
 	"sort"
 	"strconv"
@@ -673,11 +672,13 @@ func (self *Node) reset() error {
 			return err
 		}
 		// Remove all related files from journal directory.
-		if files, err := filepath.Glob(path.Join(self.top.journalPath,
-			strings.TrimPrefix(strings.TrimPrefix(self.call.GetFqid(),
-				self.top.fqname), ".")+"*")); err == nil {
+		if files, err := util.Readdirnames(self.top.journalPath); err == nil {
+			base := strings.TrimPrefix(strings.TrimPrefix(self.call.GetFqid(),
+				self.top.fqname), ".")
 			for _, file := range files {
-				os.Remove(file)
+				if strings.HasPrefix(file, base) {
+					os.Remove(path.Join(self.top.journalPath, file))
+				}
 			}
 		}
 

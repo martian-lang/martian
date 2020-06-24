@@ -653,10 +653,12 @@ func GetCallable(mroPaths []string, name string, compile bool) (syntax.Callable,
 		}
 	}
 	for _, mroPath := range mroPaths {
-		if fpaths, err := filepath.Glob(mroPath + "/[^_]*.mro"); err == nil {
+		if fpaths, err := util.Readdirnames(mroPath); err == nil {
 			for _, fpath := range fpaths {
-				if data, err := ioutil.ReadFile(fpath); err == nil {
-					if ast, err := parse(data, path.Base(fpath)); err == nil {
+				if strings.HasPrefix(fpath, "_") || !strings.HasSuffix(fpath, ".mro") {
+					// skip, private file
+				} else if data, err := ioutil.ReadFile(path.Join(mroPath, fpath)); err == nil {
+					if ast, err := parse(data, fpath); err == nil {
 						for _, callable := range ast.Callables.List {
 							if callable.GetId() == name {
 								return callable, &ast.TypeTable, nil

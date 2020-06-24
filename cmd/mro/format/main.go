@@ -19,7 +19,8 @@ import (
 	"fmt"
 	"io/ioutil"
 	"os"
-	"path/filepath"
+	"path"
+	"strings"
 
 	"github.com/martian-lang/docopt.go"
 	"github.com/martian-lang/martian/martian/syntax"
@@ -57,14 +58,18 @@ Options:
 		// Format all MRO files in MRO path.
 		fileNames := make([]string, 0, len(mroPaths)*3)
 		for _, mroPath := range mroPaths {
-			fnames, err := filepath.Glob(mroPath + "/*.mro")
+			fnames, err := util.Readdirnames(mroPath)
 			if err != nil {
 				fmt.Fprintln(os.Stderr)
 				fmt.Fprintln(os.Stderr, err.Error())
 				fmt.Fprintln(os.Stderr)
 				os.Exit(1)
 			}
-			fileNames = append(fileNames, fnames...)
+			for _, f := range fnames {
+				if strings.HasSuffix(f, ".mro") {
+					fileNames = append(fileNames, path.Join(mroPath, f))
+				}
+			}
 		}
 		var parser syntax.Parser
 		for _, fname := range fileNames {

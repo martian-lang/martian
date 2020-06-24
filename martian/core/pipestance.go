@@ -396,21 +396,18 @@ func (self *Pipestance) RestartRunningNodes(jobMode string, outerCtx context.Con
 	}
 	self.LoadMetadata(ctx)
 	nodes := self.node.getFrontierNodes()
-	localNodes := []*Node{}
+	var errs syntax.ErrorList
 	for _, node := range nodes {
 		if node.state == Running {
 			util.PrintInfo("runtime", "Found orphaned stage: %s", node.GetFQName())
-			if jobMode == "local" || node.local {
-				localNodes = append(localNodes, node)
+			if jobMode == localMode || node.local {
+				if err := node.reset(); err != nil {
+					errs = append(errs, err)
+				}
 			}
 		}
 	}
-	for _, node := range localNodes {
-		if err := node.reset(); err != nil {
-			return err
-		}
-	}
-	return nil
+	return errs.If()
 }
 
 // Resets local nodes which are queued or are running with a PID that is not
@@ -710,7 +707,7 @@ func (self *Pipestance) ZipMetadata(zipPath string) error {
 	filePaths := make([]string, 0, 7*len(metadatas))
 	removePaths := make([]string, 0, len(metadatas))
 	for _, metadata := range metadatas {
-		files := metadata.glob()
+		files, _ := metadata.glob()
 		filePaths = append(filePaths, files...)
 		removePaths = append(removePaths, files...)
 		filePaths = append(filePaths, metadata.symlinks()...)
