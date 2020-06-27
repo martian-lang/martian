@@ -31,10 +31,12 @@ try:
     #   .. and the other PascalCase, which defeats the purpose of this alias
     # pylint: disable=invalid-name
     _string_type = basestring
+    _text_type = unicode
 except NameError:
     # py3
     # pylint: disable=invalid-name
     _string_type = str
+    _text_type = str
 
 
 # Singleton instance object.
@@ -194,6 +196,8 @@ def check_call(args, stdin=None, stdout=None, stderr=None, shell=False):
 
 def make_path(filename):
     """Get the file path for a named file."""
+    if isinstance(filename, _text_type):
+        filename = filename.encode('utf-8')
     return os.path.join(_INSTANCE.metadata.files_path, filename)
 
 

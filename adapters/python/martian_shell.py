@@ -66,6 +66,12 @@ except NameError:
     _PYTHON2, _PYTHON3 = False, True
 
 
+def _ensure_binary(string):
+    """Encode unicode strings to bytes, leave byte strings alone."""
+    if isinstance(string, _text_type):
+        return string.encode('utf-8')
+    return string
+
 #################################################
 # Job running infrastructure.                   #
 #################################################
@@ -176,7 +182,7 @@ class _MemoryProfile(object):
             stats_file.write(self.format_stats())
 
 
-_METADATA_PREFIX = '_'
+_METADATA_PREFIX = b'_'
 
 
 class _Metadata(object):
@@ -191,9 +197,9 @@ class _Metadata(object):
             files_path:     The path for stage input/output files.
             journal_prefix: The prefix for journal files.
         """
-        self.path = path
-        self.files_path = files_path
-        self.journal_prefix = journal_prefix
+        self.path = _ensure_binary(path)
+        self.files_path = _ensure_binary(files_path)
+        self.journal_prefix = _ensure_binary(journal_prefix)
 
         if test:
             self._logfile = sys.stdout
@@ -203,7 +209,7 @@ class _Metadata(object):
 
     def make_path(self, name):
         """Returns a full file path for a named metadata file."""
-        return os.path.join(self.path, _METADATA_PREFIX + name)
+        return os.path.join(self.path, _METADATA_PREFIX + _ensure_binary(name))
 
     @staticmethod
     def make_timestamp(epochsecs):
@@ -225,8 +231,8 @@ class _Metadata(object):
 
     def write_raw(self, name, text, force=False):
         """Write the given text to the given metadata file."""
-        if isinstance(text, _text_type):
-            text = text.encode('utf-8')
+        text = _ensure_binary(text)
+        name = _ensure_binary(name)
         with open(self.make_path(name), 'wb') as dest:
             dest.write(text)
         self.update_journal(name, force)
@@ -239,12 +245,11 @@ class _Metadata(object):
 
     def write_raw_atomic(self, name, text, force=False):
         """Write the given text to the given metadata file, by creating a
-        temporary file and then moving it, in order to prevent corruption
-        of the existing file if the proces of writing is interupted."""
-        if isinstance(text, _text_type):
-            text = text.encode('utf-8')
+        temporary file and then moving it, in order to prevent corruption of
+        the existing file if the proces of writing is interupted."""
+        text = _ensure_binary(text)
         fname = self.make_path(name)
-        fname_tmp = fname + '.tmp'
+        fname_tmp = fname + b'.tmp'
         with open(fname_tmp, 'wb') as dest:
             dest.write(text)
         try:
@@ -259,8 +264,8 @@ class _Metadata(object):
 
     def write_atomic(self, name, obj, force=False):
         """Write the given object to the given metadata file, by creating a
-        temporary file and then moving it, in order to prevent corruption
-        of the existing file if the proces of writing is interupted."""
+        temporary file and then moving it, in order to prevent corruption of
+        the existing file if the proces of writing is interupted."""
         self.write_raw_atomic(name,
                               martian.json_dumps_safe(obj, indent=4),
                               force)
@@ -271,10 +276,9 @@ class _Metadata(object):
 
     def _append(self, message, filename):
         """Append to the given metadata file."""
-        if isinstance(message, _text_type):
-            message = message.encode('utf-8')
+        message = _ensure_binary(message)
         with open(self.make_path(filename), 'a') as dest:
-            dest.write(message + '\n')
+            dest.write(message + b'\n')
         self.update_journal(filename)
 
     @staticmethod
@@ -316,6 +320,7 @@ class _Metadata(object):
     def update_journal(self, name, force=False):
         """Write a journal entry notifying the parent mrp process of changes to
         a given file."""
+        name = _ensure_binary(name)
         if self.journal_prefix and (force or name not in self.cache):
             run_file = self.journal_prefix + name
             try:
@@ -473,7 +478,7 @@ class StageWrapper(object):
         """Write an errors file with the most recent exception and quit."""
         error_message = traceback.format_exc()
         if self.jobinfo.stackvars_flag:
-            self.metadata.write_raw('stackvars', self.stacktrace())
+            self.metadata.write_raw(b'stackvars', self.stacktrace())
         self.metadata.write_errors(error_message)
         self.done()
 
@@ -527,41 +532,41 @@ class StageWrapper(object):
     def write_jobinfo(self):
         """Add the 'python' metadata to the existing jobinfo file and return
         the content of the file."""
-        jobinfo = self.metadata.read('jobinfo')
+        jobinfo = self.metadata.read(b'jobinfo')
         jobinfo['python'] = {
             'binpath': sys.executable,
             'version': sys.version
         }
-        self.metadata.write_atomic('jobinfo', jobinfo)
+        self.metadata.write_atomic(b'jobinfo', jobinfo)
         return jobinfo
 
     def main(self):
         """Parses command line arguments and runs the stage main."""
         # Load args and retvals from metadata.
-        args = martian.Record(self.metadata.read('args'))
+        args = martian.Record(self.metadata.read(b'args'))
 
         if self._run_type == 'split':
             self._run(lambda: self._record_result(
                 lambda: self._module.split(args)))
-            self.metadata.write('stage_defs', self._result)
+            self.metadata.write(b'stage_defs', self._result)
             return
 
-        outs = martian.Record(self.metadata.read('outs'))
+        outs = martian.Record(self.metadata.read(b'outs'))
 
         if self._run_type == 'main':
             self._run(lambda: self._module.main(args, outs))
         elif self._run_type == 'join':
             chunk_defs = [martian.Record(chunk_def)
-                          for chunk_def in self.metadata.read('chunk_defs')]
+                          for chunk_def in self.metadata.read(b'chunk_defs')]
             chunk_outs = [martian.Record(chunk_out)
-                          for chunk_out in self.metadata.read('chunk_outs')]
+                          for chunk_out in self.metadata.read(b'chunk_outs')]
             self._run(lambda: self._module.join(
                 args, outs, chunk_defs, chunk_outs))
         else:
             martian.throw('Invalid run type %s' % self._run_type)
 
         # Write the output as JSON.
-        self.metadata.write('outs', outs.items())
+        self.metadata.write(b'outs', outs.items())
 
 
 #################################################
