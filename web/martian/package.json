@@ -25,7 +25,7 @@
     "gulp-concat": "^2.6.1",
     "gulp-pug": "^4.0.1",
     "gulp-uglify": "^3.0.2",
-    "gulp-zopfli-green": "^4.0.2",
+    "gulp-zopfli-green": "^5.0.1",
     "pug-cli": "^1.0.0-alpha6"
   }
 }
