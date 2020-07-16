@@ -40,13 +40,16 @@ func (s *DisabledExp) getKind() ExpKind {
 }
 
 func (s *DisabledExp) BindingPath(bindPath string,
-	fork map[MapCallSource]CollectionIndex,
-	index []CollectionIndex) (Exp, error) {
-	inner, err := s.Value.BindingPath(bindPath, fork, index)
+	forks map[*CallStm]CollectionIndex) (Exp, error) {
+	inner, err := s.Value.BindingPath(bindPath, forks)
 	if err != nil {
 		return s, err
 	}
-	disable, err := s.Disabled.BindingPath("", fork, index)
+	if n, ok := inner.(*NullExp); ok {
+		// Don't bother computing the binding path for whether this is disabled.
+		return n, nil
+	}
+	disable, err := s.Disabled.BindingPath("", forks)
 	if err != nil {
 		return s, err
 	}
@@ -100,9 +103,15 @@ func (s *DisabledExp) format(w stringWriter, prefix string) {
 	s.Value.format(w, prefix)
 }
 
-func (s *DisabledExp) equal(other Exp) bool {
+func (s *DisabledExp) equal(other Exp) error {
 	o, ok := other.(*DisabledExp)
-	return ok && s.Value.equal(o.Value) && s.Disabled.equal(o.Disabled)
+	if !ok {
+		return notEqualError
+	}
+	if err := s.Value.equal(o.Value); err != nil {
+		return err
+	}
+	return s.Disabled.equal(o.Disabled)
 }
 
 func (s *DisabledExp) filter(t Type, lookup *TypeLookup) (Exp, error) {
@@ -149,13 +158,15 @@ func (s *DisabledExp) makeDisabledExp(disable, inner Exp) (Exp, error) {
 			}, nil
 		}
 		switch dv := disable.Value.(type) {
+		case *MergeExp:
+			return s.makeDisabledExp(dv.Value, inner)
 		case *ArrayExp:
 			if len(dv.Value) == 0 {
-				panic("should not be possible")
+				panic("splitting on an empty array should not be possible")
 			}
 			allSame := true
 			for i := 1; i < len(dv.Value); i++ {
-				if !dv.Value[i-1].equal(dv.Value[i]) {
+				if dv.Value[i-1].equal(dv.Value[i]) != nil {
 					allSame = false
 					break
 				}
@@ -182,14 +193,14 @@ func (s *DisabledExp) makeDisabledExp(disable, inner Exp) (Exp, error) {
 			}, nil
 		case *MapExp:
 			if len(dv.Value) == 0 {
-				panic("should not be possible")
+				panic("splitting on an empty map should not be possible")
 			}
 			allSame := true
 			var val Exp
 			for _, mv := range dv.Value {
 				if val == nil {
 					val = mv
-				} else if !dv.equal(mv) {
+				} else if val.equal(mv) != nil {
 					allSame = false
 					break
 				}
@@ -222,8 +233,8 @@ func (s *DisabledExp) makeDisabledExp(disable, inner Exp) (Exp, error) {
 }
 
 func (s *DisabledExp) resolveRefs(self, siblings map[string]*ResolvedBinding,
-	lookup *TypeLookup, keepSplit bool) (Exp, error) {
-	disable, err := s.Disabled.resolveRefs(self, siblings, lookup, keepSplit)
+	lookup *TypeLookup) (Exp, error) {
+	disable, err := s.Disabled.resolveRefs(self, siblings, lookup)
 	if err != nil {
 		return s, err
 	}
@@ -235,7 +246,7 @@ func (s *DisabledExp) resolveRefs(self, siblings map[string]*ResolvedBinding,
 				valExp: valExp{Node: *s.Value.getNode()},
 			}, nil
 		} else {
-			return s.Value.resolveRefs(self, siblings, lookup, keepSplit)
+			return s.Value.resolveRefs(self, siblings, lookup)
 		}
 	case *SplitExp:
 		if disable.IsEmpty() {
@@ -243,8 +254,14 @@ func (s *DisabledExp) resolveRefs(self, siblings map[string]*ResolvedBinding,
 				valExp: valExp{Node: *s.Value.getNode()},
 			}, nil
 		}
+	case *MergeExp:
+		if disable.IsEmpty() {
+			return &NullExp{
+				valExp: valExp{Node: *s.Value.getNode()},
+			}, nil
+		}
 	}
-	inner, err := s.Value.resolveRefs(self, siblings, lookup, keepSplit)
+	inner, err := s.Value.resolveRefs(self, siblings, lookup)
 	if err != nil {
 		return s, err
 	}

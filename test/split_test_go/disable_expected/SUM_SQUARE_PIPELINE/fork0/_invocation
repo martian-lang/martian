@@ -1,6 +1,6 @@
 @include "pipeline_stages.mro"
 
-call SUM_SQUARE_PIPELINE(
+map call SUM_SQUARE_PIPELINE(
     values     = [
         1,
         2,

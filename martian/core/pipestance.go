@@ -60,9 +60,9 @@ func NewStagestance(parent Nodable, call *syntax.CallGraphStage, srcPaths []stri
 	}
 
 	if splits := call.Forks; len(splits) > 0 {
-		exps := make([]syntax.MapCallSource, len(splits))
+		exps := make([]*syntax.CallStm, len(splits))
 		for i, s := range splits {
-			exps[i] = s.MapSource()
+			exps[i] = s.Call()
 		}
 		self.node.forkRoots = exps
 	}
@@ -110,10 +110,6 @@ func (self *Stagestance) GetPostNodes() map[string]Nodable {
 	return self.node.GetPostNodes()
 }
 
-func (self *Stagestance) matchFork(
-	ref map[syntax.MapCallSource]syntax.CollectionIndex, id ForkId) (*Fork, error) {
-	return self.node.matchFork(ref, id)
-}
 func (self *Stagestance) matchForks(id ForkId) []*Fork {
 	return self.node.matchForks(id)
 }
@@ -247,9 +243,9 @@ func NewPipestance(parent Nodable, call *syntax.CallGraphPipeline, srcPaths []st
 		}
 	}
 	if splits := call.Forks; len(splits) > 0 {
-		exps := make([]syntax.MapCallSource, len(splits))
+		exps := make([]*syntax.CallStm, len(splits))
 		for i, s := range splits {
-			exps[i] = s.MapSource()
+			exps[i] = s.Call()
 		}
 		self.node.forkRoots = exps
 	}
@@ -303,9 +299,6 @@ func (self *Pipestance) GetPostNodes() map[string]Nodable {
 	return self.node.GetPostNodes()
 }
 
-func (self *Pipestance) matchFork(ref map[syntax.MapCallSource]syntax.CollectionIndex, id ForkId) (*Fork, error) {
-	return self.node.matchFork(ref, id)
-}
 func (self *Pipestance) matchForks(id ForkId) []*Fork {
 	return self.node.matchForks(id)
 }
@@ -918,10 +911,6 @@ func (self *TopNode) Types() *syntax.TypeLookup {
 	return self.types
 }
 
-func (self *TopNode) matchFork(
-	ref map[syntax.MapCallSource]syntax.CollectionIndex, id ForkId) (*Fork, error) {
-	return self.node.matchFork(ref, id)
-}
 func (self *TopNode) matchForks(id ForkId) []*Fork {
 	return self.node.matchForks(id)
 }

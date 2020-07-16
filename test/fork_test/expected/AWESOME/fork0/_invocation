@@ -1,6 +1,6 @@
 @include "pipeline.mro"
 
-call AWESOME(
+map call AWESOME(
     key1   = "1",
     value1 = "one",
     key2   = "2",

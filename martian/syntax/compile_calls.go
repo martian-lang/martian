@@ -89,7 +89,6 @@ func (call *CallStm) checkMappings(global *Ast, pipeline *Pipeline) error {
 			if err := call.checkBindingMap(global, spe, pipeline); err != nil {
 				errs = append(errs, err)
 			}
-			spe.Source = call.Mapping
 		}
 	}
 	if mods := call.Modifiers.Bindings; mods != nil {
@@ -101,6 +100,24 @@ func (call *CallStm) checkMappings(global *Ast, pipeline *Pipeline) error {
 				if err := call.checkBindingMap(global, spe, pipeline); err != nil {
 					errs = append(errs, err)
 				}
+			}
+		}
+	}
+	if call.Mapping != nil {
+		switch call.Mapping.(type) {
+		case *placeholderMapSource, *placeholderArrayMapSource, *placeholderMapMapSource:
+			panic(call.Mapping)
+		}
+	}
+	// Check all sources are consistent.  checkBindingMap will have merged them.
+	for _, binding := range call.Bindings.List {
+		if spe, ok := binding.Exp.(*SplitExp); ok {
+			spe.Source = call.Mapping
+		}
+	}
+	if mods := call.Modifiers.Bindings; mods != nil {
+		if binding := mods.Table[disabled]; binding != nil {
+			if spe, ok := binding.Exp.(*SplitExp); ok {
 				spe.Source = call.Mapping
 			}
 		}
@@ -145,12 +162,19 @@ func (call *CallStm) checkBindingMap(global *Ast, spe *SplitExp, pipeline *Pipel
 				}
 			} else {
 				call.Mapping = src
-				exp.MergeOver = []MapCallSource{src}
+			}
+		} else if _, err := MergeMapCallSources(call, exp); err != nil {
+			return &InconsistentMapCallError{
+				Call:     call,
+				Pipeline: pipeline.GetId(),
+				Inner:    err,
 			}
 		} else {
-			if t.ArrayDim > 0 {
-				exp.MergeOver = []MapCallSource{new(placeholderArrayMapSource)}
-				if src, err := MergeMapCallSources(call.Mapping, exp); err != nil {
+			if t.ArrayDim > 0 || t.MapDim > 0 {
+				if src, err := MergeMapCallSources(call.Mapping, &BoundReference{
+					Exp:  exp,
+					Type: global.TypeTable.Get(t),
+				}); err != nil {
 					return &InconsistentMapCallError{
 						Call:     call,
 						Pipeline: pipeline.GetId(),
@@ -158,23 +182,6 @@ func (call *CallStm) checkBindingMap(global *Ast, spe *SplitExp, pipeline *Pipel
 					}
 				} else {
 					call.Mapping = src
-					if src != exp {
-						exp.MergeOver[0] = src
-					}
-				}
-			} else if t.MapDim > 0 {
-				exp.MergeOver = []MapCallSource{new(placeholderMapMapSource)}
-				if src, err := MergeMapCallSources(call.Mapping, exp); err != nil {
-					return &InconsistentMapCallError{
-						Call:     call,
-						Pipeline: pipeline.GetId(),
-						Inner:    err,
-					}
-				} else {
-					call.Mapping = src
-					if src != exp {
-						exp.MergeOver[0] = src
-					}
 				}
 			} else {
 				return &wrapError{
@@ -183,6 +190,15 @@ func (call *CallStm) checkBindingMap(global *Ast, spe *SplitExp, pipeline *Pipel
 					},
 					loc: spe.Node.Loc,
 				}
+			}
+			if src, err := MergeMapCallSources(call.Mapping, spe.Source); err != nil {
+				return &InconsistentMapCallError{
+					Call:     call,
+					Pipeline: pipeline.GetId(),
+					Inner:    err,
+				}
+			} else {
+				call.Mapping = src
 			}
 		}
 	}

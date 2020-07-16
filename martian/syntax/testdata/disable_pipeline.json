@@ -61,24 +61,34 @@
                 "value": 0
               }
             ],
-            {
-              "__disabled__": {
-                "__reference__": "TOP_CALL.RUNS_ENABLED.RUN_CREATOR5.CREATE_DISABLE.disable"
+            [
+              {
+                "__disabled__": {
+                  "__reference__": "TOP_CALL.RUNS_ENABLED.RUN_CREATOR5.CREATE_DISABLE.disable"
+                },
+                "value": 2
               },
-              "value": [
-                2,
-                3
-              ]
-            },
-            {
-              "__disabled__": {
-                "__reference__": "TOP_CALL.RUNS_ENABLED.RUN_CREATOR5.CREATE_DISABLE.disable"
+              {
+                "__disabled__": {
+                  "__reference__": "TOP_CALL.RUNS_ENABLED.RUN_CREATOR5.CREATE_DISABLE.disable"
+                },
+                "value": 3
+              }
+            ],
+            [
+              {
+                "__disabled__": {
+                  "__reference__": "TOP_CALL.RUNS_ENABLED.RUN_CREATOR5.CREATE_DISABLE.disable"
+                },
+                "value": 2
               },
-              "value": [
-                2,
-                3
-              ]
-            },
+              {
+                "__disabled__": {
+                  "__reference__": "TOP_CALL.RUNS_ENABLED.RUN_CREATOR5.CREATE_DISABLE.disable"
+                },
+                "value": 3
+              }
+            ],
             null,
             null
           ]
@@ -206,42 +216,18 @@
               {
                 "disable": {
                   "__reference__": "TOP_CALL.RUNS_ENABLED.RUN_CREATOR1.CREATE_DISABLE.disable",
-                  "join": [
-                    {
-                      "type": "array",
-                      "len": 2
-                    }
-                  ],
-                  "fork": [
-                    {
-                      "source": {
-                        "type": "array",
-                        "len": 2
-                      },
-                      "index": 0
-                    }
-                  ]
+                  "fork": {
+                    "RUN_CREATOR1": 0
+                  }
                 },
                 "foo": 2
               },
               {
                 "disable": {
                   "__reference__": "TOP_CALL.RUNS_ENABLED.RUN_CREATOR1.CREATE_DISABLE.disable",
-                  "join": [
-                    {
-                      "type": "array",
-                      "len": 2
-                    }
-                  ],
-                  "fork": [
-                    {
-                      "source": {
-                        "type": "array",
-                        "len": 2
-                      },
-                      "index": 1
-                    }
-                  ]
+                  "fork": {
+                    "RUN_CREATOR1": 1
+                  }
                 },
                 "foo": 3
               }
@@ -267,20 +253,14 @@
               "outputs": {
                 "expression": {
                   "__reference__": "TOP_CALL.RUNS_ENABLED.RUN_CREATOR1.CREATE_DISABLE",
-                  "join": [
-                    {
-                      "type": "array",
-                      "len": 2
-                    }
-                  ]
+                  "fork": {
+                    "RUN_CREATOR1": "unknown"
+                  }
                 },
-                "type": "CREATE_DISABLE[]"
+                "type": "CREATE_DISABLE"
               },
               "fork_roots": [
-                {
-                  "type": "array",
-                  "len": 2
-                }
+                "TOP_CALL.RUNS_ENABLED.RUN_CREATOR1"
               ]
             }
           ]
@@ -309,42 +289,18 @@
               {
                 "disable": {
                   "__reference__": "TOP_CALL.RUNS_ENABLED.RUN_CREATOR2.CREATE_DISABLE.disable",
-                  "join": [
-                    {
-                      "type": "array",
-                      "len": 2
-                    }
-                  ],
-                  "fork": [
-                    {
-                      "source": {
-                        "type": "array",
-                        "len": 2
-                      },
-                      "index": 0
-                    }
-                  ]
+                  "fork": {
+                    "RUN_CREATOR2": 0
+                  }
                 },
                 "foo": 2
               },
               {
                 "disable": {
                   "__reference__": "TOP_CALL.RUNS_ENABLED.RUN_CREATOR2.CREATE_DISABLE.disable",
-                  "join": [
-                    {
-                      "type": "array",
-                      "len": 2
-                    }
-                  ],
-                  "fork": [
-                    {
-                      "source": {
-                        "type": "array",
-                        "len": 2
-                      },
-                      "index": 1
-                    }
-                  ]
+                  "fork": {
+                    "RUN_CREATOR2": 1
+                  }
                 },
                 "foo": 3
               }
@@ -370,20 +326,14 @@
               "outputs": {
                 "expression": {
                   "__reference__": "TOP_CALL.RUNS_ENABLED.RUN_CREATOR2.CREATE_DISABLE",
-                  "join": [
-                    {
-                      "type": "array",
-                      "len": 2
-                    }
-                  ]
+                  "fork": {
+                    "RUN_CREATOR2": "unknown"
+                  }
                 },
-                "type": "CREATE_DISABLE[]"
+                "type": "CREATE_DISABLE"
               },
               "fork_roots": [
-                {
-                  "type": "array",
-                  "len": 2
-                }
+                "TOP_CALL.RUNS_ENABLED.RUN_CREATOR2"
               ]
             }
           ]
@@ -398,7 +348,7 @@
             "foo": {
               "expression": {
                 "call": "RUN_CREATOR3",
-                "mode": "array",
+                "mode": "null",
                 "split": null
               },
               "type": "int"
@@ -423,7 +373,7 @@
             "foo": {
               "expression": {
                 "call": "RUN_CREATOR4",
-                "mode": "array",
+                "mode": "null",
                 "split": null
               },
               "type": "int"
@@ -630,7 +580,7 @@
             "foo": {
               "expression": {
                 "call": "RUN_CREATOR3",
-                "mode": "array",
+                "mode": "null",
                 "split": null
               },
               "type": "int"
@@ -655,7 +605,7 @@
             "foo": {
               "expression": {
                 "call": "RUN_CREATOR4",
-                "mode": "array",
+                "mode": "null",
                 "split": null
               },
               "type": "int"
@@ -755,24 +705,34 @@
                   "value": 0
                 }
               ],
-              {
-                "__disabled__": {
-                  "__reference__": "TOP_CALL.RUNS_ENABLED.RUN_CREATOR5.CREATE_DISABLE.disable"
+              [
+                {
+                  "__disabled__": {
+                    "__reference__": "TOP_CALL.RUNS_ENABLED.RUN_CREATOR5.CREATE_DISABLE.disable"
+                  },
+                  "value": 2
                 },
-                "value": [
-                  2,
-                  3
-                ]
-              },
-              {
-                "__disabled__": {
-                  "__reference__": "TOP_CALL.RUNS_ENABLED.RUN_CREATOR5.CREATE_DISABLE.disable"
+                {
+                  "__disabled__": {
+                    "__reference__": "TOP_CALL.RUNS_ENABLED.RUN_CREATOR5.CREATE_DISABLE.disable"
+                  },
+                  "value": 3
+                }
+              ],
+              [
+                {
+                  "__disabled__": {
+                    "__reference__": "TOP_CALL.RUNS_ENABLED.RUN_CREATOR5.CREATE_DISABLE.disable"
+                  },
+                  "value": 2
                 },
-                "value": [
-                  2,
-                  3
-                ]
-              },
+                {
+                  "__disabled__": {
+                    "__reference__": "TOP_CALL.RUNS_ENABLED.RUN_CREATOR5.CREATE_DISABLE.disable"
+                  },
+                  "value": 3
+                }
+              ],
               null,
               null
             ]
@@ -868,64 +828,36 @@
             }
           },
           "outputs": {
-            "expression": {
-              "__disabled__": {
-                "__reference__": "TOP_CALL.RUNS_ENABLED.RUN_CREATOR5.CREATE_DISABLE.disable",
-                "fork": [
-                  {
-                    "source": {
-                      "type": "array",
-                      "len": 2
-                    },
-                    "index": "unknown array"
-                  }
-                ]
-              },
-              "value": [
-                {
+            "expression": [
+              {
+                "__disabled__": {
+                  "__reference__": "TOP_CALL.RUNS_ENABLED.RUN_CREATOR5.CREATE_DISABLE.disable"
+                },
+                "value": {
                   "disable": {
                     "__reference__": "TOP_CALL.RUNS_DISABLED_DYNAMIC.RUN_CREATOR1.CREATE_DISABLE.disable",
-                    "join": [
-                      {
-                        "type": "array",
-                        "len": 2
-                      }
-                    ],
-                    "fork": [
-                      {
-                        "source": {
-                          "type": "array",
-                          "len": 2
-                        },
-                        "index": 0
-                      }
-                    ]
+                    "fork": {
+                      "RUN_CREATOR1": 0
+                    }
                   },
                   "foo": 2
+                }
+              },
+              {
+                "__disabled__": {
+                  "__reference__": "TOP_CALL.RUNS_ENABLED.RUN_CREATOR5.CREATE_DISABLE.disable"
                 },
-                {
+                "value": {
                   "disable": {
                     "__reference__": "TOP_CALL.RUNS_DISABLED_DYNAMIC.RUN_CREATOR1.CREATE_DISABLE.disable",
-                    "join": [
-                      {
-                        "type": "array",
-                        "len": 2
-                      }
-                    ],
-                    "fork": [
-                      {
-                        "source": {
-                          "type": "array",
-                          "len": 2
-                        },
-                        "index": 1
-                      }
-                    ]
+                    "fork": {
+                      "RUN_CREATOR1": 1
+                    }
                   },
                   "foo": 3
                 }
-              ]
-            },
+              }
+            ],
             "type": "RUN_CREATOR[]"
           },
           "disabled": [
@@ -955,14 +887,11 @@
               "outputs": {
                 "expression": {
                   "__reference__": "TOP_CALL.RUNS_DISABLED_DYNAMIC.RUN_CREATOR1.CREATE_DISABLE",
-                  "join": [
-                    {
-                      "type": "array",
-                      "len": 2
-                    }
-                  ]
+                  "fork": {
+                    "RUN_CREATOR1": "unknown"
+                  }
                 },
-                "type": "CREATE_DISABLE[]"
+                "type": "CREATE_DISABLE"
               },
               "disabled": [
                 {
@@ -973,10 +902,7 @@
                 }
               ],
               "fork_roots": [
-                {
-                  "type": "array",
-                  "len": 2
-                }
+                "TOP_CALL.RUNS_DISABLED_DYNAMIC.RUN_CREATOR1"
               ]
             }
           ]
@@ -1003,64 +929,36 @@
             }
           },
           "outputs": {
-            "expression": {
-              "__disabled__": {
-                "__reference__": "TOP_CALL.RUNS_ENABLED.RUN_CREATOR5.CREATE_DISABLE.disable",
-                "fork": [
-                  {
-                    "source": {
-                      "type": "array",
-                      "len": 2
-                    },
-                    "index": "unknown array"
-                  }
-                ]
-              },
-              "value": [
-                {
+            "expression": [
+              {
+                "__disabled__": {
+                  "__reference__": "TOP_CALL.RUNS_ENABLED.RUN_CREATOR5.CREATE_DISABLE.disable"
+                },
+                "value": {
                   "disable": {
                     "__reference__": "TOP_CALL.RUNS_DISABLED_DYNAMIC.RUN_CREATOR2.CREATE_DISABLE.disable",
-                    "join": [
-                      {
-                        "type": "array",
-                        "len": 2
-                      }
-                    ],
-                    "fork": [
-                      {
-                        "source": {
-                          "type": "array",
-                          "len": 2
-                        },
-                        "index": 0
-                      }
-                    ]
+                    "fork": {
+                      "RUN_CREATOR2": 0
+                    }
                   },
                   "foo": 2
+                }
+              },
+              {
+                "__disabled__": {
+                  "__reference__": "TOP_CALL.RUNS_ENABLED.RUN_CREATOR5.CREATE_DISABLE.disable"
                 },
-                {
+                "value": {
                   "disable": {
                     "__reference__": "TOP_CALL.RUNS_DISABLED_DYNAMIC.RUN_CREATOR2.CREATE_DISABLE.disable",
-                    "join": [
-                      {
-                        "type": "array",
-                        "len": 2
-                      }
-                    ],
-                    "fork": [
-                      {
-                        "source": {
-                          "type": "array",
-                          "len": 2
-                        },
-                        "index": 1
-                      }
-                    ]
+                    "fork": {
+                      "RUN_CREATOR2": 1
+                    }
                   },
                   "foo": 3
                 }
-              ]
-            },
+              }
+            ],
             "type": "RUN_CREATOR[]"
           },
           "disabled": [
@@ -1090,14 +988,11 @@
               "outputs": {
                 "expression": {
                   "__reference__": "TOP_CALL.RUNS_DISABLED_DYNAMIC.RUN_CREATOR2.CREATE_DISABLE",
-                  "join": [
-                    {
-                      "type": "array",
-                      "len": 2
-                    }
-                  ]
+                  "fork": {
+                    "RUN_CREATOR2": "unknown"
+                  }
                 },
-                "type": "CREATE_DISABLE[]"
+                "type": "CREATE_DISABLE"
               },
               "disabled": [
                 {
@@ -1108,10 +1003,7 @@
                 }
               ],
               "fork_roots": [
-                {
-                  "type": "array",
-                  "len": 2
-                }
+                "TOP_CALL.RUNS_DISABLED_DYNAMIC.RUN_CREATOR2"
               ]
             }
           ]
@@ -1128,7 +1020,7 @@
             "foo": {
               "expression": {
                 "call": "RUN_CREATOR3",
-                "mode": "array",
+                "mode": "null",
                 "split": null
               },
               "type": "int"
@@ -1155,7 +1047,7 @@
             "foo": {
               "expression": {
                 "call": "RUN_CREATOR4",
-                "mode": "array",
+                "mode": "null",
                 "split": null
               },
               "type": "int"

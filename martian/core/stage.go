@@ -9,6 +9,7 @@ package core
 import (
 	"bytes"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"math"
 	"os"
@@ -807,6 +808,11 @@ func (self *Fork) getState() MetadataState {
 func (self *Fork) disabled() (bool, error) {
 	top := self.node.top
 	var errs syntax.ErrorList
+	for _, p := range self.forkId {
+		if r := p.Range; r != nil && r.Length() == 0 {
+			return true, nil
+		}
+	}
 	for _, bind := range self.node.call.Disabled() {
 		if ready, res, err := top.resolve(bind,
 			top.types.Get(syntax.TypeId{
@@ -846,6 +852,10 @@ func (self *Fork) disabled() (bool, error) {
 }
 
 func (self *Fork) writeDisable() {
+	if err := util.MkdirAll(self.path); err != nil {
+		util.LogError(err, "runtime",
+			"Could not create directories for %s", self.fqname)
+	}
 	self.metadata.Write(OutsFile, makeOutArgs(
 		self.OutParams(), self.metadata.curFilesPath, true, nil))
 	self.skip()
@@ -897,7 +907,7 @@ func (self *Fork) skip() {
 
 func (self *Fork) writeInvocation() {
 	if !self.metadata.exists(InvocationFile) {
-		argBindings, err := self.node.resolveInputs(self.forkId)
+		splitArgs, argBindings, err := self.node.resolveInputs(self.forkId, true)
 		if err != nil {
 			switch syntax.GetEnforcementLevel() {
 			case syntax.EnforceError:
@@ -912,7 +922,7 @@ func (self *Fork) writeInvocation() {
 		}
 		invocation, _ := BuildCallSource(
 			self.node.call.Call().Id,
-			argBindings, nil,
+			argBindings, splitArgs,
 			self.node.call.Callable(),
 			self.node.top.types,
 			self.node.top.mroPaths)
@@ -1169,8 +1179,16 @@ func (self *Fork) stepPipeline() {
 		self.writeDisable()
 		return
 	} else if err != nil {
-		self.metadata.writeError("Could not evaluate disabled state", err)
-		return
+		// Pipelines only sort-of fork.  Their final outputs may already have
+		// been resolved statically, in which case it may not make sense to
+		// talk about the entire pipeline being disabled.
+		var forkErr *forkResolutionError
+		if !errors.As(err, &forkErr) {
+			self.metadata.writeError(
+				"Could not evaluate pipeline disabled state",
+				err)
+			return
+		}
 	}
 	self.writeInvocation()
 	if outs, t, err := self.node.resolvePipelineOutputs(self.forkId); err != nil {
@@ -1196,49 +1214,78 @@ func (self *Fork) stepPipeline() {
 
 func (self *Fork) step() {
 	if self.node.call.Kind() == syntax.KindStage {
-		state := self.getState()
-		if !state.IsRunning() && !state.IsQueued() && state != DisabledState {
-			self.printState(state)
-		}
+		self.stepStage()
+	} else if self.node.call.Kind() == syntax.KindPipeline {
+		self.stepPipeline()
+	}
+}
 
-		// Lazy-evaluate bindings, only once per step.
-		var bindings MarshalerMap
-		getBindings := func() MarshalerMap {
-			if bindings == nil {
-				var err error
-				bindings, err = self.node.resolveInputs(self.forkId)
-				if err != nil {
-					util.PrintError(err, "runtime",
-						"Error resolving input argument bindings for %s",
-						self.fqname)
-				} else if bindings == nil {
-					util.LogInfo("runtime",
-						"Failed to resolve bindings for %s",
-						self.fqname)
+func (self *Fork) stepStage() {
+	state := self.getState()
+	if !state.IsRunning() && !state.IsQueued() && state != DisabledState {
+		self.printState(state)
+	}
+
+	// Lazy-evaluate bindings, only once per step.
+	var bindings MarshalerMap
+	getBindings := func() MarshalerMap {
+		if bindings == nil {
+			var err error
+			_, bindings, err = self.node.resolveInputs(self.forkId, false)
+			if err != nil {
+				util.PrintError(err, "runtime",
+					"Error resolving input argument bindings for %s",
+					self.fqname)
+				switch syntax.GetEnforcementLevel() {
+				case syntax.EnforceError:
+					if err := util.MkdirAll(self.path); err != nil {
+						util.LogError(err, "runtime",
+							"Could not create directories for %s", self.fqname)
+					}
+					if self.index != 0 {
+						self.metadata.writeError(
+							"Error resolving input argument bindings for "+self.forkId.GoString(),
+							err)
+					} else {
+						self.metadata.writeError(
+							"Error resolving input argument bindings",
+							err)
+					}
+					state = Failed
+				case syntax.EnforceAlarm:
+					if err := util.MkdirAll(self.path); err != nil {
+						util.LogError(err, "runtime",
+							"Could not create directories for %s", self.fqname)
+					}
+					self.metadata.AppendAlarm(fmt.Sprintln(
+						"Error resolving input argument bindings:",
+						err))
 				}
+			} else if bindings == nil {
+				util.LogInfo("runtime",
+					"Failed to resolve bindings for %s",
+					self.fqname)
 			}
-			return bindings
 		}
+		return bindings
+	}
+	if state == DisabledState {
+		return
+	}
+	if state == Ready {
+		state = self.doSplit(getBindings)
 		if state == DisabledState {
 			return
 		}
-		if state == Ready {
-			state = self.doSplit(getBindings)
-			if state == DisabledState {
-				return
-			}
-		}
-		if state == Complete.Prefixed(SplitPrefix) {
-			state = self.doChunks(state, getBindings)
-		}
-		if state == Complete.Prefixed(ChunksPrefix) {
-			state = self.doJoin(state, getBindings)
-		}
-		if state == Complete.Prefixed(JoinPrefix) {
-			self.doComplete()
-		}
-	} else if self.node.call.Kind() == syntax.KindPipeline {
-		self.stepPipeline()
+	}
+	if state == Complete.Prefixed(SplitPrefix) {
+		state = self.doChunks(state, getBindings)
+	}
+	if state == Complete.Prefixed(ChunksPrefix) {
+		state = self.doJoin(state, getBindings)
+	}
+	if state == Complete.Prefixed(JoinPrefix) {
+		self.doComplete()
 	}
 }
 

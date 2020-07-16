@@ -210,14 +210,20 @@ pipeline GENERATE_DISTRIBUTION(
 }
 
 pipeline SOME_STATIC(
-    in  float[]    inputs,
-    out STATISTICS values1,
-    out STATISTICS values2,
-    out float[][]  reshaped,
+    in  float[]      inputs,
+    out STATISTICS[] values1,
+    out STATISTICS   values2,
+    out float[][]    reshaped,
 )
 {
     call LEN(
-        x = self.inputs,
+        x = [
+            1,
+            2,
+            3,
+            4,
+            5,
+        ],
     )
 
     call SUM(
@@ -232,8 +238,11 @@ pipeline SOME_STATIC(
     )
 
     # Call here has static inputs
-    call STATISTICS as VALUES1(
-        data = self.inputs,
+    map call STATISTICS as VALUES1(
+        data = split [
+            self.inputs,
+            [3],
+        ],
     )
 
     # Call here has dynamic inputs

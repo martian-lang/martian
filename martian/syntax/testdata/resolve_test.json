@@ -408,25 +408,9 @@
           "three": {
             "disable_user": {
               "__reference__": "POINT_MAPPER.PIPE6.POINT_MAKER.disable_user",
-              "join": [
-                {
-                  "type": "map",
-                  "keys": [
-                    "three"
-                  ]
-                }
-              ],
-              "fork": [
-                {
-                  "source": {
-                    "type": "map",
-                    "keys": [
-                      "three"
-                    ]
-                  },
-                  "index": "three"
-                }
-              ]
+              "fork": {
+                "PIPE6": "three"
+              }
             },
             "w": {
               "extra": "nope",
@@ -437,25 +421,9 @@
               "points": [
                 {
                   "__reference__": "POINT_MAPPER.PIPE6.POINT_MAKER.point",
-                  "join": [
-                    {
-                      "type": "map",
-                      "keys": [
-                        "three"
-                      ]
-                    }
-                  ],
-                  "fork": [
-                    {
-                      "source": {
-                        "type": "map",
-                        "keys": [
-                          "three"
-                        ]
-                      },
-                      "index": "three"
-                    }
-                  ]
+                  "fork": {
+                    "PIPE6": "three"
+                  }
                 },
                 {
                   "x": 9,
@@ -465,25 +433,9 @@
             },
             "z": {
               "__reference__": "POINT_MAPPER.PIPE6.POINT_MAKER",
-              "join": [
-                {
-                  "type": "map",
-                  "keys": [
-                    "three"
-                  ]
-                }
-              ],
-              "fork": [
-                {
-                  "source": {
-                    "type": "map",
-                    "keys": [
-                      "three"
-                    ]
-                  },
-                  "index": "three"
-                }
-              ]
+              "fork": {
+                "PIPE6": "three"
+              }
             }
           }
         },
@@ -522,24 +474,14 @@
           "outputs": {
             "expression": {
               "__reference__": "POINT_MAPPER.PIPE6.POINT_MAKER",
-              "join": [
-                {
-                  "type": "map",
-                  "keys": [
-                    "three"
-                  ]
-                }
-              ]
+              "fork": {
+                "PIPE6": "unknown"
+              }
             },
-            "type": "map<POINT_MAKER>"
+            "type": "POINT_MAKER"
           },
           "fork_roots": [
-            {
-              "type": "map",
-              "keys": [
-                "three"
-              ]
-            }
+            "POINT_MAPPER.PIPE6"
           ]
         }
       ]

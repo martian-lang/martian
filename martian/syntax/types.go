@@ -15,6 +15,8 @@ type (
 	FileKind int
 
 	Type interface {
+		fmt.Stringer
+
 		TypeId() TypeId
 		// Returns whether this type represents a file or directory in the stage
 		// outputs.
@@ -239,36 +241,39 @@ func (k *FileKind) String() string {
 	}
 }
 
-func (s *nullType) TypeId() TypeId {
+func (s nullType) TypeId() TypeId {
 	return TypeId{Tname: KindNull}
 }
-func (s *nullType) IsFile() FileKind { return KindIsNotFile }
-func (*nullType) ElementType() Type  { return nil }
-func (s *nullType) IsAssignableFrom(other Type, lookup *TypeLookup) error {
+func (s nullType) IsFile() FileKind { return KindIsNotFile }
+func (nullType) ElementType() Type  { return nil }
+func (s nullType) IsAssignableFrom(other Type, lookup *TypeLookup) error {
 	panic("invalid type")
 }
-func (s *nullType) IsValidExpression(exp Exp, pipeline *Pipeline, ast *Ast) error {
+func (s nullType) IsValidExpression(exp Exp, pipeline *Pipeline, ast *Ast) error {
 	panic("invalid type")
 }
-func (s *nullType) CheckEqual(other Type) error {
-	if _, ok := other.(*nullType); ok {
+func (s nullType) CheckEqual(other Type) error {
+	if _, ok := other.(nullType); ok {
 		return nil
 	}
 	return &IncompatibleTypeError{
 		Message: other.TypeId().str() + " is not null",
 	}
 }
-func (s *nullType) CanFilter() bool {
+func (s nullType) CanFilter() bool {
 	return false
 }
-func (s *nullType) IsValidJson(data json.RawMessage, _ *strings.Builder, _ *TypeLookup) error {
+func (s nullType) IsValidJson(data json.RawMessage, _ *strings.Builder, _ *TypeLookup) error {
 	if !isNullBytes(data) {
 		return fmt.Errorf("expected null")
 	}
 	return nil
 }
-func (s *nullType) FilterJson(data json.RawMessage, _ *TypeLookup) (json.RawMessage, bool, error) {
+func (s nullType) FilterJson(data json.RawMessage, _ *TypeLookup) (json.RawMessage, bool, error) {
 	return []byte("null"), false, s.IsValidJson(data, nil, nil)
+}
+func (s nullType) String() string {
+	return "null"
 }
 
 func isValidSplit(s Type, exp *SplitExp, pipeline *Pipeline, ast *Ast) error {

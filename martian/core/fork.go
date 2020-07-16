@@ -3,6 +3,7 @@ package core
 import (
 	"bytes"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"net/url"
 	"reflect"
@@ -27,15 +28,30 @@ type (
 		forkString() string
 	}
 
+	// Represents a range of allowed values for a ForkSourcePart.
+	ForkIdRange interface {
+		Allow(syntax.CollectionIndex) error
+		Length() int
+	}
+
 	mapKeyFork string
 
 	arrayIndexFork int
 
 	undeterminedFork struct{}
 
-	ForkSourcePart struct {
+	mapSourceRange struct {
 		Source syntax.MapCallSource
-		Id     ForkIdPart
+	}
+
+	arrayLengthRange int
+
+	mapKeyRange []string
+
+	ForkSourcePart struct {
+		Split *syntax.SplitExp
+		Id    ForkIdPart
+		Range ForkIdRange
 	}
 
 	// A set of expressions and the corresponding index values for each one,
@@ -44,7 +60,7 @@ type (
 
 	ForkIdSet struct {
 		List  []ForkId
-		Table map[syntax.MapCallSource][]*ForkSourcePart
+		Table map[*syntax.CallStm][]*ForkSourcePart
 	}
 )
 
@@ -69,88 +85,163 @@ func convertForkPart(f syntax.CollectionIndex) ForkIdPart {
 	panic("invalid index")
 }
 
-func (fork ForkId) SourceIndexMap() map[syntax.MapCallSource]syntax.CollectionIndex {
+func (fork ForkId) SourceIndexMap() map[*syntax.CallStm]syntax.CollectionIndex {
 	if len(fork) == 0 {
 		return nil
 	}
-	result := make(map[syntax.MapCallSource]syntax.CollectionIndex, len(fork))
+	result := make(map[*syntax.CallStm]syntax.CollectionIndex, len(fork))
 	for _, part := range fork {
-		if _, ok := part.Id.(*undeterminedFork); !ok {
-			result[part.Source] = part.Id
-		}
+		result[part.Split.Call] = part.Id
 	}
 	return result
 }
 
-func makeForkIdParts(src syntax.MapCallSource) []*ForkSourcePart {
-	switch src.CallMode() {
+func countForkParts(src syntax.MapCallSource, index map[*syntax.CallStm]syntax.CollectionIndex) int {
+	if src.KnownLength() {
+		switch src.CallMode() {
+		case syntax.ModeArrayCall:
+			return src.ArrayLength()
+		case syntax.ModeMapCall:
+			return len(src.Keys())
+		}
+	}
+	switch src := src.(type) {
+	case *syntax.SplitExp:
+		if src.Source.KnownLength() {
+			switch src.Source.CallMode() {
+			case syntax.ModeArrayCall:
+				c := 0
+				if old, ok := index[src.Call]; ok {
+					defer func() { index[src.Call] = old }()
+				} else if index != nil {
+					defer delete(index, src.Call)
+				}
+				for i := 0; i < src.Source.ArrayLength(); i++ {
+					if index == nil {
+						index = make(map[*syntax.CallStm]syntax.CollectionIndex)
+					}
+					index[src.Call] = arrayIndexFork(i)
+					sub, err := src.BindingPath("", index)
+					if err != nil || sub == src {
+						c++
+					} else if subs, ok := sub.(syntax.MapCallSource); ok {
+						c += countForkParts(subs, index)
+					} else {
+						c++
+					}
+				}
+				return c
+			case syntax.ModeMapCall:
+				c := 0
+				if old, ok := index[src.Call]; ok {
+					defer func() { index[src.Call] = old }()
+				} else if index != nil {
+					defer delete(index, src.Call)
+				}
+				for i := range src.Source.Keys() {
+					if index == nil {
+						index = make(map[*syntax.CallStm]syntax.CollectionIndex)
+					}
+					index[src.Call] = mapKeyFork(i)
+					sub, err := src.BindingPath("", index)
+					if err != nil || sub == src {
+						c++
+					} else if subs, ok := sub.(syntax.MapCallSource); ok {
+						c += countForkParts(subs, index)
+					} else {
+						c++
+					}
+				}
+				return c
+			}
+		}
+	case *syntax.MergeExp:
+		return countForkParts(src.MergeOver, index)
+	}
+	return 1
+}
+
+func makeForkIdParts(split *syntax.SplitExp) ([]*ForkSourcePart, int) {
+	switch split.Source.CallMode() {
 	case syntax.ModeArrayCall:
-		alen := src.ArrayLength()
-		if alen >= 0 {
-			re := make([]ForkSourcePart, src.ArrayLength())
-			result := make([]*ForkSourcePart, src.ArrayLength())
+		if alen := split.Source.ArrayLength(); alen >= 0 {
+			re := make([]ForkSourcePart, alen)
+			result := make([]*ForkSourcePart, alen)
 			for i := range result {
 				r := arrayIndexFork(i)
-				re[i].Source = src
+				re[i].Split = split
 				re[i].Id = r
 				result[i] = &re[i]
 			}
-			return result
+			return result, 0
 		}
 	case syntax.ModeMapCall:
-		keys := src.Keys()
-		re := make([]ForkSourcePart, 0, len(keys))
-		result := make([]*ForkSourcePart, 0, len(keys))
-		for k := range keys {
-			r := mapKeyFork(k)
-			re = append(re, ForkSourcePart{
-				Source: src,
-				Id:     r,
+		if keys := split.Source.Keys(); keys != nil {
+			re := make([]ForkSourcePart, 0, len(keys))
+			result := make([]*ForkSourcePart, 0, len(keys))
+			for k := range keys {
+				r := mapKeyFork(k)
+				re = append(re, ForkSourcePart{
+					Split: split,
+					Id:    r,
+				})
+				result = append(result, &re[len(re)-1])
+			}
+			sort.Slice(result, func(i, j int) bool {
+				return result[i].Id.(mapKeyFork) < result[j].Id.(mapKeyFork)
 			})
-			result = append(result, &re[len(re)-1])
+			return result, 0
 		}
-		sort.Slice(result, func(i, j int) bool {
-			return result[i].Id.(mapKeyFork) < result[j].Id.(mapKeyFork)
-		})
-		return result
+	case syntax.ModeNullMapCall:
+		return []*ForkSourcePart{
+			{
+				Split: split,
+				Id:    dummyForkId,
+			},
+		}, 0
 	}
-
 	return []*ForkSourcePart{
 		{
-			Source: src,
-			Id:     dummyForkId,
+			Split: split,
+			Id:    dummyForkId,
 		},
-	}
+	}, countForkParts(split.Source, nil)
 }
 
 var dummyForkId undeterminedFork
 
 // Computes the cartesian product of possible values for ForkIds.
-func (set *ForkIdSet) MakeForkIds(allNodes map[string]*Node, srcs []syntax.MapCallSource) {
+func (set *ForkIdSet) MakeForkIds(srcs syntax.ForkRootList) {
 	if len(srcs) == 0 {
 		return
 	}
-	set.Table = make(map[syntax.MapCallSource][]*ForkSourcePart, len(srcs))
-	count := 1
+	set.Table = make(map[*syntax.CallStm][]*ForkSourcePart, len(srcs))
 	if len(srcs) == 1 {
-		these := makeForkIdParts(srcs[0])
-		set.Table[srcs[0]] = these
-		set.List = make([]ForkId, len(these))
+		these, extra := makeForkIdParts(srcs[0].Split())
+		set.Table[srcs[0].Call()] = these
+		set.List = make([]ForkId, len(these), len(these)+extra)
 		for i, part := range these {
 			set.List[i] = ForkId{part}
 		}
 		return
 	}
-	for _, src := range srcs {
-		these := makeForkIdParts(src)
-		set.Table[src] = these
+	count := 1
+	extra := 0
+	for _, srcNode := range srcs {
+		these, e := makeForkIdParts(srcNode.Split())
+		set.Table[srcNode.Call()] = these
 		count *= len(these)
+		if e == 0 {
+			extra *= len(these)
+		} else {
+			extra += e
+		}
 	}
 	// Single allocation for the backing array
 	idBlock := make([]*ForkSourcePart, count*len(srcs))
 	// List of IDs is sliced from idBlock, each with length 0
 	// and capacity len(srcs)
-	set.List = make([]ForkId, count)
+	set.List = make([]ForkId, count, count+extra)
 	for i := range set.List {
 		set.List[i] = ForkId(idBlock[0:0:len(srcs)])
 		idBlock = idBlock[len(srcs):]
@@ -158,38 +249,210 @@ func (set *ForkIdSet) MakeForkIds(allNodes map[string]*Node, srcs []syntax.MapCa
 	stride := 1
 	for _, src := range srcs {
 		i := 0
-		these := set.Table[src]
-		for i < len(set.List) {
-			for _, p := range these {
-				for j := 0; j < stride; j++ {
-					set.List[i] = append(set.List[i], p)
-					i++
+		these := set.Table[src.Call()]
+		if these != nil {
+			for i < len(set.List) {
+				for _, p := range these {
+					for j := 0; j < stride; j++ {
+						set.List[i] = append(set.List[i], p)
+						i++
+					}
 				}
 			}
+			stride *= len(these)
 		}
-		stride *= len(these)
 	}
+	if extra >= 0 {
+		set.expandStaticForks()
+	}
+}
+
+func (set *ForkIdSet) expandStaticForks() {
+	index := make(map[*syntax.CallStm]syntax.CollectionIndex, len(set.List[0]))
+	for i := 0; i < len(set.List); i++ {
+		fork := set.List[i]
+		newForks := fork.expandStaticForks(index, set.List[len(set.List):])
+		for ; len(newForks) > 0; newForks = fork.expandStaticForks(index, set.List[len(set.List):]) {
+			set.List = append(set.List, newForks...)
+		}
+	}
+}
+
+func (fork ForkId) expandStaticForks(index map[*syntax.CallStm]syntax.CollectionIndex,
+	slice []ForkId) []ForkId {
+	for i := 0; i < len(fork); i++ {
+		part := fork[i]
+		if part.Id.IndexSource() != nil {
+			if ids := fork.expandStaticForkPart(i, part, part.Split, index, slice); len(ids) > 0 {
+				return ids
+			} else if part.Id == arrayIndexFork(-1) {
+				return nil
+			}
+		}
+	}
+	return nil
+}
+
+// Get the (statically-resolved) source for a fork.
+func (fork ForkId) getForkSrc(split *syntax.SplitExp,
+	index map[*syntax.CallStm]syntax.CollectionIndex) syntax.MapCallSource {
+	if split.Source.KnownLength() || len(fork) == 0 {
+		return split.Source
+	}
+	for _, part := range fork {
+		if part.Id.IndexSource() == nil {
+			if id, ok := index[part.Split.Call]; ok {
+				defer func() { index[part.Split.Call] = id }()
+			} else {
+				defer delete(index, part.Split.Call)
+			}
+			index[part.Split.Call] = part.Id
+		}
+	}
+	exp, err := split.BindingPath("", index)
+	if err != nil {
+		panic("resolving source for " + split.GoString() +
+			" of fork " + fork.GoString() + ": " + err.Error())
+	}
+	switch exp := exp.(type) {
+	case *syntax.SplitExp:
+		if exp.Call == split.Call {
+			if ss, ok := exp.Value.(syntax.MapCallSource); ok {
+				return ss
+			} else {
+				return exp.Source
+			}
+		} else {
+			return exp
+		}
+	case syntax.MapCallSource:
+		return exp
+	}
+	return split.Source
+}
+
+func (fork ForkId) expandStaticForkPart(i int, part *ForkSourcePart,
+	split *syntax.SplitExp,
+	index map[*syntax.CallStm]syntax.CollectionIndex,
+	result []ForkId) []ForkId {
+	forkSrc := fork.getForkSrc(split, index)
+	if forkSrc == nil || !forkSrc.KnownLength() {
+		return nil
+	}
+	var r ForkIdRange = mapSourceRange{Source: forkSrc}
+	if part.Range != nil {
+		r = part.Range
+	}
+	if r.Length() <= 0 {
+		p := *part
+		fork[i] = &p
+		p.Range = r
+		p.Id = arrayIndexFork(-1)
+		return nil
+	}
+	if s, ok := forkSrc.(*syntax.SplitExp); ok {
+		split = s
+	}
+	switch forkSrc.CallMode() {
+	case syntax.ModeArrayCall:
+		if forkSrc.ArrayLength() == 1 {
+			p := *part
+			p.Range = r
+			p.Id = arrayIndexFork(0)
+			p.Split = split
+			fork[i] = &p
+			return nil
+		}
+		parts := make([]ForkSourcePart, r.Length())
+		ids := make([]*ForkSourcePart, len(fork)*(len(parts)-1))
+		for j := range parts {
+			parts[j] = *part
+			parts[j].Range = r
+			parts[j].Split = split
+			parts[j].Id = arrayIndexFork(j)
+			if j == 0 {
+				fork[i] = &parts[0]
+			} else {
+				id := ids[:len(fork)]
+				ids = ids[len(fork):]
+				for k := range id {
+					if k == i {
+						id[k] = &parts[j]
+					} else {
+						id[k] = fork[k]
+					}
+				}
+				result = append(result, id)
+			}
+		}
+		return result
+	case syntax.ModeMapCall:
+		keyMap := forkSrc.Keys()
+		if len(keyMap) == 1 {
+			p := *part
+			p.Range = r
+			for k := range keyMap {
+				p.Id = mapKeyFork(k)
+			}
+			p.Split = split
+			fork[i] = &p
+			return nil
+		}
+		keys := make([]string, 0, len(keyMap))
+		for k := range keyMap {
+			keys = append(keys, k)
+		}
+		sort.Strings(keys)
+		parts := make([]ForkSourcePart, len(keys))
+		ids := make(ForkId, len(fork)*(len(parts)-1))
+		for j := range parts {
+			parts[j] = *part
+			parts[j].Range = r
+			parts[j].Split = split
+			parts[j].Id = mapKeyFork(keys[j])
+			if j == 0 {
+				fork[i] = &parts[0]
+			} else {
+				id := ids[:len(fork)]
+				ids = ids[len(fork):]
+				for k := range id {
+					if k == i {
+						id[k] = &parts[j]
+					} else {
+						id[k] = fork[k]
+					}
+				}
+				result = append(result, id)
+			}
+		}
+		return result
+	}
+	panic("invalid fork mode " + forkSrc.CallMode().String())
 }
 
 // Get the ForkId from an upstream stage with the given fork sources which
 // corresponds to this fork.
 //
 // This ForkId must include every Source contained in upstream.
-func (f ForkId) Match(ref map[syntax.MapCallSource]syntax.CollectionIndex,
-	upstream []syntax.MapCallSource) (ForkId, error) {
+func (f ForkId) Match(ref map[*syntax.CallStm]syntax.CollectionIndex,
+	upstream []*syntax.CallStm) (ForkId, error) {
 	if len(upstream) == 0 {
 		return nil, nil
 	}
 	result := make(ForkId, len(upstream))
 	for i, src := range upstream {
 		if r, err := f.matchPart(src); err != nil {
-			if j := ref[src]; j != nil {
+			if j, ok := ref[src]; ok && j != nil {
 				if j.IndexSource() == nil {
 					result[i] = &ForkSourcePart{
-						Id:     convertForkPart(j),
-						Source: src,
+						Id: convertForkPart(j),
+						Split: &syntax.SplitExp{
+							Value:  &syntax.MergeExp{MergeOver: src},
+							Call:   src,
+							Source: src,
+						},
 					}
-					if result[i].Source.CallMode() != result[i].Id.Mode() {
+					if src.CallMode() != result[i].Id.Mode() {
 						// Should not be possible - checked during static analysis.
 						panic(result[i].GoString() + " from " + j.Mode().String())
 					}
@@ -200,7 +463,34 @@ func (f ForkId) Match(ref map[syntax.MapCallSource]syntax.CollectionIndex,
 					}
 				}
 			} else {
-				return result, err
+				found := false
+				for s, j := range ref {
+					if j != nil && s == src {
+						if j.IndexSource() == nil {
+							found = true
+							result[i] = &ForkSourcePart{
+								Id: convertForkPart(j),
+								Split: &syntax.SplitExp{
+									Value:  &syntax.MergeExp{MergeOver: src},
+									Call:   src,
+									Source: src,
+								},
+							}
+							if src.CallMode() != result[i].Id.Mode() {
+								// Should not be possible - checked during static analysis.
+								panic(result[i].GoString() + " from " + j.Mode().String())
+							}
+						} else {
+							return result, &elementError{
+								element: "unknown index for " + j.IndexSource().GoString(),
+								inner:   err,
+							}
+						}
+					}
+				}
+				if !found {
+					return result, err
+				}
 			}
 		} else {
 			result[i] = r
@@ -217,10 +507,10 @@ func (f ForkId) Matches(other ForkId) bool {
 			return true
 		}
 		for j, p2 := range other {
-			if p1.Source == p2.Source {
-				if p1.Id != p2.Id &&
-					p1.Id.IndexSource() == nil &&
-					p2.Id.IndexSource() == nil {
+			if p1.Split.Call == p2.Split.Call {
+				if p1.Id.IndexSource() == nil &&
+					p2.Id.IndexSource() == nil &&
+					!indexEqual(p1.Id, p2.Id) {
 					return false
 				}
 				other = other[j+1:]
@@ -229,6 +519,24 @@ func (f ForkId) Matches(other ForkId) bool {
 		}
 	}
 	return true
+}
+
+func indexEqual(i, j syntax.CollectionIndex) bool {
+	if i == j {
+		return true
+	}
+	if s := i.IndexSource(); s != j.IndexSource() || s != nil {
+		return false
+	}
+	if m := i.Mode(); m != j.Mode() {
+		return false
+	} else if m == syntax.ModeArrayCall {
+		return i.ArrayIndex() == j.ArrayIndex()
+	} else if m == syntax.ModeMapCall {
+		return i.MapKey() == j.MapKey()
+	} else {
+		return true
+	}
 }
 
 func (f ForkId) UnmatchedParts(upstream syntax.ForkRootList) syntax.ForkRootList {
@@ -244,7 +552,7 @@ func (f ForkId) UnmatchedParts(upstream syntax.ForkRootList) syntax.ForkRootList
 
 	match := func(i int, upstream syntax.ForkRootList) bool {
 		if len(upstream) > i {
-			_, err := f.matchPart(upstream[i].MapSource())
+			_, err := f.matchPart(upstream[i].Call())
 			return err == nil
 		}
 		return false
@@ -265,7 +573,7 @@ func (f ForkId) UnmatchedParts(upstream syntax.ForkRootList) syntax.ForkRootList
 		panic(cap(result))
 	}
 	for i := 1; i < len(upstream)-1; i++ {
-		if _, err := f.matchPart(upstream[i].MapSource()); err != nil {
+		if _, err := f.matchPart(upstream[i].Call()); err != nil {
 			// if we haven't reallocated, this is a no-op.
 			result = append(result, upstream[i])
 		} else if cap(result) == cap(upstream) {
@@ -282,7 +590,7 @@ func (f ForkId) UnmatchedParts(upstream syntax.ForkRootList) syntax.ForkRootList
 }
 
 type forkMatchNotFoundError struct {
-	src  syntax.MapCallSource
+	src  *syntax.CallStm
 	fork string
 }
 
@@ -290,9 +598,9 @@ func (err forkMatchNotFoundError) Error() string {
 	return "no match found for " + err.src.GoString() + " in " + err.fork
 }
 
-func (f ForkId) matchPart(src syntax.MapCallSource) (*ForkSourcePart, error) {
+func (f ForkId) matchPart(src *syntax.CallStm) (*ForkSourcePart, error) {
 	for _, part := range f {
-		if part.Source == src {
+		if part.Split.Call == src {
 			return part, nil
 		}
 	}
@@ -315,13 +623,103 @@ func (f ForkId) Equal(o ForkId) bool {
 	return true
 }
 
+func (f *ForkSourcePart) GetRange() ForkIdRange {
+	if f.Split.Source.KnownLength() {
+		return mapSourceRange{Source: f.Split.Source}
+	}
+	if f.Range != nil {
+		return f.Range
+	}
+	panic("unknown range")
+}
+
+func (r mapSourceRange) Allow(i syntax.CollectionIndex) error {
+	if i.IndexSource() != nil {
+		if i.IndexSource() != r.Source {
+			return fmt.Errorf("mismatched sources %s vs %s",
+				i.IndexSource().GoString(), r.Source.GoString())
+		}
+	}
+	if i.Mode() != r.Source.CallMode() {
+		return fmt.Errorf("mismatched modes %s vs %s",
+			i.Mode().String(), r.Source.CallMode().String())
+	}
+	switch i.Mode() {
+	case syntax.ModeArrayCall:
+		j := i.ArrayIndex()
+		if j < 0 {
+			return fmt.Errorf("invalid fork array index %d", j)
+		}
+		alen := r.Source.ArrayLength()
+		if j >= alen {
+			return fmt.Errorf(
+				"len(sweep) == %d <= index %d",
+				alen, j)
+		}
+	case syntax.ModeMapCall:
+		k := i.MapKey()
+		if _, ok := r.Source.Keys()[k]; !ok {
+			return fmt.Errorf("no key %q in source", k)
+		}
+	default:
+		panic("invalid index mode " + i.Mode().String())
+	}
+	return nil
+}
+
+func (r mapSourceRange) Length() int {
+	if !r.Source.KnownLength() {
+		return -1
+	}
+	switch r.Source.CallMode() {
+	case syntax.ModeArrayCall:
+		return r.Source.ArrayLength()
+	case syntax.ModeMapCall:
+		return len(r.Source.Keys())
+	case syntax.ModeSingleCall:
+		return 1
+	}
+	return 0
+}
+
+func (r arrayLengthRange) Allow(i syntax.CollectionIndex) error {
+	j := i.ArrayIndex()
+	if j < 0 {
+		return fmt.Errorf("invalid fork array index %d", j)
+	}
+	if j >= int(r) {
+		return fmt.Errorf(
+			"len(sweep) == %d <= index %d",
+			int(r), j)
+	}
+	return nil
+}
+
+func (r arrayLengthRange) Length() int {
+	return int(r)
+}
+
+func (r mapKeyRange) Allow(i syntax.CollectionIndex) error {
+	x := i.MapKey()
+	for _, k := range r {
+		if x == k {
+			return nil
+		}
+	}
+	return fmt.Errorf("no key %q in source", x)
+}
+
+func (r mapKeyRange) Length() int {
+	return len(r)
+}
+
 func (f *ForkSourcePart) Equal(o *ForkSourcePart) bool {
 	if f == o {
 		return true
 	} else if f == nil || o == nil {
 		return false
 	}
-	if f.Source != o.Source {
+	if f.Split.Call != o.Split.Call {
 		return false
 	}
 	if f.Id == nil {
@@ -344,6 +742,11 @@ func (f *ForkSourcePart) Equal(o *ForkSourcePart) bool {
 
 // String returns "fork.<key>".
 func (k mapKeyFork) String() string {
+	return k.forkString()
+}
+
+// GoString returns "fork.<key>".
+func (k mapKeyFork) GoString() string {
 	return k.forkString()
 }
 
@@ -394,6 +797,11 @@ func (mapKeyFork) Mode() syntax.CallMode {
 
 // String returns "fork<i>".
 func (i arrayIndexFork) String() string {
+	return i.forkString()
+}
+
+// GoString returns "fork<i>".
+func (i arrayIndexFork) GoString() string {
 	return i.forkString()
 }
 
@@ -478,15 +886,18 @@ func (undeterminedFork) Mode() syntax.CallMode {
 
 func (p *ForkSourcePart) GoString() string {
 	if p.Id.IndexSource() != nil {
-		return p.Source.GoString() + ":" + p.Id.String()
+		if p.Split.Call == nil {
+			return p.Split.GoString() + ":" + p.Id.GoString()
+		}
+		return p.Split.Call.Id + ":" + p.Split.GoString() + ":" + p.Id.String()
 	}
 	switch p.Id.Mode() {
 	case syntax.ModeArrayCall:
-		return p.Source.GoString() + ":" + strconv.Itoa(p.Id.ArrayIndex())
+		return p.Split.Call.Id + ":" + p.Split.GoString() + ":" + strconv.Itoa(p.Id.ArrayIndex())
 	case syntax.ModeMapCall:
-		return p.Source.GoString() + ":" + p.Id.MapKey()
+		return p.Split.Call.Id + ":" + p.Split.GoString() + ":" + p.Id.MapKey()
 	default:
-		return p.Source.GoString() + ":unknown(" + p.Id.String() + ")"
+		return p.Split.Call.Id + ":" + p.Split.GoString() + ":unknown(" + p.Id.String() + ")"
 	}
 }
 
@@ -568,10 +979,12 @@ func (f *ForkSourcePart) ForkIdString() (string, error) {
 	if f.Id == nil {
 		return defaultFork, fmt.Errorf("nil fork id")
 	}
-	if f.Source == nil {
+	if f.Split == nil {
+		return defaultFork, fmt.Errorf("nil fork split")
+	} else if f.Split.Source == nil {
 		return defaultFork, fmt.Errorf("nil fork source")
 	}
-	if f.Source.CallMode() == syntax.ModeSingleCall {
+	if f.Split.Source.CallMode() == syntax.ModeSingleCall {
 		return defaultFork, nil
 	}
 	switch f.Id.(type) {
@@ -582,19 +995,19 @@ func (f *ForkSourcePart) ForkIdString() (string, error) {
 			return defaultFork, fmt.Errorf(
 				"unresolved fork index")
 		}
-		if f.Source.CallMode() != f.Id.Mode() {
+		if f.Split.Source.CallMode() != f.Id.Mode() {
 			return defaultFork, fmt.Errorf(
 				"mismatched index type %s with source %s",
-				f.Id.Mode(), f.Source.CallMode().String())
+				f.Id.Mode(), f.Split.Source.CallMode().String())
 		}
-		switch f.Source.CallMode() {
+		switch f.Split.Source.CallMode() {
 		case syntax.ModeArrayCall:
 			i := f.Id.ArrayIndex()
 			if i < 0 {
 				return defaultFork, fmt.Errorf("invalid array index %d", i)
 			}
-			if f.Source.KnownLength() {
-				alen := f.Source.ArrayLength()
+			if f.Split.Source.KnownLength() {
+				alen := f.Split.Source.ArrayLength()
 				if i >= alen {
 					return defaultFork, fmt.Errorf(
 						"len(sweep) == %d <= index %d",
@@ -621,8 +1034,8 @@ func (f *ForkSourcePart) ForkIdString() (string, error) {
 			return buf.String(), nil
 		case syntax.ModeMapCall:
 			k := f.Id.MapKey()
-			if f.Source.KnownLength() {
-				if _, ok := f.Source.Keys()[k]; !ok {
+			if f.Split.Source.KnownLength() {
+				if _, ok := f.Split.Source.Keys()[k]; !ok {
 					return defaultFork, fmt.Errorf("no key %q in source",
 						k)
 				}
@@ -646,60 +1059,62 @@ func (f ForkId) forkId(buf *strings.Builder, start int) (bool, error) {
 			return true, fmt.Errorf("nil part")
 		} else if part.Id == nil {
 			return true, fmt.Errorf("nil fork id")
-		} else if part.Source == nil {
+		} else if part.Split == nil || part.Split.Source == nil {
 			return true, fmt.Errorf("nil fork source")
 		}
 		if part.Id.IndexSource() != nil {
 			continue
 		}
+		r := part.GetRange()
+		alen := r.Length()
+		if alen < 0 {
+			return true, &forkResolutionError{
+				Msg: "fork is not fully resolved: unknown length for " +
+					part.Split.Source.GoString() + " validating index " +
+					part.Id.GoString(),
+			}
+		} else if alen == 0 {
+			return forkIndex == 0, nil
+		}
+		if err := r.Allow(part.Id); err != nil {
+			return forkIndex == 0, err
+		}
 		switch part.Id.Mode() {
 		case syntax.ModeArrayCall:
-			if !part.Source.KnownLength() {
-				return true, fmt.Errorf(
-					"fork is not fully resolved")
+			if alen != part.Split.Source.ArrayLength() && alen > 1 {
+				// a variable-length source.  We can't easily combine them into
+				// a single sequential index scheme because different forks
+				// of one part may have different lengths for another part.
+				if i != 0 {
+					if err := f.writeForkIndex(buf, forkDim, forkIndex); err != nil {
+						return true, err
+					} else if _, err := buf.WriteRune('_'); err != nil {
+						return true, err
+					}
+					forkIndex = 0
+					forkDim = 1
+				}
 			}
-			j := part.Id.ArrayIndex()
-			if j < 0 {
-				return true, fmt.Errorf("invalid fork index %d", j)
+			forkIndex += forkDim * part.Id.ArrayIndex()
+			if alen == 0 {
+				return forkIndex == 0, nil
 			}
-			forkIndex += forkDim * j
-			if part.Source.CallMode() != syntax.ModeArrayCall {
-				return true, fmt.Errorf(
-					"can't get integer index of %s source",
-					part.Source.CallMode().String())
-			}
-			alen := part.Source.ArrayLength()
-			if j >= alen {
-				return true, fmt.Errorf(
-					"len(sweep) == %d <= index %d",
-					alen, j)
+			if err := r.Allow(part.Id); err != nil {
+				return forkIndex == 0, err
 			}
 			forkDim *= alen
 		case syntax.ModeMapCall:
-			if !part.Source.KnownLength() {
-				return true, fmt.Errorf(
-					"fork is not fully resolved")
-			}
 			if i == 0 {
 				// Write this fork id.
-				if part.Source.CallMode() != syntax.ModeMapCall {
-					return true, fmt.Errorf(
-						"can't get map index from fork source %s",
-						part.Source.CallMode().String())
-				}
-				if _, ok := part.Source.Keys()[part.Id.MapKey()]; !ok {
-					return true, fmt.Errorf("no key %q in source",
-						part.Id.MapKey())
-				}
 				if _, err := buf.WriteString("fork_"); err != nil {
 					return true, err
 				}
 				writeSafeKey(buf, part.Id.MapKey())
-				if i < len(f)-1 {
+				if start+i < len(f)-1 {
 					if _, err := buf.WriteRune('/'); err != nil {
 						return true, err
 					}
-					if isDefault, err := f.forkId(buf, start+1); err != nil {
+					if isDefault, err := f.forkId(buf, start+i+1); err != nil {
 						return true, err
 					} else if isDefault {
 						_, err := buf.WriteString(defaultFork)
@@ -710,36 +1125,36 @@ func (f ForkId) forkId(buf *strings.Builder, start int) (bool, error) {
 					return false, nil
 				}
 				// Otherwise, flush the fork index and recurse.
-			} else if forkIndex == 0 {
-				if _, err := buf.WriteString(defaultFork); err != nil {
-					return true, err
-				}
-				if _, err := buf.WriteRune('/'); err != nil {
-					return true, err
-				}
 			} else if err := f.writeForkIndex(buf, forkDim, forkIndex); err != nil {
 				return true, err
 			} else if _, err := buf.WriteRune('/'); err != nil {
 				return true, err
 			}
-			return f.forkId(buf, start+i)
+			return f.forkId(buf, start+i+1)
 		default:
 			panic("invalid source type")
 		}
 	}
-	if forkIndex == 0 {
+	if forkIndex == 0 && buf.Len() == 0 {
 		return true, nil
-	} else if err := f.writeForkIndex(buf, forkDim, forkIndex); err != nil {
-		return true, err
 	}
-	return false, nil
+	err := f.writeForkIndex(buf, forkDim, forkIndex)
+	return false, err
 }
 
 func (ForkId) writeForkIndex(buf *strings.Builder, forkDim, forkIndex int) error {
+	if forkDim < 10 && forkIndex == 0 {
+		_, err := buf.WriteString(defaultFork)
+		return err
+	}
 	if _, err := buf.WriteString("fork"); err != nil {
 		return err
 	}
-	w := util.WidthForInt(forkDim)
+	return writePaddedIndex(buf, forkDim, forkIndex)
+}
+
+func writePaddedIndex(buf *strings.Builder, forkDim, forkIndex int) error {
+	w := util.WidthForInt(forkDim - 1)
 	id := strconv.Itoa(forkIndex)
 	for x := len(id); x < w; x++ {
 		if _, err := buf.WriteRune('0'); err != nil {
@@ -775,13 +1190,13 @@ func getUnknownLength(v json.Marshaler) (int, error) {
 		val.Type().String())
 }
 
-func getUnknownKeys(v json.Marshaler) ([]string, error) {
+func getUnknownKeys(v json.Marshaler) (mapKeyRange, error) {
 	switch v := v.(type) {
 	case *syntax.MapExp:
 		if len(v.Value) == 0 {
 			return nil, nil
 		}
-		keys := make([]string, 0, len(v.Value))
+		keys := make(mapKeyRange, 0, len(v.Value))
 		for k := range v.Value {
 			keys = append(keys, k)
 		}
@@ -790,7 +1205,7 @@ func getUnknownKeys(v json.Marshaler) ([]string, error) {
 		if len(v) == 0 {
 			return nil, nil
 		}
-		keys := make([]string, 0, len(v))
+		keys := make(mapKeyRange, 0, len(v))
 		for k := range v {
 			keys = append(keys, k)
 		}
@@ -799,7 +1214,7 @@ func getUnknownKeys(v json.Marshaler) ([]string, error) {
 		if len(v) == 0 {
 			return nil, nil
 		}
-		keys := make([]string, 0, len(v))
+		keys := make(mapKeyRange, 0, len(v))
 		for k := range v {
 			keys = append(keys, k)
 		}
@@ -812,7 +1227,7 @@ func getUnknownKeys(v json.Marshaler) ([]string, error) {
 		if err := json.Unmarshal(v, &m); err != nil {
 			return nil, err
 		}
-		keys := make([]string, 0, len(m))
+		keys := make(mapKeyRange, 0, len(m))
 		for k := range m {
 			keys = append(keys, k)
 		}
@@ -824,7 +1239,7 @@ func getUnknownKeys(v json.Marshaler) ([]string, error) {
 	}
 	if val.Kind() == reflect.Map {
 		mk := val.MapKeys()
-		keys := make([]string, 0, len(mk))
+		keys := make(mapKeyRange, 0, len(mk))
 		for _, k := range mk {
 			if k.Kind() != reflect.String {
 				return keys, fmt.Errorf("%s is not a string key", k.String())
@@ -842,9 +1257,11 @@ func (self *Fork) getUnmatchedForkParts(bNode *Node) []*ForkSourcePart {
 		bNode = self.node.top.allNodes[rl[0].GetFqid()]
 		parts := make([]*ForkSourcePart, 0, len(bNode.forks))
 		for _, f := range bNode.forks {
-			for _, part := range f.forkId {
-				if part.Source == rl[0].MapSource() {
-					parts = append(parts, part)
+			if self.forkId.Matches(f.forkId) {
+				for _, part := range f.forkId {
+					if part.Split.Call == rl[0].Call() {
+						parts = append(parts, part)
+					}
 				}
 			}
 		}
@@ -853,32 +1270,67 @@ func (self *Fork) getUnmatchedForkParts(bNode *Node) []*ForkSourcePart {
 	return nil
 }
 
-func (self *Fork) expandForkPart(i int, part *ForkSourcePart,
-	src syntax.MapCallSource) ([]ForkId, error) {
-	var ref *syntax.RefExp
-	switch r := src.(type) {
+func (self *Fork) getForkRef(split *syntax.SplitExp) *syntax.RefExp {
+	exp, err := split.BindingPath("", self.forkId.SourceIndexMap())
+	if err != nil {
+		panic("resolve ref for " + split.GoString() + ": " + err.Error())
+	}
+	if s, ok := exp.(*syntax.SplitExp); ok && s.Call == split.Call {
+		exp = s.Value
+	}
+	if m, ok := exp.(*syntax.MergeExp); ok {
+		switch ms := m.MergeOver.(type) {
+		case syntax.Exp:
+			exp = ms
+		case *syntax.BoundReference:
+			return ms.Exp
+		case *syntax.MapCallSet:
+			if br, ok := ms.Master.(*syntax.BoundReference); ok {
+				return br.Exp
+			}
+		}
+	}
+	switch r := exp.(type) {
 	case *syntax.RefExp:
-		ref = r
-	case *syntax.ReferenceMappingSource:
-		ref = r.Ref
+		return r
 	default:
-		panic("invalid source for undetermined split " +
-			src.GoString() + " (computing forks for " +
+		panic("invalid source " + exp.GoString() + " for undetermined split " +
+			split.GoString() + " (computing forks for " +
 			self.fqname + ")")
 	}
+}
+
+func (self *Fork) expandForkPart(i int, part *ForkSourcePart,
+	split *syntax.SplitExp, result []ForkId) ([]ForkId, error) {
+	if self.metadata != nil {
+		if s, _ := self.metadata.getState(); s == DisabledState {
+			return nil, nil
+		}
+	}
+	ref := self.getForkRef(split)
 	bNode := self.node.top.allNodes[ref.Id]
 	if bNode == nil {
 		panic("invalid reference to " + ref.Id)
 	}
+	result = result[len(result):]
 	if parts := self.getUnmatchedForkParts(bNode); len(parts) > 0 {
-		rep := make(ForkId, len(self.forkId)*(len(parts)))
-		result := make([]ForkId, len(parts)-1)
+		flen := len(self.forkId)
+		if flen == 0 {
+			flen = 1
+		}
+		// Allocate the results in a single block, which we're going to
+		// take slices out of, to make life easier for the GC.
+		rep := make(ForkId, flen*(len(parts)-1))
+		if cap(result) < len(parts)-1 {
+			result = make([]ForkId, 0, len(parts)-1)
+		}
 		for j, part := range parts {
 			if j == 0 {
 				self.forkId[i] = part
 				self.updateId(self.forkId)
 			} else {
-				result[j-1] = rep[j*len(self.forkId) : (j+1)*len(self.forkId) : (j+1)*len(self.forkId)]
+				result = append(result, rep[:flen:flen])
+				rep = rep[flen:]
 				fid := result[j-1]
 				for k, p := range self.forkId {
 					if k == i {
@@ -893,11 +1345,13 @@ func (self *Fork) expandForkPart(i int, part *ForkSourcePart,
 	}
 	matchedForks := bNode.matchForks(self.forkId)
 	if len(matchedForks) != 1 {
-		return nil, fmt.Errorf("matched %d out of %d forks of %s, need exactly 1",
+		return nil, fmt.Errorf(
+			"fork %s matched %d out of %d forks of %s, need exactly 1",
+			self.forkId.GoString(),
 			len(matchedForks), len(bNode.forks), bNode.GetFQName())
 	}
-	ready, obj, err := matchedForks[0].resolveRef(ref, nil, self.forkId,
-		bNode.top.types, bNode.call.Call().DecId, 1024*1024)
+	ready, obj, err := matchedForks[0].resolveRef(ref, nil,
+		bNode.call.Call().DecId, 1024*1024)
 	if err != nil || !ready {
 		return nil, &elementError{
 			element: "evaluating mapping source " + ref.GoString(),
@@ -910,11 +1364,20 @@ func (self *Fork) expandForkPart(i int, part *ForkSourcePart,
 		self.writeDisable()
 		return nil, nil
 	}
-	switch src.CallMode() {
+	switch split.Source.CallMode() {
 	case syntax.ModeArrayCall:
 		n, err := getUnknownLength(obj)
 		if err != nil {
 			return nil, err
+		}
+		part.Range = arrayLengthRange(n)
+		if split.Source.KnownLength() && split.Source.ArrayLength() != n {
+			return nil, &elementError{
+				element: fmt.Sprint(
+					"expected ", split.Source.ArrayLength(),
+					"elements, but ", ref.GoString(),
+					" had ", n),
+			}
 		}
 		if n == 0 {
 			part.Id = arrayIndexFork(0)
@@ -922,22 +1385,35 @@ func (self *Fork) expandForkPart(i int, part *ForkSourcePart,
 			self.writeDisable()
 			return nil, nil
 		} else if n == 1 {
+			if len(self.node.forks)-1 > self.index {
+				pc := *part
+				part = &pc
+				self.forkId[i] = part
+			}
 			part.Id = arrayIndexFork(0)
 			self.updateId(self.forkId)
 			return nil, nil
 		}
 		re := make([]ForkSourcePart, n)
-		rep := make(ForkId, len(self.forkId)*n)
-		result := make([]ForkId, n-1)
+		flen := len(self.forkId)
+		if flen == 0 {
+			flen = 1
+		}
+		rep := make(ForkId, flen*n)
+		if cap(result) < n-1 {
+			result = make([]ForkId, 0, n-1)
+		}
 		for j := 0; j < n; j++ {
 			r := arrayIndexFork(j)
-			re[j].Source = src
+			re[j].Split = split
 			re[j].Id = r
+			re[j].Range = part.Range
 			if j == 0 {
 				self.forkId[i] = &re[j]
 				self.updateId(self.forkId)
 			} else {
-				result[j-1] = rep[j*len(self.forkId) : (j+1)*len(self.forkId) : (j+1)*len(self.forkId)]
+				result = append(result, rep[0:flen:flen])
+				rep = rep[flen:]
 				fid := result[j-1]
 				for k, p := range self.forkId {
 					if k == i {
@@ -954,6 +1430,15 @@ func (self *Fork) expandForkPart(i int, part *ForkSourcePart,
 		if err != nil {
 			return nil, err
 		}
+		part.Range = keys
+		if split.Source.KnownLength() && len(split.Source.Keys()) != len(keys) {
+			return nil, &elementError{
+				element: fmt.Sprint(
+					"expected ", len(split.Source.Keys()),
+					"keys, but ", ref.GoString(),
+					" had ", len(keys)),
+			}
+		}
 		if len(keys) == 0 {
 			part.Id = mapKeyFork("")
 			self.updateId(self.forkId)
@@ -967,17 +1452,25 @@ func (self *Fork) expandForkPart(i int, part *ForkSourcePart,
 		}
 		sort.Strings(keys)
 		re := make([]ForkSourcePart, len(keys))
-		rep := make(ForkId, len(self.forkId)*(len(keys)))
-		result := make([]ForkId, len(keys)-1)
+		flen := len(self.forkId)
+		if flen == 0 {
+			flen = 1
+		}
+		rep := make(ForkId, flen*(len(keys)))
+		if cap(result) < len(keys)-1 {
+			result = make([]ForkId, 0, len(keys)-1)
+		}
 		for j := 0; j < len(keys); j++ {
 			r := mapKeyFork(keys[j])
-			re[j].Source = src
+			re[j].Split = split
 			re[j].Id = r
+			re[j].Range = part.Range
 			if j == 0 {
 				self.forkId[i] = &re[j]
 				self.updateId(self.forkId)
 			} else {
-				result[j-1] = rep[j*len(self.forkId) : (j+1)*len(self.forkId) : (j+1)*len(self.forkId)]
+				result = append(result, rep[0:flen:flen])
+				rep = rep[:flen]
 				fid := result[j-1]
 				for k, p := range self.forkId {
 					if k == i {
@@ -990,33 +1483,40 @@ func (self *Fork) expandForkPart(i int, part *ForkSourcePart,
 		}
 		return result, nil
 	}
-	panic("invalid fork mode " + src.CallMode().String())
+	panic("invalid fork mode " + split.Source.CallMode().String())
 }
 
 func (self *Fork) expand() ([]ForkId, error) {
 	if d, err := self.disabled(); d {
 		return nil, nil
 	} else if err != nil {
-		return nil, err
-	}
-	if len(self.forkId) == 0 {
-		if src := self.node.call.MapSource(); src != nil && !src.KnownLength() {
-			part := &ForkSourcePart{
-				Source: src,
-				Id:     undeterminedFork{},
-			}
-			self.forkId = ForkId{part}
-			ids, err := self.expandForkPart(0, part, src)
-			if err != nil {
-				self.forkId = nil
-			}
-			return ids, err
+		// If all of the fork known fork roots disable this stage, we abort,
+		// but if only some do then we still need expand forks here.
+		var forkErr *forkResolutionError
+		if !errors.As(err, &forkErr) {
+			return nil, err
 		}
 	}
-	for i, part := range self.forkId {
+	if len(self.forkId) == 0 && len(self.node.call.ForkRoots()) > 0 {
+		if split := self.node.call.Split(); split != nil {
+			if src := split.Source; src != nil && !src.KnownLength() {
+				part := &ForkSourcePart{
+					Split: split,
+					Id:    undeterminedFork{},
+				}
+				self.forkId = ForkId{part}
+				ids, err := self.expandForkPart(0, part, split, self.node.forkIds.List)
+				if err != nil {
+					self.forkId = nil
+				}
+				return ids, err
+			}
+		}
+	}
+	for i := 0; i < len(self.forkId); i++ {
+		part := self.forkId[i]
 		if part.Id.IndexSource() != nil {
-			src := part.Source
-			if ids, err := self.expandForkPart(i, part, src); err != nil ||
+			if ids, err := self.expandForkPart(i, part, part.Split, self.node.forkIds.List); err != nil ||
 				len(ids) > 0 {
 				return ids, err
 			}

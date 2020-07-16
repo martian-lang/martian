@@ -739,9 +739,12 @@ func TestResolveInputs(t *testing.T) {
 	if node == nil {
 		t.Fatal("could not get node " + pipestance.node.GetFQName() + ".CONSUMER")
 	}
-	result, err := node.resolveInputs(nil)
+	mapped, result, err := node.resolveInputs(nil, false)
 	if err != nil {
 		t.Fatal(err)
+	}
+	if len(mapped) != 0 {
+		t.Error("should not be a map call")
 	}
 
 	const expected = `{

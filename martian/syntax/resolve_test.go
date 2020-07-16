@@ -160,6 +160,89 @@ func TestAstMakeStageCallGraph(t *testing.T) {
 	}
 }
 
+func TestAstMakeCallGraphMappedPipeline(t *testing.T) {
+	_, _, ast, err := ParseSourceBytes([]byte(`
+pipeline MAPPED(
+	in  int thingy,
+	out int thing,
+)
+{
+	return (
+		thing = self.thingy,
+	)
+}
+
+pipeline MAPPER(
+	in  int[]    thingies,
+	out MAPPED[] things,
+)
+{
+	map call MAPPED as FIRST(
+		thingy = split self.thingies,
+	)
+
+	map call MAPPED as SECOND(
+		thingy = split FIRST.thing,
+	)
+
+	return (
+		things = SECOND,
+	)
+}
+
+map call MAPPER(
+	thingies = split [
+		[
+			1,
+		],
+		[
+			2,
+			3,
+			4,
+		],
+	],
+)
+`), "mapped_pipeline.mro", nil, false)
+	if err != nil {
+		t.Fatal(err)
+	}
+	graph, err := ast.MakeCallGraph("", ast.Call)
+	if err != nil {
+		t.Fatal(err)
+	}
+	outs := graph.ResolvedOutputs()
+	if s := outs.Type.TypeId().str(); s != "MAPPER[]" {
+		t.Errorf("%s != MAPPER[]", s)
+	}
+	const expected = `[
+	    {
+	        things: [
+	            {
+	                thing: 1,
+	            },
+	        ],
+	    },
+	    {
+	        things: [
+	            {
+	                thing: 2,
+	            },
+	            {
+	                thing: 3,
+	            },
+	            {
+	                thing: 4,
+	            },
+	        ],
+	    },
+	]`
+	if s := FormatExp(outs.Exp, "\t"); err != nil {
+		t.Error(err)
+	} else if s != expected {
+		t.Errorf("%s != "+expected, s)
+	}
+}
+
 func TestAstMakeCallGraphFailures(t *testing.T) {
 	t.Parallel()
 	// First check that assignment of struct to map works if it doesn't
@@ -172,6 +255,7 @@ struct Foo(
 stage BAZ(
 	in  map  foo,
 	out int  foo,
+	out file bar,
 	src comp "nope",
 )
 
@@ -186,6 +270,10 @@ pipeline FINE(
 
 	return (
 		foo = BAZ.foo,
+	)
+
+	retain (
+		BAZ.bar,
 	)
 }
 
@@ -417,6 +505,26 @@ func TestSerializeMapCallGraph(t *testing.T) {
 	if s := dest.String(); expect != s {
 		diffLines(expect, s, t)
 	}
+	nodes := graph.NodeClosure()
+	ones := nodes["SOME_STATIC.LEN.ONES"]
+	if ones == nil {
+		t.Error("Node SOME_STATIC.LEN.ONES not found")
+	} else if forks := ones.ForkRoots(); len(forks) != 1 {
+		t.Errorf("Expected 1 forks, got %d", len(forks))
+	}
+	ones = nodes["SOME_STATIC.VALUES1.LEN.ONES"]
+	if ones == nil {
+		t.Error("Node SOME_STATIC.VALUES1.LEN.ONES not found")
+	} else if forks := ones.ForkRoots(); len(forks) != 2 {
+		t.Errorf("Expected 2 forks, got %d", len(forks))
+	} else if alen := forks[0].Split().Source.ArrayLength(); alen != 2 {
+		t.Errorf("Outer fork array length %d != 2", alen)
+	} else if forks[1].Split().Source.KnownLength() {
+		t.Error("Inner split length should be unknown:",
+			forks[1].Split().GoString(),
+			"with map source",
+			forks[1].Split().Source.GoString())
+	}
 }
 
 func TestSerializeDisableCallGraph(t *testing.T) {
@@ -476,138 +584,6 @@ func TestSerializeDisableBindingCallGraph(t *testing.T) {
 	expect := string(expectB)
 	if s := dest.String(); expect != s {
 		diffLines(expect, s, t)
-	}
-}
-
-func makeSplitMapExp(t *testing.T, src string) (*MapExp, MapCallSource) {
-	t.Helper()
-	var parser Parser
-	if exp, err := parser.ParseValExp([]byte(src)); err != nil {
-		t.Error(err)
-	} else if m, ok := exp.(*MapExp); !ok {
-		t.Errorf("Expected map, got %T", exp)
-	} else {
-		var src MapCallSource
-		for k, v := range m.Value {
-			if v, ok := v.(MapCallSource); ok &&
-				v.CallMode() != ModeNullMapCall &&
-				v.KnownLength() && src == nil {
-				src = v
-			}
-			m.Value[k] = &SplitExp{
-				Value:  v,
-				Source: src,
-			}
-		}
-		return m, src
-	}
-	return nil, nil
-}
-
-func TestMapInvertArray(t *testing.T) {
-	if ma, src := makeSplitMapExp(t, `{
-		a: [1,2,null,3,],
-		b: [4,5,6,7,],
-		c: null,
-	}`); ma != nil {
-		if a, err := unsplit(ma, make(map[MapCallSource]CollectionIndex, 1),
-			ForkRootList{&CallGraphStage{Source: src}}); err != nil {
-			t.Error(err)
-		} else if aa, ok := a.(*ArrayExp); !ok {
-			t.Errorf("Expected map, got %T", a)
-		} else if len(aa.Value) != 4 {
-			t.Errorf("Expected 4 elements, got %d", len(aa.Value))
-		} else {
-			var s strings.Builder
-			aa.format(&s, "\t\t")
-			const expect = `[
-		    {
-		        a: 1,
-		        b: 4,
-		        c: null,
-		    },
-		    {
-		        a: 2,
-		        b: 5,
-		        c: null,
-		    },
-		    {
-		        a: null,
-		        b: 6,
-		        c: null,
-		    },
-		    {
-		        a: 3,
-		        b: 7,
-		        c: null,
-		    },
-		]`
-			if s := s.String(); s != expect {
-				diffLines(expect, s, t)
-			}
-		}
-	}
-	if ma, src := makeSplitMapExp(t, `{
-		a: [1,],
-		b: {"a": 1},
-		c: null,
-	}`); ma != nil {
-		if aa, err := unsplit(ma, make(map[MapCallSource]CollectionIndex, 1),
-			ForkRootList{&CallGraphStage{Source: src}}); err == nil {
-			t.Error("expected failure")
-			t.Log(FormatExp(aa, ""))
-		}
-	}
-}
-
-func TestMapInvertMap(t *testing.T) {
-	if ma, src := makeSplitMapExp(t, `{
-		a: {"x":1,"y":2,"z":null,},
-		b: {"x":4,"y":5,"z":6,},
-		c: null,
-	}`); ma != nil {
-		if a, err := unsplit(ma, make(map[MapCallSource]CollectionIndex, 1),
-			ForkRootList{&CallGraphStage{Source: src}}); err != nil {
-			t.Error(err)
-		} else if aa, ok := a.(*MapExp); !ok {
-			t.Errorf("Expected map, got %T", a)
-		} else if len(aa.Value) != 3 {
-			t.Errorf("Expected 3 elements, got %d", len(aa.Value))
-		} else {
-			var s strings.Builder
-			aa.format(&s, "\t\t")
-			const expect = `{
-		    "x": {
-		        a: 1,
-		        b: 4,
-		        c: null,
-		    },
-		    "y": {
-		        a: 2,
-		        b: 5,
-		        c: null,
-		    },
-		    "z": {
-		        a: null,
-		        b: 6,
-		        c: null,
-		    },
-		}`
-			if s := s.String(); s != expect {
-				diffLines(expect, s, t)
-			}
-		}
-	}
-	if ma, src := makeSplitMapExp(t, `{
-		a: [1,],
-		b: {"a": 1},
-		c: null,
-	}`); ma != nil {
-		if aa, err := unsplit(ma, make(map[MapCallSource]CollectionIndex, 1),
-			ForkRootList{&CallGraphStage{Source: src}}); err == nil {
-			t.Error("expected failure")
-			t.Log(FormatExp(aa, ""))
-		}
 	}
 }
 

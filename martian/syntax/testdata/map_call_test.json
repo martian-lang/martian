@@ -31,29 +31,56 @@
           7
         ]
       ],
-      "values1": {
-        "data": [
-          1,
-          3,
-          4,
-          5,
-          7
-        ],
-        "mean": {
-          "__reference__": "SOME_STATIC.VALUES1.MEAN.MULTIPLY.product"
+      "values1": [
+        {
+          "data": [
+            1,
+            3,
+            4,
+            5,
+            7
+          ],
+          "mean": {
+            "__reference__": "SOME_STATIC.VALUES1.MEAN.MULTIPLY.product",
+            "fork": {
+              "VALUES1": 0
+            }
+          },
+          "std_dev": {
+            "__reference__": "SOME_STATIC.VALUES1.STD_DEV.z",
+            "fork": {
+              "VALUES1": 0
+            }
+          }
         },
-        "std_dev": {
-          "__reference__": "SOME_STATIC.VALUES1.STD_DEV.z"
+        {
+          "data": [
+            3
+          ],
+          "mean": {
+            "__reference__": "SOME_STATIC.VALUES1.MEAN.MULTIPLY.product",
+            "fork": {
+              "VALUES1": 1
+            }
+          },
+          "std_dev": {
+            "__reference__": "SOME_STATIC.VALUES1.STD_DEV.z",
+            "fork": {
+              "VALUES1": 1
+            }
+          }
         }
-      },
+      ],
       "values2": {
         "data": {
-          "__reference__": "SOME_STATIC.GENERATE_DISTRIBUTION.POW.z",
-          "join": [
-            {
-              "__reference__": "SOME_STATIC.GENERATE_DISTRIBUTION.RANGE.values"
+          "call": "SOME_STATIC.GENERATE_DISTRIBUTION.POW",
+          "mode": "array",
+          "merge_value": {
+            "__reference__": "SOME_STATIC.GENERATE_DISTRIBUTION.POW.z",
+            "fork": {
+              "POW": "unknown"
             }
-          ]
+          }
         },
         "mean": {
           "__reference__": "SOME_STATIC.VALUES2.MEAN.MULTIPLY.product"
@@ -72,10 +99,10 @@
         "x": {
           "expression": [
             1,
+            2,
             3,
             4,
-            5,
-            7
+            5
           ],
           "type": "float[]"
         }
@@ -98,10 +125,10 @@
                 "mode": "array",
                 "split": [
                   1,
+                  2,
                   3,
                   4,
-                  5,
-                  7
+                  5
                 ]
               },
               "type": "float"
@@ -112,37 +139,80 @@
             }
           },
           "outputs": {
-            "expression": {
-              "__reference__": "SOME_STATIC.LEN.ONES",
-              "join": [
-                {
-                  "type": "array",
-                  "len": 5
+            "expression": [
+              {
+                "__reference__": "SOME_STATIC.LEN.ONES",
+                "fork": {
+                  "ONES": 0
                 }
-              ]
-            },
+              },
+              {
+                "__reference__": "SOME_STATIC.LEN.ONES",
+                "fork": {
+                  "ONES": 1
+                }
+              },
+              {
+                "__reference__": "SOME_STATIC.LEN.ONES",
+                "fork": {
+                  "ONES": 2
+                }
+              },
+              {
+                "__reference__": "SOME_STATIC.LEN.ONES",
+                "fork": {
+                  "ONES": 3
+                }
+              },
+              {
+                "__reference__": "SOME_STATIC.LEN.ONES",
+                "fork": {
+                  "ONES": 4
+                }
+              }
+            ],
             "type": "POW[]"
           },
           "fork_roots": [
-            {
-              "type": "array",
-              "len": 5
-            }
+            "SOME_STATIC.LEN.ONES"
           ]
         },
         {
           "fqid": "SOME_STATIC.LEN.SUM",
           "inputs": {
             "x": {
-              "expression": {
-                "__reference__": "SOME_STATIC.LEN.ONES.z",
-                "join": [
-                  {
-                    "type": "array",
-                    "len": 5
+              "expression": [
+                {
+                  "__reference__": "SOME_STATIC.LEN.ONES.z",
+                  "fork": {
+                    "ONES": 0
                   }
-                ]
-              },
+                },
+                {
+                  "__reference__": "SOME_STATIC.LEN.ONES.z",
+                  "fork": {
+                    "ONES": 1
+                  }
+                },
+                {
+                  "__reference__": "SOME_STATIC.LEN.ONES.z",
+                  "fork": {
+                    "ONES": 2
+                  }
+                },
+                {
+                  "__reference__": "SOME_STATIC.LEN.ONES.z",
+                  "fork": {
+                    "ONES": 3
+                  }
+                },
+                {
+                  "__reference__": "SOME_STATIC.LEN.ONES.z",
+                  "fork": {
+                    "ONES": 4
+                  }
+                }
+              ],
               "type": "float[]"
             }
           },
@@ -188,12 +258,14 @@
       "outputs": {
         "expression": {
           "values": {
-            "__reference__": "SOME_STATIC.GENERATE_DISTRIBUTION.POW.z",
-            "join": [
-              {
-                "__reference__": "SOME_STATIC.GENERATE_DISTRIBUTION.RANGE.values"
+            "call": "SOME_STATIC.GENERATE_DISTRIBUTION.POW",
+            "mode": "array",
+            "merge_value": {
+              "__reference__": "SOME_STATIC.GENERATE_DISTRIBUTION.POW.z",
+              "fork": {
+                "POW": "unknown"
               }
-            ]
+            }
           }
         },
         "type": "GENERATE_DISTRIBUTION"
@@ -260,9 +332,6 @@
                 "mode": "array",
                 "split": {
                   "__reference__": "SOME_STATIC.GENERATE_DISTRIBUTION.RANGE.values"
-                },
-                "source": {
-                  "__reference__": "SOME_STATIC.GENERATE_DISTRIBUTION.RANGE.values"
                 }
               },
               "type": "float"
@@ -274,19 +343,19 @@
           },
           "outputs": {
             "expression": {
-              "__reference__": "SOME_STATIC.GENERATE_DISTRIBUTION.POW",
-              "join": [
-                {
-                  "__reference__": "SOME_STATIC.GENERATE_DISTRIBUTION.RANGE.values"
+              "call": "SOME_STATIC.GENERATE_DISTRIBUTION.POW",
+              "mode": "array",
+              "merge_value": {
+                "__reference__": "SOME_STATIC.GENERATE_DISTRIBUTION.POW",
+                "fork": {
+                  "POW": "unknown"
                 }
-              ]
+              }
             },
             "type": "POW[]"
           },
           "fork_roots": [
-            {
-              "__reference__": "SOME_STATIC.GENERATE_DISTRIBUTION.RANGE.values"
-            }
+            "SOME_STATIC.GENERATE_DISTRIBUTION.POW"
           ]
         }
       ]
@@ -295,77 +364,148 @@
       "fqid": "SOME_STATIC.VALUES1",
       "inputs": {
         "data": {
-          "expression": [
-            1,
-            3,
-            4,
-            5,
-            7
-          ],
+          "expression": {
+            "call": "VALUES1",
+            "mode": "array",
+            "split": [
+              [
+                1,
+                3,
+                4,
+                5,
+                7
+              ],
+              [
+                3
+              ]
+            ]
+          },
           "type": "float[]"
         }
       },
       "outputs": {
-        "expression": {
-          "data": [
-            1,
-            3,
-            4,
-            5,
-            7
-          ],
-          "mean": {
-            "__reference__": "SOME_STATIC.VALUES1.MEAN.MULTIPLY.product"
+        "expression": [
+          {
+            "data": [
+              1,
+              3,
+              4,
+              5,
+              7
+            ],
+            "mean": {
+              "__reference__": "SOME_STATIC.VALUES1.MEAN.MULTIPLY.product",
+              "fork": {
+                "VALUES1": 0
+              }
+            },
+            "std_dev": {
+              "__reference__": "SOME_STATIC.VALUES1.STD_DEV.z",
+              "fork": {
+                "VALUES1": 0
+              }
+            }
           },
-          "std_dev": {
-            "__reference__": "SOME_STATIC.VALUES1.STD_DEV.z"
+          {
+            "data": [
+              3
+            ],
+            "mean": {
+              "__reference__": "SOME_STATIC.VALUES1.MEAN.MULTIPLY.product",
+              "fork": {
+                "VALUES1": 1
+              }
+            },
+            "std_dev": {
+              "__reference__": "SOME_STATIC.VALUES1.STD_DEV.z",
+              "fork": {
+                "VALUES1": 1
+              }
+            }
           }
-        },
-        "type": "STATISTICS"
+        ],
+        "type": "STATISTICS[]"
       },
       "children": [
         {
           "fqid": "SOME_STATIC.VALUES1.SUM",
           "inputs": {
             "x": {
-              "expression": [
-                1,
-                3,
-                4,
-                5,
-                7
-              ],
+              "expression": {
+                "call": "VALUES1",
+                "mode": "array",
+                "split": [
+                  [
+                    1,
+                    3,
+                    4,
+                    5,
+                    7
+                  ],
+                  [
+                    3
+                  ]
+                ]
+              },
               "type": "float[]"
             }
           },
           "outputs": {
             "expression": {
-              "__reference__": "SOME_STATIC.VALUES1.SUM"
+              "__reference__": "SOME_STATIC.VALUES1.SUM",
+              "fork": {
+                "VALUES1": "unknown"
+              }
             },
             "type": "SUM"
-          }
+          },
+          "fork_roots": [
+            "SOME_STATIC.VALUES1"
+          ]
         },
         {
           "fqid": "SOME_STATIC.VALUES1.LEN",
           "inputs": {
             "x": {
-              "expression": [
-                1,
-                3,
-                4,
-                5,
-                7
-              ],
+              "expression": {
+                "call": "VALUES1",
+                "mode": "array",
+                "split": [
+                  [
+                    1,
+                    3,
+                    4,
+                    5,
+                    7
+                  ],
+                  [
+                    3
+                  ]
+                ]
+              },
               "type": "float[]"
             }
           },
           "outputs": {
-            "expression": {
-              "len": {
-                "__reference__": "SOME_STATIC.VALUES1.LEN.SUM.sum"
+            "expression": [
+              {
+                "len": {
+                  "__reference__": "SOME_STATIC.VALUES1.LEN.SUM.sum",
+                  "fork": {
+                    "VALUES1": 0
+                  }
+                }
+              },
+              {
+                "len": {
+                  "__reference__": "SOME_STATIC.VALUES1.LEN.SUM.sum",
+                  "fork": {
+                    "VALUES1": 1
+                  }
+                }
               }
-            },
-            "type": "LEN"
+            ],
+            "type": "LEN[]"
           },
           "children": [
             {
@@ -375,13 +515,22 @@
                   "expression": {
                     "call": "ONES",
                     "mode": "array",
-                    "split": [
-                      1,
-                      3,
-                      4,
-                      5,
-                      7
-                    ]
+                    "split": {
+                      "call": "VALUES1",
+                      "mode": "array",
+                      "split": [
+                        [
+                          1,
+                          3,
+                          4,
+                          5,
+                          7
+                        ],
+                        [
+                          3
+                        ]
+                      ]
+                    }
                   },
                   "type": "float"
                 },
@@ -392,21 +541,21 @@
               },
               "outputs": {
                 "expression": {
-                  "__reference__": "SOME_STATIC.VALUES1.LEN.ONES",
-                  "join": [
-                    {
-                      "type": "array",
-                      "len": 5
+                  "call": "SOME_STATIC.VALUES1.LEN.ONES",
+                  "mode": "array",
+                  "merge_value": {
+                    "__reference__": "SOME_STATIC.VALUES1.LEN.ONES",
+                    "fork": {
+                      "ONES": "unknown",
+                      "VALUES1": "unknown"
                     }
-                  ]
+                  }
                 },
                 "type": "POW[]"
               },
               "fork_roots": [
-                {
-                  "type": "array",
-                  "len": 5
-                }
+                "SOME_STATIC.VALUES1",
+                "SOME_STATIC.VALUES1.LEN.ONES"
               ]
             },
             {
@@ -414,23 +563,31 @@
               "inputs": {
                 "x": {
                   "expression": {
-                    "__reference__": "SOME_STATIC.VALUES1.LEN.ONES.z",
-                    "join": [
-                      {
-                        "type": "array",
-                        "len": 5
+                    "call": "SOME_STATIC.VALUES1.LEN.ONES",
+                    "mode": "array",
+                    "merge_value": {
+                      "__reference__": "SOME_STATIC.VALUES1.LEN.ONES.z",
+                      "fork": {
+                        "ONES": "unknown",
+                        "VALUES1": "unknown"
                       }
-                    ]
+                    }
                   },
                   "type": "float[]"
                 }
               },
               "outputs": {
                 "expression": {
-                  "__reference__": "SOME_STATIC.VALUES1.LEN.SUM"
+                  "__reference__": "SOME_STATIC.VALUES1.LEN.SUM",
+                  "fork": {
+                    "VALUES1": "unknown"
+                  }
                 },
                 "type": "SUM"
-              }
+              },
+              "fork_roots": [
+                "SOME_STATIC.VALUES1"
+              ]
             }
           ]
         },
@@ -439,24 +596,67 @@
           "inputs": {
             "x": {
               "expression": {
-                "__reference__": "SOME_STATIC.VALUES1.SUM.sum"
+                "call": "VALUES1",
+                "mode": "array",
+                "split": [
+                  {
+                    "__reference__": "SOME_STATIC.VALUES1.SUM.sum",
+                    "fork": {
+                      "VALUES1": 0
+                    }
+                  },
+                  {
+                    "__reference__": "SOME_STATIC.VALUES1.SUM.sum",
+                    "fork": {
+                      "VALUES1": 1
+                    }
+                  }
+                ]
               },
               "type": "float"
             },
             "y": {
               "expression": {
-                "__reference__": "SOME_STATIC.VALUES1.LEN.SUM.sum"
+                "call": "VALUES1",
+                "mode": "array",
+                "split": [
+                  {
+                    "__reference__": "SOME_STATIC.VALUES1.LEN.SUM.sum",
+                    "fork": {
+                      "VALUES1": 0
+                    }
+                  },
+                  {
+                    "__reference__": "SOME_STATIC.VALUES1.LEN.SUM.sum",
+                    "fork": {
+                      "VALUES1": 1
+                    }
+                  }
+                ]
               },
               "type": "float"
             }
           },
           "outputs": {
-            "expression": {
-              "z": {
-                "__reference__": "SOME_STATIC.VALUES1.MEAN.MULTIPLY.product"
+            "expression": [
+              {
+                "z": {
+                  "__reference__": "SOME_STATIC.VALUES1.MEAN.MULTIPLY.product",
+                  "fork": {
+                    "VALUES1": 0
+                  }
+                }
+              },
+              {
+                "z": {
+                  "__reference__": "SOME_STATIC.VALUES1.MEAN.MULTIPLY.product",
+                  "fork": {
+                    "VALUES1": 1
+                  }
+                }
               }
-            },
-            "type": "DIVIDE"
+            ],
+            "type": "DIVIDE[]"
           },
           "children": [
             {
@@ -464,7 +664,10 @@
               "inputs": {
                 "x": {
                   "expression": {
-                    "__reference__": "SOME_STATIC.VALUES1.LEN.SUM.sum"
+                    "__reference__": "SOME_STATIC.VALUES1.LEN.SUM.sum",
+                    "fork": {
+                      "VALUES1": "unknown"
+                    }
                   },
                   "type": "float"
                 },
@@ -475,33 +678,51 @@
               },
               "outputs": {
                 "expression": {
-                  "__reference__": "SOME_STATIC.VALUES1.MEAN.POW"
+                  "__reference__": "SOME_STATIC.VALUES1.MEAN.POW",
+                  "fork": {
+                    "VALUES1": "unknown"
+                  }
                 },
                 "type": "POW"
-              }
+              },
+              "fork_roots": [
+                "SOME_STATIC.VALUES1"
+              ]
             },
             {
               "fqid": "SOME_STATIC.VALUES1.MEAN.MULTIPLY",
               "inputs": {
                 "x": {
                   "expression": {
-                    "__reference__": "SOME_STATIC.VALUES1.SUM.sum"
+                    "__reference__": "SOME_STATIC.VALUES1.SUM.sum",
+                    "fork": {
+                      "VALUES1": "unknown"
+                    }
                   },
                   "type": "float"
                 },
                 "y": {
                   "expression": {
-                    "__reference__": "SOME_STATIC.VALUES1.MEAN.POW.z"
+                    "__reference__": "SOME_STATIC.VALUES1.MEAN.POW.z",
+                    "fork": {
+                      "VALUES1": "unknown"
+                    }
                   },
                   "type": "float"
                 }
               },
               "outputs": {
                 "expression": {
-                  "__reference__": "SOME_STATIC.VALUES1.MEAN.MULTIPLY"
+                  "__reference__": "SOME_STATIC.VALUES1.MEAN.MULTIPLY",
+                  "fork": {
+                    "VALUES1": "unknown"
+                  }
                 },
                 "type": "MULTIPLY"
-              }
+              },
+              "fork_roots": [
+                "SOME_STATIC.VALUES1"
+              ]
             }
           ]
         },
@@ -512,127 +733,109 @@
               "expression": {
                 "call": "ERROR",
                 "mode": "array",
-                "split": [
-                  1,
-                  3,
-                  4,
-                  5,
-                  7
-                ]
+                "split": {
+                  "call": "VALUES1",
+                  "mode": "array",
+                  "split": [
+                    [
+                      1,
+                      3,
+                      4,
+                      5,
+                      7
+                    ],
+                    [
+                      3
+                    ]
+                  ]
+                }
               },
               "type": "float"
             },
             "expect": {
               "expression": {
-                "__reference__": "SOME_STATIC.VALUES1.MEAN.MULTIPLY.product"
+                "call": "VALUES1",
+                "mode": "array",
+                "split": [
+                  {
+                    "__reference__": "SOME_STATIC.VALUES1.MEAN.MULTIPLY.product",
+                    "fork": {
+                      "VALUES1": 0
+                    }
+                  },
+                  {
+                    "__reference__": "SOME_STATIC.VALUES1.MEAN.MULTIPLY.product",
+                    "fork": {
+                      "VALUES1": 1
+                    }
+                  }
+                ]
               },
               "type": "float"
             }
           },
           "outputs": {
             "expression": [
-              {
-                "error": {
-                  "__reference__": "SOME_STATIC.VALUES1.ERROR.SUBTRACT.SUM.sum",
-                  "join": [
-                    {
-                      "type": "array",
-                      "len": 5
+              [
+                {
+                  "error": {
+                    "__reference__": "SOME_STATIC.VALUES1.ERROR.SUBTRACT.SUM.sum",
+                    "fork": {
+                      "ERROR": 0,
+                      "VALUES1": 0
                     }
-                  ],
-                  "fork": [
-                    {
-                      "source": {
-                        "type": "array",
-                        "len": 5
-                      },
-                      "index": 0
+                  }
+                },
+                {
+                  "error": {
+                    "__reference__": "SOME_STATIC.VALUES1.ERROR.SUBTRACT.SUM.sum",
+                    "fork": {
+                      "ERROR": 1,
+                      "VALUES1": 0
                     }
-                  ]
+                  }
+                },
+                {
+                  "error": {
+                    "__reference__": "SOME_STATIC.VALUES1.ERROR.SUBTRACT.SUM.sum",
+                    "fork": {
+                      "ERROR": 2,
+                      "VALUES1": 0
+                    }
+                  }
+                },
+                {
+                  "error": {
+                    "__reference__": "SOME_STATIC.VALUES1.ERROR.SUBTRACT.SUM.sum",
+                    "fork": {
+                      "ERROR": 3,
+                      "VALUES1": 0
+                    }
+                  }
+                },
+                {
+                  "error": {
+                    "__reference__": "SOME_STATIC.VALUES1.ERROR.SUBTRACT.SUM.sum",
+                    "fork": {
+                      "ERROR": 4,
+                      "VALUES1": 0
+                    }
+                  }
                 }
-              },
-              {
-                "error": {
-                  "__reference__": "SOME_STATIC.VALUES1.ERROR.SUBTRACT.SUM.sum",
-                  "join": [
-                    {
-                      "type": "array",
-                      "len": 5
+              ],
+              [
+                {
+                  "error": {
+                    "__reference__": "SOME_STATIC.VALUES1.ERROR.SUBTRACT.SUM.sum",
+                    "fork": {
+                      "ERROR": 0,
+                      "VALUES1": 1
                     }
-                  ],
-                  "fork": [
-                    {
-                      "source": {
-                        "type": "array",
-                        "len": 5
-                      },
-                      "index": 1
-                    }
-                  ]
+                  }
                 }
-              },
-              {
-                "error": {
-                  "__reference__": "SOME_STATIC.VALUES1.ERROR.SUBTRACT.SUM.sum",
-                  "join": [
-                    {
-                      "type": "array",
-                      "len": 5
-                    }
-                  ],
-                  "fork": [
-                    {
-                      "source": {
-                        "type": "array",
-                        "len": 5
-                      },
-                      "index": 2
-                    }
-                  ]
-                }
-              },
-              {
-                "error": {
-                  "__reference__": "SOME_STATIC.VALUES1.ERROR.SUBTRACT.SUM.sum",
-                  "join": [
-                    {
-                      "type": "array",
-                      "len": 5
-                    }
-                  ],
-                  "fork": [
-                    {
-                      "source": {
-                        "type": "array",
-                        "len": 5
-                      },
-                      "index": 3
-                    }
-                  ]
-                }
-              },
-              {
-                "error": {
-                  "__reference__": "SOME_STATIC.VALUES1.ERROR.SUBTRACT.SUM.sum",
-                  "join": [
-                    {
-                      "type": "array",
-                      "len": 5
-                    }
-                  ],
-                  "fork": [
-                    {
-                      "source": {
-                        "type": "array",
-                        "len": 5
-                      },
-                      "index": 4
-                    }
-                  ]
-                }
-              }
+              ]
             ],
-            "type": "ERROR[]"
+            "type": "ERROR[][]"
           },
           "children": [
             {
@@ -642,127 +845,109 @@
                   "expression": {
                     "call": "ERROR",
                     "mode": "array",
-                    "split": [
-                      1,
-                      3,
-                      4,
-                      5,
-                      7
-                    ]
+                    "split": {
+                      "call": "VALUES1",
+                      "mode": "array",
+                      "split": [
+                        [
+                          1,
+                          3,
+                          4,
+                          5,
+                          7
+                        ],
+                        [
+                          3
+                        ]
+                      ]
+                    }
                   },
                   "type": "float"
                 },
                 "y": {
                   "expression": {
-                    "__reference__": "SOME_STATIC.VALUES1.MEAN.MULTIPLY.product"
+                    "call": "VALUES1",
+                    "mode": "array",
+                    "split": [
+                      {
+                        "__reference__": "SOME_STATIC.VALUES1.MEAN.MULTIPLY.product",
+                        "fork": {
+                          "VALUES1": 0
+                        }
+                      },
+                      {
+                        "__reference__": "SOME_STATIC.VALUES1.MEAN.MULTIPLY.product",
+                        "fork": {
+                          "VALUES1": 1
+                        }
+                      }
+                    ]
                   },
                   "type": "float"
                 }
               },
               "outputs": {
                 "expression": [
-                  {
-                    "z": {
-                      "__reference__": "SOME_STATIC.VALUES1.ERROR.SUBTRACT.SUM.sum",
-                      "join": [
-                        {
-                          "type": "array",
-                          "len": 5
+                  [
+                    {
+                      "z": {
+                        "__reference__": "SOME_STATIC.VALUES1.ERROR.SUBTRACT.SUM.sum",
+                        "fork": {
+                          "ERROR": 0,
+                          "VALUES1": 0
                         }
-                      ],
-                      "fork": [
-                        {
-                          "source": {
-                            "type": "array",
-                            "len": 5
-                          },
-                          "index": 0
+                      }
+                    },
+                    {
+                      "z": {
+                        "__reference__": "SOME_STATIC.VALUES1.ERROR.SUBTRACT.SUM.sum",
+                        "fork": {
+                          "ERROR": 1,
+                          "VALUES1": 0
                         }
-                      ]
+                      }
+                    },
+                    {
+                      "z": {
+                        "__reference__": "SOME_STATIC.VALUES1.ERROR.SUBTRACT.SUM.sum",
+                        "fork": {
+                          "ERROR": 2,
+                          "VALUES1": 0
+                        }
+                      }
+                    },
+                    {
+                      "z": {
+                        "__reference__": "SOME_STATIC.VALUES1.ERROR.SUBTRACT.SUM.sum",
+                        "fork": {
+                          "ERROR": 3,
+                          "VALUES1": 0
+                        }
+                      }
+                    },
+                    {
+                      "z": {
+                        "__reference__": "SOME_STATIC.VALUES1.ERROR.SUBTRACT.SUM.sum",
+                        "fork": {
+                          "ERROR": 4,
+                          "VALUES1": 0
+                        }
+                      }
                     }
-                  },
-                  {
-                    "z": {
-                      "__reference__": "SOME_STATIC.VALUES1.ERROR.SUBTRACT.SUM.sum",
-                      "join": [
-                        {
-                          "type": "array",
-                          "len": 5
+                  ],
+                  [
+                    {
+                      "z": {
+                        "__reference__": "SOME_STATIC.VALUES1.ERROR.SUBTRACT.SUM.sum",
+                        "fork": {
+                          "ERROR": 0,
+                          "VALUES1": 1
                         }
-                      ],
-                      "fork": [
-                        {
-                          "source": {
-                            "type": "array",
-                            "len": 5
-                          },
-                          "index": 1
-                        }
-                      ]
+                      }
                     }
-                  },
-                  {
-                    "z": {
-                      "__reference__": "SOME_STATIC.VALUES1.ERROR.SUBTRACT.SUM.sum",
-                      "join": [
-                        {
-                          "type": "array",
-                          "len": 5
-                        }
-                      ],
-                      "fork": [
-                        {
-                          "source": {
-                            "type": "array",
-                            "len": 5
-                          },
-                          "index": 2
-                        }
-                      ]
-                    }
-                  },
-                  {
-                    "z": {
-                      "__reference__": "SOME_STATIC.VALUES1.ERROR.SUBTRACT.SUM.sum",
-                      "join": [
-                        {
-                          "type": "array",
-                          "len": 5
-                        }
-                      ],
-                      "fork": [
-                        {
-                          "source": {
-                            "type": "array",
-                            "len": 5
-                          },
-                          "index": 3
-                        }
-                      ]
-                    }
-                  },
-                  {
-                    "z": {
-                      "__reference__": "SOME_STATIC.VALUES1.ERROR.SUBTRACT.SUM.sum",
-                      "join": [
-                        {
-                          "type": "array",
-                          "len": 5
-                        }
-                      ],
-                      "fork": [
-                        {
-                          "source": {
-                            "type": "array",
-                            "len": 5
-                          },
-                          "index": 4
-                        }
-                      ]
-                    }
-                  }
+                  ]
                 ],
-                "type": "SUBTRACT[]"
+                "type": "SUBTRACT[][]"
               },
               "children": [
                 {
@@ -770,7 +955,10 @@
                   "inputs": {
                     "x": {
                       "expression": {
-                        "__reference__": "SOME_STATIC.VALUES1.MEAN.MULTIPLY.product"
+                        "__reference__": "SOME_STATIC.VALUES1.MEAN.MULTIPLY.product",
+                        "fork": {
+                          "VALUES1": "unknown"
+                        }
                       },
                       "type": "float"
                     },
@@ -781,10 +969,16 @@
                   },
                   "outputs": {
                     "expression": {
-                      "__reference__": "SOME_STATIC.VALUES1.ERROR.SUBTRACT.NEG_Y"
+                      "__reference__": "SOME_STATIC.VALUES1.ERROR.SUBTRACT.NEG_Y",
+                      "fork": {
+                        "VALUES1": "unknown"
+                      }
                     },
                     "type": "MULTIPLY"
-                  }
+                  },
+                  "fork_roots": [
+                    "SOME_STATIC.VALUES1"
+                  ]
                 },
                 {
                   "fqid": "SOME_STATIC.VALUES1.ERROR.SUBTRACT.SUM",
@@ -794,16 +988,28 @@
                         {
                           "call": "ERROR",
                           "mode": "array",
-                          "split": [
-                            1,
-                            3,
-                            4,
-                            5,
-                            7
-                          ]
+                          "split": {
+                            "call": "VALUES1",
+                            "mode": "array",
+                            "split": [
+                              [
+                                1,
+                                3,
+                                4,
+                                5,
+                                7
+                              ],
+                              [
+                                3
+                              ]
+                            ]
+                          }
                         },
                         {
-                          "__reference__": "SOME_STATIC.VALUES1.ERROR.SUBTRACT.NEG_Y.product"
+                          "__reference__": "SOME_STATIC.VALUES1.ERROR.SUBTRACT.NEG_Y.product",
+                          "fork": {
+                            "VALUES1": "unknown"
+                          }
                         }
                       ],
                       "type": "float[]"
@@ -812,20 +1018,16 @@
                   "outputs": {
                     "expression": {
                       "__reference__": "SOME_STATIC.VALUES1.ERROR.SUBTRACT.SUM",
-                      "join": [
-                        {
-                          "type": "array",
-                          "len": 5
-                        }
-                      ]
+                      "fork": {
+                        "ERROR": "unknown",
+                        "VALUES1": "unknown"
+                      }
                     },
-                    "type": "SUM[]"
+                    "type": "SUM"
                   },
                   "fork_roots": [
-                    {
-                      "type": "array",
-                      "len": 5
-                    }
+                    "SOME_STATIC.VALUES1",
+                    "SOME_STATIC.VALUES1.ERROR"
                   ]
                 }
               ]
@@ -840,21 +1042,16 @@
                 "call": "SQUARED_ERROR",
                 "mode": "array",
                 "split": {
-                  "__reference__": "SOME_STATIC.VALUES1.ERROR.SUBTRACT.SUM.sum",
-                  "join": [
-                    {
-                      "type": "array",
-                      "len": 5
+                  "call": "SOME_STATIC.VALUES1.ERROR",
+                  "mode": "array",
+                  "merge_value": {
+                    "__reference__": "SOME_STATIC.VALUES1.ERROR.SUBTRACT.SUM.sum",
+                    "fork": {
+                      "ERROR": "unknown",
+                      "VALUES1": "unknown"
                     }
-                  ]
-                },
-                "source": [
-                  1,
-                  3,
-                  4,
-                  5,
-                  7
-                ]
+                  }
+                }
               },
               "type": "float"
             },
@@ -863,42 +1060,37 @@
                 "call": "SQUARED_ERROR",
                 "mode": "array",
                 "split": {
-                  "__reference__": "SOME_STATIC.VALUES1.ERROR.SUBTRACT.SUM.sum",
-                  "join": [
-                    {
-                      "type": "array",
-                      "len": 5
+                  "call": "SOME_STATIC.VALUES1.ERROR",
+                  "mode": "array",
+                  "merge_value": {
+                    "__reference__": "SOME_STATIC.VALUES1.ERROR.SUBTRACT.SUM.sum",
+                    "fork": {
+                      "ERROR": "unknown",
+                      "VALUES1": "unknown"
                     }
-                  ]
-                },
-                "source": [
-                  1,
-                  3,
-                  4,
-                  5,
-                  7
-                ]
+                  }
+                }
               },
               "type": "float"
             }
           },
           "outputs": {
             "expression": {
-              "__reference__": "SOME_STATIC.VALUES1.SQUARED_ERROR",
-              "join": [
-                {
-                  "type": "array",
-                  "len": 5
+              "call": "SOME_STATIC.VALUES1.SQUARED_ERROR",
+              "mode": "array",
+              "merge_value": {
+                "__reference__": "SOME_STATIC.VALUES1.SQUARED_ERROR",
+                "fork": {
+                  "SQUARED_ERROR": "unknown",
+                  "VALUES1": "unknown"
                 }
-              ]
+              }
             },
             "type": "MULTIPLY[]"
           },
           "fork_roots": [
-            {
-              "type": "array",
-              "len": 5
-            }
+            "SOME_STATIC.VALUES1",
+            "SOME_STATIC.VALUES1.SQUARED_ERROR"
           ]
         },
         {
@@ -906,47 +1098,98 @@
           "inputs": {
             "x": {
               "expression": {
-                "__reference__": "SOME_STATIC.VALUES1.SQUARED_ERROR.product",
-                "join": [
-                  {
-                    "type": "array",
-                    "len": 5
+                "call": "SOME_STATIC.VALUES1.SQUARED_ERROR",
+                "mode": "array",
+                "merge_value": {
+                  "__reference__": "SOME_STATIC.VALUES1.SQUARED_ERROR.product",
+                  "fork": {
+                    "SQUARED_ERROR": "unknown",
+                    "VALUES1": "unknown"
                   }
-                ]
+                }
               },
               "type": "float[]"
             }
           },
           "outputs": {
             "expression": {
-              "__reference__": "SOME_STATIC.VALUES1.TOTAL_VARIANCE"
+              "__reference__": "SOME_STATIC.VALUES1.TOTAL_VARIANCE",
+              "fork": {
+                "VALUES1": "unknown"
+              }
             },
             "type": "SUM"
-          }
+          },
+          "fork_roots": [
+            "SOME_STATIC.VALUES1"
+          ]
         },
         {
           "fqid": "SOME_STATIC.VALUES1.VARIANCE",
           "inputs": {
             "x": {
               "expression": {
-                "__reference__": "SOME_STATIC.VALUES1.TOTAL_VARIANCE.sum"
+                "call": "VALUES1",
+                "mode": "array",
+                "split": [
+                  {
+                    "__reference__": "SOME_STATIC.VALUES1.TOTAL_VARIANCE.sum",
+                    "fork": {
+                      "VALUES1": 0
+                    }
+                  },
+                  {
+                    "__reference__": "SOME_STATIC.VALUES1.TOTAL_VARIANCE.sum",
+                    "fork": {
+                      "VALUES1": 1
+                    }
+                  }
+                ]
               },
               "type": "float"
             },
             "y": {
               "expression": {
-                "__reference__": "SOME_STATIC.VALUES1.LEN.SUM.sum"
+                "call": "VALUES1",
+                "mode": "array",
+                "split": [
+                  {
+                    "__reference__": "SOME_STATIC.VALUES1.LEN.SUM.sum",
+                    "fork": {
+                      "VALUES1": 0
+                    }
+                  },
+                  {
+                    "__reference__": "SOME_STATIC.VALUES1.LEN.SUM.sum",
+                    "fork": {
+                      "VALUES1": 1
+                    }
+                  }
+                ]
               },
               "type": "float"
             }
           },
           "outputs": {
-            "expression": {
-              "z": {
-                "__reference__": "SOME_STATIC.VALUES1.VARIANCE.MULTIPLY.product"
+            "expression": [
+              {
+                "z": {
+                  "__reference__": "SOME_STATIC.VALUES1.VARIANCE.MULTIPLY.product",
+                  "fork": {
+                    "VALUES1": 0
+                  }
+                }
+              },
+              {
+                "z": {
+                  "__reference__": "SOME_STATIC.VALUES1.VARIANCE.MULTIPLY.product",
+                  "fork": {
+                    "VALUES1": 1
+                  }
+                }
               }
-            },
-            "type": "DIVIDE"
+            ],
+            "type": "DIVIDE[]"
           },
           "children": [
             {
@@ -954,7 +1197,10 @@
               "inputs": {
                 "x": {
                   "expression": {
-                    "__reference__": "SOME_STATIC.VALUES1.LEN.SUM.sum"
+                    "__reference__": "SOME_STATIC.VALUES1.LEN.SUM.sum",
+                    "fork": {
+                      "VALUES1": "unknown"
+                    }
                   },
                   "type": "float"
                 },
@@ -965,33 +1211,51 @@
               },
               "outputs": {
                 "expression": {
-                  "__reference__": "SOME_STATIC.VALUES1.VARIANCE.POW"
+                  "__reference__": "SOME_STATIC.VALUES1.VARIANCE.POW",
+                  "fork": {
+                    "VALUES1": "unknown"
+                  }
                 },
                 "type": "POW"
-              }
+              },
+              "fork_roots": [
+                "SOME_STATIC.VALUES1"
+              ]
             },
             {
               "fqid": "SOME_STATIC.VALUES1.VARIANCE.MULTIPLY",
               "inputs": {
                 "x": {
                   "expression": {
-                    "__reference__": "SOME_STATIC.VALUES1.TOTAL_VARIANCE.sum"
+                    "__reference__": "SOME_STATIC.VALUES1.TOTAL_VARIANCE.sum",
+                    "fork": {
+                      "VALUES1": "unknown"
+                    }
                   },
                   "type": "float"
                 },
                 "y": {
                   "expression": {
-                    "__reference__": "SOME_STATIC.VALUES1.VARIANCE.POW.z"
+                    "__reference__": "SOME_STATIC.VALUES1.VARIANCE.POW.z",
+                    "fork": {
+                      "VALUES1": "unknown"
+                    }
                   },
                   "type": "float"
                 }
               },
               "outputs": {
                 "expression": {
-                  "__reference__": "SOME_STATIC.VALUES1.VARIANCE.MULTIPLY"
+                  "__reference__": "SOME_STATIC.VALUES1.VARIANCE.MULTIPLY",
+                  "fork": {
+                    "VALUES1": "unknown"
+                  }
                 },
                 "type": "MULTIPLY"
-              }
+              },
+              "fork_roots": [
+                "SOME_STATIC.VALUES1"
+              ]
             }
           ]
         },
@@ -1000,7 +1264,10 @@
           "inputs": {
             "x": {
               "expression": {
-                "__reference__": "SOME_STATIC.VALUES1.VARIANCE.MULTIPLY.product"
+                "__reference__": "SOME_STATIC.VALUES1.VARIANCE.MULTIPLY.product",
+                "fork": {
+                  "VALUES1": "unknown"
+                }
               },
               "type": "float"
             },
@@ -1011,10 +1278,16 @@
           },
           "outputs": {
             "expression": {
-              "__reference__": "SOME_STATIC.VALUES1.STD_DEV"
+              "__reference__": "SOME_STATIC.VALUES1.STD_DEV",
+              "fork": {
+                "VALUES1": "unknown"
+              }
             },
             "type": "POW"
-          }
+          },
+          "fork_roots": [
+            "SOME_STATIC.VALUES1"
+          ]
         }
       ]
     },
@@ -1023,12 +1296,14 @@
       "inputs": {
         "data": {
           "expression": {
-            "__reference__": "SOME_STATIC.GENERATE_DISTRIBUTION.POW.z",
-            "join": [
-              {
-                "__reference__": "SOME_STATIC.GENERATE_DISTRIBUTION.RANGE.values"
+            "call": "SOME_STATIC.GENERATE_DISTRIBUTION.POW",
+            "mode": "array",
+            "merge_value": {
+              "__reference__": "SOME_STATIC.GENERATE_DISTRIBUTION.POW.z",
+              "fork": {
+                "POW": "unknown"
               }
-            ]
+            }
           },
           "type": "float[]"
         }
@@ -1036,12 +1311,14 @@
       "outputs": {
         "expression": {
           "data": {
-            "__reference__": "SOME_STATIC.GENERATE_DISTRIBUTION.POW.z",
-            "join": [
-              {
-                "__reference__": "SOME_STATIC.GENERATE_DISTRIBUTION.RANGE.values"
+            "call": "SOME_STATIC.GENERATE_DISTRIBUTION.POW",
+            "mode": "array",
+            "merge_value": {
+              "__reference__": "SOME_STATIC.GENERATE_DISTRIBUTION.POW.z",
+              "fork": {
+                "POW": "unknown"
               }
-            ]
+            }
           },
           "mean": {
             "__reference__": "SOME_STATIC.VALUES2.MEAN.MULTIPLY.product"
@@ -1058,12 +1335,14 @@
           "inputs": {
             "x": {
               "expression": {
-                "__reference__": "SOME_STATIC.GENERATE_DISTRIBUTION.POW.z",
-                "join": [
-                  {
-                    "__reference__": "SOME_STATIC.GENERATE_DISTRIBUTION.RANGE.values"
+                "call": "SOME_STATIC.GENERATE_DISTRIBUTION.POW",
+                "mode": "array",
+                "merge_value": {
+                  "__reference__": "SOME_STATIC.GENERATE_DISTRIBUTION.POW.z",
+                  "fork": {
+                    "POW": "unknown"
                   }
-                ]
+                }
               },
               "type": "float[]"
             }
@@ -1080,12 +1359,14 @@
           "inputs": {
             "x": {
               "expression": {
-                "__reference__": "SOME_STATIC.GENERATE_DISTRIBUTION.POW.z",
-                "join": [
-                  {
-                    "__reference__": "SOME_STATIC.GENERATE_DISTRIBUTION.RANGE.values"
+                "call": "SOME_STATIC.GENERATE_DISTRIBUTION.POW",
+                "mode": "array",
+                "merge_value": {
+                  "__reference__": "SOME_STATIC.GENERATE_DISTRIBUTION.POW.z",
+                  "fork": {
+                    "POW": "unknown"
                   }
-                ]
+                }
               },
               "type": "float[]"
             }
@@ -1107,15 +1388,14 @@
                     "call": "ONES",
                     "mode": "array",
                     "split": {
-                      "__reference__": "SOME_STATIC.GENERATE_DISTRIBUTION.POW.z",
-                      "join": [
-                        {
-                          "__reference__": "SOME_STATIC.GENERATE_DISTRIBUTION.RANGE.values"
+                      "call": "SOME_STATIC.GENERATE_DISTRIBUTION.POW",
+                      "mode": "array",
+                      "merge_value": {
+                        "__reference__": "SOME_STATIC.GENERATE_DISTRIBUTION.POW.z",
+                        "fork": {
+                          "POW": "unknown"
                         }
-                      ]
-                    },
-                    "source": {
-                      "__reference__": "SOME_STATIC.GENERATE_DISTRIBUTION.RANGE.values"
+                      }
                     }
                   },
                   "type": "float"
@@ -1127,19 +1407,19 @@
               },
               "outputs": {
                 "expression": {
-                  "__reference__": "SOME_STATIC.VALUES2.LEN.ONES",
-                  "join": [
-                    {
-                      "__reference__": "SOME_STATIC.GENERATE_DISTRIBUTION.RANGE.values"
+                  "call": "SOME_STATIC.VALUES2.LEN.ONES",
+                  "mode": "array",
+                  "merge_value": {
+                    "__reference__": "SOME_STATIC.VALUES2.LEN.ONES",
+                    "fork": {
+                      "ONES": "unknown"
                     }
-                  ]
+                  }
                 },
                 "type": "POW[]"
               },
               "fork_roots": [
-                {
-                  "__reference__": "SOME_STATIC.GENERATE_DISTRIBUTION.RANGE.values"
-                }
+                "SOME_STATIC.VALUES2.LEN.ONES"
               ]
             },
             {
@@ -1147,12 +1427,14 @@
               "inputs": {
                 "x": {
                   "expression": {
-                    "__reference__": "SOME_STATIC.VALUES2.LEN.ONES.z",
-                    "join": [
-                      {
-                        "__reference__": "SOME_STATIC.GENERATE_DISTRIBUTION.RANGE.values"
+                    "call": "SOME_STATIC.VALUES2.LEN.ONES",
+                    "mode": "array",
+                    "merge_value": {
+                      "__reference__": "SOME_STATIC.VALUES2.LEN.ONES.z",
+                      "fork": {
+                        "ONES": "unknown"
                       }
-                    ]
+                    }
                   },
                   "type": "float[]"
                 }
@@ -1245,15 +1527,14 @@
                 "call": "ERROR",
                 "mode": "array",
                 "split": {
-                  "__reference__": "SOME_STATIC.GENERATE_DISTRIBUTION.POW.z",
-                  "join": [
-                    {
-                      "__reference__": "SOME_STATIC.GENERATE_DISTRIBUTION.RANGE.values"
+                  "call": "SOME_STATIC.GENERATE_DISTRIBUTION.POW",
+                  "mode": "array",
+                  "merge_value": {
+                    "__reference__": "SOME_STATIC.GENERATE_DISTRIBUTION.POW.z",
+                    "fork": {
+                      "POW": "unknown"
                     }
-                  ]
-                },
-                "source": {
-                  "__reference__": "SOME_STATIC.GENERATE_DISTRIBUTION.RANGE.values"
+                  }
                 }
               },
               "type": "float"
@@ -1269,19 +1550,15 @@
             "expression": {
               "error": {
                 "__reference__": "SOME_STATIC.VALUES2.ERROR.SUBTRACT.SUM.sum",
-                "join": [
-                  {
-                    "__reference__": "SOME_STATIC.GENERATE_DISTRIBUTION.RANGE.values"
-                  }
-                ]
+                "fork": {
+                  "ERROR": "unknown"
+                }
               }
             },
-            "type": "ERROR[]"
+            "type": "ERROR"
           },
           "fork_roots": [
-            {
-              "__reference__": "SOME_STATIC.GENERATE_DISTRIBUTION.RANGE.values"
-            }
+            "SOME_STATIC.VALUES2.ERROR"
           ],
           "children": [
             {
@@ -1292,15 +1569,14 @@
                     "call": "ERROR",
                     "mode": "array",
                     "split": {
-                      "__reference__": "SOME_STATIC.GENERATE_DISTRIBUTION.POW.z",
-                      "join": [
-                        {
-                          "__reference__": "SOME_STATIC.GENERATE_DISTRIBUTION.RANGE.values"
+                      "call": "SOME_STATIC.GENERATE_DISTRIBUTION.POW",
+                      "mode": "array",
+                      "merge_value": {
+                        "__reference__": "SOME_STATIC.GENERATE_DISTRIBUTION.POW.z",
+                        "fork": {
+                          "POW": "unknown"
                         }
-                      ]
-                    },
-                    "source": {
-                      "__reference__": "SOME_STATIC.GENERATE_DISTRIBUTION.RANGE.values"
+                      }
                     }
                   },
                   "type": "float"
@@ -1316,19 +1592,15 @@
                 "expression": {
                   "z": {
                     "__reference__": "SOME_STATIC.VALUES2.ERROR.SUBTRACT.SUM.sum",
-                    "join": [
-                      {
-                        "__reference__": "SOME_STATIC.GENERATE_DISTRIBUTION.RANGE.values"
-                      }
-                    ]
+                    "fork": {
+                      "ERROR": "unknown"
+                    }
                   }
                 },
-                "type": "SUBTRACT[]"
+                "type": "SUBTRACT"
               },
               "fork_roots": [
-                {
-                  "__reference__": "SOME_STATIC.GENERATE_DISTRIBUTION.RANGE.values"
-                }
+                "SOME_STATIC.VALUES2.ERROR"
               ],
               "children": [
                 {
@@ -1361,15 +1633,14 @@
                           "call": "ERROR",
                           "mode": "array",
                           "split": {
-                            "__reference__": "SOME_STATIC.GENERATE_DISTRIBUTION.POW.z",
-                            "join": [
-                              {
-                                "__reference__": "SOME_STATIC.GENERATE_DISTRIBUTION.RANGE.values"
+                            "call": "SOME_STATIC.GENERATE_DISTRIBUTION.POW",
+                            "mode": "array",
+                            "merge_value": {
+                              "__reference__": "SOME_STATIC.GENERATE_DISTRIBUTION.POW.z",
+                              "fork": {
+                                "POW": "unknown"
                               }
-                            ]
-                          },
-                          "source": {
-                            "__reference__": "SOME_STATIC.GENERATE_DISTRIBUTION.RANGE.values"
+                            }
                           }
                         },
                         {
@@ -1382,18 +1653,14 @@
                   "outputs": {
                     "expression": {
                       "__reference__": "SOME_STATIC.VALUES2.ERROR.SUBTRACT.SUM",
-                      "join": [
-                        {
-                          "__reference__": "SOME_STATIC.GENERATE_DISTRIBUTION.RANGE.values"
-                        }
-                      ]
+                      "fork": {
+                        "ERROR": "unknown"
+                      }
                     },
-                    "type": "SUM[]"
+                    "type": "SUM"
                   },
                   "fork_roots": [
-                    {
-                      "__reference__": "SOME_STATIC.GENERATE_DISTRIBUTION.RANGE.values"
-                    }
+                    "SOME_STATIC.VALUES2.ERROR"
                   ]
                 }
               ]
@@ -1408,15 +1675,24 @@
                 "call": "SQUARED_ERROR",
                 "mode": "array",
                 "split": {
-                  "__reference__": "SOME_STATIC.VALUES2.ERROR.SUBTRACT.SUM.sum",
-                  "join": [
-                    {
-                      "__reference__": "SOME_STATIC.GENERATE_DISTRIBUTION.RANGE.values"
+                  "call": "SOME_STATIC.VALUES2.ERROR",
+                  "mode": "array",
+                  "merge_value": {
+                    "__reference__": "SOME_STATIC.VALUES2.ERROR.SUBTRACT.SUM.sum",
+                    "fork": {
+                      "ERROR": "unknown"
                     }
-                  ]
-                },
-                "source": {
-                  "__reference__": "SOME_STATIC.GENERATE_DISTRIBUTION.RANGE.values"
+                  },
+                  "merge_over": {
+                    "call": "SOME_STATIC.GENERATE_DISTRIBUTION.POW",
+                    "mode": "array",
+                    "merge_value": {
+                      "__reference__": "SOME_STATIC.GENERATE_DISTRIBUTION.POW.z",
+                      "fork": {
+                        "POW": "unknown"
+                      }
+                    }
+                  }
                 }
               },
               "type": "float"
@@ -1426,15 +1702,14 @@
                 "call": "SQUARED_ERROR",
                 "mode": "array",
                 "split": {
-                  "__reference__": "SOME_STATIC.VALUES2.ERROR.SUBTRACT.SUM.sum",
-                  "join": [
-                    {
-                      "__reference__": "SOME_STATIC.GENERATE_DISTRIBUTION.RANGE.values"
+                  "call": "SOME_STATIC.VALUES2.ERROR",
+                  "mode": "array",
+                  "merge_value": {
+                    "__reference__": "SOME_STATIC.VALUES2.ERROR.SUBTRACT.SUM.sum",
+                    "fork": {
+                      "ERROR": "unknown"
                     }
-                  ]
-                },
-                "source": {
-                  "__reference__": "SOME_STATIC.GENERATE_DISTRIBUTION.RANGE.values"
+                  }
                 }
               },
               "type": "float"
@@ -1442,19 +1717,19 @@
           },
           "outputs": {
             "expression": {
-              "__reference__": "SOME_STATIC.VALUES2.SQUARED_ERROR",
-              "join": [
-                {
-                  "__reference__": "SOME_STATIC.GENERATE_DISTRIBUTION.RANGE.values"
+              "call": "SOME_STATIC.VALUES2.SQUARED_ERROR",
+              "mode": "array",
+              "merge_value": {
+                "__reference__": "SOME_STATIC.VALUES2.SQUARED_ERROR",
+                "fork": {
+                  "SQUARED_ERROR": "unknown"
                 }
-              ]
+              }
             },
             "type": "MULTIPLY[]"
           },
           "fork_roots": [
-            {
-              "__reference__": "SOME_STATIC.GENERATE_DISTRIBUTION.RANGE.values"
-            }
+            "SOME_STATIC.VALUES2.SQUARED_ERROR"
           ]
         },
         {
@@ -1462,12 +1737,14 @@
           "inputs": {
             "x": {
               "expression": {
-                "__reference__": "SOME_STATIC.VALUES2.SQUARED_ERROR.product",
-                "join": [
-                  {
-                    "__reference__": "SOME_STATIC.GENERATE_DISTRIBUTION.RANGE.values"
+                "call": "SOME_STATIC.VALUES2.SQUARED_ERROR",
+                "mode": "array",
+                "merge_value": {
+                  "__reference__": "SOME_STATIC.VALUES2.SQUARED_ERROR.product",
+                  "fork": {
+                    "SQUARED_ERROR": "unknown"
                   }
-                ]
+                }
               },
               "type": "float[]"
             }

@@ -71,12 +71,16 @@ func (m CallMode) String() string {
 		return string(KindMap)
 	case ModeUnknownMapCall:
 		return "unknown"
+	case ModeNullMapCall:
+		return string(KindNull)
 	}
 	return "invalid"
 }
 
 // A MapCallSource determines the type and dimension of a map call.
 type MapCallSource interface {
+	fmt.GoStringer
+
 	// CallMode Returns the call mode for a call which depends on this source.
 	CallMode() CallMode
 
@@ -94,8 +98,6 @@ type MapCallSource interface {
 	// source would have.  The values are arbitrary.  Otherwise, it will return
 	// nil.
 	Keys() map[string]Exp
-
-	GoString() string
 }
 
 // placeholderMapSource is added to map calls by the parser so that they can be
@@ -135,6 +137,10 @@ func (*placeholderMapSource) GoString() string {
 	return "placeholder"
 }
 
+func (m *placeholderMapSource) Equal(o MapCallSource) bool {
+	return m == o
+}
+
 // placeholderArrayMapSource is used as a map source when the array length
 // is not known.
 type placeholderArrayMapSource struct {
@@ -146,6 +152,10 @@ func (*placeholderArrayMapSource) CallMode() CallMode {
 	return ModeArrayCall
 }
 
+func (*placeholderArrayMapSource) GoString() string {
+	return "placeholder array"
+}
+
 // placeholderMapMapSource is used as a map source when the keys are
 // not known.
 type placeholderMapMapSource struct {
@@ -155,6 +165,10 @@ type placeholderMapMapSource struct {
 // CallMode Returns the call mode for a call which depends on this source.
 func (*placeholderMapMapSource) CallMode() CallMode {
 	return ModeMapCall
+}
+
+func (*placeholderMapMapSource) GoString() string {
+	return "placeholder map"
 }
 
 // CallMode Returns the call mode for a call which depends on this source.
@@ -245,7 +259,29 @@ func (m *MapCallSet) Keys() map[string]Exp {
 }
 
 func (m *MapCallSet) GoString() string {
-	return "set " + m.Master.GoString() + fmt.Sprintf("%p", m.Master)
+	var buf strings.Builder
+	ma := m.Master.GoString()
+	buf.Grow(6 + (1+len(ma))*len(m.Sources))
+	if _, err := buf.WriteString("set {"); err != nil {
+		panic(err)
+	}
+	if _, err := buf.WriteString(ma); err != nil {
+		panic(err)
+	}
+	for s := range m.Sources {
+		if s != m.Master {
+			if err := buf.WriteByte(';'); err != nil {
+				panic(err)
+			}
+			if _, err := buf.WriteString(s.GoString()); err != nil {
+				panic(err)
+			}
+		}
+	}
+	if err := buf.WriteByte('}'); err != nil {
+		panic(err)
+	}
+	return buf.String()
 }
 
 func MergeMapCallSources(a, b MapCallSource) (MapCallSource, error) {
@@ -253,78 +289,139 @@ func MergeMapCallSources(a, b MapCallSource) (MapCallSource, error) {
 	if a == b {
 		return a, nil
 	}
+	if a == nil {
+		return b, nil
+	}
+	if b == nil {
+		return a, nil
+	}
 	switch a := a.(type) {
 	case *CallStm:
 		src, err := MergeMapCallSources(a.Mapping, b)
-		if err != nil {
+		if err == nil {
 			a.Mapping = src
 		}
 		return src, err
-	case *RefExp:
-		if len(a.MergeOver) > 0 {
-			src, err := MergeMapCallSources(a.MergeOver[0], b)
-			if err != nil || src == a.MergeOver[0] {
-				return src, err
-			} else if src != a {
-				switch a.MergeOver[0].(type) {
-				case *placeholderArrayMapSource, *placeholderMapMapSource, *placeholderMapSource:
-					mo := make([]MapCallSource, len(a.MergeOver))
-					mo[0] = src
-					copy(mo[1:], a.MergeOver[1:])
-					a.MergeOver = mo
-				}
-			}
-			if src == b {
-				return b, nil
-			}
+	case *MergeExp:
+		src, err := MergeMapCallSources(a.MergeOver, b)
+		if err == nil {
+			a.MergeOver = src
 		}
+		return src, err
 	}
 	switch b := b.(type) {
 	case *CallStm:
 		src, err := MergeMapCallSources(a, b.Mapping)
-		if err != nil {
+		if err == nil {
 			b.Mapping = src
 		}
 		return src, err
-	case *RefExp:
-		if len(b.MergeOver) > 0 {
-			src, err := MergeMapCallSources(a, b.MergeOver[0])
-			if err != nil || src == b.MergeOver[0] {
-				return src, err
-			} else if src != b {
-				switch b.MergeOver[0].(type) {
-				case *placeholderArrayMapSource, *placeholderMapMapSource, *placeholderMapSource:
-					mo := make([]MapCallSource, len(b.MergeOver))
-					mo[0] = src
-					copy(mo[1:], b.MergeOver[1:])
-					b.MergeOver = mo
-				}
-			}
-			if src == a {
-				return a, nil
-			}
+	case *MergeExp:
+		src, err := MergeMapCallSources(a, b.MergeOver)
+		if err == nil {
+			b.MergeOver = src
 		}
+		return src, err
 	}
-	if b == nil || b.CallMode() == ModeSingleCall || b.CallMode() == ModeUnknownMapCall {
+	if b == nil || b.CallMode() == ModeSingleCall {
 		return a, nil
 	}
-	if a == nil || a.CallMode() == ModeSingleCall || a.CallMode() == ModeUnknownMapCall {
+	if a == nil || a.CallMode() == ModeSingleCall {
 		return b, nil
 	}
-	// Check consistency
+	if b.CallMode() == ModeUnknownMapCall {
+		switch bs := b.(type) {
+		case *RefExp:
+		case *MapCallSet:
+			if as, ok := a.(*MapCallSet); ok {
+				if as.CallMode() != ModeUnknownMapCall {
+					for k := range bs.Sources {
+						as.Sources[k] = struct{}{}
+					}
+					return a, nil
+				} else {
+					for k := range as.Sources {
+						bs.Sources[k] = struct{}{}
+					}
+					return b, nil
+				}
+			}
+		default:
+			return a, nil
+		}
+		switch as := a.(type) {
+		case *placeholderMapSource:
+			return b, nil
+		case *MapCallSet:
+			as.Sources[b] = struct{}{}
+			return as, nil
+		default:
+			return &MapCallSet{
+				Master: a,
+				Sources: map[MapCallSource]struct{}{
+					a: {},
+					b: {},
+				},
+			}, nil
+		}
+	} else if a.CallMode() == ModeUnknownMapCall {
+		switch as := a.(type) {
+		case *RefExp:
+		case *MapCallSet:
+			if bs, ok := b.(*MapCallSet); ok {
+				if bs.CallMode() != ModeUnknownMapCall {
+					for k := range as.Sources {
+						bs.Sources[k] = struct{}{}
+					}
+					return b, nil
+				} else {
+					for k := range bs.Sources {
+						as.Sources[k] = struct{}{}
+					}
+					return a, nil
+				}
+			}
+		default:
+			return b, nil
+		}
+		switch bs := b.(type) {
+		case *placeholderMapSource:
+			return a, nil
+		case *MapCallSet:
+			bs.Sources[a] = struct{}{}
+			return bs, nil
+		default:
+			return &MapCallSet{
+				Master: b,
+				Sources: map[MapCallSource]struct{}{
+					a: {},
+					b: {},
+				},
+			}, nil
+		}
+	}
+
+	switch b.(type) {
+	case *placeholderArrayMapSource, *placeholderMapMapSource, *placeholderMapSource:
+		if am, bm := a.CallMode(), b.CallMode(); am != ModeNullMapCall &&
+			bm != ModeNullMapCall && am != bm {
+			return a, fmt.Errorf("cannot split over both %vs and %vs", am, bm)
+		}
+		return a, nil
+	}
+	switch a.(type) {
+	case *placeholderArrayMapSource, *placeholderMapMapSource, *placeholderMapSource:
+		if am, bm := a.CallMode(), b.CallMode(); am != ModeNullMapCall &&
+			bm != ModeNullMapCall && am != bm {
+			return b, fmt.Errorf("cannot split over both %vs and %vs", am, bm)
+		}
+		return b, nil
+	}
 	if am, bm := a.CallMode(), b.CallMode(); am != bm && am != ModeNullMapCall && bm != ModeNullMapCall {
 		return nil, fmt.Errorf("cannot split over both arrays and maps")
 	} else if bm == ModeNullMapCall {
 		return a, nil
 	} else if am == ModeNullMapCall {
-		return b, nil
-	}
-	switch b.(type) {
-	case *placeholderArrayMapSource, *placeholderMapMapSource, *placeholderMapSource:
-		return a, nil
-	}
-	switch a.(type) {
-	case *placeholderArrayMapSource, *placeholderMapMapSource, *placeholderMapSource:
 		return b, nil
 	}
 	if a.KnownLength() && b.KnownLength() {
@@ -432,25 +529,6 @@ func MergeMapCallSources(a, b MapCallSource) (MapCallSource, error) {
 						set.Master = &emptyMap
 					}
 				} else {
-					set.Master = b
-				}
-			} else if ra, ok := set.Master.(*RefExp); ok {
-				// Prefer fully-qualified refs to those which aren't.
-				if !strings.ContainsRune(ra.Id, '.') {
-					if rb, ok := b.(*RefExp); ok {
-						if strings.ContainsRune(rb.Id, '.') {
-							set.Master = b
-						}
-					}
-				}
-			} else if _, ok := b.(*RefExp); ok {
-				// Prefer ref over not ref
-				set.Master = b
-			}
-		} else if b.KnownLength() {
-			if _, ok := set.Master.(*RefExp); !ok {
-				if _, ok := b.(*RefExp); ok {
-					// Prefer ref over not ref
 					set.Master = b
 				}
 			}

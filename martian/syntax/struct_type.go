@@ -408,6 +408,10 @@ func (s *StructType) FilterJson(data json.RawMessage, lookup *TypeLookup) (json.
 	return buf.Bytes(), fatal, errs.If()
 }
 
+func (s *StructType) String() string {
+	return KindStruct + " " + s.Id
+}
+
 type StructFieldError struct {
 	Message    string
 	InnerError error

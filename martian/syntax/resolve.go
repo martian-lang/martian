@@ -72,13 +72,13 @@ type (
 		// of its ancestor nodes, for which this node must also be split.
 		ForkRoots() ForkRootList
 
-		MapSource() MapCallSource
+		Split() *SplitExp
 
 		nodeClosure(map[string]CallGraphNode)
 
 		resolve(map[string]*ResolvedBinding, ForkRootList, *TypeLookup) error
 
-		unsplit() error
+		unsplit(*TypeLookup) error
 	}
 
 	// ForkRootList selects dimensions over which a call node may fork.
@@ -195,7 +195,7 @@ func (ast *Ast) MakeCallGraph(prefix string, call *CallStm) (CallGraphNode, erro
 	if err := node.resolve(nil, nil, &ast.TypeTable); err != nil {
 		return node, err
 	}
-	return node, node.unsplit()
+	return node, node.unsplit(&ast.TypeTable)
 }
 
 // MakePipelineCallGraph returns a node in the graph of stages and pipelines,
@@ -215,13 +215,5 @@ func (ast *Ast) MakePipelineCallGraph(
 	if err := node.resolve(nil, nil, &ast.TypeTable); err != nil {
 		return node.(*CallGraphPipeline), err
 	}
-	return node.(*CallGraphPipeline), node.unsplit()
-}
-
-// Get the value of the split, bypassing any intermediate splits.
-func (exp *SplitExp) InnerValue() Exp {
-	if v, ok := exp.Value.(*SplitExp); ok {
-		return v.InnerValue()
-	}
-	return exp.Value
+	return node.(*CallGraphPipeline), node.unsplit(&ast.TypeTable)
 }

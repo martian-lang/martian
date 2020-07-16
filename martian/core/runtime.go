@@ -349,6 +349,7 @@ func (self *Runtime) instantiatePipeline(src string, srcPath string, psid string
 
 	pipestance.getNode().mkdirs()
 
+	ast.TypeTable.Freeze()
 	return postsrc, ast, pipestance, nil
 }
 
@@ -751,8 +752,13 @@ func convertToExp(parser *syntax.Parser, split bool, val json.Marshaler,
 			}
 			exp, err := convertToExp(parser, false,
 				jv.Split, tname, lookup)
+			if n, ok := exp.(*syntax.NullExp); ok {
+				return n, err
+			}
+			src, _ := exp.(syntax.MapCallSource)
 			return &syntax.SplitExp{
-				Value: exp,
+				Value:  exp,
+				Source: src,
 			}, err
 		}
 		exp, err := parser.ParseValExp(val)
@@ -822,7 +828,8 @@ func convertToExp(parser *syntax.Parser, split bool, val json.Marshaler,
 		if b, err := val.MarshalJSON(); err != nil {
 			return nil, err
 		} else {
-			return parser.ParseValExp(b)
+			return convertToExp(parser, split, json.RawMessage(b),
+				tname, lookup)
 		}
 	}
 }
@@ -870,9 +877,20 @@ func BuildCallSource(
 		if val := args[param.GetId()]; val != nil {
 			var err error
 			binding.Exp, err = convertToExp(&parser, split, val, binding.Tname, lookup)
-			if split && ast.Call.Mapping == nil {
-				ast.Call.Mapping = binding.Exp.(*syntax.SplitExp).Source
+			s, ok := binding.Exp.(*syntax.SplitExp)
+			if split && !ok {
+				src, _ := binding.Exp.(syntax.MapCallSource)
+				s = &syntax.SplitExp{
+					Call:   ast.Call,
+					Source: src,
+					Value:  binding.Exp,
+				}
+				binding.Exp = s
 			}
+			if (split || ok) && ast.Call.Mapping == nil {
+				ast.Call.Mapping = s.Source
+			}
+
 			if err != nil {
 				return "", err
 			}

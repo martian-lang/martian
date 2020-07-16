@@ -12,6 +12,7 @@ import (
 	"errors"
 	"fmt"
 	"os"
+	"sort"
 	"strconv"
 	"strings"
 
@@ -55,21 +56,77 @@ func (node *Node) inputBindingInfo(fork ForkId) []BindingInfo {
 	return result
 }
 
-func (node *Node) resolveInputs(fork ForkId) (MarshalerMap, error) {
+func (node *Node) resolveInputs(fork ForkId, keepSplit bool) ([]string, MarshalerMap, error) {
 	readSize := node.top.rt.FreeMemBytes() / int64(len(node.prenodes)+1)
 	result := make(MarshalerMap, len(node.call.ResolvedInputs()))
 	var errs syntax.ErrorList
+	var mapped []string
 	for k, v := range node.call.ResolvedInputs() {
 		_, r, err := node.top.resolve(v.Exp, v.Type, fork, readSize)
 		if err != nil {
-			errs = append(errs, &elementError{
-				element: "parameter " + k,
-				inner:   err,
-			})
+			if keepSplit {
+				var forkErr *forkResolutionError
+				if !errors.As(err, &forkErr) {
+					if s, ok := v.Exp.(*syntax.SplitExp); ok {
+						r, err = node.top.resolveKeepSplit(s, v.Type, fork, readSize)
+						mapped = append(mapped, k)
+					}
+				}
+			}
+			if err != nil {
+				errs = append(errs, &elementError{
+					element: "parameter " + k,
+					inner:   err,
+				})
+			}
 		}
 		result[k] = r
 	}
-	return result, errs.If()
+	return mapped, result, errs.If()
+}
+
+// Remove the first unmatched split in the expression chain.
+func (node *TopNode) resolveKeepSplit(s *syntax.SplitExp, t syntax.Type,
+	fork ForkId, readSize int64) (json.Marshaler, error) {
+	for _, f := range fork {
+		if f.Split.Call == s.Call {
+			if f.Split.Source != nil {
+				outerT := t
+				switch f.Split.Source.CallMode() {
+				case syntax.ModeArrayCall:
+					outerT = node.types.GetArray(t, 1)
+				case syntax.ModeMapCall:
+					outerT = node.types.GetMap(t)
+				case syntax.ModeSingleCall:
+				case syntax.ModeNullMapCall:
+					return nil, nil
+				default:
+					panic("invalid source kind" + f.Split.Source.CallMode().String())
+				}
+				if outerT == nil {
+					tid := outerT.TypeId()
+					panic("invalid type " + tid.String() +
+						" for map over " + f.Split.Source.CallMode().String())
+				}
+				_, r, err := node.resolve(s.Value, t, fork, readSize)
+				if err != nil {
+					err = &elementError{
+						element: "resolving matched split",
+						inner:   err,
+					}
+				}
+				return r, err
+			}
+		}
+	}
+	_, r, err := node.resolve(s.Value, t, fork, readSize)
+	if err != nil {
+		err = &elementError{
+			element: "resolving unmatched split",
+			inner:   err,
+		}
+	}
+	return r, err
 }
 
 // baseType returns the inner type after stripping off map or array wrappers.
@@ -101,7 +158,7 @@ func (node *Node) outputBindingInfo(fork ForkId) []BindingInfo {
 		fm := fork.SourceIndexMap()
 		result := make([]BindingInfo, len(members))
 		for i, member := range members {
-			rb, err := ro.BindingPath(member.Id, fm, nil, node.top.types)
+			rb, err := ro.BindingPath(member.Id, fm, node.top.types)
 			if err == nil {
 				result[i].Id = member.Id
 				result[i].Type = rb.Type.TypeId()
@@ -125,32 +182,15 @@ func (node *Node) outputBindingInfo(fork ForkId) []BindingInfo {
 func (node *Node) resolvePipelineOutputs(fork ForkId) (json.Marshaler, syntax.Type, error) {
 	readSize := node.top.rt.FreeMemBytes() / int64(len(node.prenodes)+1)
 	ro := node.call.ResolvedOutputs()
-	t := ro.Type
-	for _, part := range fork {
-		switch part.Source.CallMode() {
-		case syntax.ModeArrayCall:
-			if tt, ok := t.(*syntax.ArrayType); ok {
-				t = tt.Elem
-			} else {
-				panic("unexpected array fork")
-			}
-		case syntax.ModeMapCall:
-			if tt, ok := t.(*syntax.TypedMapType); ok {
-				t = tt.Elem
-			} else {
-				panic("unexpected map fork")
-			}
-		}
-	}
-	_, r, err := node.top.resolve(ro.Exp, t, fork, readSize)
+	_, r, err := node.top.resolve(ro.Exp, ro.Type, fork, readSize)
 	if err != nil {
-		tid := t.TypeId()
+		tid := ro.Type.TypeId()
 		err = &elementError{
 			element: node.GetFQName() + " fork " + fork.GoString() + " (" + tid.String() + ")",
 			inner:   err,
 		}
 	}
-	return r, t, err
+	return r, ro.Type, err
 }
 
 // resolve will either return true and the concrete value represented by the
@@ -166,13 +206,21 @@ func (node *TopNode) resolve(binding syntax.Exp, t syntax.Type,
 		return true, binding, nil
 	}
 	if len(fork) > 0 {
-		if b, err := binding.BindingPath("", fork.SourceIndexMap(), nil); err != nil {
-			return true, nil, err
-		} else if binding != b {
-			binding = b
+		br := syntax.ResolvedBinding{
+			Exp:  binding,
+			Type: t,
+		}
+		if b, err := br.BindingPath("", fork.SourceIndexMap(), node.Types()); err != nil {
+			return true, nil, &elementError{
+				element: "resolving binding",
+				inner:   err,
+			}
+		} else if binding != b.Exp {
+			binding = b.Exp
 			if !binding.HasRef() && !binding.HasSplit() {
 				return true, binding, nil
 			}
+			t = b.Type
 		}
 	}
 	switch binding := binding.(type) {
@@ -184,6 +232,8 @@ func (node *TopNode) resolve(binding syntax.Exp, t syntax.Type,
 		return node.resolveMap(binding, t, fork, readSize)
 	case *syntax.SplitExp:
 		return node.resolveSplit(binding, t, fork, readSize)
+	case *syntax.MergeExp:
+		return node.resolveMerge(binding, t, fork, readSize)
 	case *syntax.DisabledExp:
 		return node.resolveDisabledExp(binding, t, fork, readSize)
 	default:
@@ -231,36 +281,243 @@ func (node *TopNode) resolveDisabledExp(binding *syntax.DisabledExp, t syntax.Ty
 	return node.resolve(binding.Value, t, fork, readSize)
 }
 
+func (node *TopNode) resolveMerge(binding *syntax.MergeExp, t syntax.Type,
+	fork ForkId, readSize int64) (bool, json.Marshaler, error) {
+	var innerT syntax.Type
+	switch t := t.(type) {
+	case *syntax.ArrayType:
+		if binding.MergeOver.CallMode() != syntax.ModeArrayCall {
+			return false, nil, fmt.Errorf(
+				"expected array but mapping is %s",
+				binding.MergeOver.CallMode().String())
+		}
+		if t.Dim > 1 {
+			nt := *t
+			nt.Dim--
+			innerT = &nt
+		} else {
+			innerT = t.Elem
+		}
+	case *syntax.TypedMapType:
+		if binding.MergeOver.CallMode() != syntax.ModeMapCall {
+			tid := t.TypeId()
+			return false, nil, fmt.Errorf(
+				"expected %s but mapping is %s",
+				tid.String(),
+				binding.MergeOver.CallMode().String())
+		}
+		innerT = t.Elem
+	default:
+		tid := t.TypeId()
+		panic("invalid type for " + binding.GoString() +
+			" for " + binding.Call.GetFqid() + ": " + tid.String())
+	}
+	for _, part := range fork {
+		if part.Split.Call == binding.GetCall() {
+			return node.resolve(binding.Value, innerT, fork, readSize)
+		}
+	}
+	parts, errs := node.getParts(binding.GetCall(), fork, binding.Call.GetFqid())
+	allReady := true
+	switch binding.CallMode() {
+	case syntax.ModeMapCall:
+		result := make(MarshalerMap, len(parts))
+		for _, part := range parts {
+			if part.Id.IndexSource() != nil {
+				errs = append(errs, &elementError{
+					element: "unresolved fork source",
+				})
+				continue
+			}
+			switch part.Id.Mode() {
+			case syntax.ModeArrayCall:
+				return true, result, fmt.Errorf("unexpected array fork")
+			case syntax.ModeMapCall:
+				ready, v, err := node.resolve(binding.Value,
+					t,
+					append(fork, part), readSize)
+				if err != nil {
+					errs = append(errs, &elementError{
+						element: "merge part " + part.Id.GoString(),
+						inner:   err,
+					})
+				}
+				allReady = allReady && ready
+				result[part.Id.MapKey()] = v
+			}
+		}
+		return allReady, result, errs.If()
+	case syntax.ModeNullMapCall:
+		return true, nil, nil
+	case syntax.ModeArrayCall:
+		result := make(marshallerArray, len(parts))
+		for i, part := range parts {
+			if part.Id.IndexSource() != nil {
+				errs = append(errs, &elementError{
+					element: "unresolved fork source",
+				})
+				continue
+			}
+			switch part.Id.Mode() {
+			case syntax.ModeMapCall:
+				return true, result, fmt.Errorf("unexpected map fork")
+			case syntax.ModeArrayCall:
+				ready, v, err := node.resolve(binding.Value,
+					t,
+					append(fork, part), readSize)
+				if err != nil {
+					errs = append(errs, &elementError{
+						element: "array merge",
+						inner:   err,
+					})
+				}
+				allReady = allReady && ready
+				result[i] = v
+			}
+		}
+		return allReady, result, errs.If()
+	}
+	panic("invalid mapping mode")
+}
+
+func (node *TopNode) getParts(src *syntax.CallStm,
+	forkId ForkId,
+	id string) ([]*ForkSourcePart, syntax.ErrorList) {
+	boundNode := node.allNodes[id]
+	if boundNode == nil {
+		panic("unknown bound node - this should not be possible in properly-compiled code")
+	}
+	var errs syntax.ErrorList
+	parts := boundNode.forkIds.Table[src]
+	if len(parts) == 1 && parts[0].Id.IndexSource() != nil {
+		matchingParts := make([]*ForkSourcePart, 0, len(boundNode.forks))
+		for _, fork := range boundNode.forks {
+			if p, err := fork.forkId.matchPart(parts[0].Split.Call); err != nil {
+				errs = append(errs, &elementError{
+					element: "unmatched fork source " + parts[0].Split.Call.GoString(),
+					inner:   err,
+				})
+			} else if fork.forkId.Matches(forkId) {
+				matchingParts = append(matchingParts, p)
+			}
+		}
+		parts = matchingParts
+	} else if len(parts) == 0 && src.KnownLength() {
+		switch src.CallMode() {
+		case syntax.ModeArrayCall:
+			if src.ArrayLength() > 0 {
+				parts = make([]*ForkSourcePart, src.ArrayLength())
+				partStore := make([]ForkSourcePart, src.ArrayLength())
+				for i := range parts {
+					partStore[i] = ForkSourcePart{
+						Split: &syntax.SplitExp{
+							Value:  &syntax.MergeExp{MergeOver: src},
+							Source: src,
+							Call:   src,
+						},
+						Id: arrayIndexFork(i),
+					}
+					parts[i] = &partStore[i]
+				}
+			}
+		case syntax.ModeMapCall:
+			if keyMap := src.Keys(); len(keyMap) > 0 {
+				keys := make([]string, 0, len(keyMap))
+				for k := range keyMap {
+					keys = append(keys, k)
+				}
+				sort.Strings(keys)
+				partStore := make([]ForkSourcePart, len(keys))
+				parts = make([]*ForkSourcePart, len(keys))
+				for i, k := range keys {
+					partStore[i] = ForkSourcePart{
+						Split: &syntax.SplitExp{
+							Value:  &syntax.MergeExp{MergeOver: src},
+							Source: src,
+							Call:   src,
+						},
+						Id: mapKeyFork(k),
+					}
+					parts[i] = &partStore[i]
+				}
+			}
+		}
+	} else if len(boundNode.forks[0].forkId) > 1 {
+		id := make(ForkId, len(forkId), len(forkId)+1)
+		copy(id, forkId)
+		allow := func(part *ForkSourcePart) bool {
+			for _, fork := range boundNode.forks {
+				if fork.forkId.Matches(forkId) {
+					if p, err := fork.forkId.matchPart(part.Split.Call); err == nil {
+						errs = append(errs, &elementError{
+							element: "unmatched fork source " + part.Split.Call.GoString(),
+							inner:   err,
+						})
+					} else if indexEqual(p.Id, part.Id) {
+						return true
+					}
+				}
+			}
+			return false
+		}
+		for len(parts) > 0 && !allow(parts[0]) {
+			parts = parts[1:]
+		}
+		for len(parts) > 1 && !allow(parts[len(parts)-1]) {
+			parts = parts[:len(parts)-1]
+		}
+		alloc := false
+		for i := len(parts) - 1; i > 1; i-- {
+			if !alloc {
+				parts = append(parts[:i:i], parts[i+1:]...)
+				alloc = true
+			} else {
+				parts = append(parts[:i], parts[i+1:]...)
+			}
+		}
+	}
+	return parts, errs
+}
+
 func (node *TopNode) resolveSplit(binding *syntax.SplitExp, t syntax.Type,
 	fork ForkId, readSize int64) (bool, json.Marshaler, error) {
 	// If the split is due to a common ancesstor pipeline splitting, use
 	// that.
 	var innerT syntax.Type
-	switch binding.CallMode() {
+	switch binding.Source.CallMode() {
 	case syntax.ModeArrayCall:
 		innerT = node.types.GetArray(t, 1)
 	case syntax.ModeMapCall:
 		innerT = node.types.GetMap(t)
 	}
 	for i, part := range fork {
-		if part.Source == binding.Source || i == len(fork)-1 {
+		if part.Split.Call == binding.Call || i == len(fork)-1 {
 			ready, result, err := node.resolve(
 				binding.Value,
 				innerT, fork, readSize)
 			if err != nil {
 				return ready, result, &elementError{
-					element: "split " + binding.CallMode().String(),
+					element: "split " + binding.Source.CallMode().String(),
 					inner:   err,
 				}
 			}
 			if !ready {
 				return ready, result, err
 			}
+			if ref, ok := binding.Value.(*syntax.RefExp); ok {
+				// RefExp resolution has already done the element extraction.
+				for c := range ref.Forks {
+					if c == binding.Call {
+						return ready, result, err
+					}
+				}
+			}
 			e, err := getElement(result, part.Id)
 			if err != nil {
 				err = &elementError{
-					element: "splitting " + binding.CallMode().String(),
-					inner:   err,
+					element: "splitting " + binding.Source.CallMode().String() +
+						" " + binding.Value.GoString(),
+					inner: err,
 				}
 			}
 			return ready, e, err
@@ -269,10 +526,10 @@ func (node *TopNode) resolveSplit(binding *syntax.SplitExp, t syntax.Type,
 	// This fork's split is unresolved.
 	ready, result, err := node.resolve(
 		binding.Value,
-		t, fork, readSize)
+		innerT, fork, readSize)
 	if err != nil {
 		return ready, result, &elementError{
-			element: "self-split " + binding.CallMode().String(),
+			element: "self-split " + binding.Source.CallMode().String(),
 			inner:   err,
 		}
 	}
@@ -286,7 +543,7 @@ func (node *TopNode) resolveSplit(binding *syntax.SplitExp, t syntax.Type,
 			r = rr
 		default:
 			var parser syntax.Parser
-			r, err = convertToExp(&parser, false, result, t.TypeId(), node.types)
+			r, err = convertToExp(&parser, false, result, innerT.TypeId(), node.types)
 			if err != nil {
 				return ready, binding, &elementError{
 					element: "unresolved split value",
@@ -431,7 +688,7 @@ func getMapElement(m json.Marshaler, k string) (json.Marshaler, error) {
 	}
 }
 
-func (node *Node) matchFork(ref map[syntax.MapCallSource]syntax.CollectionIndex,
+func (node *Node) matchFork(ref map[*syntax.CallStm]syntax.CollectionIndex,
 	fork ForkId) (*Fork, error) {
 	if len(node.forkRoots) == 0 {
 		return node.forks[0], nil
@@ -441,11 +698,13 @@ func (node *Node) matchFork(ref map[syntax.MapCallSource]syntax.CollectionIndex,
 		return nil, err
 	}
 	for i, id := range node.forkIds.List {
-		if id.Equal(matchedFork) {
+		if id.Matches(matchedFork) {
 			return node.forks[i], nil
 		}
 	}
-	return nil, fmt.Errorf("unresolved fork %s", matchedFork.GoString())
+	return nil, fmt.Errorf(
+		"unresolved fork %s (from %s): no matches out of %d possible forks",
+		matchedFork.GoString(), fork.GoString(), len(node.forkRoots))
 }
 
 // Find all of the forks for which the given fork could match a more-constrained
@@ -462,11 +721,11 @@ func (node *Node) matchForks(fork ForkId) []*Fork {
 	}
 	forks := node.forks
 	// Trim the matched parts off of the front.
-	for match(0, fork, forks) {
+	for len(forks) > 0 && !match(0, fork, forks) {
 		forks = forks[1:]
 	}
 	// Trim the matched parts off the end.
-	for len(forks) > 1 && match(len(forks)-1, fork, forks) {
+	for len(forks) > 1 && !match(len(forks)-1, fork, forks) {
 		forks = forks[:len(forks)-1]
 	}
 	if len(forks) <= 2 {
@@ -477,7 +736,7 @@ func (node *Node) matchForks(fork ForkId) []*Fork {
 		panic(cap(result))
 	}
 	for i := 1; i < len(forks)-1; i++ {
-		if !match(i, fork, forks) {
+		if match(i, fork, forks) {
 			// if we haven't reallocated, this is a no-op.
 			result = append(result, forks[i])
 		} else if cap(result) == cap(forks) {
@@ -500,30 +759,26 @@ func (node *TopNode) resolveRef(binding *syntax.RefExp, t syntax.Type,
 	if boundNode == nil {
 		panic("unknown bound node - this should not be possible in properly-compiled code")
 	}
-	binding.Simplify()
-	return boundNode.resolveJoinedRefs(binding, t, fork[:0], fork,
-		binding.MergeOver, readSize)
+	return boundNode.resolveRef(binding, t, fork, readSize)
 }
 
 func (boundNode *Node) resolveRef(binding *syntax.RefExp, t syntax.Type,
 	fork ForkId,
 	readSize int64) (bool, json.Marshaler, error) {
 
-	f, err := boundNode.matchFork(binding.ForkIndex, fork)
+	f, err := boundNode.matchFork(binding.Forks, fork)
 	if err != nil {
-		return true, nil, &elementError{
-			element: "could not match reference to a specific fork of " +
+		return true, nil, &forkResolutionError{
+			Msg: "could not match reference to a specific fork of " +
 				boundNode.GetFQName(),
-			inner: err,
+			Err: err,
 		}
 	}
-	return f.resolveRef(binding, t, fork, boundNode.top.types,
+	return f.resolveRef(binding, t,
 		boundNode.call.Call().DecId, readSize)
 }
 
 func (f *Fork) resolveRef(binding *syntax.RefExp, t syntax.Type,
-	fork ForkId,
-	types *syntax.TypeLookup,
 	decId string,
 	readSize int64) (bool, json.Marshaler, error) {
 	args, err := f.metadata.read(OutsFile, readSize)
@@ -536,6 +791,7 @@ func (f *Fork) resolveRef(binding *syntax.RefExp, t syntax.Type,
 			inner:   err,
 		}
 	}
+	types := f.node.top.types
 	value, err := args.Path(binding.OutputId,
 		types.Get(syntax.TypeId{
 			Tname: decId,
@@ -546,141 +802,16 @@ func (f *Fork) resolveRef(binding *syntax.RefExp, t syntax.Type,
 			inner:   err,
 		}
 	}
-	for _, idx := range binding.OutputIndex {
-		index := idx
-		if s := index.IndexSource(); s != nil {
-			for _, part := range fork {
-				if part.Source == s {
-					index = part.Id
-				}
-			}
-		}
-		v, err := getElement(value, index)
-		if err != nil {
-			return true, v, &elementError{
-				element: "ref " + f.fqname + "." + binding.OutputId,
-				inner:   err,
-			}
-		}
-		value = v
-	}
 	return true, value, err
 }
 
-func (node *Node) resolveJoinedRefs(binding *syntax.RefExp, t syntax.Type,
-	forkPrefix, fork ForkId,
-	unmatched []syntax.MapCallSource,
-	readSize int64) (bool, json.Marshaler, error) {
-	if len(unmatched) == 0 {
-		return node.resolveRef(binding, t, append(forkPrefix, fork...), readSize)
-	}
-	for len(fork) > 0 && fork[0].Source != unmatched[0] {
-		forkPrefix = append(forkPrefix, fork[0])
-		fork = fork[1:]
-	}
-	if len(fork) > 0 {
-		return node.resolveJoinedRefs(binding, t,
-			append(forkPrefix, fork[0]),
-			fork[1:],
-			unmatched[1:],
-			readSize)
-	}
-	if i := binding.ForkIndex[unmatched[0]]; i != nil && i.IndexSource() == nil {
-		// pre-resolved fork
-		return node.resolveJoinedRefs(binding, t,
-			append(forkPrefix[:len(forkPrefix):len(forkPrefix)], &ForkSourcePart{
-				Id:     convertForkPart(i),
-				Source: unmatched[0],
-			}),
-			fork,
-			unmatched[1:],
-			readSize)
-	}
-
-	var errs syntax.ErrorList
-	parts := node.forkIds.Table[unmatched[0]]
-	if len(parts) == 1 && parts[0].Id.IndexSource() != nil {
-		matchingParts := make([]*ForkSourcePart, 0, len(node.forks))
-		for _, fork := range node.forks {
-			if p, err := fork.forkId.matchPart(parts[0].Source); err != nil {
-				errs = append(errs, &elementError{
-					element: "unmatched fork source",
-					inner:   err,
-				})
-			} else {
-				matchingParts = append(matchingParts, p)
-			}
+func anyForkIndexMatch(index *ForkSourcePart, forks []*Fork) bool {
+	for _, fork := range forks {
+		if part, err := fork.forkId.matchPart(index.Split.Call); err != nil || part.Equal(index) {
+			return true
 		}
-		parts = matchingParts
 	}
-	allReady := true
-	switch unmatched[0].CallMode() {
-	case syntax.ModeMapCall:
-		result := make(MarshalerMap, len(parts))
-		for _, part := range parts {
-			if part.Id.IndexSource() != nil {
-				errs = append(errs, &elementError{
-					element: "unresolved fork source",
-				})
-				continue
-			}
-			switch part.Id.Mode() {
-			case syntax.ModeArrayCall:
-				return true, result, fmt.Errorf("unexpected array fork")
-			case syntax.ModeMapCall:
-				ready, v, err := node.resolveJoinedRefs(binding,
-					t,
-					append(forkPrefix[:len(forkPrefix):len(forkPrefix)], &ForkSourcePart{
-						Source: unmatched[0],
-						Id:     part.Id,
-					}), fork,
-					unmatched[1:], readSize)
-				if err != nil {
-					errs = append(errs, &elementError{
-						element: "map join",
-						inner:   err,
-					})
-				}
-				allReady = allReady && ready
-				result[part.Id.MapKey()] = v
-			}
-		}
-		return allReady, result, errs.If()
-	case syntax.ModeNullMapCall:
-		return true, nil, nil
-	case syntax.ModeArrayCall:
-		result := make(marshallerArray, len(parts))
-		for i, part := range parts {
-			if part.Id.IndexSource() != nil {
-				errs = append(errs, &elementError{
-					element: "unresolved fork source",
-				})
-				continue
-			}
-			switch part.Id.Mode() {
-			case syntax.ModeMapCall:
-				return true, result, fmt.Errorf("unexpected map fork")
-			case syntax.ModeArrayCall:
-				ready, v, err := node.resolveJoinedRefs(binding,
-					t,
-					append(forkPrefix[:len(forkPrefix):len(forkPrefix)], &ForkSourcePart{
-						Source: unmatched[0],
-						Id:     part.Id,
-					}), fork,
-					unmatched[1:], readSize)
-				if err != nil {
-					errs = append(errs, &elementError{
-						element: "array join",
-						inner:   err,
-					})
-				}
-				allReady = allReady && ready
-				result[i] = v
-			}
-		}
-		return allReady, result, errs.If()
-	}
-	panic("invalid mapping mode")
+	return false
 }
 
 type elementError struct {
@@ -692,7 +823,11 @@ func (err *elementError) Error() string {
 	if err.inner == nil {
 		return err.element
 	}
-	return err.element + ": " + err.inner.Error()
+	suffix := err.inner.Error()
+	if strings.IndexRune(suffix, '\n')+len(err.element) > 40 {
+		return err.element + ":\n\t" + suffix
+	}
+	return err.element + ": " + suffix
 }
 
 func (err *elementError) Unwrap() error {
@@ -700,6 +835,29 @@ func (err *elementError) Unwrap() error {
 		return nil
 	}
 	return err.inner
+}
+
+type forkResolutionError struct {
+	Msg string
+	Err error
+}
+
+func (err *forkResolutionError) Error() string {
+	if err.Err == nil {
+		return err.Msg
+	}
+	suffix := err.Err.Error()
+	if strings.IndexRune(suffix, '\n')+len(err.Msg) > 40 {
+		return err.Msg + ":\n\t" + suffix
+	}
+	return err.Msg + ": " + suffix
+}
+
+func (err *forkResolutionError) Unwrap() error {
+	if err == nil {
+		return nil
+	}
+	return err.Err
 }
 
 var missingValueError = errors.New("key was not present")
@@ -1055,7 +1213,10 @@ func (node *TopNode) resolveArray(binding *syntax.ArrayExp, t syntax.Type,
 		if ready, v, err := node.resolve(exp, t,
 			fork, readSize); err != nil {
 			allReady = ready && allReady
-			errs = append(errs, err)
+			errs = append(errs, &elementError{
+				element: "array index " + strconv.Itoa(i),
+				inner:   err,
+			})
 		} else if !ready {
 			allReady = false
 		} else {

@@ -86,7 +86,12 @@
           },
           "value": {
             "disable": {
-              "__reference__": "P.P2.DISABLER.disable"
+              "__disabled__": {
+                "__reference__": "P.P1.DISABLER.disable"
+              },
+              "value": {
+                "__reference__": "P.P2.DISABLER.disable"
+              }
             }
           }
         },
@@ -103,7 +108,12 @@
           "inputs": null,
           "outputs": {
             "expression": {
-              "__reference__": "P.P2.DISABLER"
+              "__disabled__": {
+                "__reference__": "P.P1.DISABLER.disable"
+              },
+              "value": {
+                "__reference__": "P.P2.DISABLER"
+              }
             },
             "type": "DISABLER"
           },

@@ -1557,7 +1557,6 @@ mmdefault:
 		{
 			mmVAL.vexp = &StringExp{
 				valExp: valExp{Node: NewAstNode(mmDollar[1].loc)},
-				Kind:   KindString,
 				Value:  unquote(mmDollar[1].val),
 			}
 		}

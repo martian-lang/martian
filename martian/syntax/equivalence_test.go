@@ -285,49 +285,49 @@ func TestNumExpEquivalence(t *testing.T) {
 	}
 	b1 := BoolExp{Value: true}
 	b2 := BoolExp{Value: false}
-	if !exp.equal(&i1) {
-		t.Errorf("Expected 1 == 1")
+	if err := exp.equal(&i1); err != nil {
+		t.Error("Expected 1 == 1:", err)
 	}
-	if exp.equal(&i2) {
-		t.Errorf("Expected 1 != 2")
+	if exp.equal(&i2) == nil {
+		t.Error("Expected 1 != 2")
 	}
-	if !exp.equal(&f1) {
-		t.Errorf("Expected 1 == 1.0")
+	if err := exp.equal(&f1); err != nil {
+		t.Error("Expected 1 == 1.0:", err)
 	}
-	if exp.equal(&f2) {
-		t.Errorf("Expected 1 != 2.0")
+	if exp.equal(&f2) == nil {
+		t.Error("Expected 1 != 2.0")
 	}
-	if exp.equal(&f3) {
-		t.Errorf("Expected 1 != 1.1")
+	if exp.equal(&f3) == nil {
+		t.Error("Expected 1 != 1.1")
 	}
-	if !f1.equal(&exp) {
-		t.Errorf("Expected 1.0 == 1")
+	if err := f1.equal(&exp); err != nil {
+		t.Error("Expected 1.0 == 1:", err)
 	}
-	if f2.equal(&exp) {
-		t.Errorf("Expected 2.0 != 1")
+	if f2.equal(&exp) == nil {
+		t.Error("Expected 2.0 != 1")
 	}
-	if f1.equal(&f3) {
-		t.Errorf("Expected 1.0 != 1.1")
+	if f1.equal(&f3) == nil {
+		t.Error("Expected 1.0 != 1.1")
 	}
-	if !f1.equal(&f1) {
-		t.Error("Expcted 1.0 == 1.0")
+	if err := f1.equal(&f1); err != nil {
+		t.Error("Expcted 1.0 == 1.0:", err)
 	}
-	if exp.equal(&b1) {
+	if exp.equal(&b1) == nil {
 		t.Error("Expected 1 != true")
 	}
-	if b1.equal(&exp) {
+	if b1.equal(&exp) == nil {
 		t.Error("Expected true != 1")
 	}
-	if b2.equal(&exp) {
+	if b2.equal(&exp) == nil {
 		t.Error("Expected false != 1")
 	}
-	if !b1.equal(&b1) {
-		t.Error("Expected true == true")
+	if err := b1.equal(&b1); err != nil {
+		t.Error("Expected true == true:", err)
 	}
-	if b1.equal(&b2) {
+	if b1.equal(&b2) == nil {
 		t.Error("Expected true != false")
 	}
-	if !b2.equal(&b2) {
-		t.Error("Expected false == false")
+	if err := b2.equal(&b2); err != nil {
+		t.Error("Expected false == false:", err)
 	}
 }

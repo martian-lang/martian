@@ -155,6 +155,9 @@ func (s *ArrayType) CheckEqual(other Type) error {
 		return nil
 	}
 }
+func (s *ArrayType) String() string {
+	return s.TypeId().str()
+}
 
 func isNullBytes(data json.RawMessage) bool {
 	return len(data) == 4 && data[3] == 'l' && data[2] == 'l' && data[1] == 'u' && data[0] == 'n'
@@ -526,6 +529,10 @@ func (s *TypedMapType) FilterJson(data json.RawMessage, lookup *TypeLookup) (jso
 	}
 	buf.WriteRune('}')
 	return buf.Bytes(), fatal, errs.If()
+}
+
+func (s *TypedMapType) String() string {
+	return s.TypeId().str()
 }
 
 func (err *IncompatibleTypeError) Error() string {

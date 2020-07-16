@@ -7,6 +7,7 @@ import "fmt"
 // TypeLookup is used to cache a type lookup.
 type TypeLookup struct {
 	baseTypes map[TypeId]Type
+	frozen    bool
 }
 
 // NewTypeLookup creates a TypeLookup object populated with the builtin types.
@@ -17,10 +18,11 @@ func NewTypeLookup() *TypeLookup {
 }
 
 func (lookup *TypeLookup) init(count int) {
-	lookup.baseTypes = make(map[TypeId]Type, len(builtinTypes)+count*2)
+	lookup.baseTypes = make(map[TypeId]Type, len(builtinTypes)+1+count*2)
 	for _, t := range builtinTypes {
 		lookup.baseTypes[t.TypeId()] = t
 	}
+	lookup.baseTypes[builtinNull.TypeId()] = builtinNull
 }
 
 var (
@@ -94,6 +96,12 @@ func (lookup *TypeLookup) AddStructType(t *StructType) error {
 	}
 }
 
+// Freeze the type lookup so that it will no longer cache constructed types,
+// making it safe for concurrent access.
+func (lookup *TypeLookup) Freeze() {
+	lookup.frozen = true
+}
+
 // Gets a type object by id.
 func (lookup *TypeLookup) Get(id TypeId) Type {
 	elem := lookup.baseTypes[id]
@@ -112,7 +120,9 @@ func (lookup *TypeLookup) Get(id TypeId) Type {
 			Elem: elem,
 			Dim:  id.ArrayDim,
 		}
-		lookup.baseTypes[id] = elem
+		if !lookup.frozen {
+			lookup.baseTypes[id] = elem
+		}
 		return elem
 	} else if id.MapDim != 0 {
 		elem := lookup.Get(TypeId{
@@ -125,7 +135,9 @@ func (lookup *TypeLookup) Get(id TypeId) Type {
 		elem = &TypedMapType{
 			Elem: elem,
 		}
-		lookup.baseTypes[id] = elem
+		if !lookup.frozen {
+			lookup.baseTypes[id] = elem
+		}
 		return elem
 	} else {
 		return nil
@@ -144,7 +156,9 @@ func (lookup *TypeLookup) GetMap(t Type) *TypedMapType {
 		elem = &TypedMapType{
 			Elem: t,
 		}
-		lookup.baseTypes[id] = elem
+		if !lookup.frozen {
+			lookup.baseTypes[id] = elem
+		}
 	}
 	return elem.(*TypedMapType)
 }
@@ -157,4 +171,22 @@ func (lookup *TypeLookup) GetArray(t Type, dim int16) Type {
 	id := t.TypeId()
 	id.ArrayDim += dim
 	return lookup.Get(id)
+}
+
+func (lookup *TypeLookup) AddDim(t Type, mode CallMode) (Type, error) {
+	switch mode {
+	case ModeArrayCall:
+		return lookup.GetArray(t, 1), nil
+	case ModeMapCall:
+		if t.TypeId().MapDim > 0 {
+			return t, &bindingError{
+				Msg: "map call generates a nested map of " + t.TypeId().str(),
+			}
+		}
+		return lookup.GetMap(t), nil
+	case ModeNullMapCall:
+		return nullType{}, nil
+	default:
+		return t, nil
+	}
 }

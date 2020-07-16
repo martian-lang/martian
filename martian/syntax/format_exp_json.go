@@ -2,7 +2,6 @@ package syntax
 
 import (
 	"bytes"
-	"encoding/json"
 	"sort"
 	"strconv"
 )
@@ -198,13 +197,13 @@ func (binding *BoundReference) encodeJSON(buf *bytes.Buffer) error {
 			return err
 		}
 	}
-	if _, err := buf.WriteString(`","type":"`); err != nil {
+	if _, err := buf.WriteString(`","type":`); err != nil {
 		return err
 	}
 	if err := binding.Type.TypeId().EncodeJSON(buf); err != nil {
 		return err
 	}
-	_, err := buf.WriteString(`"}`)
+	_, err := buf.WriteString(`}`)
 	return err
 }
 
@@ -289,11 +288,11 @@ func (e *SplitExp) encodeJSON(buf *bytes.Buffer) error {
 			return err
 		}
 		quoteString(buf, e.Call.Id)
-		if e.CallMode() != ModeUnknownMapCall {
+		if e.Source.CallMode() != ModeUnknownMapCall {
 			if _, err := buf.WriteString(`,"mode":"`); err != nil {
 				return err
 			}
-			if _, err := buf.WriteString(e.CallMode().String()); err != nil {
+			if _, err := buf.WriteString(e.Source.CallMode().String()); err != nil {
 				return err
 			}
 			if err := buf.WriteByte('"'); err != nil {
@@ -309,7 +308,7 @@ func (e *SplitExp) encodeJSON(buf *bytes.Buffer) error {
 	if err := e.Value.EncodeJSON(buf); err != nil {
 		return err
 	}
-	if e.Source != nil {
+	if e.Source != nil && !e.IsEmpty() {
 		if v, ok := e.Value.(MapCallSource); !ok || v != e.Source {
 			if s, ok := e.Source.(JsonWriter); ok {
 				if _, err := buf.WriteString(`,"source":`); err != nil {
@@ -337,6 +336,85 @@ func (e *SplitExp) jsonSizeEstimate() int {
 	}
 	if e.Call != nil {
 		s += 10 + len(e.Call.Id)
+	}
+	return s
+}
+
+func (e *MergeExp) MarshalJSON() ([]byte, error) {
+	if e == nil {
+		return []byte("null"), nil
+	}
+	if e.Value == nil {
+		return []byte(`{"merge":null}`), nil
+	}
+	var buf bytes.Buffer
+	buf.Grow(e.jsonSizeEstimate())
+	err := e.encodeJSON(&buf)
+	return buf.Bytes(), err
+}
+
+func (e *MergeExp) EncodeJSON(buf *bytes.Buffer) error {
+	if e == nil || e.Value == nil {
+		_, err := buf.WriteString("null")
+		return err
+	}
+	return e.encodeJSON(buf)
+}
+
+func (e *MergeExp) encodeJSON(buf *bytes.Buffer) error {
+	if e.Call != nil {
+		if _, err := buf.WriteString(`{"call":`); err != nil {
+			return err
+		}
+		quoteString(buf, e.Call.GetFqid())
+		if e.CallMode() != ModeUnknownMapCall {
+			if _, err := buf.WriteString(`,"mode":"`); err != nil {
+				return err
+			}
+			if _, err := buf.WriteString(e.CallMode().String()); err != nil {
+				return err
+			}
+			if err := buf.WriteByte('"'); err != nil {
+				return err
+			}
+		}
+		if _, err := buf.WriteString(`,"merge_value":`); err != nil {
+			return err
+		}
+	} else if _, err := buf.WriteString(`{"merge_value":`); err != nil {
+		return err
+	}
+	if err := e.Value.EncodeJSON(buf); err != nil {
+		return err
+	}
+	if e.MergeOver != nil {
+		if v, ok := e.Value.(MapCallSource); !ok || v != e.MergeOver {
+			if s, ok := e.MergeOver.(JsonWriter); ok {
+				if _, err := buf.WriteString(`,"merge_over":`); err != nil {
+					return err
+				}
+				if err := s.EncodeJSON(buf); err != nil {
+					return err
+				}
+			}
+		}
+	}
+	_, err := buf.WriteRune('}')
+	return err
+}
+
+func (e *MergeExp) jsonSizeEstimate() int {
+	if e == nil {
+		return 4
+	}
+	s := len(`{"call":,"mode":,"merge_value":,}`) +
+		len(KindArray) +
+		jsonSizeEstimate(e.Value)
+	if e.MergeOver != nil {
+		s += len(`,"merge_over":`) + estimateMapSourceJsonSize(e.MergeOver)
+	}
+	if e.Call != nil {
+		s += 15 + len(e.Call.GetFqid())
 	}
 	return s
 }
@@ -424,11 +502,15 @@ func (e *IntExp) EncodeJSON(buf *bytes.Buffer) error {
 		_, err := buf.WriteString("null")
 		return err
 	}
-	if e.Value >= 0 && e.Value < 10 {
-		_, err := buf.WriteRune('0' + rune(e.Value))
+	return encodeInt(e.Value, buf)
+}
+
+func encodeInt(v int64, buf *bytes.Buffer) error {
+	if v >= 0 && v < 10 {
+		_, err := buf.WriteRune('0' + rune(v))
 		return err
 	}
-	_, err := buf.WriteString(strconv.FormatInt(e.Value, 10))
+	_, err := buf.WriteString(strconv.FormatInt(v, 10))
 	return err
 }
 
@@ -554,40 +636,20 @@ func (self *RefExp) EncodeJSON(buf *bytes.Buffer) error {
 	if err := buf.WriteByte('"'); err != nil {
 		return err
 	}
-	if len(self.OutputIndex) > 0 {
-		if _, err := buf.WriteString(`,"index":`); err != nil {
-			return err
-		}
-		if b, err := json.Marshal(self.OutputIndex); err != nil {
-			return err
-		} else if _, err := buf.Write(b); err != nil {
-			return err
-		}
-	}
-	if len(self.MergeOver) > 0 {
-		if _, err := buf.WriteString(`,"join":[`); err != nil {
-			return err
-		}
-		for i, v := range self.MergeOver {
-			if i != 0 {
-				if err := buf.WriteByte(','); err != nil {
-					return err
-				}
-			}
-			if err := encodeMapSourceJson(buf, v); err != nil {
-				return err
-			}
-		}
-		if err := buf.WriteByte(']'); err != nil {
-			return err
-		}
-	}
-	if len(self.ForkIndex) > 0 {
-		if _, err := buf.WriteString(`,"fork":[`); err != nil {
+	if len(self.Forks) > 0 {
+		if _, err := buf.WriteString(`,"fork":{`); err != nil {
 			return err
 		}
 		first := true
-		for s, i := range self.ForkIndex {
+		dims := make([]*CallStm, 0, len(self.Forks))
+		for k := range self.Forks {
+			dims = append(dims, k)
+		}
+		sort.Slice(dims, func(i, j int) bool {
+			return dims[i].Id < dims[j].Id
+		})
+		for _, s := range dims {
+			i := self.Forks[s]
 			if first {
 				first = false
 			} else {
@@ -595,25 +657,15 @@ func (self *RefExp) EncodeJSON(buf *bytes.Buffer) error {
 					return err
 				}
 			}
-			if _, err := buf.WriteString(`{"source":`); err != nil {
+			quoteString(buf, s.Id)
+			if err := buf.WriteByte(':'); err != nil {
 				return err
 			}
-			if err := encodeMapSourceJson(buf, s); err != nil {
-				return err
-			}
-			if _, err := buf.WriteString(`,"index":`); err != nil {
-				return err
-			}
-			if b, err := json.Marshal(i); err != nil {
-				return err
-			} else if _, err := buf.Write(b); err != nil {
-				return err
-			}
-			if err := buf.WriteByte('}'); err != nil {
+			if err := encodeIndex(i, buf); err != nil {
 				return err
 			}
 		}
-		if err := buf.WriteByte(']'); err != nil {
+		if err := buf.WriteByte('}'); err != nil {
 			return err
 		}
 	}
@@ -628,17 +680,52 @@ func (ref *RefExp) jsonSizeEstimate() int {
 	if ref.OutputId != "" {
 		bufLen++
 	}
-	if len(ref.MergeOver) > 0 {
-		bufLen += len(`,"join":[]`)
-		for _, m := range ref.MergeOver {
-			bufLen += estimateMapSourceJsonSize(m)
+	if len(ref.Forks) > 0 {
+		bufLen += len(`,"dim":[]`)
+		for k, v := range ref.Forks {
+			bufLen += len(`,{"dim":"","index":}`) + len(k.Id) + estimateIndexJsonSize(v)
 		}
 	}
 	return bufLen
 }
 
-func (ref *ReferenceMappingSource) EncodeJSON(buf *bytes.Buffer) error {
-	return ref.Ref.EncodeJSON(buf)
+func estimateIndexJsonSize(i CollectionIndex) int {
+	if i == nil {
+		return 4
+	}
+	if i.IndexSource() != nil {
+		return len("unknown")
+	}
+	switch i.Mode() {
+	case ModeArrayCall:
+		w := 1
+		for a := i.ArrayIndex(); a > 0; a /= 10 {
+			w++
+		}
+		return w
+	case ModeMapCall:
+		return 2 + len(i.MapKey())
+	}
+	panic("invalid index mode " + i.Mode().String())
+}
+
+func encodeIndex(i CollectionIndex, buf *bytes.Buffer) error {
+	if i == nil {
+		_, err := buf.WriteString(KindNull)
+		return err
+	}
+	if i.IndexSource() != nil {
+		_, err := buf.WriteString(`"unknown"`)
+		return err
+	}
+	switch i.Mode() {
+	case ModeArrayCall:
+		return encodeInt(int64(i.ArrayIndex()), buf)
+	case ModeMapCall:
+		quoteString(buf, i.MapKey())
+		return nil
+	}
+	panic("invalid index mode " + i.Mode().String())
 }
 
 func (s ForkRootList) MarshalJSON() ([]byte, error) {
@@ -691,6 +778,7 @@ func encodeMapSourceJson(buf *bytes.Buffer, src MapCallSource) error {
 			for k := range v.Value {
 				keys = append(keys, k)
 			}
+			sort.Strings(keys)
 			for i, k := range keys {
 				if i != 0 {
 					if err := buf.WriteByte(','); err != nil {
@@ -705,6 +793,15 @@ func encodeMapSourceJson(buf *bytes.Buffer, src MapCallSource) error {
 		}
 	case JsonWriter:
 		return v.EncodeJSON(buf)
+	case *placeholderArrayMapSource:
+		_, err := buf.WriteString(`"placeholder array"`)
+		return err
+	case *placeholderMapMapSource:
+		_, err := buf.WriteString(`"placeholder map"`)
+		return err
+	case *placeholderMapSource:
+		_, err := buf.WriteString(`"placeholder"`)
+		return err
 	default:
 		quoteString(buf, src.CallMode().String())
 	}
@@ -733,9 +830,7 @@ func (s ForkRootList) encodeJSON(buf *bytes.Buffer) error {
 				return err
 			}
 		}
-		if err := encodeMapSourceJson(buf, v.MapSource()); err != nil {
-			return err
-		}
+		quoteString(buf, v.Fqid)
 	}
 	_, err := buf.WriteRune(']')
 	return err

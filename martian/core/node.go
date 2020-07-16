@@ -43,9 +43,6 @@ type Nodable interface {
 	// Gets the mro AST object, if any, which will be executed for this node.
 	Callable() syntax.Callable
 
-	// Gets the fork of this node corresponding to the given fork ID.
-	matchFork(map[syntax.MapCallSource]syntax.CollectionIndex, ForkId) (*Fork, error)
-
 	// Gets the set of forks of this node which match the given fork ID.
 	matchForks(ForkId) []*Fork
 }
@@ -67,7 +64,7 @@ type Node struct {
 	state          MetadataState
 	local          bool
 	stagecode      *syntax.SrcParam
-	forkRoots      []syntax.MapCallSource
+	forkRoots      []*syntax.CallStm
 	forkIds        ForkIdSet
 	resolvedCmd    string
 }
@@ -201,7 +198,11 @@ func (self *Node) addDirectRefNodes(ref *syntax.RefExp,
 	if binding == nil {
 		panic(self.GetFQName() + " has no argument " + ref.Id)
 	}
-	exp, err := binding.Exp.BindingPath(ref.OutputId, nil, nil)
+	var forks map[*syntax.CallStm]syntax.CollectionIndex
+	if fr := self.call.ForkRoots(); len(fr) > 0 {
+		forks = make(map[*syntax.CallStm]syntax.CollectionIndex, len(fr))
+	}
+	exp, err := binding.Exp.BindingPath(ref.OutputId, forks)
 	if err != nil {
 		panic(err)
 	}
@@ -217,7 +218,9 @@ func (self *Node) makePrenodesForBinding(bind *syntax.ResolvedBinding,
 	brefs, err := bind.FindRefs(self.top.types)
 	if err != nil {
 		// This should never happen if the ast compiled properly
-		panic(err)
+		tid := bind.Type.TypeId()
+		panic(fmt.Sprint("finding refs in ", bind.Exp.GoString(),
+			" of type ", tid.String(), ":", err))
 	}
 	if len(brefs) > 0 {
 		if refs == nil {
@@ -424,11 +427,11 @@ func (self *Node) mkdirs() error {
 
 func (self *Node) buildForks() {
 	// Build out argument permutations.
-	self.forkIds.MakeForkIds(self.top.allNodes, self.forkRoots)
+	self.forkIds.MakeForkIds(self.call.ForkRoots())
 	if len(self.forkIds.List) == 0 {
 		self.forks = []*Fork{NewFork(self, 0, nil, self.call.ResolvedInputs())}
 	} else {
-		self.forks = make([]*Fork, len(self.forkIds.List))
+		self.forks = make([]*Fork, len(self.forkIds.List), cap(self.forkIds.List))
 		for i, id := range self.forkIds.List {
 			self.forks[i] = NewFork(self, i, id, self.call.ResolvedInputs())
 		}
@@ -497,6 +500,10 @@ func (self *Node) expandForks() bool {
 			util.PrintError(err, "runtime",
 				"Error computing forking for %s\n",
 				fork.fqname)
+			if err := util.MkdirAll(fork.path); err != nil {
+				util.LogError(err, "runtime",
+					"Could not create directories for %s", fork.fqname)
+			}
 			fork.metadata.writeError("resolving forks", err)
 			return any
 		}
@@ -668,7 +675,10 @@ func (self *Node) reset() error {
 
 		// Blow away the entire stage node.
 		if err := os.RemoveAll(self.path); err != nil {
-			util.PrintInfo("runtime", "Cannot reset the stage because its folder contents could not be deleted.\n\nPlease resolve this error in order to continue running the pipeline:")
+			util.PrintInfo("runtime",
+				`Cannot reset the stage because its folder contents could not be deleted.
+
+Please resolve this error in order to continue running the pipeline:`)
 			return err
 		}
 		// Remove all related files from journal directory.
@@ -865,7 +875,10 @@ func (self *Node) step() bool {
 		self.addFrontierNode(self)
 	case Running:
 		if self.state != previousState {
-			self.mkdirs()
+			if err := self.mkdirs(); err != nil {
+				util.LogError(err, "runtime",
+					"Could not create node directories")
+			}
 		}
 		self.addFrontierNode(self)
 	case Complete:
@@ -1112,9 +1125,8 @@ func (self *Node) runChunk(fqname string, metadata *Metadata, res *JobResources)
 	self.runJob("main", fqname, STAGE_TYPE_CHUNK, metadata, res)
 }
 
-func (self *Node) runJob(shellName string, fqname, stageType string, metadata *Metadata,
-	res *JobResources) {
-
+func (self *Node) runJob(shellName, fqname, stageType string,
+	metadata *Metadata, res *JobResources) {
 	// Configure local variable dumping.
 	stackVars := disable
 	if self.top.rt.Config.StackVars {

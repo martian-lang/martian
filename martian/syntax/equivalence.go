@@ -5,6 +5,8 @@
 package syntax
 
 import (
+	"errors"
+	"fmt"
 	"math"
 
 	"github.com/martian-lang/martian/martian/util"
@@ -269,6 +271,8 @@ func (stage *Stage) EquivalentTo(other Callable, _, _ *Callables) bool {
 	}
 }
 
+var notEqualError = fmt.Errorf("expression != nil")
+
 func (binding *BindStm) Equals(other *BindStm) bool {
 	if binding == nil {
 		return other == nil
@@ -285,157 +289,214 @@ func (binding *BindStm) Equals(other *BindStm) bool {
 		return other.Exp == nil
 	} else if other.Exp == nil {
 		return false
-	} else if !binding.Exp.equal(other.Exp) {
-		util.PrintInfo("compare",
-			"Binding %s values differ.",
-			binding.Id)
+	} else if err := binding.Exp.equal(other.Exp); err != nil {
+		if errors.Is(err, notEqualError) {
+			util.PrintInfo("compare",
+				"Binding %s values differ.",
+				binding.Id)
+		} else {
+			util.PrintInfo("compare",
+				"Binding %s values differ:\n%v",
+				binding.Id, err)
+		}
 		return false
 	}
 	return true
 }
 
-func (exp *StringExp) equal(other Exp) bool {
+func (exp *StringExp) equal(other Exp) error {
 	if s, ok := other.(*StringExp); !ok {
-		util.PrintInfo("compare",
+		return fmt.Errorf(
 			"Values are not both strings.  Other is %T",
 			other)
-		return false
 	} else if s.Value != exp.Value {
-		util.PrintInfo("compare",
+		return fmt.Errorf(
 			"%q != %q",
 			exp.Value, s.Value)
-		return false
 	} else {
-		return true
+		return nil
 	}
 }
 
-func (exp *BoolExp) equal(other Exp) bool {
+func (exp *BoolExp) equal(other Exp) error {
 	if b, ok := other.(*BoolExp); !ok {
-		util.PrintInfo("compare",
+		return fmt.Errorf(
 			"Values are not both boolean.  Other is %T",
 			b)
-		return false
 	} else if b.Value != exp.Value {
-		util.PrintInfo("compare",
+		return fmt.Errorf(
 			"Differing boolean values")
-		return false
 	} else {
-		return true
+		return nil
 	}
 }
 
-func (exp *IntExp) equal(other Exp) bool {
+func (exp *IntExp) equal(other Exp) error {
 	switch other := other.(type) {
 	case *IntExp:
 		if other.Value != exp.Value {
-			util.PrintInfo("compare",
+			return fmt.Errorf(
 				"%d != %d",
 				other.Value, exp.Value)
-			return false
 		}
-		return true
+		return nil
 	case *FloatExp:
 		if other.Value != float64(exp.Value) {
-			util.PrintInfo("compare",
+			return fmt.Errorf(
 				"%g != %d",
 				other.Value, exp.Value)
-			return false
 		}
-		return true
+		return nil
 	}
-	return false
+	return notEqualError
 }
 
-func (exp *FloatExp) equal(other Exp) bool {
+func (exp *FloatExp) equal(other Exp) error {
 	switch other := other.(type) {
 	case *IntExp:
 		if float64(other.Value) != exp.Value {
-			util.PrintInfo("compare",
+			return fmt.Errorf(
 				"%d != %g",
 				other.Value, exp.Value)
-			return false
 		}
-		return true
+		return nil
 	case *FloatExp:
 		if math.Abs(other.Value-exp.Value) <= math.Abs(exp.Value)*1e-15 {
-			return true
+			return nil
 		}
-		util.PrintInfo("compare",
+		return fmt.Errorf(
 			"%g != %g",
 			other.Value, exp.Value)
-		return false
 	}
-	return false
+	return notEqualError
 }
 
-func (exp *NullExp) equal(other Exp) bool {
+func (exp *NullExp) equal(other Exp) error {
 	_, ok := other.(*NullExp)
 	if !ok {
-		util.PrintInfo("compare",
+		return fmt.Errorf(
 			"Values are not both null.  Other is %T",
 			other)
 	}
-	return ok
+	return nil
+}
+func (exp *NullExp) Equal(uother MapCallSource) bool {
+	_, ok := uother.(*NullExp)
+	if ok {
+		return true
+	}
+	return equivalentSource(exp, uother)
 }
 
-func (exp *MapExp) equal(uother Exp) bool {
+func (exp *MapExp) equal(uother Exp) error {
 	other, ok := uother.(*MapExp)
 	if !ok {
-		util.PrintInfo("compare",
+		return fmt.Errorf(
 			"Values are not both %s.  Other is %T",
 			exp.Kind, other)
-		return false
 	}
 	if len(exp.Value) != len(other.Value) {
-		util.PrintInfo("compare",
+		return fmt.Errorf(
 			"Map sizes differ: %d != %d",
 			len(exp.Value), len(other.Value))
-		return false
 	}
 	for k, v := range exp.Value {
 		if ov, ok := other.Value[k]; !ok {
-			util.PrintInfo("compare",
+			return fmt.Errorf(
 				"Missing map key %s",
 				k)
-			return false
-		} else if !v.equal(ov) {
-			return false
+		} else if err := v.equal(ov); err != nil {
+			return err
 		}
 	}
-	return true
+	return nil
+}
+func (exp *MapExp) Equal(uother MapCallSource) bool {
+	other, ok := uother.(*MapExp)
+	if !ok {
+		return false
+	}
+	return exp.equal(other) == nil
 }
 
-func (exp *ArrayExp) equal(uother Exp) bool {
+func (exp *ArrayExp) equal(uother Exp) error {
 	other, ok := uother.(*ArrayExp)
 	if !ok {
-		util.PrintInfo("compare",
+		return fmt.Errorf(
 			"Values are not both arrays.  Other is %T",
 			other)
-		return false
 	}
 	if len(exp.Value) != len(other.Value) {
-		util.PrintInfo("compare",
+		return fmt.Errorf(
 			"Array lengths differ: %d != %d",
 			len(exp.Value), len(other.Value))
-		return false
 	}
 	for i, v := range exp.Value {
-		if !v.equal(other.Value[i]) {
-			return false
+		if err := v.equal(other.Value[i]); err != nil {
+			return err
 		}
 	}
-	return true
+	return nil
 }
-func (exp *SplitExp) equal(uother Exp) bool {
-	other, ok := uother.(*SplitExp)
+func (exp *ArrayExp) Equal(uother MapCallSource) bool {
+	other, ok := uother.(*ArrayExp)
 	if !ok {
-		util.PrintInfo("compare",
-			"Values are not both sweeps.  Other is %T",
-			other)
 		return false
 	}
+	return exp.equal(other) == nil
+}
+
+func (exp *SplitExp) equal(uother Exp) error {
+	other, ok := uother.(*SplitExp)
+	if !ok {
+		return fmt.Errorf(
+			"Values are not both sweeps.  Other is %T",
+			other)
+	}
 	return exp.Value.equal(other.Value)
+}
+
+func (m *MergeExp) equal(other Exp) error {
+	if m == nil {
+		if other == nil {
+			return nil
+		}
+		return notEqualError
+	} else if other == nil {
+		return notEqualError
+	}
+	o, ok := other.(*MergeExp)
+	if !ok {
+		return notEqualError
+	}
+	if m.Value == nil {
+		if o.Value == nil {
+			return nil
+		}
+		return notEqualError
+	}
+	if err := m.Value.equal(o.Value); err != nil {
+		return err
+	}
+	if m.MergeOver == o.MergeOver {
+		return nil
+	}
+	if m.MergeOver.CallMode() != o.MergeOver.CallMode() ||
+		m.MergeOver.KnownLength() != o.MergeOver.KnownLength() ||
+		m.MergeOver.ArrayLength() != o.MergeOver.ArrayLength() {
+		return notEqualError
+	}
+	mkeys := m.MergeOver.Keys()
+	okeys := o.MergeOver.Keys()
+	if len(mkeys) != len(okeys) {
+		return notEqualError
+	}
+	for k := range mkeys {
+		if _, ok := okeys[k]; !ok {
+			return notEqualError
+		}
+	}
+	return nil
 }
 
 func equivalentSource(s1, s2 MapCallSource) bool {
@@ -472,43 +533,39 @@ func equivalentSource(s1, s2 MapCallSource) bool {
 	return true
 }
 
-func (exp *RefExp) equal(other Exp) bool {
+func (exp *RefExp) equal(other Exp) error {
 	if exp == nil {
-		return other == nil
+		if other == nil {
+			return nil
+		} else {
+			return notEqualError
+		}
 	} else if other == nil {
-		return false
+		return notEqualError
 	} else if ov, ok := other.(*RefExp); !ok {
-		util.PrintInfo("compare",
-			"Values are not both references.  Other is %T",
+		return fmt.Errorf("Values are not both references.  Other is %T",
 			other)
-		return false
 	} else if exp.Kind != ov.Kind {
-		util.PrintInfo("compare",
+		return fmt.Errorf(
 			"Reference type %v != %v",
 			exp.Kind, ov.Kind)
-		return false
 	} else if exp.Id != ov.Id || exp.OutputId != ov.OutputId {
-		return false
-	} else if len(exp.MergeOver) != len(ov.MergeOver) ||
-		len(exp.ForkIndex) != len(ov.ForkIndex) ||
-		len(exp.OutputIndex) != len(ov.OutputIndex) {
-		return false
+		return notEqualError
+	} else if len(exp.Forks) != len(ov.Forks) {
+		return nil
 	} else {
-		for i, v := range exp.MergeOver {
-			if o := ov.MergeOver[i]; !equivalentSource(v, o) {
-				return false
+		for c, i := range exp.Forks {
+			j := ov.Forks[c]
+			if i == nil && j != nil {
+				return fmt.Errorf("nil fork dim %s", c.Id)
+			} else if j == nil {
+				return fmt.Errorf("missing fork dim %s", c.Id)
+			}
+			if !indexEqual(i, j) {
+				return fmt.Errorf("fork index %s != %s",
+					i.GoString(), j.GoString())
 			}
 		}
-		for i, v := range exp.ForkIndex {
-			if ov.ForkIndex[i] != v {
-				return false
-			}
-		}
-		for k, v := range exp.OutputIndex {
-			if ov.OutputIndex[k] != v {
-				return false
-			}
-		}
-		return true
+		return nil
 	}
 }

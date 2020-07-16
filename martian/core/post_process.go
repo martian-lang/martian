@@ -27,7 +27,7 @@ func (self *Fork) postProcess() error {
 		return nil
 	}
 	if rro, err := ro.BindingPath("", self.forkId.SourceIndexMap(),
-		nil, self.node.top.types); err != nil {
+		self.node.top.types); err != nil {
 		return err
 	} else {
 		ro = rro

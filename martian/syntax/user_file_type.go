@@ -157,3 +157,7 @@ func (s *UserType) FilterJson(data json.RawMessage, _ *TypeLookup) (json.RawMess
 	// For consistency with IsValidJson, don't treat any errors as fatal.
 	return data, false, err
 }
+
+func (s *UserType) String() string {
+	return KindFile + " " + s.Id
+}

@@ -65,50 +65,19 @@ type (
 		// The binding path through the referred-to call or input.
 		OutputId string
 
-		// The dimensions over which to combine the reference path's forks.
-		//
-		// For example, if pipeline P is mapped over a map input1, and
-		// stage S uses input1 and also maps over an array input2, then if
-		// ForkIndex is empty, MergeOver must contain both input1's source and
-		// input2's source (in that order), and the reference is to a map of
-		// arrays of S structures.  If ForkIndex contains an index into input1,
-		// then MergeOver contains input2 and the result of the reference would
-		// be an array of S.
-		MergeOver []MapCallSource `json:"merge_over,omitempty"`
-
 		// Which fork of a mapped call this reference refers to.  This is not
 		// set when compiling mro, as mro does not have syntax for indexing into
 		// collections.  Instead, it is set when resolving a call graph.
 		//
-		// If a stage forks on dimensions not mentioned here, those dimensions
-		// must be present in MergeOver.
-		ForkIndex map[MapCallSource]CollectionIndex `json:"fork_index,omitempty"`
-
-		// If a reference into a stage's outputs results in an array or map,
-		// these indicies are used to select from that result.  These indicies
-		// are applied after selecting one or more specific forks of a call
-		// with ForkIndex, but before combining the results if more than one
-		// fork is being used.
-		//
-		// That is, if a stage S has outputs
-		//
-		//  {
-		//      a: {
-		//          "c": {
-		//              b: [1,3,4]
-		//          }
-		//      }
-		//  }
-		//
-		// Then the result of S.a.b is a map of arrays {"c": [1,3,4]}.  The
-		// OutputIndex must proceed in that nesting order.  So an output index
-		// ["c"] would return [1,3,4] and ["c",1] would return 3, but [1,"c"]
-		// would be an error.
-		OutputIndex []CollectionIndex `json:"output_index,omitempty"`
+		// Every dimension over which this stage is forked should be included
+		// in this map.
+		Forks map[*CallStm]CollectionIndex `json:"fork_index,omitempty"`
 	}
 
 	// An index into an array or map.
 	CollectionIndex interface {
+		fmt.GoStringer
+
 		// Either ModeArrayCall or ModeMapCall
 		Mode() CallMode
 
@@ -134,6 +103,8 @@ type (
 	}
 )
 
+// Implementation for Exp
+
 func (s *RefExp) getNode() *AstNode { return &s.Node }
 func (s *RefExp) File() *SourceFile { return s.Node.Loc.File }
 func (s *RefExp) Line() int         { return s.Node.Loc.Line }
@@ -151,234 +122,83 @@ func (*RefExp) HasSplit() bool {
 	return false
 }
 
-// Combine OutputIndex keys with MergeOver keys to select forks.
-func (ref *RefExp) Simplify() {
-	for len(ref.MergeOver) > 0 && len(ref.OutputIndex) > 0 {
-		if ref.ForkIndex == nil {
-			ref.ForkIndex = make(map[MapCallSource]CollectionIndex, 1)
-		}
-		if ref.MergeOver[0].CallMode() != ref.OutputIndex[0].Mode() {
-			panic("merging over " + ref.MergeOver[0].GoString() +
-				" but with index of type " + ref.OutputIndex[0].Mode().String())
-		}
-		ref.ForkIndex[ref.MergeOver[0]] = ref.OutputIndex[0]
-		ref.MergeOver = ref.MergeOver[1:]
-		ref.OutputIndex = ref.OutputIndex[1:]
-	}
-}
-
-func (ref *RefExp) updateForks(fork map[MapCallSource]CollectionIndex) (*RefExp, error) {
+func (ref *RefExp) updateForks(fork map[*CallStm]CollectionIndex) (*RefExp, error) {
 	result := ref
+	makeCopy := func() {
+		if result == ref {
+			newFork := make(map[*CallStm]CollectionIndex, len(ref.Forks))
+			for k, v := range ref.Forks {
+				newFork[k] = v
+			}
+			r2 := *ref
+			r2.Forks = newFork
+			result = &r2
+		}
+	}
 	var errs ErrorList
-	for src, j := range fork {
-		if i, ok := ref.ForkIndex[src]; !ok {
-			if ref == result {
-				r2 := *ref
-				result = &r2
-				result.ForkIndex = make(map[MapCallSource]CollectionIndex, len(fork)+1)
-				for k, v := range ref.ForkIndex {
-					result.ForkIndex[k] = v
+	if len(ref.Forks) > 0 {
+		for src, j := range fork {
+			if i, ok := ref.Forks[src]; ok {
+				if i.IndexSource() != nil {
+					if j.IndexSource() == nil {
+						makeCopy()
+						result.Forks[src] = j
+					} else if m, err := MergeMapCallSources(i.IndexSource(), j.IndexSource()); err != nil {
+						errs = append(errs, &bindingError{
+							Msg: "merge dimension " + src.GoString(),
+							Err: err,
+						})
+					} else if _, ok := i.(unknownIndex); ok && m != i.IndexSource() {
+						makeCopy()
+						result.Forks[src] = unknownIndex{src: m}
+					}
+				} else if j.IndexSource() == nil && !indexEqual(i, j) {
+					errs = append(errs, &bindingError{
+						Msg: fmt.Sprint("inconsistent index ", i.GoString(), " vs ", j.GoString()),
+					})
 				}
 			}
-			result.ForkIndex[src] = j
-		} else if i.IndexSource() != nil && j.IndexSource() == nil {
-			if result == ref {
-				newFork := make(map[MapCallSource]CollectionIndex, len(ref.ForkIndex))
-				for k, v := range ref.ForkIndex {
-					newFork[k] = v
-				}
-				r2 := *ref
-				r2.ForkIndex = newFork
-				result = &r2
-			}
-			result.ForkIndex[src] = j
-		} else if i != j {
-			errs = append(errs, &bindingError{
-				Msg: fmt.Sprint("inconsistent index ", i, " vs ", j),
-			})
 		}
 	}
 	return result, errs.If()
 }
 
-// Recursively convert merged references into arrays or maps of keyed
-// references.  This is not correct for references which have not yet been
-// resolved to a stage output.
-func (ref *RefExp) ExpandMerges() Exp {
-	ref.Simplify()
-	if len(ref.MergeOver) > 0 {
-		if src := ref.MergeOver[0]; src.KnownLength() {
-			switch src.CallMode() {
-			case ModeArrayCall:
-				newResult := ArrayExp{
-					valExp: valExp{Node: ref.Node},
-					Value:  make([]Exp, src.ArrayLength()),
-				}
-				for i := range newResult.Value {
-					fork := make(map[MapCallSource]CollectionIndex, len(ref.ForkIndex)+1)
-					for k, v := range ref.ForkIndex {
-						fork[k] = v
-					}
-					fork[src] = arrayIndex(i)
-					newRef := *ref
-					newRef.MergeOver = ref.MergeOver[1:]
-					newRef.ForkIndex = fork
-					newResult.Value[i] = newRef.ExpandMerges()
-				}
-				return &newResult
-			case ModeMapCall:
-				newResult := MapExp{
-					valExp: valExp{Node: ref.Node},
-					Value:  make(map[string]Exp, len(src.Keys())),
-				}
-				for i := range src.Keys() {
-					fork := make(map[MapCallSource]CollectionIndex, len(ref.ForkIndex)+1)
-					for k, v := range ref.ForkIndex {
-						fork[k] = v
-					}
-					ii := mapKeyIndex(i)
-					fork[src] = ii
-					newRef := *ref
-					newRef.MergeOver = ref.MergeOver[1:]
-					newRef.ForkIndex = fork
-					newResult.Value[i] = newRef.ExpandMerges()
-				}
-				return &newResult
-			}
-		}
-	}
-	return ref
+// Implementation for MapCallSource
+
+func (*RefExp) CallMode() CallMode {
+	return ModeUnknownMapCall
 }
 
-// CallMode Returns the call mode for a call which depends on this source.
-func (r *RefExp) CallMode() CallMode {
-	if r == nil || len(r.MergeOver) == 0 {
-		return ModeSingleCall
-	}
-	if r.MergeOver[0] == r {
-		panic("self-split")
-	}
-	return r.MergeOver[0].CallMode()
+func (*RefExp) KnownLength() bool {
+	return false
 }
 
-// KnownLength returns false, as stage output lengths are never known.
-func (r *RefExp) KnownLength() bool {
-	if r == nil || len(r.MergeOver) == 0 {
+func (*RefExp) ArrayLength() int {
+	return -1
+}
+
+func (*RefExp) Keys() map[string]Exp {
+	return nil
+}
+
+// Index stuff
+
+func indexEqual(i, j CollectionIndex) bool {
+	if i == j {
+		return true
+	}
+	if s := i.IndexSource(); s != j.IndexSource() || s != nil {
 		return false
 	}
-	return r.MergeOver[0].KnownLength()
-}
-
-// ArrayLength returns nil, as stage output lengths are never known.
-func (r *RefExp) ArrayLength() int {
-	if r == nil || len(r.MergeOver) == 0 {
-		return -1
+	if m := i.Mode(); m != j.Mode() {
+		return false
+	} else if m == ModeArrayCall {
+		return i.ArrayIndex() == j.ArrayIndex()
+	} else if m == ModeMapCall {
+		return i.MapKey() == j.MapKey()
+	} else {
+		return true
 	}
-	return r.MergeOver[0].ArrayLength()
-}
-
-// Keys returns nil, as stage output keys are never known.
-func (r *RefExp) Keys() map[string]Exp {
-	if r == nil || len(r.MergeOver) == 0 {
-		return nil
-	}
-	return r.MergeOver[0].Keys()
-}
-
-type refMapResolver interface {
-	resolveMapSource(CallMode) MapCallSource
-}
-
-func (r *RefExp) resolveMapSource(mode CallMode) MapCallSource {
-	if len(r.MergeOver) < 1 {
-		if r.CallMode() != mode {
-			return &ReferenceMappingSource{
-				Ref:  r,
-				Mode: mode,
-			}
-		}
-		return r
-	}
-	if rr, ok := r.MergeOver[0].(refMapResolver); ok {
-		m := rr.resolveMapSource(mode)
-		if m.CallMode() != mode {
-			return &ReferenceMappingSource{
-				Ref:  m.(*RefExp),
-				Mode: mode,
-			}
-		}
-		return m
-	}
-	if r.MergeOver[0] == nil {
-		panic("nil source in ref")
-	}
-	if r.MergeOver[0].CallMode() != mode {
-		return &ReferenceMappingSource{
-			Ref:  r.MergeOver[0].(*RefExp),
-			Mode: mode,
-		}
-	}
-	return r.MergeOver[0]
-}
-
-// A wrapper for a reference to an array or map output element which can be
-// used as a mapping source.
-type ReferenceMappingSource struct {
-	Ref  *RefExp  `json:"ref"`
-	Mode CallMode `json:"kind"`
-}
-
-// CallMode Returns the call mode for a call which depends on this source.
-func (r *ReferenceMappingSource) CallMode() CallMode {
-	return r.Mode
-}
-
-// KnownLength returns false, as stage output lengths are never known.
-func (r *ReferenceMappingSource) KnownLength() bool {
-	return r.Ref.KnownLength()
-}
-
-// ArrayLength returns nil, as stage output lengths are never known.
-func (r *ReferenceMappingSource) ArrayLength() int {
-	return r.Ref.ArrayLength()
-}
-
-// Keys returns nil, as stage output keys are never known.
-func (r *ReferenceMappingSource) Keys() map[string]Exp {
-	return r.Ref.Keys()
-}
-
-func (r *ReferenceMappingSource) GoString() string {
-	return r.Mode.String() + " of " + r.Ref.GoString()
-}
-
-func (r *ReferenceMappingSource) resolveMapSource(mode CallMode) MapCallSource {
-	if mode != r.Mode {
-		panic("incompatible modes")
-	}
-	if len(r.Ref.MergeOver) < 1 {
-		return r
-	}
-	if rr, ok := r.Ref.MergeOver[0].(refMapResolver); ok {
-		if m := rr.resolveMapSource(mode); m == r.Ref {
-			return r
-		} else if m.CallMode() != mode {
-			return &ReferenceMappingSource{
-				Ref:  m.(*RefExp),
-				Mode: mode,
-			}
-		}
-	}
-	if r.Ref.MergeOver[0] == nil {
-		panic("nil source in ref")
-	}
-	if r.Ref.MergeOver[0].CallMode() != mode {
-		return &ReferenceMappingSource{
-			Ref:  r.Ref.MergeOver[0].(*RefExp),
-			Mode: mode,
-		}
-	}
-	return r.Ref.MergeOver[0]
 }
 
 func (mapKeyIndex) Mode() CallMode {
@@ -394,6 +214,9 @@ func (mapKeyIndex) IndexSource() MapCallSource {
 	return nil
 }
 func (k mapKeyIndex) String() string {
+	return string(k)
+}
+func (k mapKeyIndex) GoString() string {
 	return string(k)
 }
 
@@ -412,6 +235,9 @@ func (arrayIndex) IndexSource() MapCallSource {
 func (i arrayIndex) String() string {
 	return strconv.Itoa(int(i))
 }
+func (i arrayIndex) GoString() string {
+	return strconv.Itoa(int(i))
+}
 
 func (i unknownIndex) Mode() CallMode {
 	return i.src.CallMode()
@@ -428,4 +254,7 @@ func (i unknownIndex) IndexSource() MapCallSource {
 
 func (i unknownIndex) MarshalText() ([]byte, error) {
 	return append([]byte("unknown "), i.src.CallMode().String()...), nil
+}
+func (i unknownIndex) GoString() string {
+	return "unknown " + i.src.CallMode().String()
 }

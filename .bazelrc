@@ -1,2 +1,3 @@
 build --workspace_status_command=./tools/status.sh
 test  --test_output errors
+test  --test_summary=detailed

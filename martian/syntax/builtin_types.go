@@ -280,3 +280,7 @@ func (s *BuiltinType) FilterJson(data json.RawMessage, _ *TypeLookup) (json.RawM
 		panic("invalid builtin type " + s.Id)
 	}
 }
+
+func (s *BuiltinType) String() string {
+	return s.TypeId().str()
+}

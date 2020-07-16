@@ -93,134 +93,38 @@ func (pipe *CallGraphPipeline) makeChildNodes(prefix string, ast *Ast) error {
 	return nil
 }
 
-func hasMerge(exp Exp, source MapCallSource) bool {
+func hasMerge(exp Exp, call *CallStm) bool {
 	switch exp := exp.(type) {
 	case *RefExp:
-		for _, src := range exp.MergeOver {
-			if src == source {
-				return true
-			}
-		}
+		i := exp.Forks[call]
+		return i != nil && i.IndexSource() == nil
 	case *ArrayExp:
 		for _, v := range exp.Value {
-			if hasMerge(v, source) {
+			if hasMerge(v, call) {
 				return true
 			}
 		}
 	case *MapExp:
 		for _, v := range exp.Value {
-			if hasMerge(v, source) {
+			if hasMerge(v, call) {
 				return true
 			}
 		}
 	case *SplitExp:
-		if exp.Source == source {
+		if exp.Call == call {
 			return false
 		}
-		merge := hasMerge(exp.Value, source)
-		return merge
+		return hasMerge(exp.Value, call)
+	case *MergeExp:
+		if exp.GetCall() == call {
+			return true
+		}
+		return hasMerge(exp.Value, call)
 	case *DisabledExp:
-		return hasMerge(exp.Value, source) ||
-			hasMerge(exp.Disabled, source)
+		return hasMerge(exp.Value, call) ||
+			hasMerge(exp.Disabled, call)
 	}
 	return false
-}
-
-// Find all splits tied to the given call and promote them.
-// So for example {a: split [1,2], b: 2, c: {d: split [4,5]}}
-// turns into [{a:1,b:2,c:{d:4}},{a:2,b:2,c:{d:5}}].  References can't
-// be promoted in this way.
-func unsplit(exp Exp, fork map[MapCallSource]CollectionIndex, call ForkRootList) (Exp, error) {
-	if len(call) == 0 {
-		return exp.BindingPath("", fork, nil)
-	}
-	// Deal with the simple cases, which do not need a length or key.
-	switch exp := exp.(type) {
-	case *SplitExp:
-		if exp.Source == call[len(call)-1].MapSource() {
-			return unsplit(exp.Value, fork, call[:len(call)-1])
-		} else if exp.Source == call[0].MapSource() {
-			return unsplit(exp.Value, fork, call[1:])
-		} else if len(call) > 2 {
-			for i, c := range call[1 : len(call)-2] {
-				if exp.Source == c.MapSource() {
-					return unsplit(exp.Value, fork, append(call[:i+1:i+1], call[i+2:]...))
-				}
-			}
-		}
-		return exp, &bindingError{Msg: "unmatched split call"}
-	case *RefExp:
-		exp.Simplify()
-		if _, ok := fork[call[0].MapSource()]; !ok {
-			fork[call[0].MapSource()] = unknownIndex{src: call[0].MapSource()}
-			defer delete(fork, call[0].MapSource())
-		}
-		return exp.BindingPath("", fork, nil)
-	case *NullExp:
-		return exp, nil
-	case *DisabledExp:
-		disable, err := unsplit(exp.Disabled, fork, call)
-		if err != nil {
-			return exp, err
-		}
-		if disable, ok := disable.(*BoolExp); ok {
-			if disable.Value {
-				return &NullExp{
-					valExp: valExp{Node: disable.Node},
-				}, nil
-			} else {
-				return unsplit(exp.Value, fork, call)
-			}
-		}
-		if inner, err := unsplit(exp.Value, fork, call); err != nil {
-			return exp, err
-		} else {
-			return exp.makeDisabledExp(disable, inner)
-		}
-	}
-	if !call[0].MapSource().KnownLength() {
-		return exp, nil
-	}
-	switch call[0].MapSource().CallMode() {
-	case ModeNullMapCall:
-		return &NullExp{valExp: valExp{Node: *exp.getNode()}}, nil
-	case ModeArrayCall:
-		arr := ArrayExp{
-			valExp: valExp{Node: *exp.getNode()},
-			Value:  make([]Exp, call[0].MapSource().ArrayLength()),
-		}
-		var errs ErrorList
-		for i := range arr.Value {
-			ii := arrayIndex(i)
-			fork[call[0].MapSource()] = &ii
-			e, err := unsplit(exp, fork, call[1:])
-			if err != nil {
-				errs = append(errs, err)
-			}
-			arr.Value[i] = e
-		}
-		delete(fork, call[0].MapSource())
-		return &arr, errs.If()
-	case ModeMapCall:
-		m := MapExp{
-			valExp: valExp{Node: *exp.getNode()},
-			Value:  make(map[string]Exp, len(call[0].MapSource().Keys())),
-			Kind:   KindMap,
-		}
-		var errs ErrorList
-		for i := range call[0].MapSource().Keys() {
-			fork[call[0].MapSource()] = mapKeyIndex(i)
-			e, err := unsplit(exp, fork, call[1:])
-			if err != nil {
-				errs = append(errs, err)
-			}
-			m.Value[i] = e
-		}
-		delete(fork, call[0].MapSource())
-		return &m, errs.If()
-	default:
-		panic("invalid map call type")
-	}
 }
 
 func (node *CallGraphPipeline) resolve(siblings map[string]*ResolvedBinding,
@@ -242,7 +146,7 @@ func (node *CallGraphPipeline) resolve(siblings map[string]*ResolvedBinding,
 		return nil
 	}
 	if node.call.CallMode() != ModeSingleCall {
-		if node.Source == nil {
+		if node.split == nil {
 			panic("nil source for mapped call " + node.Fqid)
 		}
 		mapped = append(mapped, &node.CallGraphStage)
@@ -274,7 +178,7 @@ func (node *CallGraphPipeline) resolve(siblings map[string]*ResolvedBinding,
 		// their splits to the outputs, so we remove them here.
 		for _, child := range node.Children {
 			if stage, ok := child.(*CallGraphStage); ok {
-				if err := stage.unsplit(); err != nil {
+				if err := stage.unsplit(lookup); err != nil {
 					errs = append(errs, err)
 				}
 			}
@@ -288,7 +192,7 @@ func (node *CallGraphPipeline) resolve(siblings map[string]*ResolvedBinding,
 		node.Retain = make([]*RefExp, 0, len(r.Refs))
 		for _, ref := range r.Refs {
 			resolved, err := ref.resolveRefs(node.Inputs, childMap,
-				lookup, true)
+				lookup)
 			if err != nil {
 				errs = append(errs, err)
 			}
@@ -304,25 +208,23 @@ func (node *CallGraphPipeline) makeOutExp(
 	childMap map[string]*ResolvedBinding,
 	lookup *TypeLookup) (Exp, error) {
 	outs, err := node.pipeline.Ret.Bindings.resolve(node.Inputs, childMap,
-		lookup, false)
+		lookup)
 	if err != nil {
 		return nil, &bindingError{
 			Msg: node.Fqid + " outputs",
 			Err: err,
 		}
 	}
-	var errs ErrorList
 	value := make(map[string]Exp, len(outs))
 	for k, out := range outs {
-		outVal := updateMapSources(node.call, node.Source, out.Exp)
-		value[k] = outVal
+		value[k] = out.Exp
 	}
 
 	return &MapExp{
 		valExp: valExp{Node: node.pipeline.Ret.Node},
 		Kind:   KindStruct,
 		Value:  value,
-	}, errs.If()
+	}, nil
 }
 
 func (node *CallGraphPipeline) resolvePipelineOuts(
@@ -335,46 +237,31 @@ func (node *CallGraphPipeline) resolvePipelineOuts(
 			errs = append(errs, err)
 		}
 
-		tid := TypeId{Tname: node.pipeline.Id}
-
-		if len(node.Forks) > 0 {
-			m := make(map[MapCallSource]CollectionIndex, 1)
-			for i := len(node.Forks) - 1; i >= 0; i-- {
-				fs := node.Forks[i]
-				if fs.MapSource() == nil {
-					panic(fs.GetFqid() + " has no source")
-				}
-
-				switch fs.MapSource().CallMode() {
-				case ModeArrayCall:
-					tid.ArrayDim++
-				case ModeMapCall:
-					tid.MapDim = tid.ArrayDim + 1
-					tid.ArrayDim = 0
-				}
-				if !hasMerge(exp, fs.MapSource()) {
-					e, err := unsplit(exp, m, node.Forks[i:i+1])
-					if err != nil {
-						errs = append(errs, err)
-					}
-					exp = e
-
-					if i == 0 {
-						node.Forks = node.Forks[1:]
-						i--
-					} else {
-						node.Forks = append(node.Forks[:i], node.Forks[i+1:]...)
-						i--
-					}
-				}
-			}
-		}
 		if len(node.Disable) > 0 && (node.Parent == nil ||
 			len(node.Disable) > len(node.Parent.Disable)) {
 			var d *DisabledExp
 			exp, err = d.makeDisabledExp(node.Disable[len(node.Disable)-1], exp)
 			if err != nil {
 				errs = append(errs, err)
+			}
+		}
+		tid := TypeId{Tname: node.pipeline.Id}
+		if node.split != nil {
+			switch node.split.Source.CallMode() {
+			case ModeArrayCall:
+				tid.ArrayDim++
+			case ModeMapCall:
+				tid.MapDim++
+			default:
+				errs = append(errs, &bindingError{
+					Msg: "invalid mapping mode: " +
+						node.split.Source.CallMode().String(),
+				})
+			}
+			exp = &MergeExp{
+				Call:      &node.CallGraphStage,
+				MergeOver: node.split.Source,
+				Value:     exp,
 			}
 		}
 		node.Outputs = &ResolvedBinding{
@@ -390,30 +277,125 @@ func (node *CallGraphPipeline) resolvePipelineOuts(
 	return errs
 }
 
-func (node *CallGraphPipeline) unsplit() error {
+func (node *CallGraphPipeline) unsplit(lookup *TypeLookup) error {
 	var errs ErrorList
 	for _, c := range node.Children {
-		if err := c.unsplit(); err != nil {
+		if err := c.unsplit(lookup); err != nil {
 			errs = append(errs, err)
 		}
 	}
-	if len(node.Forks) > 0 {
-		node.resolvePipelineForks(node.Forks)
-		e, err := unsplit(node.Outputs.Exp,
-			make(map[MapCallSource]CollectionIndex,
-				len(node.Forks)), node.Forks)
-		if err != nil {
-			errs = append(errs, err)
+	e := node.Outputs.Exp
+	t := node.Outputs.Type
+	for i := len(node.Forks) - 1; i >= 0; i-- {
+		if f := node.Forks[i]; f != &node.CallGraphStage {
+			if f.isAlwaysDisabled() {
+				e = &NullExp{
+					valExp: valExp{Node: *e.getNode()},
+				}
+				t = nullType{}
+			} else {
+				e = &MergeExp{
+					Call:      f,
+					MergeOver: f.split.Source,
+					Value:     e,
+				}
+				if nt, err := lookup.AddDim(t, f.CallMode()); err != nil {
+					errs = append(errs, err)
+				} else if nt == nil {
+					panic("nil type is not a valid expansion for " + t.TypeId().str())
+				} else {
+					t = nt
+				}
+			}
 		}
-		node.Outputs.Exp = e
 	}
-	mapped := node.Forks
-	node.Forks = nil
-	node.resolvePipelineForks(mapped)
+	e, err := e.BindingPath("", nil)
+	if err != nil {
+		errs = append(errs, &bindingError{
+			Msg: node.Fqid + " outputs",
+			Err: err,
+		})
+	}
+	node.Outputs.Exp, node.Outputs.Type, node.Forks = unmergeExp(e, t, lookup, node.Forks[:0])
+	var splitCalls map[*CallStm]struct{}
+	for k, binding := range node.Inputs {
+		// Ensure inputs can be scanned for refs, and also that their
+		// types are cached.  Otherwise, at runtime mrp may end up trying to
+		// cache the types concurrently.
+		if refs, err := binding.FindRefs(lookup); err != nil {
+			errs = append(errs, &bindingError{
+				Msg: node.Fqid + " input " + k,
+				Err: err,
+			})
+		} else if len(refs) > 0 {
+			if splitCalls == nil {
+				splitCalls = make(map[*CallStm]struct{}, len(node.Forks)+1)
+			}
+			for _, ref := range refs {
+				for c, i := range ref.Exp.Forks {
+					if i.IndexSource() != nil {
+						splitCalls[c] = struct{}{}
+					}
+				}
+			}
+			for _, f := range node.Forks {
+				delete(splitCalls, f.call)
+			}
+			for n := node; n != nil; n = n.Parent {
+				if _, ok := splitCalls[n.call]; ok {
+					m := &MergeExp{
+						Call:      &n.CallGraphStage,
+						MergeOver: n.split.Source,
+						Value:     binding.Exp,
+					}
+					s := &SplitExp{
+						valExp: valExp{Node: *binding.Exp.getNode()},
+						Call:   n.call,
+						Value:  m,
+						Source: n.split.Source,
+					}
+					if exp, err := s.BindingPath("", nil); err != nil {
+						errs = append(errs, &bindingError{
+							Msg: "making pipeline input splits for " + node.Fqid,
+							Err: err,
+						})
+					} else {
+						binding.Exp = exp
+					}
+				}
+			}
+			for k := range splitCalls {
+				delete(splitCalls, k)
+			}
+		}
+	}
+	if _, err := node.Outputs.FindRefs(lookup); err != nil {
+		errs = append(errs, &bindingError{
+			Msg: node.Fqid + " outputs",
+			Err: err,
+		})
+	}
 	return errs.If()
 }
 
-func (node *CallGraphPipeline) resolvePipelineForks(mapped ForkRootList) {
+// Remove merges.  For pipelines, we merge all of the output forks, in the hopes
+// that we can do them statically, but if any are left over then we need to get
+// rid of them.
+func unmergeExp(exp Exp, t Type, lookup *TypeLookup, forks ForkRootList) (Exp, Type, ForkRootList) {
+	switch exp := exp.(type) {
+	case *MergeExp:
+		switch exp.MergeOver.CallMode() {
+		case ModeArrayCall:
+			t = lookup.GetArray(t, -1)
+		case ModeMapCall:
+			t = t.(*TypedMapType).Elem
+		}
+		return unmergeExp(exp.Value, t, lookup, append(forks, exp.Call))
+	}
+	return exp, t, forks
+}
+
+func (node *CallGraphPipeline) resolvePipelineForks(mapped ForkRootList, inputSplits bool) {
 	if len(mapped) == 0 {
 		node.Forks = nil
 		return
@@ -423,9 +405,14 @@ func (node *CallGraphPipeline) resolvePipelineForks(mapped ForkRootList) {
 	for _, d := range node.Disable {
 		findSplitCalls(d, splits, true)
 	}
+	if inputSplits {
+		for _, b := range node.Inputs {
+			findSplitCalls(b.Exp, splits, true)
+		}
+	}
 	for _, m := range mapped {
 		if _, ok := splits[m.Call()]; !ok {
-			if !m.MapSource().KnownLength() && hasMerge(node.Outputs.Exp, m.MapSource()) {
+			if !m.MapSource().KnownLength() && hasMerge(node.Outputs.Exp, m.call) {
 				splits[m.Call()] = struct{}{}
 			}
 		}

@@ -4,6 +4,8 @@
 
 package syntax
 
+import "fmt"
+
 // Kinds of value or reference expressions.  These include all of
 // the builtin types as well as "array" and "null", and for references
 // "self" and "call".
@@ -11,6 +13,7 @@ const (
 	// Represents an array of expressions.
 	KindArray  = ExpKind("array")
 	KindSplit  = "split"
+	KindMerge  = "merge"
 	KindMap    = "map"
 	KindFloat  = "float"
 	KindInt    = "int"
@@ -42,10 +45,11 @@ type (
 	// which can be assigned to a binding (e.g. in a call or return
 	// statement).
 	Exp interface {
+		fmt.GoStringer
 		AstNodable
 		getKind() ExpKind
 		format(w stringWriter, prefix string)
-		equal(other Exp) bool
+		equal(other Exp) error
 		// HasRef returns true if this expression or any sub-expression is a
 		// reference.
 		HasRef() bool
@@ -55,6 +59,9 @@ type (
 
 		// Recursively searches the expression for references.
 		FindRefs() []*RefExp
+		// Recursively searches the expression for references, propagating
+		// type information.
+		FindTypedRefs(list []*BoundReference, t Type, lookup *TypeLookup) ([]*BoundReference, error)
 
 		// Evaluates a binding path through a literal expression.
 		//
@@ -77,10 +84,9 @@ type (
 		//   exp.BindingPath("d.e") -> ["bar", "baz"]
 		//   exp.BindingPath("f.bar") -> STAGE.out.bar
 		BindingPath(bindPath string,
-			fork map[MapCallSource]CollectionIndex,
-			index []CollectionIndex) (Exp, error)
+			forks map[*CallStm]CollectionIndex) (Exp, error)
 		resolveRefs(self, siblings map[string]*ResolvedBinding,
-			lookup *TypeLookup, keepSplit bool) (Exp, error)
+			lookup *TypeLookup) (Exp, error)
 		filter(t Type, lookup *TypeLookup) (Exp, error)
 
 		// Returns a json representation of the concrete value of a
@@ -88,7 +94,6 @@ type (
 		//
 		//   {"__reference__": "Id.OutputId"}
 		MarshalJSON() ([]byte, error)
-		GoString() string
 
 		JsonWriter
 		jsonSizeEstimator
@@ -112,23 +117,6 @@ type (
 		Value []Exp
 	}
 
-	// A SplitExp represents an expression which is either a typed map or array,
-	// where a call is made repeatedly, once for each element in the collection.
-	// Only top-level expressions can be split.
-	SplitExp struct {
-		valExp
-		// Either a MapExp, ArrayExp, or RefExp.  In a fully-resolved pipeline,
-		// it could also be another nested SplitExp.
-		Value Exp
-		// The call that this split was made on.  This becomes relevant when
-		// resolving a map call of a pipeline - calls within that pipeline
-		// may split further, but potentially over a different set of keys.
-		Call *CallStm
-
-		// The dimensionality source
-		Source MapCallSource
-	}
-
 	// A MapExp represents a literal map of expressions.
 	MapExp struct {
 		valExp
@@ -140,7 +128,6 @@ type (
 	// A StringExp represents a string or file type literal.
 	StringExp struct {
 		valExp
-		Kind  ExpKind
 		Value string
 	}
 
@@ -178,16 +165,14 @@ func (*valExp) HasSplit() bool            { return false }
 func (*valExp) FindRefs() []*RefExp       { return nil }
 
 func (s *ArrayExp) getKind() ExpKind  { return KindArray }
-func (s *SplitExp) getKind() ExpKind  { return KindSplit }
 func (s *MapExp) getKind() ExpKind    { return s.Kind }
-func (s *StringExp) getKind() ExpKind { return s.Kind }
+func (s *StringExp) getKind() ExpKind { return KindString }
 func (s *BoolExp) getKind() ExpKind   { return KindBool }
 func (s *IntExp) getKind() ExpKind    { return KindInt }
 func (s *FloatExp) getKind() ExpKind  { return KindFloat }
 func (s *NullExp) getKind() ExpKind   { return KindNull }
 
 func (s *ArrayExp) val() interface{}  { return s.Value }
-func (s *SplitExp) val() interface{}  { return s.Value }
 func (s *MapExp) val() interface{}    { return s.Value }
 func (s *StringExp) val() interface{} { return s.Value }
 func (s *BoolExp) val() interface{}   { return s.Value }
@@ -201,10 +186,6 @@ func (s *ArrayExp) getSubnodes() []AstNodable {
 		subs = append(subs, n)
 	}
 	return subs
-}
-
-func (s *SplitExp) getSubnodes() []AstNodable {
-	return []AstNodable{s.Value}
 }
 
 func (s *MapExp) getSubnodes() []AstNodable {
@@ -237,24 +218,6 @@ func (e *ArrayExp) HasSplit() bool {
 		}
 	}
 	return false
-}
-
-func (e *SplitExp) HasRef() bool {
-	if e == nil || e.Value == nil {
-		return false
-	}
-	return e.Value.HasRef()
-}
-
-func (e *SplitExp) HasSplit() bool {
-	return true
-}
-
-func (e *SplitExp) CallMode() CallMode {
-	if e == nil || e.Source == nil {
-		return ModeUnknownMapCall
-	}
-	return e.Source.CallMode()
 }
 
 func (e *MapExp) HasRef() bool {
@@ -296,14 +259,6 @@ func (e *ArrayExp) FindRefs() []*RefExp {
 	return result
 }
 
-func (e *SplitExp) FindRefs() []*RefExp {
-	refs := e.Value.FindRefs()
-	if s, ok := e.Source.(Exp); ok && s != nil {
-		refs = append(refs, s.FindRefs()...)
-	}
-	return refs
-}
-
 func (e *MapExp) FindRefs() []*RefExp {
 	var result []*RefExp
 	for _, v := range e.Value {
@@ -320,38 +275,14 @@ func (e *MapExp) FindRefs() []*RefExp {
 }
 func (e *RefExp) FindRefs() []*RefExp {
 	refs := []*RefExp{e}
-	for _, m := range e.MergeOver {
-		if s, ok := m.(Exp); ok {
-			refs = append(refs, s.FindRefs()...)
-		}
-	}
-	for m := range e.ForkIndex {
-		if s, ok := m.(Exp); ok {
-			refs = append(refs, s.FindRefs()...)
+	for _, i := range e.Forks {
+		if m := i.IndexSource(); m != nil {
+			if s, ok := m.(Exp); ok {
+				refs = append(refs, s.FindRefs()...)
+			}
 		}
 	}
 	return refs
-}
-
-// IsEmpty returns true if the split expression is over an empty array or map.
-func (e *SplitExp) IsEmpty() bool {
-	switch exp := e.Value.(type) {
-	case *ArrayExp:
-		if len(exp.Value) == 0 {
-			return true
-		}
-	case *MapExp:
-		if len(exp.Value) == 0 {
-			return true
-		}
-	case *NullExp:
-		return true
-	case *SplitExp:
-		return exp.IsEmpty()
-	}
-	return e.Source.KnownLength() &&
-		len(e.Source.Keys()) == 0 &&
-		e.Source.ArrayLength() <= 0
 }
 
 func (s *StringExp) Type() (Type, int) { return &builtinString, 0 }
@@ -396,6 +327,8 @@ func walkExp(exp Exp, visitor ExpVisitor, path string) error {
 	}
 	switch exp := exp.(type) {
 	case *SplitExp:
+		return walkExp(exp.Value, visitor, path)
+	case *MergeExp:
 		return walkExp(exp.Value, visitor, path)
 	case *DisabledExp:
 		if err := visitor(exp.Disabled, path); err != nil &&

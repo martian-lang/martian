@@ -254,7 +254,7 @@ func (self *Metadata) TempDir() string {
 }
 
 func (self *Metadata) writeError(msg string, src error) {
-	msg = msg + self.fqname
+	msg = msg + " (" + self.fqname + ")"
 	util.LogError(src, "runtime", "%s", msg)
 	if err := self.WriteRaw(Errors, msg+": "+src.Error()); err != nil {
 		util.PrintError(err, "runtime", "Could not write error message")

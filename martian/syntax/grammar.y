@@ -821,7 +821,6 @@ val_exp
     | LITSTRING
         { $$ = &StringExp{
             valExp: valExp{Node: NewAstNode($<loc>1)},
-            Kind: KindString,
             Value: unquote($1),
         } }
     | array_exp

@@ -97,14 +97,30 @@ func (e *SplitExp) format(w stringWriter, prefix string) {
 		mustWriteString(w, KindNull)
 		return
 	}
-	mustWriteString(w, "split ")
+	mustWriteString(w, KindSplit+" ")
 	e.Value.format(w, prefix)
 }
 func (e *SplitExp) GoString() string {
 	if e == nil || e.Value == nil {
 		return KindNull
 	}
-	return "split " + e.Value.GoString()
+	return (KindSplit + " ") + e.Value.GoString()
+}
+
+func (e *MergeExp) format(w stringWriter, prefix string) {
+	if e == nil || e.Value == nil {
+		mustWriteString(w, KindNull)
+		return
+	}
+	mustWriteString(w, KindMerge+" ")
+	e.Value.format(w, prefix)
+}
+
+func (e *MergeExp) GoString() string {
+	if e == nil || e.Value == nil {
+		return KindNull
+	}
+	return (KindMerge + " ") + e.Value.GoString()
 }
 
 func (e *MapExp) format(w stringWriter, prefix string) {

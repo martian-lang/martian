@@ -193,7 +193,7 @@ func traceInput(stage string, cg syntax.CallGraphNode) bool {
 	}
 	exp := rb.Exp
 	if path != "" {
-		if rp, err := exp.BindingPath(path, nil, nil); err != nil {
+		if rp, err := exp.BindingPath(path, nil); err != nil {
 			fmt.Fprint(os.Stderr, "Invalid path ", path, " in ",
 				stage, ": ", err.Error())
 		} else {

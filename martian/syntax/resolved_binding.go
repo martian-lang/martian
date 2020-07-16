@@ -65,7 +65,11 @@ func (err *bindingError) writeTo(w stringWriter) {
 		mustWriteString(w, err.Msg)
 	} else {
 		mustWriteString(w, err.Msg)
-		mustWriteString(w, ": ")
+		if len(err.Msg) > 20 {
+			mustWriteString(w, ":\n\t")
+		} else {
+			mustWriteString(w, ": ")
+		}
 		if ew, ok := e.(errorWriter); ok {
 			ew.writeTo(w)
 		} else {
@@ -75,7 +79,7 @@ func (err *bindingError) writeTo(w stringWriter) {
 }
 
 func (bindings *BindStms) resolve(self, calls map[string]*ResolvedBinding,
-	lookup *TypeLookup, keepSplit bool) (map[string]*ResolvedBinding, error) {
+	lookup *TypeLookup) (map[string]*ResolvedBinding, error) {
 	if len(bindings.List) == 0 {
 		return nil, nil
 	}
@@ -87,10 +91,10 @@ func (bindings *BindStms) resolve(self, calls map[string]*ResolvedBinding,
 			continue
 		}
 		tid := binding.Tname
-		r, err := resolveExp(binding.Exp, tid, self, calls, lookup, keepSplit)
+		r, err := resolveExp(binding.Exp, tid, self, calls, lookup)
 		if err != nil {
 			errs = append(errs, &bindingError{
-				Msg: "BindingError: input parameter " + binding.Id,
+				Msg: "BindingError: parameter " + binding.Id,
 				Err: err,
 			})
 		}
@@ -100,12 +104,12 @@ func (bindings *BindStms) resolve(self, calls map[string]*ResolvedBinding,
 }
 
 func resolveExp(exp Exp, tname TypeId, self, siblings map[string]*ResolvedBinding,
-	lookup *TypeLookup, keepSplit bool) (*ResolvedBinding, error) {
+	lookup *TypeLookup) (*ResolvedBinding, error) {
 	t := lookup.Get(tname)
 	if t == nil {
 		return nil, fmt.Errorf("unknown type " + tname.String())
 	}
-	rexp, err := exp.resolveRefs(self, siblings, lookup, keepSplit)
+	rexp, err := exp.resolveRefs(self, siblings, lookup)
 	if err != nil {
 		return &ResolvedBinding{
 			Exp:  exp,
@@ -129,7 +133,6 @@ func bindingType(p string, t Type, lookup *TypeLookup) (Type, error) {
 	if p == "" {
 		return t, nil
 	}
-	i := strings.IndexRune(p, '.')
 	switch t := t.(type) {
 	case *TypedMapType:
 		r, err := bindingType(p, t.Elem, lookup)
@@ -146,7 +149,7 @@ func bindingType(p string, t Type, lookup *TypeLookup) (Type, error) {
 	case *StructType:
 		element := p
 		rest := ""
-		if i > 0 {
+		if i := strings.IndexRune(p, '.'); i > 0 {
 			element = p[:i]
 			rest = p[i+1:]
 		}
@@ -164,13 +167,13 @@ func bindingType(p string, t Type, lookup *TypeLookup) (Type, error) {
 }
 
 func (b *ResolvedBinding) BindingPath(p string,
-	fork map[MapCallSource]CollectionIndex, index []CollectionIndex,
+	forks map[*CallStm]CollectionIndex,
 	lookup *TypeLookup) (*ResolvedBinding, error) {
 	t, err := bindingType(p, b.Type, lookup)
 	if err != nil {
 		return b, err
 	}
-	e, err := b.Exp.BindingPath(p, fork, index)
+	e, err := b.Exp.BindingPath(p, forks)
 	if err != nil || (e == b.Exp && t == b.Type) {
 		return b, err
 	}
@@ -178,6 +181,41 @@ func (b *ResolvedBinding) BindingPath(p string,
 		Exp:  e,
 		Type: t,
 	}, nil
+}
+
+func (*BoundReference) KnownLength() bool {
+	return false
+}
+
+func (*BoundReference) ArrayLength() int {
+	return -1
+}
+
+func (*BoundReference) Keys() map[string]Exp {
+	return nil
+}
+
+func (b *BoundReference) CallMode() CallMode {
+	switch b.Type.(type) {
+	case *ArrayType:
+		return ModeArrayCall
+	case *TypedMapType:
+		return ModeMapCall
+	case nullType:
+		return ModeNullMapCall
+	default:
+		return ModeSingleCall
+	}
+}
+
+func (b *BoundReference) GoString() string {
+	if b == nil || b.Exp == nil {
+		return "null ref"
+	}
+	if b.Type == nil {
+		return b.Exp.GoString() + " (unknown type)"
+	}
+	return b.Exp.GoString() + " (" + b.Type.TypeId().str() + ")"
 }
 
 // Finds all of the expressions in this binding which are reference expressions,
@@ -191,204 +229,225 @@ func (b *ResolvedBinding) FindRefs(lookup *TypeLookup) ([]*BoundReference, error
 	if !b.Exp.HasRef() {
 		return nil, nil
 	}
-	switch exp := b.Exp.(type) {
-	case *RefExp:
-		return []*BoundReference{{
-			Exp:  exp,
-			Type: b.Type,
-		}}, nil
-	case *ArrayExp:
-		t := b.Type.TypeId()
-		if t.ArrayDim == 0 {
-			return nil, &wrapError{
-				innerError: &bindingError{
-					Msg: "unexpected array",
-				},
-				loc: exp.Node.Loc,
+	return b.Exp.FindTypedRefs(nil, b.Type, lookup)
+}
+
+func (exp *RefExp) FindTypedRefs(list []*BoundReference,
+	t Type, lookup *TypeLookup) ([]*BoundReference, error) {
+	// for _, s := range exp.MergeOver {
+	// 	switch s.CallMode() {
+	// 	case ModeArrayCall:
+	// 		tid.ArrayDim++
+	// 	case ModeMapCall:
+	// 		if tid.MapDim > 0 {
+	// 			return list, &bindingError{
+	// 				Msg: "map call results in nesting a " + tid.str() + " inside a map",
+	// 			}
+	// 		}
+	// 		tid.MapDim = 1 + tid.ArrayDim
+	// 		tid.ArrayDim = 0
+	// 	}
+	// }
+	// for _, v := range exp.ForkIndex {
+	// 	switch v.Mode() {
+	// 	case ModeArrayCall:
+	// 		if tid.ArrayDim == 0 {
+	// 			if tid.MapDim > 1 {
+	// 				tid.MapDim--
+	// 			} else {
+	// 				return list, &bindingError{
+	// 					Msg: "can't split a " + tid.str() + " as an array",
+	// 				}
+	// 			}
+	// 		}
+	// 		tid.ArrayDim--
+	// 	case ModeMapCall:
+	// 		if tid.MapDim == 0 {
+	// 			return list, &bindingError{
+	// 				Msg: "can't split a " + tid.str() + " as a map",
+	// 			}
+	// 		}
+	// 		tid.ArrayDim = tid.MapDim - 1
+	// 		tid.MapDim = 0
+	// 	}
+	// }
+	// t = lookup.Get(tid)
+	return append(list, &BoundReference{
+		Exp:  exp,
+		Type: t,
+	}), nil
+}
+
+func (exp *ArrayExp) FindTypedRefs(list []*BoundReference,
+	t Type, lookup *TypeLookup) ([]*BoundReference, error) {
+	tid := t.TypeId()
+	if tid.ArrayDim == 0 {
+		return nil, &wrapError{
+			innerError: &bindingError{
+				Msg: "unexpected array",
+			},
+			loc: exp.Node.Loc,
+		}
+	}
+	tid.ArrayDim--
+	nt := lookup.Get(tid)
+	if nt == nil {
+		panic("invalid type " + tid.String())
+	}
+	var errs ErrorList
+	if cap(list) == 0 {
+		list = make([]*BoundReference, 0, len(exp.Value))
+	}
+	for _, e := range exp.Value {
+		if e == nil || !e.HasRef() {
+			continue
+		}
+		rb := ResolvedBinding{
+			Exp:  e,
+			Type: nt,
+		}
+		if refs, err := rb.FindRefs(lookup); err != nil {
+			errs = append(errs, &bindingError{
+				Msg: "in array",
+				Err: err,
+			})
+		} else if len(refs) > 0 {
+			list = append(list, refs...)
+		}
+	}
+	return list, errs.If()
+}
+
+func (exp *DisabledExp) FindTypedRefs(list []*BoundReference,
+	t Type, lookup *TypeLookup) ([]*BoundReference, error) {
+	list, err := exp.Value.FindTypedRefs(list, t, lookup)
+	if err != nil {
+		return list, err
+	}
+	return append(list, &BoundReference{
+		Exp:  exp.Disabled,
+		Type: &builtinBool,
+	}), nil
+}
+
+func (exp *MapExp) FindTypedRefs(list []*BoundReference,
+	t Type, lookup *TypeLookup) ([]*BoundReference, error) {
+	switch t := t.(type) {
+	case *TypedMapType:
+		if exp.Kind == KindStruct {
+			// To avoid special handling of references, pipeline output
+			// bindings for mapped calls of pipelines will be structs of
+			// maps rather than maps of structs.  But, that means we have
+			// to have special handling here instead.
+			if t, ok := t.Elem.(*StructType); ok {
+				return findStructRefs(list, lookup, t, exp, false, true)
 			}
 		}
-		t.ArrayDim--
-		nt := lookup.Get(t)
-		if nt == nil {
-			panic("invalid type " + t.String())
-		}
 		var errs ErrorList
-		result := make([]*BoundReference, 0, len(exp.Value))
-		for _, e := range exp.Value {
+		keys := make([]string, 0, len(exp.Value))
+		for key, val := range exp.Value {
+			if val != nil && val.HasRef() {
+				keys = append(keys, key)
+			}
+		}
+		sort.Strings(keys)
+		if cap(list) == 0 {
+			list = make([]*BoundReference, 0, len(keys))
+		}
+		for _, key := range keys {
+			e := exp.Value[key]
 			if e == nil || !e.HasRef() {
 				continue
 			}
 			rb := ResolvedBinding{
 				Exp:  e,
-				Type: nt,
+				Type: t.Elem,
 			}
 			if refs, err := rb.FindRefs(lookup); err != nil {
 				errs = append(errs, &bindingError{
-					Msg: "in array",
+					Msg: "map key " + key,
 					Err: err,
 				})
 			} else if len(refs) > 0 {
-				result = append(result, refs...)
+				list = append(list, refs...)
 			}
 		}
-		return result, errs.If()
-	case *DisabledExp:
-		rb := *b
-		rb.Exp = exp.Value
-		refs, err := rb.FindRefs(lookup)
-		if err != nil {
-			return refs, err
+		return list, errs.If()
+	case *StructType:
+		return findStructRefs(list, lookup, t, exp, false, false)
+	case *ArrayType:
+		// To avoid special handling of references, pipeline output
+		// bindings for mapped calls of pipelines will be structs of
+		// arrays rather than arrays of structs.  But, that means we have
+		// to have special handling here instead.
+		if t, ok := t.Elem.(*StructType); ok {
+			return findStructRefs(list, lookup, t, exp, true, false)
 		}
-		return append(refs, &BoundReference{
-			Exp:  exp.Disabled,
-			Type: &builtinBool,
-		}), nil
-	case *SplitExp:
-		t := b.Type.TypeId()
-		var innerType Type
-		switch exp.InnerValue().(type) {
-		case *MapExp:
-			innerType = lookup.GetMap(b.Type)
-		case *ArrayExp:
-			innerType = lookup.GetArray(b.Type, 1)
-		case *RefExp:
-			if t.ArrayDim > 0 {
-				t.ArrayDim--
-			} else if t.MapDim > 0 {
-				t.ArrayDim = t.MapDim - 1
-				t.MapDim = 0
-			}
-			innerType = lookup.Get(t)
-		case *NullExp:
-			innerType = &builtinNull
-		default:
-			return nil, &wrapError{
-				innerError: &bindingError{
-					Msg: "split was not over an array, map, or ref",
-				},
-				loc: exp.Node.Loc,
-			}
+		return list, &wrapError{
+			innerError: &bindingError{
+				Msg: "unexpected " + string(exp.Kind) +
+					" (expected " + t.TypeId().str() + ")",
+			},
+			loc: exp.Node.Loc,
 		}
-		rb := ResolvedBinding{
-			Exp:  exp.Value,
-			Type: innerType,
-		}
-		result, err := rb.FindRefs(lookup)
-		if err != nil {
-			err = &bindingError{
-				Msg: "in split",
-				Err: err,
-			}
-		}
-		return result, err
-	case *MapExp:
-		switch t := b.Type.(type) {
-		case *TypedMapType:
-			if exp.Kind == KindStruct {
-				// To avoid special handling of references, pipeline output
-				// bindings for mapped calls of pipelines will be structs of
-				// maps rather than maps of structs.  But, that means we have
-				// to have special handling here instead.
-				if t, ok := t.Elem.(*StructType); ok {
-					return findStructRefs(lookup, t, exp, false, true)
-				}
-			}
-			var errs ErrorList
-			keys := make([]string, 0, len(exp.Value))
-			for key, val := range exp.Value {
-				if val != nil && val.HasRef() {
-					keys = append(keys, key)
-				}
-			}
-			sort.Strings(keys)
-			result := make([]*BoundReference, 0, len(keys))
-			for _, key := range keys {
-				e := exp.Value[key]
-				if e == nil || !e.HasRef() {
-					continue
-				}
-				rb := ResolvedBinding{
-					Exp:  e,
-					Type: t.Elem,
-				}
-				if refs, err := rb.FindRefs(lookup); err != nil {
-					errs = append(errs, &bindingError{
-						Msg: "map key " + key,
-						Err: err,
-					})
-				} else if len(refs) > 0 {
-					result = append(result, refs...)
-				}
-			}
-			return result, errs.If()
-		case *StructType:
-			return findStructRefs(lookup, t, exp, false, false)
-		case *ArrayType:
-			// To avoid special handling of references, pipeline output
-			// bindings for mapped calls of pipelines will be structs of
-			// arrays rather than arrays of structs.  But, that means we have
-			// to have special handling here instead.
-			if t, ok := t.Elem.(*StructType); ok {
-				return findStructRefs(lookup, t, exp, true, false)
-			}
-			return nil, &wrapError{
+	case *BuiltinType:
+		if t.Id != KindMap {
+			return list, &wrapError{
 				innerError: &bindingError{
 					Msg: "unexpected " + string(exp.Kind) +
 						" (expected " + t.TypeId().str() + ")",
 				},
 				loc: exp.Node.Loc,
 			}
-		case *BuiltinType:
-			if t.Id != KindMap {
-				return nil, &wrapError{
-					innerError: &bindingError{
-						Msg: "unexpected " + string(exp.Kind) +
-							" (expected " + t.TypeId().str() + ")",
+		}
+		// Untyped map type.  Generally this can't be allowed.
+		refs := exp.FindRefs()
+		if cap(list) == 0 {
+			list = make([]*BoundReference, 0, len(refs))
+		}
+		for _, r := range refs {
+			if r.OutputId == "" && (r.Kind == KindCall || r.Id == "") {
+				// In these cases we know it's a struct so we can tolerate.
+				list = append(list, &BoundReference{
+					Exp:  r,
+					Type: &builtinMap,
+				})
+			} else {
+				return list, &wrapError{
+					innerError: &wrapError{
+						innerError: &bindingError{
+							Msg: "reference " + r.GoString() +
+								" cannot be bound inside an untyped map",
+						},
+						loc: r.Node.Loc,
 					},
 					loc: exp.Node.Loc,
 				}
 			}
-			// Untyped map type.  Generally this can't be allowed.
-			refs := exp.FindRefs()
-			result := make([]*BoundReference, 0, len(refs))
-			for _, r := range refs {
-				if r.OutputId == "" && (r.Kind == KindCall || r.Id == "") {
-					// In these cases we know it's a struct so we can tolerate.
-					result = append(result, &BoundReference{
-						Exp:  r,
-						Type: &builtinMap,
-					})
-				} else {
-					return nil, &wrapError{
-						innerError: &wrapError{
-							innerError: &bindingError{
-								Msg: "reference " + r.GoString() +
-									" cannot be bound inside an untyped map",
-							},
-							loc: r.Node.Loc,
-						},
-						loc: exp.Node.Loc,
-					}
-				}
-			}
-			return result, nil
-		default:
-			return nil, &wrapError{
-				innerError: &bindingError{
-					Msg: "unexpected " + string(exp.Kind) +
-						" (expected " + t.TypeId().str() + ")",
-				},
-				loc: exp.Node.Loc,
-			}
 		}
+		return list, nil
 	default:
-		panic(fmt.Sprintf("invalid reference type %T", exp))
+		return list, &wrapError{
+			innerError: &bindingError{
+				Msg: "unexpected " + string(exp.Kind) +
+					" (expected " + t.TypeId().str() + ")",
+			},
+			loc: exp.Node.Loc,
+		}
 	}
 }
 
-func findStructRefs(lookup *TypeLookup, t *StructType, exp *MapExp, arr, typedMap bool) ([]*BoundReference, error) {
+func (exp *valExp) FindTypedRefs(list []*BoundReference, _ Type, _ *TypeLookup) ([]*BoundReference, error) {
+	return list, nil
+}
+
+func findStructRefs(result []*BoundReference,
+	lookup *TypeLookup, t *StructType,
+	exp *MapExp, arr, typedMap bool) ([]*BoundReference, error) {
 	var errs ErrorList
-	result := make([]*BoundReference, 0, len(t.Members))
+	if cap(result) == 0 {
+		result = make([]*BoundReference, 0, len(t.Members))
+	}
 	for _, member := range t.Members {
 		if v, ok := exp.Value[member.Id]; !ok {
 			errs = append(errs, &bindingError{
