@@ -689,6 +689,9 @@ type elementError struct {
 }
 
 func (err *elementError) Error() string {
+	if err.inner == nil {
+		return err.element
+	}
 	return err.element + ": " + err.inner.Error()
 }
 
