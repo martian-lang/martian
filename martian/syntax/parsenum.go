@@ -77,7 +77,7 @@ func parseFloat32(s []byte) float32 {
 
 // roundUpTo rounds a value away from zero to the nearest 1/granularity.
 //
-// For example, roundUpTo(0.0001, 100) -> 0.01
+// For example, roundUpTo(0.0001, 100) -> 0.01.
 func roundUpTo(value float32, granularity float64) float32 {
 	if value > 0 {
 		return float32(math.Ceil(float64(value)*granularity) / granularity)

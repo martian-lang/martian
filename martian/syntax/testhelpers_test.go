@@ -33,7 +33,7 @@ func TestMain(m *testing.M) {
 	os.Exit(m.Run())
 }
 
-// Checks that the source can be parsed and compiled
+// Checks that the source can be parsed and compiled.
 func testGood(t *testing.T, src string) *Ast {
 	t.Helper()
 	if ast, err := yaccParse([]byte(src), new(SourceFile),
@@ -49,31 +49,28 @@ func testGood(t *testing.T, src string) *Ast {
 }
 
 // Checks that the source can be parsed but does not compile.
-func testBadCompile(t *testing.T, src, expect string) string {
+func testBadCompile(t *testing.T, src, expect string) {
 	t.Helper()
 	if ast, err := yaccParse([]byte(src), new(SourceFile), makeStringIntern()); err != nil {
 		t.Fatal(err.Error())
-		return ""
+		return
 	} else if err := ast.compile(); err == nil {
 		t.Error("Expected failure to compile.")
-		return ""
+		return
 	} else {
 		msg := err.Error()
 		if !strings.Contains(msg, expect) {
 			t.Errorf("Expected %q, got %q", expect, msg)
 		}
-		return msg
+		return
 	}
 }
 
 // Checks that the source cannot be parsed.
-func testBadGrammar(t *testing.T, src string) string {
+func testBadGrammar(t *testing.T, src string) {
 	t.Helper()
 	if _, err := yaccParse([]byte(src), new(SourceFile), makeStringIntern()); err == nil {
 		t.Error("Expected failure to parse, but got success.")
-		return ""
-	} else {
-		return err.Error()
 	}
 }
 

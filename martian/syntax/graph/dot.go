@@ -21,7 +21,8 @@ import (
 // json.MarshalIndent.
 //
 // graphAttrs are attribute lines to add to the top-level graph, e.g.
-// `packmode = clust`
+//
+//   packmode = clust
 func RenderDot(pipeline *syntax.CallGraphPipeline, w io.StringWriter,
 	indentStart, indent string, graphAttrs ...string) error {
 	if _, err := w.WriteString(indentStart); err != nil {
@@ -95,7 +96,7 @@ func RenderDot(pipeline *syntax.CallGraphPipeline, w io.StringWriter,
 	return nil
 }
 
-// map from node -> to path -> from path
+// map from node -> to path -> from path.
 type edgeBindingSet map[string]map[string]map[string]struct{}
 
 func (set edgeBindingSet) Add(node, to, from string) {

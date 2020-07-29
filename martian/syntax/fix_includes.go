@@ -138,7 +138,10 @@ func uncheckedMakeTables(top *Ast, included *Ast) error {
 		}
 		for _, userType := range included.UserTypes {
 			if top.TypeTable.baseTypes == nil {
-				top.TypeTable.init(len(included.UserTypes) + len(included.StructTypes) + len(included.Callables.List))
+				top.TypeTable.init(
+					len(included.UserTypes) +
+						len(included.StructTypes) +
+						len(included.Callables.List))
 			}
 			if err := top.TypeTable.AddUserType(userType); err != nil {
 				errs = append(errs, err)
@@ -146,7 +149,10 @@ func uncheckedMakeTables(top *Ast, included *Ast) error {
 		}
 		for _, structType := range included.StructTypes {
 			if top.TypeTable.baseTypes == nil {
-				top.TypeTable.init(len(included.UserTypes) + len(included.StructTypes) + len(included.Callables.List))
+				top.TypeTable.init(
+					len(included.UserTypes) +
+						len(included.StructTypes) +
+						len(included.Callables.List))
 			}
 			if err := top.TypeTable.AddStructType(structType); err != nil {
 				errs = append(errs, err)
@@ -154,7 +160,9 @@ func uncheckedMakeTables(top *Ast, included *Ast) error {
 		}
 		for _, callable := range included.Callables.List {
 			if top.TypeTable.baseTypes == nil {
-				top.TypeTable.init(len(included.UserTypes) + len(included.StructTypes) + len(included.Callables.List))
+				top.TypeTable.init(len(included.UserTypes) +
+					len(included.StructTypes) +
+					len(included.Callables.List))
 			}
 			if err := top.TypeTable.AddStructType(structFromCallable(callable)); err != nil {
 				errs = append(errs, err)
@@ -418,7 +426,6 @@ func (parser *Parser) findMissingIncludes(seenFiles map[string]*SourceFile,
 										}
 									}
 								}
-
 							}
 						}
 					}

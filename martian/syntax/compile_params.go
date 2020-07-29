@@ -186,7 +186,6 @@ func (exp *RefExp) resolveType(global *Ast, pipeline *Pipeline) (TypeId, MapCall
 	}
 
 	switch exp.getKind() {
-
 	// Param: self.myparam
 	case KindSelf:
 		param, ok := pipeline.GetInParams().Table[exp.Id]

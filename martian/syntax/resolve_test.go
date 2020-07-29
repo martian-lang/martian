@@ -917,7 +917,7 @@ call VERY_DEEP_PIPELINE_PIPELINE4()
 	if ast == nil {
 		return
 	}
-	g, err := ast.MakeCallGraph("irrelivent.", ast.Call)
+	g, err := ast.MakeCallGraph("irrelevant.", ast.Call)
 	if err == nil {
 		for len(g.GetChildren()) > 0 {
 			g = g.GetChildren()[0]

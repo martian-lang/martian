@@ -81,17 +81,14 @@ func (e removePipelineRetain) Apply(ast *syntax.Ast) (int, error) {
 	for _, target := range ast.Pipelines {
 		if target.GetId() == e.Pipeline.Id &&
 			target.File().FullPath == e.Pipeline.File().FullPath {
-			if err := e.remove(target); err != nil {
-				return count, err
-			} else {
-				count++
-			}
+			e.remove(target)
+			count++
 		}
 	}
 	return count, nil
 }
 
-func (e removePipelineRetain) remove(target *syntax.Pipeline) error {
+func (e removePipelineRetain) remove(target *syntax.Pipeline) {
 	for i, r := range target.Retain.Refs {
 		if r.Kind == e.Ref.Kind && r.Id == e.Ref.Id && r.OutputId == e.Ref.OutputId {
 			if len(target.Retain.Refs) == 1 {
@@ -105,10 +102,9 @@ func (e removePipelineRetain) remove(target *syntax.Pipeline) error {
 					target.Retain.Refs[:i:i],
 					target.Retain.Refs[i+1:]...)
 			}
-			return nil
+			return
 		}
 	}
-	return nil
 }
 
 // Apply removes an input parameter from a callable in the given AST object.

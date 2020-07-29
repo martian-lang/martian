@@ -60,7 +60,7 @@ type (
 		Args []string
 	}
 
-	// Stage resouce definitions.
+	// Stage resource definitions.
 	Resources struct {
 		Node         AstNode
 		ThreadNode   *AstNode
@@ -203,7 +203,7 @@ func (s *Pipeline) Line() int                { return s.Node.Loc.Line }
 func (s *Pipeline) GetInParams() *InParams   { return s.InParams }
 func (s *Pipeline) GetOutParams() *OutParams { return s.OutParams }
 
-// Type returns "pipeline"
+// Type returns "pipeline".
 func (s *Pipeline) Type() string { return KindPipeline.str() }
 
 func (s *Pipeline) inheritComments() bool { return false }

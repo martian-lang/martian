@@ -25,17 +25,14 @@ func (e removeCallableInput) Apply(ast *syntax.Ast) (int, error) {
 	for _, target := range ast.Callables.List {
 		if target.GetId() == e.Callable.GetId() &&
 			target.File().FullPath == e.Callable.File().FullPath {
-			if err := e.remove(target.GetInParams()); err != nil {
-				return count, err
-			} else {
-				count++
-			}
+			e.remove(target.GetInParams())
+			count++
 		}
 	}
 	return count, nil
 }
 
-func (e removeCallableInput) remove(params *syntax.InParams) error {
+func (e removeCallableInput) remove(params *syntax.InParams) {
 	for i, p := range params.List {
 		if p.Id == e.Param {
 			delete(params.Table, e.Param)
@@ -46,10 +43,9 @@ func (e removeCallableInput) remove(params *syntax.InParams) error {
 			} else {
 				params.List = append(params.List[:i:i], params.List[i+1:]...)
 			}
-			return nil
+			return
 		}
 	}
-	return nil
 }
 
 type removeCallInput struct {
@@ -70,9 +66,7 @@ func (e removeCallInput) Apply(ast *syntax.Ast) (int, error) {
 		if ast.Call != nil &&
 			ast.Call.DecId == e.Call.DecId &&
 			ast.Call.File().FullPath == e.Call.File().FullPath {
-			if err := e.remove(ast.Call.Bindings); err != nil {
-				return count, err
-			}
+			e.remove(ast.Call.Bindings)
 			return 1, nil
 		}
 		return 0, nil
@@ -82,11 +76,8 @@ func (e removeCallInput) Apply(ast *syntax.Ast) (int, error) {
 			pipe.Node.File().FullPath == e.Pipeline.Node.File().FullPath {
 			for _, call := range pipe.Calls {
 				if call.Id == e.Call.Id {
-					if err := e.remove(call.Bindings); err != nil {
-						return count, err
-					} else {
-						count++
-					}
+					e.remove(call.Bindings)
+					count++
 				}
 			}
 		}
@@ -94,7 +85,7 @@ func (e removeCallInput) Apply(ast *syntax.Ast) (int, error) {
 	return count, nil
 }
 
-func (e removeCallInput) remove(params *syntax.BindStms) error {
+func (e removeCallInput) remove(params *syntax.BindStms) {
 	for i, p := range params.List {
 		if p.Id == e.Param {
 			delete(params.Table, e.Param)
@@ -105,10 +96,9 @@ func (e removeCallInput) remove(params *syntax.BindStms) error {
 			} else {
 				params.List = append(params.List[:i:i], params.List[i+1:]...)
 			}
-			return nil
+			return
 		}
 	}
-	return nil
 }
 
 // RemoveInputParam creates an Edit which will remove the given parameter from

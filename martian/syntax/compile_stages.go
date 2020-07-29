@@ -63,7 +63,8 @@ func (stage *Stage) compile(global *Ast) error {
 		for _, param := range stage.ChunkOuts.List {
 			if _, ok := stage.OutParams.Table[param.GetId()]; ok {
 				errs = append(errs, global.err(param,
-					"DuplicateNameError: parameter name '%s' of stage %s is used for both chunk and stage outs",
+					"DuplicateNameError: parameter name '%s' of stage %s "+
+						"is used for both chunk and stage outs",
 					param.GetId(), stage.Id))
 			}
 		}

@@ -33,7 +33,8 @@ func diffLine(t *testing.T, expected, actual string) {
 			t.Error("(leading whitespace differences)",
 				strconv.QuoteToGraphic(eLead), "!=",
 				strconv.QuoteToGraphic(aLead))
-		} else if strings.TrimRightFunc(expected, unicode.IsSpace) == strings.TrimRightFunc(actual, unicode.IsSpace) {
+		} else if strings.TrimRightFunc(expected, unicode.IsSpace) ==
+			strings.TrimRightFunc(actual, unicode.IsSpace) {
 			if len(actual) > len(expected) {
 				t.Error(st, "trailing whitespace differences >", strconv.QuoteToGraphic(actual))
 			} else {

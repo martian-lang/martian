@@ -430,7 +430,6 @@ func Compile(fpath string,
 // closure of all includes, the compiled AST, or an error if applicable.
 func (parser *Parser) Compile(fpath string,
 	mroPaths []string, checkSrcPath bool) (string, []string, *Ast, error) {
-
 	if data, err := ioutil.ReadFile(fpath); err != nil {
 		return "", nil, nil, err
 	} else {

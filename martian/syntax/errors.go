@@ -42,7 +42,7 @@ type errorWriter interface {
 	writeTo(w stringWriter)
 }
 
-// AstError
+// AstError contains information about an error in parsing or compiling an Ast.
 type AstError struct {
 	global *Ast
 	Node   *AstNode
@@ -128,7 +128,10 @@ func (err *DuplicateCallError) writeTo(w stringWriter) {
 
 func (err *DuplicateCallError) Error() string {
 	var buff strings.Builder
-	buff.Grow(len("Cannot have more than one top-level call.\n    First call: CALL_NAME at sourcefile.mro:100\n    Next call: SECOND_CALL at sourcefile.mro:200"))
+	buff.Grow(len(
+		`Cannot have more than one top-level call.
+    First call: CALL_NAME at sourcefile.mro:100
+    Next call: SECOND_CALL at sourcefile.mro:200`))
 	err.writeTo(&buff)
 	return buff.String()
 }
@@ -161,7 +164,8 @@ func (err *wrapError) writeTo(w stringWriter) {
 
 func (err *wrapError) Error() string {
 	var buff strings.Builder
-	buff.Grow(len("MRO os.FileError: cannot access...\n    at sourcename.mro:100 included from sourcename.mro:10"))
+	buff.Grow(len(`MRO os.FileError: cannot access...
+    at sourcename.mro:100 included from sourcename.mro:10`))
 	err.writeTo(&buff)
 	return buff.String()
 }
@@ -196,7 +200,7 @@ func (loc *SourceLoc) String() string {
 	return buff.String()
 }
 
-// ParseError
+// ParseError contains information about errors during parsing.
 type ParseError struct {
 	token string
 	loc   SourceLoc

@@ -235,7 +235,6 @@ func (s *SplitExp) BindingPath(bindPath string,
 func (s *MapExp) BindingPath(bindPath string,
 	fork map[MapCallSource]CollectionIndex,
 	index []CollectionIndex) (Exp, error) {
-
 	if (bindPath == "" && len(fork) == 0 && len(index) == 0) ||
 		s == nil || len(s.Value) == 0 {
 		return s, nil
@@ -565,7 +564,8 @@ func (s *MapExp) filter(t Type, lookup *TypeLookup) (Exp, error) {
 	}
 	if at, ok := t.(*TypedMapType); !ok {
 		return s, &IncompatibleTypeError{
-			Message: fmt.Sprintf("unexpected map expression for %s\n%s",
+			Message: fmt.Sprintf("unexpected %s expression for %s\n%s",
+				s.Kind,
 				t.TypeId().str(),
 				FormatExp(s, "")),
 		}

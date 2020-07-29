@@ -232,7 +232,8 @@ func FormatSrcBytes(src []byte, filename string, fixIncludes bool, mropath []str
 	return parser.FormatSrcBytes(src, filename, fixIncludes, mropath)
 }
 
-func (parser *Parser) FormatSrcBytes(src []byte, filename string, fixIncludes bool, mropath []string) (string, error) {
+func (parser *Parser) FormatSrcBytes(src []byte, filename string,
+	fixIncludes bool, mropath []string) (string, error) {
 	global, mmli := parser.UncheckedParse(src, filename)
 	if mmli != nil { // mmli is an mmLexInfo struct
 		return "", mmli

@@ -84,7 +84,7 @@ func (pipeline *Pipeline) directDepsMap() (map[*CallStm]map[*CallStm]struct{}, e
 	return deps, errs.If()
 }
 
-// Finds dependencies of src which aren't in depsMap
+// Finds dependencies of src which aren't in depsMap.
 func (pipeline *Pipeline) findMissingDeps(src *CallStm, deps map[*CallStm]struct{},
 	depsMap map[*CallStm]map[*CallStm]struct{}) ([]*CallStm, error) {
 	var missing []*CallStm
@@ -94,7 +94,9 @@ func (pipeline *Pipeline) findMissingDeps(src *CallStm, deps map[*CallStm]struct
 				if transDep == src {
 					return nil, &wrapError{
 						innerError: fmt.Errorf(
-							"CyclicDependencyError: Call depends transitively on itself (%s -> ... -> %s -> %s) in pipeline %s.",
+							"CyclicDependencyError: Call depends "+
+								"transitively on itself "+
+								"(%s -> ... -> %s -> %s) in pipeline %s.",
 							src.Id, dep.Id, transDep.Id, pipeline.Id),
 						loc: src.getNode().Loc,
 					}
