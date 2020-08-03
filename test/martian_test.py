@@ -241,9 +241,9 @@ def compare_objects(actual, expected):
 def load_json(output, expect, filename):
     """Get two objects to compare from json."""
     try:
-        with open(os.path.join(output, filename)) as act:
+        with open(os.path.join(output, filename), 'rb') as act:
             actual = json.load(act)
-        with open(os.path.join(expect, filename)) as exp:
+        with open(os.path.join(expect, filename), 'rb') as exp:
             expected = json.load(exp)
     except IOError as err:
         sys.stderr.write('Error reading %s: %s\n' % (filename, err))
@@ -352,10 +352,12 @@ def clean_line(line):
 def compare_lines(output, expect, filename):
     """Compare two files, replacing everything that might be an absolute path
     with the base path, and timestamps with __TIMESTAMP__."""
-    with open(os.path.join(output, filename)) as act:
-        with open(os.path.join(expect, filename)) as exp:
+    with open(os.path.join(output, filename), 'rb') as act:
+        with open(os.path.join(expect, filename), 'rb') as exp:
             for actual, expected in zip_longest(act, exp):
                 if actual and expected:
+                    actual = actual.decode('utf-8', errors='ignore')
+                    expected = expected.decode('utf-8', errors='ignore')
                     if clean_line(actual) != clean_line(expected):
                         sys.stderr.write(
                             'Expected:\n%s\nActual:\n%s\n' %
@@ -370,6 +372,7 @@ _PPROF_LINE_REGEX = re.compile(r'^# (\S+)')
 def pprof_keys(lines):
     """Get the sequence of pprof keys in a file."""
     for line in lines:
+        line = line.decode('utf-8', errors='ignore')
         match = _PPROF_LINE_REGEX.match(line)
         if match and match.group(1):
             yield match.group(1)
@@ -377,8 +380,8 @@ def pprof_keys(lines):
 
 def compare_pprof(output, expect, filename):
     """Compare two pprof files, only paying attention to keys."""
-    with open(os.path.join(output, filename)) as act:
-        with open(os.path.join(expect, filename)) as exp:
+    with open(os.path.join(output, filename), 'rb') as act:
+        with open(os.path.join(expect, filename), 'rb') as exp:
             for actual, expected in zip_longest(pprof_keys(act), pprof_keys(exp)):
                 if actual != expected:
                     sys.stderr.write(
@@ -393,7 +396,6 @@ _TRACEBACK_REGEX = re.compile(r', line \d+, in')
 
 def clean_errors(line):
     """As clean_line, but also blur out traceback line numbers."""
-    line = line.decode('utf-8', errors='ignore')
     return _TRACEBACK_REGEX.sub(', line LINENO, in', clean_line(line))
 
 
@@ -403,6 +405,8 @@ def compare_errors(output, expect, filename):
         with open(os.path.join(expect, filename), 'rb') as exp:
             for actual, expected in zip_longest(act, exp):
                 if actual and expected:
+                    actual = actual.decode('utf-8', errors='ignore')
+                    expected = expected.decode('utf-8', errors='ignore')
                     if clean_errors(actual) != clean_errors(expected):
                         sys.stderr.write(
                             'Expected:\n%s\nActual:\n%s\n' %
@@ -523,7 +527,7 @@ def main(argv):
     parser = argparse.ArgumentParser()
     parser.add_argument('config')
     config_filename = parser.parse_args(argv[1:]).config
-    with open(config_filename, 'r') as configfile:
+    with open(config_filename, 'rb') as configfile:
         config = json.load(configfile)
     if not 'command' in config or not config['command']:
         sys.stderr.write('No command specified in %s\n' % config_filename)

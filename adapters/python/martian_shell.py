@@ -204,7 +204,7 @@ class _Metadata(object):
         if test:
             self._logfile = sys.stdout
         else:
-            self._logfile = os.fdopen(3, 'a')
+            self._logfile = os.fdopen(3, 'ab')
         self.cache = set()
 
     def make_path(self, name):
@@ -222,7 +222,7 @@ class _Metadata(object):
 
     def read(self, name):
         """Read the given metadata file as a json file."""
-        with open(self.make_path(name), 'r') as source:
+        with open(self.make_path(name), 'rb') as source:
             try:
                 return json.load(source)
             except ValueError as read_error:
@@ -277,7 +277,7 @@ class _Metadata(object):
     def _append(self, message, filename):
         """Append to the given metadata file."""
         message = _ensure_binary(message)
-        with open(self.make_path(filename), 'a') as dest:
+        with open(self.make_path(filename), 'ab') as dest:
             dest.write(message + b'\n')
         self.update_journal(filename)
 
@@ -294,8 +294,8 @@ class _Metadata(object):
 
     def log(self, level, message):
         """Write a log line to the log file."""
-        self._logfile.write('{} [{}] {}\n'.format(
-            self.make_timestamp_now(), level, self._to_string_type(message)))
+        self._logfile.write(_ensure_binary('{} [{}] {}\n'.format(
+            self.make_timestamp_now(), level, self._to_string_type(message))))
         self._logfile.flush()
 
     def alarm(self, message):

@@ -17,7 +17,7 @@ matrix:
     - pyenv global 2.7
     before_script:
     - nvm install --lts node
-    - npm install -g npm@^6.10
+    - npm install -g npm@^6.14
     - pip install --user pylint
   - name: python3
     go:
@@ -25,18 +25,21 @@ matrix:
     sudo: false
     dist: xenial
     before_install:
-    - pyenv global 3.7
+    - pyenv versions
+    - pyenv global 3.7.1
+    - python --version
     before_script:
     - nvm install --lts node
-    - npm install -g npm@^6.10
+    - npm install -g npm@^6.14
     - pip install --user pylint
   - name: bazel
     sudo: true
-    dist: xenial
+    dist: bionic
     before_install:
-    - pyenv global 3.7
+    - pyenv global 3.6
+    - python --version
     - |
-      BAZEL_VERSION=3.2.0
+      BAZEL_VERSION=3.4.1
       OS="${TRAVIS_OS_NAME}"
       if [[ "${OS}" == "osx" ]]; then
         OS=darwin
