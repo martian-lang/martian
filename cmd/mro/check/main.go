@@ -108,20 +108,18 @@ Options:
 			fmt.Printf("%s", syntax.JsonDumpAsts(asts))
 		}
 		if callgraph {
-			printCallGraphs(asts)
+			wasErr = printCallGraphs(asts) || wasErr
 		}
-		if mkdot {
-			for _, ast := range asts {
-				if c := getBestCall(ast); c != nil {
-					if cg, err := ast.MakeCallGraph("", c); err != nil {
-						fmt.Fprintln(os.Stderr, err.Error())
-						wasErr = true
-					} else if cg, ok := cg.(*syntax.CallGraphPipeline); ok {
-						if err := graph.RenderDot(cg, os.Stdout, "", "  ",
-							"packmode = clust"); err != nil {
-							fmt.Fprintln(os.Stderr, "Error writing graph:",
-								err.Error())
-						}
+		for _, ast := range asts {
+			if c := getBestCall(ast); c != nil {
+				if cg, err := ast.MakeCallGraph("", c); err != nil {
+					fmt.Fprintln(os.Stderr, err.Error())
+					wasErr = true
+				} else if cg, ok := cg.(*syntax.CallGraphPipeline); ok && mkdot {
+					if err := graph.RenderDot(cg, os.Stdout, "", "  ",
+						"packmode = clust"); err != nil {
+						fmt.Fprintln(os.Stderr, "Error writing graph:",
+							err.Error())
 					}
 				}
 			}
@@ -154,7 +152,7 @@ Options:
 				if ast.Callables != nil {
 					for _, callable := range ast.Callables.List {
 						if err := callable.GetOutParams().CheckFilenames(); err != nil {
-							fmt.Fprintln(os.Stderr, err.Error())
+							fmt.Fprintln(os.Stderr, fname+":", err.Error())
 							if syntax.GetEnforcementLevel() >= syntax.EnforceAlarm {
 								wasErr = true
 							}
@@ -165,13 +163,13 @@ Options:
 				if mkjson || callgraph {
 					asts = append(asts, ast)
 				}
-				if mkdot {
-					if c := getBestCall(ast); c != nil {
-						if cg, err := ast.MakeCallGraph("", c); err != nil {
-							fmt.Fprintln(os.Stderr, err.Error())
-							wasErr = true
-						} else if cg, ok := cg.(*syntax.CallGraphPipeline); ok {
-							graph.RenderDot(cg, os.Stdout, "", "  ")
+				if c := getBestCall(ast); c != nil {
+					if cg, err := ast.MakeCallGraph("", c); err != nil {
+						fmt.Fprintln(os.Stderr, err.Error())
+						wasErr = true
+					} else if cg, ok := cg.(*syntax.CallGraphPipeline); ok && mkdot {
+						if err := graph.RenderDot(cg, os.Stdout, "", "  "); err != nil {
+							fmt.Fprintln(os.Stderr, "rendingering dot output:", err)
 						}
 					}
 				}
@@ -182,7 +180,7 @@ Options:
 			fmt.Printf("%s\n", syntax.JsonDumpAsts(asts))
 		}
 		if callgraph {
-			printCallGraphs(asts)
+			wasErr = printCallGraphs(asts) || wasErr
 		}
 	}
 	fmt.Fprintln(os.Stderr, "Successfully compiled", count, "mro files.")
