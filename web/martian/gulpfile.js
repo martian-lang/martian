@@ -12,7 +12,7 @@ var paths = {
 
 gulp.task('merge-scripts', function() {
     return gulp.src([
-            'node_modules/d3/build/d3.min.js',
+            'node_modules/d3/dist/d3.min.js',
             'node_modules/dagre-d3/dist/dagre-d3.min.js',
             'node_modules/angular/angular.min.js',
             'node_modules/angular-ui-bootstrap/ui-bootstrap-tpls.min.js',
