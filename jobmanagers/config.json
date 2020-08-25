@@ -71,6 +71,8 @@
       "slurm": {
           "cmd": "sbatch",
           "args": [ "--parsable" ],
+          "queue_query": "slurm_queue.py",
+          "queue_query_grace_secs": 300,
           "envs": [ ]
       },
       "pbspro": {
