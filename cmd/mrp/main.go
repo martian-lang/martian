@@ -341,6 +341,7 @@ func main() {
 	reattaching, rt := pipestanceBox.Configure(&c, invocationSrc)
 	pipestance := pipestanceBox.pipestance
 
+	util.LogSysInfo()
 	if !c.readOnly {
 		// Start writing (including cached entries) to log file.
 		util.LogTee(path.Join(c.pipestancePath, "_log"))
