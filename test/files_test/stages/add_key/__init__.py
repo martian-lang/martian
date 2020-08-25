@@ -17,10 +17,10 @@ stage ADD_KEY(
 
 def main(args, outs):
     if args.start:
-        with open(args.start, 'r') as inpf:
+        with open(args.start, "r") as inpf:
             s = json.load(inpf)
     else:
         s = {}
     s[args.key] = args.value
-    with open(outs.result, 'w') as outf:
+    with open(outs.result, "w") as outf:
         json.dump(s, outf, indent=2)

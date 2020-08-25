@@ -14,17 +14,19 @@ MEMGB = 1.0
 CHUNKS = 10
 random.seed()
 
+
 def split(args):
     time.sleep(SLEEPSECS)
-    THREADS = random.randint(1,8)
-    CHUNKS = random.randint(10,50)
-    return [{'__threads': THREADS, '__mem_gb': MEMGB} for i in range(0, CHUNKS)]
+    THREADS = random.randint(1, 8)
+    CHUNKS = random.randint(10, 50)
+    return [{"__threads": THREADS, "__mem_gb": MEMGB} for i in range(0, CHUNKS)]
+
 
 def main(args, outs):
     time.sleep(SLEEPSECS)
     pass
 
+
 def join(args, outs, chunk_defs, chunk_outs):
     time.sleep(SLEEPSECS)
     pass
-

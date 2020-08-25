@@ -1,4 +1,3 @@
-
 __MRO__ = """
 stage CREATE_DISABLE(
     in  int  foo,
@@ -6,6 +5,7 @@ stage CREATE_DISABLE(
     src py   "disable",
 )
 """
+
 
 def main(args, outs):
     outs.disable = args.foo == 1

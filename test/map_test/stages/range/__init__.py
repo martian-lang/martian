@@ -9,6 +9,7 @@ stage RANGE(
 )
 """
 
+
 def main(args, outs):
     """Creates an array of integers from begin to end."""
     outs.values = list(range(int(args.begin), int(args.end)))

@@ -9,6 +9,7 @@ stage MULTIPLY(
 )
 """
 
+
 def main(args, outs):
     """Computes z = x*y"""
     outs.product = args.x * args.y

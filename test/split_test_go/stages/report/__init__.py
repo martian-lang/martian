@@ -7,8 +7,9 @@ stage REPORT(
 )
 """
 
+
 def main(args, outs):
     if not args.sum is None:
-        martian.update_progress('%s = %f' % (
-            '+'.join(['%f^2' % v for v in args.values]),
-            args.sum))
+        martian.update_progress(
+            "%s = %f" % ("+".join(["%f^2" % v for v in args.values]), args.sum)
+        )

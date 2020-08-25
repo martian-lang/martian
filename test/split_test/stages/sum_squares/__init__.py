@@ -8,14 +8,20 @@ stage SUM_SQUARES(
 )
 """
 
+
 def split(args):
     """Make a chunk for each value."""
-    return {'chunks': [{'value': x, '__threads': 1, '__mem_gb': 1}
-                       for x in args.values]}
+    return {
+        "chunks": [
+            {"value": x, "__threads": 1, "__mem_gb": 1} for x in args.values
+        ]
+    }
+
 
 def main(args, outs):
-    outs.square = args.value**2
+    outs.square = args.value ** 2
+
 
 def join(args, outs, chunk_defs, chunk_outs):
-    #pylint: disable=unused-argument
+    # pylint: disable=unused-argument
     outs.sum = sum([out.square for out in chunk_outs])

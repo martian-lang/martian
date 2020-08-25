@@ -8,6 +8,7 @@ stage SUM(
 )
 """
 
+
 def main(args, outs):
     """Computes the sum of values in an array"""
     outs.sum = sum(args.x)

@@ -3,7 +3,9 @@
 # Copyright (c) 2016 10x Genomics, Inc. All rights reserved.
 #
 
-# We roll our own six-like py2+3 compatibility to avoid external dependencies.
+# This pylint disagrees with black's formatting.
+# pylint: disable=bad-option-value, bad-continuation
+
 
 """Script to run a test script and compare the output to an expected result.
 
@@ -23,6 +25,7 @@ import sys
 
 from fnmatch import fnmatchcase
 
+# We roll our own six-like py2+3 compatibility to avoid external dependencies.
 try:
     # py2
     from itertools import izip_longest as zip_longest
@@ -46,19 +49,24 @@ except NameError:
 def get_expectation_dir(config_filename, config):
     """Gets the absolute path of the 'expected output' directory from the
     config file."""
-    if 'expected_dir' in config:
-        return os.path.abspath(os.path.join(os.path.dirname(config_filename),
-                                            config['expected_dir']))
-    return os.path.abspath(os.path.join(os.path.dirname(config_filename),
-                                        'expected'))
+    if "expected_dir" in config:
+        return os.path.abspath(
+            os.path.join(
+                os.path.dirname(config_filename), config["expected_dir"]
+            )
+        )
+    return os.path.abspath(
+        os.path.join(os.path.dirname(config_filename), "expected")
+    )
 
 
 def get_output_dir(config):
     """Computes the absolute path of the test pipeline work directory from the
     config."""
-    if 'output_dir' in config:
-        return os.path.abspath(os.path.join(config['work_dir'],
-                                            config['output_dir']))
+    if "output_dir" in config:
+        return os.path.abspath(
+            os.path.join(config["work_dir"], config["output_dir"])
+        )
     return None
 
 
@@ -71,29 +79,40 @@ def expand_glob(root, pattern):
 
     This would be unnessessary in python3 because glob understands the
     ** recursive wildcard syntax, but in python 2 it is needed.
+
+    Args:
+        root (str): The path in which to search.
+        pattern (str): The glob pattern to search for relative to the root.
     """
     for cur, dirnames, filenames in os.walk(root):
         for name in filenames:
-            if fnmatchcase(os.path.relpath(os.path.join(cur, name), root), pattern):
+            if fnmatchcase(
+                os.path.relpath(os.path.join(cur, name), root), pattern
+            ):
                 yield os.path.relpath(os.path.join(cur, name), root)
         for name in dirnames:
-            if fnmatchcase(os.path.relpath(os.path.join(cur, name), root), pattern):
+            if fnmatchcase(
+                os.path.relpath(os.path.join(cur, name), root), pattern
+            ):
                 yield os.path.relpath(os.path.join(cur, name), root)
 
 
 _UNIQUIFIER_REGEX = re.compile(
-    '(.*%s[a-z]+[0-9]*)-u[0-9a-z]+(%s.+)' % (os.path.sep, os.path.sep))
+    "(.*%s[a-z]+[0-9]*)-u[0-9a-z]+(%s.+)" % (os.path.sep, os.path.sep)
+)
 
 
 def deuniquify(value):
     """Remove absolute paths and timestamps."""
+
     def uniquerepl(match):
         """Just take the matched group."""
-        return '%s%s' % (match.group(1), match.group(2))
+        return "%s%s" % (match.group(1), match.group(2))
+
     return _UNIQUIFIER_REGEX.sub(uniquerepl, value)
 
 
-_FILES_SEP = '%sfiles%s' % (os.path.sep, os.path.sep)
+_FILES_SEP = "%sfiles%s" % (os.path.sep, os.path.sep)
 
 
 def _parent_files(value):
@@ -104,18 +123,21 @@ def _parent_files(value):
         return value
     return os.path.join(
         os.path.dirname(os.path.dirname(os.path.dirname(value))),
-        'files',
-        os.path.basename(value))
+        "files",
+        os.path.basename(value),
+    )
 
 
 def report_missing(item_type, output, expect, filename, reverse=False):
     """Print a message indicating a missing file."""
     if reverse:
-        sys.stderr.write('Extra %s %s\n'
-                         % (item_type, os.path.join(expect, filename)))
+        sys.stderr.write(
+            "Extra %s %s\n" % (item_type, os.path.join(expect, filename))
+        )
     else:
-        sys.stderr.write('Missing %s %s\n'
-                         % (item_type, os.path.join(output, filename)))
+        sys.stderr.write(
+            "Missing %s %s\n" % (item_type, os.path.join(output, filename))
+        )
 
 
 def check_exists_file(output, expect, filename, reverse=False):
@@ -127,14 +149,15 @@ def check_exists_file(output, expect, filename, reverse=False):
             parent_filename = _parent_files(filename)
             if os.path.isfile(os.path.join(expect, parent_filename)):
                 if not os.path.isfile(os.path.join(output, parent_filename)):
-                    report_missing('file', output, expect,
-                                   parent_filename, reverse)
+                    report_missing(
+                        "file", output, expect, parent_filename, reverse
+                    )
                     return False
             else:
-                report_missing('file', output, expect, filename, reverse)
+                report_missing("file", output, expect, filename, reverse)
                 return False
         else:
-            report_missing('file', output, expect, filename, reverse)
+            report_missing("file", output, expect, filename, reverse)
             return False
     return True
 
@@ -142,7 +165,7 @@ def check_exists_file(output, expect, filename, reverse=False):
 def check_exists(output, expect, filename, reverse=False):
     """Checks that a given file, directory, or link in the expected directory
     also exists in the output directory."""
-    if os.path.basename(filename).startswith('.nfs'):
+    if os.path.basename(filename).startswith(".nfs"):
         return True  # These are temporary files created by nfs.
     if os.path.isdir(os.path.join(expect, filename)):
         return True  # git does not preserve empty directories
@@ -150,11 +173,10 @@ def check_exists(output, expect, filename, reverse=False):
         return check_exists_file(output, expect, filename, reverse)
     if os.path.islink(os.path.join(expect, filename)):
         if not os.path.islink(os.path.join(output, filename)):
-            report_missing('link', output, expect, filename, reverse)
+            report_missing("link", output, expect, filename, reverse)
             return False
     else:
-        raise Exception('No file %s'
-                        % os.path.join(expect, filename))
+        raise Exception("No file %s" % os.path.join(expect, filename))
     return True
 
 
@@ -167,14 +189,15 @@ def compare_dicts(actual, expected, keys):
     for key in keys:
         if key in actual and key in expected:
             if not compare_objects(actual[key], expected[key]):
-                sys.stderr.write('{}: {} != {}\n'.format(
-                    key, actual[key], expected[key]))
+                sys.stderr.write(
+                    "{}: {} != {}\n".format(key, actual[key], expected[key])
+                )
                 return False
         elif key in expected:
-            sys.stderr.write('Missing key: %s\n' % key)
+            sys.stderr.write("Missing key: %s\n" % key)
             return False
         elif key in actual:
-            sys.stderr.write('Extra key: %s\n' % key)
+            sys.stderr.write("Extra key: %s\n" % key)
             return False
         else:
             # if the key is absent from both, we don't care!
@@ -186,7 +209,8 @@ def _mysorted(lst):
     """Just like sorted, but can also sorts dicts.
 
     Also handles comparing NoneType with other types (undefined but
-    consistent order)."""
+    consistent order).
+    """
     if not lst:
         return lst
     try:
@@ -194,46 +218,50 @@ def _mysorted(lst):
     except TypeError:
         if lst is None:
             return lst
+
         def _mk_key(element):
             if isinstance(element, list):
-                return ('list', [_mk_key(i) for i in element])
+                return ("list", [_mk_key(i) for i in element])
             if isinstance(element, tuple):
-                return ('tuple', (_mk_key(i) for i in element))
+                return ("tuple", (_mk_key(i) for i in element))
             if isinstance(element, dict):
-                return ('dict', [(k, _mk_key(v)) for k, v in element.items()])
+                return ("dict", [(k, _mk_key(v)) for k, v in element.items()])
             return (repr(type(element)), repr(element))
+
         return sorted(lst, key=_mk_key)
 
 
 def compare_objects(actual, expected):
     """Compares two objects."""
     if not isinstance(actual, type(expected)):
-        sys.stderr.write('Different types: %s != %s\n' %
-                         (type(actual),
-                          type(expected)))
+        sys.stderr.write(
+            "Different types: %s != %s\n" % (type(actual), type(expected))
+        )
         return False
-    if (isinstance(actual, text_type) and
-            isinstance(expected, text_type) or
-            isinstance(actual, str) and
-            isinstance(expected, str)):
-        if (clean_value(actual) !=
-                clean_value(expected)):
-            sys.stderr.write('Different strings: %s != %s\n' %
-                             (clean_value(actual),
-                              clean_value(expected)))
+    if (
+        isinstance(actual, text_type)
+        and isinstance(expected, text_type)
+        or isinstance(actual, str)
+        and isinstance(expected, str)
+    ):
+        if clean_value(actual) != clean_value(expected):
+            sys.stderr.write(
+                "Different strings: %s != %s\n"
+                % (clean_value(actual), clean_value(expected))
+            )
             return False
     elif isinstance(actual, dict):
-        return (compare_dicts(actual, expected, actual.keys()) and
-                compare_dicts(actual, expected, expected.keys()))
-    elif (isinstance(actual, list) and
-          isinstance(expected, list)):
+        return compare_dicts(actual, expected, actual.keys()) and compare_dicts(
+            actual, expected, expected.keys()
+        )
+    elif isinstance(actual, list) and isinstance(expected, list):
         for actual_item, expected_item in zip_longest(
-                _mysorted(actual), _mysorted(expected)):
+            _mysorted(actual), _mysorted(expected)
+        ):
             if not compare_objects(actual_item, expected_item):
                 return False
     elif actual != expected:
-        sys.stderr.write('%s != %s\n' %
-                         (actual, expected))
+        sys.stderr.write("%s != %s\n" % (actual, expected))
         return False
     return True
 
@@ -241,19 +269,20 @@ def compare_objects(actual, expected):
 def load_json(output, expect, filename):
     """Get two objects to compare from json."""
     try:
-        with open(os.path.join(output, filename), 'rb') as act:
+        with open(os.path.join(output, filename), "rb") as act:
             actual = json.load(act)
-        with open(os.path.join(expect, filename), 'rb') as exp:
+        with open(os.path.join(expect, filename), "rb") as exp:
             expected = json.load(exp)
     except IOError as err:
-        sys.stderr.write('Error reading %s: %s\n' % (filename, err))
+        sys.stderr.write("Error reading %s: %s\n" % (filename, err))
         return None, None, False
     except ValueError as err:
-        sys.stderr.write('%s was not valid json: %s\n' % (filename, err))
+        sys.stderr.write("%s was not valid json: %s\n" % (filename, err))
         return None, None, False
     except TypeError as err:
-        sys.stderr.write('%s contained invalid json types: %s\n' %
-                         (filename, err))
+        sys.stderr.write(
+            "%s contained invalid json types: %s\n" % (filename, err)
+        )
         return None, None, False
     return actual, expected, True
 
@@ -276,12 +305,9 @@ def compare_jobinfo(output, expect, filename):
     and time-related keys, or invocation (which can contain absolute
     paths).
     """
-    return compare_json(output, expect, filename, [
-        'name',
-        'threads',
-        'memGB',
-        'type',
-    ])
+    return compare_json(
+        output, expect, filename, ["name", "threads", "memGB", "type",]
+    )
 
 
 def compare_finalstate(output, expect, filename):
@@ -295,16 +321,19 @@ def compare_finalstate(output, expect, filename):
     if not loaded:
         return False
     for actual_info, expected_info in zip_longest(actual, expected):
-        if not compare_dicts(actual_info, expected_info,
-                             [
-                                 'name',
-                                 'fqname',
-                                 'type',
-                                 'state',
-                                 'edges',
-                                 'stagecodeLang',
-                                 'error',
-                             ]):
+        if not compare_dicts(
+            actual_info,
+            expected_info,
+            [
+                "name",
+                "fqname",
+                "type",
+                "state",
+                "edges",
+                "stagecodeLang",
+                "error",
+            ],
+        ):
             return False
     return True
 
@@ -318,67 +347,76 @@ def compare_vdrkill(output, expect, filename):
     if not loaded:
         return False
     # size can be different b/c of py2/3 json whitespace differences...
-    if not compare_dicts(actual, expected, ['count', 'paths', 'errors']):
+    if not compare_dicts(actual, expected, ["count", "paths", "errors"]):
         return False
     return True
 
 
 _TIMESTAMP_REGEX = re.compile(
-    '[0-9]{4}-[0-9]{2}-[0-9]{2} [0-9]{1,2}:[0-9]{2}:[0-9]{2}')
+    "[0-9]{4}-[0-9]{2}-[0-9]{2} [0-9]{1,2}:[0-9]{2}:[0-9]{2}"
+)
 
 
 _QUOTED_PATH_REGEX = re.compile('"/.*/([^/]+)"')
-_PATH_REGEX = re.compile('^/.*/([^/]+)$')
+_PATH_REGEX = re.compile("^/.*/([^/]+)$")
 
 
 def clean_value(value):
     """Remove absolute paths and timestamps."""
     if not value:
         return value
+
     def pathrepl(match):
         """Just take the matched group."""
-        return '%s' % match.group(1)
+        return "%s" % match.group(1)
+
     unpath = _PATH_REGEX.sub(pathrepl, value)
     if not unpath:
         return unpath
-    return _TIMESTAMP_REGEX.sub('__TIMESTAMP__', unpath)
+    return _TIMESTAMP_REGEX.sub("__TIMESTAMP__", unpath)
 
 
 def clean_line(line):
     """Remove absolute paths and timestamps."""
+
     def pathrepl(match):
         """Just take the matched group."""
         return '"%s"' % match.group(1)
+
     unpath = _QUOTED_PATH_REGEX.sub(pathrepl, line)
     if not unpath:
         return unpath
-    return _TIMESTAMP_REGEX.sub('__TIMESTAMP__', unpath)
+    return _TIMESTAMP_REGEX.sub("__TIMESTAMP__", unpath)
 
 
 def compare_lines(output, expect, filename):
     """Compare two files, replacing everything that might be an absolute path
     with the base path, and timestamps with __TIMESTAMP__."""
-    with open(os.path.join(output, filename), 'rb') as act:
-        with open(os.path.join(expect, filename), 'rb') as exp:
+    with open(os.path.join(output, filename), "rb") as act:
+        with open(os.path.join(expect, filename), "rb") as exp:
             for actual, expected in zip_longest(act, exp):
                 if actual and expected:
-                    actual = clean_line(actual.decode('utf-8', errors='replace'))
-                    expected = clean_line(expected.decode('utf-8', errors='replace'))
+                    actual = clean_line(
+                        actual.decode("utf-8", errors="replace")
+                    )
+                    expected = clean_line(
+                        expected.decode("utf-8", errors="replace")
+                    )
                     if actual != expected:
                         sys.stderr.write(
-                            'Expected:\n%s\nActual:\n%s\n' %
-                            (expected, actual))
+                            "Expected:\n%s\nActual:\n%s\n" % (expected, actual)
+                        )
                         return False
     return True
 
 
-_PPROF_LINE_REGEX = re.compile(r'^# (\S+)')
+_PPROF_LINE_REGEX = re.compile(r"^# (\S+)")
 
 
 def pprof_keys(lines):
     """Get the sequence of pprof keys in a file."""
     for line in lines:
-        line = line.decode('utf-8', errors='ignore')
+        line = line.decode("utf-8", errors="ignore")
         match = _PPROF_LINE_REGEX.match(line)
         if match and match.group(1):
             yield match.group(1)
@@ -386,37 +424,41 @@ def pprof_keys(lines):
 
 def compare_pprof(output, expect, filename):
     """Compare two pprof files, only paying attention to keys."""
-    with open(os.path.join(output, filename), 'rb') as act:
-        with open(os.path.join(expect, filename), 'rb') as exp:
-            for actual, expected in zip_longest(pprof_keys(act), pprof_keys(exp)):
+    with open(os.path.join(output, filename), "rb") as act:
+        with open(os.path.join(expect, filename), "rb") as exp:
+            for actual, expected in zip_longest(
+                pprof_keys(act), pprof_keys(exp)
+            ):
                 if expected and actual != expected:
                     sys.stderr.write(
-                        'Expected:\n%s\nActual:\n%s\n' %
-                        (clean_line(expected), clean_line(actual)))
+                        "Expected:\n%s\nActual:\n%s\n"
+                        % (clean_line(expected), clean_line(actual))
+                    )
                     return False
     return True
 
 
-_TRACEBACK_REGEX = re.compile(r', line \d+, in')
+_TRACEBACK_REGEX = re.compile(r", line \d+, in")
 
 
 def clean_errors(line):
     """As clean_line, but also blur out traceback line numbers."""
-    return _TRACEBACK_REGEX.sub(', line LINENO, in', clean_line(line))
+    return _TRACEBACK_REGEX.sub(", line LINENO, in", clean_line(line))
 
 
 def compare_errors(output, expect, filename):
     """As compare_lines, but we also ignore traceback line-numbers."""
-    with open(os.path.join(output, filename), 'rb') as act:
-        with open(os.path.join(expect, filename), 'rb') as exp:
+    with open(os.path.join(output, filename), "rb") as act:
+        with open(os.path.join(expect, filename), "rb") as exp:
             for actual, expected in zip_longest(act, exp):
                 if actual and expected:
-                    actual = actual.decode('utf-8', errors='ignore')
-                    expected = expected.decode('utf-8', errors='ignore')
+                    actual = actual.decode("utf-8", errors="ignore")
+                    expected = expected.decode("utf-8", errors="ignore")
                     if clean_errors(actual) != clean_errors(expected):
                         sys.stderr.write(
-                            'Expected:\n%s\nActual:\n%s\n' %
-                            (clean_errors(expected), clean_errors(actual)))
+                            "Expected:\n%s\nActual:\n%s\n"
+                            % (clean_errors(expected), clean_errors(actual))
+                        )
                         return False
     return True
 
@@ -427,25 +469,25 @@ def _compare_true(*_):
 
 
 _SPECIAL_FILES = {
-    '_perf': _compare_true,
-    '_uuid': _compare_true,
-    '_versions': _compare_true,
-    '_log': _compare_true,
-    '_assert': compare_errors,
-    '_errors': compare_errors,
-    '_jobinfo': compare_jobinfo,
-    '_finalstate': compare_finalstate,
-    '_vdrkill': compare_vdrkill,
-    '_outs': compare_json,
-    '_args': compare_json,
-    '_stage_defs': compare_json,
-    '_vdrkill.partial': compare_json,
+    "_perf": _compare_true,
+    "_uuid": _compare_true,
+    "_versions": _compare_true,
+    "_log": _compare_true,
+    "_assert": compare_errors,
+    "_errors": compare_errors,
+    "_jobinfo": compare_jobinfo,
+    "_finalstate": compare_finalstate,
+    "_vdrkill": compare_vdrkill,
+    "_outs": compare_json,
+    "_args": compare_json,
+    "_stage_defs": compare_json,
+    "_vdrkill.partial": compare_json,
 }
 
 
 _SPECIAL_SUFFIXES = {
-    '.json': compare_json,
-    '.pprof': compare_pprof,
+    ".json": compare_json,
+    ".pprof": compare_pprof,
 }
 
 
@@ -470,21 +512,25 @@ def compare_content(output, expect, filename):
     """
     if not os.path.isfile(os.path.join(expect, filename)):
         if os.path.isfile(os.path.join(output, filename)):
-            sys.stderr.write('File should not exist: %s\n'
-                             % os.path.join(output, filename))
+            sys.stderr.write(
+                "File should not exist: %s\n" % os.path.join(output, filename)
+            )
             return False
     elif not os.path.isfile(os.path.join(output, filename)):
-        sys.stderr.write('Missing file %s\n'
-                         % os.path.join(output, filename))
+        sys.stderr.write("Missing file %s\n" % os.path.join(output, filename))
         return False
     else:
         if not compare_file_content(output, expect, filename):
             sys.stderr.write(
-                'File content mismatch: %s\n'
-                'Expected content: %s\n'
-                'Actual content: %s\n' % (filename,
-                                          os.path.join(expect, filename),
-                                          os.path.join(output, filename)))
+                "File content mismatch: %s\n"
+                "Expected content: %s\n"
+                "Actual content: %s\n"
+                % (
+                    filename,
+                    os.path.join(expect, filename),
+                    os.path.join(output, filename),
+                )
+            )
             return False
     return True
 
@@ -494,25 +540,34 @@ def check_result(output_dir, expectation_dir, config):
     file containing the tests to apply, checks that the configured success
     criteria all pass."""
     result_ok = True
-    if 'contains_files' in config:
-        for pat in config['contains_files']:
+    if "contains_files" in config:
+        for pat in config["contains_files"]:
             for fname in expand_glob(expectation_dir, pat):
-                result_ok = check_exists(
-                    output_dir, expectation_dir, fname) and result_ok
-    if 'contains_only_files' in config:
-        for pat in config['contains_only_files']:
+                result_ok = (
+                    check_exists(output_dir, expectation_dir, fname)
+                    and result_ok
+                )
+    if "contains_only_files" in config:
+        for pat in config["contains_only_files"]:
             for fname in expand_glob(expectation_dir, pat):
-                result_ok = check_exists(
-                    output_dir, expectation_dir, fname) and result_ok
+                result_ok = (
+                    check_exists(output_dir, expectation_dir, fname)
+                    and result_ok
+                )
             for fname in expand_glob(output_dir, pat):
-                result_ok = check_exists(
-                    expectation_dir, output_dir, fname,
-                    reverse=True) and result_ok
-    if 'contents_match' in config:
-        for pat in config['contents_match']:
+                result_ok = (
+                    check_exists(
+                        expectation_dir, output_dir, fname, reverse=True
+                    )
+                    and result_ok
+                )
+    if "contents_match" in config:
+        for pat in config["contents_match"]:
             for fname in expand_glob(expectation_dir, pat):
-                result_ok = compare_content(
-                    output_dir, expectation_dir, fname) and result_ok
+                result_ok = (
+                    compare_content(output_dir, expectation_dir, fname)
+                    and result_ok
+                )
     return result_ok
 
 
@@ -520,7 +575,7 @@ def _encode(filename):
     """Encode a filename as utf-8, but only in python 2."""
     try:
         if isinstance(filename, unicode):
-            return filename.encode('utf-8')
+            return filename.encode("utf-8")
     except NameError:
         # Python3 has no type named unicode, because otherwise it would
         # be too easy to migrate from 2 to 3.
@@ -531,40 +586,43 @@ def _encode(filename):
 def main(argv):
     """Execute the test case."""
     parser = argparse.ArgumentParser()
-    parser.add_argument('config')
+    parser.add_argument("config")
     config_filename = parser.parse_args(argv[1:]).config
-    with open(config_filename, 'rb') as configfile:
+    with open(config_filename, "rb") as configfile:
         config = json.load(configfile)
-    if not 'command' in config or not config['command']:
-        sys.stderr.write('No command specified in %s\n' % config_filename)
-    if not 'work_dir' in config:
-        config['work_dir'] = os.path.dirname(config_filename)
-    config['work_dir'] = os.path.abspath(config['work_dir'])
-    config['command'][0] = os.path.abspath(os.path.join(
-        os.path.dirname(config_filename), config['command'][0]))
+    if not "command" in config or not config["command"]:
+        sys.stderr.write("No command specified in %s\n" % config_filename)
+    if not "work_dir" in config:
+        config["work_dir"] = os.path.dirname(config_filename)
+    config["work_dir"] = os.path.abspath(config["work_dir"])
+    config["command"][0] = os.path.abspath(
+        os.path.join(os.path.dirname(config_filename), config["command"][0])
+    )
     output_dir = get_output_dir(config)
     if output_dir and os.path.isdir(output_dir):
         shutil.rmtree(output_dir)
-    sys.stderr.write('Running %s in %s.\n' %
-                     (' '.join(config['command']), config['work_dir']))
-    return_code = subprocess.call(config['command'], cwd=config['work_dir'])
-    if 'expected_return' in config:
-        if return_code != config['expected_return']:
-            sys.stderr.write('Command returned %d\n' % return_code)
+    sys.stderr.write(
+        "Running %s in %s.\n"
+        % (" ".join(config["command"]), config["work_dir"])
+    )
+    return_code = subprocess.call(config["command"], cwd=config["work_dir"])
+    if "expected_return" in config:
+        if return_code != config["expected_return"]:
+            sys.stderr.write("Command returned %d\n" % return_code)
             return 2
     elif return_code != 0:
-        sys.stderr.write('Command returned %d\n' % return_code)
+        sys.stderr.write("Command returned %d\n" % return_code)
         return 2
     expectation_dir = get_expectation_dir(config_filename, config)
     if output_dir and expectation_dir:
         correct = check_result(_encode(output_dir), expectation_dir, config)
         if correct:
-            sys.stderr.write('Output correct.\n')
+            sys.stderr.write("Output correct.\n")
             return 0
-        sys.stderr.write('Output incorrect!\n')
+        sys.stderr.write("Output incorrect!\n")
         return 3
     return 0
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     sys.exit(main(sys.argv))

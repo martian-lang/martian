@@ -9,6 +9,7 @@ stage POW(
 )
 """
 
+
 def main(args, outs):
     """Computes z = x^y"""
     outs.z = args.x ** args.y

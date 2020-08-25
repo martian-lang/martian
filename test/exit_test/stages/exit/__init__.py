@@ -8,6 +8,7 @@ stage EXIT(
 )
 """
 
+
 def main(args, outs):
     outs.empty = ""
     martian.exit(b"Goodbye \xc2\xc2 World!")

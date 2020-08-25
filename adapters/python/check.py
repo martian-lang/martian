@@ -13,20 +13,20 @@ import json
 import traceback
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     # pylint: disable=invalid-name, bare-except, broad-except
 
     # Parse json from STDIN.
     input_ = json.load(sys.stdin)
 
     # Import the stage code.
-    code_path = input_['codePath']
+    code_path = input_["codePath"]
     sys.path.append(os.path.dirname(code_path))
 
     try:
         stage_code = __import__(os.path.basename(code_path))
     except Exception as e:
-        sys.stdout.write(json.dumps({'error': traceback.format_exc()}))
+        sys.stdout.write(json.dumps({"error": traceback.format_exc()}))
         exit(1)
 
     # Push output to STDOUT.
@@ -40,8 +40,12 @@ if __name__ == '__main__':
         out_params.extend(stage_code.out_params)
     except:
         pass
-    sys.stdout.write(json.dumps({
-        'exports': dir(stage_code),
-        'in_params': in_params,
-        'out_params': out_params
-    }))
+    sys.stdout.write(
+        json.dumps(
+            {
+                "exports": dir(stage_code),
+                "in_params": in_params,
+                "out_params": out_params,
+            }
+        )
+    )

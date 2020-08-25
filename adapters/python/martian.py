@@ -9,6 +9,9 @@
 #   and py2 lint from complaining about the "bad" pylint disable option
 # pylint: disable=bad-option-value, useless-object-inheritance
 
+# This pylint disagrees with black's formatting.
+# pylint: disable=bad-option-value, bad-continuation
+
 """Martian stage code API and common utility methods.
 
 This module contains an API for python stage code to use to interact
@@ -40,7 +43,7 @@ except NameError:
 
 
 # Singleton instance object.
-if not '_INSTANCE' in globals():
+if not "_INSTANCE" in globals():
     _INSTANCE = None
 
 
@@ -60,7 +63,9 @@ class Record(object):
     def items(self):
         """Returns the a dictionary with the elements which were in the keys in
         dictionary used to initialize the record."""
-        return dict((field_name, getattr(self, field_name)) for field_name in self.slots)
+        return dict(
+            (field_name, getattr(self, field_name)) for field_name in self.slots
+        )
 
     def __str__(self):
         """Formats the object as a string."""
@@ -94,7 +99,7 @@ def json_sanitize(data):
     retval = data
     if isinstance(data, float):
         # Handle exceptional floats.
-        if math.isnan(data) or data == float('+Inf') or data == float('-Inf'):
+        if math.isnan(data) or data == float("+Inf") or data == float("-Inf"):
             retval = None
     elif isinstance(data, dict):
         # Recurse on dictionaries.
@@ -107,8 +112,8 @@ def json_sanitize(data):
     elif isinstance(data, bytes):
         # in py2, bytes == str, which is caught by above
         #   so this branch is never taken in py2
-        retval = data.decode('utf-8', errors='ignore')
-    elif hasattr(data, '__iter__'):
+        retval = data.decode("utf-8", errors="ignore")
+    elif hasattr(data, "__iter__"):
         # Recurse on lists.
         retval = [json_sanitize(d) for d in data]
     return retval
@@ -123,8 +128,10 @@ def json_dumps_safe(data, indent=None):
 def get_mem_kb():
     """Get the current max rss memory for this process and completed child
     processes."""
-    return max(resource.getrusage(resource.RUSAGE_SELF).ru_maxrss,
-               resource.getrusage(resource.RUSAGE_CHILDREN).ru_maxrss)
+    return max(
+        resource.getrusage(resource.RUSAGE_SELF).ru_maxrss,
+        resource.getrusage(resource.RUSAGE_CHILDREN).ru_maxrss,
+    )
 
 
 def convert_gb_to_kb(mem_gb):
@@ -136,7 +143,7 @@ def padded_print(field_name, value):
     """Pad a string with leading spaces to be the same length as field_name."""
     offset = len(field_name) - len(str(value))
     if offset > 0:
-        return (' ' * offset) + str(value)
+        return (" " * offset) + str(value)
     return str(value)
 
 
@@ -148,12 +155,12 @@ def profile(func):
 
 
 # On linux, provide a method to set PDEATHSIG on child processes.
-if sys.platform.startswith('linux'):
+if sys.platform.startswith("linux"):
     import ctypes
     import ctypes.util
     from signal import SIGKILL
 
-    _LIBC = ctypes.CDLL(ctypes.util.find_library('c'))
+    _LIBC = ctypes.CDLL(ctypes.util.find_library("c"))
 
     _PR_SET_PDEATHSIG = ctypes.c_int(1)  # <sys/prctl.h>
 
@@ -162,63 +169,91 @@ if sys.platform.startswith('linux'):
         causes the subprocess to recieve SIGKILL if the parent process
         terminates."""
         zero = ctypes.c_ulong(0)
-        _LIBC.prctl(_PR_SET_PDEATHSIG, ctypes.c_ulong(SIGKILL),
-                    zero, zero, zero)
+        _LIBC.prctl(
+            _PR_SET_PDEATHSIG, ctypes.c_ulong(SIGKILL), zero, zero, zero
+        )
+
+
 else:
     child_preexec_set_pdeathsig = None  # pylint: disable=invalid-name
 
 
 # pylint: disable=invalid-name,too-many-arguments
-def Popen(args, bufsize=0, executable=None,
-          stdin=None, stdout=None, stderr=None,
-          preexec_fn=child_preexec_set_pdeathsig, close_fds=False,
-          shell=False, cwd=None, env=None, universal_newlines=False,
-          startupinfo=None, creationflags=0):
+def Popen(
+    args,
+    bufsize=0,
+    executable=None,
+    stdin=None,
+    stdout=None,
+    stderr=None,
+    preexec_fn=child_preexec_set_pdeathsig,
+    close_fds=False,
+    shell=False,
+    cwd=None,
+    env=None,
+    universal_newlines=False,
+    startupinfo=None,
+    creationflags=0,
+):
     """Log opening of a subprocess."""
-    _INSTANCE.metadata.log('exec', ' '.join(args))
+    _INSTANCE.metadata.log("exec", " ".join(args))
     # pylint: disable=bad-option-value, subprocess-popen-preexec-fn
-    return subprocess.Popen(args, bufsize=bufsize, executable=executable,
-                            stdin=stdin, stdout=stdout, stderr=stderr,
-                            preexec_fn=preexec_fn, close_fds=close_fds,
-                            shell=shell, cwd=cwd, env=env,
-                            universal_newlines=universal_newlines,
-                            startupinfo=startupinfo,
-                            creationflags=creationflags)
+    return subprocess.Popen(
+        args,
+        bufsize=bufsize,
+        executable=executable,
+        stdin=stdin,
+        stdout=stdout,
+        stderr=stderr,
+        preexec_fn=preexec_fn,
+        close_fds=close_fds,
+        shell=shell,
+        cwd=cwd,
+        env=env,
+        universal_newlines=universal_newlines,
+        startupinfo=startupinfo,
+        creationflags=creationflags,
+    )
 
 
 def check_call(args, stdin=None, stdout=None, stderr=None, shell=False):
     """Log running a given subprocess."""
-    _INSTANCE.metadata.log('exec', ' '.join(args))
-    return subprocess.check_call(args, shell=shell,
-                                 stdin=stdin, stdout=stdout, stderr=stderr,
-                                 preexec_fn=child_preexec_set_pdeathsig)
+    _INSTANCE.metadata.log("exec", " ".join(args))
+    return subprocess.check_call(
+        args,
+        shell=shell,
+        stdin=stdin,
+        stdout=stdout,
+        stderr=stderr,
+        preexec_fn=child_preexec_set_pdeathsig,
+    )
 
 
 def make_path(filename):
     """Get the file path for a named file."""
     if isinstance(filename, _text_type):
-        filename = filename.encode('utf-8')
+        filename = filename.encode("utf-8")
     return os.path.join(_INSTANCE.metadata.files_path, filename)
 
 
 def get_invocation_args():
     """Get the args from the invocation."""
-    return _INSTANCE.jobinfo.invocation['args']
+    return _INSTANCE.jobinfo.invocation["args"]
 
 
 def get_invocation_call():
     """Get the call information from the invocation."""
-    return _INSTANCE.jobinfo.invocation['call']
+    return _INSTANCE.jobinfo.invocation["call"]
 
 
 def get_martian_version():
     """Get the martian version from the jobinfo."""
-    return _INSTANCE.jobinfo.version['martian']
+    return _INSTANCE.jobinfo.version["martian"]
 
 
 def get_pipelines_version():
     """Get the pipelines version from the jobinfo."""
-    return _INSTANCE.jobinfo.version['pipelines']
+    return _INSTANCE.jobinfo.version["pipelines"]
 
 
 def get_threads_allocation():
@@ -239,23 +274,24 @@ def update_progress(message):
 
 def log_info(message):
     """Log a message."""
-    _INSTANCE.metadata.log('info', message)
+    _INSTANCE.metadata.log("info", message)
 
 
 def log_warn(message):
     """Log a warning."""
-    _INSTANCE.metadata.log('warn', message)
+    _INSTANCE.metadata.log("warn", message)
 
 
 def log_time(message):
     """Log a timestamp for an action."""
-    _INSTANCE.metadata.log('time', message)
+    _INSTANCE.metadata.log("time", message)
 
 
 def log_json(label, obj):
     """Log an object in json format."""
-    _INSTANCE.metadata.log('json', json_dumps_safe(
-        {'label': label, 'object': obj}))
+    _INSTANCE.metadata.log(
+        "json", json_dumps_safe({"label": label, "object": obj})
+    )
 
 
 def throw(message):
@@ -288,5 +324,6 @@ def test_initialize(path):
     # pylint: disable=global-statement
     global _INSTANCE
     _INSTANCE = mr_shell.StageWrapper(
-        [None, None, 'main', path, path, ''], True)
+        [None, None, "main", path, path, ""], True
+    )
     return _INSTANCE
