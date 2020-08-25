@@ -333,11 +333,15 @@ _PATH_REGEX = re.compile('^/.*/([^/]+)$')
 
 def clean_value(value):
     """Remove absolute paths and timestamps."""
+    if not value:
+        return value
     def pathrepl(match):
         """Just take the matched group."""
         return '%s' % match.group(1)
-    return _TIMESTAMP_REGEX.sub('__TIMESTAMP__',
-                                _PATH_REGEX.sub(pathrepl, value))
+    unpath = _PATH_REGEX.sub(pathrepl, value)
+    if not unpath:
+        return unpath
+    return _TIMESTAMP_REGEX.sub('__TIMESTAMP__', unpath)
 
 
 def clean_line(line):
@@ -345,8 +349,10 @@ def clean_line(line):
     def pathrepl(match):
         """Just take the matched group."""
         return '"%s"' % match.group(1)
-    return _TIMESTAMP_REGEX.sub('__TIMESTAMP__',
-                                _QUOTED_PATH_REGEX.sub(pathrepl, line))
+    unpath = _QUOTED_PATH_REGEX.sub(pathrepl, line)
+    if not unpath:
+        return unpath
+    return _TIMESTAMP_REGEX.sub('__TIMESTAMP__', unpath)
 
 
 def compare_lines(output, expect, filename):
@@ -356,12 +362,12 @@ def compare_lines(output, expect, filename):
         with open(os.path.join(expect, filename), 'rb') as exp:
             for actual, expected in zip_longest(act, exp):
                 if actual and expected:
-                    actual = actual.decode('utf-8', errors='ignore')
-                    expected = expected.decode('utf-8', errors='ignore')
-                    if clean_line(actual) != clean_line(expected):
+                    actual = clean_line(actual.decode('utf-8', errors='replace'))
+                    expected = clean_line(expected.decode('utf-8', errors='replace'))
+                    if actual != expected:
                         sys.stderr.write(
                             'Expected:\n%s\nActual:\n%s\n' %
-                            (clean_line(expected), clean_line(actual)))
+                            (expected, actual))
                         return False
     return True
 
@@ -383,7 +389,7 @@ def compare_pprof(output, expect, filename):
     with open(os.path.join(output, filename), 'rb') as act:
         with open(os.path.join(expect, filename), 'rb') as exp:
             for actual, expected in zip_longest(pprof_keys(act), pprof_keys(exp)):
-                if actual != expected:
+                if expected and actual != expected:
                     sys.stderr.write(
                         'Expected:\n%s\nActual:\n%s\n' %
                         (clean_line(expected), clean_line(actual)))
