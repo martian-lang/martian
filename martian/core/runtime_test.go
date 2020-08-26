@@ -344,3 +344,59 @@ map call MOCK_PHASER_SVCALLER(
 		t.Errorf("incorrect source:\n%s", s)
 	}
 }
+
+func ExampleBuildDataForAst() {
+	ast := syntax.Ast{
+		Includes: []*syntax.Include{{Value: "mro/pipeline.mro"}},
+		Call: &syntax.CallStm{
+			Id:    "AS_PIPELINE",
+			DecId: "PIPELINE",
+			Bindings: &syntax.BindStms{
+				List: []*syntax.BindStm{
+					{
+						Id: "bag",
+						Exp: &syntax.MapExp{
+							Kind: syntax.KindMap,
+							Value: map[string]syntax.Exp{
+								"key": &syntax.IntExp{Value: 2},
+							},
+						},
+					},
+					{
+						Id: "config",
+						Exp: &syntax.MapExp{
+							Kind: syntax.KindStruct,
+							Value: map[string]syntax.Exp{
+								"value": &syntax.BoolExp{Value: true},
+							},
+						},
+					},
+					{
+						Id:  "sample_id",
+						Exp: &syntax.StringExp{Value: "sample"},
+					},
+				},
+			},
+		},
+	}
+	invocation, err := BuildDataForAst(&ast)
+	if err != nil {
+		panic(err)
+	}
+	b, _ := json.MarshalIndent(invocation, "", "\t")
+	fmt.Println(string(b))
+	// Output:
+	// {
+	// 	"call": "PIPELINE",
+	// 	"args": {
+	// 		"bag": {
+	// 			"key": 2
+	// 		},
+	// 		"config": {
+	// 			"value": true
+	// 		},
+	// 		"sample_id": "sample"
+	// 	},
+	//	"mro_file": "mro/pipeline.mro"
+	// }
+}

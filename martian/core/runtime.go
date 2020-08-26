@@ -6,6 +6,7 @@ package core // import "github.com/martian-lang/martian/martian/core"
 // pipestances.
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"fmt"
@@ -292,25 +293,29 @@ func (c *RuntimeOptions) NewRuntime() *Runtime {
 // Instantiate a pipestance object given a psid, MRO source, and a
 // pipestance path. This is the core (private) method called by the
 // public InvokeWithSource and Reattach methods.
-func (self *Runtime) instantiatePipeline(src string, srcPath string, psid string,
+func (self *Runtime) instantiatePipeline(src []byte, srcPath, psid,
 	pipestancePath string, mroPaths []string, mroVersion string,
 	envs map[string]string, checkSrc, readOnly bool,
 	ctx context.Context) (string, *syntax.Ast, *Pipestance, error) {
 	r := trace.StartRegion(ctx, "instantiatePipeline")
 	defer r.End()
 	// Parse the invocation source.
-	postsrc, _, ast, err := syntax.ParseSource(src, srcPath, mroPaths, checkSrc)
+	postsrc, _, ast, err := syntax.ParseSourceBytes(src, srcPath, mroPaths, checkSrc)
 	if err != nil {
 		return "", nil, nil, err
 	}
 
 	// Check there's a call.
 	if ast.Call == nil {
-		return "", nil, nil, &RuntimeError{"cannot start a pipeline without a call statement"}
+		return "", nil, nil, &RuntimeError{
+			Msg: "cannot start a pipeline without a call statement",
+		}
 	}
 	// Make sure it's a pipeline we're calling.
 	if pipeline := ast.Callables.Table[ast.Call.DecId]; pipeline == nil {
-		return "", nil, nil, &RuntimeError{fmt.Sprintf("'%s' is not a declared pipeline", ast.Call.DecId)}
+		return "", nil, nil, &RuntimeError{
+			Msg: fmt.Sprintf("'%s' is not a declared pipeline", ast.Call.DecId),
+		}
 	}
 
 	invocationData, _ := BuildDataForAst(ast)
@@ -345,12 +350,11 @@ func (self *Runtime) instantiatePipeline(src string, srcPath string, psid string
 		if err := pipestance.Lock(); err != nil {
 			return "", nil, nil, err
 		}
+		err = pipestance.getNode().mkdirs()
 	}
 
-	pipestance.getNode().mkdirs()
-
 	ast.TypeTable.Freeze()
-	return postsrc, ast, pipestance, nil
+	return postsrc, ast, pipestance, err
 }
 
 // Invokes a new pipestance.
@@ -375,7 +379,7 @@ func (self *Runtime) InvokePipeline(src string, srcPath string, psid string,
 	// Expand env vars in invocation source and instantiate.
 	src = os.ExpandEnv(src)
 	readOnly := false
-	postsrc, _, pipestance, err := self.instantiatePipeline(src, srcPath, psid,
+	postsrc, _, pipestance, err := self.instantiatePipeline([]byte(src), srcPath, psid,
 		pipestancePath, mroPaths,
 		mroVersion, envs, false, readOnly, context.Background())
 	if err != nil {
@@ -453,19 +457,21 @@ func (self *Runtime) ReattachToPipestanceWithMroSrc(psid string, pipestancePath 
 
 // Reattaches to an existing pipestance.
 func (self *Runtime) reattachToPipestance(psid string, pipestancePath string,
-	src string, invocationPath string, mroPaths []string,
+	srcStr string, invocationPath string, mroPaths []string,
 	mroVersion string, envs map[string]string, checkSrc bool, readOnly bool,
 	srcType MetadataFileName, ctx context.Context) (*Pipestance, error) {
-
-	if src == "" {
+	var src []byte
+	if srcStr == "" {
 		if invocationPath == "" {
 			invocationPath = path.Join(pipestancePath, srcType.FileName())
 		}
 		if data, err := ioutil.ReadFile(invocationPath); err != nil {
 			return nil, &PipestancePathError{pipestancePath}
 		} else {
-			src = string(data)
+			src = data
 		}
+	} else {
+		src = []byte(srcStr)
 	}
 	if checkSrc {
 		// Read in the existing _invocation file.
@@ -474,7 +480,7 @@ func (self *Runtime) reattachToPipestance(psid string, pipestancePath string,
 			return nil, &PipestancePathError{pipestancePath}
 		}
 		// Check if _invocation has changed.
-		if src != string(data) {
+		if !bytes.Equal(src, data) {
 			return nil, &PipestanceInvocationError{psid, invocationPath}
 		}
 	}
@@ -534,7 +540,8 @@ func (self *Runtime) reattachToPipestance(psid string, pipestancePath string,
 	return pipestance, nil
 }
 
-func (self *Runtime) GetSerializationInto(pipestancePath string, name MetadataFileName, target interface{}) error {
+func (self *Runtime) GetSerializationInto(pipestancePath string,
+	name MetadataFileName, target interface{}) error {
 	metadata := NewMetadata("", pipestancePath)
 	return metadata.ReadInto(name, target)
 }
@@ -623,15 +630,17 @@ func GetCallableFrom(pName, incPath string, mroPaths []string) (syntax.Callable,
 			// Try to initialize the type table, but don't worry about
 			// failures.  The includes were never parsed, so failures
 			// are to be expected.
-			ast.CompileTypes()
+			_ = ast.CompileTypes()
 			for _, c := range ast.Callables.List {
 				if c.GetId() == pName {
 					return c, &ast.TypeTable, nil
 				}
 			}
-			return nil, &ast.TypeTable, &RuntimeError{fmt.Sprintf(
-				"%q is not a declared pipeline or stage in %q",
-				pName, fpath)}
+			return nil, &ast.TypeTable, &RuntimeError{
+				Msg: fmt.Sprintf(
+					"%q is not a declared pipeline or stage in %q",
+					pName, fpath),
+			}
 		}
 	}
 }
@@ -676,7 +685,9 @@ func GetCallable(mroPaths []string, name string, compile bool) (syntax.Callable,
 			return nil, nil, err
 		}
 	}
-	return nil, nil, &RuntimeError{fmt.Sprintf("'%s' is not a declared pipeline or stage", name)}
+	return nil, nil, &RuntimeError{
+		Msg: fmt.Sprintf("'%s' is not a declared pipeline or stage", name),
+	}
 }
 
 // possibleStructType returns true if the type name might refer to a struct
@@ -834,13 +845,13 @@ func convertToExp(parser *syntax.Parser, split bool, val json.Marshaler,
 	}
 }
 
-func BuildCallSource(
+func BuildCallAst(
 	name string,
 	args MarshalerMap,
 	splitargs []string,
 	callable syntax.Callable,
 	lookup *syntax.TypeLookup,
-	mroPaths []string) (string, error) {
+	mroPaths []string) (*syntax.Ast, error) {
 	ast := syntax.Ast{
 		Call: &syntax.CallStm{
 			Id:    name,
@@ -892,7 +903,7 @@ func BuildCallSource(
 			}
 
 			if err != nil {
-				return "", err
+				return &ast, err
 			}
 		} else {
 			binding.Exp = &null
@@ -903,15 +914,30 @@ func BuildCallSource(
 		// Will happen if uncompiled.  Add a placeholder.
 		ast.Call.Mapping = new(syntax.NullExp)
 	}
+	return &ast, nil
+}
+
+// Deprecated: Use BuildCallAst instead.
+func BuildCallSource(
+	name string,
+	args MarshalerMap,
+	splitargs []string,
+	callable syntax.Callable,
+	lookup *syntax.TypeLookup,
+	mroPaths []string) (string, error) {
+	ast, err := BuildCallAst(name, args, splitargs, callable, lookup, mroPaths)
+	if err != nil || ast == nil {
+		return "", err
+	}
 	return ast.Format(), nil
 }
 
-func (invocation *InvocationData) BuildCallSource(mroPaths []string) (string, error) {
+func (invocation *InvocationData) BuildCallAst(mroPaths []string) (*syntax.Ast, error) {
 	if invocation.Call == "" {
-		return "", fmt.Errorf("no pipeline or stage specified")
+		return nil, fmt.Errorf("no pipeline or stage specified")
 	}
 	if len(invocation.SweepArgs) > 0 {
-		return "", fmt.Errorf("sweep is no longer supported - migrate to map call instead")
+		return nil, fmt.Errorf("sweep is no longer supported - migrate to map call instead")
 	}
 	var callable syntax.Callable
 	var lookup *syntax.TypeLookup
@@ -919,30 +945,39 @@ func (invocation *InvocationData) BuildCallSource(mroPaths []string) (string, er
 		c, l, err := GetCallableFrom(
 			invocation.Call, invocation.Include, mroPaths)
 		if err != nil {
-			return "", err
+			return nil, err
 		}
 		callable = c
 		lookup = l
 	} else {
 		c, l, err := GetCallable(mroPaths, invocation.Call, false)
 		if err != nil {
-			return "", err
+			return nil, err
 		}
 		callable = c
 		lookup = l
 	}
 
 	if invocation.Args == nil {
-		return "", fmt.Errorf("no args given")
+		return nil, fmt.Errorf("no args given")
 	}
 
-	return BuildCallSource(
+	return BuildCallAst(
 		invocation.Call,
 		invocation.Args.ToMarshalerMap(),
 		invocation.SplitArgs,
 		callable,
 		lookup,
 		mroPaths)
+}
+
+// Deprecated: Use BuildCallAst instead.
+func (invocation *InvocationData) BuildCallSource(mroPaths []string) (string, error) {
+	ast, err := invocation.BuildCallAst(mroPaths)
+	if err != nil {
+		return "", err
+	}
+	return ast.Format(), nil
 }
 
 // InvocationDataFromSource generates an InvocationData for which its
@@ -977,7 +1012,9 @@ func BuildCallData(src string, srcPath string, mroPaths []string) (*InvocationDa
 
 func BuildDataForAst(ast *syntax.Ast) (*InvocationData, error) {
 	if ast.Call == nil {
-		return nil, &RuntimeError{"cannot jsonify a pipeline without a call statement"}
+		return nil, &RuntimeError{
+			Msg: "cannot jsonify a pipeline without a call statement",
+		}
 	}
 
 	args := make(LazyArgumentMap, len(ast.Call.Bindings.List))
@@ -994,17 +1031,27 @@ func BuildDataForAst(ast *syntax.Ast) (*InvocationData, error) {
 		}
 	}
 	var include string
-	if c := ast.Callables.Table[ast.Call.DecId]; c != nil {
-		if f := c.File(); f != nil {
-			include = f.FileName
-		}
-	} else {
-		// Possibly not fully compiled, do a linear search instead.
-		for _, c := range ast.Callables.List {
-			if f := c.File(); c.GetId() == ast.Call.DecId && f != nil {
+	if ast.Callables != nil {
+		if c := ast.Callables.Table[ast.Call.DecId]; c != nil {
+			if f := c.File(); f != nil {
 				include = f.FileName
-				break
 			}
+		} else {
+			// Possibly not fully compiled, do a linear search instead.
+			for _, c := range ast.Callables.List {
+				if f := c.File(); c.GetId() == ast.Call.DecId && f != nil {
+					include = f.FileName
+					break
+				}
+			}
+		}
+	}
+	if include == "" && len(ast.Includes) > 0 {
+		// An ast where the includes were not parsed may not actually have a
+		// callable definition.  Use the first available include and hope for
+		// the best.
+		if i := ast.Includes[0]; i != nil {
+			include = i.Value
 		}
 	}
 	return &InvocationData{

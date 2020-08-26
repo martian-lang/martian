@@ -263,7 +263,7 @@ func setupTestPipestance(t *testing.T, mro, name string) (*Pipestance, string) {
 		},
 	}
 	rt.JobManager = rt.LocalJobManager
-	_, _, pipestance, err := rt.instantiatePipeline(string(src),
+	_, _, pipestance, err := rt.instantiatePipeline(src,
 		mro,
 		"test_struct_pipeline", psPath, nil,
 		"none", nil, true, false, context.Background())

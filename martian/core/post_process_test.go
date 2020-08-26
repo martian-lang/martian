@@ -110,7 +110,7 @@ func TestPostProcess(t *testing.T) {
 		},
 	}
 	rt.JobManager = rt.LocalJobManager
-	_, _, pipestance, err := rt.instantiatePipeline(string(src),
+	_, _, pipestance, err := rt.instantiatePipeline(src,
 		"testdata/struct_pipeline.mro",
 		"test_struct_pipeline", psPath, nil,
 		"none", nil, false, false, context.Background())
@@ -359,7 +359,7 @@ func TestPostProcessEmpties(t *testing.T) {
 		},
 	}
 	rt.JobManager = rt.LocalJobManager
-	_, _, pipestance, err := rt.instantiatePipeline(string(src),
+	_, _, pipestance, err := rt.instantiatePipeline(src,
 		"testdata/struct_pipeline.mro",
 		"test_struct_pipeline", psPath, nil,
 		"none", nil, false, false, context.Background())
