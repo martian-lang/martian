@@ -209,6 +209,16 @@ pipeline GENERATE_DISTRIBUTION(
     )
 }
 
+pipeline _CONST(
+    in  float[][] inputs,
+    out float[][] inputs,
+)
+{
+    return (
+        inputs = self.inputs,
+    )
+}
+
 pipeline SOME_STATIC(
     in  float[]      inputs,
     out STATISTICS[] values1,
@@ -237,12 +247,16 @@ pipeline SOME_STATIC(
         count = SUM.sum,
     )
 
-    # Call here has static inputs
-    map call STATISTICS as VALUES1(
-        data = split [
+    call _CONST(
+        inputs = [
             self.inputs,
             [3],
         ],
+    )
+
+    # Call here has static inputs
+    map call STATISTICS as VALUES1(
+        data = split _CONST.inputs,
     )
 
     # Call here has dynamic inputs

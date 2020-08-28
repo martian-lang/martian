@@ -45,7 +45,7 @@ type JobManager interface {
 	// whatever the queue manager uses to syncronize state.
 	queueCheckGrace() time.Duration
 
-	// Update resouce availability.
+	// Update resource availability.
 	//
 	// For local mode, this means free memory and possibly loadavg.
 	//

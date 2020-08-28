@@ -554,7 +554,6 @@ func (node *TopNode) resolveSplit(binding *syntax.SplitExp, t syntax.Type,
 		b := *binding
 		b.Value = r
 		return ready, &b, nil
-
 	}
 	return ready, binding, err
 }
@@ -765,7 +764,6 @@ func (node *TopNode) resolveRef(binding *syntax.RefExp, t syntax.Type,
 func (boundNode *Node) resolveRef(binding *syntax.RefExp, t syntax.Type,
 	fork ForkId,
 	readSize int64) (bool, json.Marshaler, error) {
-
 	f, err := boundNode.matchFork(binding.Forks, fork)
 	if err != nil {
 		return true, nil, &forkResolutionError{
@@ -803,15 +801,6 @@ func (f *Fork) resolveRef(binding *syntax.RefExp, t syntax.Type,
 		}
 	}
 	return true, value, err
-}
-
-func anyForkIndexMatch(index *ForkSourcePart, forks []*Fork) bool {
-	for _, fork := range forks {
-		if part, err := fork.forkId.matchPart(index.Split.Call); err != nil || part.Equal(index) {
-			return true
-		}
-	}
-	return false
 }
 
 type elementError struct {

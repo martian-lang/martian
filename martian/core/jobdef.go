@@ -56,7 +56,7 @@ func (self *JobResources) ToLazyMap() LazyArgumentMap {
 	}
 	if self.VMemGB != 0 {
 		var m json.RawMessage
-		m, buf = formatFloat(self.VMemGB, buf)
+		m, _ = formatFloat(self.VMemGB, buf)
 		r["__vmem_gb"] = m
 	}
 	if self.Special != "" {
@@ -97,7 +97,6 @@ func (self *JobResources) updateFromLazyArgs(args LazyArgumentMap) error {
 		delete(args, "__special")
 	}
 	return nil
-
 }
 
 func (self *ChunkDef) mergeFromMarshaler(bindings MarshalerMap) *ChunkDef {

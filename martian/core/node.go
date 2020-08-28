@@ -666,7 +666,6 @@ func (self *Node) getState() MetadataState {
 	}
 	// Otherwise we're running.
 	return Running
-
 }
 
 func (self *Node) reset() error {
@@ -1049,6 +1048,7 @@ func (self *Node) serializePerf() (*NodePerfInfo, []*VdrEvent) {
 //=============================================================================
 // Job Runners
 //=============================================================================
+
 func (self *Node) getJobReqs(jobDef *JobResources, stageType string) JobResources {
 	var res JobResources
 

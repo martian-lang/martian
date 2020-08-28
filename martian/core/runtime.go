@@ -361,7 +361,6 @@ func (self *Runtime) instantiatePipeline(src []byte, srcPath, psid,
 func (self *Runtime) InvokePipeline(src string, srcPath string, psid string,
 	pipestancePath string, mroPaths []string, mroVersion string,
 	envs map[string]string, tags []string) (*Pipestance, error) {
-
 	// Error if pipestance directory is non-empty, otherwise create.
 	if err := os.MkdirAll(pipestancePath, 0777); err != nil {
 		return nil, err

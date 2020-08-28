@@ -173,7 +173,7 @@ func NewMetadata(fqname string, p string) *Metadata {
 	}
 }
 
-func NewMetadataRunWithJournalPath(fqname string, p string, filesPath string, journalPath string, runType string) *Metadata {
+func NewMetadataRunWithJournalPath(fqname, p, filesPath, journalPath, runType string) *Metadata {
 	self := NewMetadata(fqname, p)
 	self.journalPath = path.Join(journalPath, fqname)
 	self.curFilesPath = filesPath
@@ -184,7 +184,7 @@ func NewMetadataRunWithJournalPath(fqname string, p string, filesPath string, jo
 	return self
 }
 
-func newMetadataWithJournalPath(fqname, journalName string, p string, journalPath string) *Metadata {
+func newMetadataWithJournalPath(fqname, journalName, p, journalPath string) *Metadata {
 	self := NewMetadata(fqname, p)
 	self.journalPath = path.Join(journalPath, journalName)
 	return self
@@ -327,7 +327,6 @@ func (self *Metadata) uniquify() error {
 			self.writeErrorNoLock(msg, err)
 			os.RemoveAll(p)
 			return err
-
 		} else {
 			if err := os.Symlink(relPath, self.finalPath); err != nil {
 				self.writeErrorNoLock("Could not create symlink for ", err)
@@ -348,7 +347,6 @@ func (self *Metadata) uniquify() error {
 				self.writeErrorNoLock(msg, err)
 				os.RemoveAll(p)
 				return err
-
 			} else {
 				if err := os.Symlink(relPath, self.finalFilePath); err != nil {
 					self.writeErrorNoLock("Could not create files symlink for ", err)
@@ -399,7 +397,9 @@ func (self *Metadata) _getStateNoLock() (MetadataState, bool) {
 	}
 	if self._existsNoLock(CompleteFile) {
 		if self._existsNoLock(JobId) {
-			self._removeNoLock(JobId)
+			if err := self._removeNoLock(JobId); err != nil {
+				util.LogError(err, "runtime", "Could not remove file.")
+			}
 		}
 		return Complete, true
 	}
@@ -617,7 +617,8 @@ func (self *Metadata) _writeRawNoLock(name MetadataFileName, text string) error 
 		msg := fmt.Sprintf("Could not write %s for %s: %s", name, self.fqname, err.Error())
 		util.LogError(err, "runtime", msg)
 		if name != Errors {
-			self._writeRawNoLock(Errors, msg)
+			// ignore errors here, since what are we going to do about it?
+			_ = self._writeRawNoLock(Errors, msg)
 		}
 	}
 	return err
@@ -774,10 +775,14 @@ func (self *Metadata) endRefresh(lastRefresh time.Time) {
 			// The job is not running but the metadata thinks it still is.
 			// The check for metadata updates was completed since the time that
 			// the queue query completed.  This job has failed.  Write an error.
-			self._writeRawNoLock(Errors, fmt.Sprintf(
+			err := self._writeRawNoLock(Errors, fmt.Sprintf(
 				"According to the job manager, the job for %s was not queued "+
 					"or running, since at least %s.",
 				self.fqname, notRunningSince.Format(util.TIMEFMT)))
+			if err != nil {
+				util.LogError(err, "runtime",
+					"Error writing error message about cluster-mode job not running.")
+			}
 		}
 	}
 	self.mutex.Unlock()

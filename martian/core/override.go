@@ -130,9 +130,9 @@ func getParent(n string) string {
 
 // Compute the value to use for a stage's volatility, which might be overridden.
 //
-// node is the fully qualified node name
+// node is the fully qualified node name.
 //
-// def  is the default value to use if the value is not overridden
+// def  is the default value to use if the value is not overridden.
 func (pse *PipestanceOverrides) GetForceVolatile(node string, def bool) bool {
 	pqn := partiallyQualifiedName(node)
 	for pqn != "" {
@@ -163,9 +163,9 @@ func (pse *PipestanceOverrides) GetResources(node string, phase string, res *Job
 // Compute the value to use for a stage's thread reservation, which might be
 // overridden.
 //
-// pqn is the partially qualified node name
+// pqn is the partially qualified node name.
 //
-// def  is the default value to use if the value is not overridden
+// def  is the default value to use if the value is not overridden.
 func (pse *PipestanceOverrides) getThreads(pqn string, phase string, def float64) float64 {
 	for pqn != "" {
 		val := pse.overridesbystage[pqn].GetThreads(phase)
@@ -185,9 +185,9 @@ func (pse *PipestanceOverrides) getThreads(pqn string, phase string, def float64
 // Compute the value to use for a stage's memory reservation, which might be
 // overridden.
 //
-// pqn is the partially qualified node name
+// pqn is the partially qualified node name.
 //
-// def  is the default value to use if the value is not overridden
+// def  is the default value to use if the value is not overridden.
 func (pse *PipestanceOverrides) getMem(pqn string, phase string, def float64) float64 {
 	for pqn != "" {
 		val := pse.overridesbystage[pqn].GetMem(phase)
@@ -207,9 +207,9 @@ func (pse *PipestanceOverrides) getMem(pqn string, phase string, def float64) fl
 // Compute the value to use for a stage's memory reservation, which might be
 // overridden.
 //
-// pqn is the partially qualified node name
+// pqn is the partially qualified node name.
 //
-// def  is the default value to use if the value is not overridden
+// def  is the default value to use if the value is not overridden.
 func (pse *PipestanceOverrides) getVMem(pqn string, phase string, def float64) float64 {
 	for pqn != "" {
 		val := pse.overridesbystage[pqn].GetVMem(phase)
@@ -229,9 +229,9 @@ func (pse *PipestanceOverrides) getVMem(pqn string, phase string, def float64) f
 // Compute the value to use for a stage's profile mode, which might be
 // overridden.
 //
-// |node| is the fully-qualified node name
+// node is the fully-qualified node name.
 //
-// |def|  is the default value to use if the value is not overridden
+// def  is the default value to use if the value is not overridden.
 func (pse *PipestanceOverrides) GetProfile(node string, phase string, def ProfileMode) ProfileMode {
 	pqn := partiallyQualifiedName(node)
 	for pqn != "" {

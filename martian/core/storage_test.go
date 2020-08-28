@@ -48,10 +48,16 @@ func TestGetArgsToFilesMap(t *testing.T) {
 	}
 	link := path.Join(forkDir, "thing1link")
 	for _, p := range realPaths {
-		os.MkdirAll(path.Dir(p), 0755)
-		ioutil.WriteFile(p, []byte(p), 0644)
+		if err := os.MkdirAll(path.Dir(p), 0755); err != nil {
+			t.Error(err)
+		}
+		if err := ioutil.WriteFile(p, []byte(p), 0644); err != nil {
+			t.Error(err)
+		}
 	}
-	os.Symlink(realPaths[0], link)
+	if err := os.Symlink(realPaths[0], link); err != nil {
+		t.Error(err)
+	}
 
 	var outs LazyArgumentMap
 	{
@@ -123,13 +129,14 @@ func TestGetArgsToFilesMap(t *testing.T) {
 	}
 }
 
-func makeStorageTestDir(forkDir string) (
+func makeStorageTestDir(t testing.TB, forkDir string) (
 	map[string]map[Nodable]struct{},
 	[]string,
 	LazyArgumentMap,
 	string,
 	[]string,
 	error) {
+	t.Helper()
 	fileArgs := map[string]map[Nodable]struct{}{
 		"thing1":      nil,
 		"thing2":      nil,
@@ -153,10 +160,16 @@ func makeStorageTestDir(forkDir string) (
 	realPaths = append(realPaths, pathsList...)
 	link := path.Join(forkDir, "thing1link")
 	for _, p := range realPaths {
-		os.MkdirAll(path.Dir(p), 0755)
-		ioutil.WriteFile(p, []byte(p), 0644)
+		if err := os.MkdirAll(path.Dir(p), 0755); err != nil {
+			t.Error(err)
+		}
+		if err := ioutil.WriteFile(p, []byte(p), 0644); err != nil {
+			t.Error(err)
+		}
 	}
-	os.Symlink(realPaths[0], link)
+	if err := os.Symlink(realPaths[0], link); err != nil {
+		t.Error(err)
+	}
 	var outs LazyArgumentMap
 	{
 		outsFrom := map[string]interface{}{
@@ -184,7 +197,7 @@ func TestAddFilesToArgsMappings(t *testing.T) {
 		t.Skip(err)
 	}
 	defer os.RemoveAll(forkDir)
-	fileArgs, realPaths, outs, link, pathsList, err := makeStorageTestDir(forkDir)
+	fileArgs, realPaths, outs, link, pathsList, err := makeStorageTestDir(t, forkDir)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -283,7 +296,7 @@ func BenchmarkAddFilesToArgsMappings(b *testing.B) {
 		b.Skip(err)
 	}
 	defer os.RemoveAll(forkDir)
-	fileArgs, realPaths, outs, link, pathsList, err := makeStorageTestDir(forkDir)
+	fileArgs, realPaths, outs, link, pathsList, err := makeStorageTestDir(b, forkDir)
 	if err != nil {
 		b.Fatal(err)
 	}

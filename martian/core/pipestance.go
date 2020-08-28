@@ -136,7 +136,7 @@ type Pipestance struct {
 	lastQueueCheck   time.Time
 }
 
-/* Run a script whenever a pipestance finishes */
+// Run a script whenever a pipestance finishes.
 func (self *Pipestance) OnFinishHook(outerCtx context.Context) {
 	if exec_path := self.getNode().top.rt.Config.OnFinishHandler; exec_path != "" {
 		ctx, task := trace.NewTask(outerCtx, "onfinish")
@@ -325,7 +325,10 @@ func (self *Pipestance) LoadMetadata(ctx context.Context) {
 	for _, node := range self.allNodes() {
 		node.state = node.getState()
 		if node.state == Running && !self.readOnly() {
-			node.mkdirs()
+			if err := node.mkdirs(); err != nil {
+				util.LogError(err, "runtime",
+					"Error creating pipestance directories.")
+			}
 		}
 	}
 }
@@ -650,7 +653,6 @@ func (self *Pipestance) Serialize(name MetadataFileName) interface{} {
 }
 
 func (self *Pipestance) ComputeDiskUsage(nodePerf *NodePerfInfo) *NodePerfInfo {
-
 	nodes := self.allNodes()
 	allStorageEvents := make(StorageEventByTimestamp, 0, len(nodes)*2)
 	for _, node := range nodes {
@@ -759,8 +761,16 @@ func (self *Pipestance) GetVersions() (string, string, error) {
 
 func (self *Pipestance) PostProcess() {
 	self.node.postProcess()
-	self.metadata.WriteRaw(TimestampFile, self.metadata.readRaw(TimestampFile)+"\nend: "+util.Timestamp())
-	self.Immortalize(false)
+	start, _ := self.metadata.readRawBytes(TimestampFile)
+	start = append(start, "\nend: "...)
+	if err := self.metadata.WriteRawBytes(TimestampFile, append(start, util.Timestamp()...)); err != nil {
+		util.LogError(err, "runtime",
+			"Error writing completion timestamp.")
+	}
+	if err := self.Immortalize(false); err != nil {
+		util.LogError(err, "runtime",
+			"Error finalizing pipestance state.")
+	}
 }
 
 // Generate the final state file for the pipestance and zip the content up
@@ -772,11 +782,16 @@ func (self *Pipestance) Immortalize(force bool) error {
 		return &RuntimeError{"Pipestance is in read only mode."}
 	}
 	self.metadata.loadCache()
+	var errs syntax.ErrorList
 	if !self.metadata.exists(Perf) {
-		self.metadata.Write(Perf, self.SerializePerf())
+		if err := self.metadata.Write(Perf, self.SerializePerf()); err != nil {
+			errs = append(errs, err)
+		}
 	}
 	if !self.metadata.exists(FinalState) {
-		self.metadata.Write(FinalState, self.SerializeState())
+		if err := self.metadata.Write(FinalState, self.SerializeState()); err != nil {
+			errs = append(errs, err)
+		}
 	}
 	if !self.metadata.exists(MetadataZip) {
 		zipPath := self.metadata.MetadataFilePath(MetadataZip)
@@ -784,10 +799,10 @@ func (self *Pipestance) Immortalize(force bool) error {
 			util.LogError(err, "runtime", "Failed to create metadata zip file %s: %s",
 				zipPath, err.Error())
 			os.Remove(zipPath)
-			return err
+			errs = append(errs, err)
 		}
 	}
-	return nil
+	return errs.If()
 }
 
 func (self *Pipestance) RecordUiPort(url string) error {
@@ -821,12 +836,16 @@ func (self *Pipestance) Lock() error {
 		return &PipestanceLockedError{self.node.top.GetPsid(), self.GetPath()}
 	}
 	util.RegisterSignalHandler(self)
-	self.metadata.WriteTime(Lock)
+	if err := self.metadata.WriteTime(Lock); err != nil {
+		util.LogError(err, "runtime", "Error writing pipestance lock file.")
+	}
 	return nil
 }
 
 func (self *Pipestance) unlock() {
-	self.metadata.remove(Lock)
+	if err := self.metadata.remove(Lock); err != nil {
+		util.LogError(err, "runtime", "Error removing pipestance lock file.")
+	}
 }
 
 func (self *Pipestance) Unlock() {

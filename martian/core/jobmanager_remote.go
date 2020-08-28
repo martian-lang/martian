@@ -173,7 +173,6 @@ func (self *RemoteJobManager) jobScript(
 	metadata *Metadata,
 	resRequest *JobResources,
 	fqname, shellName string) string {
-
 	res := self.GetSystemReqs(resRequest)
 
 	// figure out per-thread memory requirements for the template.
@@ -292,7 +291,9 @@ func (self *RemoteJobManager) sendJob(shellCmd string, argv []string, envs map[s
 	ctx context.Context) {
 	jobscript := self.jobScript(shellCmd, argv, envs, metadata,
 		resRequest, fqname, shellName)
-	metadata.WriteRaw("jobscript", jobscript)
+	if err := metadata.WriteRaw("jobscript", jobscript); err != nil {
+		util.LogError(err, "jobmngr", "Could not write job script.")
+	}
 
 	cmd := exec.CommandContext(ctx, self.config.jobCmd, self.config.jobCmdArgs...)
 	cmd.Dir = metadata.curFilesPath
@@ -324,7 +325,9 @@ func (self *RemoteJobManager) sendJob(shellCmd string, argv []string, envs map[s
 		// jobids should not have spaces in them.  This is the most general way to
 		// check that a string is actually a jobid.
 		if len(trimmed) > 0 && !bytes.ContainsAny(trimmed, " \t\n\r") {
-			metadata.WriteRawBytes("jobid", bytes.TrimSpace(output))
+			if err := metadata.WriteRawBytes("jobid", bytes.TrimSpace(output)); err != nil {
+				util.LogError(err, "jobmngr", "Could not write job id file.")
+			}
 			metadata.cache("jobid", metadata.uniquifier)
 		}
 	}

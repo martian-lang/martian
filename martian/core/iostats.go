@@ -191,7 +191,7 @@ func (self *IoValues) Increment(other IoValues) {
 	self.BlockBytes += other.BlockBytes
 }
 
-// Represents a rate of change for IoAmount
+// Represents a rate of change for IoAmount.
 type IoRate struct {
 	Read  IoRateValues `json:"read"`
 	Write IoRateValues `json:"write"`
@@ -209,14 +209,14 @@ func (self *IoRate) TakeMax(other *IoRate) {
 	self.Write.TakeMax(other.Write)
 }
 
-// Update x_i = δt * x_i^2
+// Update x_i = δt * x_i^2.
 func (self *IoRate) weightSquared(seconds float64) {
 	self.Read.weightSquared(seconds)
 	self.Write.weightSquared(seconds)
 }
 
 // Compute the standard deviation of rate, given this object as the weighted
-// sum squared sum_i[δt_i*x_i^2]
+// sum squared sum_i[δt_i*x_i^2].
 func (sumSq *IoRate) computeStdDev(total *IoAmount, seconds float64) IoRate {
 	return IoRate{
 		Read:  sumSq.Read.computeStdDev(total.Read, seconds),
@@ -224,7 +224,7 @@ func (sumSq *IoRate) computeStdDev(total *IoAmount, seconds float64) IoRate {
 	}
 }
 
-// IoValues per second
+// IoValues per second.
 type IoRateValues struct {
 	// The rate at which IO syscalls were issued.  These may have been against
 	// non-block devices, such as sockets, terminals or a psudo-filesystem
@@ -254,7 +254,7 @@ func (self *IoRateValues) TakeMax(other IoRateValues) {
 	}
 }
 
-// Update x_i = δt * x_i^2
+// Update x_i = δt * x_i^2.
 func (self *IoRateValues) weightSquared(seconds float64) {
 	self.Syscalls = self.Syscalls * self.Syscalls * seconds
 	self.BlockBytes = self.BlockBytes * self.BlockBytes * seconds

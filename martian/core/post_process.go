@@ -233,7 +233,6 @@ func moveOutFiles(w *bytes.Buffer, param *syntax.StructMember,
 func moveOutDir(w *bytes.Buffer, value json.RawMessage,
 	member *syntax.StructMember, lookup *syntax.TypeLookup,
 	pipestancePath, outsPath string) error {
-
 	t := lookup.Get(member.Tname)
 	outPath := path.Join(outsPath, member.GetOutFilename())
 	if err := os.Mkdir(outPath, 0775); err != nil {

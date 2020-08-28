@@ -101,7 +101,10 @@ func (self *LocalJobManager) setMaxCores(userMaxCores int, clusterMode bool) {
 
 func (self *LocalJobManager) setMaxMem(userMaxMemGB, userMaxVMemGB int, clusterMode bool) {
 	var sysMem MemInfo
-	sysMem.Get()
+	if err := sysMem.Get(); err != nil && sysMem.Total == 0 {
+		util.PrintError(err, "jobmngr",
+			"Error attempting to read system memory values.")
+	}
 	cgMem, cgSoftLimit, cgUse := util.GetCgroupMemoryLimit()
 
 	// Set Max GB of memory usable at one time.
@@ -111,7 +114,8 @@ func (self *LocalJobManager) setMaxMem(userMaxMemGB, userMaxVMemGB int, clusterM
 		util.LogInfo("jobmngr", "Using %d GB, per --localmem option.", self.maxMemGB)
 		if cgMem > 0 && int64(userMaxMemGB)*1024*1024*1024 > cgMem {
 			util.PrintInfo("jobmngr",
-				"WARNING: User-supplied amount %d GB is higher than the detected cgroup memory limit of %0.1f GB",
+				"WARNING: User-supplied amount %d GB is higher than "+
+					"the detected cgroup memory limit of %0.1f GB",
 				userMaxMemGB, float64(cgMem)/(1024*1024*1024))
 		}
 	} else {
@@ -164,9 +168,9 @@ func (self *LocalJobManager) setMaxMem(userMaxMemGB, userMaxVMemGB int, clusterM
 	}
 	if cgSoftLimit != 0 && int64(self.maxMemGB)*1024*1024*1024 > cgSoftLimit {
 		util.PrintInfo("jobmngr",
-			"WARNING: detected a cgroup soft memory limit of %.1fGB. If the system runs low on memory, jobs may get killed.",
+			"WARNING: detected a cgroup soft memory limit of %.1fGB. "+
+				"If the system runs low on memory, jobs may get killed.",
 			float64(cgSoftLimit)/(1024*1024*1024))
-
 	}
 	self.maxVmemMB = int64(CheckMaxVmem(
 		uint64(1+self.maxMemGB)*uint64(self.highMem.Vmem+1024*1024*1024)) /
@@ -461,7 +465,6 @@ func (self *LocalJobManager) queueCheckGrace() time.Duration {
 func (self *LocalJobManager) Enqueue(shellCmd string, argv []string,
 	envs map[string]string, metadata *Metadata, resRequest *JobResources,
 	fqname string, retries int, waitTime int, localpreflight bool) {
-
 	enc := func() {
 		r := trace.StartRegion(context.Background(), "queueLocal")
 		defer r.End()
@@ -590,7 +593,7 @@ func (self *LocalJobManager) Enqueue(shellCmd string, argv []string,
 		}
 
 		if self.procsSem != nil {
-			procEstimate := int64(procsPerJob + (centiCores+99)/100)
+			procEstimate := procsPerJob + (centiCores+99)/100
 			// Acquire processes
 			if self.debug {
 				util.LogInfo("jobmngr", "Waiting for %d processes", procEstimate)

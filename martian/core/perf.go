@@ -273,7 +273,7 @@ func reduceJobInfo(jobInfo *JobInfo, outputPaths []string, numThreads float64) *
 		self := jobInfo.RusageInfo.Self
 		children := jobInfo.RusageInfo.Children
 
-		perfInfo.CoreHours = float64(perfInfo.NumThreads) * perfInfo.Duration / 3600.0
+		perfInfo.CoreHours = perfInfo.NumThreads * perfInfo.Duration / 3600.0
 		perfInfo.MaxRss = max(self.MaxRss, children.MaxRss)
 		perfInfo.InBlocks = self.InBlocks + children.InBlocks
 		perfInfo.OutBlocks = self.OutBlocks + children.OutBlocks
@@ -325,7 +325,8 @@ func ComputeStats(perfInfos []*PerfInfo, outputPaths []string, vdrKillReport *VD
 		return x * x
 	}
 	for _, perfInfo := range perfInfos {
-		if aggPerfInfo.Start.IsZero() || (!perfInfo.Start.IsZero() && aggPerfInfo.Start.After(perfInfo.Start)) {
+		if aggPerfInfo.Start.IsZero() ||
+			(!perfInfo.Start.IsZero() && aggPerfInfo.Start.After(perfInfo.Start)) {
 			aggPerfInfo.Start = perfInfo.Start
 		}
 		if aggPerfInfo.End.Before(perfInfo.End) {

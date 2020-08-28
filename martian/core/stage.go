@@ -38,7 +38,7 @@ func (s jsonString) MarshalJSON() ([]byte, error) {
 // An empty array is returned for arrays.  An empty map is returned for maps.
 // A map with recursively-populated fields is returned for struct types.
 // Nil is returned for any other type.
-func makeOutArg(field *syntax.StructMember, filesPath string, lookup *syntax.TypeLookup) json.Marshaler {
+func makeOutArg(field *syntax.StructMember, filesPath string) json.Marshaler {
 	if field.Tname.ArrayDim > 0 {
 		return marshallerArray{}
 	} else if field.Tname.MapDim > 0 {
@@ -51,13 +51,13 @@ func makeOutArg(field *syntax.StructMember, filesPath string, lookup *syntax.Typ
 	return nil
 }
 
-func makeOutArgs(outParams *syntax.OutParams, filesPath string, nullAll bool, lookup *syntax.TypeLookup) MarshalerMap {
+func makeOutArgs(outParams *syntax.OutParams, filesPath string, nullAll bool) MarshalerMap {
 	args := make(MarshalerMap, len(outParams.List))
 	for _, param := range outParams.List {
 		if nullAll {
 			args[param.Id] = nil
 		} else {
-			args[param.Id] = makeOutArg(&param.StructMember, filesPath, lookup)
+			args[param.Id] = makeOutArg(&param.StructMember, filesPath)
 		}
 	}
 	return args
@@ -278,10 +278,10 @@ func (self *Chunk) step(bindings MarshalerMap) {
 
 	// Write out input and output args for the chunk.
 	self.metadata.Write(ArgsFile, resolvedBindings)
-	outs := makeOutArgs(self.fork.OutParams(), self.metadata.curFilesPath, false, self.fork.node.top.types)
+	outs := makeOutArgs(self.fork.OutParams(), self.metadata.curFilesPath, false)
 	if self.fork.Split() {
 		for k, v := range makeOutArgs(self.Stage().ChunkOuts,
-			self.metadata.curFilesPath, false, self.fork.node.top.types) {
+			self.metadata.curFilesPath, false) {
 			outs[k] = v
 		}
 	}
@@ -857,7 +857,7 @@ func (self *Fork) writeDisable() {
 			"Could not create directories for %s", self.fqname)
 	}
 	self.metadata.Write(OutsFile, makeOutArgs(
-		self.OutParams(), self.metadata.curFilesPath, true, nil))
+		self.OutParams(), self.metadata.curFilesPath, true))
 	self.skip()
 	self.printState(DisabledState)
 }
@@ -994,7 +994,9 @@ func (self *Fork) doChunks(state MetadataState, getBindings func() MarshalerMap)
 		if err := self.split_metadata.ReadInto(StageDefsFile, &self.stageDefs); err != nil {
 			errstring := err.Error()
 			self.split_metadata.WriteErrorString(fmt.Sprintf(
-				"The split method did not return a dictionary {'chunks': [{}], 'join': {}}.\nError: %s\nChunk count: %d",
+				`The split method did not return a dictionary {"chunks": [{}], "join": {}}.
+Error: %s
+Chunk count: %d`,
 				errstring, len(self.stageDefs.ChunkDefs)))
 		} else if len(self.stageDefs.ChunkDefs) == 0 {
 			// Skip the chunk phase.
@@ -1095,7 +1097,7 @@ func (self *Fork) doJoin(state MetadataState, getBindings func() MarshalerMap) M
 		self.join_metadata.Write(
 			OutsFile,
 			makeOutArgs(self.OutParams(),
-				self.join_metadata.curFilesPath, false, self.node.top.types))
+				self.join_metadata.curFilesPath, false))
 		if !self.join_has_run {
 			self.join_has_run = true
 			self.lastPrint = time.Now()

@@ -75,7 +75,7 @@ type ProfileConfig struct {
 	// The profile mode to pass to the language-specific adapter.
 	//
 	// Adapters are free to define their own profiling modes,
-	// and must ignore unrecognised modes.  By convention,
+	// and must ignore unrecognized modes.  By convention,
 	// "cpu" is used for function-level cpu profiling, "line"
 	// for line-level profiling, and "mem" is used for memory
 	// profiling.

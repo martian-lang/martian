@@ -14,7 +14,7 @@ import (
 
 // Gets the current (soft) and maximum (hard) rlimit for number of processes.
 //
-// See `man getrlimit`
+// See `man getrlimit`.
 func GetMaxProcs() (*unix.Rlimit, error) {
 	var rlim unix.Rlimit
 	return &rlim, unix.Getrlimit(unix.RLIMIT_NPROC, &rlim)
@@ -22,7 +22,7 @@ func GetMaxProcs() (*unix.Rlimit, error) {
 
 // Sets the current (soft) and maximum (hard) rlimit for number of processes.
 //
-// See `man setrlimit`
+// See `man setrlimit`.
 func SetMaxProcs(rlim *unix.Rlimit) error {
 	return unix.Setrlimit(unix.RLIMIT_NPROC, rlim)
 }
@@ -41,7 +41,7 @@ func MaximizeMaxProcs() error {
 
 // Gets the current (soft) and maximum (hard) rlimit for number of open files.
 //
-// See `man getrlimit`
+// See `man getrlimit`.
 func GetMaxFiles() (*unix.Rlimit, error) {
 	var rlim unix.Rlimit
 	return &rlim, unix.Getrlimit(unix.RLIMIT_NOFILE, &rlim)
@@ -49,7 +49,7 @@ func GetMaxFiles() (*unix.Rlimit, error) {
 
 // Set the current (soft) and maximum (hard) rlimit for number of open files.
 //
-// See `man setrlimit`
+// See `man setrlimit`.
 func SetMaxFiles(rlim *unix.Rlimit) error {
 	return unix.Setrlimit(unix.RLIMIT_NOFILE, rlim)
 }

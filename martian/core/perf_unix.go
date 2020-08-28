@@ -70,11 +70,7 @@ func GetUserProcessCount() (int, error) {
 			count := 0
 			for _, pid := range pids {
 				if _, err := strconv.Atoi(pid); err == nil {
-					if c, err := countTasks(int(proc.Fd()), pid, uid); err != nil {
-						return count, err
-					} else {
-						count += c
-					}
+					count += countTasks(int(proc.Fd()), pid, uid)
 				}
 			}
 			return count, nil
@@ -82,21 +78,21 @@ func GetUserProcessCount() (int, error) {
 	}
 }
 
-func countTasks(procFd int, pid string, uid uint32) (int, error) {
+func countTasks(procFd int, pid string, uid uint32) int {
 	if pfd, err := unix.Openat(procFd, pid+"/task",
 		os.O_RDONLY|unix.O_DIRECTORY|unix.O_NOFOLLOW|unix.O_CLOEXEC,
 		0); err != nil {
-		return 0, nil
+		return 0
 	} else {
 		defer unix.Close(pfd)
 		var ufinfo unix.Stat_t
 		if err := unix.Fstat(pfd, &ufinfo); err != nil ||
 			ufinfo.Mode&unix.S_IFDIR == 0 ||
 			ufinfo.Uid != uid {
-			return 0, nil
+			return 0
 		} else {
 			c, _ := util.CountDirNames(pfd)
-			return c, nil
+			return c
 		}
 	}
 }
@@ -186,7 +182,8 @@ func openDirForReadAt(fd int, path string) (int, error) {
 		0)
 }
 
-func getProcessTreeMemoryAt(procFd int, pid int, spid []byte, io map[int]*IoAmount) (mem ObservedMemory, err error) {
+func getProcessTreeMemoryAt(procFd, pid int, spid []byte,
+	io map[int]*IoAmount) (mem ObservedMemory, err error) {
 	var fd int
 	var pidBuf strings.Builder
 	pidBuf.Grow(11)
@@ -210,12 +207,25 @@ func getProcessTreeMemoryAt(procFd int, pid int, spid []byte, io map[int]*IoAmou
 			errString := err.Error()
 			var buf bytes.Buffer
 			buf.Grow(len("Error fetching io for : \n") + len(spid) + len(errString))
-			buf.WriteString("Error fetching io for ")
-			buf.Write(spid)
-			buf.WriteString(": ")
-			buf.WriteString(errString)
-			buf.WriteRune('\n')
-			buf.WriteTo(os.Stdout)
+			if _, err := buf.WriteString("Error fetching io for "); err != nil {
+				panic(err)
+			}
+			if _, err := buf.Write(spid); err != nil {
+				panic(err)
+			}
+			if _, err := buf.WriteString(": "); err != nil {
+				panic(err)
+			}
+			if _, err := buf.WriteString(errString); err != nil {
+				panic(err)
+			}
+			if _, err := buf.WriteRune('\n'); err != nil {
+				panic(err)
+			}
+			if _, err := buf.WriteTo(os.Stdout); err != nil {
+				util.LogError(err, "runtime",
+					"Error writing to standard output.")
+			}
 		}
 	}
 	if tfd, err := openDirForReadAt(fd, "task"); err != nil {
@@ -295,7 +305,9 @@ func getChildTreeMemoryList(procFd, tfd, depth int, stats *ProcessTree) error {
 			if childrenBytes, err := util.ReadFileAt(tfd, tid+"/children"); err == nil {
 				for _, child := range bytes.Fields(childrenBytes) {
 					if ichild, err := util.Atoi(child); err == nil {
-						getProcessTreeMemoryList(procFd, int(ichild), child, depth, stats)
+						// Ignore errors.  Usually the issue is that the child
+						// has already died.
+						_ = getProcessTreeMemoryList(procFd, int(ichild), child, depth, stats)
 					}
 				}
 			}

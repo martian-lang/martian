@@ -867,7 +867,7 @@ func (self *Fork) cleanJoinTemp(partial *PartialVdrKillReport) *PartialVdrKillRe
 		}
 
 		for _, p := range tempPaths {
-			util.Walk(p, func(tpath string, info os.FileInfo, err error) error {
+			if err := util.Walk(p, func(tpath string, info os.FileInfo, err error) error {
 				if err == nil {
 					partial.Size += uint64(info.Size())
 					partial.Count++
@@ -877,17 +877,23 @@ func (self *Fork) cleanJoinTemp(partial *PartialVdrKillReport) *PartialVdrKillRe
 					partial.Errors = append(partial.Errors, err.Error())
 				}
 				return nil
-			})
+			}); err != nil {
+				// Should not return errors, since the walk function doesn't.
+				panic(err)
+			}
 		}
 		for _, p := range filesPaths {
-			util.Walk(p, func(tpath string, info os.FileInfo, err error) error {
+			if err := util.Walk(p, func(tpath string, info os.FileInfo, err error) error {
 				if err == nil {
 					startEvent.DeltaBytes += info.Size()
 				} else {
 					partial.Errors = append(partial.Errors, err.Error())
 				}
 				return nil
-			})
+			}); err != nil {
+				// Should not return errors, since the walk function doesn't.
+				panic(err)
+			}
 		}
 		mdFiles, _ := self.join_metadata.glob()
 		for _, md := range mdFiles {
@@ -964,7 +970,7 @@ func (self *Fork) vdrKill(partialKill *PartialVdrKillReport) *VDRKillReport {
 	}
 	// Sum up the path size.
 	for _, p := range killPaths {
-		util.Walk(p, func(_ string, info os.FileInfo, err error) error {
+		if err := util.Walk(p, func(_ string, info os.FileInfo, err error) error {
 			if err == nil {
 				killReport.Size += uint64(info.Size())
 				killReport.Count++
@@ -972,7 +978,10 @@ func (self *Fork) vdrKill(partialKill *PartialVdrKillReport) *VDRKillReport {
 				killReport.Errors = append(killReport.Errors, err.Error())
 			}
 			return nil
-		})
+		}); err != nil {
+			// Should not return errors, since the walk function doesn't.
+			panic(err)
+		}
 		killReport.Paths = append(killReport.Paths, p)
 	}
 	// Critical section to avoid loosing accounting info.
@@ -1011,7 +1020,6 @@ func (self *Fork) vdrKill(partialKill *PartialVdrKillReport) *VDRKillReport {
 
 /* Is self or any of its ancestors symlinked? */
 func (self *Node) vdrCheckSymlink() (string, error) {
-
 	/* Nope! Got all the way to the top.
 	 * (We don't care of the top-level directory is a symlink)
 	 */
@@ -1032,10 +1040,7 @@ func (self *Node) vdrCheckSymlink() (string, error) {
 }
 
 func (self *Node) vdrKill() (*VDRKillReport, bool) {
-
-	/*
-	 * Refuse to VDR a node if it, or any of its ancestors are symlinked.
-	 */
+	// Refuse to VDR a node if it, or any of its ancestors are symlinked.
 	if symlink, err := self.vdrCheckSymlink(); symlink != "" {
 		util.LogInfo("runtime", "Refuse to VDR across a symlink %s: %v",
 			symlink, self.GetFQName())
@@ -1122,7 +1127,9 @@ type ForkStorageEvent struct {
 	VDRTimestamp time.Time
 }
 
-func NewForkStorageEvent(timestamp time.Time, totalBytes uint64, vdrBytes uint64, fqname string) *ForkStorageEvent {
+func NewForkStorageEvent(timestamp time.Time,
+	totalBytes, vdrBytes uint64,
+	fqname string) *ForkStorageEvent {
 	self := &ForkStorageEvent{ChildNames: []string{}}
 	self.Name = fqname
 	self.TotalBytes = totalBytes // sum total of bytes in fork and children
