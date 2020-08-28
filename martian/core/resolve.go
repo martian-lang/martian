@@ -338,7 +338,7 @@ func (node *TopNode) resolveMerge(binding *syntax.MergeExp, t syntax.Type,
 					append(fork, part), readSize)
 				if err != nil {
 					errs = append(errs, &elementError{
-						element: "merge part " + part.Id.GoString(),
+						element: "key " + part.Id.GoString(),
 						inner:   err,
 					})
 				}
@@ -346,7 +346,14 @@ func (node *TopNode) resolveMerge(binding *syntax.MergeExp, t syntax.Type,
 				result[part.Id.MapKey()] = v
 			}
 		}
-		return allReady, result, errs.If()
+		err := errs.If()
+		if err != nil {
+			err = &elementError{
+				element: "merge of map " + binding.Call.GetFqid(),
+				inner:   err,
+			}
+		}
+		return allReady, result, err
 	case syntax.ModeNullMapCall:
 		return true, nil, nil
 	case syntax.ModeArrayCall:
@@ -367,7 +374,7 @@ func (node *TopNode) resolveMerge(binding *syntax.MergeExp, t syntax.Type,
 					append(fork, part), readSize)
 				if err != nil {
 					errs = append(errs, &elementError{
-						element: "array merge",
+						element: "index " + part.Id.GoString(),
 						inner:   err,
 					})
 				}
@@ -375,7 +382,14 @@ func (node *TopNode) resolveMerge(binding *syntax.MergeExp, t syntax.Type,
 				result[i] = v
 			}
 		}
-		return allReady, result, errs.If()
+		err := errs.If()
+		if err != nil {
+			err = &elementError{
+				element: "merge of array " + binding.Call.GetFqid(),
+				inner:   err,
+			}
+		}
+		return allReady, result, err
 	}
 	panic("invalid mapping mode")
 }

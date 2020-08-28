@@ -361,40 +361,46 @@
       ]
     },
     {
-      "fqid": "SOME_STATIC._CONST",
+      "fqid": "SOME_STATIC._IDENTITY",
       "inputs": {
         "inputs": {
-          "expression": [
-            [
-              1,
-              3,
-              4,
-              5,
-              7
-            ],
-            [
-              3
+          "expression": {
+            "call": "_IDENTITY",
+            "mode": "array",
+            "split": [
+              [
+                1,
+                3,
+                4,
+                5,
+                7
+              ],
+              [
+                3
+              ]
             ]
-          ],
-          "type": "float[][]"
+          },
+          "type": "float[]"
         }
       },
       "outputs": {
-        "expression": {
-          "inputs": [
-            [
+        "expression": [
+          {
+            "inputs": [
               1,
               3,
               4,
               5,
               7
-            ],
-            [
+            ]
+          },
+          {
+            "inputs": [
               3
             ]
-          ]
-        },
-        "type": "_CONST"
+          }
+        ],
+        "type": "_IDENTITY[]"
       },
       "children": null
     },
@@ -1088,39 +1094,7 @@
                       "ERROR": "unknown",
                       "VALUES1": "unknown"
                     }
-                  },
-                  "merge_over": {
-                    "call": "VALUES1",
-                    "mode": "array",
-                    "split": [
-                      [
-                        1,
-                        3,
-                        4,
-                        5,
-                        7
-                      ],
-                      [
-                        3
-                      ]
-                    ]
                   }
-                },
-                "source": {
-                  "call": "VALUES1",
-                  "mode": "array",
-                  "split": [
-                    [
-                      1,
-                      3,
-                      4,
-                      5,
-                      7
-                    ],
-                    [
-                      3
-                    ]
-                  ]
                 }
               },
               "type": "float"
@@ -1138,39 +1112,7 @@
                       "ERROR": "unknown",
                       "VALUES1": "unknown"
                     }
-                  },
-                  "merge_over": {
-                    "call": "VALUES1",
-                    "mode": "array",
-                    "split": [
-                      [
-                        1,
-                        3,
-                        4,
-                        5,
-                        7
-                      ],
-                      [
-                        3
-                      ]
-                    ]
                   }
-                },
-                "source": {
-                  "call": "VALUES1",
-                  "mode": "array",
-                  "split": [
-                    [
-                      1,
-                      3,
-                      4,
-                      5,
-                      7
-                    ],
-                    [
-                      3
-                    ]
-                  ]
                 }
               },
               "type": "float"

@@ -209,9 +209,9 @@ pipeline GENERATE_DISTRIBUTION(
     )
 }
 
-pipeline _CONST(
-    in  float[][] inputs,
-    out float[][] inputs,
+pipeline _IDENTITY(
+    in  float[] inputs,
+    out float[] inputs,
 )
 {
     return (
@@ -247,8 +247,8 @@ pipeline SOME_STATIC(
         count = SUM.sum,
     )
 
-    call _CONST(
-        inputs = [
+    map call _IDENTITY(
+        inputs = split [
             self.inputs,
             [3],
         ],
@@ -256,7 +256,7 @@ pipeline SOME_STATIC(
 
     # Call here has static inputs
     map call STATISTICS as VALUES1(
-        data = split _CONST.inputs,
+        data = split _IDENTITY.inputs,
     )
 
     # Call here has dynamic inputs
