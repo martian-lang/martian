@@ -108,7 +108,7 @@ func (node *TopNode) resolveKeepSplit(s *syntax.SplitExp, t syntax.Type,
 					panic("invalid type " + tid.String() +
 						" for map over " + f.Split.Source.CallMode().String())
 				}
-				_, r, err := node.resolve(s.Value, t, fork, readSize)
+				_, r, err := node.resolve(s.Value, outerT, fork, readSize)
 				if err != nil {
 					err = &elementError{
 						element: "resolving matched split",
@@ -317,7 +317,13 @@ func (node *TopNode) resolveMerge(binding *syntax.MergeExp, t syntax.Type,
 			return node.resolve(binding.Value, innerT, fork, readSize)
 		}
 	}
-	parts, errs := node.getParts(binding.GetCall(), fork, binding.Call.GetFqid())
+	var forkRefId string
+	if callRef := binding.ForkNode; callRef != nil {
+		forkRefId = callRef.Id
+	} else {
+		forkRefId = binding.Call.GetFqid()
+	}
+	parts, errs := node.getParts(binding.GetCall(), fork, forkRefId)
 	allReady := true
 	switch binding.CallMode() {
 	case syntax.ModeMapCall:
@@ -325,7 +331,8 @@ func (node *TopNode) resolveMerge(binding *syntax.MergeExp, t syntax.Type,
 		for _, part := range parts {
 			if part.Id.IndexSource() != nil {
 				errs = append(errs, &elementError{
-					element: "unresolved fork source",
+					element: "unresolved fork source for mapped " +
+						part.Split.Call.GoString(),
 				})
 				continue
 			}
@@ -361,7 +368,8 @@ func (node *TopNode) resolveMerge(binding *syntax.MergeExp, t syntax.Type,
 		for i, part := range parts {
 			if part.Id.IndexSource() != nil {
 				errs = append(errs, &elementError{
-					element: "unresolved fork source",
+					element: "unresolved fork for array-mapped " +
+						part.Split.Call.GoString(),
 				})
 				continue
 			}
@@ -394,6 +402,8 @@ func (node *TopNode) resolveMerge(binding *syntax.MergeExp, t syntax.Type,
 	panic("invalid mapping mode")
 }
 
+// getParts returns the ForkSourcePart corresponding the the given call for
+// every fork of the given node which matches the given fork ID.
 func (node *TopNode) getParts(src *syntax.CallStm,
 	forkId ForkId,
 	id string) ([]*ForkSourcePart, syntax.ErrorList) {
@@ -594,8 +604,14 @@ func getElement(result json.Marshaler,
 		}
 		return getMapElement(result, element.MapKey())
 	default:
+		if element.IndexSource() != nil {
+			return nil, &elementError{
+				element: "unresolved index for map call of unknown type",
+			}
+		}
 		return nil, &elementError{
-			element: "unknown element type " + element.Mode().String(),
+			element: "unknown element type " + element.Mode().String() +
+				" (" + element.GoString() + ")",
 		}
 	}
 }

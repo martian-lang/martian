@@ -517,13 +517,46 @@ func TestSerializeMapCallGraph(t *testing.T) {
 		t.Error("Node SOME_STATIC.VALUES1.LEN.ONES not found")
 	} else if forks := ones.ForkRoots(); len(forks) != 2 {
 		t.Errorf("Expected 2 forks, got %d", len(forks))
-	} else if alen := forks[0].Split().Source.ArrayLength(); alen != 2 {
-		t.Errorf("Outer fork array length %d != 2", alen)
+	} else if keys := forks[0].Split().Source.Keys(); len(keys) != 2 {
+		t.Errorf("Outer fork key count %d != 2", len(keys))
 	} else if forks[1].Split().Source.KnownLength() {
 		t.Error("Inner split length should be unknown:",
 			forks[1].Split().GoString(),
 			"with map source",
 			forks[1].Split().Source.GoString())
+	}
+	ones = nodes["SOME_STATIC.VALUES2.LEN.ONES"]
+	if ones == nil {
+		t.Error("Node SOME_STATIC.VALUES2.LEN.ONES not found")
+	} else {
+		inputs := ones.ResolvedInputs()
+		for k, input := range inputs {
+			brefs, err := input.FindRefs(&ast.TypeTable)
+			if err != nil {
+				t.Error("input", k, "bound reference error:", err)
+			}
+			refs := input.Exp.FindRefs()
+			if len(refs) != 0 && len(brefs)+1 != len(refs) {
+				t.Log(input.Exp.GoString())
+				t.Errorf("%d + 1 != %d", len(brefs), len(refs))
+			}
+			for i, ref := range refs {
+				if i < len(brefs) {
+					if ref.Id != brefs[i].Exp.Id {
+						t.Errorf("%d: %s != %s", i, ref.Id, brefs[i].Exp.Id)
+					} else if ref.OutputId != brefs[i].Exp.OutputId {
+						t.Errorf("%d: %s != %s", i, ref.GoString(), brefs[i].Exp.GoString())
+					}
+				} else if i < len(refs)-1 {
+					t.Error("missing bound ref", ref.GoString())
+				}
+			}
+			if len(brefs) > len(refs) {
+				for _, ref := range brefs[len(refs):] {
+					t.Error("missing ref", ref.GoString())
+				}
+			}
+		}
 	}
 }
 

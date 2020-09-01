@@ -500,7 +500,7 @@ func (f ForkId) Match(ref map[*syntax.CallStm]syntax.CollectionIndex,
 }
 
 // Matches returns true if the IDs match for every fork element with matching
-// sources.
+// sources where the source is determined.
 func (f ForkId) Matches(other ForkId) bool {
 	for _, p1 := range f {
 		if len(other) == 0 {
@@ -513,6 +513,8 @@ func (f ForkId) Matches(other ForkId) bool {
 					!indexEqual(p1.Id, p2.Id) {
 					return false
 				}
+				// Don't re-check these parts on the next pass.  Ordering
+				// should be consistent due to nesting.
 				other = other[j+1:]
 				break
 			}
@@ -598,6 +600,7 @@ func (err forkMatchNotFoundError) Error() string {
 	return "no match found for " + err.src.GoString() + " in " + err.fork
 }
 
+// matchPart returns the part of the fork ID corresponding to the given call.
 func (f ForkId) matchPart(src *syntax.CallStm) (*ForkSourcePart, error) {
 	for _, part := range f {
 		if part.Split.Call == src {
@@ -889,7 +892,7 @@ func (p *ForkSourcePart) GoString() string {
 		if p.Split.Call == nil {
 			return p.Split.GoString() + ":" + p.Id.GoString()
 		}
-		return p.Split.Call.Id + ":" + p.Split.GoString() + ":" + p.Id.String()
+		return p.Split.Call.Id + ":" + p.Split.GoString() + ":unmatched"
 	}
 	switch p.Id.Mode() {
 	case syntax.ModeArrayCall:
@@ -1279,22 +1282,38 @@ func (self *Fork) getForkRef(split *syntax.SplitExp) *syntax.RefExp {
 		exp = s.Value
 	}
 	if m, ok := exp.(*syntax.MergeExp); ok {
-		switch ms := m.MergeOver.(type) {
+		src := m.MergeOver
+		for im, ok := src.(*syntax.MergeExp); ok; im, ok = src.(*syntax.MergeExp) {
+			src = im.MergeOver
+		}
+		switch ms := src.(type) {
+		case *syntax.RefExp:
+			return ms
 		case syntax.Exp:
 			exp = ms
 		case *syntax.BoundReference:
 			return ms.Exp
 		case *syntax.MapCallSet:
-			if br, ok := ms.Master.(*syntax.BoundReference); ok {
-				return br.Exp
+			switch ms := ms.Master.(type) {
+			case *syntax.BoundReference:
+				return ms.Exp
+			case *syntax.RefExp:
+				return ms
 			}
 		}
 	}
 	switch r := exp.(type) {
 	case *syntax.RefExp:
 		return r
+	case *syntax.MergeExp:
+		if r.ForkNode == nil {
+			panic("invalid unresolved " + exp.GoString() + " for " +
+				split.GoString() + " (computing forks for " +
+				self.fqname + ")")
+		}
+		return r.ForkNode
 	default:
-		panic("invalid source " + exp.GoString() + " for undetermined split " +
+		panic("invalid source " + exp.GoString() + " for undetermined " +
 			split.GoString() + " (computing forks for " +
 			self.fqname + ")")
 	}
@@ -1312,11 +1331,14 @@ func (self *Fork) expandForkPart(i int, part *ForkSourcePart,
 	if bNode == nil {
 		panic("invalid reference to " + ref.Id)
 	}
+	if bNode != self.node {
+		bNode.expandForks()
+	}
 	result = result[len(result):]
 	if parts := self.getUnmatchedForkParts(bNode); len(parts) > 0 {
 		flen := len(self.forkId)
 		if flen == 0 {
-			flen = 1
+			panic("No forks to expand parts into")
 		}
 		// Allocate the results in a single block, which we're going to
 		// take slices out of, to make life easier for the GC.
@@ -1352,11 +1374,14 @@ func (self *Fork) expandForkPart(i int, part *ForkSourcePart,
 	}
 	ready, obj, err := matchedForks[0].resolveRef(ref, nil,
 		bNode.call.Call().DecId, 1024*1024)
-	if err != nil || !ready {
+	if err != nil {
 		return nil, &elementError{
 			element: "evaluating mapping source " + ref.GoString(),
 			inner:   err,
 		}
+	}
+	if !ready {
+		return nil, nil
 	}
 	if obj == nil {
 		part.Id = arrayIndexFork(0)
@@ -1391,6 +1416,9 @@ func (self *Fork) expandForkPart(i int, part *ForkSourcePart,
 				self.forkId[i] = part
 			}
 			part.Id = arrayIndexFork(0)
+			if self.forkId[i] != part {
+				panic("not editing the right part")
+			}
 			self.updateId(self.forkId)
 			return nil, nil
 		}

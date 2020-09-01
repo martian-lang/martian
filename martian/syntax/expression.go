@@ -59,8 +59,9 @@ type (
 
 		// Recursively searches the expression for references.
 		FindRefs() []*RefExp
+
 		// Recursively searches the expression for references, propagating
-		// type information.
+		// type information and appending the results to the given list.
 		FindTypedRefs(list []*BoundReference, t Type, lookup *TypeLookup) ([]*BoundReference, error)
 
 		// Evaluates a binding path through a literal expression.

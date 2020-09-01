@@ -88,8 +88,19 @@ func (e *SplitExp) IsEmpty() bool {
 
 func (e *SplitExp) FindRefs() []*RefExp {
 	refs := e.Value.FindRefs()
-	if s, ok := e.Source.(Exp); ok && s != nil {
-		refs = append(refs, s.FindRefs()...)
+	if e.Source != nil {
+		switch s := e.Source.(type) {
+		case *MapCallSet:
+			switch r := s.Master.(type) {
+			case *RefExp:
+				refs = append(refs, r)
+			case *BoundReference:
+				refs = append(refs, r.Exp)
+			}
+		case *ArrayExp, *MapExp:
+		case Exp:
+			refs = append(refs, s.FindRefs()...)
+		}
 	}
 	return refs
 }
@@ -104,7 +115,11 @@ func (exp *SplitExp) FindTypedRefs(list []*BoundReference,
 	case *ArrayExp:
 		innerType = lookup.GetArray(t, 1)
 	case *MergeExp:
-		return val.Value.FindTypedRefs(list, lookup.GetArray(t, 1), lookup)
+		tt, err := lookup.AddDim(t, exp.CallMode())
+		if err != nil {
+			return list, err
+		}
+		return val.Value.FindTypedRefs(list, tt, lookup)
 	case *RefExp:
 		if tid.ArrayDim > 0 {
 			tid.ArrayDim--

@@ -389,15 +389,19 @@ func (e *MergeExp) encodeJSON(buf *bytes.Buffer) error {
 	}
 	if e.MergeOver != nil {
 		if v, ok := e.Value.(MapCallSource); !ok || v != e.MergeOver {
-			if s, ok := e.MergeOver.(JsonWriter); ok {
-				if _, err := buf.WriteString(`,"merge_over":`); err != nil {
-					return err
-				}
-				if err := s.EncodeJSON(buf); err != nil {
-					return err
-				}
+			if _, err := buf.WriteString(`,"merge_over":`); err != nil {
+				return err
+			}
+			if err := encodeMapSourceJson(buf, e.MergeOver); err != nil {
+				return err
 			}
 		}
+	}
+	if e.ForkNode != nil {
+		if _, err := buf.WriteString(`,"fork_node":`); err != nil {
+			return err
+		}
+		quoteString(buf, e.ForkNode.Id)
 	}
 	_, err := buf.WriteRune('}')
 	return err
@@ -415,6 +419,9 @@ func (e *MergeExp) jsonSizeEstimate() int {
 	}
 	if e.Call != nil {
 		s += 15 + len(e.Call.GetFqid())
+	}
+	if e.ForkNode != nil {
+		s += len(`,"fork_node":`) + 2 + len(e.ForkNode.Id)
 	}
 	return s
 }
@@ -791,8 +798,8 @@ func encodeMapSourceJson(buf *bytes.Buffer, src MapCallSource) error {
 		if _, err := buf.WriteString(`]}`); err != nil {
 			return err
 		}
-	case JsonWriter:
-		return v.EncodeJSON(buf)
+	case *MergeExp:
+		return encodeMapSourceJson(buf, v.MergeOver)
 	case *placeholderArrayMapSource:
 		_, err := buf.WriteString(`"placeholder array"`)
 		return err
@@ -802,6 +809,8 @@ func encodeMapSourceJson(buf *bytes.Buffer, src MapCallSource) error {
 	case *placeholderMapSource:
 		_, err := buf.WriteString(`"placeholder"`)
 		return err
+	case JsonWriter:
+		return v.EncodeJSON(buf)
 	default:
 		quoteString(buf, src.CallMode().String())
 	}
@@ -819,7 +828,7 @@ func estimateMapSourceJsonSize(src MapCallSource) int {
 	case Exp:
 		return v.jsonSizeEstimate()
 	}
-	return 8
+	return 19
 }
 
 func (s ForkRootList) encodeJSON(buf *bytes.Buffer) error {

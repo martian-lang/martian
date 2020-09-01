@@ -76,7 +76,6 @@ func compareOutputText(t *testing.T, expected, actual string) {
 }
 
 func TestPostProcess(t *testing.T) {
-	util.MockSignalHandlersForTest()
 	psOuts, err := filepath.Abs("testdata/test_post_process_struct_pipestance/outs")
 	if err != nil {
 		t.Fatal(err)
@@ -325,7 +324,6 @@ func TestPostProcess(t *testing.T) {
 }
 
 func TestPostProcessEmpties(t *testing.T) {
-	util.MockSignalHandlersForTest()
 	psOuts, err := filepath.Abs("testdata/test_post_process_empties_struct_pipestance/outs")
 	if err != nil {
 		t.Fatal(err)

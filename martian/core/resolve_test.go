@@ -233,7 +233,6 @@ func checkJsonOutput(t *testing.T, result json.Marshaler, psPath, expected strin
 // Sets up a test pipestance.
 func setupTestPipestance(t *testing.T, mro, name string) (*Pipestance, string) {
 	t.Helper()
-	util.MockSignalHandlersForTest()
 	psOuts, err := filepath.Abs(
 		"testdata/test_" + name + "_struct_pipestance/outs")
 	if err != nil {

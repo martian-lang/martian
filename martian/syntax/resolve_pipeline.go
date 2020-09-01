@@ -93,40 +93,6 @@ func (pipe *CallGraphPipeline) makeChildNodes(prefix string, ast *Ast) error {
 	return nil
 }
 
-func hasMerge(exp Exp, call *CallStm) bool {
-	switch exp := exp.(type) {
-	case *RefExp:
-		i := exp.Forks[call]
-		return i != nil && i.IndexSource() == nil
-	case *ArrayExp:
-		for _, v := range exp.Value {
-			if hasMerge(v, call) {
-				return true
-			}
-		}
-	case *MapExp:
-		for _, v := range exp.Value {
-			if hasMerge(v, call) {
-				return true
-			}
-		}
-	case *SplitExp:
-		if exp.Call == call {
-			return false
-		}
-		return hasMerge(exp.Value, call)
-	case *MergeExp:
-		if exp.GetCall() == call {
-			return true
-		}
-		return hasMerge(exp.Value, call)
-	case *DisabledExp:
-		return hasMerge(exp.Value, call) ||
-			hasMerge(exp.Disabled, call)
-	}
-	return false
-}
-
 func (node *CallGraphPipeline) resolve(siblings map[string]*ResolvedBinding,
 	mapped ForkRootList, lookup *TypeLookup) error {
 	if err := node.resolveInputs(siblings, mapped, lookup); err != nil {
@@ -393,45 +359,6 @@ func unmergeExp(exp Exp, t Type, lookup *TypeLookup, forks ForkRootList) (Exp, T
 		return unmergeExp(exp.Value, t, lookup, append(forks, exp.Call))
 	}
 	return exp, t, forks
-}
-
-func (node *CallGraphPipeline) resolvePipelineForks(mapped ForkRootList, inputSplits bool) {
-	if len(mapped) == 0 {
-		node.Forks = nil
-		return
-	}
-	splits := make(map[*CallStm]struct{}, len(mapped))
-	findSplitCalls(node.Outputs.Exp, splits, true)
-	for _, d := range node.Disable {
-		findSplitCalls(d, splits, true)
-	}
-	if inputSplits {
-		for _, b := range node.Inputs {
-			findSplitCalls(b.Exp, splits, true)
-		}
-	}
-	for _, m := range mapped {
-		if _, ok := splits[m.Call()]; !ok {
-			if !m.MapSource().KnownLength() && hasMerge(node.Outputs.Exp, m.call) {
-				splits[m.Call()] = struct{}{}
-			}
-		}
-	}
-	for _, n := range node.Forks {
-		delete(splits, n.Call())
-	}
-	if len(splits) > 0 {
-		if cap(node.Forks) < len(node.Forks)+len(splits) {
-			f := make(ForkRootList, len(node.Forks), len(node.Forks)+len(splits))
-			copy(f, node.Forks)
-			node.Forks = f
-		}
-		for _, src := range mapped {
-			if _, ok := splits[src.Call()]; ok {
-				node.Forks = append(node.Forks, src)
-			}
-		}
-	}
 }
 
 // Retained values, exempt from VDR.

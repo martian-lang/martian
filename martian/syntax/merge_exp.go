@@ -6,6 +6,7 @@ package syntax
 
 import (
 	"fmt"
+	"sort"
 )
 
 // A MergeExp represents wraps a struct value that is the output of a mapped
@@ -30,24 +31,28 @@ import (
 // would be
 //
 //   merge {
-//       x: [split [1, 2, 3]],
+//       y: [split [1, 2, 3]],
 //   }
 //
 // which would resolve to
 //
 //   [
-//       {x: [1]},
-//       {x: [2]},
-//       {x: [3]},
+//       {y: [1]},
+//       {y: [2]},
+//       {y: [3]},
 //   ]
 //
-// The MergeExp is expected to contain a MapExp of struct type, and each member
-// of the struct will contain either a split array or map (depending on the
-// source for the map call) or a RefExp.  It cannot be fully resolved until the
-// mapped-over elements are known - if the map is over the output of a stage,
-// then it cannot be resolved.  In the interest of output verbosity, even in
-// cases where the map dimension is know, resolution is skipped until runtime
-// if only reference expressions are found.
+// A merge expression represents such a merge over a single level  of the
+// forking hierarchy, as represented by the call graph node where the split
+// happened.
+//
+// MergeOver specifies the MapCallSource used for the merge.  If it does not
+// have a length that can be computed at mro compile time, then ForkNode
+// will specify the fully-qualified name of a stage node which forks on the
+// specified call.  If there are any references to such stages inside Value,
+// ForkNode will specify one of those nodes; otherwise one will be picked
+// arbitrarily from the set of stages which feed inputs to the pipeline
+// represented by the Call.
 //
 // This expression type does not exist in mro source code - it is only produced
 // during call graph resolution.  The formatting methods exist to implement the
@@ -55,7 +60,8 @@ import (
 type MergeExp struct {
 	Call      *CallGraphStage `json:"-"`
 	Value     Exp             `json:"merge_value"`
-	MergeOver MapCallSource   `json:"merge_over"`
+	MergeOver MapCallSource   `json:"merge_over,omitempty"`
+	ForkNode  *RefExp         `json:"fork_node,omitempty"`
 }
 
 func (s *MergeExp) getNode() *AstNode { return &s.Call.Call().Node }
@@ -67,6 +73,9 @@ func (*MergeExp) inheritComments() bool     { return false }
 func (*MergeExp) getSubnodes() []AstNodable { return nil }
 
 func (s *MergeExp) HasRef() bool {
+	if s.ForkNode != nil {
+		return true
+	}
 	return s.Value.HasRef()
 }
 
@@ -99,24 +108,21 @@ func (m *MergeExp) GetCall() *CallStm {
 	return m.Call.Call()
 }
 
-func (m *MergeExp) innerValue() Exp {
-	return m.Value
-}
-
-func (m *MergeExp) mapSource() MapCallSource {
-	return m.MergeOver
-}
-
-func (m *MergeExp) setSource(src MapCallSource) {
-	m.MergeOver = src
-}
-
 // Recursively searches the expression for references.
 func (m *MergeExp) FindRefs() []*RefExp {
 	if m == nil || m.Value == nil {
 		return nil
 	}
-	return m.Value.FindRefs()
+	refs := m.Value.FindRefs()
+	if m.ForkNode != nil {
+		for _, ref := range refs {
+			if ref.Id == m.ForkNode.Id {
+				return refs
+			}
+		}
+		refs = append(refs, m.ForkNode)
+	}
+	return refs
 }
 
 func (m *MergeExp) filter(t Type, lookup *TypeLookup) (Exp, error) {
@@ -177,7 +183,7 @@ func (m *MergeExp) FindTypedRefs(list []*BoundReference,
 					FormatExp(m, "")),
 			}
 		}
-		innerType = t.Elem
+		innerType = lookup.GetArray(t, -1)
 	case *TypedMapType:
 		if m.MergeOver.CallMode() == ModeMapCall {
 			return list, &IncompatibleTypeError{
@@ -233,43 +239,17 @@ func (exp *MergeExp) resolveRefs(self, siblings map[string]*ResolvedBinding,
 	if err != nil {
 		return exp, exp.wrapError(err)
 	}
-	if v != exp.Value {
+	fn := findMergeForkNode(v, exp.MergeOver, exp.Call)
+	if fn != nil && fn.Id == exp.Call.Fqid {
+		fn = nil
+	}
+	if v != exp.Value || fn != exp.ForkNode {
 		e := *exp
 		e.Value = v
+		e.ForkNode = fn
 		return &e, nil
 	}
 	return exp, nil
-}
-
-func findSplitValue(val Exp, call *CallStm) MapCallSource {
-	switch val := val.(type) {
-	case *SplitExp:
-		if val.Call == call {
-			r, ok := val.Value.(MapCallSource)
-			if !ok {
-				r = val.Source
-			}
-			return r
-		}
-		return findSplitValue(val.Value, call)
-	case *MergeExp:
-		return findSplitValue(val.Value, call)
-	case *DisabledExp:
-		return findSplitValue(val.Value, call)
-	case *ArrayExp:
-		for _, v := range val.Value {
-			if r := findSplitValue(v, call); r != nil {
-				return r
-			}
-		}
-	case *MapExp:
-		for _, v := range val.Value {
-			if r := findSplitValue(v, call); r != nil {
-				return r
-			}
-		}
-	}
-	return nil
 }
 
 func sourceForFork(src MapCallSource, fork map[*CallStm]CollectionIndex) (MapCallSource, error) {
@@ -303,6 +283,124 @@ func sourceForFork(src MapCallSource, fork map[*CallStm]CollectionIndex) (MapCal
 	return src, nil
 }
 
+func findMergeForkSrcNode(src MapCallSource, call *CallStm) *RefExp {
+	if src.KnownLength() {
+		return nil
+	}
+	switch src := src.(type) {
+	case *MapCallSet:
+		if m := findMergeForkSrcNode(src.Master, call); m != nil {
+			return m
+		}
+		ms := make([]*RefExp, 0, len(src.Sources)-1)
+		for s := range src.Sources {
+			if s != src.Master {
+				if m := findMergeForkSrcNode(s, call); m != nil {
+					ms = append(ms, m)
+				}
+			}
+		}
+		if len(ms) > 0 {
+			sort.Slice(ms, func(i, j int) bool {
+				ii, ji := ms[i].Id, ms[j].Id
+				if ii == ji {
+					if il, jl := len(ms[i].OutputId), len(ms[j].OutputId); il < jl {
+						return true
+					} else if il == jl {
+						return ms[i].OutputId < ms[j].OutputId
+					}
+				}
+				return ii < ji
+			})
+			return ms[0]
+		}
+	case Exp:
+		return findMergeForkExpNode(src, call)
+	}
+	return nil
+}
+
+func findMergeForkExpNode(v Exp, call *CallStm) *RefExp {
+	switch v := v.(type) {
+	case *RefExp:
+		for c := range v.Forks {
+			if c == call {
+				return v
+			}
+		}
+	case *ArrayExp:
+		for _, e := range v.Value {
+			if m := findMergeForkExpNode(e, call); m != nil {
+				return m
+			}
+		}
+	case *MapExp:
+		keys := make([]string, 0, len(v.Value))
+		for k := range v.Value {
+			keys = append(keys, k)
+		}
+		sort.Strings(keys)
+		for _, k := range keys {
+			if m := findMergeForkExpNode(v.Value[k], call); m != nil {
+				return m
+			}
+		}
+	case *DisabledExp:
+		if m := findMergeForkExpNode(v.Value, call); m != nil {
+			return m
+		}
+		return findMergeForkExpNode(v.Disabled, call)
+	case *SplitExp:
+		if m := findMergeForkExpNode(v.Value, call); m != nil {
+			return m
+		}
+		if v.Call == call {
+			if vm, ok := v.Value.(*MergeExp); ok {
+				return findMergeForkExpNode(vm.Value, vm.Call.call)
+			}
+		}
+	case *MergeExp:
+		if m := findMergeForkSrcNode(v.MergeOver, call); m != nil {
+			return m
+		}
+		return findMergeForkExpNode(v.Value, call)
+	}
+	return nil
+}
+
+func findMergeForkNode(v Exp, src MapCallSource, call *CallGraphStage) *RefExp {
+	if src != nil {
+		if m := findMergeForkSrcNode(src, call.call); m != nil {
+			return m
+		}
+	}
+	if m := findMergeForkExpNode(v, call.call); m != nil {
+		return m
+	}
+	for _, e := range call.Disable {
+		if m := findMergeForkExpNode(e, call.call); m != nil {
+			return m
+		}
+	}
+	// Search the inputs for a fork.
+	if len(call.Inputs) > 0 {
+		ins := make([]string, 0, len(call.Inputs))
+		for i := range call.Inputs {
+			ins = append(ins, i)
+		}
+		sort.Strings(ins)
+		for _, i := range ins {
+			e := call.Inputs[i]
+			if e != nil {
+				if m := findMergeForkExpNode(e.Exp, call.call); m != nil {
+					return m
+				}
+			}
+		}
+	}
+	return nil
+}
+
 func (s *MergeExp) BindingPath(bindPath string,
 	fork map[*CallStm]CollectionIndex) (Exp, error) {
 	if s == nil || s.Value == nil {
@@ -319,13 +417,23 @@ func (s *MergeExp) BindingPath(bindPath string,
 	} else {
 		src = se
 	}
-	if i := fork[s.GetCall()]; (i != nil) && (i.IndexSource() == nil) {
+	for ms, ok := src.(*MergeExp); ok; ms, ok = src.(*MergeExp) {
+		src = ms.MergeOver
+	}
+	if i := fork[s.GetCall()]; i != nil && i.IndexSource() == nil {
 		return v, s.wrapError(err)
 	} else if err != nil ||
 		!src.KnownLength() {
-		if v != s.Value {
+		fn := findMergeForkNode(v, src, s.Call)
+		if fn != nil && fn.Id == s.Call.Fqid {
+			fn = nil
+		}
+		if v != s.Value ||
+			(fn != s.ForkNode &&
+				(fn == nil || s.ForkNode == nil || fn.Id != s.ForkNode.Id)) {
 			sc := *s
 			sc.Value = v
+			sc.ForkNode = fn
 			s = &sc
 		}
 		return s, s.wrapError(err)

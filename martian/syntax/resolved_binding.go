@@ -234,44 +234,6 @@ func (b *ResolvedBinding) FindRefs(lookup *TypeLookup) ([]*BoundReference, error
 
 func (exp *RefExp) FindTypedRefs(list []*BoundReference,
 	t Type, lookup *TypeLookup) ([]*BoundReference, error) {
-	// for _, s := range exp.MergeOver {
-	// 	switch s.CallMode() {
-	// 	case ModeArrayCall:
-	// 		tid.ArrayDim++
-	// 	case ModeMapCall:
-	// 		if tid.MapDim > 0 {
-	// 			return list, &bindingError{
-	// 				Msg: "map call results in nesting a " + tid.str() + " inside a map",
-	// 			}
-	// 		}
-	// 		tid.MapDim = 1 + tid.ArrayDim
-	// 		tid.ArrayDim = 0
-	// 	}
-	// }
-	// for _, v := range exp.ForkIndex {
-	// 	switch v.Mode() {
-	// 	case ModeArrayCall:
-	// 		if tid.ArrayDim == 0 {
-	// 			if tid.MapDim > 1 {
-	// 				tid.MapDim--
-	// 			} else {
-	// 				return list, &bindingError{
-	// 					Msg: "can't split a " + tid.str() + " as an array",
-	// 				}
-	// 			}
-	// 		}
-	// 		tid.ArrayDim--
-	// 	case ModeMapCall:
-	// 		if tid.MapDim == 0 {
-	// 			return list, &bindingError{
-	// 				Msg: "can't split a " + tid.str() + " as a map",
-	// 			}
-	// 		}
-	// 		tid.ArrayDim = tid.MapDim - 1
-	// 		tid.MapDim = 0
-	// 	}
-	// }
-	// t = lookup.Get(tid)
 	return append(list, &BoundReference{
 		Exp:  exp,
 		Type: t,
@@ -302,17 +264,13 @@ func (exp *ArrayExp) FindTypedRefs(list []*BoundReference,
 		if e == nil || !e.HasRef() {
 			continue
 		}
-		rb := ResolvedBinding{
-			Exp:  e,
-			Type: nt,
-		}
-		if refs, err := rb.FindRefs(lookup); err != nil {
+		var err error
+		list, err = e.FindTypedRefs(list, nt, lookup)
+		if err != nil {
 			errs = append(errs, &bindingError{
 				Msg: "in array",
 				Err: err,
 			})
-		} else if len(refs) > 0 {
-			list = append(list, refs...)
 		}
 	}
 	return list, errs.If()
@@ -334,15 +292,6 @@ func (exp *MapExp) FindTypedRefs(list []*BoundReference,
 	t Type, lookup *TypeLookup) ([]*BoundReference, error) {
 	switch t := t.(type) {
 	case *TypedMapType:
-		if exp.Kind == KindStruct {
-			// To avoid special handling of references, pipeline output
-			// bindings for mapped calls of pipelines will be structs of
-			// maps rather than maps of structs.  But, that means we have
-			// to have special handling here instead.
-			if t, ok := t.Elem.(*StructType); ok {
-				return findStructRefs(list, lookup, t, exp, false, true)
-			}
-		}
 		var errs ErrorList
 		keys := make([]string, 0, len(exp.Value))
 		for key, val := range exp.Value {
@@ -359,30 +308,41 @@ func (exp *MapExp) FindTypedRefs(list []*BoundReference,
 			if e == nil || !e.HasRef() {
 				continue
 			}
-			rb := ResolvedBinding{
-				Exp:  e,
-				Type: t.Elem,
-			}
-			if refs, err := rb.FindRefs(lookup); err != nil {
+			var err error
+			list, err = e.FindTypedRefs(list, t.Elem, lookup)
+			if err != nil {
 				errs = append(errs, &bindingError{
 					Msg: "map key " + key,
 					Err: err,
 				})
-			} else if len(refs) > 0 {
-				list = append(list, refs...)
 			}
 		}
 		return list, errs.If()
 	case *StructType:
-		return findStructRefs(list, lookup, t, exp, false, false)
-	case *ArrayType:
-		// To avoid special handling of references, pipeline output
-		// bindings for mapped calls of pipelines will be structs of
-		// arrays rather than arrays of structs.  But, that means we have
-		// to have special handling here instead.
-		if t, ok := t.Elem.(*StructType); ok {
-			return findStructRefs(list, lookup, t, exp, true, false)
+		var errs ErrorList
+		for _, m := range t.Members {
+			tt := lookup.Get(m.Tname)
+			if tt == nil {
+				errs = append(errs, &bindingError{
+					Msg: "struct field " + m.Id + " has unknown type " + m.Tname.str(),
+				})
+			} else if val, ok := exp.Value[m.Id]; !ok {
+				errs = append(errs, &bindingError{
+					Msg: "struct missing field " + m.Id,
+				})
+			} else if val != nil {
+				var err error
+				list, err = val.FindTypedRefs(list, tt, lookup)
+				if err != nil {
+					errs = append(errs, &bindingError{
+						Msg: "field " + m.Id,
+						Err: err,
+					})
+				}
+			}
 		}
+		return list, errs.If()
+	case *ArrayType:
 		return list, &wrapError{
 			innerError: &bindingError{
 				Msg: "unexpected " + string(exp.Kind) +
@@ -439,48 +399,4 @@ func (exp *MapExp) FindTypedRefs(list []*BoundReference,
 
 func (exp *valExp) FindTypedRefs(list []*BoundReference, _ Type, _ *TypeLookup) ([]*BoundReference, error) {
 	return list, nil
-}
-
-func findStructRefs(result []*BoundReference,
-	lookup *TypeLookup, t *StructType,
-	exp *MapExp, arr, typedMap bool) ([]*BoundReference, error) {
-	var errs ErrorList
-	if cap(result) == 0 {
-		result = make([]*BoundReference, 0, len(t.Members))
-	}
-	for _, member := range t.Members {
-		if v, ok := exp.Value[member.Id]; !ok {
-			errs = append(errs, &bindingError{
-				Msg: "missing " + member.Id,
-			})
-		} else if v.HasRef() {
-			tn := member.Tname
-			if arr {
-				tn.ArrayDim++
-			}
-			if typedMap {
-				if tn.MapDim != 0 {
-					errs = append(errs, &bindingError{
-						Msg: "can't nest map for field " + member.Id + " in a map call",
-					})
-				} else {
-					tn.MapDim = tn.ArrayDim + 1
-					tn.ArrayDim = 0
-				}
-			}
-			rb := ResolvedBinding{
-				Exp:  v,
-				Type: lookup.Get(tn),
-			}
-			if refs, err := rb.FindRefs(lookup); err != nil {
-				errs = append(errs, &bindingError{
-					Msg: "struct field " + member.Id,
-					Err: err,
-				})
-			} else if len(refs) > 0 {
-				result = append(result, refs...)
-			}
-		}
-	}
-	return result, errs.If()
 }

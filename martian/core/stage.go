@@ -926,7 +926,11 @@ func (self *Fork) writeInvocation() {
 			self.node.call.Callable(),
 			self.node.top.types,
 			self.node.top.mroPaths)
-		self.metadata.WriteRaw(InvocationFile, invocation)
+		if err := self.metadata.WriteRaw(InvocationFile, invocation); err != nil {
+			util.LogError(err, "runtime",
+				"%s: Error writing invocation file.",
+				self.fqname)
+		}
 	}
 }
 
@@ -954,7 +958,11 @@ func (self *Fork) doSplit(getBindings func() MarshalerMap) MetadataState {
 		return Failed
 	}
 	self.writeInvocation()
-	self.split_metadata.Write(ArgsFile, getBindings())
+	if err := self.split_metadata.Write(ArgsFile, getBindings()); err != nil {
+		util.LogError(err, "runtime",
+			"%s: Error writing args file.",
+			self.fqname)
+	}
 	if self.Split() {
 		if !self.split_has_run {
 			self.split_has_run = true
@@ -962,8 +970,12 @@ func (self *Fork) doSplit(getBindings func() MarshalerMap) MetadataState {
 			self.node.runSplit(self.fqname, self.split_metadata)
 		}
 	} else {
-		self.split_metadata.Write(StageDefsFile, self.stageDefs)
-		self.split_metadata.WriteTime(CompleteFile)
+		_ = self.split_metadata.Write(StageDefsFile, self.stageDefs)
+		if err := self.split_metadata.WriteTime(CompleteFile); err != nil {
+			util.LogError(err, "runtime",
+				"%s: Error writing split completion stub file.",
+				self.fqname)
+		}
 		return Complete.Prefixed(SplitPrefix)
 	}
 	return Ready
@@ -1008,7 +1020,11 @@ Chunk count: %d`,
 				for i, chunkDef := range self.stageDefs.ChunkDefs {
 					chunk := NewChunk(self, i, chunkDef, width)
 					self.chunks = append(self.chunks, chunk)
-					chunk.mkdirs()
+					if err := chunk.mkdirs(); err != nil {
+						util.LogError(err, "runtime",
+							"%s: Error making chunk directory.",
+							self.fqname)
+					}
 					chunk.verifyDef()
 				}
 				self.metadatasCache = nil
@@ -1055,8 +1071,14 @@ func (self *Fork) doJoin(state MetadataState, getBindings func() MarshalerMap) M
 		Resources: self.stageDefs.JoinDef,
 		Args:      args,
 	}
-	self.join_metadata.Write(ArgsFile, &resolvedBindings)
-	self.join_metadata.Write(ChunkDefsFile, self.stageDefs.ChunkDefs)
+	if err := self.join_metadata.Write(ArgsFile, &resolvedBindings); err != nil {
+		util.LogError(err, "runtime", "%s: Error writing join args file.",
+			self.fqname)
+	}
+	if err := self.join_metadata.Write(ChunkDefsFile, self.stageDefs.ChunkDefs); err != nil {
+		util.LogError(err, "runtime", "%s: Error writing chunk defs file.",
+			self.fqname)
+	}
 	if self.Split() {
 		ok := true
 		if len(self.chunks) > 0 {
@@ -1073,7 +1095,11 @@ func (self *Fork) doJoin(state MetadataState, getBindings func() MarshalerMap) M
 						ok = chunk.verifyOutput(outs) && ok
 					}
 				}
-				self.join_metadata.Write(ChunkOutsFile, chunkOuts)
+				if err := self.join_metadata.Write(ChunkOutsFile, chunkOuts); err != nil {
+					util.LogError(err, "runtime",
+						"%s: Error writing chunk outs file.",
+						self.fqname)
+				}
 			} else {
 				// Write a list of empty outs.
 				var buf bytes.Buffer
@@ -1086,13 +1112,22 @@ func (self *Fork) doJoin(state MetadataState, getBindings func() MarshalerMap) M
 					buf.WriteString("{}")
 				}
 				buf.WriteByte(']')
-				self.join_metadata.WriteRawBytes(ChunkOutsFile, buf.Bytes())
+				if err := self.join_metadata.WriteRawBytes(ChunkOutsFile,
+					buf.Bytes()); err != nil {
+					util.LogError(err, "runtime",
+						"%s: Error writing chunk outs file.",
+						self.fqname)
+				}
 			}
 			if !ok {
 				return Failed
 			}
 		} else {
-			self.join_metadata.WriteRaw(ChunkOutsFile, "[]")
+			if err := self.join_metadata.WriteRaw(ChunkOutsFile, "[]"); err != nil {
+				util.LogError(err, "runtime",
+					"%s: Error writing chunk outs file.",
+					self.fqname)
+			}
 		}
 		self.join_metadata.Write(
 			OutsFile,

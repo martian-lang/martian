@@ -786,6 +786,9 @@ func findSplitCalls(exp Exp, result map[*CallStm]struct{}, onlyUnknown bool) {
 	case *MergeExp:
 		_, ok := result[exp.GetCall()]
 		findSplitCalls(exp.Value, result, onlyUnknown)
+		// if exp.ForkNode != nil {
+		// 	findSplitCalls(exp.ForkNode, result, onlyUnknown)
+		// }
 		if !ok {
 			// splits for this call which are below this level are merged.
 			delete(result, exp.GetCall())
@@ -819,6 +822,9 @@ func findSplitsForCall(exp Exp, call *CallStm, result map[*SplitExp]struct{}) {
 		findSplitsForCall(exp.Value, call, result)
 	case *MergeExp:
 		findSplitsForCall(exp.Value, call, result)
+		// if exp.ForkNode != nil {
+		// 	findSplitsForCall(exp.ForkNode, call, result)
+		// }
 	case *ArrayExp:
 		for _, v := range exp.Value {
 			findSplitsForCall(v, call, result)
@@ -861,58 +867,6 @@ func (node *CallGraphStage) isEmptyMapping() bool {
 		}
 	}
 	return false
-}
-
-func hasSplit(exp Exp, call *CallStm) Exp {
-	switch exp := exp.(type) {
-	case *SplitExp:
-		if exp.Call == call {
-			return exp.Value
-		}
-		return hasSplit(exp.Value, call)
-	case *MergeExp:
-		if exp.GetCall() == call {
-			return nil
-		}
-		return hasSplit(exp.Value, call)
-	case *ArrayExp:
-		var result Exp
-		for _, v := range exp.Value {
-			if v := hasSplit(v, call); v != nil {
-				switch v := v.(type) {
-				case *RefExp:
-					result = v
-				case *NullExp:
-					if result == nil {
-						result = v
-					}
-				default:
-					return v
-				}
-			}
-		}
-		return result
-	case *MapExp:
-		var result Exp
-		for _, v := range exp.Value {
-			if v := hasSplit(v, call); v != nil {
-				switch v := v.(type) {
-				case *RefExp:
-					result = v
-				case *NullExp:
-					if result == nil {
-						result = v
-					}
-				default:
-					return v
-				}
-			}
-		}
-		return result
-	case *DisabledExp:
-		return hasSplit(exp.Value, call)
-	}
-	return nil
 }
 
 func (node *CallGraphStage) NodeClosure() map[string]CallGraphNode {
