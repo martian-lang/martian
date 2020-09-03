@@ -179,11 +179,6 @@ func (self *pipestanceHolder) HandleSignal(os.Signal) {
 			ps.ClearUiPort()
 		}
 	}
-	if srv := self.server; srv != nil {
-		ctx, cancel := context.WithTimeout(context.Background(), 20*time.Second)
-		defer cancel()
-		srv.Shutdown(ctx)
-	}
 }
 
 func (pipestanceBox *pipestanceHolder) Configure(c *mrpConfiguration, invocationSrc string) (
@@ -299,8 +294,8 @@ func (c *mrpConfiguration) getListener(hostname string,
 			util.Println("Serving UI at %s\n", u.String())
 			pipestanceBox.enableUI = true
 			pipestanceBox.authKey = c.authKey
-			util.RegisterSignalHandler(pipestanceBox)
 			if !c.readOnly {
+				util.RegisterSignalHandler(pipestanceBox)
 				pipestanceBox.pipestance.RecordUiPort(u.String())
 			}
 		}

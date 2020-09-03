@@ -9,6 +9,7 @@ package main
 import (
 	"bytes"
 	"compress/gzip"
+	"context"
 	"encoding/json"
 	"fmt"
 	"html/template"
@@ -104,12 +105,21 @@ func (self *mrpWebServer) Start() {
 		IdleTimeout:  time.Minute,
 	}
 	self.pipestanceBox.server.ErrorLog, _ = util.GetLogger("webserv")
+	util.RegisterSignalHandler(self)
 
 	if err := self.pipestanceBox.server.Serve(self.listener); err != nil {
 		if err != http.ErrServerClosed {
 			fmt.Println(err.Error())
 			os.Exit(1)
 		}
+	}
+}
+
+func (self *mrpWebServer) HandleSignal(os.Signal) {
+	if srv := self.pipestanceBox.server; srv != nil {
+		ctx, cancel := context.WithTimeout(context.Background(), 20*time.Second)
+		defer cancel()
+		srv.Shutdown(ctx)
 	}
 }
 
