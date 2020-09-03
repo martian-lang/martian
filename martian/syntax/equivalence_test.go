@@ -10,8 +10,9 @@ import (
 )
 
 func TestParsedEquivalence(t *testing.T) {
-	if ast1, ast2 := testGood(t, fmtTestSrc),
-		testGood(t, fmtTestSrc); ast1 != nil &&
+	src := string(fmtTestSrc())
+	if ast1, ast2 := testGood(t, src),
+		testGood(t, src); ast1 != nil &&
 		ast2 != nil {
 		var buf strings.Builder
 		util.SetPrintLogger(&buf)

@@ -87,9 +87,8 @@ func paramFormat(printer *printer, param Param, modeWidth int, typeWidth int, id
 		for i := len(id); i < idWidth; i++ {
 			printer.mustWriteRune(' ')
 		}
-		printer.mustWriteString(`  "`)
-		printer.mustWriteString(param.GetHelp())
-		printer.mustWriteRune('"')
+		printer.mustWriteString(`  `)
+		quoteString(printer, param.GetHelp())
 	}
 
 	// Add outname string if it exists.
@@ -103,9 +102,8 @@ func paramFormat(printer *printer, param Param, modeWidth int, typeWidth int, id
 		for i := len(param.GetHelp()); i < helpWidth; i++ {
 			printer.mustWriteRune(' ')
 		}
-		printer.mustWriteString(`  "`)
-		printer.mustWriteString(param.GetOutName())
-		printer.mustWriteRune('"')
+		printer.mustWriteString(`  `)
+		quoteString(printer, param.GetOutName())
 	}
 	printer.mustWriteString(",\n")
 }
@@ -381,9 +379,9 @@ func (self *Resources) format(printer *printer) {
 		printer.mustWriteString(INDENT)
 		printer.mustWriteString("special")
 		printer.mustWriteString(threadPad)
-		printer.mustWriteString(` = "`)
-		printer.mustWriteString(self.Special)
-		printer.mustWriteString("\",\n")
+		printer.mustWriteString(` = `)
+		quoteString(printer, self.Special)
+		printer.mustWriteString(",\n")
 	}
 	if self.ThreadNode != nil {
 		printer.printComments(self.ThreadNode, INDENT)

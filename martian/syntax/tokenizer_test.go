@@ -116,7 +116,7 @@ func TestNextToken(t *testing.T) {
 }
 
 func BenchmarkNextToken(b *testing.B) {
-	src := []byte(fmtTestSrc)
+	src := fmtTestSrc()
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
 		val := src

@@ -1185,7 +1185,7 @@ stage FOO(
 
 func TestCompileBig(t *testing.T) {
 	t.Parallel()
-	testGood(t, fmtTestSrc)
+	testGood(t, string(fmtTestSrc()))
 }
 
 func TestCheckSrcBad(t *testing.T) {
@@ -1250,7 +1250,7 @@ func TestIncludeFilePath(t *testing.T) {
 }
 
 func BenchmarkParse(b *testing.B) {
-	srcBytes := []byte(fmtTestSrc)
+	srcBytes := fmtTestSrc()
 	srcFile := new(SourceFile)
 
 	b.ResetTimer()
@@ -1262,7 +1262,7 @@ func BenchmarkParse(b *testing.B) {
 }
 
 func BenchmarkParseAndCompile(b *testing.B) {
-	srcBytes := []byte(fmtTestSrc)
+	srcBytes := fmtTestSrc()
 	srcFile := new(SourceFile)
 	intern := makeStringIntern()
 	// prepopulate the string internment cache.

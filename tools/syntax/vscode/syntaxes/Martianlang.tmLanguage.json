@@ -5,8 +5,7 @@
   "name": "Martianlang",
   "patterns": [
     {
-      "match": "\\#.*$",
-      "name": "comment.line"
+      "include": "#comment"
     },
     {
       "match": "^\\s*(@include)\\s+(\"(?:[^\"]|\\\\\")+\")",
@@ -38,6 +37,14 @@
     }
   ],
   "repository": {
+    "comment": {
+      "patterns": [
+        {
+          "match": "\\#.*$",
+          "name": "comment.line"
+        }
+      ]
+    },
     "string": {
       "patterns": [
         {
@@ -182,6 +189,9 @@
           "patterns": [
             {
               "include": "#binding"
+            },
+            {
+              "include": "#comment"
             }
           ]
         },
@@ -255,6 +265,9 @@
                   "include": "#binding"
                 }
               ]
+            },
+            {
+              "include": "#comment"
             }
           ]
         },
@@ -358,6 +371,9 @@
             },
             {
               "include": "#binding"
+            },
+            {
+              "include": "#comment"
             }
           ]
         },
@@ -397,6 +413,9 @@
             },
             {
               "include": "#binding"
+            },
+            {
+              "include": "#comment"
             }
           ]
         }
@@ -430,6 +449,9 @@
             },
             {
               "include": "#binding"
+            },
+            {
+              "include": "#comment"
             }
           ]
         },
@@ -453,6 +475,9 @@
           "patterns": [
             {
               "include": "#binding_path"
+            },
+            {
+              "include": "#comment"
             }
           ]
         },
@@ -517,6 +542,9 @@
                   "name": "punctuation.other.comma"
                 }
               }
+            },
+            {
+              "include": "#comment"
             }
           ]
         }
@@ -694,6 +722,9 @@
           "patterns": [
             {
               "include": "#param"
+            },
+            {
+              "include": "#comment"
             }
           ]
         },
@@ -742,6 +773,9 @@
                   "name": "punctuation.other.comma"
                 }
               }
+            },
+            {
+              "include": "#comment"
             }
           ]
         },
@@ -765,6 +799,9 @@
           "patterns": [
             {
               "include": "#param"
+            },
+            {
+              "include": "#comment"
             }
           ]
         },
@@ -806,7 +843,7 @@
               }
             },
             {
-              "match": "(special)\\s*(=)\\s*(\"(?:[^\"]|\\\\\")*\")\\s*(,)",
+              "match": "(special)\\s*(=)\\s*(\"(?:[^\\\\\"]|\\\\.)*\")\\s*(,)",
               "captures": {
                 "1": {
                   "name": "variable.language.mro.resources.special"
@@ -814,11 +851,13 @@
                 "2": {
                   "name": "keyword.operator.assignment"
                 },
-                "3": [
-                  {
-                    "include": "#string"
-                  }
-                ],
+                "3": {
+                  "patterns": [
+                    {
+                      "include": "#string"
+                    }
+                  ]
+                },
                 "4": {
                   "name": "punctuation.other.comma"
                 }
@@ -840,6 +879,35 @@
                   "name": "punctuation.other.comma"
                 }
               }
+            },
+            {
+              "include": "#comment"
+            }
+          ]
+        },
+        {
+          "name": "meta.function.return-type.mro.retain",
+          "begin": "\\b(retain)\\s*(\\()",
+          "beginCaptures": {
+            "1": {
+              "name": "keyword.control.mro.retain"
+            },
+            "2": {
+              "name": "punctuation.definition.begin.bracket.round.mro"
+            }
+          },
+          "end": "\\)",
+          "endCaptures": {
+            "0": {
+              "name": "punctuation.definition.end.bracket.round.mro"
+            }
+          },
+          "patterns": [
+            {
+              "include": "#binding_path"
+            },
+            {
+              "include": "#comment"
             }
           ]
         },
@@ -866,7 +934,7 @@
           "patterns": [
             {
               "name": "meta.function.parameters.param",
-              "match": "\\b([a-zA-Z0-9._<>\\[\\]]*)\\s+(_?[a-zA-Z][a-zA-z0-9_]*)(?:\\s+(\"(?:[^\"]|\\\\\")*\"))?\\s*(,)",
+              "match": "\\b([a-zA-Z0-9._<>\\[\\]]*)\\s+(_?[a-zA-Z][a-zA-z0-9_]*)(?:\\s+(\"(?:[^\"]|\\\\\")*\"))?(?:\\s+(\"(?:[^\"]|\\\\\")*\"))?\\s*(,)",
               "captures": {
                 "1": {
                   "patterns": [
@@ -886,9 +954,19 @@
                   ]
                 },
                 "4": {
+                  "patterns": [
+                    {
+                      "include": "#string"
+                    }
+                  ]
+                },
+                "5": {
                   "name": "punctuation.other.comma"
                 }
               }
+            },
+            {
+              "include": "#comment"
             }
           ]
         }
@@ -913,6 +991,9 @@
           "patterns": [
             {
               "include": "#pipeline_call"
+            },
+            {
+              "include": "#comment"
             }
           ]
         }

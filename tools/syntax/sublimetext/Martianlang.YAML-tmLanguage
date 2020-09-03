@@ -2,8 +2,7 @@
 fileTypes: [mro]
 name: Martianlang
 patterns:
-- match: \#.*$
-  name: comment.line
+- include: '#comment'
 - match: '^\s*(@include)\s+("(?:[^"]|\\")+")'
   name: meta.preprocessor.mro.import
   captures:
@@ -16,6 +15,10 @@ patterns:
 - include: '#pipeline_calls'
 - include: '#call'
 repository:
+  comment:
+    patterns:
+    - match: \#.*$
+      name: comment.line
   string:
     patterns:
     - match: '(")((?:[^\\"]|\\.)*)(")'
@@ -84,6 +87,7 @@ repository:
         '0': {name: punctuation.definition.end.bracket.square.mro}
       patterns:
         - include: '#binding'
+        - include: '#comment'
     - name: meta.braces.binding_map
       begin: '{'
       beginCaptures:
@@ -116,6 +120,7 @@ repository:
           '0': {name: punctuation.other.comma}
         patterns:
         - include: '#binding'
+      - include: '#comment'
     - name: meta.annotation.identifier.simple_binding
       match: '("(?:[^"]|\\"\s*)*"|\b[^,:()"\[\]{}]*)(,)?'
       captures:
@@ -160,6 +165,7 @@ repository:
       patterns:
       - include: '#assignment'
       - include: '#binding'
+      - include: '#comment'
     - name: meta.function-call.mro
       begin: '\b(?:(map)\s+)?(call)((?:\s+(?:local|preflight|volatile)){0,3})\s+(_?[a-zA-Z][a-zA-z0-9_]*)\s*(\()'
       beginCaptures:
@@ -176,6 +182,7 @@ repository:
       patterns:
       - include: '#assignment'
       - include: '#binding'
+      - include: '#comment'
   pipeline_call:
     patterns:
     - include: '#call'
@@ -190,6 +197,7 @@ repository:
       patterns:
       - include: '#assignment'
       - include: '#binding'
+      - include: '#comment'
     - name: meta.function.return-type.mro.retain
       begin: '\b(retain)\s*(\()'
       beginCaptures:
@@ -200,6 +208,7 @@ repository:
         '0': {name: punctuation.definition.end.bracket.round.mro}
       patterns:
       - include: '#binding_path'
+      - include: '#comment'
     - name: meta.function.mro.using
       begin: '\b(using)\s*(\()'
       beginCaptures:
@@ -225,6 +234,7 @@ repository:
             '3':
             - include: '#binding_path'
             '4': {name: punctuation.other.comma}
+        - include: '#comment'
   builtin_types:
     patterns:
     # Does not include map, because we don't want to allow map<map>
@@ -302,6 +312,7 @@ repository:
         '0': {name: punctuation.definition.end.bracket.round.mro}
       patterns:
       - include: '#param'
+      - include: '#comment'
     - name: meta.function.mro.stage
       begin: '\b(stage)\s+(_?[a-zA-Z][a-zA-z0-9_]*)\s*(\()'
       beginCaptures:
@@ -322,6 +333,7 @@ repository:
             patterns:
             - include: '#string'
           '4': {name: punctuation.other.comma}
+      - include: '#comment'
     - name: meta.function.mro.split
       begin: '\b(split)\s*(?:using\s*)?(\()'
       beginCaptures:
@@ -332,6 +344,7 @@ repository:
         '0': {name: punctuation.definition.end.bracket.round.mro}
       patterns:
       - include: '#param'
+      - include: '#comment'
     - name: meta.function.mro.using
       begin: '\b(using)\s*(\()'
       beginCaptures:
@@ -348,12 +361,13 @@ repository:
           '3':
           - include: '#number'
           '4': {name: punctuation.other.comma}
-      - match: '(special)\s*(=)\s*("(?:[^"]|\\")*")\s*(,)'
+      - match: '(special)\s*(=)\s*("(?:[^\\"]|\\.)*")\s*(,)'
         captures:
           '1': {name: variable.language.mro.resources.special}
           '2': {name: keyword.operator.assignment}
           '3':
-          - include: '#string'
+            patterns:
+            - include: '#string'
           '4': {name: punctuation.other.comma}
       - match: '(volatile)\s*(=)\s*(true|false|strict)\s*(,)'
         captures:
@@ -361,6 +375,18 @@ repository:
           '2': {name: keyword.operator.assignment}
           '3': {name: constant.language.mro}
           '4': {name: punctuation.other.comma}
+      - include: '#comment'
+    - name: meta.function.return-type.mro.retain
+      begin: '\b(retain)\s*(\()'
+      beginCaptures:
+        '1': {name: keyword.control.mro.retain}
+        '2': {name: punctuation.definition.begin.bracket.round.mro}
+      end: '\)'
+      endCaptures:
+        '0': {name: punctuation.definition.end.bracket.round.mro}
+      patterns:
+      - include: '#binding_path'
+      - include: '#comment'
     - name: meta.struct.mro
       begin: '\b(struct)\s+(_?[a-zA-Z][a-zA-z0-9_]*)\s*(\()'
       beginCaptures:
@@ -372,7 +398,7 @@ repository:
         '0': {name: punctuation.definition.end.bracket.round.mro}
       patterns:
       - name: meta.function.parameters.param
-        match: '\b([a-zA-Z0-9._<>\[\]]*)\s+(_?[a-zA-Z][a-zA-z0-9_]*)(?:\s+("(?:[^"]|\\")*"))?\s*(,)'
+        match: '\b([a-zA-Z0-9._<>\[\]]*)\s+(_?[a-zA-Z][a-zA-z0-9_]*)(?:\s+("(?:[^"]|\\")*"))?(?:\s+("(?:[^"]|\\")*"))?\s*(,)'
         captures:
           '1':
             patterns:
@@ -381,7 +407,11 @@ repository:
           '3':
             patterns:
             - include: '#string'
-          '4': {name: punctuation.other.comma}
+          '4':
+            patterns:
+            - include: '#string'
+          '5': {name: punctuation.other.comma}
+      - include: '#comment'
   pipeline_calls:
     patterns:
     - name: meta.block.mro.pipeline
@@ -393,5 +423,6 @@ repository:
         '0': {name: punctuation.definition.end.bracket.curley.mro}
       patterns:
       - include: '#pipeline_call'
+      - include: '#comment'
 scopeName: source.martianlang
 uuid: 5da873b6-8693-47c9-b074-1eb3574281d1

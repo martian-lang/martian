@@ -26,7 +26,11 @@ func (e *ArrayExp) format(w stringWriter, prefix string) {
 	values := e.Value
 	if len(values) == 0 {
 		mustWriteString(w, "[]")
-	} else if e.singleLineFormat() {
+		return
+	}
+	p, isMro := w.(*printer)
+	if e.singleLineFormat() && (!isMro ||
+		values[0].getNode() != nil && len(values[0].getNode().Comments) == 0) {
 		// Place single-element arrays on a single line.
 		mustWriteRune(w, '[')
 		values[0].format(w, prefix)
@@ -35,6 +39,9 @@ func (e *ArrayExp) format(w stringWriter, prefix string) {
 		mustWriteString(w, "[\n")
 		vindent := prefix + INDENT
 		for _, val := range values {
+			if n := val.getNode(); n != nil && len(n.Comments) > 0 && isMro {
+				p.printComments(n, vindent)
+			}
 			mustWriteString(w, vindent)
 			val.format(w, vindent)
 			mustWriteString(w, ",\n")
@@ -141,7 +148,14 @@ func (e *MapExp) format(w stringWriter, prefix string) {
 			}
 		}
 		sort.Strings(keys)
+		p, isMro := w.(*printer)
 		for _, key := range keys {
+			v := e.Value[key]
+			if isMro && v != nil {
+				if n := v.getNode(); n != nil && len(n.Comments) > 0 {
+					p.printComments(n, vindent)
+				}
+			}
 			mustWriteString(w, vindent)
 			if e.Kind != KindStruct {
 				quoteString(w, key)
@@ -149,7 +163,6 @@ func (e *MapExp) format(w stringWriter, prefix string) {
 				mustWriteString(w, key)
 			}
 			mustWriteString(w, `: `)
-			v := e.Value[key]
 			if e.Kind == KindStruct && singleLineFormat(v) {
 				for i := len(key); i < maxKeyLen; i++ {
 					mustWriteRune(w, ' ')

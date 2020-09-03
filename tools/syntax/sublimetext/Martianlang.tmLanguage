@@ -11,10 +11,8 @@
     <key>patterns</key>
     <array>
       <dict>
-        <key>match</key>
-        <string>\#.*$</string>
-        <key>name</key>
-        <string>comment.line</string>
+        <key>include</key>
+        <string>#comment</string>
       </dict>
       <dict>
         <key>match</key>
@@ -59,6 +57,18 @@
     </array>
     <key>repository</key>
     <dict>
+      <key>comment</key>
+      <dict>
+        <key>patterns</key>
+        <array>
+          <dict>
+            <key>match</key>
+            <string>\#.*$</string>
+            <key>name</key>
+            <string>comment.line</string>
+          </dict>
+        </array>
+      </dict>
       <key>string</key>
       <dict>
         <key>patterns</key>
@@ -283,6 +293,10 @@
                 <key>include</key>
                 <string>#binding</string>
               </dict>
+              <dict>
+                <key>include</key>
+                <string>#comment</string>
+              </dict>
             </array>
           </dict>
           <dict>
@@ -394,6 +408,10 @@
                     <string>#binding</string>
                   </dict>
                 </array>
+              </dict>
+              <dict>
+                <key>include</key>
+                <string>#comment</string>
               </dict>
             </array>
           </dict>
@@ -553,6 +571,10 @@
                 <key>include</key>
                 <string>#binding</string>
               </dict>
+              <dict>
+                <key>include</key>
+                <string>#comment</string>
+              </dict>
             </array>
           </dict>
           <dict>
@@ -613,6 +635,10 @@
                 <key>include</key>
                 <string>#binding</string>
               </dict>
+              <dict>
+                <key>include</key>
+                <string>#comment</string>
+              </dict>
             </array>
           </dict>
         </array>
@@ -663,6 +689,10 @@
                 <key>include</key>
                 <string>#binding</string>
               </dict>
+              <dict>
+                <key>include</key>
+                <string>#comment</string>
+              </dict>
             </array>
           </dict>
           <dict>
@@ -698,6 +728,10 @@
               <dict>
                 <key>include</key>
                 <string>#binding_path</string>
+              </dict>
+              <dict>
+                <key>include</key>
+                <string>#comment</string>
               </dict>
             </array>
           </dict>
@@ -795,6 +829,10 @@
                     <string>punctuation.other.comma</string>
                   </dict>
                 </dict>
+              </dict>
+              <dict>
+                <key>include</key>
+                <string>#comment</string>
               </dict>
             </array>
           </dict>
@@ -1065,6 +1103,10 @@
                 <key>include</key>
                 <string>#param</string>
               </dict>
+              <dict>
+                <key>include</key>
+                <string>#comment</string>
+              </dict>
             </array>
           </dict>
           <dict>
@@ -1140,6 +1182,10 @@
                   </dict>
                 </dict>
               </dict>
+              <dict>
+                <key>include</key>
+                <string>#comment</string>
+              </dict>
             </array>
           </dict>
           <dict>
@@ -1175,6 +1221,10 @@
               <dict>
                 <key>include</key>
                 <string>#param</string>
+              </dict>
+              <dict>
+                <key>include</key>
+                <string>#comment</string>
               </dict>
             </array>
           </dict>
@@ -1239,7 +1289,7 @@
               </dict>
               <dict>
                 <key>match</key>
-                <string>(special)\s*(=)\s*("(?:[^"]|\\")*")\s*(,)</string>
+                <string>(special)\s*(=)\s*("(?:[^\\"]|\\.)*")\s*(,)</string>
                 <key>captures</key>
                 <dict>
                   <key>1</key>
@@ -1253,12 +1303,15 @@
                     <string>keyword.operator.assignment</string>
                   </dict>
                   <key>3</key>
-                  <array>
-                    <dict>
-                      <key>include</key>
-                      <string>#string</string>
-                    </dict>
-                  </array>
+                  <dict>
+                    <key>patterns</key>
+                    <array>
+                      <dict>
+                        <key>include</key>
+                        <string>#string</string>
+                      </dict>
+                    </array>
+                  </dict>
                   <key>4</key>
                   <dict>
                     <key>name</key>
@@ -1292,6 +1345,50 @@
                     <string>punctuation.other.comma</string>
                   </dict>
                 </dict>
+              </dict>
+              <dict>
+                <key>include</key>
+                <string>#comment</string>
+              </dict>
+            </array>
+          </dict>
+          <dict>
+            <key>name</key>
+            <string>meta.function.return-type.mro.retain</string>
+            <key>begin</key>
+            <string>\b(retain)\s*(\()</string>
+            <key>beginCaptures</key>
+            <dict>
+              <key>1</key>
+              <dict>
+                <key>name</key>
+                <string>keyword.control.mro.retain</string>
+              </dict>
+              <key>2</key>
+              <dict>
+                <key>name</key>
+                <string>punctuation.definition.begin.bracket.round.mro</string>
+              </dict>
+            </dict>
+            <key>end</key>
+            <string>\)</string>
+            <key>endCaptures</key>
+            <dict>
+              <key>0</key>
+              <dict>
+                <key>name</key>
+                <string>punctuation.definition.end.bracket.round.mro</string>
+              </dict>
+            </dict>
+            <key>patterns</key>
+            <array>
+              <dict>
+                <key>include</key>
+                <string>#binding_path</string>
+              </dict>
+              <dict>
+                <key>include</key>
+                <string>#comment</string>
               </dict>
             </array>
           </dict>
@@ -1334,7 +1431,7 @@
                 <key>name</key>
                 <string>meta.function.parameters.param</string>
                 <key>match</key>
-                <string>\b([a-zA-Z0-9._&lt;&gt;\[\]]*)\s+(_?[a-zA-Z][a-zA-z0-9_]*)(?:\s+("(?:[^"]|\\")*"))?\s*(,)</string>
+                <string>\b([a-zA-Z0-9._&lt;&gt;\[\]]*)\s+(_?[a-zA-Z][a-zA-z0-9_]*)(?:\s+("(?:[^"]|\\")*"))?(?:\s+("(?:[^"]|\\")*"))?\s*(,)</string>
                 <key>captures</key>
                 <dict>
                   <key>1</key>
@@ -1364,10 +1461,24 @@
                   </dict>
                   <key>4</key>
                   <dict>
+                    <key>patterns</key>
+                    <array>
+                      <dict>
+                        <key>include</key>
+                        <string>#string</string>
+                      </dict>
+                    </array>
+                  </dict>
+                  <key>5</key>
+                  <dict>
                     <key>name</key>
                     <string>punctuation.other.comma</string>
                   </dict>
                 </dict>
+              </dict>
+              <dict>
+                <key>include</key>
+                <string>#comment</string>
               </dict>
             </array>
           </dict>
@@ -1405,6 +1516,10 @@
               <dict>
                 <key>include</key>
                 <string>#pipeline_call</string>
+              </dict>
+              <dict>
+                <key>include</key>
+                <string>#comment</string>
               </dict>
             </array>
           </dict>
