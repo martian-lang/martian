@@ -87,7 +87,7 @@ $(PRODUCT_NAME).tar.%: $(addprefix bin/, $(GOBINS) $(GOBIN_LINKS)) $(ADAPTERS) $
 tarball: $(PRODUCT_NAME).tar.xz $(PRODUCT_NAME).tar.gz
 
 test-all: martian/syntax/grammar.go | martian/test/sum_squares/types.go
-	go test ./martian/... ./cmd/...
+	go test -race ./martian/... ./cmd/...
 
 coverage.out: martian/syntax/grammar.go | martian/test/sum_squares/types.go
 	go test -coverprofile=coverage.out \

@@ -219,11 +219,38 @@ pipeline _IDENTITY(
     )
 }
 
+pipeline MAKE_CONST_ONE(
+    in  float   x,
+    out float   x,
+    out int     one,
+    out float[] one_array,
+    out float   var_one,
+)
+{
+    call RANGE(
+        begin = 1,
+        end   = 2,
+    )
+
+    call SUM(
+        x = RANGE.values,
+    )
+
+    return (
+        x         = self.x,
+        one       = 1,
+        one_array = RANGE.values,
+        var_one   = SUM.sum,
+    )
+}
+
 pipeline SOME_STATIC(
-    in  float[]      inputs,
-    out STATISTICS[] values1,
-    out STATISTICS   values2,
-    out float[][]    reshaped,
+    in  float[]         inputs,
+    out map<STATISTICS> values1,
+    out STATISTICS      values2,
+    out float[][]       reshaped,
+    out float           c_one,
+    out float           v_two,
 )
 {
     call LEN(
@@ -248,10 +275,10 @@ pipeline SOME_STATIC(
     )
 
     map call _IDENTITY(
-        inputs = split [
-            self.inputs,
-            [3],
-        ],
+        inputs = split {
+            "long": self.inputs,
+            "short": [3],
+        },
     )
 
     # Call here has static inputs
@@ -264,6 +291,27 @@ pipeline SOME_STATIC(
         data = GENERATE_DISTRIBUTION.values,
     )
 
+    map call MAKE_CONST_ONE(
+        x = split GENERATE_DISTRIBUTION.values,
+    )
+
+    # This can run before any stages from MAKE_CONST_ONE run, but must
+    # run after GENERATE_DISTRIBUTION.RANGE runs, in order for the array length
+    # to be known.
+    call SUM as MAPPED_CONST_SUM(
+        x = MAKE_CONST_ONE.one,
+    )
+
+    # This runs before the MAKE_CONST_ONE pipeline has finished,
+    # because it does not depend on the last SUM stage in it.
+    map call SUM as MAPPED_ARRAY_SUM(
+        x = split MAKE_CONST_ONE.one_array,
+    )
+
+    call SUM as MAPPED_VAR_SUM(
+        x = MAPPED_ARRAY_SUM.sum,
+    )
+
     map call RESHAPE(
         data = split self.inputs,
     )
@@ -272,6 +320,8 @@ pipeline SOME_STATIC(
         values1  = VALUES1,
         values2  = VALUES2,
         reshaped = RESHAPE.data,
+        c_one    = MAPPED_CONST_SUM.sum,
+        v_two    = MAPPED_VAR_SUM.sum,
     )
 }
 
