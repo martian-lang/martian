@@ -101,6 +101,9 @@
   "children": [
     {
       "fqid": "TOP_CALL.RUNS_ENABLED",
+      "comments": [
+        "[self.foo],self.foos,null,null,null]"
+      ],
       "inputs": {
         "disable": {
           "expression": false,
@@ -340,6 +343,9 @@
         },
         {
           "fqid": "TOP_CALL.RUNS_ENABLED.RUN_CREATOR3",
+          "comments": [
+            "Always null"
+          ],
           "inputs": {
             "disable": {
               "expression": false,
@@ -365,6 +371,9 @@
         },
         {
           "fqid": "TOP_CALL.RUNS_ENABLED.RUN_CREATOR4",
+          "comments": [
+            "Always null"
+          ],
           "inputs": {
             "disable": {
               "expression": false,
@@ -431,6 +440,9 @@
     },
     {
       "fqid": "TOP_CALL.RUNS_DISABLED",
+      "comments": [
+        "[[0],null,self.foos,null,null]"
+      ],
       "inputs": {
         "disable": {
           "expression": true,
@@ -572,6 +584,9 @@
         },
         {
           "fqid": "TOP_CALL.RUNS_DISABLED.RUN_CREATOR3",
+          "comments": [
+            "Always null"
+          ],
           "inputs": {
             "disable": {
               "expression": true,
@@ -597,6 +612,9 @@
         },
         {
           "fqid": "TOP_CALL.RUNS_DISABLED.RUN_CREATOR4",
+          "comments": [
+            "Always null"
+          ],
           "inputs": {
             "disable": {
               "expression": true,
@@ -1010,6 +1028,9 @@
         },
         {
           "fqid": "TOP_CALL.RUNS_DISABLED_DYNAMIC.RUN_CREATOR3",
+          "comments": [
+            "Always null"
+          ],
           "inputs": {
             "disable": {
               "expression": {
@@ -1037,6 +1058,9 @@
         },
         {
           "fqid": "TOP_CALL.RUNS_DISABLED_DYNAMIC.RUN_CREATOR4",
+          "comments": [
+            "Always null"
+          ],
           "inputs": {
             "disable": {
               "expression": {
@@ -1126,6 +1150,9 @@
     },
     {
       "fqid": "TOP_CALL.RUNS_DISABLED_ALWAYS",
+      "comments": [
+        "null"
+      ],
       "inputs": {
         "disable": {
           "expression": true,

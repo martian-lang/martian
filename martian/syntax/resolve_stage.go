@@ -11,15 +11,16 @@ import (
 
 // CallGraphStage represents a stage in a call graph.
 type CallGraphStage struct {
-	Parent  *CallGraphPipeline `json:"-"`
-	Fqid    string             `json:"fqid"`
-	call    *CallStm
-	stage   *Stage
-	Inputs  ResolvedBindingMap `json:"inputs"`
-	Outputs *ResolvedBinding   `json:"outputs"`
-	Disable []Exp              `json:"disabled,omitempty"`
-	Forks   ForkRootList       `json:"fork_roots,omitempty"`
-	split   *SplitExp
+	Parent   *CallGraphPipeline `json:"-"`
+	Fqid     string             `json:"fqid"`
+	Comments []string           `json:"comments,omitempty"`
+	call     *CallStm
+	stage    *Stage
+	Inputs   ResolvedBindingMap `json:"inputs"`
+	Outputs  *ResolvedBinding   `json:"outputs"`
+	Disable  []Exp              `json:"disabled,omitempty"`
+	Forks    ForkRootList       `json:"fork_roots,omitempty"`
+	split    *SplitExp
 }
 
 // Kind returns KindStage.

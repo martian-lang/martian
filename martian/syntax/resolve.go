@@ -6,6 +6,7 @@ package syntax
 
 import (
 	"fmt"
+	"strings"
 )
 
 type (
@@ -129,6 +130,30 @@ func (k *CallGraphNodeType) UnmarshalText(b []byte) error {
 	}
 }
 
+func (node *CallGraphStage) attachComments(c Callable) {
+	if node == nil {
+		return
+	}
+	if node.call != nil {
+		for _, cmt := range node.call.Node.Comments {
+			trim := strings.TrimSpace(strings.TrimLeft(cmt, "# \t"))
+			if len(trim) > 0 {
+				node.Comments = append(node.Comments, trim)
+			}
+		}
+	}
+	if c != nil {
+		if n := c.getNode(); n != nil {
+			for _, cmt := range n.Comments {
+				trim := strings.TrimSpace(strings.TrimLeft(cmt, "# \t"))
+				if len(trim) > 0 {
+					node.Comments = append(node.Comments, trim)
+				}
+			}
+		}
+	}
+}
+
 func (ast *Ast) makeCallGraphNodes(prefix string,
 	call *CallStm, parent *CallGraphPipeline,
 	forcePipeline bool) (CallGraphNode, error) {
@@ -158,6 +183,7 @@ func (ast *Ast) makeCallGraphNodes(prefix string,
 			call:   call,
 			stage:  callable,
 		}
+		st.attachComments(callable)
 		// Most filesystems have a file name length limit of 255 characters.
 		// The journal files are written out as e.g.
 		// FQID.fork0.chnk123.u0123456789.errors
@@ -176,6 +202,7 @@ func (ast *Ast) makeCallGraphNodes(prefix string,
 			},
 			pipeline: callable,
 		}
+		pipe.CallGraphStage.attachComments(callable)
 		return &pipe, pipe.makeChildNodes(prefix, ast)
 	default:
 		panic(fmt.Sprintf("invalid callable type %T", callable))

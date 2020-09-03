@@ -105,6 +105,9 @@
   "children": [
     {
       "fqid": "SOME_STATIC.LEN",
+      "comments": [
+        "Abuses POW and SUM to compute the length of an array."
+      ],
       "inputs": {
         "x": {
           "expression": [
@@ -287,6 +290,10 @@
       "children": [
         {
           "fqid": "SOME_STATIC.GENERATE_DISTRIBUTION._BEGIN_CONST",
+          "comments": [
+            "This is a hacky way of introducing a constant into mro.  Users should",
+            "be encoraged to make such values parameters to pipelines instead."
+          ],
           "inputs": null,
           "outputs": {
             "expression": {
@@ -424,6 +431,9 @@
     },
     {
       "fqid": "SOME_STATIC.VALUES1",
+      "comments": [
+        "Call here has static inputs"
+      ],
       "inputs": {
         "data": {
           "expression": {
@@ -527,6 +537,9 @@
         },
         {
           "fqid": "SOME_STATIC.VALUES1.LEN",
+          "comments": [
+            "Abuses POW and SUM to compute the length of an array."
+          ],
           "inputs": {
             "x": {
               "expression": {
@@ -1130,6 +1143,9 @@
         },
         {
           "fqid": "SOME_STATIC.VALUES1.SQUARED_ERROR",
+          "comments": [
+            "Not using POW here because we want to test fusing two arrays."
+          ],
           "inputs": {
             "x": {
               "expression": {
@@ -1453,6 +1469,9 @@
     },
     {
       "fqid": "SOME_STATIC.VALUES2",
+      "comments": [
+        "Call here has dynamic inputs"
+      ],
       "inputs": {
         "data": {
           "expression": {
@@ -1528,6 +1547,9 @@
         },
         {
           "fqid": "SOME_STATIC.VALUES2.LEN",
+          "comments": [
+            "Abuses POW and SUM to compute the length of an array."
+          ],
           "inputs": {
             "x": {
               "expression": {
@@ -1869,6 +1891,9 @@
         },
         {
           "fqid": "SOME_STATIC.VALUES2.SQUARED_ERROR",
+          "comments": [
+            "Not using POW here because we want to test fusing two arrays."
+          ],
           "inputs": {
             "x": {
               "expression": {
@@ -2157,6 +2182,11 @@
     },
     {
       "fqid": "SOME_STATIC.MAPPED_CONST_SUM",
+      "comments": [
+        "This can run before any stages from MAKE_CONST_ONE run, but must",
+        "run after GENERATE_DISTRIBUTION.RANGE runs, in order for the array length",
+        "to be known."
+      ],
       "inputs": {
         "x": {
           "expression": {
@@ -2181,6 +2211,10 @@
     },
     {
       "fqid": "SOME_STATIC.MAPPED_ARRAY_SUM",
+      "comments": [
+        "This runs before the MAKE_CONST_ONE pipeline has finished,",
+        "because it does not depend on the last SUM stage in it."
+      ],
       "inputs": {
         "x": {
           "expression": {
