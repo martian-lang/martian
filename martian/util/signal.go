@@ -27,7 +27,6 @@ type HandlerObject interface {
 type sigHandler struct {
 	criticalSection sync.RWMutex
 	mutex           sync.Mutex
-	block           chan int
 	sigchan         chan os.Signal
 	objects         map[HandlerObject]struct{}
 }
@@ -57,6 +56,9 @@ func ExitCriticalSection() {
 // complete before the process terminates due to a handled signal.
 func RegisterSignalHandler(object HandlerObject) {
 	signalHandler.mutex.Lock()
+	if signalHandler.objects == nil {
+		signalHandler.objects = make(map[HandlerObject]struct{})
+	}
 	signalHandler.objects[object] = struct{}{}
 	signalHandler.mutex.Unlock()
 }
@@ -67,14 +69,11 @@ func UnregisterSignalHandler(object HandlerObject) {
 	signalHandler.mutex.Unlock()
 }
 
-func (self *sigHandler) init() {
-	self.block = make(chan int)
-	self.objects = make(map[HandlerObject]struct{})
-	self.sigchan = make(chan os.Signal, len(HANDLED_SIGNALS)+1)
-}
-
 // Notify this handler of signals.
-func (self *sigHandler) Notify() {
+func (self *sigHandler) notify() {
+	if self.sigchan == nil {
+		self.sigchan = make(chan os.Signal, len(HANDLED_SIGNALS)+1)
+	}
 	for _, sig := range HANDLED_SIGNALS {
 		if sig != syscall.SIGHUP || !signal.Ignored(syscall.SIGHUP) {
 			signal.Notify(self.sigchan, sig)
@@ -105,16 +104,13 @@ func Suicide(success bool) {
 
 // Set up a signal handler object to support testing of code which
 // requires it, without actually registering for signal notifications.
-func MockSignalHandlersForTest() {
-	if signalHandler.sigchan == nil {
-		signalHandler.init()
-	}
-}
+//
+// Deprecated: No longer required.
+func MockSignalHandlersForTest() {}
 
 // Initializes the global signal handler.
 func SetupSignalHandlers() {
-	signalHandler.init()
-	signalHandler.Notify()
+	signalHandler.notify()
 	sigchan := signalHandler.sigchan
 
 	go func() {
@@ -126,9 +122,15 @@ func SetupSignalHandlers() {
 		signalHandler.criticalSection.Lock()
 		signalHandler.mutex.Lock()
 
+		var wg sync.WaitGroup
 		for object := range signalHandler.objects {
-			object.HandleSignal(sig)
+			wg.Add(1)
+			go func(wg *sync.WaitGroup, object HandlerObject) {
+				defer wg.Done()
+				object.HandleSignal(sig)
+			}(&wg, object)
 		}
+		wg.Wait()
 		if sig == syscall.Signal(-1) {
 			os.Exit(0)
 		} else {
