@@ -70,7 +70,7 @@ map call OUTER(
 	}
 	forks := graph.Children[0].GetChildren()[0].ForkRoots()
 	var ids ForkIdSet
-	ids.MakeForkIds(forks)
+	ids.MakeForkIds(forks, &ast.TypeTable)
 	mkId := func(i, j, k arrayIndexFork) ForkId {
 		return ForkId{
 			&ForkSourcePart{
@@ -188,7 +188,7 @@ map call OUTER(
 	}
 	forks := graph.Children[0].GetChildren()[0].ForkRoots()
 	var ids ForkIdSet
-	ids.MakeForkIds(forks)
+	ids.MakeForkIds(forks, &ast.TypeTable)
 	innerSources := graph.Inputs["nums"].Exp.(*syntax.SplitExp).Value.(*syntax.ArrayExp).Value
 	if len(innerSources) != 2 {
 		t.Fatalf("%d != 2", len(innerSources))
@@ -314,7 +314,7 @@ map call OUTER(
 	}
 	forks := graph.Children[0].GetChildren()[0].ForkRoots()
 	var ids ForkIdSet
-	ids.MakeForkIds(forks)
+	ids.MakeForkIds(forks, &ast.TypeTable)
 	innerSources := graph.Inputs["nums"].Exp.(*syntax.SplitExp).Value.(*syntax.MapExp).Value
 	if len(innerSources) != 2 {
 		t.Fatalf("%d != 2", len(innerSources))

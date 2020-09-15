@@ -110,12 +110,18 @@ func (s *BuiltinType) IsValidExpression(exp Exp, pipeline *Pipeline, ast *Ast) e
 		if tname, _, err := exp.resolveType(ast, pipeline); err != nil {
 			return err
 		} else if tname.ArrayDim > 0 {
-			return &IncompatibleTypeError{
-				Message: "ReferenceError: binding is an array",
+			return &wrapError{
+				innerError: &IncompatibleTypeError{
+					Message: "ReferenceError: binding is an array; expected " + s.Id,
+				},
+				loc: exp.Node.Loc,
 			}
 		} else if tname.MapDim != 0 {
-			return &IncompatibleTypeError{
-				Message: "ReferenceError: binding is a map",
+			return &wrapError{
+				innerError: &IncompatibleTypeError{
+					Message: "ReferenceError: binding is a map; expected " + s.Id,
+				},
+				loc: exp.Node.Loc,
 			}
 		} else if t := ast.TypeTable.Get(tname); t == nil {
 			return &IncompatibleTypeError{

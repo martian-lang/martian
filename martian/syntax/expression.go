@@ -85,7 +85,8 @@ type (
 		//   exp.BindingPath("d.e") -> ["bar", "baz"]
 		//   exp.BindingPath("f.bar") -> STAGE.out.bar
 		BindingPath(bindPath string,
-			forks map[*CallStm]CollectionIndex) (Exp, error)
+			forks map[*CallStm]CollectionIndex,
+			lookup *TypeLookup) (Exp, error)
 		resolveRefs(self, siblings map[string]*ResolvedBinding,
 			lookup *TypeLookup) (Exp, error)
 		filter(t Type, lookup *TypeLookup) (Exp, error)

@@ -26,7 +26,7 @@ func TestExpBindingPath(t *testing.T) {
 
 	check := func(p, e string) {
 		t.Helper()
-		actual, err := exp.BindingPath(p, nil)
+		actual, err := exp.BindingPath(p, nil, nil)
 		if err != nil {
 			t.Error(err)
 			return
@@ -47,7 +47,7 @@ func TestExpBindingPath(t *testing.T) {
 		OutputId: "out1.bar",
 		Kind:     KindCall,
 	}
-	if e, err := exp.BindingPath("f.bar", nil); err != nil {
+	if e, err := exp.BindingPath("f.bar", nil, nil); err != nil {
 		t.Error(err)
 	} else if err := ref.equal(e); err != nil {
 		t.Errorf("%s != %s: %v", e.GoString(), ref.GoString(), err)

@@ -17,7 +17,6 @@ func (exp *RefExp) resolveRefs(self, siblings map[string]*ResolvedBinding,
 				Msg: "unknown parameter " + exp.Id,
 			}
 		}
-		return res.Exp.BindingPath(exp.OutputId, exp.Forks)
 	} else {
 		res = siblings[exp.Id]
 		if res == nil {
@@ -25,8 +24,8 @@ func (exp *RefExp) resolveRefs(self, siblings map[string]*ResolvedBinding,
 				Msg: "unknown call name " + exp.Id,
 			}
 		}
-		return res.Exp.BindingPath(exp.OutputId, exp.Forks)
 	}
+	return res.Exp.BindingPath(exp.OutputId, exp.Forks, lookup)
 }
 
 func (exp *ArrayExp) resolveRefs(self, siblings map[string]*ResolvedBinding,
@@ -70,32 +69,33 @@ func (exp *MapExp) resolveRefs(self, siblings map[string]*ResolvedBinding,
 	return &result, errs.If()
 }
 
-func (exp *FloatExp) resolveRefs(self, siblings map[string]*ResolvedBinding,
-	lookup *TypeLookup) (Exp, error) {
+func (exp *FloatExp) resolveRefs(_, _ map[string]*ResolvedBinding,
+	_ *TypeLookup) (Exp, error) {
 	return exp, nil
 }
 
-func (exp *IntExp) resolveRefs(self, siblings map[string]*ResolvedBinding,
-	lookup *TypeLookup) (Exp, error) {
+func (exp *IntExp) resolveRefs(_, _ map[string]*ResolvedBinding,
+	_ *TypeLookup) (Exp, error) {
 	return exp, nil
 }
 
-func (exp *BoolExp) resolveRefs(self, siblings map[string]*ResolvedBinding,
-	lookup *TypeLookup) (Exp, error) {
+func (exp *BoolExp) resolveRefs(_, _ map[string]*ResolvedBinding,
+	_ *TypeLookup) (Exp, error) {
 	return exp, nil
 }
-func (exp *StringExp) resolveRefs(self, siblings map[string]*ResolvedBinding,
-	lookup *TypeLookup) (Exp, error) {
+func (exp *StringExp) resolveRefs(_, _ map[string]*ResolvedBinding,
+	_ *TypeLookup) (Exp, error) {
 	return exp, nil
 }
 
-func (exp *NullExp) resolveRefs(self, siblings map[string]*ResolvedBinding,
-	lookup *TypeLookup) (Exp, error) {
+func (exp *NullExp) resolveRefs(_, _ map[string]*ResolvedBinding,
+	_ *TypeLookup) (Exp, error) {
 	return exp, nil
 }
 
 func (s *ArrayExp) BindingPath(bindPath string,
-	forks map[*CallStm]CollectionIndex) (Exp, error) {
+	forks map[*CallStm]CollectionIndex,
+	lookup *TypeLookup) (Exp, error) {
 	if (bindPath == "" && len(forks) == 0) ||
 		s == nil || len(s.Value) == 0 {
 		return s, nil
@@ -108,7 +108,7 @@ func (s *ArrayExp) BindingPath(bindPath string,
 	change := false
 	var errs ErrorList
 	for i, sub := range s.Value {
-		e, err := sub.BindingPath(bindPath, forks)
+		e, err := sub.BindingPath(bindPath, forks, lookup)
 		if err != nil {
 			errs = append(errs, &wrapError{
 				innerError: &bindingError{
@@ -130,7 +130,8 @@ func (s *ArrayExp) BindingPath(bindPath string,
 }
 
 func (s *MapExp) BindingPath(bindPath string,
-	forks map[*CallStm]CollectionIndex) (Exp, error) {
+	forks map[*CallStm]CollectionIndex,
+	lookup *TypeLookup) (Exp, error) {
 	if (bindPath == "" && len(forks) == 0) ||
 		s == nil || len(s.Value) == 0 {
 		return s, nil
@@ -151,7 +152,7 @@ func (s *MapExp) BindingPath(bindPath string,
 					loc: s.Node.Loc,
 				}
 			}
-			r, err := sub.BindingPath(remainder, forks)
+			r, err := sub.BindingPath(remainder, forks, lookup)
 			if err != nil {
 				err = &wrapError{
 					innerError: &bindingError{
@@ -172,7 +173,7 @@ func (s *MapExp) BindingPath(bindPath string,
 	}
 	var errs ErrorList
 	for i, sub := range s.Value {
-		e, err := sub.BindingPath(bindPath, forks)
+		e, err := sub.BindingPath(bindPath, forks, lookup)
 		if err != nil {
 			errs = append(errs, &wrapError{
 				innerError: &bindingError{
@@ -187,7 +188,8 @@ func (s *MapExp) BindingPath(bindPath string,
 	return &result, errs.If()
 }
 func (s *StringExp) BindingPath(bindPath string,
-	forks map[*CallStm]CollectionIndex) (Exp, error) {
+	_ map[*CallStm]CollectionIndex,
+	_ *TypeLookup) (Exp, error) {
 	if bindPath != "" {
 		return s, &wrapError{
 			innerError: &bindingError{
@@ -199,7 +201,8 @@ func (s *StringExp) BindingPath(bindPath string,
 	return s, nil
 }
 func (s *BoolExp) BindingPath(bindPath string,
-	forks map[*CallStm]CollectionIndex) (Exp, error) {
+	_ map[*CallStm]CollectionIndex,
+	_ *TypeLookup) (Exp, error) {
 	if bindPath != "" {
 		return s, &wrapError{
 			innerError: &bindingError{
@@ -211,7 +214,8 @@ func (s *BoolExp) BindingPath(bindPath string,
 	return s, nil
 }
 func (s *IntExp) BindingPath(bindPath string,
-	forks map[*CallStm]CollectionIndex) (Exp, error) {
+	_ map[*CallStm]CollectionIndex,
+	_ *TypeLookup) (Exp, error) {
 	if bindPath != "" {
 		return s, &wrapError{
 			innerError: &bindingError{
@@ -223,7 +227,8 @@ func (s *IntExp) BindingPath(bindPath string,
 	return s, nil
 }
 func (s *FloatExp) BindingPath(bindPath string,
-	forks map[*CallStm]CollectionIndex) (Exp, error) {
+	_ map[*CallStm]CollectionIndex,
+	_ *TypeLookup) (Exp, error) {
 	if bindPath != "" {
 		return s, &wrapError{
 			innerError: &bindingError{
@@ -234,11 +239,13 @@ func (s *FloatExp) BindingPath(bindPath string,
 	}
 	return s, nil
 }
-func (s *NullExp) BindingPath(string, map[*CallStm]CollectionIndex) (Exp, error) {
+func (s *NullExp) BindingPath(string, map[*CallStm]CollectionIndex,
+	*TypeLookup) (Exp, error) {
 	return s, nil
 }
 func (s *RefExp) BindingPath(bindPath string,
-	forks map[*CallStm]CollectionIndex) (Exp, error) {
+	forks map[*CallStm]CollectionIndex,
+	_ *TypeLookup) (Exp, error) {
 	ref, err := s.updateForks(forks)
 	if err != nil {
 		err = &bindingError{

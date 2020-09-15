@@ -202,7 +202,7 @@ func (self *Node) addDirectRefNodes(ref *syntax.RefExp,
 	if fr := self.call.ForkRoots(); len(fr) > 0 {
 		forks = make(map[*syntax.CallStm]syntax.CollectionIndex, len(fr))
 	}
-	exp, err := binding.Exp.BindingPath(ref.OutputId, forks)
+	exp, err := binding.Exp.BindingPath(ref.OutputId, forks, self.top.types)
 	if err != nil {
 		panic(err)
 	}
@@ -427,7 +427,7 @@ func (self *Node) mkdirs() error {
 
 func (self *Node) buildForks() {
 	// Build out argument permutations.
-	self.forkIds.MakeForkIds(self.call.ForkRoots())
+	self.forkIds.MakeForkIds(self.call.ForkRoots(), self.top.types)
 	if len(self.forkIds.List) == 0 {
 		self.forks = []*Fork{NewFork(self, 0, nil, self.call.ResolvedInputs())}
 	} else {

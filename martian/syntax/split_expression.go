@@ -16,6 +16,8 @@ type SplitExp struct {
 	// Either a MapExp, ArrayExp, or RefExp.  In a fully-resolved pipeline,
 	// it could also be another nested SplitExp.
 	Value Exp
+	// The type for the binding expression.
+	Type Type
 	// The call that this split was made on.  This becomes relevant when
 	// resolving a map call of a pipeline - calls within that pipeline
 	// may split further, but potentially over a different set of keys.
@@ -132,7 +134,7 @@ func (exp *SplitExp) FindTypedRefs(list []*BoundReference,
 		innerType = &builtinNull
 	case *SplitExp:
 		var err error
-		innerType, err = lookup.AddDim(t, val.Source.CallMode())
+		innerType, err = lookup.AddDim(t, val.CallMode())
 		if err != nil {
 			return list, err
 		}
@@ -263,6 +265,27 @@ func (exp *SplitExp) Keys() map[string]Exp {
 }
 
 func (exp *SplitExp) CallMode() CallMode {
+	if exp.Type != nil {
+		t := exp.Type
+		switch tt := t.(type) {
+		case *ArrayType:
+			if tt.Dim > 1 {
+				return ModeArrayCall
+			} else if tt.Dim == 1 {
+				t = tt.Elem
+			}
+		case *TypedMapType:
+			t = tt.Elem
+		}
+		switch tt := t.(type) {
+		case *ArrayType:
+			if tt.Dim > 0 {
+				return ModeArrayCall
+			}
+		case *TypedMapType:
+			return ModeMapCall
+		}
+	}
 	switch e := exp.Value.(type) {
 	case *RefExp:
 		return ModeUnknownMapCall
@@ -384,7 +407,8 @@ func (exp *SplitExp) resolveRefs(self, siblings map[string]*ResolvedBinding,
 }
 
 func (s *SplitExp) BindingPath(bindPath string,
-	fork map[*CallStm]CollectionIndex) (Exp, error) {
+	fork map[*CallStm]CollectionIndex,
+	lookup *TypeLookup) (Exp, error) {
 	if s == nil || s.Value == nil {
 		return s, nil
 	}
@@ -403,12 +427,12 @@ func (s *SplitExp) BindingPath(bindPath string,
 			if err != nil {
 				return s, s.wrapError(err)
 			}
-			v, err := v.BindingPath(bindPath, fork)
+			v, err := v.BindingPath(bindPath, fork, lookup)
 			return v, s.wrapError(err)
 		}
 	}
 	src := s.Source
-	v, err := s.Value.BindingPath(bindPath, fork)
+	v, err := s.Value.BindingPath(bindPath, fork, lookup)
 	if err != nil {
 		return s, s.wrapError(err)
 	}
@@ -426,7 +450,7 @@ func (s *SplitExp) BindingPath(bindPath string,
 					defer delete(fork, val.GetCall())
 				}
 			}
-			return val.Value.BindingPath("", fork)
+			return val.Value.BindingPath("", fork, lookup)
 		} else if nsrc, err := MergeMapCallSources(val.MergeOver, src); err != nil {
 			return s, s.wrapError(err)
 		} else {
@@ -465,6 +489,14 @@ func (s *SplitExp) BindingPath(bindPath string,
 	e := *s
 	e.Value = v
 	e.Source = src
+	if bindPath != "" && s.Type != nil {
+		tt, err := bindingType(bindPath, s.Type, lookup)
+		if err != nil {
+			e.Type = nil
+		} else {
+			e.Type = tt
+		}
+	}
 	return &e, nil
 }
 
@@ -521,7 +553,30 @@ func (s *SplitExp) filter(t Type, lookup *TypeLookup) (Exp, error) {
 	case ModeMapCall:
 		t = lookup.GetMap(t)
 	default:
-		panic("invalid split type")
+		if ss, ok := s.Value.(MapCallSource); ok {
+			switch ss.CallMode() {
+			case ModeArrayCall:
+				t = lookup.GetArray(t, 1)
+			case ModeMapCall:
+				t = lookup.GetMap(t)
+			default:
+				return s, &wrapError{
+					innerError: &bindingError{
+						Msg: "invalid split type " + s.CallMode().String() +
+							" (value " + s.GoString() + ")",
+					},
+					loc: s.Node.Loc,
+				}
+			}
+		} else {
+			return s, &wrapError{
+				innerError: &bindingError{
+					Msg: "invalid split type " + s.CallMode().String() +
+						" (" + s.GoString() + ")",
+				},
+				loc: s.Node.Loc,
+			}
+		}
 	}
 	v, err := s.Value.filter(t, lookup)
 	if v == s.Value {

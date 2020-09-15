@@ -44,7 +44,7 @@ func Main(argv []string) {
 		panic(err)
 	}
 
-	cg := getGraph(flags.Arg(0))
+	cg, lookup := getGraph(flags.Arg(0))
 	if stageInput != "" || stageOutput != "" {
 		if asJson || asDot {
 			fmt.Fprintln(flags.Output(),
@@ -53,7 +53,7 @@ func Main(argv []string) {
 			os.Exit(1)
 		}
 		if stageInput != "" {
-			if !traceInput(stageInput, cg) {
+			if !traceInput(stageInput, cg, lookup) {
 				fmt.Fprintln(os.Stderr, "Callable", stageInput, "not found")
 			}
 		}
@@ -85,7 +85,7 @@ func Main(argv []string) {
 	os.Exit(0)
 }
 
-func getGraph(fname string) syntax.CallGraphNode {
+func getGraph(fname string) (syntax.CallGraphNode, *syntax.TypeLookup) {
 	cwd, _ := os.Getwd()
 	mroPaths := util.ParseMroPath(cwd)
 	if value := os.Getenv("MROPATH"); len(value) > 0 {
@@ -106,7 +106,7 @@ func getGraph(fname string) syntax.CallGraphNode {
 		fmt.Fprintln(os.Stderr, "Error building call graph:", err.Error())
 		os.Exit(3)
 	}
-	return cg
+	return cg, &ast.TypeTable
 }
 
 // If the AST has a call, return it.  Otherwise, return the last
@@ -166,7 +166,7 @@ func findNode(id string, cg syntax.CallGraphNode) (string, syntax.CallGraphNode)
 	return "", nil
 }
 
-func traceInput(stage string, cg syntax.CallGraphNode) bool {
+func traceInput(stage string, cg syntax.CallGraphNode, lookup *syntax.TypeLookup) bool {
 	param, cg := findNode(stage, cg)
 	if cg == nil {
 		return false
@@ -193,7 +193,7 @@ func traceInput(stage string, cg syntax.CallGraphNode) bool {
 	}
 	exp := rb.Exp
 	if path != "" {
-		if rp, err := exp.BindingPath(path, nil); err != nil {
+		if rp, err := exp.BindingPath(path, nil, lookup); err != nil {
 			fmt.Fprint(os.Stderr, "Invalid path ", path, " in ",
 				stage, ": ", err.Error())
 		} else {

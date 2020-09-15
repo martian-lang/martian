@@ -24,15 +24,17 @@ func TestFindUnusedCallables(t *testing.T) {
 	callables = FindUnusedCallables(StringSet{"POINT_PIPE": struct{}{}},
 		[]*syntax.Ast{ast})
 
-	if len(callables) != 2 {
-		t.Fatalf("%d != 2", len(callables))
+	if len(callables) != 3 {
+		t.Fatalf("%d != 3", len(callables))
 	}
 	if callables[0].GetId() != "POINT_MAPPER" &&
-		callables[1].GetId() != "POINT_MAPPER" {
+		callables[1].GetId() != "POINT_MAPPER" &&
+		callables[2].GetId() != "POINT_MAPPER" {
 		t.Error("Expected POINT_MAPPER to be unused")
 	}
 	if callables[0].GetId() != "POINT_USER" &&
-		callables[1].GetId() != "POINT_USER" {
+		callables[1].GetId() != "POINT_USER" &&
+		callables[2].GetId() != "POINT_USER" {
 		t.Error("Expected POINT_USER to be unused")
 	}
 }

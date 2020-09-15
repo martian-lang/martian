@@ -44,6 +44,29 @@
   },
   "outputs": {
     "expression": {
+      "pts": [
+        {
+          "call": "POINT_MAPPER.MAP_CALLER.POINT_PIPE",
+          "mode": "array",
+          "merge_value": {
+            "__reference__": "POINT_MAPPER.MAP_CALLER.POINT_PIPE.POINT_MAKER.point",
+            "fork": {
+              "MAP_CALLER": 0,
+              "POINT_PIPE": "unknown"
+            }
+          },
+          "merge_over": {
+            "call": "MAP_CALLER",
+            "mode": "array",
+            "split": [
+              {
+                "__reference__": "POINT_MAPPER.PIPE1.POINT_MAKER.points.x"
+              }
+            ]
+          },
+          "fork_node": "POINT_MAPPER.MAP_CALLER.POINT_PIPE.POINT_MAKER"
+        }
+      ],
       "result": {
         "1": {
           "__reference__": "POINT_MAPPER.PIPE1.POINT_MAKER"
@@ -482,6 +505,275 @@
           },
           "fork_roots": [
             "POINT_MAPPER.PIPE6"
+          ]
+        }
+      ]
+    },
+    {
+      "fqid": "POINT_MAPPER.MAP_CALLER",
+      "inputs": {
+        "xs": {
+          "expression": {
+            "call": "MAP_CALLER",
+            "mode": "array",
+            "split": [
+              {
+                "__reference__": "POINT_MAPPER.PIPE1.POINT_MAKER.points.x"
+              }
+            ]
+          },
+          "type": "int[]"
+        },
+        "ys": {
+          "expression": {
+            "call": "MAP_CALLER",
+            "mode": "array",
+            "split": [
+              {
+                "__reference__": "POINT_MAPPER.PIPE1.POINT_MAKER.points.y"
+              }
+            ]
+          },
+          "type": "float[]"
+        }
+      },
+      "outputs": {
+        "expression": [
+          {
+            "points": {
+              "call": "POINT_MAPPER.MAP_CALLER.POINT_PIPE",
+              "mode": "array",
+              "merge_value": {
+                "__reference__": "POINT_MAPPER.MAP_CALLER.POINT_PIPE.POINT_MAKER.point",
+                "fork": {
+                  "MAP_CALLER": 0,
+                  "POINT_PIPE": "unknown"
+                }
+              },
+              "merge_over": {
+                "call": "MAP_CALLER",
+                "mode": "array",
+                "split": [
+                  {
+                    "__reference__": "POINT_MAPPER.PIPE1.POINT_MAKER.points.x"
+                  }
+                ]
+              },
+              "fork_node": "POINT_MAPPER.MAP_CALLER.POINT_PIPE.POINT_MAKER"
+            }
+          }
+        ],
+        "type": "MAP_CALLER[]"
+      },
+      "children": [
+        {
+          "fqid": "POINT_MAPPER.MAP_CALLER.POINT_PIPE",
+          "inputs": {
+            "x": {
+              "expression": {
+                "call": "POINT_PIPE",
+                "mode": "array",
+                "split": {
+                  "call": "MAP_CALLER",
+                  "mode": "array",
+                  "split": [
+                    {
+                      "__reference__": "POINT_MAPPER.PIPE1.POINT_MAKER.points.x"
+                    }
+                  ]
+                }
+              },
+              "type": "int"
+            },
+            "y": {
+              "expression": {
+                "call": "POINT_PIPE",
+                "mode": "array",
+                "split": {
+                  "call": "MAP_CALLER",
+                  "mode": "array",
+                  "split": [
+                    {
+                      "__reference__": "POINT_MAPPER.PIPE1.POINT_MAKER.points.y"
+                    }
+                  ]
+                }
+              },
+              "type": "float"
+            }
+          },
+          "outputs": {
+            "expression": [
+              {
+                "call": "POINT_MAPPER.MAP_CALLER.POINT_PIPE",
+                "mode": "array",
+                "merge_value": {
+                  "disable_user": {
+                    "__reference__": "POINT_MAPPER.MAP_CALLER.POINT_PIPE.POINT_MAKER.disable_user",
+                    "fork": {
+                      "MAP_CALLER": 0,
+                      "POINT_PIPE": "unknown"
+                    }
+                  },
+                  "w": {
+                    "extra": "nope",
+                    "point": {
+                      "x": {
+                        "call": "POINT_PIPE",
+                        "mode": "array",
+                        "split": {
+                          "__reference__": "POINT_MAPPER.PIPE1.POINT_MAKER.points.x"
+                        },
+                        "source": {
+                          "call": "MAP_CALLER",
+                          "mode": "array",
+                          "split": [
+                            {
+                              "__reference__": "POINT_MAPPER.PIPE1.POINT_MAKER.points.x"
+                            }
+                          ]
+                        }
+                      },
+                      "y": {
+                        "call": "POINT_PIPE",
+                        "mode": "array",
+                        "split": {
+                          "__reference__": "POINT_MAPPER.PIPE1.POINT_MAKER.points.y"
+                        },
+                        "source": {
+                          "call": "MAP_CALLER",
+                          "mode": "array",
+                          "split": [
+                            {
+                              "__reference__": "POINT_MAPPER.PIPE1.POINT_MAKER.points.y"
+                            }
+                          ]
+                        }
+                      }
+                    },
+                    "points": [
+                      {
+                        "__reference__": "POINT_MAPPER.MAP_CALLER.POINT_PIPE.POINT_MAKER.point",
+                        "fork": {
+                          "MAP_CALLER": 0,
+                          "POINT_PIPE": "unknown"
+                        }
+                      },
+                      {
+                        "x": {
+                          "call": "POINT_PIPE",
+                          "mode": "array",
+                          "split": {
+                            "__reference__": "POINT_MAPPER.PIPE1.POINT_MAKER.points.x"
+                          },
+                          "source": {
+                            "call": "MAP_CALLER",
+                            "mode": "array",
+                            "split": [
+                              {
+                                "__reference__": "POINT_MAPPER.PIPE1.POINT_MAKER.points.x"
+                              }
+                            ]
+                          }
+                        },
+                        "y": {
+                          "call": "POINT_PIPE",
+                          "mode": "array",
+                          "split": {
+                            "__reference__": "POINT_MAPPER.PIPE1.POINT_MAKER.points.y"
+                          },
+                          "source": {
+                            "call": "MAP_CALLER",
+                            "mode": "array",
+                            "split": [
+                              {
+                                "__reference__": "POINT_MAPPER.PIPE1.POINT_MAKER.points.y"
+                              }
+                            ]
+                          }
+                        }
+                      }
+                    ]
+                  },
+                  "z": {
+                    "__reference__": "POINT_MAPPER.MAP_CALLER.POINT_PIPE.POINT_MAKER",
+                    "fork": {
+                      "MAP_CALLER": 0,
+                      "POINT_PIPE": "unknown"
+                    }
+                  }
+                },
+                "merge_over": {
+                  "call": "MAP_CALLER",
+                  "mode": "array",
+                  "split": [
+                    {
+                      "__reference__": "POINT_MAPPER.PIPE1.POINT_MAKER.points.x"
+                    }
+                  ]
+                },
+                "fork_node": "POINT_MAPPER.MAP_CALLER.POINT_PIPE.POINT_MAKER"
+              }
+            ],
+            "type": "POINT_PIPE[][]"
+          },
+          "children": [
+            {
+              "fqid": "POINT_MAPPER.MAP_CALLER.POINT_PIPE.POINT_MAKER",
+              "inputs": {
+                "points": {
+                  "expression": [
+                    {
+                      "x": {
+                        "call": "POINT_PIPE",
+                        "mode": "array",
+                        "split": {
+                          "call": "MAP_CALLER",
+                          "mode": "array",
+                          "split": [
+                            {
+                              "__reference__": "POINT_MAPPER.PIPE1.POINT_MAKER.points.x"
+                            }
+                          ]
+                        }
+                      },
+                      "y": {
+                        "call": "POINT_PIPE",
+                        "mode": "array",
+                        "split": {
+                          "call": "MAP_CALLER",
+                          "mode": "array",
+                          "split": [
+                            {
+                              "__reference__": "POINT_MAPPER.PIPE1.POINT_MAKER.points.y"
+                            }
+                          ]
+                        }
+                      }
+                    },
+                    {
+                      "x": 1,
+                      "y": 2
+                    }
+                  ],
+                  "type": "POINT[]"
+                }
+              },
+              "outputs": {
+                "expression": {
+                  "__reference__": "POINT_MAPPER.MAP_CALLER.POINT_PIPE.POINT_MAKER",
+                  "fork": {
+                    "MAP_CALLER": "unknown",
+                    "POINT_PIPE": "unknown"
+                  }
+                },
+                "type": "POINT_MAKER"
+              },
+              "fork_roots": [
+                "POINT_MAPPER.MAP_CALLER",
+                "POINT_MAPPER.MAP_CALLER.POINT_PIPE"
+              ]
+            }
           ]
         }
       ]

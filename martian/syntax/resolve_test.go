@@ -36,7 +36,7 @@ func TestAstMakeCallGraph(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	_, _, ast, err := ParseSourceBytes(src, "resolve_test.mro", nil, false)
+	_, _, ast, err := ParseSourceBytes(src, "testdata/resolve_test.mro", nil, false)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -50,6 +50,7 @@ func TestAstMakeCallGraph(t *testing.T) {
 	nodes := graph.NodeClosure()
 	outputs := graph.ResolvedOutputs()
 	if out := FormatExp(outputs.Exp, ""); out != `{
+    pts: [merge POINT_MAPPER.MAP_CALLER.POINT_PIPE.POINT_MAKER.point],
     result: {
         "1": POINT_MAPPER.PIPE1.POINT_MAKER,
         "2": POINT_MAPPER.PIPE2.POINT_MAKER,
@@ -366,7 +367,7 @@ func TestResolvedBindingFindRefs(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	_, _, ast, err := ParseSourceBytes(src, "resolve_test.mro", nil, false)
+	_, _, ast, err := ParseSourceBytes(src, "testdata/resolve_test.mro", nil, false)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -377,6 +378,10 @@ func TestResolvedBindingFindRefs(t *testing.T) {
 	ps := ast.TypeTable.Get(TypeId{Tname: "POINT_SET"})
 	if ps == nil {
 		t.Fatal("no POINT_SET type")
+	}
+	point := ast.TypeTable.Get(TypeId{Tname: "POINT"})
+	if point == nil {
+		t.Fatal("no POINT type")
 	}
 	refs, err := graph.ResolvedOutputs().FindRefs(&ast.TypeTable)
 	if err != nil {
@@ -422,6 +427,13 @@ func TestResolvedBindingFindRefs(t *testing.T) {
 			},
 			Type: &builtinInt,
 		},
+		{
+			Exp: &RefExp{
+				Id:       "POINT_MAPPER.MAP_CALLER.POINT_PIPE.POINT_MAKER",
+				OutputId: "point",
+			},
+			Type: point,
+		},
 	}
 	if len(refs) != len(expected) {
 		b, err := json.MarshalIndent(refs, "", "  ")
@@ -452,7 +464,7 @@ func TestSerializeCallGraph(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	_, _, ast, err := ParseSourceBytes(src, "resolve_test.mro", nil, false)
+	_, _, ast, err := ParseSourceBytes(src, "testdata/resolve_test.mro", nil, false)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -482,7 +494,7 @@ func TestSerializeMapCallGraph(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	_, _, ast, err := ParseSourceBytes(src, "map_call_test.mro", nil, false)
+	_, _, ast, err := ParseSourceBytes(src, "testdata/map_call_test.mro", nil, false)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -595,7 +607,7 @@ func TestSerializeDisableBindingCallGraph(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	_, _, ast, err := ParseSourceBytes(src, "disable_bindings.mro", nil, false)
+	_, _, ast, err := ParseSourceBytes(src, "testdata/disable_bindings.mro", nil, false)
 	if err != nil {
 		t.Fatal(err)
 	}

@@ -637,7 +637,7 @@ func (node *CallGraphStage) resolve(siblings map[string]*ResolvedBinding,
 					ref.Forks[fs.call] = unknownIndex{src: fs.MapSource()}
 				}
 			}
-			exp, err := node.makeDisabled(exp)
+			exp, err := node.makeDisabled(exp, lookup)
 			if err != nil {
 				errs = append(errs, err)
 			}
@@ -650,7 +650,8 @@ func (node *CallGraphStage) resolve(siblings map[string]*ResolvedBinding,
 	return errs.If()
 }
 
-func (node *CallGraphStage) makeDisabled(exp Exp) (Exp, error) {
+func (node *CallGraphStage) makeDisabled(exp Exp,
+	lookup *TypeLookup) (Exp, error) {
 	var errs ErrorList
 	if len(node.Disable) > 0 {
 		start := 0
@@ -658,7 +659,7 @@ func (node *CallGraphStage) makeDisabled(exp Exp) (Exp, error) {
 			start = len(node.Parent.Disable)
 		}
 		for _, d := range node.Disable[start:] {
-			e, err := wrapDisabled(d, exp)
+			e, err := wrapDisabled(d, exp, lookup)
 			if err != nil {
 				errs = append(errs, err)
 			}
@@ -668,7 +669,7 @@ func (node *CallGraphStage) makeDisabled(exp Exp) (Exp, error) {
 	return exp, errs.If()
 }
 
-func wrapDisabled(d, exp Exp) (Exp, error) {
+func wrapDisabled(d, exp Exp, lookup *TypeLookup) (Exp, error) {
 	if exp.getKind() == KindNull {
 		return exp, nil
 	}
@@ -697,12 +698,12 @@ func wrapDisabled(d, exp Exp) (Exp, error) {
 			arr.Value = make([]Exp, len(arr.Value))
 			fork := make(map[*CallStm]CollectionIndex, 1)
 			for i := range v.Value {
-				v, err := wrapDisabled(v.Value[i], exp)
+				v, err := wrapDisabled(v.Value[i], exp, lookup)
 				if err != nil {
 					errs = append(errs, err)
 				} else {
 					fork[d.Call] = arrayIndex(i)
-					v, err = v.BindingPath("", fork)
+					v, err = v.BindingPath("", fork, lookup)
 					if err != nil {
 						errs = append(errs, err)
 					}
@@ -717,12 +718,12 @@ func wrapDisabled(d, exp Exp) (Exp, error) {
 			m.Value = make(map[string]Exp, len(m.Value))
 			fork := make(map[*CallStm]CollectionIndex, 1)
 			for k, vv := range v.Value {
-				v, err := wrapDisabled(vv, exp)
+				v, err := wrapDisabled(vv, exp, lookup)
 				if err != nil {
 					errs = append(errs, err)
 				} else {
 					fork[d.Call] = mapKeyIndex(k)
-					v, err = v.BindingPath("", fork)
+					v, err = v.BindingPath("", fork, lookup)
 					if err != nil {
 						errs = append(errs, err)
 					}
@@ -755,7 +756,7 @@ func (node *CallGraphStage) unsplit(lookup *TypeLookup) error {
 		return nil
 	}
 	var errs ErrorList
-	e, err := node.Outputs.Exp.BindingPath("", nil)
+	e, err := node.Outputs.Exp.BindingPath("", nil, lookup)
 	if err != nil {
 		errs = append(errs, &bindingError{
 			Msg: node.Fqid + " outputs",

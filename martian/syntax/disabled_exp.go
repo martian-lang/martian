@@ -40,8 +40,9 @@ func (s *DisabledExp) getKind() ExpKind {
 }
 
 func (s *DisabledExp) BindingPath(bindPath string,
-	forks map[*CallStm]CollectionIndex) (Exp, error) {
-	inner, err := s.Value.BindingPath(bindPath, forks)
+	forks map[*CallStm]CollectionIndex,
+	lookup *TypeLookup) (Exp, error) {
+	inner, err := s.Value.BindingPath(bindPath, forks, lookup)
 	if err != nil {
 		return s, err
 	}
@@ -49,7 +50,7 @@ func (s *DisabledExp) BindingPath(bindPath string,
 		// Don't bother computing the binding path for whether this is disabled.
 		return n, nil
 	}
-	disable, err := s.Disabled.BindingPath("", forks)
+	disable, err := s.Disabled.BindingPath("", forks, lookup)
 	if err != nil {
 		return s, err
 	}

@@ -61,7 +61,7 @@ map call MAPPER(
 	fork := map[*CallStm]CollectionIndex{
 		graph.Call(): arrayIndex(0),
 	}
-	boundThingy, err := thingy.BindingPath("", fork)
+	boundThingy, err := thingy.BindingPath("", fork, &ast.TypeTable)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -74,7 +74,7 @@ map call MAPPER(
 			boundThingy.GoString())
 	}
 	fork[graph.Call()] = arrayIndex(1)
-	boundThingy, err = thingy.BindingPath("", fork)
+	boundThingy, err = thingy.BindingPath("", fork, &ast.TypeTable)
 	if err != nil {
 		t.Fatal(err)
 	}

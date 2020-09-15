@@ -252,13 +252,14 @@ func (exp *MergeExp) resolveRefs(self, siblings map[string]*ResolvedBinding,
 	return exp, nil
 }
 
-func sourceForFork(src MapCallSource, fork map[*CallStm]CollectionIndex) (MapCallSource, error) {
+func sourceForFork(src MapCallSource, fork map[*CallStm]CollectionIndex,
+	lookup *TypeLookup) (MapCallSource, error) {
 	if src.KnownLength() {
 		return src, nil
 	}
 	switch se := src.(type) {
 	case Exp:
-		if se, err := se.BindingPath("", fork); err != nil {
+		if se, err := se.BindingPath("", fork, lookup); err != nil {
 			return src, err
 		} else if ss, ok := se.(MapCallSource); ok {
 			return ss, nil
@@ -267,11 +268,11 @@ func sourceForFork(src MapCallSource, fork map[*CallStm]CollectionIndex) (MapCal
 				se.GoString())
 		}
 	case *MapCallSet:
-		src, err := sourceForFork(se.Master, fork)
+		src, err := sourceForFork(se.Master, fork, lookup)
 		if err != nil || !src.KnownLength() {
 			for src := range se.Sources {
 				if src != se.Master {
-					se, err := sourceForFork(src, fork)
+					se, err := sourceForFork(src, fork, lookup)
 					if err == nil && se.KnownLength() {
 						return se, nil
 					}
@@ -402,13 +403,14 @@ func findMergeForkNode(v Exp, src MapCallSource, call *CallGraphStage) *RefExp {
 }
 
 func (s *MergeExp) BindingPath(bindPath string,
-	fork map[*CallStm]CollectionIndex) (Exp, error) {
+	fork map[*CallStm]CollectionIndex,
+	lookup *TypeLookup) (Exp, error) {
 	if s == nil || s.Value == nil {
 		return nil, nil
 	}
-	v, err := s.Value.BindingPath(bindPath, fork)
+	v, err := s.Value.BindingPath(bindPath, fork, lookup)
 	src := s.MergeOver
-	if se, serr := sourceForFork(src, fork); serr != nil {
+	if se, serr := sourceForFork(src, fork, lookup); serr != nil {
 		if err == nil {
 			err = serr
 		} else {
@@ -465,7 +467,7 @@ func (s *MergeExp) BindingPath(bindPath string,
 		}
 		for i := range arr.Value {
 			fork[s.GetCall()] = arrayIndex(i)
-			iv, err := v.BindingPath("", fork)
+			iv, err := v.BindingPath("", fork, lookup)
 			if err != nil {
 				errs = append(errs, err)
 			}
@@ -498,7 +500,7 @@ func (s *MergeExp) BindingPath(bindPath string,
 		}
 		for i := range keys {
 			fork[s.GetCall()] = mapKeyIndex(i)
-			iv, err := v.BindingPath("", fork)
+			iv, err := v.BindingPath("", fork, lookup)
 			if err != nil {
 				errs = append(errs, err)
 			}

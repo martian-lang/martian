@@ -72,6 +72,22 @@ pipeline POINT_PIPE(
     )
 }
 
+pipeline MAP_CALLER(
+    in  int[]   xs,
+    in  float[] ys,
+    out POINT[] points,
+)
+{
+    map call POINT_PIPE(
+        x = split self.xs,
+        y = split self.ys,
+    )
+
+    return (
+        points = POINT_PIPE.z.point,
+    )
+}
+
 pipeline POINT_MAPPER(
     in  POINT          one,
     in  POINT          two,
@@ -80,6 +96,7 @@ pipeline POINT_MAPPER(
     in  bool           disable_user,
     out map<POINT_SET> result,
     out map<int[]>     xs,
+    out POINT[][]      pts,
 )
 {
     call POINT_PIPE as PIPE1(
@@ -115,6 +132,11 @@ pipeline POINT_MAPPER(
         y = split self.mp.point.y,
     )
 
+    map call MAP_CALLER(
+        xs = split [PIPE1.z.points.x],
+        ys = split [PIPE1.z.points.y],
+    )
+
     call POINT_USER(
         points = [PIPE1.w.point],
         point  = self.one,
@@ -140,6 +162,7 @@ pipeline POINT_MAPPER(
             "2": PIPE2.w.points.x,
             "3": PIPE3.w.points.x,
         },
+        pts    = MAP_CALLER.points,
     )
 }
 
@@ -159,10 +182,12 @@ call POINT_MAPPER(
                 x: 9,
                 y: 10.2,
             },
-            points: [{
-                x: 11,
-                y: 3,
-            }],
+            points: [
+                {
+                    x: 11,
+                    y: 3,
+                },
+            ],
         },
     },
     disable4     = true,

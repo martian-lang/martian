@@ -96,7 +96,9 @@ func (fork ForkId) SourceIndexMap() map[*syntax.CallStm]syntax.CollectionIndex {
 	return result
 }
 
-func countForkParts(src syntax.MapCallSource, index map[*syntax.CallStm]syntax.CollectionIndex) int {
+func countForkParts(src syntax.MapCallSource,
+	index map[*syntax.CallStm]syntax.CollectionIndex,
+	lookup *syntax.TypeLookup) int {
 	if src.KnownLength() {
 		switch src.CallMode() {
 		case syntax.ModeArrayCall:
@@ -121,11 +123,11 @@ func countForkParts(src syntax.MapCallSource, index map[*syntax.CallStm]syntax.C
 						index = make(map[*syntax.CallStm]syntax.CollectionIndex)
 					}
 					index[src.Call] = arrayIndexFork(i)
-					sub, err := src.BindingPath("", index)
+					sub, err := src.BindingPath("", index, lookup)
 					if err != nil || sub == src {
 						c++
 					} else if subs, ok := sub.(syntax.MapCallSource); ok {
-						c += countForkParts(subs, index)
+						c += countForkParts(subs, index, lookup)
 					} else {
 						c++
 					}
@@ -143,11 +145,11 @@ func countForkParts(src syntax.MapCallSource, index map[*syntax.CallStm]syntax.C
 						index = make(map[*syntax.CallStm]syntax.CollectionIndex)
 					}
 					index[src.Call] = mapKeyFork(i)
-					sub, err := src.BindingPath("", index)
+					sub, err := src.BindingPath("", index, lookup)
 					if err != nil || sub == src {
 						c++
 					} else if subs, ok := sub.(syntax.MapCallSource); ok {
-						c += countForkParts(subs, index)
+						c += countForkParts(subs, index, lookup)
 					} else {
 						c++
 					}
@@ -156,12 +158,13 @@ func countForkParts(src syntax.MapCallSource, index map[*syntax.CallStm]syntax.C
 			}
 		}
 	case *syntax.MergeExp:
-		return countForkParts(src.MergeOver, index)
+		return countForkParts(src.MergeOver, index, lookup)
 	}
 	return 1
 }
 
-func makeForkIdParts(split *syntax.SplitExp) ([]*ForkSourcePart, int) {
+func makeForkIdParts(split *syntax.SplitExp,
+	lookup *syntax.TypeLookup) ([]*ForkSourcePart, int) {
 	switch split.Source.CallMode() {
 	case syntax.ModeArrayCall:
 		if alen := split.Source.ArrayLength(); alen >= 0 {
@@ -205,19 +208,20 @@ func makeForkIdParts(split *syntax.SplitExp) ([]*ForkSourcePart, int) {
 			Split: split,
 			Id:    dummyForkId,
 		},
-	}, countForkParts(split.Source, nil)
+	}, countForkParts(split.Source, nil, lookup)
 }
 
 var dummyForkId undeterminedFork
 
 // Computes the cartesian product of possible values for ForkIds.
-func (set *ForkIdSet) MakeForkIds(srcs syntax.ForkRootList) {
+func (set *ForkIdSet) MakeForkIds(srcs syntax.ForkRootList,
+	lookup *syntax.TypeLookup) {
 	if len(srcs) == 0 {
 		return
 	}
 	set.Table = make(map[*syntax.CallStm][]*ForkSourcePart, len(srcs))
 	if len(srcs) == 1 {
-		these, extra := makeForkIdParts(srcs[0].Split())
+		these, extra := makeForkIdParts(srcs[0].Split(), lookup)
 		set.Table[srcs[0].Call()] = these
 		set.List = make([]ForkId, len(these), len(these)+extra)
 		for i, part := range these {
@@ -228,7 +232,7 @@ func (set *ForkIdSet) MakeForkIds(srcs syntax.ForkRootList) {
 	count := 1
 	extra := 0
 	for _, srcNode := range srcs {
-		these, e := makeForkIdParts(srcNode.Split())
+		these, e := makeForkIdParts(srcNode.Split(), lookup)
 		set.Table[srcNode.Call()] = these
 		count *= len(these)
 		if e == 0 {
@@ -263,27 +267,30 @@ func (set *ForkIdSet) MakeForkIds(srcs syntax.ForkRootList) {
 		}
 	}
 	if extra >= 0 {
-		set.expandStaticForks()
+		set.expandStaticForks(lookup)
 	}
 }
 
-func (set *ForkIdSet) expandStaticForks() {
+func (set *ForkIdSet) expandStaticForks(lookup *syntax.TypeLookup) {
 	index := make(map[*syntax.CallStm]syntax.CollectionIndex, len(set.List[0]))
 	for i := 0; i < len(set.List); i++ {
 		fork := set.List[i]
-		newForks := fork.expandStaticForks(index, set.List[len(set.List):])
-		for ; len(newForks) > 0; newForks = fork.expandStaticForks(index, set.List[len(set.List):]) {
+		newForks := fork.expandStaticForks(index, set.List[len(set.List):], lookup)
+		for ; len(newForks) > 0; newForks = fork.expandStaticForks(index,
+			set.List[len(set.List):], lookup) {
 			set.List = append(set.List, newForks...)
 		}
 	}
 }
 
 func (fork ForkId) expandStaticForks(index map[*syntax.CallStm]syntax.CollectionIndex,
-	slice []ForkId) []ForkId {
+	slice []ForkId,
+	lookup *syntax.TypeLookup) []ForkId {
 	for i := 0; i < len(fork); i++ {
 		part := fork[i]
 		if part.Id.IndexSource() != nil {
-			if ids := fork.expandStaticForkPart(i, part, part.Split, index, slice); len(ids) > 0 {
+			if ids := fork.expandStaticForkPart(i, part,
+				part.Split, index, slice, lookup); len(ids) > 0 {
 				return ids
 			} else if part.Id == arrayIndexFork(-1) {
 				return nil
@@ -295,7 +302,8 @@ func (fork ForkId) expandStaticForks(index map[*syntax.CallStm]syntax.Collection
 
 // Get the (statically-resolved) source for a fork.
 func (fork ForkId) getForkSrc(split *syntax.SplitExp,
-	index map[*syntax.CallStm]syntax.CollectionIndex) syntax.MapCallSource {
+	index map[*syntax.CallStm]syntax.CollectionIndex,
+	lookup *syntax.TypeLookup) syntax.MapCallSource {
 	if split.Source.KnownLength() || len(fork) == 0 {
 		return split.Source
 	}
@@ -309,7 +317,7 @@ func (fork ForkId) getForkSrc(split *syntax.SplitExp,
 			index[part.Split.Call] = part.Id
 		}
 	}
-	exp, err := split.BindingPath("", index)
+	exp, err := split.BindingPath("", index, lookup)
 	if err != nil {
 		panic("resolving source for " + split.GoString() +
 			" of fork " + fork.GoString() + ": " + err.Error())
@@ -334,8 +342,9 @@ func (fork ForkId) getForkSrc(split *syntax.SplitExp,
 func (fork ForkId) expandStaticForkPart(i int, part *ForkSourcePart,
 	split *syntax.SplitExp,
 	index map[*syntax.CallStm]syntax.CollectionIndex,
-	result []ForkId) []ForkId {
-	forkSrc := fork.getForkSrc(split, index)
+	result []ForkId,
+	lookup *syntax.TypeLookup) []ForkId {
+	forkSrc := fork.getForkSrc(split, index, lookup)
 	if forkSrc == nil || !forkSrc.KnownLength() {
 		return nil
 	}
@@ -1274,7 +1283,8 @@ func (self *Fork) getUnmatchedForkParts(bNode *Node) []*ForkSourcePart {
 }
 
 func (self *Fork) getForkRef(split *syntax.SplitExp) *syntax.RefExp {
-	exp, err := split.BindingPath("", self.forkId.SourceIndexMap())
+	exp, err := split.BindingPath("", self.forkId.SourceIndexMap(),
+		self.node.top.types)
 	if err != nil {
 		panic("resolve ref for " + split.GoString() + ": " + err.Error())
 	}

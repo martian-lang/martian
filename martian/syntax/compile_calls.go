@@ -103,7 +103,8 @@ func (call *CallStm) checkMappings(global *Ast, pipeline *Pipeline) error {
 			}
 		}
 	}
-	if call.Mapping != nil {
+	err := errs.If()
+	if err == nil && call.Mapping != nil {
 		switch call.Mapping.(type) {
 		case *placeholderMapSource, *placeholderArrayMapSource, *placeholderMapMapSource:
 			panic(call.Mapping)
@@ -122,7 +123,7 @@ func (call *CallStm) checkMappings(global *Ast, pipeline *Pipeline) error {
 			}
 		}
 	}
-	return errs.If()
+	return err
 }
 
 func (call *CallStm) checkBindingMap(global *Ast, spe *SplitExp, pipeline *Pipeline) error {
@@ -198,6 +199,7 @@ func (call *CallStm) checkBindingMap(global *Ast, spe *SplitExp, pipeline *Pipel
 					Inner:    err,
 				}
 			} else {
+				spe.Type = global.TypeTable.Get(t)
 				call.Mapping = src
 			}
 		}

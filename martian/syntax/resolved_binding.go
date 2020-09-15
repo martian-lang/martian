@@ -123,6 +123,16 @@ func resolveExp(exp Exp, tname TypeId, self, siblings map[string]*ResolvedBindin
 			Type: t,
 		}, err
 	}
+	if s, ok := fexp.(*SplitExp); ok {
+		if it, err := lookup.AddDim(t, s.Source.CallMode()); err == nil {
+			if s.Type != nil && s.Type.IsAssignableFrom(it, lookup) == nil {
+				// broader type
+				s.Type = it
+			} else if ok {
+				s.Type = it
+			}
+		}
+	}
 	return &ResolvedBinding{
 		Exp:  fexp,
 		Type: t,
@@ -173,7 +183,7 @@ func (b *ResolvedBinding) BindingPath(p string,
 	if err != nil {
 		return b, err
 	}
-	e, err := b.Exp.BindingPath(p, forks)
+	e, err := b.Exp.BindingPath(p, forks, lookup)
 	if err != nil || (e == b.Exp && t == b.Type) {
 		return b, err
 	}

@@ -219,9 +219,13 @@ func (node *CallGraphPipeline) resolvePipelineOuts(
 			case ModeMapCall:
 				tid.MapDim++
 			default:
-				errs = append(errs, &bindingError{
-					Msg: "invalid mapping mode: " +
-						node.split.Source.CallMode().String(),
+				errs = append(errs, &wrapError{
+					innerError: &bindingError{
+						Msg: "invalid mapping mode: " +
+							node.split.Source.CallMode().String() + " for " +
+							node.split.GoString(),
+					},
+					loc: node.split.Node.Loc,
 				})
 			}
 			exp = &MergeExp{
@@ -275,7 +279,7 @@ func (node *CallGraphPipeline) unsplit(lookup *TypeLookup) error {
 			}
 		}
 	}
-	e, err := e.BindingPath("", nil)
+	e, err := e.BindingPath("", nil, lookup)
 	if err != nil {
 		errs = append(errs, &bindingError{
 			Msg: node.Fqid + " outputs",
@@ -320,7 +324,7 @@ func (node *CallGraphPipeline) unsplit(lookup *TypeLookup) error {
 						Value:  m,
 						Source: n.split.Source,
 					}
-					if exp, err := s.BindingPath("", nil); err != nil {
+					if exp, err := s.BindingPath("", nil, lookup); err != nil {
 						errs = append(errs, &bindingError{
 							Msg: "making pipeline input splits for " + node.Fqid,
 							Err: err,
