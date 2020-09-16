@@ -148,9 +148,25 @@ func (err *wrapError) Unwrap() error {
 	return err.innerError
 }
 
+func sameLine(l1, l2 SourceLoc) bool {
+	if l1.File != l2.File {
+		if l1.File == nil || l2.File == nil {
+			return false
+		}
+		if l1.File.FullPath != l2.File.FullPath {
+			return false
+		}
+	}
+	return l1.Line == l2.Line
+}
+
 func (err *wrapError) writeTo(w stringWriter) {
 	if ew, ok := err.innerError.(*wrapError); ok {
 		ew.writeTo(w)
+		if sameLine(ew.loc, err.loc) {
+			// ellide duplicate stack frames.
+			return
+		}
 	} else if ew, ok := err.innerError.(errorWriter); ok {
 		mustWriteString(w, "MRO ")
 		ew.writeTo(w)

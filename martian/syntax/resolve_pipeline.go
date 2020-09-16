@@ -176,9 +176,12 @@ func (node *CallGraphPipeline) makeOutExp(
 	outs, err := node.pipeline.Ret.Bindings.resolve(node.Inputs, childMap,
 		lookup)
 	if err != nil {
-		return nil, &bindingError{
-			Msg: node.Fqid + " outputs",
-			Err: err,
+		return nil, &wrapError{
+			innerError: &bindingError{
+				Msg: node.Fqid + " outputs",
+				Err: err,
+			},
+			loc: node.pipeline.Ret.Node.Loc,
 		}
 	}
 	value := make(map[string]Exp, len(outs))

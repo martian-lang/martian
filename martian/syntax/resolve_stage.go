@@ -221,6 +221,12 @@ func (node *CallGraphStage) resolveInputs(siblings map[string]*ResolvedBinding,
 	}
 	node.Inputs = ins
 	node.resolveForks(mapped, node)
+	if err := errs.If(); err != nil {
+		return &wrapError{
+			innerError: err,
+			loc:        node.call.Node.Loc,
+		}
+	}
 	return errs.If()
 }
 
