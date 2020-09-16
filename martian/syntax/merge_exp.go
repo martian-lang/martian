@@ -270,7 +270,7 @@ func sourceForFork(src MapCallSource, fork map[*CallStm]CollectionIndex,
 	case *MapCallSet:
 		src, err := sourceForFork(se.Master, fork, lookup)
 		if err != nil || !src.KnownLength() {
-			for src := range se.Sources {
+			for _, src := range se.Sources {
 				if src != se.Master {
 					se, err := sourceForFork(src, fork, lookup)
 					if err == nil && se.KnownLength() {
@@ -294,7 +294,7 @@ func findMergeForkSrcNode(src MapCallSource, call *CallStm) *RefExp {
 			return m
 		}
 		ms := make([]*RefExp, 0, len(src.Sources)-1)
-		for s := range src.Sources {
+		for _, s := range src.Sources {
 			if s != src.Master {
 				if m := findMergeForkSrcNode(s, call); m != nil {
 					ms = append(ms, m)

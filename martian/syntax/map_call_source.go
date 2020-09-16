@@ -217,7 +217,18 @@ type MapCallSet struct {
 	Master MapCallSource `json:"primary_source"`
 
 	// The set of all sources in the call set.
-	Sources map[MapCallSource]struct{} `json:"-"`
+	Sources SourceList `json:"-"`
+}
+
+type SourceList []MapCallSource
+
+func (srcs *SourceList) Add(src MapCallSource) {
+	for _, s := range *srcs {
+		if s == src {
+			return
+		}
+	}
+	*srcs = append(*srcs, src)
 }
 
 // CallMode Returns the call mode for a call which depends on this source.
@@ -268,7 +279,7 @@ func (m *MapCallSet) GoString() string {
 	if _, err := buf.WriteString(ma); err != nil {
 		panic(err)
 	}
-	for s := range m.Sources {
+	for _, s := range m.Sources {
 		if s != m.Master {
 			if err := buf.WriteByte(';'); err != nil {
 				panic(err)
@@ -335,13 +346,13 @@ func MergeMapCallSources(a, b MapCallSource) (MapCallSource, error) {
 		case *MapCallSet:
 			if as, ok := a.(*MapCallSet); ok {
 				if as.CallMode() != ModeUnknownMapCall {
-					for k := range bs.Sources {
-						as.Sources[k] = struct{}{}
+					for _, k := range bs.Sources {
+						as.Sources.Add(k)
 					}
 					return a, nil
 				} else {
-					for k := range as.Sources {
-						bs.Sources[k] = struct{}{}
+					for _, k := range as.Sources {
+						bs.Sources.Add(k)
 					}
 					return b, nil
 				}
@@ -353,15 +364,12 @@ func MergeMapCallSources(a, b MapCallSource) (MapCallSource, error) {
 		case *placeholderMapSource:
 			return b, nil
 		case *MapCallSet:
-			as.Sources[b] = struct{}{}
+			as.Sources.Add(b)
 			return as, nil
 		default:
 			return &MapCallSet{
-				Master: a,
-				Sources: map[MapCallSource]struct{}{
-					a: {},
-					b: {},
-				},
+				Master:  a,
+				Sources: SourceList{a, b},
 			}, nil
 		}
 	} else if a.CallMode() == ModeUnknownMapCall {
@@ -370,13 +378,13 @@ func MergeMapCallSources(a, b MapCallSource) (MapCallSource, error) {
 		case *MapCallSet:
 			if bs, ok := b.(*MapCallSet); ok {
 				if bs.CallMode() != ModeUnknownMapCall {
-					for k := range as.Sources {
-						bs.Sources[k] = struct{}{}
+					for _, k := range as.Sources {
+						bs.Sources.Add(k)
 					}
 					return b, nil
 				} else {
-					for k := range bs.Sources {
-						as.Sources[k] = struct{}{}
+					for _, k := range bs.Sources {
+						as.Sources.Add(k)
 					}
 					return a, nil
 				}
@@ -388,15 +396,12 @@ func MergeMapCallSources(a, b MapCallSource) (MapCallSource, error) {
 		case *placeholderMapSource:
 			return a, nil
 		case *MapCallSet:
-			bs.Sources[a] = struct{}{}
+			bs.Sources.Add(a)
 			return bs, nil
 		default:
 			return &MapCallSet{
-				Master: b,
-				Sources: map[MapCallSource]struct{}{
-					a: {},
-					b: {},
-				},
+				Master:  b,
+				Sources: SourceList{a, b},
 			}, nil
 		}
 	}
@@ -460,18 +465,18 @@ func MergeMapCallSources(a, b MapCallSource) (MapCallSource, error) {
 		case *MapCallSet:
 			// Both are sets, merge them.
 			if as.KnownLength() || !bs.KnownLength() {
-				for s := range bs.Sources {
-					as.Sources[s] = struct{}{}
+				for _, s := range bs.Sources {
+					as.Sources.Add(s)
 				}
 				return as, nil
 			} else {
-				for s := range as.Sources {
-					bs.Sources[s] = struct{}{}
+				for _, s := range as.Sources {
+					bs.Sources.Add(s)
 				}
 				return bs, nil
 			}
 		default:
-			as.Sources[b] = struct{}{}
+			as.Sources.Add(b)
 			if !as.KnownLength() && b.KnownLength() {
 				if b.CallMode() == ModeNullMapCall {
 					if m := as.CallMode(); m == ModeArrayCall {
@@ -488,7 +493,7 @@ func MergeMapCallSources(a, b MapCallSource) (MapCallSource, error) {
 			return as, nil
 		}
 	} else if bs, ok := b.(*MapCallSet); ok {
-		bs.Sources[a] = struct{}{}
+		bs.Sources.Add(a)
 		if !bs.KnownLength() && a.KnownLength() {
 			if a.CallMode() == ModeNullMapCall {
 				if m := bs.CallMode(); m == ModeArrayCall {
@@ -505,11 +510,8 @@ func MergeMapCallSources(a, b MapCallSource) (MapCallSource, error) {
 		return bs, nil
 	} else {
 		set := MapCallSet{
-			Sources: map[MapCallSource]struct{}{
-				a: {},
-				b: {},
-			},
-			Master: a,
+			Sources: SourceList{a, b},
+			Master:  a,
 		}
 		if a.CallMode() == ModeNullMapCall {
 			switch b.CallMode() {
