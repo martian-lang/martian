@@ -412,6 +412,9 @@ func (s *SplitExp) BindingPath(bindPath string,
 	if s == nil || s.Value == nil {
 		return s, nil
 	}
+	if s.IsEmpty() {
+		return &NullExp{valExp: s.valExp}, nil
+	}
 	i, ok := fork[s.Call]
 	if !ok {
 		if fork == nil {
@@ -429,6 +432,18 @@ func (s *SplitExp) BindingPath(bindPath string,
 			}
 			v, err := v.BindingPath(bindPath, fork, lookup)
 			return v, s.wrapError(err)
+			// } else if m, ok := v.(*MergeExp); ok {
+			// 	if m.GetCall() != s.Call {
+			// 		oldFork, oldForkOk := fork[m.GetCall()]
+			// 		fork[m.GetCall()] = i
+			// 		if oldForkOk {
+			// 			defer func() { fork[m.GetCall()] = oldFork }()
+			// 		} else {
+			// 			defer delete(fork, m.GetCall())
+			// 		}
+			// 	}
+			// 	v, err := m.Value.BindingPath(bindPath, fork, lookup)
+			// 	return v, s.wrapError(m.wrapError(err))
 		}
 	}
 	src := s.Source

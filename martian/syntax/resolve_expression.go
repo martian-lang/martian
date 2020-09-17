@@ -11,15 +11,27 @@ func (exp *RefExp) resolveRefs(self, siblings map[string]*ResolvedBinding,
 	lookup *TypeLookup) (Exp, error) {
 	var res *ResolvedBinding
 	if exp.Kind == KindSelf {
-		res = self[exp.Id]
+		var ok bool
+		res, ok = self[exp.Id]
 		if res == nil {
+			if ok {
+				return &NullExp{
+					valExp: valExp{Node: exp.Node},
+				}, nil
+			}
 			return exp, &bindingError{
 				Msg: "unknown parameter " + exp.Id,
 			}
 		}
 	} else {
-		res = siblings[exp.Id]
+		var ok bool
+		res, ok = siblings[exp.Id]
 		if res == nil {
+			if ok {
+				return &NullExp{
+					valExp: valExp{Node: exp.Node},
+				}, nil
+			}
 			return exp, &bindingError{
 				Msg: "unknown call name " + exp.Id,
 			}
@@ -358,7 +370,7 @@ func (s *MapExp) filter(t Type, lookup *TypeLookup) (Exp, error) {
 			return s, &bindingError{
 				Msg: "filtering " +
 					FormatExp(s, "          ") +
-					"\n          as " + t.TypeId().str(),
+					"\n      as " + t.TypeId().str(),
 				Err: err,
 			}
 		}

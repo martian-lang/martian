@@ -239,7 +239,7 @@ func (exp *MergeExp) resolveRefs(self, siblings map[string]*ResolvedBinding,
 	if err != nil {
 		return exp, exp.wrapError(err)
 	}
-	fn := findMergeForkNode(v, exp.MergeOver, exp.Call)
+	fn := findMergeForkNode(v, exp.Call)
 	if fn != nil && fn.Id == exp.Call.Fqid {
 		fn = nil
 	}
@@ -258,6 +258,8 @@ func sourceForFork(src MapCallSource, fork map[*CallStm]CollectionIndex,
 		return src, nil
 	}
 	switch se := src.(type) {
+	case *MergeExp:
+		return sourceForFork(se.MergeOver, fork, lookup)
 	case Exp:
 		if se, err := se.BindingPath("", fork, lookup); err != nil {
 			return src, err
@@ -268,57 +270,9 @@ func sourceForFork(src MapCallSource, fork map[*CallStm]CollectionIndex,
 				se.GoString())
 		}
 	case *MapCallSet:
-		src, err := sourceForFork(se.Master, fork, lookup)
-		if err != nil || !src.KnownLength() {
-			for _, src := range se.Sources {
-				if src != se.Master {
-					se, err := sourceForFork(src, fork, lookup)
-					if err == nil && se.KnownLength() {
-						return se, nil
-					}
-				}
-			}
-		}
-		return src, err
+		return sourceForFork(se.Master, fork, lookup)
 	}
 	return src, nil
-}
-
-func findMergeForkSrcNode(src MapCallSource, call *CallStm) *RefExp {
-	if src.KnownLength() {
-		return nil
-	}
-	switch src := src.(type) {
-	case *MapCallSet:
-		if m := findMergeForkSrcNode(src.Master, call); m != nil {
-			return m
-		}
-		ms := make([]*RefExp, 0, len(src.Sources)-1)
-		for _, s := range src.Sources {
-			if s != src.Master {
-				if m := findMergeForkSrcNode(s, call); m != nil {
-					ms = append(ms, m)
-				}
-			}
-		}
-		if len(ms) > 0 {
-			sort.Slice(ms, func(i, j int) bool {
-				ii, ji := ms[i].Id, ms[j].Id
-				if ii == ji {
-					if il, jl := len(ms[i].OutputId), len(ms[j].OutputId); il < jl {
-						return true
-					} else if il == jl {
-						return ms[i].OutputId < ms[j].OutputId
-					}
-				}
-				return ii < ji
-			})
-			return ms[0]
-		}
-	case Exp:
-		return findMergeForkExpNode(src, call)
-	}
-	return nil
 }
 
 func findMergeForkExpNode(v Exp, call *CallStm) *RefExp {
@@ -361,20 +315,12 @@ func findMergeForkExpNode(v Exp, call *CallStm) *RefExp {
 			}
 		}
 	case *MergeExp:
-		if m := findMergeForkSrcNode(v.MergeOver, call); m != nil {
-			return m
-		}
 		return findMergeForkExpNode(v.Value, call)
 	}
 	return nil
 }
 
-func findMergeForkNode(v Exp, src MapCallSource, call *CallGraphStage) *RefExp {
-	if src != nil {
-		if m := findMergeForkSrcNode(src, call.call); m != nil {
-			return m
-		}
-	}
+func findMergeForkNode(v Exp, call *CallGraphStage) *RefExp {
 	if m := findMergeForkExpNode(v, call.call); m != nil {
 		return m
 	}
@@ -409,6 +355,9 @@ func (s *MergeExp) BindingPath(bindPath string,
 		return nil, nil
 	}
 	v, err := s.Value.BindingPath(bindPath, fork, lookup)
+	if i := fork[s.GetCall()]; i != nil && i.IndexSource() == nil {
+		return v, s.wrapError(err)
+	}
 	src := s.MergeOver
 	if se, serr := sourceForFork(src, fork, lookup); serr != nil {
 		if err == nil {
@@ -422,11 +371,8 @@ func (s *MergeExp) BindingPath(bindPath string,
 	for ms, ok := src.(*MergeExp); ok; ms, ok = src.(*MergeExp) {
 		src = ms.MergeOver
 	}
-	if i := fork[s.GetCall()]; i != nil && i.IndexSource() == nil {
-		return v, s.wrapError(err)
-	} else if err != nil ||
-		!src.KnownLength() {
-		fn := findMergeForkNode(v, src, s.Call)
+	if err != nil || !src.KnownLength() {
+		fn := findMergeForkNode(v, s.Call)
 		if fn != nil && fn.Id == s.Call.Fqid {
 			fn = nil
 		}
@@ -439,8 +385,6 @@ func (s *MergeExp) BindingPath(bindPath string,
 			s = &sc
 		}
 		return s, s.wrapError(err)
-	} else if i != nil && i.IndexSource() == nil {
-		return v, s.wrapError(err)
 	}
 	// Static merge, do it now.
 	switch src.CallMode() {

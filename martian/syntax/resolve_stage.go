@@ -227,7 +227,7 @@ func (node *CallGraphStage) resolveInputs(siblings map[string]*ResolvedBinding,
 			loc:        node.call.Node.Loc,
 		}
 	}
-	return errs.If()
+	return nil
 }
 
 type sortedSplitList []*SplitExp
