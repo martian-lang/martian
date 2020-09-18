@@ -74,8 +74,12 @@ func (lookup *TypeLookup) AddStructType(t *StructType) error {
 			if err := t.CheckEqual(existing); err != nil {
 				return &wrapError{
 					innerError: &IncompatibleTypeError{
-						Message: "name conflicts with previously declared struct type",
-						Reason:  err,
+						Message: "name '" + t.Id +
+							"' conflicts with previously declared struct type",
+						Reason: &wrapError{
+							innerError: err,
+							loc:        t.Node.Loc,
+						},
 					},
 					loc: existing.Node.Loc,
 				}

@@ -581,6 +581,217 @@
           ]
         },
         {
+          "fqid": "TOP.PIPELINE3.GENERATE_ARRAY",
+          "inputs": null,
+          "outputs": {
+            "expression": {
+              "__reference__": "TOP.PIPELINE3.GENERATE_ARRAY"
+            },
+            "type": "GENERATE_ARRAY"
+          }
+        },
+        {
+          "fqid": "TOP.PIPELINE3.VARIABLE_ARRAY_MAP",
+          "inputs": {
+            "blah": {
+              "expression": "A thing",
+              "type": "string"
+            },
+            "inputs": {
+              "expression": {
+                "call": "VARIABLE_ARRAY_MAP",
+                "mode": "array",
+                "split": {
+                  "__reference__": "TOP.PIPELINE3.GENERATE_ARRAY.result"
+                }
+              },
+              "type": "Inputs2"
+            }
+          },
+          "outputs": {
+            "expression": {
+              "ignored": "A thing",
+              "outs": {
+                "call": "TOP.PIPELINE3.VARIABLE_ARRAY_MAP.PIPELINE1",
+                "mode": "array",
+                "merge_value": {
+                  "__disabled__": {
+                    "__reference__": "TOP.PIPELINE3.GENERATE_ARRAY.result.thing"
+                  },
+                  "value": {
+                    "blah": [
+                      {
+                        "__reference__": "TOP.PIPELINE3.VARIABLE_ARRAY_MAP.PIPELINE1.STUFF1.blah",
+                        "fork": {
+                          "PIPELINE1": "unknown",
+                          "VARIABLE_ARRAY_MAP": "unknown"
+                        }
+                      },
+                      "A thing"
+                    ],
+                    "thing": {
+                      "call": "PIPELINE1",
+                      "mode": "array",
+                      "split": {
+                        "call": "VARIABLE_ARRAY_MAP",
+                        "mode": "array",
+                        "split": {
+                          "__reference__": "TOP.PIPELINE3.GENERATE_ARRAY.result.inputs.thing3"
+                        }
+                      }
+                    }
+                  }
+                },
+                "merge_over": {
+                  "call": "VARIABLE_ARRAY_MAP",
+                  "mode": "array",
+                  "split": {
+                    "__reference__": "TOP.PIPELINE3.GENERATE_ARRAY.result.inputs"
+                  }
+                },
+                "fork_node": "TOP.PIPELINE3.VARIABLE_ARRAY_MAP.PIPELINE1.STUFF1"
+              }
+            },
+            "type": "PIPELINE2"
+          },
+          "fork_roots": [
+            "TOP.PIPELINE3.VARIABLE_ARRAY_MAP"
+          ],
+          "children": [
+            {
+              "fqid": "TOP.PIPELINE3.VARIABLE_ARRAY_MAP.PIPELINE1",
+              "inputs": {
+                "blah": {
+                  "expression": "A thing",
+                  "type": "string"
+                },
+                "inputs": {
+                  "expression": {
+                    "call": "PIPELINE1",
+                    "mode": "array",
+                    "split": {
+                      "call": "VARIABLE_ARRAY_MAP",
+                      "mode": "array",
+                      "split": {
+                        "__reference__": "TOP.PIPELINE3.GENERATE_ARRAY.result.inputs"
+                      }
+                    }
+                  },
+                  "type": "Inputs1"
+                }
+              },
+              "outputs": {
+                "expression": {
+                  "__disabled__": {
+                    "__reference__": "TOP.PIPELINE3.GENERATE_ARRAY.result.thing"
+                  },
+                  "value": {
+                    "blah": [
+                      {
+                        "__reference__": "TOP.PIPELINE3.VARIABLE_ARRAY_MAP.PIPELINE1.STUFF1.blah",
+                        "fork": {
+                          "PIPELINE1": "unknown",
+                          "VARIABLE_ARRAY_MAP": "unknown"
+                        }
+                      },
+                      "A thing"
+                    ],
+                    "thing": {
+                      "call": "PIPELINE1",
+                      "mode": "array",
+                      "split": {
+                        "call": "VARIABLE_ARRAY_MAP",
+                        "mode": "array",
+                        "split": {
+                          "__reference__": "TOP.PIPELINE3.GENERATE_ARRAY.result.inputs.thing3"
+                        }
+                      }
+                    }
+                  }
+                },
+                "type": "PIPELINE1"
+              },
+              "disabled": [
+                {
+                  "__reference__": "TOP.PIPELINE3.GENERATE_ARRAY.result.thing"
+                }
+              ],
+              "fork_roots": [
+                "TOP.PIPELINE3.VARIABLE_ARRAY_MAP",
+                "TOP.PIPELINE3.VARIABLE_ARRAY_MAP.PIPELINE1"
+              ],
+              "children": [
+                {
+                  "fqid": "TOP.PIPELINE3.VARIABLE_ARRAY_MAP.PIPELINE1.STUFF1",
+                  "inputs": {
+                    "thing1": {
+                      "expression": {
+                        "call": "PIPELINE1",
+                        "mode": "array",
+                        "split": {
+                          "call": "VARIABLE_ARRAY_MAP",
+                          "mode": "array",
+                          "split": {
+                            "__reference__": "TOP.PIPELINE3.GENERATE_ARRAY.result.inputs.thing1"
+                          }
+                        }
+                      },
+                      "type": "string"
+                    },
+                    "thing2": {
+                      "expression": {
+                        "call": "PIPELINE1",
+                        "mode": "array",
+                        "split": {
+                          "call": "VARIABLE_ARRAY_MAP",
+                          "mode": "array",
+                          "split": {
+                            "__reference__": "TOP.PIPELINE3.GENERATE_ARRAY.result.inputs.thing2"
+                          }
+                        }
+                      },
+                      "type": "int"
+                    },
+                    "thingy": {
+                      "expression": {
+                        "call": "PIPELINE1",
+                        "mode": "array",
+                        "split": {
+                          "call": "VARIABLE_ARRAY_MAP",
+                          "mode": "array",
+                          "split": {
+                            "__reference__": "TOP.PIPELINE3.GENERATE_ARRAY.result.inputs.thing1"
+                          }
+                        }
+                      },
+                      "type": "string"
+                    }
+                  },
+                  "outputs": {
+                    "expression": {
+                      "__reference__": "TOP.PIPELINE3.VARIABLE_ARRAY_MAP.PIPELINE1.STUFF1",
+                      "fork": {
+                        "PIPELINE1": "unknown",
+                        "VARIABLE_ARRAY_MAP": "unknown"
+                      }
+                    },
+                    "type": "STUFF1"
+                  },
+                  "disabled": [
+                    {
+                      "__reference__": "TOP.PIPELINE3.GENERATE_ARRAY.result.thing"
+                    }
+                  ],
+                  "fork_roots": [
+                    "TOP.PIPELINE3.VARIABLE_ARRAY_MAP",
+                    "TOP.PIPELINE3.VARIABLE_ARRAY_MAP.PIPELINE1"
+                  ]
+                }
+              ]
+            }
+          ]
+        },
+        {
           "fqid": "TOP.PIPELINE3.STUFF2",
           "inputs": {
             "inputs": {

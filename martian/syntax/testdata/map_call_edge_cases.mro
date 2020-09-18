@@ -30,6 +30,11 @@ struct Inputs4(
     Inputs3[] outs,
 )
 
+stage GENERATE_ARRAY(
+    out Inputs2Plus[] result,
+    src comp          "none",
+)
+
 stage STUFF1(
     in  string thingy,
     in  string thing1,
@@ -101,6 +106,13 @@ pipeline PIPELINE3(
 
     map call PIPELINE2 as ARRAY_MAP(
         inputs = split self.inputs2,
+        blah   = self.blah,
+    )
+
+    call GENERATE_ARRAY()
+
+    map call PIPELINE2 as VARIABLE_ARRAY_MAP(
+        inputs = split GENERATE_ARRAY.result,
         blah   = self.blah,
     )
 

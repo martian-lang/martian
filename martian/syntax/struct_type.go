@@ -122,7 +122,7 @@ func (s *StructType) IsAssignableFrom(other Type, typeTable *TypeLookup) error {
 		}
 		var errs ErrorList
 		for _, member := range s.Members {
-			o := t.Table[member.Id]
+			o := t.getMember(member.Id)
 			const msg = "struct %s cannot be used as %s: "
 			if o == nil {
 				errs = append(errs, &IncompatibleTypeError{
@@ -226,7 +226,7 @@ func (s *StructType) IsValidExpression(exp Exp, pipeline *Pipeline, ast *Ast) er
 		}
 		if len(exp.Value) > len(s.Members) {
 			for key := range exp.Value {
-				if _, ok := s.Table[key]; !ok {
+				if om := s.getMember(key); om == nil {
 					errs = append(errs, &IncompatibleTypeError{
 						Message: "unexpected field " + key,
 					})
@@ -243,6 +243,21 @@ func (s *StructType) IsValidExpression(exp Exp, pipeline *Pipeline, ast *Ast) er
 	}
 }
 
+func (s *StructType) getMember(id string) *StructMember {
+	if s == nil {
+		return nil
+	}
+	if s.Table != nil {
+		return s.Table[id]
+	}
+	for _, m := range s.Members {
+		if m.Id == id {
+			return m
+		}
+	}
+	return nil
+}
+
 func (s *StructType) CheckEqual(other Type) error {
 	if other, ok := other.(*StructType); !ok {
 		return &IncompatibleTypeError{
@@ -251,7 +266,7 @@ func (s *StructType) CheckEqual(other Type) error {
 	} else {
 		var errs ErrorList
 		for _, member := range s.Members {
-			if om := other.Table[member.Id]; om == nil {
+			if om := other.getMember(member.Id); om == nil {
 				errs = append(errs, &IncompatibleTypeError{
 					Message: "missing field: " + member.Id,
 				})
@@ -500,7 +515,7 @@ func fieldType(id TypeId, lookup *TypeLookup, field string) (TypeId, error) {
 			suffix = fieldRoot[dotIndex+1:]
 			fieldRoot = fieldRoot[:dotIndex]
 		}
-		if m := t.Table[fieldRoot]; m == nil {
+		if m := t.getMember(fieldRoot); m == nil {
 			return id, &StructFieldError{
 				Message: "no field " + fieldRoot + " in struct " + id.Tname + " (evaluating " + field + ")",
 			}

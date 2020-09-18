@@ -1090,7 +1090,7 @@ struct STRUCT_3(
     map<STRUCT_1>[] s1am,
     map<STRUCT_1[]> s1ma,
 )
-`, "MRO name conflicts with previously declared struct type")
+`, "MRO name 'STRUCT_3' conflicts with previously declared struct type")
 }
 
 func TestStructBindingGood(t *testing.T) {
