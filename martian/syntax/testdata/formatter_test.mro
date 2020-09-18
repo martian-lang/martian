@@ -9,7 +9,7 @@
 filetype json;
 filetype txt;
 
-struct POINT(
+struct Point(
     # x coordinate
     float x,
     # y coordinate
@@ -17,15 +17,16 @@ struct POINT(
 )
 
 # A thing with coordinates.
-struct POINTALISM(
-    POINT point,
+struct Pointalism(
+    Point point,
     # output file
     json  dest  "help" "dest.xml",
 )
 
-struct HELPFUL(
-    int    d2           "foo",
-    file   d3_is_a_file ""    "blargh",
+struct Helpful(
+    int    d2                            "foo",
+    file   d3_is_a_file_with_a_long_name ""    "blargh",
+    int[]  ia,
     map    m,
     bool[] a,
 )
@@ -99,6 +100,14 @@ stage SUM_SQUARES(
     volatile = false,
 )
 
+stage PARAMETER_ALIGNMENT(
+    in  float   longer_name_first,
+    in  int[]   short_name,
+    in  int     very_long_name_to_align_with,
+    in  Helpful stuff,
+    src comp    "thing subcommand args",
+)
+
 # Takes two files containing json dictionaries and merges them.
 stage MERGE_JSON(
     in  json json1,
@@ -131,19 +140,19 @@ stage MAP_EXAMPLE(
 
 # This stage takes a struct input
 stage STRUCT_CONSUMER(
-    in  POINTALISM foo,
+    in  Pointalism foo,
     in  int[]      y,
     in  float[]    xarr,
-    in  POINT      point,
+    in  Point      point,
     # x coordinate
     out float      x,
     # y coordinate
     out int[]      y,
-    out POINT      point,
+    out Point      point,
     # output file
     out json       dest   "outname.json",
-    out POINTALISM extra,
-    out POINT[]    arr,
+    out Pointalism extra,
+    out Point[]    arr,
     # The place with the source
     src comp       "stages/structy",
 )
@@ -161,7 +170,7 @@ stage MAP_PRODUCER(
 stage MAP_CONSUMER(
     in  map<STRUCT_CONSUMER> foo1,
     in  map<STRUCT_CONSUMER> foo2,
-    in  POINT[]              point_array,
+    in  Point[]              point_array,
     in  map<int[]>           map_of_array,
     in  int[][]              array_2d,
     in  map<float[]>         map_of_float_array,
@@ -177,7 +186,7 @@ stage PRODUCER_CONSUMER(
 )
 
 stage POINT_CONSUMER(
-    in  map<POINT> point,
+    in  map<Point> point,
     in  map<json>  dest,
     src comp       "whatever",
 )
@@ -226,10 +235,10 @@ pipeline AWESOME(
     in  string     value1,
     in  string     key2,
     in  string     value2,
-    in  POINTALISM struct_in,
+    in  Pointalism struct_in,
     # Pipeline arguments get comments too.
     out json[]     outfile    "The json file containing all of the keys and values."  "all_keys",
-    out HELPFUL    thing,
+    out Helpful    thing,
 )
 {
     call ADD_KEY1(
@@ -381,14 +390,53 @@ pipeline AWESOME(
         array_of_float_map = MAP_PRODUCER.array_of_map.x,
     )
 
+    map call PARAMETER_ALIGNMENT as ALIGN1(
+        longer_name_first            = split [2.3],
+        short_name                   = [1],
+        very_long_name_to_align_with = 2,
+        stuff                        = {
+            a:                             [ADD_KEY3.disable_example],
+            d2:                            1,
+            d3_is_a_file_with_a_long_name: "",
+            ia:                            [],
+            m:                             {},
+        },
+    ) using (
+        preflight = true,
+    )
+
+    call PARAMETER_ALIGNMENT as ALIGN2(
+        longer_name_first            = 4.5,
+        short_name                   = [
+            1,
+            2,
+        ],
+        very_long_name_to_align_with = 2,
+        stuff                        = {
+            a:                             [],
+            d2:                            1,
+            d3_is_a_file_with_a_long_name: "",
+            ia: [
+                1,
+                2,
+            ],
+            m: {
+                "x": 1,
+            },
+        },
+    ) using (
+        local = true,
+    )
+
     return (
         outfile = MERGE_JSON.result,
         # Package the outputs into a struct.
         thing   = {
-            a:            [true],
-            d2:           1,
-            d3_is_a_file: "foo.bar",
-            m:            {},
+            a:                             [true],
+            d2:                            1,
+            d3_is_a_file_with_a_long_name: "foo.bar",
+            ia:                            [1],
+            m:                             {},
         },
     )
 
