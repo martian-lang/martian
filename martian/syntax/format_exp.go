@@ -111,6 +111,9 @@ func (e *SplitExp) GoString() string {
 	if e == nil || e.Value == nil {
 		return KindNull
 	}
+	if e.Call != nil {
+		return (KindSplit + "(") + e.Call.GoString() + ") " + e.Value.GoString()
+	}
 	return (KindSplit + " ") + e.Value.GoString()
 }
 

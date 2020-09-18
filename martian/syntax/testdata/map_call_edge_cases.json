@@ -1,0 +1,619 @@
+{
+  "fqid": "TOP",
+  "inputs": {
+    "inputs": {
+      "expression": {
+        "thing1": "blah",
+        "thing2": 2,
+        "thing3": 3,
+        "thing4": 4
+      },
+      "type": "Inputs1Plus"
+    }
+  },
+  "outputs": {
+    "expression": {
+      "outputs": {
+        "intermediate1": {
+          "foo": {
+            "outs": [
+              {
+                "blah": [
+                  {
+                    "__reference__": "TOP.PIPELINE3.MAP_MAP.PIPELINE1.STUFF1.blah",
+                    "fork": {
+                      "MAP_MAP": "foo",
+                      "PIPELINE1": 0
+                    }
+                  },
+                  "A thing"
+                ],
+                "thing": 3
+              }
+            ]
+          }
+        },
+        "intermediate2": [
+          {
+            "outs": [
+              {
+                "blah": [
+                  {
+                    "__reference__": "TOP.PIPELINE3.ARRAY_MAP.PIPELINE1.STUFF1.blah",
+                    "fork": {
+                      "ARRAY_MAP": 0,
+                      "PIPELINE1": 0
+                    }
+                  },
+                  "A thing"
+                ],
+                "thing": 3
+              }
+            ]
+          }
+        ],
+        "output": {
+          "__reference__": "TOP.PIPELINE3.STUFF2"
+        }
+      }
+    },
+    "type": "TOP"
+  },
+  "children": [
+    {
+      "fqid": "TOP._STRUCTIFY",
+      "inputs": {
+        "inputs1": {
+          "expression": {
+            "foo": {
+              "inputs": [
+                {
+                  "thing1": "blah",
+                  "thing2": 2,
+                  "thing3": 3,
+                  "thing4": 4
+                }
+              ],
+              "thing": false
+            }
+          },
+          "type": "map<Inputs2Plus>"
+        },
+        "inputs2": {
+          "expression": [
+            {
+              "inputs": [
+                {
+                  "thing1": "blah",
+                  "thing2": 2,
+                  "thing3": 3,
+                  "thing4": 4
+                }
+              ],
+              "thing": false
+            }
+          ],
+          "type": "Inputs2Plus[]"
+        }
+      },
+      "outputs": {
+        "expression": {
+          "inputs1": {
+            "foo": {
+              "inputs": [
+                {
+                  "thing1": "blah",
+                  "thing2": 2,
+                  "thing3": 3,
+                  "thing4": 4
+                }
+              ],
+              "thing": false
+            }
+          },
+          "inputs2": [
+            {
+              "inputs": [
+                {
+                  "thing1": "blah",
+                  "thing2": 2,
+                  "thing3": 3,
+                  "thing4": 4
+                }
+              ],
+              "thing": false
+            }
+          ]
+        },
+        "type": "_STRUCTIFY"
+      },
+      "children": null
+    },
+    {
+      "fqid": "TOP.PIPELINE3",
+      "inputs": {
+        "blah": {
+          "expression": "A thing",
+          "type": "string"
+        },
+        "inputs1": {
+          "expression": {
+            "foo": {
+              "inputs": [
+                {
+                  "thing1": "blah",
+                  "thing2": 2,
+                  "thing3": 3,
+                  "thing4": 4
+                }
+              ],
+              "thing": false
+            }
+          },
+          "type": "map<Inputs2>"
+        },
+        "inputs2": {
+          "expression": [
+            {
+              "inputs": [
+                {
+                  "thing1": "blah",
+                  "thing2": 2,
+                  "thing3": 3,
+                  "thing4": 4
+                }
+              ],
+              "thing": false
+            }
+          ],
+          "type": "Inputs2[]"
+        }
+      },
+      "outputs": {
+        "expression": {
+          "intermediate1": {
+            "foo": {
+              "outs": [
+                {
+                  "blah": [
+                    {
+                      "__reference__": "TOP.PIPELINE3.MAP_MAP.PIPELINE1.STUFF1.blah",
+                      "fork": {
+                        "MAP_MAP": "foo",
+                        "PIPELINE1": 0
+                      }
+                    },
+                    "A thing"
+                  ],
+                  "thing": 3
+                }
+              ]
+            }
+          },
+          "intermediate2": [
+            {
+              "outs": [
+                {
+                  "blah": [
+                    {
+                      "__reference__": "TOP.PIPELINE3.ARRAY_MAP.PIPELINE1.STUFF1.blah",
+                      "fork": {
+                        "ARRAY_MAP": 0,
+                        "PIPELINE1": 0
+                      }
+                    },
+                    "A thing"
+                  ],
+                  "thing": 3
+                }
+              ]
+            }
+          ],
+          "output": {
+            "__reference__": "TOP.PIPELINE3.STUFF2"
+          }
+        },
+        "type": "PIPELINE3"
+      },
+      "children": [
+        {
+          "fqid": "TOP.PIPELINE3.MAP_MAP",
+          "inputs": {
+            "blah": {
+              "expression": "A thing",
+              "type": "string"
+            },
+            "inputs": {
+              "expression": {
+                "call": "MAP_MAP",
+                "mode": "map",
+                "split": {
+                  "foo": {
+                    "inputs": [
+                      {
+                        "thing1": "blah",
+                        "thing2": 2,
+                        "thing3": 3,
+                        "thing4": 4
+                      }
+                    ],
+                    "thing": false
+                  }
+                }
+              },
+              "type": "Inputs2"
+            }
+          },
+          "outputs": {
+            "expression": {
+              "foo": {
+                "ignored": "A thing",
+                "outs": [
+                  {
+                    "blah": [
+                      {
+                        "__reference__": "TOP.PIPELINE3.MAP_MAP.PIPELINE1.STUFF1.blah",
+                        "fork": {
+                          "MAP_MAP": "foo",
+                          "PIPELINE1": 0
+                        }
+                      },
+                      "A thing"
+                    ],
+                    "thing": 3
+                  }
+                ]
+              }
+            },
+            "type": "map<PIPELINE2>"
+          },
+          "children": [
+            {
+              "fqid": "TOP.PIPELINE3.MAP_MAP.PIPELINE1",
+              "inputs": {
+                "blah": {
+                  "expression": "A thing",
+                  "type": "string"
+                },
+                "inputs": {
+                  "expression": {
+                    "call": "PIPELINE1",
+                    "mode": "array",
+                    "split": {
+                      "call": "MAP_MAP",
+                      "mode": "map",
+                      "split": {
+                        "foo": [
+                          {
+                            "thing1": "blah",
+                            "thing2": 2,
+                            "thing3": 3,
+                            "thing4": 4
+                          }
+                        ]
+                      }
+                    }
+                  },
+                  "type": "Inputs1"
+                }
+              },
+              "outputs": {
+                "expression": {
+                  "foo": [
+                    {
+                      "blah": [
+                        {
+                          "__reference__": "TOP.PIPELINE3.MAP_MAP.PIPELINE1.STUFF1.blah",
+                          "fork": {
+                            "MAP_MAP": "foo",
+                            "PIPELINE1": 0
+                          }
+                        },
+                        "A thing"
+                      ],
+                      "thing": 3
+                    }
+                  ]
+                },
+                "type": "map<PIPELINE1[]>"
+              },
+              "children": [
+                {
+                  "fqid": "TOP.PIPELINE3.MAP_MAP.PIPELINE1.STUFF1",
+                  "inputs": {
+                    "thing1": {
+                      "expression": {
+                        "call": "PIPELINE1",
+                        "mode": "array",
+                        "split": {
+                          "call": "MAP_MAP",
+                          "mode": "map",
+                          "split": {
+                            "foo": [
+                              "blah"
+                            ]
+                          }
+                        },
+                        "source": [
+                          "blah"
+                        ]
+                      },
+                      "type": "string"
+                    },
+                    "thing2": {
+                      "expression": {
+                        "call": "PIPELINE1",
+                        "mode": "array",
+                        "split": {
+                          "call": "MAP_MAP",
+                          "mode": "map",
+                          "split": {
+                            "foo": [
+                              2
+                            ]
+                          }
+                        },
+                        "source": [
+                          2
+                        ]
+                      },
+                      "type": "int"
+                    },
+                    "thingy": {
+                      "expression": {
+                        "call": "PIPELINE1",
+                        "mode": "array",
+                        "split": {
+                          "call": "MAP_MAP",
+                          "mode": "map",
+                          "split": {
+                            "foo": [
+                              "blah"
+                            ]
+                          }
+                        },
+                        "source": [
+                          "blah"
+                        ]
+                      },
+                      "type": "string"
+                    }
+                  },
+                  "outputs": {
+                    "expression": {
+                      "__reference__": "TOP.PIPELINE3.MAP_MAP.PIPELINE1.STUFF1",
+                      "fork": {
+                        "MAP_MAP": "unknown",
+                        "PIPELINE1": "unknown"
+                      }
+                    },
+                    "type": "STUFF1"
+                  },
+                  "fork_roots": [
+                    "TOP.PIPELINE3.MAP_MAP",
+                    "TOP.PIPELINE3.MAP_MAP.PIPELINE1"
+                  ]
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "fqid": "TOP.PIPELINE3.ARRAY_MAP",
+          "inputs": {
+            "blah": {
+              "expression": "A thing",
+              "type": "string"
+            },
+            "inputs": {
+              "expression": {
+                "call": "ARRAY_MAP",
+                "mode": "array",
+                "split": [
+                  {
+                    "inputs": [
+                      {
+                        "thing1": "blah",
+                        "thing2": 2,
+                        "thing3": 3,
+                        "thing4": 4
+                      }
+                    ],
+                    "thing": false
+                  }
+                ]
+              },
+              "type": "Inputs2"
+            }
+          },
+          "outputs": {
+            "expression": [
+              {
+                "ignored": "A thing",
+                "outs": [
+                  {
+                    "blah": [
+                      {
+                        "__reference__": "TOP.PIPELINE3.ARRAY_MAP.PIPELINE1.STUFF1.blah",
+                        "fork": {
+                          "ARRAY_MAP": 0,
+                          "PIPELINE1": 0
+                        }
+                      },
+                      "A thing"
+                    ],
+                    "thing": 3
+                  }
+                ]
+              }
+            ],
+            "type": "PIPELINE2[]"
+          },
+          "children": [
+            {
+              "fqid": "TOP.PIPELINE3.ARRAY_MAP.PIPELINE1",
+              "inputs": {
+                "blah": {
+                  "expression": "A thing",
+                  "type": "string"
+                },
+                "inputs": {
+                  "expression": {
+                    "call": "PIPELINE1",
+                    "mode": "array",
+                    "split": {
+                      "call": "ARRAY_MAP",
+                      "mode": "array",
+                      "split": [
+                        [
+                          {
+                            "thing1": "blah",
+                            "thing2": 2,
+                            "thing3": 3,
+                            "thing4": 4
+                          }
+                        ]
+                      ]
+                    }
+                  },
+                  "type": "Inputs1"
+                }
+              },
+              "outputs": {
+                "expression": [
+                  [
+                    {
+                      "blah": [
+                        {
+                          "__reference__": "TOP.PIPELINE3.ARRAY_MAP.PIPELINE1.STUFF1.blah",
+                          "fork": {
+                            "ARRAY_MAP": 0,
+                            "PIPELINE1": 0
+                          }
+                        },
+                        "A thing"
+                      ],
+                      "thing": 3
+                    }
+                  ]
+                ],
+                "type": "PIPELINE1[][]"
+              },
+              "children": [
+                {
+                  "fqid": "TOP.PIPELINE3.ARRAY_MAP.PIPELINE1.STUFF1",
+                  "inputs": {
+                    "thing1": {
+                      "expression": {
+                        "call": "PIPELINE1",
+                        "mode": "array",
+                        "split": {
+                          "call": "ARRAY_MAP",
+                          "mode": "array",
+                          "split": [
+                            [
+                              "blah"
+                            ]
+                          ]
+                        },
+                        "source": [
+                          "blah"
+                        ]
+                      },
+                      "type": "string"
+                    },
+                    "thing2": {
+                      "expression": {
+                        "call": "PIPELINE1",
+                        "mode": "array",
+                        "split": {
+                          "call": "ARRAY_MAP",
+                          "mode": "array",
+                          "split": [
+                            [
+                              2
+                            ]
+                          ]
+                        },
+                        "source": [
+                          2
+                        ]
+                      },
+                      "type": "int"
+                    },
+                    "thingy": {
+                      "expression": {
+                        "call": "PIPELINE1",
+                        "mode": "array",
+                        "split": {
+                          "call": "ARRAY_MAP",
+                          "mode": "array",
+                          "split": [
+                            [
+                              "blah"
+                            ]
+                          ]
+                        },
+                        "source": [
+                          "blah"
+                        ]
+                      },
+                      "type": "string"
+                    }
+                  },
+                  "outputs": {
+                    "expression": {
+                      "__reference__": "TOP.PIPELINE3.ARRAY_MAP.PIPELINE1.STUFF1",
+                      "fork": {
+                        "ARRAY_MAP": "unknown",
+                        "PIPELINE1": "unknown"
+                      }
+                    },
+                    "type": "STUFF1"
+                  },
+                  "fork_roots": [
+                    "TOP.PIPELINE3.ARRAY_MAP",
+                    "TOP.PIPELINE3.ARRAY_MAP.PIPELINE1"
+                  ]
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "fqid": "TOP.PIPELINE3.STUFF2",
+          "inputs": {
+            "inputs": {
+              "expression": {
+                "foo": {
+                  "outs": [
+                    {
+                      "blah": [
+                        {
+                          "__reference__": "TOP.PIPELINE3.MAP_MAP.PIPELINE1.STUFF1.blah",
+                          "fork": {
+                            "MAP_MAP": "foo",
+                            "PIPELINE1": 0
+                          }
+                        },
+                        "A thing"
+                      ],
+                      "thing": 3
+                    }
+                  ]
+                }
+              },
+              "type": "map<Inputs4>"
+            }
+          },
+          "outputs": {
+            "expression": {
+              "__reference__": "TOP.PIPELINE3.STUFF2"
+            },
+            "type": "STUFF2"
+          }
+        }
+      ]
+    }
+  ]
+}

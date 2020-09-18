@@ -572,6 +572,36 @@ func TestSerializeMapCallGraph(t *testing.T) {
 	}
 }
 
+func TestSerializeMapCallGraph2(t *testing.T) {
+	src, err := ioutil.ReadFile("testdata/map_call_edge_cases.mro")
+	if err != nil {
+		t.Fatal(err)
+	}
+	_, _, ast, err := ParseSourceBytes(src, "testdata/map_call_edge_cases.mro", nil, false)
+	if err != nil {
+		t.Fatal(err)
+	}
+	graph, err := ast.MakeCallGraph("", ast.Call)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var dest strings.Builder
+	enc := json.NewEncoder(&dest)
+	enc.SetEscapeHTML(false)
+	enc.SetIndent("", "  ")
+	if err := enc.Encode(graph); err != nil {
+		t.Fatal(err)
+	}
+	expectB, err := ioutil.ReadFile("testdata/map_call_edge_cases.json")
+	if err != nil {
+		t.Fatal(err)
+	}
+	expect := string(expectB)
+	if s := dest.String(); expect != s {
+		diffLines(expect, s, t)
+	}
+}
+
 func TestSerializeDisableCallGraph(t *testing.T) {
 	src, err := ioutil.ReadFile("testdata/disable_pipeline.mro")
 	if err != nil {

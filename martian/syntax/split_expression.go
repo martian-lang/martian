@@ -425,25 +425,13 @@ func (s *SplitExp) BindingPath(bindPath string,
 		i = unknownIndex{src: s.Source}
 		fork[s.Call] = i
 	} else if i.IndexSource() == nil {
-		done, v, err := getElement(s.Value, i)
+		done, v, err := getElement(s.Value, i, false)
 		if done {
 			if err != nil {
 				return s, s.wrapError(err)
 			}
 			v, err := v.BindingPath(bindPath, fork, lookup)
 			return v, s.wrapError(err)
-			// } else if m, ok := v.(*MergeExp); ok {
-			// 	if m.GetCall() != s.Call {
-			// 		oldFork, oldForkOk := fork[m.GetCall()]
-			// 		fork[m.GetCall()] = i
-			// 		if oldForkOk {
-			// 			defer func() { fork[m.GetCall()] = oldFork }()
-			// 		} else {
-			// 			defer delete(fork, m.GetCall())
-			// 		}
-			// 	}
-			// 	v, err := m.Value.BindingPath(bindPath, fork, lookup)
-			// 	return v, s.wrapError(m.wrapError(err))
 		}
 	}
 	src := s.Source
@@ -490,7 +478,7 @@ func (s *SplitExp) BindingPath(bindPath string,
 		}
 	}
 	if ok && i.IndexSource() == nil {
-		done, v, err := getElement(v, i)
+		done, v, err := getElement(v, i, true)
 		if done {
 			if err != nil {
 				return s, s.wrapError(err)
@@ -515,7 +503,7 @@ func (s *SplitExp) BindingPath(bindPath string,
 	return &e, nil
 }
 
-func getElement(v Exp, i CollectionIndex) (bool, Exp, error) {
+func getElement(v Exp, i CollectionIndex, decendSplit bool) (bool, Exp, error) {
 	switch val := v.(type) {
 	case *ArrayExp:
 		if i.Mode() != ModeArrayCall {
@@ -551,8 +539,62 @@ func getElement(v Exp, i CollectionIndex) (bool, Exp, error) {
 		} else {
 			return true, v, nil
 		}
+	case *SplitExp:
+		if decendSplit {
+			return invertSplit(val, i)
+		}
 	}
 	return false, v, nil
+}
+
+func invertSplit(sp *SplitExp, i CollectionIndex) (bool, Exp, error) {
+	if !sp.Source.KnownLength() {
+		return false, sp, nil
+	}
+	var errs ErrorList
+	switch v := sp.Value.(type) {
+	case *ArrayExp:
+		arr := *v
+		arr.Value = make([]Exp, len(v.Value))
+		done := true
+		change := false
+		for j, vv := range v.Value {
+			d, e, err := getElement(vv, i, true)
+			if err != nil {
+				errs = append(errs, err)
+			}
+			done = done && d
+			arr.Value[j] = e
+			change = change || (e != vv)
+		}
+		if !change {
+			return done, sp, errs.If()
+		}
+		r := *sp
+		r.Value = &arr
+		return done, &r, errs.If()
+	case *MapExp:
+		m := *v
+		m.Value = make(map[string]Exp, len(v.Value))
+		done := true
+		change := false
+		for k, vv := range v.Value {
+			d, e, err := getElement(vv, i, true)
+			if err != nil {
+				errs = append(errs, err)
+			}
+			done = done && d
+			m.Value[k] = e
+			change = change || (e != vv)
+		}
+		if !change {
+			return done, sp, errs.If()
+		}
+		r := *sp
+		r.Value = &m
+		return done, &r, errs.If()
+	}
+	return false, sp, nil
 }
 
 func (s *SplitExp) filter(t Type, lookup *TypeLookup) (Exp, error) {

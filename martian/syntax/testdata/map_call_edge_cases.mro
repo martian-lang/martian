@@ -1,0 +1,172 @@
+struct Inputs1(
+    string thing1,
+    int    thing2,
+    int    thing3,
+)
+
+struct Inputs1Plus(
+    string thing1,
+    int    thing2,
+    int    thing3,
+    int    thing4,
+)
+
+struct Inputs2(
+    bool      thing,
+    Inputs1[] inputs,
+)
+
+struct Inputs2Plus(
+    bool          thing,
+    Inputs1Plus[] inputs,
+)
+
+struct Inputs3(
+    string[] blah,
+    int      thing,
+)
+
+struct Inputs4(
+    Inputs3[] outs,
+)
+
+stage STUFF1(
+    in  string thingy,
+    in  string thing1,
+    in  int    thing2,
+    out string blah,
+    src comp   "whatever",
+)
+
+stage STUFF2(
+    in  map<Inputs4> inputs,
+    out string       blah,
+    src comp         "whatever",
+)
+
+pipeline PIPELINE1(
+    in  Inputs1  inputs,
+    in  string   blah,
+    out string[] blah,
+    out int      thing,
+)
+{
+    call STUFF1(
+        thingy = self.inputs.thing1,
+        *      = self.inputs,
+    )
+
+    return (
+        blah  = [
+            STUFF1.blah,
+            self.blah,
+        ],
+        thing = self.inputs.thing3,
+    )
+}
+
+pipeline PIPELINE2(
+    in  Inputs2   inputs,
+    in  string    blah,
+    out Inputs3[] outs,
+    out string    ignored,
+)
+{
+    map call PIPELINE1(
+        inputs = split self.inputs.inputs,
+        blah   = self.blah,
+    ) using (
+        disabled = self.inputs.thing,
+    )
+
+    return (
+        outs    = PIPELINE1,
+        ignored = self.blah,
+    )
+}
+
+pipeline PIPELINE3(
+    in  map<Inputs2> inputs1,
+    in  Inputs2[]    inputs2,
+    in  string       blah,
+    out STUFF2       output,
+    out map<Inputs4> intermediate1,
+    out Inputs4[]    intermediate2,
+)
+{
+    map call PIPELINE2 as MAP_MAP(
+        inputs = split self.inputs1,
+        blah   = self.blah,
+    )
+
+    map call PIPELINE2 as ARRAY_MAP(
+        inputs = split self.inputs2,
+        blah   = self.blah,
+    )
+
+    call STUFF2(
+        inputs = MAP_MAP,
+    )
+
+    return (
+        output        = STUFF2,
+        intermediate1 = MAP_MAP,
+        intermediate2 = ARRAY_MAP,
+    )
+}
+
+pipeline _STRUCTIFY(
+    in  map<Inputs2Plus> inputs1,
+    in  Inputs2Plus[]    inputs2,
+    out map<Inputs2Plus> inputs1,
+    out Inputs2Plus[]    inputs2,
+)
+{
+    return (
+        inputs1 = self.inputs1,
+        inputs2 = self.inputs2,
+    )
+}
+
+pipeline TOP(
+    in  Inputs1Plus inputs,
+    out PIPELINE3   outputs,
+)
+{
+    call _STRUCTIFY(
+        inputs1 = {
+            "foo": {
+                inputs: [self.inputs],
+                thing:  false,
+            },
+        },
+        inputs2 = [
+            {
+                inputs: [self.inputs],
+                thing:  false,
+            },
+        ],
+    )
+
+    call PIPELINE3(
+        blah = "A thing",
+        *    = _STRUCTIFY,
+    )
+
+    return (
+        outputs = PIPELINE3,
+    )
+}
+
+#
+# @include "vdj_micro.mro"
+#
+
+call TOP(
+    inputs = {
+        thing1: "blah",
+        thing2: 2,
+        thing3: 3,
+        thing4: 4,
+    },
+)
