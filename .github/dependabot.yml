@@ -6,6 +6,12 @@ updates:
     interval: daily
   open-pull-requests-limit: 5
   versioning-strategy: increase-if-necessary
+- package-ecosystem: npm
+  directory: "/tools/syntax/vscode"
+  schedule:
+    interval: daily
+  open-pull-requests-limit: 5
+  versioning-strategy: increase-if-necessary
 - package-ecosystem: gomod
   directory: "/"
   schedule:
