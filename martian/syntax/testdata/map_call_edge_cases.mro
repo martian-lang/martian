@@ -170,10 +170,6 @@ pipeline TOP(
     )
 }
 
-#
-# @include "vdj_micro.mro"
-#
-
 call TOP(
     inputs = {
         thing1: "blah",
