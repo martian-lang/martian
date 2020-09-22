@@ -17,11 +17,12 @@ improving support are of course welcome other editors.
 [grammar definition]: syntax/sublimetext/Martianlang.YAML-tmLanguage
 
 Setting up your editor to use the syntax highlighting files of course varies
-between editors.  For Visual Studio Code, put a symlink from
+between editors.  For Visual Studio Code, build the extension with
+`make vscode` in the root, and put a symlink from
 `~/.vscode/extensions/martian-<version>`
 (or `~/.vscode-server/extensions/martian-<version>` for remote mode) to the
-`tools/syntax/vscode` of the repository.  For vim, add `syntax/vim/martian.vim`
-to `~/.vim/syntax` and `~/.vim/ftdetect`.
+`tools/syntax/vscode` of the repository, or use the `vsce` tool to package it.
+For vim, add `syntax/vim/martian.vim` to `~/.vim/syntax` and `~/.vim/ftdetect`.
 
 ## Bazel rules
 

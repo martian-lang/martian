@@ -20,12 +20,12 @@ unexport GOPATH
 export GO111MODULE=on
 export GOBIN=$(PWD)/bin
 
-.PHONY: $(GOBINS) grammar web $(GOTESTS) coverage.out govet all-bins $(GOBIN)/sum_squares longtests mrs integration_prereqs $(GOBIN_LINKS)
+.PHONY: $(GOBINS) grammar web $(GOTESTS) coverage.out govet all-bins $(GOBIN)/sum_squares longtests mrs integration_prereqs $(GOBIN_LINKS) vscode vscode-test
 
 #
 # Targets for development builds.
 #
-all: grammar all-bins web test mrs $(GOBIN_LINKS)
+all: grammar all-bins web test mrs $(GOBIN_LINKS) vscode
 
 $(GOBIN_LINKS): mro
 	ln -sf mro $(GOBIN)/$@
@@ -62,6 +62,12 @@ endif
 
 web:
 	(cd web/martian && npm $(NPM_CMD) && npm run-script build)
+
+vscode:
+	(cd tools/syntax/vscode && npm $(NPM_CMD) && npm run-script compile)
+
+vscode-test: vscode
+	(cd tools/syntax/vscode && npm run-script check-lint)
 
 $(GOLIBTESTS): test-%:
 	go test -v ./martian/$*
@@ -102,7 +108,7 @@ cover: coverage.html
 govet: martian/syntax/grammar.go | martian/test/sum_squares/types.go
 	go vet ./martian/... ./cmd/...
 
-test: test-all govet $(GOBIN)/sum_squares
+test: test-all govet $(GOBIN)/sum_squares vscode-test
 
 integration_prereqs: mrp mrjob $(ADAPTERS) test/martian_test.py $(JOBMANAGERS)
 
@@ -181,3 +187,4 @@ clean:
 	rm -rf $(GOBIN)
 	rm -rf $(dir $(GOBIN))pkg
 	rm -rf web/martian/node_modules
+	make -C tools/syntax/vscode clean

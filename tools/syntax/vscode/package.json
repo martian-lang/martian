@@ -3,11 +3,22 @@
     "displayName": "Martian MRO language",
     "description": "Supports syntax highlighting and indenting for Martian (https://martian-lang.org) .mro files.",
     "version": "0.0.1",
+    "publisher": "MartianLang",
+    "license": "MIT",
     "engines": {
         "vscode": "^1.36.0"
     },
+    "repository": {
+        "type": "git",
+        "url": "https://github.com/martian-lang/martian.git",
+        "directory": "tools/syntax/vscode"
+    },
     "categories": [
         "Programming Languages"
+    ],
+    "main": "./out/src/extension",
+    "activationEvents": [
+        "onLanguage:mro"
     ],
     "contributes": {
         "languages": [
@@ -33,6 +44,39 @@
                 "scopeName": "source.martianlang",
                 "path": "./syntaxes/Martianlang.tmLanguage.json"
             }
-        ]
+        ],
+        "configuration": {
+            "type": "object",
+            "title": "Martian",
+            "properties": {
+                "martian-lang.mroExecutable": {
+                    "type": "string",
+                    "default": "",
+                    "description": "The name of the mro executable. This may be an absolute path, or a simple name that will be searched for on the system path. If empty, \"mro\" on the system path will be used."
+                },
+                "martian-lang.mroFormatImports": {
+                    "type": "boolean",
+                    "default": false,
+                    "description": "Whether to use --imports with \"mro format\"."
+                },
+                "martian-lang.mropath": {
+                    "type": "string",
+                    "default": "",
+                    "description": "The MROPATH to use for formatting and error checking."
+                }
+            }
+        }
+    },
+    "scripts": {
+        "check-lint": "tslint -t stylish 'src/*.ts' --exclude 'src/*.d.ts'",
+        "compile": "make",
+        "vscode:prepublish": "make"
+    },
+    "devDependencies": {
+        "@types/node": "^6.14.9",
+        "@types/vscode": "^1.30.0",
+        "js-yaml": "^3.14.0",
+        "tslint": "^5.20.1",
+        "typescript": "^3.7.2"
     }
 }

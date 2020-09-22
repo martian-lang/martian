@@ -1,4 +1,11 @@
 .vscode/**
 .vscode-test/**
 .gitignore
+node-modules/**
 vsc-extension-quickstart.md
+src/**
+syntaxes/Martianlang.YAML-tmLanguage
+Makefile
+tslint.json
+tsconfig.json
+out/**/*.map

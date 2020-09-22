@@ -33,26 +33,35 @@ func Main(argv []string) {
 	doc := `Martian Formatter.
 
 Usage:
-    mrf [--rewrite] [--includes] <file.mro>...
+    mrf [--rewrite | --stdin] [--includes] <file.mro>...
     mrf --all [--includes]
     mrf -h | --help | --version
 
 Options:
     --rewrite     Rewrite the specified file(s) in place.
+    --stdin       Read the input from stdin. Use the specified filename for
+                  for error messages [default: stdin]
     --includes    Add and remove includes as appropriate.
     --all         Rewrite all files in MROPATH.
     -h --help     Show this message.
     --version     Show version.`
 	martianVersion := util.GetVersion()
-	opts, _ := docopt.Parse(doc, argv, true, martianVersion, false)
+	opts, err := docopt.Parse(doc, argv, true, martianVersion, false)
+	if err != nil {
+		fmt.Fprintln(os.Stderr, err.Error())
+		os.Exit(1)
+	}
 
 	// Martian environment variables.
-	cwd, _ := os.Getwd()
+	cwd, err := os.Getwd()
+	if err != nil {
+		fmt.Fprintln(os.Stderr, err.Error())
+		os.Exit(1)
+	}
 	mroPaths := util.ParseMroPath(cwd)
 	if value := os.Getenv("MROPATH"); len(value) > 0 {
 		mroPaths = util.ParseMroPath(value)
 	}
-
 	fixIncludes := opts["--includes"].(bool)
 	if opts["--all"].(bool) {
 		// Format all MRO files in MRO path.
@@ -86,6 +95,24 @@ Options:
 			}
 		}
 		fmt.Printf("Successfully reformatted %d files.\n", len(fileNames))
+	} else if opts["--stdin"].(bool) {
+		fn := "stdin.mro"
+		if fnames := opts["<file.mro>"].([]string); len(fnames) == 1 && fnames[0] != "" {
+			fn = fnames[0]
+		}
+		b, err := ioutil.ReadAll(os.Stdin)
+		if err != nil {
+			fmt.Fprintln(os.Stderr, err.Error())
+			os.Exit(1)
+		}
+		fsrc, err := syntax.FormatSrcBytes(b, fn, fixIncludes, mroPaths)
+		if err != nil {
+			fmt.Fprintln(os.Stderr)
+			fmt.Fprintln(os.Stderr, err.Error())
+			fmt.Fprintln(os.Stderr)
+			os.Exit(1)
+		}
+		fmt.Print(fsrc)
 	} else {
 		// Format just the specified MRO files.
 		for _, fname := range opts["<file.mro>"].([]string) {

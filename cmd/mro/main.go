@@ -60,7 +60,7 @@ func main() {
 			delegateMain(append([]string{os.Args[2], "--help"}, os.Args[3:]...))
 			os.Exit(0)
 		}
-	case "version":
+	case "version", "--version":
 		fmt.Println(util.GetVersion())
 		os.Exit(0)
 	}
