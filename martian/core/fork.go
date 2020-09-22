@@ -3,7 +3,6 @@ package core
 import (
 	"bytes"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"net/url"
 	"reflect"
@@ -1178,9 +1177,14 @@ func writePaddedIndex(buf *strings.Builder, forkDim, forkIndex int) error {
 }
 
 func getUnknownLength(v json.Marshaler) (int, error) {
+	if v == nil {
+		return 0, nil
+	}
 	switch v := v.(type) {
 	case *syntax.ArrayExp:
 		return len(v.Value), nil
+	case *syntax.NullExp:
+		return 0, nil
 	case marshallerArray:
 		return len(v), nil
 	case json.RawMessage:
@@ -1203,6 +1207,9 @@ func getUnknownLength(v json.Marshaler) (int, error) {
 }
 
 func getUnknownKeys(v json.Marshaler) (mapKeyRange, error) {
+	if v == nil {
+		return nil, nil
+	}
 	switch v := v.(type) {
 	case *syntax.MapExp:
 		if len(v.Value) == 0 {
@@ -1213,6 +1220,8 @@ func getUnknownKeys(v json.Marshaler) (mapKeyRange, error) {
 			keys = append(keys, k)
 		}
 		return keys, nil
+	case *syntax.NullExp:
+		return nil, nil
 	case MarshalerMap:
 		if len(v) == 0 {
 			return nil, nil
@@ -1282,50 +1291,39 @@ func (self *Fork) getUnmatchedForkParts(bNode *Node) []*ForkSourcePart {
 	return nil
 }
 
-func (self *Fork) getForkRef(split *syntax.SplitExp) *syntax.RefExp {
-	exp, err := split.BindingPath("", self.forkId.SourceIndexMap(),
-		self.node.top.types)
+func (self *Fork) getDisabledSource(exp *syntax.DisabledExp) (syntax.Exp, error) {
+	// If the source was disabled, we've got a null fork.
+	ready, result, err := self.node.top.resolve(exp.Disabled,
+		self.node.top.types.Get(syntax.TypeId{Tname: syntax.KindBool}),
+		self.forkId, 1024*1024)
 	if err != nil {
-		panic("resolve ref for " + split.GoString() + ": " + err.Error())
+		return nil, err
 	}
-	if s, ok := exp.(*syntax.SplitExp); ok && s.Call == split.Call {
-		exp = s.Value
+	if !ready {
+		panic("disabled binding " + exp.Disabled.GoString() + " was not ready")
 	}
-	if m, ok := exp.(*syntax.MergeExp); ok {
-		src := m.MergeOver
-		for im, ok := src.(*syntax.MergeExp); ok; im, ok = src.(*syntax.MergeExp) {
-			src = im.MergeOver
-		}
-		switch ms := src.(type) {
-		case *syntax.RefExp:
-			return ms
-		case syntax.Exp:
-			exp = ms
-		case *syntax.BoundReference:
-			return ms.Exp
-		case *syntax.MapCallSet:
-			switch ms := ms.Master.(type) {
-			case *syntax.BoundReference:
-				return ms.Exp
-			case *syntax.RefExp:
-				return ms
-			}
-		}
+	if result == nil {
+		return nil, nil
 	}
-	switch r := exp.(type) {
-	case *syntax.RefExp:
-		return r
-	case *syntax.MergeExp:
-		if r.ForkNode == nil {
-			panic("invalid unresolved " + exp.GoString() + " for " +
-				split.GoString() + " (computing forks for " +
-				self.fqname + ")")
+	switch result := result.(type) {
+	case *syntax.BoolExp:
+		if result.Value {
+			return nil, nil
 		}
-		return r.ForkNode
+		return exp.Value, nil
+	case *syntax.NullExp:
+		return nil, nil
+	case json.RawMessage:
+		var b bool
+		if err := json.Unmarshal(result, &b); err != nil {
+			return nil, err
+		}
+		if b {
+			return nil, nil
+		}
+		return exp.Value, nil
 	default:
-		panic("invalid source " + exp.GoString() + " for undetermined " +
-			split.GoString() + " (computing forks for " +
-			self.fqname + ")")
+		panic(fmt.Sprintf("invalid type %T for disabled binding", result))
 	}
 }
 
@@ -1336,7 +1334,165 @@ func (self *Fork) expandForkPart(i int, part *ForkSourcePart,
 			return nil, nil
 		}
 	}
-	ref := self.getForkRef(split)
+	exp, err := split.BindingPath("", self.forkId.SourceIndexMap(),
+		self.node.top.types)
+	if err != nil {
+		return nil, err
+	}
+	if sp, ok := exp.(*syntax.SplitExp); ok {
+		return self.expandForkPartFromSource(i, part, split, sp.Source, result)
+	} else {
+		return nil, nil
+	}
+}
+
+func (self *Fork) expandForkPartFromSource(i int, part *ForkSourcePart,
+	split *syntax.SplitExp,
+	src syntax.MapCallSource, result []ForkId) ([]ForkId, error) {
+	switch src := src.(type) {
+	case *syntax.MergeExp:
+		if src.ForkNode != nil {
+			return self.expandForkFromRef(i, part, split, src.ForkNode, result)
+		}
+		return self.expandForkPartFromSource(i, part, split, src.MergeOver, result)
+	case *syntax.MapCallSet:
+		return self.expandForkPartFromSource(i, part, split, src.Master, result)
+	case syntax.Exp:
+		return self.expandForkPartFromExp(i, part, split, src, result)
+	case *syntax.BoundReference:
+		return self.expandForkFromRef(i, part, split, src.Exp, result)
+	}
+	return nil, fmt.Errorf(
+		"invalid source %s for undetermined %s (computing forks for %s)",
+		src.GoString(),
+		split.GoString(),
+		self.fqname)
+}
+
+func (self *Fork) expandForkPartFromExp(i int, part *ForkSourcePart,
+	split *syntax.SplitExp, exp syntax.Exp, result []ForkId) ([]ForkId, error) {
+	if exp == nil {
+		part.Id = arrayIndexFork(0)
+		self.updateId(self.forkId)
+		self.writeDisable()
+		return nil, nil
+	}
+	switch exp := exp.(type) {
+	case *syntax.NullExp:
+		part.Id = arrayIndexFork(0)
+		self.updateId(self.forkId)
+		self.writeDisable()
+		return nil, nil
+	case *syntax.RefExp:
+		return self.expandForkFromRef(i, part, split, exp, result)
+	case *syntax.MergeExp:
+		if exp.ForkNode != nil {
+			return self.expandForkFromRef(i, part, split, exp.ForkNode, result)
+		}
+		return self.expandForkPartFromSource(i, part, split, exp.MergeOver, result)
+	case *syntax.DisabledExp:
+		if d, ok := exp.Disabled.(*syntax.SplitExp); ok && d.Call == split.Call {
+			return self.expandForkPartFromExp(i, part, split, d.Value, result)
+		}
+		ee, err := self.getDisabledSource(exp)
+		if err != nil {
+			return nil, err
+		}
+		return self.expandForkPartFromExp(i, part, split, ee, result)
+	case *syntax.ArrayExp:
+		return self.expandForkFromObj(i, part, split, exp, exp, result)
+	case *syntax.MapExp:
+		return self.expandForkFromObj(i, part, split, exp, exp, result)
+	case *syntax.SplitExp:
+		return self.expandForkPartFromSplit(i, part, split, exp, result)
+	}
+	return nil, fmt.Errorf(
+		"invalid source %s for undetermined %s (computing forks for %s)",
+		exp.GoString(),
+		split.GoString(),
+		self.fqname)
+}
+
+func (self *Fork) expandForkPartFromSplit(i int, part *ForkSourcePart,
+	split *syntax.SplitExp, exp *syntax.SplitExp,
+	result []ForkId) ([]ForkId, error) {
+	if split.Call == exp.Call {
+		return self.expandForkPartFromExp(i, part,
+			split, exp.Value,
+			result)
+	}
+	for _, id := range self.forkId {
+		if id.Split.Call == exp.Call {
+			if id.Id.IndexSource() != nil {
+				panic(exp.GoString() + " was not not resolved by " + id.GoString())
+			}
+			obj, err := self.expandForkSplitInnerPart(
+				split, exp.Value, id.Id)
+			if err != nil {
+				return nil, err
+			}
+			return self.expandForkFromObj(i, part, split, obj, exp, result)
+		}
+	}
+	panic("call " + exp.Call.GoString() +
+		" not found in " + self.forkId.GoString())
+}
+
+func (self *Fork) expandForkSplitInnerPart(
+	split *syntax.SplitExp, exp syntax.Exp,
+	index ForkIdPart) (json.Marshaler, error) {
+	switch exp := exp.(type) {
+	case *syntax.ArrayExp:
+		return getElement(exp, index)
+	case *syntax.MapExp:
+		return getElement(exp, index)
+	case *syntax.DisabledExp:
+		ee, err := self.getDisabledSource(exp)
+		if err != nil {
+			return nil, err
+		}
+		if ee == nil {
+			return nil, nil
+		}
+		return self.expandForkSplitInnerPart(
+			split, exp.Value, index)
+	case *syntax.SplitExp:
+		for _, id := range self.forkId {
+			if id.Split.Call == exp.Call {
+				if id.Id.IndexSource() != nil {
+					panic(exp.GoString() + " was not not resolved by " + id.GoString())
+				}
+				obj, err := self.expandForkSplitInnerPart(
+					split, exp.Value, id.Id)
+				if err != nil {
+					return nil, err
+				}
+				return getElement(obj, index)
+			}
+		}
+		panic("call " + exp.Call.GoString() + " not found in " + self.forkId.GoString())
+	case *syntax.RefExp:
+		ready, obj, err := self.node.top.resolveRef(exp, nil, self.forkId, 1024*1024)
+		if err != nil {
+			return nil, err
+		}
+		if !ready {
+			return nil, fmt.Errorf("%s is not ready", exp.GoString())
+		}
+		return getElement(obj, index)
+	}
+	return nil, fmt.Errorf(
+		"invalid source %s for undetermined %s (computing forks for %s)",
+		exp.GoString(),
+		split.GoString(),
+		self.fqname)
+}
+
+func (self *Fork) expandForkFromRef(i int,
+	part *ForkSourcePart,
+	split *syntax.SplitExp,
+	ref *syntax.RefExp,
+	result []ForkId) ([]ForkId, error) {
 	bNode := self.node.top.allNodes[ref.Id]
 	if bNode == nil {
 		panic("invalid reference to " + ref.Id)
@@ -1393,6 +1549,15 @@ func (self *Fork) expandForkPart(i int, part *ForkSourcePart,
 	if !ready {
 		return nil, nil
 	}
+	return self.expandForkFromObj(i, part, split, obj, ref, result)
+}
+
+func (self *Fork) expandForkFromObj(
+	i int, part *ForkSourcePart,
+	split *syntax.SplitExp,
+	obj json.Marshaler,
+	ref fmt.GoStringer,
+	result []ForkId) ([]ForkId, error) {
 	if obj == nil {
 		part.Id = arrayIndexFork(0)
 		self.updateId(self.forkId)
@@ -1525,16 +1690,6 @@ func (self *Fork) expandForkPart(i int, part *ForkSourcePart,
 }
 
 func (self *Fork) expand() ([]ForkId, error) {
-	if d, err := self.disabled(); d {
-		return nil, nil
-	} else if err != nil {
-		// If all of the fork known fork roots disable this stage, we abort,
-		// but if only some do then we still need expand forks here.
-		var forkErr *forkResolutionError
-		if !errors.As(err, &forkErr) {
-			return nil, err
-		}
-	}
 	if len(self.forkId) == 0 && len(self.node.call.ForkRoots()) > 0 {
 		if split := self.node.call.Split(); split != nil {
 			if src := split.Source; src != nil && !src.KnownLength() {

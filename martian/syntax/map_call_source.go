@@ -12,7 +12,7 @@ import (
 type CallMode int
 
 const (
-	// This call invokes the callable once
+	// This call invokes the callable once.
 	ModeSingleCall = CallMode(iota)
 	// This call invokes the callable on an array of inputs, so the
 	// result is an array of outputs.

@@ -20,7 +20,7 @@
               {
                 "blah": [
                   {
-                    "__reference__": "TOP.PIPELINE3.MAP_MAP.PIPELINE1.STUFF1.blah",
+                    "__reference__": "TOP.PIPELINE3.MAP_MAP.PIPELINE1.STUFF1.result",
                     "fork": {
                       "MAP_MAP": "foo",
                       "PIPELINE1": 0
@@ -39,7 +39,7 @@
               {
                 "blah": [
                   {
-                    "__reference__": "TOP.PIPELINE3.ARRAY_MAP.PIPELINE1.STUFF1.blah",
+                    "__reference__": "TOP.PIPELINE3.ARRAY_MAP.PIPELINE1.STUFF1.result",
                     "fork": {
                       "ARRAY_MAP": 0,
                       "PIPELINE1": 0
@@ -50,8 +50,124 @@
                 "thing": 3
               }
             ]
+          },
+          {
+            "ignored": "A thing",
+            "outs": [
+              null
+            ]
           }
         ],
+        "intermediate3": {
+          "call": "TOP.PIPELINE3.VARIABLE_ARRAY_MAP",
+          "mode": "array",
+          "merge_value": {
+            "outs": {
+              "call": "TOP.PIPELINE3.VARIABLE_ARRAY_MAP.PIPELINE1",
+              "mode": "array",
+              "merge_value": {
+                "__disabled__": {
+                  "call": "VARIABLE_ARRAY_MAP",
+                  "mode": "array",
+                  "split": {
+                    "__reference__": "TOP.PIPELINE3.GENERATE_ARRAY.result.thing"
+                  }
+                },
+                "value": {
+                  "blah": [
+                    {
+                      "__reference__": "TOP.PIPELINE3.VARIABLE_ARRAY_MAP.PIPELINE1.STUFF1.result",
+                      "fork": {
+                        "PIPELINE1": "unknown",
+                        "VARIABLE_ARRAY_MAP": "unknown"
+                      }
+                    },
+                    "A thing"
+                  ],
+                  "thing": {
+                    "call": "PIPELINE1",
+                    "mode": "array",
+                    "split": {
+                      "call": "VARIABLE_ARRAY_MAP",
+                      "mode": "array",
+                      "split": {
+                        "__reference__": "TOP.PIPELINE3.GENERATE_ARRAY.result.inputs.thing3"
+                      }
+                    }
+                  }
+                }
+              },
+              "merge_over": {
+                "call": "VARIABLE_ARRAY_MAP",
+                "mode": "array",
+                "split": {
+                  "__reference__": "TOP.PIPELINE3.GENERATE_ARRAY.result.inputs"
+                }
+              },
+              "fork_node": "TOP.PIPELINE3.VARIABLE_ARRAY_MAP.PIPELINE1.STUFF1"
+            }
+          },
+          "merge_over": {
+            "ref": "TOP.PIPELINE3.GENERATE_ARRAY.result",
+            "type": "Inputs2Plus[]"
+          },
+          "fork_node": "TOP.PIPELINE3.VARIABLE_ARRAY_MAP.PIPELINE1.STUFF1"
+        },
+        "intermediate4": {
+          "call": "TOP.PIPELINE3.VARIABLE_MAP_MAP",
+          "mode": "map",
+          "merge_value": {
+            "outs": {
+              "call": "TOP.PIPELINE3.VARIABLE_MAP_MAP.PIPELINE1",
+              "mode": "array",
+              "merge_value": {
+                "__disabled__": {
+                  "call": "VARIABLE_MAP_MAP",
+                  "mode": "map",
+                  "split": {
+                    "__reference__": "TOP.PIPELINE3.GENERATE_MAP.result.thing"
+                  }
+                },
+                "value": {
+                  "blah": [
+                    {
+                      "__reference__": "TOP.PIPELINE3.VARIABLE_MAP_MAP.PIPELINE1.STUFF1.result",
+                      "fork": {
+                        "PIPELINE1": "unknown",
+                        "VARIABLE_MAP_MAP": "unknown"
+                      }
+                    },
+                    "A thing"
+                  ],
+                  "thing": {
+                    "call": "PIPELINE1",
+                    "mode": "array",
+                    "split": {
+                      "call": "VARIABLE_MAP_MAP",
+                      "mode": "map",
+                      "split": {
+                        "__reference__": "TOP.PIPELINE3.GENERATE_MAP.result.inputs.thing3"
+                      }
+                    }
+                  }
+                }
+              },
+              "merge_over": {
+                "call": "VARIABLE_MAP_MAP",
+                "mode": "map",
+                "split": {
+                  "__reference__": "TOP.PIPELINE3.GENERATE_MAP.result.inputs"
+                }
+              },
+              "fork_node": "TOP.PIPELINE3.VARIABLE_MAP_MAP.PIPELINE1.STUFF1"
+            }
+          },
+          "merge_over": {
+            "ref": "TOP.PIPELINE3.GENERATE_MAP.result",
+            "type": "map<Inputs2Plus>"
+          },
+          "fork_node": "TOP.PIPELINE3.VARIABLE_MAP_MAP.PIPELINE1.STUFF1"
+        },
         "output": {
           "__reference__": "TOP.PIPELINE3.STUFF2"
         }
@@ -91,6 +207,17 @@
                 }
               ],
               "thing": false
+            },
+            {
+              "inputs": [
+                {
+                  "thing1": "blah",
+                  "thing2": 2,
+                  "thing3": 3,
+                  "thing4": 4
+                }
+              ],
+              "thing": true
             }
           ],
           "type": "Inputs2Plus[]"
@@ -122,6 +249,17 @@
                 }
               ],
               "thing": false
+            },
+            {
+              "inputs": [
+                {
+                  "thing1": "blah",
+                  "thing2": 2,
+                  "thing3": 3,
+                  "thing4": 4
+                }
+              ],
+              "thing": true
             }
           ]
         },
@@ -164,6 +302,17 @@
                 }
               ],
               "thing": false
+            },
+            {
+              "inputs": [
+                {
+                  "thing1": "blah",
+                  "thing2": 2,
+                  "thing3": 3,
+                  "thing4": 4
+                }
+              ],
+              "thing": true
             }
           ],
           "type": "Inputs2[]"
@@ -177,7 +326,7 @@
                 {
                   "blah": [
                     {
-                      "__reference__": "TOP.PIPELINE3.MAP_MAP.PIPELINE1.STUFF1.blah",
+                      "__reference__": "TOP.PIPELINE3.MAP_MAP.PIPELINE1.STUFF1.result",
                       "fork": {
                         "MAP_MAP": "foo",
                         "PIPELINE1": 0
@@ -196,7 +345,7 @@
                 {
                   "blah": [
                     {
-                      "__reference__": "TOP.PIPELINE3.ARRAY_MAP.PIPELINE1.STUFF1.blah",
+                      "__reference__": "TOP.PIPELINE3.ARRAY_MAP.PIPELINE1.STUFF1.result",
                       "fork": {
                         "ARRAY_MAP": 0,
                         "PIPELINE1": 0
@@ -207,8 +356,124 @@
                   "thing": 3
                 }
               ]
+            },
+            {
+              "ignored": "A thing",
+              "outs": [
+                null
+              ]
             }
           ],
+          "intermediate3": {
+            "call": "TOP.PIPELINE3.VARIABLE_ARRAY_MAP",
+            "mode": "array",
+            "merge_value": {
+              "outs": {
+                "call": "TOP.PIPELINE3.VARIABLE_ARRAY_MAP.PIPELINE1",
+                "mode": "array",
+                "merge_value": {
+                  "__disabled__": {
+                    "call": "VARIABLE_ARRAY_MAP",
+                    "mode": "array",
+                    "split": {
+                      "__reference__": "TOP.PIPELINE3.GENERATE_ARRAY.result.thing"
+                    }
+                  },
+                  "value": {
+                    "blah": [
+                      {
+                        "__reference__": "TOP.PIPELINE3.VARIABLE_ARRAY_MAP.PIPELINE1.STUFF1.result",
+                        "fork": {
+                          "PIPELINE1": "unknown",
+                          "VARIABLE_ARRAY_MAP": "unknown"
+                        }
+                      },
+                      "A thing"
+                    ],
+                    "thing": {
+                      "call": "PIPELINE1",
+                      "mode": "array",
+                      "split": {
+                        "call": "VARIABLE_ARRAY_MAP",
+                        "mode": "array",
+                        "split": {
+                          "__reference__": "TOP.PIPELINE3.GENERATE_ARRAY.result.inputs.thing3"
+                        }
+                      }
+                    }
+                  }
+                },
+                "merge_over": {
+                  "call": "VARIABLE_ARRAY_MAP",
+                  "mode": "array",
+                  "split": {
+                    "__reference__": "TOP.PIPELINE3.GENERATE_ARRAY.result.inputs"
+                  }
+                },
+                "fork_node": "TOP.PIPELINE3.VARIABLE_ARRAY_MAP.PIPELINE1.STUFF1"
+              }
+            },
+            "merge_over": {
+              "ref": "TOP.PIPELINE3.GENERATE_ARRAY.result",
+              "type": "Inputs2Plus[]"
+            },
+            "fork_node": "TOP.PIPELINE3.VARIABLE_ARRAY_MAP.PIPELINE1.STUFF1"
+          },
+          "intermediate4": {
+            "call": "TOP.PIPELINE3.VARIABLE_MAP_MAP",
+            "mode": "map",
+            "merge_value": {
+              "outs": {
+                "call": "TOP.PIPELINE3.VARIABLE_MAP_MAP.PIPELINE1",
+                "mode": "array",
+                "merge_value": {
+                  "__disabled__": {
+                    "call": "VARIABLE_MAP_MAP",
+                    "mode": "map",
+                    "split": {
+                      "__reference__": "TOP.PIPELINE3.GENERATE_MAP.result.thing"
+                    }
+                  },
+                  "value": {
+                    "blah": [
+                      {
+                        "__reference__": "TOP.PIPELINE3.VARIABLE_MAP_MAP.PIPELINE1.STUFF1.result",
+                        "fork": {
+                          "PIPELINE1": "unknown",
+                          "VARIABLE_MAP_MAP": "unknown"
+                        }
+                      },
+                      "A thing"
+                    ],
+                    "thing": {
+                      "call": "PIPELINE1",
+                      "mode": "array",
+                      "split": {
+                        "call": "VARIABLE_MAP_MAP",
+                        "mode": "map",
+                        "split": {
+                          "__reference__": "TOP.PIPELINE3.GENERATE_MAP.result.inputs.thing3"
+                        }
+                      }
+                    }
+                  }
+                },
+                "merge_over": {
+                  "call": "VARIABLE_MAP_MAP",
+                  "mode": "map",
+                  "split": {
+                    "__reference__": "TOP.PIPELINE3.GENERATE_MAP.result.inputs"
+                  }
+                },
+                "fork_node": "TOP.PIPELINE3.VARIABLE_MAP_MAP.PIPELINE1.STUFF1"
+              }
+            },
+            "merge_over": {
+              "ref": "TOP.PIPELINE3.GENERATE_MAP.result",
+              "type": "map<Inputs2Plus>"
+            },
+            "fork_node": "TOP.PIPELINE3.VARIABLE_MAP_MAP.PIPELINE1.STUFF1"
+          },
           "output": {
             "__reference__": "TOP.PIPELINE3.STUFF2"
           }
@@ -252,7 +517,7 @@
                   {
                     "blah": [
                       {
-                        "__reference__": "TOP.PIPELINE3.MAP_MAP.PIPELINE1.STUFF1.blah",
+                        "__reference__": "TOP.PIPELINE3.MAP_MAP.PIPELINE1.STUFF1.result",
                         "fork": {
                           "MAP_MAP": "foo",
                           "PIPELINE1": 0
@@ -303,7 +568,7 @@
                     {
                       "blah": [
                         {
-                          "__reference__": "TOP.PIPELINE3.MAP_MAP.PIPELINE1.STUFF1.blah",
+                          "__reference__": "TOP.PIPELINE3.MAP_MAP.PIPELINE1.STUFF1.result",
                           "fork": {
                             "MAP_MAP": "foo",
                             "PIPELINE1": 0
@@ -359,7 +624,7 @@
                       },
                       "type": "int"
                     },
-                    "thingy": {
+                    "what": {
                       "expression": {
                         "call": "PIPELINE1",
                         "mode": "array",
@@ -420,6 +685,17 @@
                       }
                     ],
                     "thing": false
+                  },
+                  {
+                    "inputs": [
+                      {
+                        "thing1": "blah",
+                        "thing2": 2,
+                        "thing3": 3,
+                        "thing4": 4
+                      }
+                    ],
+                    "thing": true
                   }
                 ]
               },
@@ -434,7 +710,7 @@
                   {
                     "blah": [
                       {
-                        "__reference__": "TOP.PIPELINE3.ARRAY_MAP.PIPELINE1.STUFF1.blah",
+                        "__reference__": "TOP.PIPELINE3.ARRAY_MAP.PIPELINE1.STUFF1.result",
                         "fork": {
                           "ARRAY_MAP": 0,
                           "PIPELINE1": 0
@@ -444,6 +720,12 @@
                     ],
                     "thing": 3
                   }
+                ]
+              },
+              {
+                "ignored": "A thing",
+                "outs": [
+                  null
                 ]
               }
             ],
@@ -472,6 +754,14 @@
                             "thing3": 3,
                             "thing4": 4
                           }
+                        ],
+                        [
+                          {
+                            "thing1": "blah",
+                            "thing2": 2,
+                            "thing3": 3,
+                            "thing4": 4
+                          }
                         ]
                       ]
                     }
@@ -485,7 +775,7 @@
                     {
                       "blah": [
                         {
-                          "__reference__": "TOP.PIPELINE3.ARRAY_MAP.PIPELINE1.STUFF1.blah",
+                          "__reference__": "TOP.PIPELINE3.ARRAY_MAP.PIPELINE1.STUFF1.result",
                           "fork": {
                             "ARRAY_MAP": 0,
                             "PIPELINE1": 0
@@ -495,10 +785,23 @@
                       ],
                       "thing": 3
                     }
+                  ],
+                  [
+                    null
                   ]
                 ],
                 "type": "PIPELINE1[][]"
               },
+              "disabled": [
+                {
+                  "call": "ARRAY_MAP",
+                  "mode": "array",
+                  "split": [
+                    false,
+                    true
+                  ]
+                }
+              ],
               "children": [
                 {
                   "fqid": "TOP.PIPELINE3.ARRAY_MAP.PIPELINE1.STUFF1",
@@ -511,6 +814,9 @@
                           "call": "ARRAY_MAP",
                           "mode": "array",
                           "split": [
+                            [
+                              "blah"
+                            ],
                             [
                               "blah"
                             ]
@@ -532,6 +838,9 @@
                           "split": [
                             [
                               2
+                            ],
+                            [
+                              2
                             ]
                           ]
                         },
@@ -541,7 +850,7 @@
                       },
                       "type": "int"
                     },
-                    "thingy": {
+                    "what": {
                       "expression": {
                         "call": "PIPELINE1",
                         "mode": "array",
@@ -549,6 +858,9 @@
                           "call": "ARRAY_MAP",
                           "mode": "array",
                           "split": [
+                            [
+                              "blah"
+                            ],
                             [
                               "blah"
                             ]
@@ -571,6 +883,16 @@
                     },
                     "type": "STUFF1"
                   },
+                  "disabled": [
+                    {
+                      "call": "ARRAY_MAP",
+                      "mode": "array",
+                      "split": [
+                        false,
+                        true
+                      ]
+                    }
+                  ],
                   "fork_roots": [
                     "TOP.PIPELINE3.ARRAY_MAP",
                     "TOP.PIPELINE3.ARRAY_MAP.PIPELINE1"
@@ -582,7 +904,24 @@
         },
         {
           "fqid": "TOP.PIPELINE3.GENERATE_ARRAY",
-          "inputs": null,
+          "inputs": {
+            "what": {
+              "expression": [
+                {
+                  "inputs": [
+                    {
+                      "thing1": "thing",
+                      "thing2": 1,
+                      "thing3": 2,
+                      "thing4": 3
+                    }
+                  ],
+                  "thing": false
+                }
+              ],
+              "type": "Inputs2Plus[]"
+            }
+          },
           "outputs": {
             "expression": {
               "__reference__": "TOP.PIPELINE3.GENERATE_ARRAY"
@@ -616,12 +955,16 @@
                 "mode": "array",
                 "merge_value": {
                   "__disabled__": {
-                    "__reference__": "TOP.PIPELINE3.GENERATE_ARRAY.result.thing"
+                    "call": "VARIABLE_ARRAY_MAP",
+                    "mode": "array",
+                    "split": {
+                      "__reference__": "TOP.PIPELINE3.GENERATE_ARRAY.result.thing"
+                    }
                   },
                   "value": {
                     "blah": [
                       {
-                        "__reference__": "TOP.PIPELINE3.VARIABLE_ARRAY_MAP.PIPELINE1.STUFF1.blah",
+                        "__reference__": "TOP.PIPELINE3.VARIABLE_ARRAY_MAP.PIPELINE1.STUFF1.result",
                         "fork": {
                           "PIPELINE1": "unknown",
                           "VARIABLE_ARRAY_MAP": "unknown"
@@ -683,12 +1026,16 @@
               "outputs": {
                 "expression": {
                   "__disabled__": {
-                    "__reference__": "TOP.PIPELINE3.GENERATE_ARRAY.result.thing"
+                    "call": "VARIABLE_ARRAY_MAP",
+                    "mode": "array",
+                    "split": {
+                      "__reference__": "TOP.PIPELINE3.GENERATE_ARRAY.result.thing"
+                    }
                   },
                   "value": {
                     "blah": [
                       {
-                        "__reference__": "TOP.PIPELINE3.VARIABLE_ARRAY_MAP.PIPELINE1.STUFF1.blah",
+                        "__reference__": "TOP.PIPELINE3.VARIABLE_ARRAY_MAP.PIPELINE1.STUFF1.result",
                         "fork": {
                           "PIPELINE1": "unknown",
                           "VARIABLE_ARRAY_MAP": "unknown"
@@ -713,7 +1060,11 @@
               },
               "disabled": [
                 {
-                  "__reference__": "TOP.PIPELINE3.GENERATE_ARRAY.result.thing"
+                  "call": "VARIABLE_ARRAY_MAP",
+                  "mode": "array",
+                  "split": {
+                    "__reference__": "TOP.PIPELINE3.GENERATE_ARRAY.result.thing"
+                  }
                 }
               ],
               "fork_roots": [
@@ -752,7 +1103,7 @@
                       },
                       "type": "int"
                     },
-                    "thingy": {
+                    "what": {
                       "expression": {
                         "call": "PIPELINE1",
                         "mode": "array",
@@ -779,12 +1130,271 @@
                   },
                   "disabled": [
                     {
-                      "__reference__": "TOP.PIPELINE3.GENERATE_ARRAY.result.thing"
+                      "call": "VARIABLE_ARRAY_MAP",
+                      "mode": "array",
+                      "split": {
+                        "__reference__": "TOP.PIPELINE3.GENERATE_ARRAY.result.thing"
+                      }
                     }
                   ],
                   "fork_roots": [
                     "TOP.PIPELINE3.VARIABLE_ARRAY_MAP",
                     "TOP.PIPELINE3.VARIABLE_ARRAY_MAP.PIPELINE1"
+                  ]
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "fqid": "TOP.PIPELINE3.GENERATE_MAP",
+          "inputs": {
+            "what": {
+              "expression": {
+                "thing1": {
+                  "inputs": [
+                    {
+                      "thing1": "thing1",
+                      "thing2": 1,
+                      "thing3": 2,
+                      "thing4": 3
+                    }
+                  ],
+                  "thing": false
+                },
+                "thing2": {
+                  "inputs": [
+                    {
+                      "thing1": "thing2",
+                      "thing2": 4,
+                      "thing3": 5,
+                      "thing4": 6
+                    }
+                  ],
+                  "thing": true
+                }
+              },
+              "type": "map<Inputs2Plus>"
+            }
+          },
+          "outputs": {
+            "expression": {
+              "__reference__": "TOP.PIPELINE3.GENERATE_MAP"
+            },
+            "type": "GENERATE_MAP"
+          }
+        },
+        {
+          "fqid": "TOP.PIPELINE3.VARIABLE_MAP_MAP",
+          "inputs": {
+            "blah": {
+              "expression": "A thing",
+              "type": "string"
+            },
+            "inputs": {
+              "expression": {
+                "call": "VARIABLE_MAP_MAP",
+                "mode": "map",
+                "split": {
+                  "__reference__": "TOP.PIPELINE3.GENERATE_MAP.result"
+                }
+              },
+              "type": "Inputs2"
+            }
+          },
+          "outputs": {
+            "expression": {
+              "ignored": "A thing",
+              "outs": {
+                "call": "TOP.PIPELINE3.VARIABLE_MAP_MAP.PIPELINE1",
+                "mode": "array",
+                "merge_value": {
+                  "__disabled__": {
+                    "call": "VARIABLE_MAP_MAP",
+                    "mode": "map",
+                    "split": {
+                      "__reference__": "TOP.PIPELINE3.GENERATE_MAP.result.thing"
+                    }
+                  },
+                  "value": {
+                    "blah": [
+                      {
+                        "__reference__": "TOP.PIPELINE3.VARIABLE_MAP_MAP.PIPELINE1.STUFF1.result",
+                        "fork": {
+                          "PIPELINE1": "unknown",
+                          "VARIABLE_MAP_MAP": "unknown"
+                        }
+                      },
+                      "A thing"
+                    ],
+                    "thing": {
+                      "call": "PIPELINE1",
+                      "mode": "array",
+                      "split": {
+                        "call": "VARIABLE_MAP_MAP",
+                        "mode": "map",
+                        "split": {
+                          "__reference__": "TOP.PIPELINE3.GENERATE_MAP.result.inputs.thing3"
+                        }
+                      }
+                    }
+                  }
+                },
+                "merge_over": {
+                  "call": "VARIABLE_MAP_MAP",
+                  "mode": "map",
+                  "split": {
+                    "__reference__": "TOP.PIPELINE3.GENERATE_MAP.result.inputs"
+                  }
+                },
+                "fork_node": "TOP.PIPELINE3.VARIABLE_MAP_MAP.PIPELINE1.STUFF1"
+              }
+            },
+            "type": "PIPELINE2"
+          },
+          "fork_roots": [
+            "TOP.PIPELINE3.VARIABLE_MAP_MAP"
+          ],
+          "children": [
+            {
+              "fqid": "TOP.PIPELINE3.VARIABLE_MAP_MAP.PIPELINE1",
+              "inputs": {
+                "blah": {
+                  "expression": "A thing",
+                  "type": "string"
+                },
+                "inputs": {
+                  "expression": {
+                    "call": "PIPELINE1",
+                    "mode": "array",
+                    "split": {
+                      "call": "VARIABLE_MAP_MAP",
+                      "mode": "map",
+                      "split": {
+                        "__reference__": "TOP.PIPELINE3.GENERATE_MAP.result.inputs"
+                      }
+                    }
+                  },
+                  "type": "Inputs1"
+                }
+              },
+              "outputs": {
+                "expression": {
+                  "__disabled__": {
+                    "call": "VARIABLE_MAP_MAP",
+                    "mode": "map",
+                    "split": {
+                      "__reference__": "TOP.PIPELINE3.GENERATE_MAP.result.thing"
+                    }
+                  },
+                  "value": {
+                    "blah": [
+                      {
+                        "__reference__": "TOP.PIPELINE3.VARIABLE_MAP_MAP.PIPELINE1.STUFF1.result",
+                        "fork": {
+                          "PIPELINE1": "unknown",
+                          "VARIABLE_MAP_MAP": "unknown"
+                        }
+                      },
+                      "A thing"
+                    ],
+                    "thing": {
+                      "call": "PIPELINE1",
+                      "mode": "array",
+                      "split": {
+                        "call": "VARIABLE_MAP_MAP",
+                        "mode": "map",
+                        "split": {
+                          "__reference__": "TOP.PIPELINE3.GENERATE_MAP.result.inputs.thing3"
+                        }
+                      }
+                    }
+                  }
+                },
+                "type": "PIPELINE1"
+              },
+              "disabled": [
+                {
+                  "call": "VARIABLE_MAP_MAP",
+                  "mode": "map",
+                  "split": {
+                    "__reference__": "TOP.PIPELINE3.GENERATE_MAP.result.thing"
+                  }
+                }
+              ],
+              "fork_roots": [
+                "TOP.PIPELINE3.VARIABLE_MAP_MAP",
+                "TOP.PIPELINE3.VARIABLE_MAP_MAP.PIPELINE1"
+              ],
+              "children": [
+                {
+                  "fqid": "TOP.PIPELINE3.VARIABLE_MAP_MAP.PIPELINE1.STUFF1",
+                  "inputs": {
+                    "thing1": {
+                      "expression": {
+                        "call": "PIPELINE1",
+                        "mode": "array",
+                        "split": {
+                          "call": "VARIABLE_MAP_MAP",
+                          "mode": "map",
+                          "split": {
+                            "__reference__": "TOP.PIPELINE3.GENERATE_MAP.result.inputs.thing1"
+                          }
+                        }
+                      },
+                      "type": "string"
+                    },
+                    "thing2": {
+                      "expression": {
+                        "call": "PIPELINE1",
+                        "mode": "array",
+                        "split": {
+                          "call": "VARIABLE_MAP_MAP",
+                          "mode": "map",
+                          "split": {
+                            "__reference__": "TOP.PIPELINE3.GENERATE_MAP.result.inputs.thing2"
+                          }
+                        }
+                      },
+                      "type": "int"
+                    },
+                    "what": {
+                      "expression": {
+                        "call": "PIPELINE1",
+                        "mode": "array",
+                        "split": {
+                          "call": "VARIABLE_MAP_MAP",
+                          "mode": "map",
+                          "split": {
+                            "__reference__": "TOP.PIPELINE3.GENERATE_MAP.result.inputs.thing1"
+                          }
+                        }
+                      },
+                      "type": "string"
+                    }
+                  },
+                  "outputs": {
+                    "expression": {
+                      "__reference__": "TOP.PIPELINE3.VARIABLE_MAP_MAP.PIPELINE1.STUFF1",
+                      "fork": {
+                        "PIPELINE1": "unknown",
+                        "VARIABLE_MAP_MAP": "unknown"
+                      }
+                    },
+                    "type": "STUFF1"
+                  },
+                  "disabled": [
+                    {
+                      "call": "VARIABLE_MAP_MAP",
+                      "mode": "map",
+                      "split": {
+                        "__reference__": "TOP.PIPELINE3.GENERATE_MAP.result.thing"
+                      }
+                    }
+                  ],
+                  "fork_roots": [
+                    "TOP.PIPELINE3.VARIABLE_MAP_MAP",
+                    "TOP.PIPELINE3.VARIABLE_MAP_MAP.PIPELINE1"
                   ]
                 }
               ]
@@ -801,7 +1411,7 @@
                     {
                       "blah": [
                         {
-                          "__reference__": "TOP.PIPELINE3.MAP_MAP.PIPELINE1.STUFF1.blah",
+                          "__reference__": "TOP.PIPELINE3.MAP_MAP.PIPELINE1.STUFF1.result",
                           "fork": {
                             "MAP_MAP": "foo",
                             "PIPELINE1": 0
@@ -815,6 +1425,10 @@
                 }
               },
               "type": "map<Inputs4>"
+            },
+            "what": {
+              "expression": "thingy",
+              "type": "string"
             }
           },
           "outputs": {

@@ -449,6 +449,10 @@ func resolveDisableExp(r Exp, disable []Exp) ([]Exp, error) {
 			return resolveDisableMap(r, v.Value, disable)
 		case *MergeExp:
 			return resolveDisableExp(v.Value, disable)
+		case *RefExp:
+			if _, ok := v.Forks[r.Call]; !ok {
+				return append(disable, r), nil
+			}
 		}
 		return resolveDisableExp(r.Value, disable)
 	case *DisabledExp:

@@ -7,8 +7,10 @@ import (
 // DisabledExp is an expression which evaluates to either the Inner
 // expression or null, depending on whether it is disabled.
 type DisabledExp struct {
-	Value    Exp
-	Disabled *RefExp
+	Value Exp
+	// If this expression evaluates to true, the result of this expression is
+	// null.
+	Disabled Exp
 }
 
 func (s *DisabledExp) getNode() *AstNode {
@@ -33,7 +35,7 @@ func (s *DisabledExp) HasSplit() bool {
 	return s.Value.HasSplit()
 }
 func (s *DisabledExp) FindRefs() []*RefExp {
-	return append(s.Value.FindRefs(), s.Disabled)
+	return append(s.Value.FindRefs(), s.Disabled.FindRefs()...)
 }
 func (s *DisabledExp) getKind() ExpKind {
 	return s.Value.getKind()
@@ -226,10 +228,22 @@ func (s *DisabledExp) makeDisabledExp(disable, inner Exp) (Exp, error) {
 				Call:   disable.Call,
 				Source: disable.Source,
 			}, nil
+		case *RefExp:
+			if _, ok := dv.Forks[disable.Call]; ok {
+				return s.makeDisabledExp(dv, inner)
+			}
+			if s != nil && s.Disabled == disable && s.Value == inner {
+				return s, nil
+			}
+			return &DisabledExp{
+				Disabled: disable,
+				Value:    inner,
+			}, nil
 		}
 	}
 	return nil, &IncompatibleTypeError{
-		Message: "disabled modifier cannot be bound to an expression of type " + string(disable.getKind()),
+		Message: "disabled modifier cannot be bound to an expression of type " +
+			string(disable.getKind()),
 	}
 }
 

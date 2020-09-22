@@ -17,6 +17,7 @@ import (
 	"strings"
 
 	"github.com/martian-lang/martian/martian/syntax"
+	"github.com/martian-lang/martian/martian/util"
 )
 
 type BindingInfo struct {
@@ -245,7 +246,7 @@ func (node *TopNode) resolve(binding syntax.Exp, t syntax.Type,
 
 func (node *TopNode) resolveDisabledExp(binding *syntax.DisabledExp, t syntax.Type,
 	fork ForkId, readSize int64) (bool, json.Marshaler, error) {
-	ready, disabled, err := node.resolveRef(binding.Disabled,
+	ready, disabled, err := node.resolve(binding.Disabled,
 		node.Types().Get(syntax.TypeId{Tname: syntax.KindBool}), fork, readSize)
 	if err != nil {
 		return ready, nil, &elementError{
@@ -274,11 +275,18 @@ func (node *TopNode) resolveDisabledExp(binding *syntax.DisabledExp, t syntax.Ty
 	default:
 		return true, nil, &elementError{
 			element: fmt.Sprintf(
-				"invalid type %T for disabled binding",
-				disabled),
+				"invalid type %T for disabled binding from %s",
+				disabled, binding.Disabled.GoString()),
 		}
 	}
-	return node.resolve(binding.Value, t, fork, readSize)
+	ready, result, err := node.resolve(binding.Value, t, fork, readSize)
+	if err != nil {
+		return ready, result, &elementError{
+			element: "enabled value",
+			inner:   err,
+		}
+	}
+	return ready, result, err
 }
 
 func (node *TopNode) resolveMerge(binding *syntax.MergeExp, t syntax.Type,
@@ -324,6 +332,11 @@ func (node *TopNode) resolveMerge(binding *syntax.MergeExp, t syntax.Type,
 		forkRefId = binding.Call.GetFqid()
 	}
 	parts, errs := node.getParts(binding.GetCall(), fork, forkRefId)
+	if err := errs.If(); err != nil {
+		util.PrintError(err, "runtime",
+			"Resolving parts for %s.  This will likely result in further errors.",
+			binding.GetCall().GoString())
+	}
 	allReady := true
 	switch binding.CallMode() {
 	case syntax.ModeMapCall:
@@ -341,7 +354,7 @@ func (node *TopNode) resolveMerge(binding *syntax.MergeExp, t syntax.Type,
 				return true, result, fmt.Errorf("unexpected array fork")
 			case syntax.ModeMapCall:
 				ready, v, err := node.resolve(binding.Value,
-					t,
+					innerT,
 					append(fork, part), readSize)
 				if err != nil {
 					errs = append(errs, &elementError{
@@ -378,7 +391,7 @@ func (node *TopNode) resolveMerge(binding *syntax.MergeExp, t syntax.Type,
 				return true, result, fmt.Errorf("unexpected map fork")
 			case syntax.ModeArrayCall:
 				ready, v, err := node.resolve(binding.Value,
-					t,
+					innerT,
 					append(fork, part), readSize)
 				if err != nil {
 					errs = append(errs, &elementError{
@@ -411,16 +424,24 @@ func (node *TopNode) getParts(src *syntax.CallStm,
 	if boundNode == nil {
 		panic("unknown bound node - this should not be possible in properly-compiled code")
 	}
+	boundNode.expandForks()
 	var errs syntax.ErrorList
 	parts := boundNode.forkIds.Table[src]
-	if len(parts) == 1 && parts[0].Id.IndexSource() != nil {
+	if len(parts) == 1 && parts[0].Id.IndexSource() != nil &&
+		(parts[0].Range == nil || parts[0].Range.Length() >= 0) {
 		matchingParts := make([]*ForkSourcePart, 0, len(boundNode.forks))
 		for _, fork := range boundNode.forks {
 			if p, err := fork.forkId.matchPart(parts[0].Split.Call); err != nil {
-				errs = append(errs, &elementError{
-					element: "unmatched fork source " + parts[0].Split.Call.GoString(),
-					inner:   err,
-				})
+				if parts[0].Split.Call == src {
+					errs = append(errs, &forkResolutionError{
+						Msg: "circular fork sources",
+					})
+				} else {
+					errs = append(errs, &elementError{
+						element: "unmatched call " + parts[0].Split.Call.GoString(),
+						inner:   err,
+					})
+				}
 			} else if fork.forkId.Matches(forkId) {
 				matchingParts = append(matchingParts, p)
 			}
@@ -472,7 +493,7 @@ func (node *TopNode) getParts(src *syntax.CallStm,
 		allow := func(part *ForkSourcePart) bool {
 			for _, fork := range boundNode.forks {
 				if fork.forkId.Matches(forkId) {
-					if p, err := fork.forkId.matchPart(part.Split.Call); err == nil {
+					if p, err := fork.forkId.matchPart(part.Split.Call); err != nil {
 						errs = append(errs, &elementError{
 							element: "unmatched fork source " + part.Split.Call.GoString(),
 							inner:   err,
@@ -526,13 +547,13 @@ func (node *TopNode) resolveSplit(binding *syntax.SplitExp, t syntax.Type,
 				}
 			}
 			if !ready {
-				return ready, result, err
+				return ready, result, nil
 			}
 			if ref, ok := binding.Value.(*syntax.RefExp); ok {
 				// RefExp resolution has already done the element extraction.
 				for c := range ref.Forks {
 					if c == binding.Call {
-						return ready, result, err
+						return ready, result, nil
 					}
 				}
 			}
@@ -579,7 +600,7 @@ func (node *TopNode) resolveSplit(binding *syntax.SplitExp, t syntax.Type,
 		b.Value = r
 		return ready, &b, nil
 	}
-	return ready, binding, err
+	return ready, binding, nil
 }
 
 func getElement(result json.Marshaler,
@@ -605,8 +626,8 @@ func getElement(result json.Marshaler,
 		return getMapElement(result, element.MapKey())
 	default:
 		if element.IndexSource() != nil {
-			return nil, &elementError{
-				element: "unresolved index for map call of unknown type",
+			return nil, &forkResolutionError{
+				Msg: "unresolved index for map call of unknown type",
 			}
 		}
 		return nil, &elementError{

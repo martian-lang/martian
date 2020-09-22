@@ -53,7 +53,7 @@ type (
 	// Finally, take any remaining elements from OutputIndex and use them to
 	// select the array elements or map indicies from the resulting object.  If
 	// the index is not a compile-time constant, use the upstream fork's
-	// ForkIndex[idx.IndexSource()]
+	// ForkIndex[idx.IndexSource()].
 	RefExp struct {
 		Node AstNode
 		Kind ExpKind

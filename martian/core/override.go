@@ -134,6 +134,9 @@ func getParent(n string) string {
 //
 // def  is the default value to use if the value is not overridden.
 func (pse *PipestanceOverrides) GetForceVolatile(node string, def bool) bool {
+	if pse == nil {
+		return def
+	}
 	pqn := partiallyQualifiedName(node)
 	for pqn != "" {
 		so := pse.overridesbystage[pqn]
@@ -154,6 +157,9 @@ func (pse *PipestanceOverrides) GetForceVolatile(node string, def bool) bool {
 // GetResources applies any resource overrides for the given node/phase to
 // the given resource object.
 func (pse *PipestanceOverrides) GetResources(node string, phase string, res *JobResources) {
+	if pse == nil {
+		return
+	}
 	pqn := partiallyQualifiedName(node)
 	res.Threads = pse.getThreads(pqn, phase, res.Threads)
 	res.MemGB = pse.getMem(pqn, phase, res.MemGB)
@@ -233,6 +239,9 @@ func (pse *PipestanceOverrides) getVMem(pqn string, phase string, def float64) f
 //
 // def  is the default value to use if the value is not overridden.
 func (pse *PipestanceOverrides) GetProfile(node string, phase string, def ProfileMode) ProfileMode {
+	if pse == nil {
+		return def
+	}
 	pqn := partiallyQualifiedName(node)
 	for pqn != "" {
 		val := pse.overridesbystage[pqn].GetProfile(phase)

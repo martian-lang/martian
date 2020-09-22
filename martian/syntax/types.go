@@ -68,7 +68,7 @@ type (
 	// null can be assigned to anyting, but nothing can be assigned to null.
 	nullType struct{}
 
-	// IncompatibleTypeError is returned for Type.IsAssignableFrom()
+	// IncompatibleTypeError is returned for Type.IsAssignableFrom().
 	IncompatibleTypeError struct {
 		Message string
 		Reason  error

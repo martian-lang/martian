@@ -292,10 +292,7 @@ func (exp *DisabledExp) FindTypedRefs(list []*BoundReference,
 	if err != nil {
 		return list, err
 	}
-	return append(list, &BoundReference{
-		Exp:  exp.Disabled,
-		Type: &builtinBool,
-	}), nil
+	return exp.Disabled.FindTypedRefs(list, &builtinBool, lookup)
 }
 
 func (exp *MapExp) FindTypedRefs(list []*BoundReference,

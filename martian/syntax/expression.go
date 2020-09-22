@@ -102,7 +102,7 @@ type (
 	}
 
 	// The ValExp interface is implemented by literal expressions.  These may
-	// be collections, which may contain RefExp values
+	// be collections, which may contain RefExp values.
 	ValExp interface {
 		Exp
 		val() interface{}

@@ -185,7 +185,7 @@ func (m *MergeExp) FindTypedRefs(list []*BoundReference,
 		}
 		innerType = lookup.GetArray(t, -1)
 	case *TypedMapType:
-		if m.MergeOver.CallMode() == ModeMapCall {
+		if m.MergeOver.CallMode() == ModeArrayCall {
 			return list, &IncompatibleTypeError{
 				Message: fmt.Sprintf("unexpected array merge expression for %s\n%s",
 					t.TypeId().str(),

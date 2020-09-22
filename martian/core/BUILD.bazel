@@ -63,6 +63,7 @@ go_test(
         "post_process_test.go",
         "resolve_test.go",
         "resource_semaphore_test.go",
+        "runloop_test.go",
         "runtime_test.go",
         "shell_quote_test.go",
         "stage_test.go",
@@ -79,8 +80,10 @@ go_test(
         "//conditions:default": [],
     }),
     data = [
+        "testdata/map_call_edge_cases.mro",
         "testdata/mock_stages.mro",
         "testdata/simple_struct_pipeline.mro",
+        "testdata/stage.py",
         "testdata/stages.mro",
         "testdata/struct_pipeline.mro",
         "testdata/sub/stages.mro",

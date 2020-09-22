@@ -1230,7 +1230,8 @@ func (self *Fork) stepPipeline() {
 	self.writeInvocation()
 	if outs, t, err := self.node.resolvePipelineOutputs(self.forkId); err != nil {
 		util.PrintError(err, "runtime",
-			"Error resolving output argument bindings.")
+			"(%s) Error resolving output argument bindings.",
+			self.fqname)
 		self.metadata.WriteErrorString(err.Error())
 	} else {
 		self.metadata.Write(OutsFile, outs)
