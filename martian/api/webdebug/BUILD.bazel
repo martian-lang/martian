@@ -1,8 +1,15 @@
 load("@io_bazel_rules_go//go:def.bzl", "go_library")
 
 go_library(
-    name = "go_default_library",
+    name = "webdebug",
     srcs = ["debug.go"],
     importpath = "github.com/martian-lang/martian/martian/api/webdebug",
+    visibility = ["//visibility:public"],
+)
+
+# Backwards compat for what gazelle used to call this target.
+alias(
+    name = "go_default_library",
+    actual = "webdebug",
     visibility = ["//visibility:public"],
 )

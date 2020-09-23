@@ -9,7 +9,7 @@ genrule(
 )
 
 go_library(
-    name = "go_default_library",
+    name = "syntax",
     srcs = [
         "ast.go",
         "bindings.go",
@@ -58,11 +58,11 @@ go_library(
     ],
     importpath = "github.com/martian-lang/martian/martian/syntax",
     visibility = ["//visibility:public"],
-    deps = ["//martian/util:go_default_library"],
+    deps = ["//martian/util"],
 )
 
 go_test(
-    name = "go_default_test",
+    name = "syntax_test",
     srcs = [
         "builtin_types_test.go",
         "collection_types_test.go",
@@ -88,6 +88,13 @@ go_test(
         "types_test.go",
     ],
     data = glob(["testdata/**"]),
-    embed = [":go_default_library"],
-    deps = ["//martian/util:go_default_library"],
+    embed = [":syntax"],
+    deps = ["//martian/util"],
+)
+
+# Backwards compat for what gazelle used to call this target.
+alias(
+    name = "go_default_library",
+    actual = "syntax",
+    visibility = ["//visibility:public"],
 )

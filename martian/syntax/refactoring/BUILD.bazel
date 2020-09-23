@@ -1,7 +1,7 @@
 load("@io_bazel_rules_go//go:def.bzl", "go_library", "go_test")
 
 go_library(
-    name = "go_default_library",
+    name = "refactoring",
     srcs = [
         "edit.go",
         "find_unused_callables.go",
@@ -18,11 +18,11 @@ go_library(
     ],
     importpath = "github.com/martian-lang/martian/martian/syntax/refactoring",
     visibility = ["//visibility:public"],
-    deps = ["//martian/syntax:go_default_library"],
+    deps = ["//martian/syntax"],
 )
 
 go_test(
-    name = "go_default_test",
+    name = "refactoring_test",
     srcs = [
         "find_unused_callables_test.go",
         "remove_calls_test.go",
@@ -32,6 +32,6 @@ go_test(
         "rename_output_param_test.go",
     ],
     data = glob(["testdata/**"]),
-    embed = [":go_default_library"],
-    deps = ["//martian/syntax:go_default_library"],
+    embed = [":refactoring"],
+    deps = ["//martian/syntax"],
 )

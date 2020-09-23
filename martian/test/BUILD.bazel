@@ -2,7 +2,7 @@ load("@io_bazel_rules_go//go:def.bzl", "go_library")
 load("//tools:mro_rules.bzl", "mrf_test", "mro_library", "mro_test")
 
 go_library(
-    name = "go_default_library",
+    name = "test",
     srcs = ["doc.go"],
     importpath = "github.com/martian-lang/martian/martian/test",
     visibility = ["//visibility:public"],

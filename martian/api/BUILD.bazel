@@ -1,7 +1,7 @@
 load("@io_bazel_rules_go//go:def.bzl", "go_library")
 
 go_library(
-    name = "go_default_library",
+    name = "api",
     srcs = [
         "endpoints.go",
         "files_listing.go",
@@ -12,7 +12,14 @@ go_library(
     importpath = "github.com/martian-lang/martian/martian/api",
     visibility = ["//visibility:public"],
     deps = [
-        "//martian/core:go_default_library",
-        "//martian/util:go_default_library",
+        "//martian/core",
+        "//martian/util",
     ],
+)
+
+# Backwards compat for what gazelle used to call this target.
+alias(
+    name = "go_default_library",
+    actual = "api",
+    visibility = ["//visibility:public"],
 )

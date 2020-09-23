@@ -3,7 +3,7 @@ load("@io_bazel_rules_go//go:def.bzl", "go_library", "go_test")
 _importpath = "github.com/martian-lang/martian/martian/util"
 
 go_library(
-    name = "go_default_library",
+    name = "util",
     srcs = [
         "directory.go",
         "errors.go",
@@ -55,7 +55,7 @@ go_library(
 )
 
 go_test(
-    name = "go_default_test",
+    name = "util_test",
     srcs = select({
         "@io_bazel_rules_go//go/platform:linux": [
             "directory_linux_test.go",
@@ -63,5 +63,12 @@ go_test(
         ],
         "//conditions:default": [],
     }),
-    embed = [":go_default_library"],
+    embed = [":util"],
+)
+
+# Backwards compat for what gazelle used to call this target.
+alias(
+    name = "go_default_library",
+    actual = "util",
+    visibility = ["//visibility:public"],
 )

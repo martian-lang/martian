@@ -1,13 +1,13 @@
 load("@io_bazel_rules_go//go:def.bzl", "go_library")
 
 go_library(
-    name = "go_default_library",
+    name = "format",
     srcs = ["main.go"],
     importpath = "github.com/martian-lang/martian/cmd/mro/format",
     visibility = ["//cmd/mro:__pkg__"],
     deps = [
-        "//martian/syntax:go_default_library",
-        "//martian/util:go_default_library",
+        "//martian/syntax",
+        "//martian/util",
         "@com_github_martian_lang_docopt_go//:go_default_library",
     ],
 )

@@ -1,7 +1,7 @@
 load("@io_bazel_rules_go//go:def.bzl", "go_library", "go_test")
 
 go_library(
-    name = "go_default_library",
+    name = "core",
     srcs = [
         "argument_map.go",
         "errors.go",
@@ -46,14 +46,14 @@ go_library(
     importpath = "github.com/martian-lang/martian/martian/core",
     visibility = ["//visibility:public"],
     deps = [
-        "//martian/syntax:go_default_library",
-        "//martian/util:go_default_library",
+        "//martian/syntax",
+        "//martian/util",
         "@org_golang_x_sys//unix:go_default_library",
     ],
 )
 
 go_test(
-    name = "go_default_test",
+    name = "core_test",
     srcs = [
         "argument_map_test.go",
         "fork_test.go",
@@ -89,10 +89,17 @@ go_test(
         "testdata/sub/stages.mro",
         "testdata/vsize.py",
     ],
-    embed = [":go_default_library"],
+    embed = [":core"],
     deps = [
-        "//martian/syntax:go_default_library",
-        "//martian/util:go_default_library",
+        "//martian/syntax",
+        "//martian/util",
         "@com_github_google_shlex//:go_default_library",
     ],
+)
+
+# Backwards compat for what gazelle used to call this target.
+alias(
+    name = "go_default_library",
+    actual = "core",
+    visibility = ["//visibility:public"],
 )

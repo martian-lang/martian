@@ -1,14 +1,14 @@
 load("@io_bazel_rules_go//go:def.bzl", "go_library")
 
 go_library(
-    name = "go_default_library",
+    name = "check",
     srcs = ["main.go"],
     importpath = "github.com/martian-lang/martian/cmd/mro/check",
     visibility = ["//cmd/mro:__pkg__"],
     deps = [
-        "//martian/syntax:go_default_library",
-        "//martian/syntax/graph:go_default_library",
-        "//martian/util:go_default_library",
+        "//martian/syntax",
+        "//martian/syntax/graph",
+        "//martian/util",
         "@com_github_martian_lang_docopt_go//:go_default_library",
     ],
 )
