@@ -82,6 +82,8 @@ func FsTypeString(fsType int64) string {
 		return "efivar"
 	case unix.EFS_SUPER_MAGIC:
 		return "efs"
+	case unix.EROFS_SUPER_MAGIC_V1:
+		return "erofs"
 	case 0x137d:
 		return "ext1"
 	case 0xef51:
