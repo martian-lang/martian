@@ -52,7 +52,6 @@
             ]
           },
           {
-            "ignored": "A thing",
             "outs": [
               null
             ]
@@ -281,8 +280,7 @@
                 {
                   "thing1": "blah",
                   "thing2": 2,
-                  "thing3": 3,
-                  "thing4": 4
+                  "thing3": 3
                 }
               ],
               "thing": false
@@ -297,8 +295,7 @@
                 {
                   "thing1": "blah",
                   "thing2": 2,
-                  "thing3": 3,
-                  "thing4": 4
+                  "thing3": 3
                 }
               ],
               "thing": false
@@ -308,8 +305,7 @@
                 {
                   "thing1": "blah",
                   "thing2": 2,
-                  "thing3": 3,
-                  "thing4": 4
+                  "thing3": 3
                 }
               ],
               "thing": true
@@ -358,7 +354,6 @@
               ]
             },
             {
-              "ignored": "A thing",
               "outs": [
                 null
               ]
@@ -498,8 +493,7 @@
                       {
                         "thing1": "blah",
                         "thing2": 2,
-                        "thing3": 3,
-                        "thing4": 4
+                        "thing3": 3
                       }
                     ],
                     "thing": false
@@ -552,8 +546,7 @@
                           {
                             "thing1": "blah",
                             "thing2": 2,
-                            "thing3": 3,
-                            "thing4": 4
+                            "thing3": 3
                           }
                         ]
                       }
@@ -680,8 +673,7 @@
                       {
                         "thing1": "blah",
                         "thing2": 2,
-                        "thing3": 3,
-                        "thing4": 4
+                        "thing3": 3
                       }
                     ],
                     "thing": false
@@ -691,8 +683,7 @@
                       {
                         "thing1": "blah",
                         "thing2": 2,
-                        "thing3": 3,
-                        "thing4": 4
+                        "thing3": 3
                       }
                     ],
                     "thing": true
@@ -751,16 +742,14 @@
                           {
                             "thing1": "blah",
                             "thing2": 2,
-                            "thing3": 3,
-                            "thing4": 4
+                            "thing3": 3
                           }
                         ],
                         [
                           {
                             "thing1": "blah",
                             "thing2": 2,
-                            "thing3": 3,
-                            "thing4": 4
+                            "thing3": 3
                           }
                         ]
                       ]

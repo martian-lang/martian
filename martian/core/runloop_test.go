@@ -9,6 +9,7 @@ package core
 import (
 	"bytes"
 	"context"
+	"encoding/json"
 	"io/ioutil"
 	"os"
 	"path"
@@ -132,7 +133,7 @@ func TestPipestanceRun(t *testing.T) {
 		flushChannel(rt.LocalJobManager.Done())
 		done, hadProgress := loopBody(t, pipestance)
 		if done {
-			return
+			break
 		}
 
 		if !hadProgress {
@@ -145,6 +146,86 @@ func TestPipestanceRun(t *testing.T) {
 					<-ti.C
 				}
 			}
+		}
+	}
+	outs, err := os.Open(path.Join(psdir, "TOP",
+		defaultFork,
+		OutsFile.FileName()))
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer outs.Close()
+	dec := json.NewDecoder(outs)
+	dec.DisallowUnknownFields()
+	type Inputs4 struct {
+		Outs []*struct {
+			Blah  []*string `json:"blah"`
+			Thing int       `json:"thing"`
+		} `json:"outs"`
+	}
+	var outputs struct {
+		Outputs *struct {
+			Output *struct {
+				Result string `json:"result"`
+			} `json:"output"`
+			I1 map[string]*Inputs4 `json:"intermediate1"`
+			I2 []*Inputs4          `json:"intermediate2"`
+			I3 []*Inputs4          `json:"intermediate3"`
+			I4 map[string]*Inputs4 `json:"intermediate4"`
+		} `json:"outputs"`
+	}
+	if err := dec.Decode(&outputs); err != nil {
+		t.Error(err)
+	}
+	outs.Close()
+	if outputs.Outputs == nil {
+		t.Fatal("outputs was null")
+	}
+	if outputs.Outputs.Output == nil {
+		t.Error("outputs.output was null")
+	} else if outputs.Outputs.Output.Result != "thingy" {
+		t.Errorf(`%q != "thingy"`, outputs.Outputs.Output.Result)
+	}
+	if len(outputs.Outputs.I1) != 1 {
+		t.Errorf("incorrect length %d != 1 for intermediate1",
+			len(outputs.Outputs.I1))
+	} else if len(outputs.Outputs.I1["foo"].Outs) != 1 {
+		t.Errorf("incorrect length %d != 1 for intermediate1.foo",
+			len(outputs.Outputs.I1))
+	}
+	if len(outputs.Outputs.I2) != 2 {
+		t.Errorf("incorrect length %d != 2 for intermediate2",
+			len(outputs.Outputs.I2))
+	} else {
+		if len(outputs.Outputs.I2[0].Outs) != 1 {
+			t.Errorf("incorrect length %d != 1 for intermediate2[0].foo",
+				len(outputs.Outputs.I1))
+		}
+		if len(outputs.Outputs.I2[1].Outs) != 1 {
+			t.Errorf("incorrect length %d != 1 for intermediate2[1].foo",
+				len(outputs.Outputs.I1))
+		}
+	}
+	if len(outputs.Outputs.I3) != 1 {
+		t.Errorf("incorrect length %d != 1 for intermediate3",
+			len(outputs.Outputs.I1))
+	} else if len(outputs.Outputs.I3[0].Outs) != 1 {
+		t.Errorf("incorrect length %d != 1 for intermediate3.foo",
+			len(outputs.Outputs.I1))
+	}
+	if len(outputs.Outputs.I4) != 2 {
+		t.Errorf("incorrect length %d != 2 for intermediate4",
+			len(outputs.Outputs.I2))
+	} else {
+		if len(outputs.Outputs.I4["thing1"].Outs) != 1 {
+			t.Errorf("incorrect length %d != 1 for intermediate2[0].foo",
+				len(outputs.Outputs.I1))
+		}
+		if b := outputs.Outputs.I4["thing2"].Outs; len(b) != 1 {
+			t.Errorf("incorrect length %d != 1 for intermediate2[1].foo",
+				len(outputs.Outputs.I1))
+		} else if b[0] != nil {
+			t.Error("expected thing2 to be nil")
 		}
 	}
 }

@@ -585,6 +585,12 @@ func TestSerializeMapCallGraph2(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+	topType := ast.TypeTable.Get(TypeId{Tname: "TOP"})
+	if topType == nil {
+		t.Error("TOP type not found.")
+	} else if !topType.CanFilter() {
+		t.Error("TOP type should be able to filter.")
+	}
 	var dest strings.Builder
 	enc := json.NewEncoder(&dest)
 	enc.SetEscapeHTML(false)

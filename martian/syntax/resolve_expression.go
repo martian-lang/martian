@@ -338,7 +338,7 @@ func (s *MapExp) filter(t Type, lookup *TypeLookup) (Exp, error) {
 			Kind:   KindStruct,
 			Value:  make(map[string]Exp, len(s.Value)),
 		}
-		anyChange := len(st.Members) == len(s.Value)
+		anyChange := len(st.Members) != len(s.Value)
 		var errs ErrorList
 		for _, m := range st.Members {
 			if t := lookup.Get(m.Tname); t == nil {
