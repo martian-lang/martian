@@ -235,12 +235,6 @@ func moveOutDir(w *bytes.Buffer, value json.RawMessage,
 	pipestancePath, outsPath string) error {
 	t := lookup.Get(member.Tname)
 	outPath := path.Join(outsPath, member.GetOutFilename())
-	if err := os.Mkdir(outPath, 0775); err != nil {
-		if _, err := w.Write(value); err != nil {
-			return err
-		}
-		return err
-	}
 	if member.Tname.ArrayDim > 0 {
 		if at, ok := t.(*syntax.ArrayType); !ok {
 			if _, err := w.Write(value); err != nil {
@@ -417,6 +411,9 @@ func moveOutFile(w *bytes.Buffer, param *syntax.StructMember,
 		}
 		return err
 	} else if info.Mode()&os.ModeSymlink != 0 {
+		if err := os.MkdirAll(outsPath, 0775); err != nil {
+			return err
+		}
 		// The source is a symlink, so we will put a symlink in outs/
 		return copyOutSymlink(w, param, value, filePath, pipestancePath, outsPath)
 	}
@@ -431,6 +428,9 @@ func moveOutFile(w *bytes.Buffer, param *syntax.StructMember,
 				if _, err := w.Write(value); err != nil {
 					return err
 				}
+				if err := os.MkdirAll(outsPath, 0775); err != nil {
+					return err
+				}
 				// But we still want a symlink in outs/
 				return os.Symlink(absFilePath, outPath)
 			}
@@ -442,7 +442,9 @@ func moveOutFile(w *bytes.Buffer, param *syntax.StructMember,
 		_, err := w.Write(value)
 		return err
 	}
-
+	if err := os.MkdirAll(outsPath, 0775); err != nil {
+		return err
+	}
 	// If source file exists, move it to outs/
 	if err := os.Rename(filePath, outPath); err != nil {
 		if _, err := w.Write(value); err != nil {
