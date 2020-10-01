@@ -1143,10 +1143,16 @@
                 "thing1": {
                   "inputs": [
                     {
-                      "thing1": "thing1",
+                      "thing1": "thing1.1",
                       "thing2": 1,
                       "thing3": 2,
                       "thing4": 3
+                    },
+                    {
+                      "thing1": "thing1.2",
+                      "thing2": 4,
+                      "thing3": 5,
+                      "thing4": 6
                     }
                   ],
                   "thing": false
@@ -1155,12 +1161,16 @@
                   "inputs": [
                     {
                       "thing1": "thing2",
-                      "thing2": 4,
-                      "thing3": 5,
-                      "thing4": 6
+                      "thing2": 7,
+                      "thing3": 8,
+                      "thing4": 9
                     }
                   ],
                   "thing": true
+                },
+                "thing3": {
+                  "inputs": [],
+                  "thing": false
                 }
               },
               "type": "map<Inputs2Plus>"

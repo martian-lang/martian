@@ -148,14 +148,13 @@ func TestPipestanceRun(t *testing.T) {
 			}
 		}
 	}
-	outs, err := os.Open(path.Join(psdir, "TOP",
+	outs, err := ioutil.ReadFile(path.Join(psdir, "TOP",
 		defaultFork,
 		OutsFile.FileName()))
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer outs.Close()
-	dec := json.NewDecoder(outs)
+	dec := json.NewDecoder(bytes.NewReader(outs))
 	dec.DisallowUnknownFields()
 	type Inputs4 struct {
 		Outs []*struct {
@@ -174,10 +173,10 @@ func TestPipestanceRun(t *testing.T) {
 			I4 map[string]*Inputs4 `json:"intermediate4"`
 		} `json:"outputs"`
 	}
+	t.Log(string(outs))
 	if err := dec.Decode(&outputs); err != nil {
 		t.Error(err)
 	}
-	outs.Close()
 	if outputs.Outputs == nil {
 		t.Fatal("outputs was null")
 	}
@@ -213,19 +212,23 @@ func TestPipestanceRun(t *testing.T) {
 		t.Errorf("incorrect length %d != 1 for intermediate3.foo",
 			len(outputs.Outputs.I1))
 	}
-	if len(outputs.Outputs.I4) != 2 {
+	if len(outputs.Outputs.I4) != 3 {
 		t.Errorf("incorrect length %d != 2 for intermediate4",
 			len(outputs.Outputs.I2))
 	} else {
-		if len(outputs.Outputs.I4["thing1"].Outs) != 1 {
-			t.Errorf("incorrect length %d != 1 for intermediate2[0].foo",
-				len(outputs.Outputs.I1))
+		if b := outputs.Outputs.I4["thing1"].Outs; len(b) != 2 {
+			t.Errorf("incorrect length %d != 1 for intermediate4[thing1].outs",
+				len(b))
 		}
 		if b := outputs.Outputs.I4["thing2"].Outs; len(b) != 1 {
-			t.Errorf("incorrect length %d != 1 for intermediate2[1].foo",
-				len(outputs.Outputs.I1))
+			t.Errorf("incorrect length %d != 1 for intermediate4[thing2].outs",
+				len(b))
 		} else if b[0] != nil {
 			t.Error("expected thing2 to be nil")
+		}
+		if b := outputs.Outputs.I4["thing3"].Outs; len(b) != 0 {
+			t.Errorf("incorrect length %d != 0 for intermediate4[thing3].outs",
+				len(b))
 		}
 	}
 }

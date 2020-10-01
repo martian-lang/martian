@@ -15,7 +15,8 @@ import (
 )
 
 type (
-	// Represents a component of a fork ID, which
+	// Represents a component of a fork ID, for a map-called stage or
+	// pipeline.
 	ForkIdPart interface {
 		fmt.Stringer
 		syntax.CollectionIndex
@@ -38,6 +39,8 @@ type (
 	arrayIndexFork int
 
 	undeterminedFork struct{}
+
+	emptyFork struct{}
 
 	mapSourceRange struct {
 		Source syntax.MapCallSource
@@ -68,6 +71,8 @@ func convertForkPart(f syntax.CollectionIndex) ForkIdPart {
 	case mapKeyFork:
 		return f
 	case arrayIndexFork:
+		return f
+	case emptyFork:
 		return f
 	case undeterminedFork:
 		return f
@@ -355,7 +360,7 @@ func (fork ForkId) expandStaticForkPart(i int, part *ForkSourcePart,
 		p := *part
 		fork[i] = &p
 		p.Range = r
-		p.Id = arrayIndexFork(-1)
+		p.Id = emptyFork{}
 		return nil
 	}
 	if s, ok := forkSrc.(*syntax.SplitExp); ok {
@@ -535,10 +540,13 @@ func indexEqual(i, j syntax.CollectionIndex) bool {
 	if i == j {
 		return true
 	}
-	if s := i.IndexSource(); s != j.IndexSource() || s != nil {
+	if m := i.Mode(); m == syntax.ModeNullMapCall {
+		return true
+	} else if n := j.Mode(); n == syntax.ModeNullMapCall {
+		return true
+	} else if s := i.IndexSource(); s != j.IndexSource() || s != nil {
 		return false
-	}
-	if m := i.Mode(); m != j.Mode() {
+	} else if m != n {
 		return false
 	} else if m == syntax.ModeArrayCall {
 		return i.ArrayIndex() == j.ArrayIndex()
@@ -736,6 +744,11 @@ func (f *ForkSourcePart) Equal(o *ForkSourcePart) bool {
 	if f.Id == nil {
 		return o.Id == nil
 	}
+	if o.Id.Mode() == syntax.ModeNullMapCall {
+		return true
+	} else if f.Id.Mode() == syntax.ModeNullMapCall {
+		return true
+	}
 	if f.Id.Mode() != o.Id.Mode() {
 		return false
 	}
@@ -850,6 +863,34 @@ func (arrayIndexFork) MapKey() string {
 
 func (arrayIndexFork) Mode() syntax.CallMode {
 	return syntax.ModeArrayCall
+}
+
+func (emptyFork) String() string {
+	return "empty"
+}
+
+func (emptyFork) GoString() string {
+	return "empty"
+}
+
+func (emptyFork) forkString() string {
+	return defaultFork
+}
+
+func (emptyFork) ArrayIndex() int {
+	return -1
+}
+
+func (emptyFork) IndexSource() syntax.MapCallSource {
+	return nil
+}
+
+func (emptyFork) MapKey() string {
+	return ""
+}
+
+func (emptyFork) Mode() syntax.CallMode {
+	return syntax.ModeNullMapCall
 }
 
 func (undeterminedFork) String() string {
@@ -1000,6 +1041,8 @@ func (f *ForkSourcePart) ForkIdString() (string, error) {
 	}
 	switch f.Id.(type) {
 	case undeterminedFork:
+		return defaultFork, nil
+	case emptyFork:
 		return defaultFork, nil
 	case syntax.CollectionIndex:
 		if f.Id.IndexSource() != nil {
@@ -1274,11 +1317,15 @@ func getUnknownKeys(v json.Marshaler) (mapKeyRange, error) {
 }
 
 func (self *Fork) getUnmatchedForkParts(bNode *Node) []*ForkSourcePart {
-	if rl := self.forkId.UnmatchedParts(bNode.call.ForkRoots()); len(rl) > 0 {
-		bNode = self.node.top.allNodes[rl[0].GetFqid()]
+	return self.forkId.getUnmatchedForkParts(bNode)
+}
+
+func (forkId ForkId) getUnmatchedForkParts(bNode *Node) []*ForkSourcePart {
+	if rl := forkId.UnmatchedParts(bNode.call.ForkRoots()); len(rl) > 0 {
+		bNode = bNode.top.allNodes[rl[0].GetFqid()]
 		parts := make([]*ForkSourcePart, 0, len(bNode.forks))
 		for _, f := range bNode.forks {
-			if self.forkId.Matches(f.forkId) {
+			if forkId.Matches(f.forkId) {
 				for _, part := range f.forkId {
 					if part.Split.Call == rl[0].Call() {
 						parts = append(parts, part)
@@ -1340,7 +1387,7 @@ func (self *Fork) expandForkPart(i int, part *ForkSourcePart,
 		return nil, err
 	}
 	if sp, ok := exp.(*syntax.SplitExp); ok {
-		return self.expandForkPartFromSource(i, part, split, sp.Source, result)
+		return self.expandForkPartFromSource(i, part, split, sp.Source, result[len(result):])
 	} else {
 		return nil, nil
 	}
@@ -1379,7 +1426,7 @@ func (self *Fork) expandForkPartFromExp(i int, part *ForkSourcePart,
 	}
 	switch exp := exp.(type) {
 	case *syntax.NullExp:
-		part.Id = arrayIndexFork(0)
+		part.Id = emptyFork{}
 		self.updateId(self.forkId)
 		self.writeDisable()
 		return nil, nil
@@ -1500,7 +1547,6 @@ func (self *Fork) expandForkFromRef(i int,
 	if bNode != self.node {
 		bNode.expandForks()
 	}
-	result = result[len(result):]
 	if parts := self.getUnmatchedForkParts(bNode); len(parts) > 0 {
 		flen := len(self.forkId)
 		if flen == 0 {
@@ -1559,7 +1605,12 @@ func (self *Fork) expandForkFromObj(
 	ref fmt.GoStringer,
 	result []ForkId) ([]ForkId, error) {
 	if obj == nil {
-		part.Id = arrayIndexFork(0)
+		if len(self.node.forks)-1 > self.index {
+			pc := *part
+			part = &pc
+			self.forkId[i] = part
+		}
+		part.Id = emptyFork{}
 		self.updateId(self.forkId)
 		self.writeDisable()
 		return nil, nil
@@ -1580,7 +1631,12 @@ func (self *Fork) expandForkFromObj(
 			}
 		}
 		if n == 0 {
-			part.Id = arrayIndexFork(0)
+			if len(self.node.forks)-1 > self.index {
+				pc := *part
+				part = &pc
+				self.forkId[i] = part
+			}
+			part.Id = emptyFork{}
 			self.updateId(self.forkId)
 			self.writeDisable()
 			return nil, nil
@@ -1643,7 +1699,12 @@ func (self *Fork) expandForkFromObj(
 			}
 		}
 		if len(keys) == 0 {
-			part.Id = mapKeyFork("")
+			if len(self.node.forks)-1 > self.index {
+				pc := *part
+				part = &pc
+				self.forkId[i] = part
+			}
+			part.Id = emptyFork{}
 			self.updateId(self.forkId)
 			self.writeDisable()
 			return nil, nil
@@ -1673,7 +1734,7 @@ func (self *Fork) expandForkFromObj(
 				self.updateId(self.forkId)
 			} else {
 				result = append(result, rep[0:flen:flen])
-				rep = rep[:flen]
+				rep = rep[flen:]
 				fid := result[j-1]
 				for k, p := range self.forkId {
 					if k == i {

@@ -340,6 +340,18 @@ func (node *TopNode) resolveMerge(binding *syntax.MergeExp, t syntax.Type,
 	allReady := true
 	switch binding.CallMode() {
 	case syntax.ModeMapCall:
+		if len(parts) == 1 {
+			if _, ok := parts[0].Id.(emptyFork); ok {
+				err := errs.If()
+				if err != nil {
+					err = &elementError{
+						element: "merge of map " + binding.Call.GetFqid(),
+						inner:   err,
+					}
+				}
+				return true, MarshalerMap{}, err
+			}
+		}
 		result := make(MarshalerMap, len(parts))
 		for _, part := range parts {
 			if part.Id.IndexSource() != nil {
@@ -377,6 +389,18 @@ func (node *TopNode) resolveMerge(binding *syntax.MergeExp, t syntax.Type,
 	case syntax.ModeNullMapCall:
 		return true, nil, nil
 	case syntax.ModeArrayCall:
+		if len(parts) == 1 {
+			if _, ok := parts[0].Id.(emptyFork); ok {
+				err := errs.If()
+				if err != nil {
+					err = &elementError{
+						element: "merge of array " + binding.Call.GetFqid(),
+						inner:   err,
+					}
+				}
+				return true, marshallerArray{}, err
+			}
+		}
 		result := make(marshallerArray, len(parts))
 		for i, part := range parts {
 			if part.Id.IndexSource() != nil {
@@ -520,6 +544,8 @@ func (node *TopNode) getParts(src *syntax.CallStm,
 				parts = append(parts[:i], parts[i+1:]...)
 			}
 		}
+	} else if len(parts) == 0 {
+		return forkId.getUnmatchedForkParts(boundNode), errs
 	}
 	return parts, errs
 }
@@ -561,7 +587,8 @@ func (node *TopNode) resolveSplit(binding *syntax.SplitExp, t syntax.Type,
 			if err != nil {
 				err = &elementError{
 					element: "splitting " + binding.Source.CallMode().String() +
-						" " + binding.Value.GoString(),
+						" " + binding.Value.GoString() + " with fork part " +
+						part.Split.Call.GoString(),
 					inner: err,
 				}
 			}
