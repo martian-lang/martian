@@ -1245,8 +1245,17 @@ func getUnknownLength(v json.Marshaler) (int, error) {
 	if val.Kind() == reflect.Array {
 		return val.Len(), nil
 	}
-	return 0, fmt.Errorf("can't take length of %s",
-		val.Type().String())
+	switch v := v.(type) {
+	case fmt.GoStringer:
+		return 0, fmt.Errorf("can't take length of %s %s",
+			val.Type().String(), v.GoString())
+	case fmt.Stringer:
+		return 0, fmt.Errorf("can't take length of %s %s",
+			val.Type().String(), v.String())
+	default:
+		return 0, fmt.Errorf("can't take length of %s",
+			val.Type().String())
+	}
 }
 
 func getUnknownKeys(v json.Marshaler) (mapKeyRange, error) {
@@ -1478,7 +1487,18 @@ func (self *Fork) expandForkPartFromSplit(i int, part *ForkSourcePart,
 			if err != nil {
 				return nil, err
 			}
-			return self.expandForkFromObj(i, part, split, obj, exp, result)
+			if e, ok := obj.(syntax.Exp); ok {
+				result, err = self.expandForkPartFromExp(i, part, split, e, result)
+			} else {
+				result, err = self.expandForkFromObj(i, part, split, obj, exp, result)
+			}
+			if err != nil {
+				err = &forkResolutionError{
+					Msg: "in split source " + exp.GoString(),
+					Err: err,
+				}
+			}
+			return result, err
 		}
 	}
 	panic("call " + exp.Call.GoString() +

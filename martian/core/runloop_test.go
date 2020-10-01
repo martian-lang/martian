@@ -171,6 +171,7 @@ func TestPipestanceRun(t *testing.T) {
 			I2 []*Inputs4          `json:"intermediate2"`
 			I3 []*Inputs4          `json:"intermediate3"`
 			I4 map[string]*Inputs4 `json:"intermediate4"`
+			I5 []*Inputs4          `json:"intermediate5"`
 		} `json:"outputs"`
 	}
 	t.Log(string(outs))
@@ -190,7 +191,7 @@ func TestPipestanceRun(t *testing.T) {
 			len(outputs.Outputs.I1))
 	} else if len(outputs.Outputs.I1["foo"].Outs) != 1 {
 		t.Errorf("incorrect length %d != 1 for intermediate1.foo",
-			len(outputs.Outputs.I1))
+			len(outputs.Outputs.I1["foo"].Outs))
 	}
 	if len(outputs.Outputs.I2) != 2 {
 		t.Errorf("incorrect length %d != 2 for intermediate2",
@@ -198,23 +199,23 @@ func TestPipestanceRun(t *testing.T) {
 	} else {
 		if len(outputs.Outputs.I2[0].Outs) != 1 {
 			t.Errorf("incorrect length %d != 1 for intermediate2[0].foo",
-				len(outputs.Outputs.I1))
+				len(outputs.Outputs.I2[0].Outs))
 		}
 		if len(outputs.Outputs.I2[1].Outs) != 1 {
 			t.Errorf("incorrect length %d != 1 for intermediate2[1].foo",
-				len(outputs.Outputs.I1))
+				len(outputs.Outputs.I2[1].Outs))
 		}
 	}
 	if len(outputs.Outputs.I3) != 1 {
 		t.Errorf("incorrect length %d != 1 for intermediate3",
-			len(outputs.Outputs.I1))
+			len(outputs.Outputs.I3))
 	} else if len(outputs.Outputs.I3[0].Outs) != 1 {
 		t.Errorf("incorrect length %d != 1 for intermediate3.foo",
-			len(outputs.Outputs.I1))
+			len(outputs.Outputs.I3[0].Outs))
 	}
 	if len(outputs.Outputs.I4) != 3 {
 		t.Errorf("incorrect length %d != 2 for intermediate4",
-			len(outputs.Outputs.I2))
+			len(outputs.Outputs.I4))
 	} else {
 		if b := outputs.Outputs.I4["thing1"].Outs; len(b) != 2 {
 			t.Errorf("incorrect length %d != 1 for intermediate4[thing1].outs",
@@ -230,5 +231,12 @@ func TestPipestanceRun(t *testing.T) {
 			t.Errorf("incorrect length %d != 0 for intermediate4[thing3].outs",
 				len(b))
 		}
+	}
+	if len(outputs.Outputs.I5) != 1 {
+		t.Errorf("incorrect length %d != 1 for intermediate5",
+			len(outputs.Outputs.I5))
+	} else if b := outputs.Outputs.I5[0].Outs; len(b) != 1 {
+		t.Errorf("incorrect length %d != 1 for intermediate5[0].outs",
+			len(b))
 	}
 }

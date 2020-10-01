@@ -1,4 +1,5 @@
 load("@io_bazel_rules_go//go:def.bzl", "go_library", "go_test")
+load("//tools:mro_rules.bzl", "mrf_test", "mro_library", "mro_test")
 
 genrule(
     name = "grammar",
@@ -97,4 +98,30 @@ alias(
     name = "go_default_library",
     actual = "syntax",
     visibility = ["//visibility:public"],
+)
+
+mro_library(
+    name = "example_mros",
+    testonly = True,
+    srcs = [
+        "testdata/disable_bindings.mro",
+        "testdata/disable_pipeline.mro",
+        "testdata/map_call_edge_cases.mro",
+        "testdata/map_call_test.mro",
+        "testdata/resolve_test.mro",
+    ],
+)
+
+mro_test(
+    name = "test_example_mros",
+    srcs = [":example_mros"],
+    flags = [
+        "--strict",
+        "--no-check-src",
+    ],
+)
+
+mrf_test(
+    name = "check_example_mros_format",
+    srcs = [":example_mros"],
 )

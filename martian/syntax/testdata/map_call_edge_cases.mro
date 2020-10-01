@@ -1,3 +1,5 @@
+filetype Inputs3Plus;
+
 struct Inputs1(
     string thing1,
     int    thing2,
@@ -40,6 +42,12 @@ stage GENERATE_MAP(
     in  map<Inputs2Plus> what,
     out map<Inputs2Plus> result,
     src exec             "stage.py",
+)
+
+stage GENERATE_INPUTS(
+    in  Inputs2Plus what,
+    out Inputs2Plus result,
+    src exec        "stage.py",
 )
 
 stage STUFF1(
@@ -101,12 +109,14 @@ pipeline PIPELINE2(
 pipeline PIPELINE3(
     in  map<Inputs2> inputs1,
     in  Inputs2[]    inputs2,
+    in  Inputs2[]    inputs3,
     in  string       blah,
     out STUFF2       output,
     out map<Inputs4> intermediate1,
     out Inputs4[]    intermediate2,
     out Inputs4[]    intermediate3,
     out map<Inputs4> intermediate4,
+    out Inputs4[]    intermediate5,
 )
 {
     map call PIPELINE2 as MAP_MAP(
@@ -172,7 +182,7 @@ pipeline PIPELINE3(
             },
             "thing3": {
                 inputs: [],
-                thing: false,
+                thing:  false,
             },
         },
     )
@@ -187,25 +197,34 @@ pipeline PIPELINE3(
         inputs = MAP_MAP,
     )
 
+    map call PIPELINE2 as PARTLY_VARIABLE(
+        inputs = split self.inputs3,
+        blah   = self.blah,
+    )
+
     return (
         output        = STUFF2,
         intermediate1 = MAP_MAP,
         intermediate2 = ARRAY_MAP,
         intermediate3 = VARIABLE_ARRAY_MAP,
         intermediate4 = VARIABLE_MAP_MAP,
+        intermediate5 = PARTLY_VARIABLE,
     )
 }
 
 pipeline _STRUCTIFY(
     in  map<Inputs2Plus> inputs1,
     in  Inputs2Plus[]    inputs2,
+    in  Inputs2Plus[]    inputs3,
     out map<Inputs2Plus> inputs1,
     out Inputs2Plus[]    inputs2,
+    out Inputs2Plus[]    inputs3,
 )
 {
     return (
         inputs1 = self.inputs1,
         inputs2 = self.inputs2,
+        inputs3 = self.inputs3,
     )
 }
 
@@ -214,6 +233,13 @@ pipeline TOP(
     out PIPELINE3   outputs,
 )
 {
+    call GENERATE_INPUTS(
+        what = {
+            inputs: [self.inputs],
+            thing:  false,
+        },
+    )
+
     call _STRUCTIFY(
         inputs1 = {
             "foo": {
@@ -231,6 +257,7 @@ pipeline TOP(
                 thing:  true,
             },
         ],
+        inputs3 = [GENERATE_INPUTS.result],
     )
 
     call PIPELINE3(
