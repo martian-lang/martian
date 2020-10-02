@@ -118,7 +118,7 @@ func TestPipestanceRun(t *testing.T) {
 	defer os.RemoveAll(psdir)
 	t.Log("Starting pipestance in", psdir)
 	pipestance, err := rt.InvokePipeline(string(data),
-		"testdata/map_call_edge_cases.mro", path.Base(psdir),
+		"testdata/map_call_edge_cases.mro", t.Name(),
 		psdir, []string{"testdata"}, "<none>", nil, nil)
 	if err != nil {
 		t.Fatal("Invoking pipeline:", err)
@@ -147,6 +147,10 @@ func TestPipestanceRun(t *testing.T) {
 				}
 			}
 		}
+	}
+	nodeInfos := pipestance.SerializeState()
+	if len(nodeInfos) != 22 {
+		t.Errorf("node count %d != 22", len(nodeInfos))
 	}
 	outs, err := ioutil.ReadFile(path.Join(psdir, "TOP",
 		defaultFork,

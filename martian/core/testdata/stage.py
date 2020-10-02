@@ -36,7 +36,9 @@ def main(argv):
             args = json.load(args_file)
         outs = {"result": args["what"]}
         with open(os.path.join(metadata_path, "_outs"), "w") as outs_file:
-            json.dump(outs, outs_file, indent=2, separators=(",", ":"))
+            json.dump(
+                outs, outs_file, indent=2, separators=(",", ":"), sort_keys=True
+            )
         journal(metadata_path, journal_prefix, "log", "end\n")
         journal(metadata_path, journal_prefix, "complete", "complete\n")
     except Exception as ex:
