@@ -944,10 +944,13 @@ func (args LazyArgumentMap) Path(p string, source, dest syntax.Type,
 	}
 	switch t := source.(type) {
 	case *syntax.TypedMapType:
+		if d, ok := dest.(*syntax.TypedMapType); ok {
+			dest = d.Elem
+		}
 		result := make(MarshalerMap, len(args))
 		var errs syntax.ErrorList
 		for k, v := range args {
-			elem, err := resolvePath(v, p, t.Elem, lookup)
+			elem, err := resolvePath(v, p, t.Elem, dest, lookup)
 			result[k] = elem
 			if err != nil {
 				errs = append(errs, &elementError{
@@ -979,18 +982,27 @@ func (args LazyArgumentMap) Path(p string, source, dest syntax.Type,
 				panic("unknown element type for " + member.Tname.String())
 			}
 			m, err := func(v json.RawMessage, indexDot int, p string,
-				mt syntax.Type, lookup *syntax.TypeLookup) (json.Marshaler, error) {
+				mt, dest syntax.Type, lookup *syntax.TypeLookup) (json.Marshaler, error) {
 				if indexDot > 0 {
-					return resolvePath(v, p[indexDot+1:], mt, lookup)
+					return resolvePath(v, p[indexDot+1:], mt, dest, lookup)
 				} else {
-					m, fatal, err := mt.FilterJson(v, lookup)
+					if dest == nil {
+						dest = mt
+					}
+					m, fatal, err := dest.FilterJson(v, lookup)
 					if fatal {
+						if err != nil {
+							err = &syntax.IncompatibleTypeError{
+								Message: "cannot filter " + mt.String() + " to " + dest.String(),
+								Reason:  err,
+							}
+						}
 						return m, err
 					} else {
 						return m, nil
 					}
 				}
-			}(v, indexDot, p, mt, lookup)
+			}(v, indexDot, p, mt, dest, lookup)
 			if err != nil {
 				return m, &elementError{
 					element: "field " + key,
@@ -1098,7 +1110,7 @@ func (args LazyArgumentMap) filter(t syntax.Type,
 }
 
 func resolvePath(b json.RawMessage, p string,
-	t syntax.Type, lookup *syntax.TypeLookup) (json.Marshaler, error) {
+	t, dest syntax.Type, lookup *syntax.TypeLookup) (json.Marshaler, error) {
 	if bytes.Equal(b, nullBytes) {
 		return nil, nil
 	}
@@ -1112,11 +1124,14 @@ func resolvePath(b json.RawMessage, p string,
 		if err := json.Unmarshal(b, &arr); err != nil {
 			return nil, err
 		}
-		et := lookup.GetArray(t.Elem, t.Dim-1)
+		if dest != nil {
+			dest = lookup.GetArray(dest, -1)
+		}
+		et := lookup.GetArray(t, -1)
 		result := make(marshallerArray, 0, len(arr))
 		var errs syntax.ErrorList
 		for i, v := range arr {
-			elem, err := resolvePath(v, p, et, lookup)
+			elem, err := resolvePath(v, p, et, dest, lookup)
 			if err != nil {
 				errs = append(errs, &elementError{
 					element: fmt.Sprint("array index ", i),
@@ -1131,7 +1146,7 @@ func resolvePath(b json.RawMessage, p string,
 		if err := json.Unmarshal(b, &args); err != nil {
 			return nil, err
 		}
-		return args.Path(p, t, t, lookup)
+		return args.Path(p, t, dest, lookup)
 	default:
 		panic(fmt.Sprintf("invalid path through %T", t))
 	}

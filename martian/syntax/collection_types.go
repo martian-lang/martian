@@ -275,10 +275,12 @@ func (s *ArrayType) FilterJson(data json.RawMessage, lookup *TypeLookup) (json.R
 					buf.WriteRune(',')
 				}
 				fm, f, err := s.Elem.FilterJson(m, lookup)
-				if !sameSlice(fm, m) {
+				if !different && !sameSlice(fm, m) {
 					different = true
 				}
-				buf.Write(fm)
+				if _, err := buf.Write(fm); err != nil {
+					panic(err)
+				}
 				if err != nil {
 					errs = append(errs, err)
 					fatal = fatal || f
@@ -298,10 +300,12 @@ func (s *ArrayType) FilterJson(data json.RawMessage, lookup *TypeLookup) (json.R
 					buf.WriteRune(',')
 				}
 				fm, f, err := aType.FilterJson(m, lookup)
-				if !sameSlice(fm, m) {
+				if !different && !sameSlice(fm, m) {
 					different = true
 				}
-				arr[i] = fm
+				if _, err := buf.Write(fm); err != nil {
+					panic(err)
+				}
 				if err != nil {
 					errs = append(errs, err)
 					fatal = fatal || f
@@ -515,7 +519,7 @@ func (s *TypedMapType) FilterJson(data json.RawMessage, lookup *TypeLookup) (jso
 		}
 		buf.WriteRune(':')
 		fm, f, err := s.Elem.FilterJson(m, lookup)
-		if !sameSlice(fm, m) {
+		if !different && !sameSlice(fm, m) {
 			different = true
 		}
 		buf.Write(fm)

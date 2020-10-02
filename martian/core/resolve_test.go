@@ -24,6 +24,18 @@ struct BAZ(
 	BAR b,
 )
 
+struct BazSubset(
+	BAR b,
+)
+
+struct FooSubset(
+	BazSubset[] baz,
+)
+
+struct Foos(
+	FooSubset foo1,
+)
+
 struct FOO(
 	int   bar,
 	BAZ[] baz,
@@ -94,9 +106,24 @@ struct FOO(
 	check(t, lookup.Get(syntax.TypeId{Tname: "BAR", MapDim: 2}),
 		"baz.b",
 		`{"foo1":[{"c":"2"},{"c":"4"},null],"foo2":null}`)
-	check(t, lookup.Get(syntax.TypeId{Tname: syntax.KindInt, MapDim: 2}),
+	check(t, lookup.Get(syntax.TypeId{Tname: syntax.KindString, MapDim: 2}),
 		"baz.b.c",
 		`{"foo1":["2","4",null],"foo2":null}`)
+
+	fooSubset := lookup.Get(syntax.TypeId{Tname: "FooSubset", MapDim: 1})
+	if fooSubset == nil {
+		t.Fatal("missing subset type")
+	}
+	check(t, fooSubset, "",
+		`{"foo1":{"baz":[{"b":{"c":"2"}},{"b":{"c":"4"}},null]},"foo2":null}`)
+	bazSubset := lookup.Get(syntax.TypeId{Tname: "BazSubset", MapDim: 2})
+	if bazSubset == nil {
+		t.Fatal("missing subset type")
+	}
+	check(t, bazSubset, "baz",
+		`{"foo1":[{"b":{"c":"2"}},{"b":{"c":"4"}},null],"foo2":null}`)
+	check(t, lookup.Get(syntax.TypeId{Tname: "Foos"}), "",
+		`{"foo1":{"baz":[{"b":{"c":"2"}},{"b":{"c":"4"}},null]}}`)
 
 	ty = ty.(*syntax.TypedMapType).Elem
 	if err := json.Unmarshal([]byte(`{
@@ -126,7 +153,7 @@ struct FOO(
 	check(t, lookup.Get(syntax.TypeId{Tname: syntax.KindInt}),
 		"bar",
 		"0")
-	check(t, lookup.Get(syntax.TypeId{Tname: "BAZ"}),
+	check(t, lookup.Get(syntax.TypeId{Tname: "BAZ", ArrayDim: 1}),
 		"baz",
 		`[{"a":1,"b":{"c":"2"}},{"a":3,"b":{"c":"4"}}]`)
 	check(t, lookup.Get(syntax.TypeId{Tname: syntax.KindInt, ArrayDim: 1}),
@@ -138,7 +165,7 @@ struct FOO(
 		MapDim:   1,
 	}),
 		"baz.b",
-		`[{"c":"2"},{"c":"4"}]`)
+		`[{"c":"2","d":8},{"c":"4"}]`)
 	check(t, lookup.Get(syntax.TypeId{
 		Tname:    syntax.KindString,
 		ArrayDim: 1,

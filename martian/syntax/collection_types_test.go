@@ -24,7 +24,13 @@ struct BAZ(
 struct FOO(
     int   bar,
     BAZ[] baz,
-)`), "example.mro", nil, false)
+)
+
+struct DoubleFoo(
+    int     bar,
+    BAZ[][] baz,
+)
+`), "example.mro", nil, false)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -121,6 +127,67 @@ struct FOO(
 		t.Error("expected fatal", err)
 	} else if !strings.Contains(err.Error(), "missing field") {
 		t.Error("expected missing field error, got", err)
+	}
+
+	// Test multi-dimensional arrays.
+	ty = lookup.Get(TypeId{Tname: "DoubleFoo", MapDim: 1})
+	if !ty.CanFilter() {
+		t.Error("should filter")
+	}
+	j = []byte(`{
+		"foo1": {
+			"bar": 0,
+			"baz": [
+				[
+					{
+						"a": 1,
+						"b": {
+							"c": "2",
+							"e": 8
+						}
+					},
+					{
+						"a": 3,
+						"b": {
+							"c": "4",
+							"e": 10
+						}
+					}
+				]
+			]
+		}
+	}`)
+	if b, _, err := ty.FilterJson(j, lookup); err != nil {
+		t.Error(err)
+	} else {
+		var buf bytes.Buffer
+		if err := json.Indent(&buf, b, "\t\t", "\t"); err != nil {
+			t.Error(err)
+		} else if s := buf.String(); s != `{
+			"foo1": {
+				"bar": 0,
+				"baz": [
+					[
+						{
+							"a": 1,
+							"b": {
+								"c": "2",
+								"e": 8
+							}
+						},
+						{
+							"a": 3,
+							"b": {
+								"c": "4",
+								"e": 10
+							}
+						}
+					]
+				]
+			}
+		}` {
+			t.Error(s)
+		}
 	}
 }
 
