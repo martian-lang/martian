@@ -1,0 +1,14 @@
+[
+    {
+        "sentinel": "/user/test/retry_test/pipeline_test/SHOULD_RESTART/BEGIN/fork0/chnk0/files/sentinel",
+        "sentinels": [],
+        "should_fail": true,
+        "should_fail_next": []
+    },
+    {
+        "sentinel": "",
+        "sentinels": [],
+        "should_fail": false,
+        "should_fail_next": []
+    }
+]

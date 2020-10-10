@@ -1,0 +1,40 @@
+load(
+    "//tools:mro_rules.bzl",
+    "mrf_test",
+    "mro_library",
+    "mro_test",
+)
+load("//test:integration_test.bzl", "integration_test")
+
+mro_library(
+    name = "pipeline",
+    testonly = True,
+    srcs = ["pipeline.mro"],
+    deps = [
+        "//test/retry_test/stage",
+    ],
+)
+
+mro_test(
+    name = "pipeline_test",
+    size = "small",
+    srcs = [":pipeline"],
+)
+
+mrf_test(
+    name = "pipeline_format",
+    srcs = [":pipeline"],
+)
+
+filegroup(
+    name = "pass_expect",
+    srcs = glob(["expected/**"]),
+)
+
+integration_test(
+    name = "retry_test",
+    config = "autoretry_pass.json",
+    expectation = [":pass_expect"],
+    pipeline = ":pipeline",
+    runner = "autoretry_pass.sh",
+)

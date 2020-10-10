@@ -1,0 +1,663 @@
+[
+    {
+        "name": "SHOULD_RESTART",
+        "fqname": "ID.pipeline_test.SHOULD_RESTART",
+        "type": "pipeline",
+        "forks": [
+            {
+                "stages": [
+                    {
+                        "name": "BEGIN",
+                        "fqname": "ID.pipeline_test.SHOULD_RESTART.BEGIN",
+                        "forki": 0
+                    },
+                    {
+                        "name": "MIDDLE",
+                        "fqname": "ID.pipeline_test.SHOULD_RESTART.MIDDLE",
+                        "forki": 0
+                    },
+                    {
+                        "name": "MIDDLE",
+                        "fqname": "ID.pipeline_test.SHOULD_RESTART.MIDDLE",
+                        "forki": 1
+                    },
+                    {
+                        "name": "END",
+                        "fqname": "ID.pipeline_test.SHOULD_RESTART.END",
+                        "forki": 0
+                    },
+                    {
+                        "name": "END",
+                        "fqname": "ID.pipeline_test.SHOULD_RESTART.END",
+                        "forki": 1
+                    }
+                ],
+                "index": 0,
+                "chunks": [],
+                "split_stats": null,
+                "join_stats": null,
+                "fork_stats": {
+                    "num_jobs": 8,
+                    "num_threads": 8,
+                    "duration": 2.023332101,
+                    "core_hours": 0.0005620366947222223,
+                    "maxrss": 17528,
+                    "maxvmem": 1228588,
+                    "in_blocks": 5584,
+                    "out_blocks": 672,
+                    "total_blocks": 6256,
+                    "in_blocks_rate": 2759.803987313895,
+                    "out_blocks_rate": 332.12540821542575,
+                    "total_blocks_rate": 3091.9293955293206,
+                    "in_bytes": 0,
+                    "out_bytes": 0,
+                    "in_bytes_rate": 0,
+                    "out_bytes_rate": 0,
+                    "in_bytes_peak": 0,
+                    "out_bytes_peak": 0,
+                    "start": "2020-10-09T19:11:04Z",
+                    "end": "2020-10-09T19:11:16Z",
+                    "walltime": 12,
+                    "usertime": 0.268205,
+                    "systemtime": 0.10498099999999998,
+                    "total_files": 1,
+                    "total_bytes": 17,
+                    "output_files": 1,
+                    "output_bytes": 17,
+                    "vdr_files": 0,
+                    "vdr_bytes": 0,
+                    "in_bytes_dev": 0,
+                    "out_bytes_dev": 0
+                }
+            }
+        ],
+        "maxbytes": 27300,
+        "bytehist": [
+            {
+                "ts": "2020-10-09T19:11:04-07:00",
+                "bytes": 3345,
+                "desc": "ID.pipeline_test.SHOULD_RESTART.BEGIN alloc"
+            },
+            {
+                "ts": "2020-10-09T19:11:09-07:00",
+                "bytes": 10058,
+                "desc": "ID.pipeline_test.SHOULD_RESTART.BEGIN alloc"
+            },
+            {
+                "ts": "2020-10-09T19:11:10-07:00",
+                "bytes": 14134,
+                "desc": "ID.pipeline_test.SHOULD_RESTART.BEGIN alloc"
+            },
+            {
+                "ts": "2020-10-09T19:11:11-07:00",
+                "bytes": 17266,
+                "desc": "ID.pipeline_test.SHOULD_RESTART.MIDDLE alloc"
+            },
+            {
+                "ts": "2020-10-09T19:11:13-07:00",
+                "bytes": 20737,
+                "desc": "ID.pipeline_test.SHOULD_RESTART.MIDDLE alloc"
+            },
+            {
+                "ts": "2020-10-09T19:11:14-07:00",
+                "bytes": 23856,
+                "desc": "ID.pipeline_test.SHOULD_RESTART.END alloc"
+            },
+            {
+                "ts": "2020-10-09T19:11:16-07:00",
+                "bytes": 27300,
+                "desc": "ID.pipeline_test.SHOULD_RESTART.END alloc"
+            }
+        ],
+        "highmem": {
+            "rss": 18313216,
+            "shared": 10866688,
+            "vmem": 1470529536,
+            "text": 9932800,
+            "stack": 172056576,
+            "proc_count": 24
+        }
+    },
+    {
+        "name": "BEGIN",
+        "fqname": "ID.pipeline_test.SHOULD_RESTART.BEGIN",
+        "type": "stage",
+        "forks": [
+            {
+                "stages": [
+                    {
+                        "name": "BEGIN",
+                        "fqname": "ID.pipeline_test.SHOULD_RESTART.BEGIN",
+                        "forki": 0
+                    }
+                ],
+                "index": 0,
+                "chunks": [
+                    {
+                        "index": 0,
+                        "chunk_stats": {
+                            "num_jobs": 1,
+                            "num_threads": 1,
+                            "duration": 0.249746218,
+                            "core_hours": 0.00006937394944444444,
+                            "maxrss": 16536,
+                            "maxvmem": 1227180,
+                            "in_blocks": 16,
+                            "out_blocks": 88,
+                            "total_blocks": 104,
+                            "in_blocks_rate": 64.06503421004759,
+                            "out_blocks_rate": 352.3576881552617,
+                            "total_blocks_rate": 416.42272236530926,
+                            "in_bytes": 0,
+                            "out_bytes": 0,
+                            "in_bytes_rate": 0,
+                            "out_bytes_rate": 0,
+                            "in_bytes_peak": 0,
+                            "out_bytes_peak": 0,
+                            "start": "2020-10-09T19:11:09Z",
+                            "end": "2020-10-09T19:11:10Z",
+                            "walltime": 1,
+                            "usertime": 0.041521,
+                            "systemtime": 0.004908,
+                            "total_files": 0,
+                            "total_bytes": 0,
+                            "output_files": 0,
+                            "output_bytes": 0,
+                            "vdr_files": 0,
+                            "vdr_bytes": 0,
+                            "in_bytes_dev": 0,
+                            "out_bytes_dev": 0
+                        }
+                    },
+                    {
+                        "index": 1,
+                        "chunk_stats": {
+                            "num_jobs": 1,
+                            "num_threads": 1,
+                            "duration": 0.248348775,
+                            "core_hours": 0.00006898577083333333,
+                            "maxrss": 15960,
+                            "maxvmem": 1153448,
+                            "in_blocks": 16,
+                            "out_blocks": 80,
+                            "total_blocks": 96,
+                            "in_blocks_rate": 64.42552414442149,
+                            "out_blocks_rate": 322.12762072210745,
+                            "total_blocks_rate": 386.55314486652895,
+                            "in_bytes": 0,
+                            "out_bytes": 0,
+                            "in_bytes_rate": 0,
+                            "out_bytes_rate": 0,
+                            "in_bytes_peak": 0,
+                            "out_bytes_peak": 0,
+                            "start": "2020-10-09T19:11:05Z",
+                            "end": "2020-10-09T19:11:05Z",
+                            "walltime": 0,
+                            "usertime": 0.020791999999999998,
+                            "systemtime": 0.022424,
+                            "total_files": 0,
+                            "total_bytes": 0,
+                            "output_files": 0,
+                            "output_bytes": 0,
+                            "vdr_files": 0,
+                            "vdr_bytes": 0,
+                            "in_bytes_dev": 0,
+                            "out_bytes_dev": 0
+                        }
+                    }
+                ],
+                "split_stats": {
+                    "num_jobs": 1,
+                    "num_threads": 1,
+                    "duration": 0.247953652,
+                    "core_hours": 0.00006887601444444444,
+                    "maxrss": 15320,
+                    "maxvmem": 1227436,
+                    "in_blocks": 5472,
+                    "out_blocks": 88,
+                    "total_blocks": 5560,
+                    "in_blocks_rate": 22068.640473180043,
+                    "out_blocks_rate": 354.9050368493867,
+                    "total_blocks_rate": 22423.54551002943,
+                    "in_bytes": 0,
+                    "out_bytes": 0,
+                    "in_bytes_rate": 0,
+                    "out_bytes_rate": 0,
+                    "in_bytes_peak": 0,
+                    "out_bytes_peak": 0,
+                    "start": "2020-10-09T19:11:04Z",
+                    "end": "2020-10-09T19:11:04Z",
+                    "walltime": 0,
+                    "usertime": 0.033367,
+                    "systemtime": 0.017156,
+                    "total_files": 0,
+                    "total_bytes": 0,
+                    "output_files": 0,
+                    "output_bytes": 0,
+                    "vdr_files": 0,
+                    "vdr_bytes": 0,
+                    "in_bytes_dev": 0,
+                    "out_bytes_dev": 0
+                },
+                "join_stats": {
+                    "num_jobs": 1,
+                    "num_threads": 1,
+                    "duration": 0.237708315,
+                    "core_hours": 0.0000660300875,
+                    "maxrss": 16536,
+                    "maxvmem": 1228588,
+                    "in_blocks": 16,
+                    "out_blocks": 80,
+                    "total_blocks": 96,
+                    "in_blocks_rate": 67.30938293008387,
+                    "out_blocks_rate": 336.54691465041935,
+                    "total_blocks_rate": 403.8562975805032,
+                    "in_bytes": 0,
+                    "out_bytes": 0,
+                    "in_bytes_rate": 0,
+                    "out_bytes_rate": 0,
+                    "in_bytes_peak": 0,
+                    "out_bytes_peak": 0,
+                    "start": "2020-10-09T19:11:10Z",
+                    "end": "2020-10-09T19:11:10Z",
+                    "walltime": 0,
+                    "usertime": 0.029877,
+                    "systemtime": 0.019389999999999998,
+                    "total_files": 0,
+                    "total_bytes": 0,
+                    "output_files": 0,
+                    "output_bytes": 0,
+                    "vdr_files": 0,
+                    "vdr_bytes": 0,
+                    "in_bytes_dev": 0,
+                    "out_bytes_dev": 0
+                },
+                "fork_stats": {
+                    "num_jobs": 4,
+                    "num_threads": 4,
+                    "duration": 0.98375696,
+                    "core_hours": 0.0002732658222222222,
+                    "maxrss": 16536,
+                    "maxvmem": 1228588,
+                    "in_blocks": 5520,
+                    "out_blocks": 336,
+                    "total_blocks": 5856,
+                    "in_blocks_rate": 5611.142004016927,
+                    "out_blocks_rate": 341.54777415755206,
+                    "total_blocks_rate": 5952.689778174479,
+                    "in_bytes": 0,
+                    "out_bytes": 0,
+                    "in_bytes_rate": 0,
+                    "out_bytes_rate": 0,
+                    "in_bytes_peak": 0,
+                    "out_bytes_peak": 0,
+                    "start": "2020-10-09T19:11:04Z",
+                    "end": "2020-10-09T19:11:10Z",
+                    "walltime": 6,
+                    "usertime": 0.125557,
+                    "systemtime": 0.06387799999999999,
+                    "total_files": 0,
+                    "total_bytes": 0,
+                    "output_files": 0,
+                    "output_bytes": 0,
+                    "vdr_files": 0,
+                    "vdr_bytes": 0,
+                    "in_bytes_dev": 0,
+                    "out_bytes_dev": 0
+                }
+            }
+        ],
+        "maxbytes": 0,
+        "bytehist": null
+    },
+    {
+        "name": "END",
+        "fqname": "ID.pipeline_test.SHOULD_RESTART.END",
+        "type": "stage",
+        "forks": [
+            {
+                "stages": [
+                    {
+                        "name": "END",
+                        "fqname": "ID.pipeline_test.SHOULD_RESTART.END",
+                        "forki": 0
+                    }
+                ],
+                "index": 0,
+                "chunks": [
+                    {
+                        "index": 0,
+                        "chunk_stats": {
+                            "num_jobs": 1,
+                            "num_threads": 1,
+                            "duration": 0.256266368,
+                            "core_hours": 0.00007118510222222223,
+                            "maxrss": 17528,
+                            "maxvmem": 1153448,
+                            "in_blocks": 16,
+                            "out_blocks": 88,
+                            "total_blocks": 104,
+                            "in_blocks_rate": 62.435036344683354,
+                            "out_blocks_rate": 343.3926998957584,
+                            "total_blocks_rate": 405.82773624044177,
+                            "in_bytes": 0,
+                            "out_bytes": 0,
+                            "in_bytes_rate": 0,
+                            "out_bytes_rate": 0,
+                            "in_bytes_peak": 0,
+                            "out_bytes_peak": 0,
+                            "start": "2020-10-09T19:11:16Z",
+                            "end": "2020-10-09T19:11:16Z",
+                            "walltime": 0,
+                            "usertime": 0.035477,
+                            "systemtime": 0.009929,
+                            "total_files": 1,
+                            "total_bytes": 17,
+                            "output_files": 0,
+                            "output_bytes": 0,
+                            "vdr_files": 0,
+                            "vdr_bytes": 0,
+                            "in_bytes_dev": 0,
+                            "out_bytes_dev": 0
+                        }
+                    }
+                ],
+                "split_stats": null,
+                "join_stats": null,
+                "fork_stats": {
+                    "num_jobs": 1,
+                    "num_threads": 1,
+                    "duration": 0.256266368,
+                    "core_hours": 0.00007118510222222223,
+                    "maxrss": 17528,
+                    "maxvmem": 1153448,
+                    "in_blocks": 16,
+                    "out_blocks": 88,
+                    "total_blocks": 104,
+                    "in_blocks_rate": 62.435036344683354,
+                    "out_blocks_rate": 343.3926998957584,
+                    "total_blocks_rate": 405.82773624044177,
+                    "in_bytes": 0,
+                    "out_bytes": 0,
+                    "in_bytes_rate": 0,
+                    "out_bytes_rate": 0,
+                    "in_bytes_peak": 0,
+                    "out_bytes_peak": 0,
+                    "start": "2020-10-09T19:11:16Z",
+                    "end": "2020-10-09T19:11:16Z",
+                    "walltime": 0,
+                    "usertime": 0.035477,
+                    "systemtime": 0.009929,
+                    "total_files": 1,
+                    "total_bytes": 17,
+                    "output_files": 1,
+                    "output_bytes": 17,
+                    "vdr_files": 0,
+                    "vdr_bytes": 0,
+                    "in_bytes_dev": 0,
+                    "out_bytes_dev": 0
+                }
+            },
+            {
+                "stages": [
+                    {
+                        "name": "END",
+                        "fqname": "ID.pipeline_test.SHOULD_RESTART.END",
+                        "forki": 1
+                    }
+                ],
+                "index": 1,
+                "chunks": [
+                    {
+                        "index": 0,
+                        "chunk_stats": {
+                            "num_jobs": 1,
+                            "num_threads": 1,
+                            "duration": 0.250064067,
+                            "core_hours": 0.00006946224083333333,
+                            "maxrss": 17316,
+                            "maxvmem": 1228588,
+                            "in_blocks": 16,
+                            "out_blocks": 80,
+                            "total_blocks": 96,
+                            "in_blocks_rate": 63.98360305001358,
+                            "out_blocks_rate": 319.91801525006787,
+                            "total_blocks_rate": 383.90161830008145,
+                            "in_bytes": 0,
+                            "out_bytes": 0,
+                            "in_bytes_rate": 0,
+                            "out_bytes_rate": 0,
+                            "in_bytes_peak": 0,
+                            "out_bytes_peak": 0,
+                            "start": "2020-10-09T19:11:14Z",
+                            "end": "2020-10-09T19:11:14Z",
+                            "walltime": 0,
+                            "usertime": 0.042080000000000006,
+                            "systemtime": 0.00595,
+                            "total_files": 0,
+                            "total_bytes": 0,
+                            "output_files": 0,
+                            "output_bytes": 0,
+                            "vdr_files": 0,
+                            "vdr_bytes": 0,
+                            "in_bytes_dev": 0,
+                            "out_bytes_dev": 0
+                        }
+                    }
+                ],
+                "split_stats": null,
+                "join_stats": null,
+                "fork_stats": {
+                    "num_jobs": 1,
+                    "num_threads": 1,
+                    "duration": 0.250064067,
+                    "core_hours": 0.00006946224083333333,
+                    "maxrss": 17316,
+                    "maxvmem": 1228588,
+                    "in_blocks": 16,
+                    "out_blocks": 80,
+                    "total_blocks": 96,
+                    "in_blocks_rate": 63.98360305001358,
+                    "out_blocks_rate": 319.91801525006787,
+                    "total_blocks_rate": 383.90161830008145,
+                    "in_bytes": 0,
+                    "out_bytes": 0,
+                    "in_bytes_rate": 0,
+                    "out_bytes_rate": 0,
+                    "in_bytes_peak": 0,
+                    "out_bytes_peak": 0,
+                    "start": "2020-10-09T19:11:14Z",
+                    "end": "2020-10-09T19:11:14Z",
+                    "walltime": 0,
+                    "usertime": 0.042080000000000006,
+                    "systemtime": 0.00595,
+                    "total_files": 0,
+                    "total_bytes": 0,
+                    "output_files": 0,
+                    "output_bytes": 0,
+                    "vdr_files": 0,
+                    "vdr_bytes": 0,
+                    "in_bytes_dev": 0,
+                    "out_bytes_dev": 0
+                }
+            }
+        ],
+        "maxbytes": 0,
+        "bytehist": null
+    },
+    {
+        "name": "MIDDLE",
+        "fqname": "ID.pipeline_test.SHOULD_RESTART.MIDDLE",
+        "type": "stage",
+        "forks": [
+            {
+                "stages": [
+                    {
+                        "name": "MIDDLE",
+                        "fqname": "ID.pipeline_test.SHOULD_RESTART.MIDDLE",
+                        "forki": 0
+                    }
+                ],
+                "index": 0,
+                "chunks": [
+                    {
+                        "index": 0,
+                        "chunk_stats": {
+                            "num_jobs": 1,
+                            "num_threads": 1,
+                            "duration": 0.264987969,
+                            "core_hours": 0.00007360776916666667,
+                            "maxrss": 17316,
+                            "maxvmem": 1227436,
+                            "in_blocks": 16,
+                            "out_blocks": 88,
+                            "total_blocks": 104,
+                            "in_blocks_rate": 60.380099747094555,
+                            "out_blocks_rate": 332.09054860902006,
+                            "total_blocks_rate": 392.4706483561146,
+                            "in_bytes": 0,
+                            "out_bytes": 0,
+                            "in_bytes_rate": 0,
+                            "out_bytes_rate": 0,
+                            "in_bytes_peak": 0,
+                            "out_bytes_peak": 0,
+                            "start": "2020-10-09T19:11:13Z",
+                            "end": "2020-10-09T19:11:13Z",
+                            "walltime": 0,
+                            "usertime": 0.035526999999999996,
+                            "systemtime": 0.009855,
+                            "total_files": 0,
+                            "total_bytes": 0,
+                            "output_files": 0,
+                            "output_bytes": 0,
+                            "vdr_files": 0,
+                            "vdr_bytes": 0,
+                            "in_bytes_dev": 0,
+                            "out_bytes_dev": 0
+                        }
+                    }
+                ],
+                "split_stats": null,
+                "join_stats": null,
+                "fork_stats": {
+                    "num_jobs": 1,
+                    "num_threads": 1,
+                    "duration": 0.264987969,
+                    "core_hours": 0.00007360776916666667,
+                    "maxrss": 17316,
+                    "maxvmem": 1227436,
+                    "in_blocks": 16,
+                    "out_blocks": 88,
+                    "total_blocks": 104,
+                    "in_blocks_rate": 60.380099747094555,
+                    "out_blocks_rate": 332.09054860902006,
+                    "total_blocks_rate": 392.4706483561146,
+                    "in_bytes": 0,
+                    "out_bytes": 0,
+                    "in_bytes_rate": 0,
+                    "out_bytes_rate": 0,
+                    "in_bytes_peak": 0,
+                    "out_bytes_peak": 0,
+                    "start": "2020-10-09T19:11:13Z",
+                    "end": "2020-10-09T19:11:13Z",
+                    "walltime": 0,
+                    "usertime": 0.035526999999999996,
+                    "systemtime": 0.009855,
+                    "total_files": 0,
+                    "total_bytes": 0,
+                    "output_files": 0,
+                    "output_bytes": 0,
+                    "vdr_files": 0,
+                    "vdr_bytes": 0,
+                    "in_bytes_dev": 0,
+                    "out_bytes_dev": 0
+                }
+            },
+            {
+                "stages": [
+                    {
+                        "name": "MIDDLE",
+                        "fqname": "ID.pipeline_test.SHOULD_RESTART.MIDDLE",
+                        "forki": 1
+                    }
+                ],
+                "index": 1,
+                "chunks": [
+                    {
+                        "index": 0,
+                        "chunk_stats": {
+                            "num_jobs": 1,
+                            "num_threads": 1,
+                            "duration": 0.268256737,
+                            "core_hours": 0.00007451576027777779,
+                            "maxrss": 17100,
+                            "maxvmem": 1153448,
+                            "in_blocks": 16,
+                            "out_blocks": 80,
+                            "total_blocks": 96,
+                            "in_blocks_rate": 59.64435480328682,
+                            "out_blocks_rate": 298.2217740164341,
+                            "total_blocks_rate": 357.8661288197209,
+                            "in_bytes": 0,
+                            "out_bytes": 0,
+                            "in_bytes_rate": 0,
+                            "out_bytes_rate": 0,
+                            "in_bytes_peak": 0,
+                            "out_bytes_peak": 0,
+                            "start": "2020-10-09T19:11:11Z",
+                            "end": "2020-10-09T19:11:11Z",
+                            "walltime": 0,
+                            "usertime": 0.029564,
+                            "systemtime": 0.015368999999999999,
+                            "total_files": 0,
+                            "total_bytes": 0,
+                            "output_files": 0,
+                            "output_bytes": 0,
+                            "vdr_files": 0,
+                            "vdr_bytes": 0,
+                            "in_bytes_dev": 0,
+                            "out_bytes_dev": 0
+                        }
+                    }
+                ],
+                "split_stats": null,
+                "join_stats": null,
+                "fork_stats": {
+                    "num_jobs": 1,
+                    "num_threads": 1,
+                    "duration": 0.268256737,
+                    "core_hours": 0.00007451576027777779,
+                    "maxrss": 17100,
+                    "maxvmem": 1153448,
+                    "in_blocks": 16,
+                    "out_blocks": 80,
+                    "total_blocks": 96,
+                    "in_blocks_rate": 59.64435480328682,
+                    "out_blocks_rate": 298.2217740164341,
+                    "total_blocks_rate": 357.8661288197209,
+                    "in_bytes": 0,
+                    "out_bytes": 0,
+                    "in_bytes_rate": 0,
+                    "out_bytes_rate": 0,
+                    "in_bytes_peak": 0,
+                    "out_bytes_peak": 0,
+                    "start": "2020-10-09T19:11:11Z",
+                    "end": "2020-10-09T19:11:11Z",
+                    "walltime": 0,
+                    "usertime": 0.029564,
+                    "systemtime": 0.015368999999999999,
+                    "total_files": 0,
+                    "total_bytes": 0,
+                    "output_files": 0,
+                    "output_bytes": 0,
+                    "vdr_files": 0,
+                    "vdr_bytes": 0,
+                    "in_bytes_dev": 0,
+                    "out_bytes_dev": 0
+                }
+            }
+        ],
+        "maxbytes": 0,
+        "bytehist": null
+    }
+]

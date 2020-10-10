@@ -1,0 +1,12 @@
+{
+    "chunks": [
+        {
+            "sentinel": "/user/test/retry_test/pipeline_test/SHOULD_RESTART/BEGIN/fork0/split/files/sentinel", 
+            "should_fail": true
+        }, 
+        {
+            "sentinel": "", 
+            "should_fail": false
+        }
+    ]
+}

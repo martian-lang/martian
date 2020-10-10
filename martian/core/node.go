@@ -476,12 +476,12 @@ func cloneFork(fork *Fork, id ForkId) *Fork {
 	return nf
 }
 
-func (self *Node) expandForks() bool {
+func (self *Node) expandForks(must bool) bool {
 	any := false
 	for i := 0; i < len(self.forks); i++ {
 		fork := self.forks[i]
-		newForks, err := fork.expand()
-		for ; err == nil && len(newForks) > 0; newForks, err = fork.expand() {
+		newForks, err := fork.expand(must)
+		for ; err == nil && len(newForks) > 0; newForks, err = fork.expand(must) {
 			any = true
 			if len(self.forkIds.List) == 0 {
 				self.forkIds.List = make([]ForkId, 1, len(newForks)+1)
@@ -497,6 +497,9 @@ func (self *Node) expandForks() bool {
 			}
 		}
 		if err != nil {
+			if !must {
+				return any
+			}
 			util.PrintError(err, "runtime",
 				"Error computing forking for %s\n",
 				fork.fqname)
@@ -594,6 +597,7 @@ func (self *Node) find(fqname string) *Node {
 //
 // State management
 //
+
 func (self *Node) collectMetadatas() []*Metadata {
 	metadatas := make([]*Metadata, 1, 1+4*len(self.forks))
 	metadatas[0] = self.metadata
@@ -864,7 +868,7 @@ func (self *Node) step() bool {
 	previousState := self.state
 	newState := self.getState()
 	if newState == Running && newState != previousState {
-		if self.expandForks() {
+		if self.expandForks(true) {
 			return true
 		}
 	}

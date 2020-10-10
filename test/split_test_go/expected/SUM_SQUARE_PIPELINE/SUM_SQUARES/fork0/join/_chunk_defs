@@ -1,20 +1,11 @@
 [
     {
-        "__mem_gb": 1,
-        "__threads": 1,
-        "__vmem_gb": 4,
         "value": 1
     },
     {
-        "__mem_gb": 1,
-        "__threads": 1,
-        "__vmem_gb": 4,
         "value": 2
     },
     {
-        "__mem_gb": 1,
-        "__threads": 1,
-        "__vmem_gb": 4,
         "value": 3
     }
 ]

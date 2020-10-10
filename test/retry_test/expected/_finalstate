@@ -1,0 +1,642 @@
+[
+    {
+        "name": "SHOULD_RESTART",
+        "fqname": "ID.pipeline_test.SHOULD_RESTART",
+        "type": "pipeline",
+        "path": "/user/test/retry_test/pipeline_test/SHOULD_RESTART",
+        "state": "complete",
+        "metadata": {
+            "path": "/user/test/retry_test/pipeline_test/SHOULD_RESTART",
+            "names": []
+        },
+        "forks": [
+            {
+                "index": 0,
+                "argPermute": null,
+                "joinDef": null,
+                "state": "complete",
+                "metadata": {
+                    "path": "/user/test/retry_test/pipeline_test/SHOULD_RESTART/fork0",
+                    "names": [
+                        "complete",
+                        "invocation",
+                        "outs",
+                        "vdrkill"
+                    ]
+                },
+                "split_metadata": {
+                    "path": "/user/test/retry_test/pipeline_test/SHOULD_RESTART/fork0/split",
+                    "names": []
+                },
+                "join_metadata": {
+                    "path": "/user/test/retry_test/pipeline_test/SHOULD_RESTART/fork0/join",
+                    "names": []
+                },
+                "chunks": [],
+                "bindings": {
+                    "Argument": [
+                        {
+                            "id": "count",
+                            "type": "int",
+                            "mode": "",
+                            "node": null,
+                            "matchedFork": null,
+                            "value": 2,
+                            "waiting": false
+                        }
+                    ],
+                    "Return": [
+                        {
+                            "id": "sentinels",
+                            "type": "file[]",
+                            "mode": "reference",
+                            "node": "ID.pipeline_test.SHOULD_RESTART.END",
+                            "matchedFork": null,
+                            "value": [
+                                "/user/test/retry_test/pipeline_test/SHOULD_RESTART/END/fork0/chnk0/files/sentinel",
+                                ""
+                            ],
+                            "waiting": false
+                        }
+                    ]
+                }
+            }
+        ],
+        "edges": [
+            {
+                "from": "ID.pipeline_test.SHOULD_RESTART.END",
+                "to": "ID.pipeline_test.SHOULD_RESTART"
+            }
+        ],
+        "stagecodeLang": "",
+        "stagecodeCmd": ""
+    },
+    {
+        "name": "BEGIN",
+        "fqname": "ID.pipeline_test.SHOULD_RESTART.BEGIN",
+        "type": "stage",
+        "path": "/user/test/retry_test/pipeline_test/SHOULD_RESTART/BEGIN",
+        "state": "complete",
+        "metadata": {
+            "path": "/user/test/retry_test/pipeline_test/SHOULD_RESTART/BEGIN",
+            "names": []
+        },
+        "forks": [
+            {
+                "index": 0,
+                "argPermute": null,
+                "joinDef": null,
+                "state": "complete",
+                "metadata": {
+                    "path": "/user/test/retry_test/pipeline_test/SHOULD_RESTART/BEGIN/fork0",
+                    "names": [
+                        "complete",
+                        "invocation",
+                        "outs",
+                        "vdrkill"
+                    ]
+                },
+                "split_metadata": {
+                    "path": "/user/test/retry_test/pipeline_test/SHOULD_RESTART/BEGIN/fork0/split",
+                    "names": [
+                        "args",
+                        "complete",
+                        "jobinfo",
+                        "log",
+                        "stage_defs",
+                        "stderr",
+                        "stdout"
+                    ]
+                },
+                "join_metadata": {
+                    "path": "/user/test/retry_test/pipeline_test/SHOULD_RESTART/BEGIN/fork0/join",
+                    "names": [
+                        "args",
+                        "chunk_defs",
+                        "chunk_outs",
+                        "complete",
+                        "jobinfo",
+                        "log",
+                        "outs",
+                        "stderr",
+                        "stdout"
+                    ]
+                },
+                "chunks": [
+                    {
+                        "index": 0,
+                        "chunkDef": {
+                            "sentinel": "/user/test/retry_test/pipeline_test/SHOULD_RESTART/BEGIN/fork0/split/files/sentinel",
+                            "should_fail": true
+                        },
+                        "state": "complete",
+                        "metadata": {
+                            "path": "/user/test/retry_test/pipeline_test/SHOULD_RESTART/BEGIN/fork0/chnk0",
+                            "names": [
+                                "args",
+                                "complete",
+                                "jobinfo",
+                                "log",
+                                "outs",
+                                "stderr",
+                                "stdout"
+                            ]
+                        }
+                    },
+                    {
+                        "index": 1,
+                        "chunkDef": {
+                            "sentinel": "",
+                            "should_fail": false
+                        },
+                        "state": "complete",
+                        "metadata": {
+                            "path": "/user/test/retry_test/pipeline_test/SHOULD_RESTART/BEGIN/fork0/chnk1",
+                            "names": [
+                                "args",
+                                "complete",
+                                "jobinfo",
+                                "log",
+                                "outs",
+                                "stderr",
+                                "stdout"
+                            ]
+                        }
+                    }
+                ],
+                "bindings": {
+                    "Argument": [
+                        {
+                            "id": "count",
+                            "type": "int",
+                            "mode": "",
+                            "node": null,
+                            "matchedFork": null,
+                            "value": 2,
+                            "waiting": false
+                        }
+                    ],
+                    "Return": [
+                        {
+                            "id": "sentinels",
+                            "type": "file[]",
+                            "mode": "reference",
+                            "node": "ID.pipeline_test.SHOULD_RESTART.BEGIN",
+                            "matchedFork": null,
+                            "value": [
+                                "/user/test/retry_test/pipeline_test/SHOULD_RESTART/BEGIN/fork0/chnk0/files/sentinel",
+                                ""
+                            ],
+                            "waiting": false
+                        },
+                        {
+                            "id": "should_fail_next",
+                            "type": "bool[]",
+                            "mode": "reference",
+                            "node": "ID.pipeline_test.SHOULD_RESTART.BEGIN",
+                            "matchedFork": null,
+                            "value": [
+                                true,
+                                false
+                            ],
+                            "waiting": false
+                        }
+                    ]
+                }
+            }
+        ],
+        "edges": [],
+        "stagecodeLang": "Python",
+        "stagecodeCmd": "/user/test/retry_test/stage"
+    },
+    {
+        "name": "END",
+        "fqname": "ID.pipeline_test.SHOULD_RESTART.END",
+        "type": "stage",
+        "path": "/user/test/retry_test/pipeline_test/SHOULD_RESTART/END",
+        "state": "complete",
+        "metadata": {
+            "path": "/user/test/retry_test/pipeline_test/SHOULD_RESTART/END",
+            "names": []
+        },
+        "forks": [
+            {
+                "index": 0,
+                "argPermute": null,
+                "joinDef": {
+                    "__threads": 1,
+                    "__mem_gb": 1,
+                    "__vmem_gb": 4
+                },
+                "state": "complete",
+                "metadata": {
+                    "path": "/user/test/retry_test/pipeline_test/SHOULD_RESTART/END/fork0",
+                    "names": [
+                        "complete",
+                        "invocation",
+                        "outs",
+                        "vdrkill"
+                    ]
+                },
+                "split_metadata": {
+                    "path": "/user/test/retry_test/pipeline_test/SHOULD_RESTART/END/fork0/split",
+                    "names": [
+                        "args",
+                        "complete",
+                        "stage_defs"
+                    ]
+                },
+                "join_metadata": {
+                    "path": "/user/test/retry_test/pipeline_test/SHOULD_RESTART/END/fork0/join",
+                    "names": [
+                        "args",
+                        "chunk_defs",
+                        "complete",
+                        "outs"
+                    ]
+                },
+                "chunks": [
+                    {
+                        "index": 0,
+                        "chunkDef": {
+                            "__mem_gb": 1,
+                            "__threads": 1,
+                            "__vmem_gb": 4
+                        },
+                        "state": "complete",
+                        "metadata": {
+                            "path": "/user/test/retry_test/pipeline_test/SHOULD_RESTART/END/fork0/chnk0",
+                            "names": [
+                                "args",
+                                "complete",
+                                "jobinfo",
+                                "log",
+                                "outs",
+                                "stderr",
+                                "stdout"
+                            ]
+                        }
+                    }
+                ],
+                "bindings": {
+                    "Argument": [
+                        {
+                            "id": "sentinel",
+                            "type": "file",
+                            "mode": "reference",
+                            "node": "ID.pipeline_test.SHOULD_RESTART.MIDDLE",
+                            "matchedFork": null,
+                            "value": "/user/test/retry_test/pipeline_test/SHOULD_RESTART/MIDDLE/fork0/chnk0/files/sentinel",
+                            "waiting": false
+                        },
+                        {
+                            "id": "should_fail",
+                            "type": "bool",
+                            "mode": "reference",
+                            "node": "ID.pipeline_test.SHOULD_RESTART.MIDDLE",
+                            "matchedFork": null,
+                            "value": true,
+                            "waiting": false
+                        }
+                    ],
+                    "Return": [
+                        {
+                            "id": "sentinel",
+                            "type": "file[]",
+                            "mode": "reference",
+                            "node": "ID.pipeline_test.SHOULD_RESTART.END",
+                            "matchedFork": null,
+                            "value": "/user/test/retry_test/pipeline_test/SHOULD_RESTART/END/fork0/chnk0/files/sentinel",
+                            "waiting": false
+                        },
+                        {
+                            "id": "should_fail",
+                            "type": "bool[]",
+                            "mode": "reference",
+                            "node": "ID.pipeline_test.SHOULD_RESTART.END",
+                            "matchedFork": null,
+                            "value": true,
+                            "waiting": false
+                        }
+                    ]
+                }
+            },
+            {
+                "index": 1,
+                "argPermute": null,
+                "joinDef": {
+                    "__threads": 1,
+                    "__mem_gb": 1,
+                    "__vmem_gb": 4
+                },
+                "state": "complete",
+                "metadata": {
+                    "path": "/user/test/retry_test/pipeline_test/SHOULD_RESTART/END/fork1",
+                    "names": [
+                        "complete",
+                        "invocation",
+                        "outs",
+                        "vdrkill"
+                    ]
+                },
+                "split_metadata": {
+                    "path": "/user/test/retry_test/pipeline_test/SHOULD_RESTART/END/fork1/split",
+                    "names": [
+                        "args",
+                        "complete",
+                        "stage_defs"
+                    ]
+                },
+                "join_metadata": {
+                    "path": "/user/test/retry_test/pipeline_test/SHOULD_RESTART/END/fork1/join",
+                    "names": [
+                        "args",
+                        "chunk_defs",
+                        "complete",
+                        "outs"
+                    ]
+                },
+                "chunks": [
+                    {
+                        "index": 0,
+                        "chunkDef": {},
+                        "state": "complete",
+                        "metadata": {
+                            "path": "/user/test/retry_test/pipeline_test/SHOULD_RESTART/END/fork1/chnk0",
+                            "names": [
+                                "args",
+                                "complete",
+                                "jobinfo",
+                                "log",
+                                "outs",
+                                "stderr",
+                                "stdout"
+                            ]
+                        }
+                    }
+                ],
+                "bindings": {
+                    "Argument": [
+                        {
+                            "id": "sentinel",
+                            "type": "file",
+                            "mode": "reference",
+                            "node": "ID.pipeline_test.SHOULD_RESTART.MIDDLE",
+                            "matchedFork": null,
+                            "value": "",
+                            "waiting": false
+                        },
+                        {
+                            "id": "should_fail",
+                            "type": "bool",
+                            "mode": "reference",
+                            "node": "ID.pipeline_test.SHOULD_RESTART.MIDDLE",
+                            "matchedFork": null,
+                            "value": false,
+                            "waiting": false
+                        }
+                    ],
+                    "Return": [
+                        {
+                            "id": "sentinel",
+                            "type": "file[]",
+                            "mode": "reference",
+                            "node": "ID.pipeline_test.SHOULD_RESTART.END",
+                            "matchedFork": null,
+                            "value": "",
+                            "waiting": false
+                        },
+                        {
+                            "id": "should_fail",
+                            "type": "bool[]",
+                            "mode": "reference",
+                            "node": "ID.pipeline_test.SHOULD_RESTART.END",
+                            "matchedFork": null,
+                            "value": false,
+                            "waiting": false
+                        }
+                    ]
+                }
+            }
+        ],
+        "edges": [
+            {
+                "from": "ID.pipeline_test.SHOULD_RESTART.BEGIN",
+                "to": "ID.pipeline_test.SHOULD_RESTART.END"
+            },
+            {
+                "from": "ID.pipeline_test.SHOULD_RESTART.MIDDLE",
+                "to": "ID.pipeline_test.SHOULD_RESTART.END"
+            }
+        ],
+        "stagecodeLang": "Python",
+        "stagecodeCmd": "/user/test/retry_test/stage"
+    },
+    {
+        "name": "MIDDLE",
+        "fqname": "ID.pipeline_test.SHOULD_RESTART.MIDDLE",
+        "type": "stage",
+        "path": "/user/test/retry_test/pipeline_test/SHOULD_RESTART/MIDDLE",
+        "state": "complete",
+        "metadata": {
+            "path": "/user/test/retry_test/pipeline_test/SHOULD_RESTART/MIDDLE",
+            "names": []
+        },
+        "forks": [
+            {
+                "index": 0,
+                "argPermute": null,
+                "joinDef": null,
+                "state": "complete",
+                "metadata": {
+                    "path": "/user/test/retry_test/pipeline_test/SHOULD_RESTART/MIDDLE/fork0",
+                    "names": [
+                        "complete",
+                        "invocation",
+                        "outs",
+                        "vdrkill"
+                    ]
+                },
+                "split_metadata": {
+                    "path": "/user/test/retry_test/pipeline_test/SHOULD_RESTART/MIDDLE/fork0/split",
+                    "names": [
+                        "args",
+                        "complete",
+                        "stage_defs"
+                    ]
+                },
+                "join_metadata": {
+                    "path": "/user/test/retry_test/pipeline_test/SHOULD_RESTART/MIDDLE/fork0/join",
+                    "names": [
+                        "args",
+                        "chunk_defs",
+                        "complete",
+                        "outs"
+                    ]
+                },
+                "chunks": [
+                    {
+                        "index": 0,
+                        "chunkDef": {},
+                        "state": "complete",
+                        "metadata": {
+                            "path": "/user/test/retry_test/pipeline_test/SHOULD_RESTART/MIDDLE/fork0/chnk0",
+                            "names": [
+                                "args",
+                                "complete",
+                                "jobinfo",
+                                "log",
+                                "outs",
+                                "stderr",
+                                "stdout"
+                            ]
+                        }
+                    }
+                ],
+                "bindings": {
+                    "Argument": [
+                        {
+                            "id": "sentinel",
+                            "type": "file",
+                            "mode": "reference",
+                            "node": "ID.pipeline_test.SHOULD_RESTART.BEGIN",
+                            "matchedFork": null,
+                            "value": "/user/test/retry_test/pipeline_test/SHOULD_RESTART/BEGIN/fork0/chnk0/files/sentinel",
+                            "waiting": false
+                        },
+                        {
+                            "id": "should_fail",
+                            "type": "bool",
+                            "mode": "reference",
+                            "node": "ID.pipeline_test.SHOULD_RESTART.BEGIN",
+                            "matchedFork": null,
+                            "value": true,
+                            "waiting": false
+                        }
+                    ],
+                    "Return": [
+                        {
+                            "id": "sentinel",
+                            "type": "file[]",
+                            "mode": "reference",
+                            "node": "ID.pipeline_test.SHOULD_RESTART.MIDDLE",
+                            "matchedFork": null,
+                            "value": "/user/test/retry_test/pipeline_test/SHOULD_RESTART/MIDDLE/fork0/chnk0/files/sentinel",
+                            "waiting": false
+                        },
+                        {
+                            "id": "should_fail",
+                            "type": "bool[]",
+                            "mode": "reference",
+                            "node": "ID.pipeline_test.SHOULD_RESTART.MIDDLE",
+                            "matchedFork": null,
+                            "value": true,
+                            "waiting": false
+                        }
+                    ]
+                }
+            },
+            {
+                "index": 1,
+                "argPermute": null,
+                "joinDef": null,
+                "state": "complete",
+                "metadata": {
+                    "path": "/user/test/retry_test/pipeline_test/SHOULD_RESTART/MIDDLE/fork1",
+                    "names": [
+                        "complete",
+                        "invocation",
+                        "outs",
+                        "vdrkill"
+                    ]
+                },
+                "split_metadata": {
+                    "path": "/user/test/retry_test/pipeline_test/SHOULD_RESTART/MIDDLE/fork1/split",
+                    "names": [
+                        "args",
+                        "complete",
+                        "stage_defs"
+                    ]
+                },
+                "join_metadata": {
+                    "path": "/user/test/retry_test/pipeline_test/SHOULD_RESTART/MIDDLE/fork1/join",
+                    "names": [
+                        "args",
+                        "chunk_defs",
+                        "complete",
+                        "outs"
+                    ]
+                },
+                "chunks": [
+                    {
+                        "index": 0,
+                        "chunkDef": {},
+                        "state": "complete",
+                        "metadata": {
+                            "path": "/user/test/retry_test/pipeline_test/SHOULD_RESTART/MIDDLE/fork1/chnk0",
+                            "names": [
+                                "args",
+                                "complete",
+                                "jobinfo",
+                                "log",
+                                "outs",
+                                "stderr",
+                                "stdout"
+                            ]
+                        }
+                    }
+                ],
+                "bindings": {
+                    "Argument": [
+                        {
+                            "id": "sentinel",
+                            "type": "file",
+                            "mode": "reference",
+                            "node": "ID.pipeline_test.SHOULD_RESTART.BEGIN",
+                            "matchedFork": null,
+                            "value": "",
+                            "waiting": false
+                        },
+                        {
+                            "id": "should_fail",
+                            "type": "bool",
+                            "mode": "reference",
+                            "node": "ID.pipeline_test.SHOULD_RESTART.BEGIN",
+                            "matchedFork": null,
+                            "value": false,
+                            "waiting": false
+                        }
+                    ],
+                    "Return": [
+                        {
+                            "id": "sentinel",
+                            "type": "file[]",
+                            "mode": "reference",
+                            "node": "ID.pipeline_test.SHOULD_RESTART.MIDDLE",
+                            "matchedFork": null,
+                            "value": "",
+                            "waiting": false
+                        },
+                        {
+                            "id": "should_fail",
+                            "type": "bool[]",
+                            "mode": "reference",
+                            "node": "ID.pipeline_test.SHOULD_RESTART.MIDDLE",
+                            "matchedFork": null,
+                            "value": false,
+                            "waiting": false
+                        }
+                    ]
+                }
+            }
+        ],
+        "edges": [
+            {
+                "from": "ID.pipeline_test.SHOULD_RESTART.BEGIN",
+                "to": "ID.pipeline_test.SHOULD_RESTART.MIDDLE"
+            }
+        ],
+        "stagecodeLang": "Python",
+        "stagecodeCmd": "/user/test/retry_test/stage"
+    }
+]

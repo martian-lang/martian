@@ -1,0 +1,10 @@
+{
+    "should_fail_next": [
+        true, 
+        false
+    ], 
+    "sentinels": [
+        "/user/test/retry_test/pipeline_test/SHOULD_RESTART/BEGIN/fork0/chnk0/files/sentinel", 
+        ""
+    ]
+}

@@ -1,0 +1,6 @@
+{
+    "sentinel": "", 
+    "should_fail_next": [], 
+    "sentinels": [], 
+    "should_fail": false
+}

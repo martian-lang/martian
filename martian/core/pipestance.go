@@ -384,6 +384,23 @@ func (self *Pipestance) KillWithMessage(message string) {
 	}
 }
 
+// RestoreForks attempts to compute dyamic forks for nodes in a pipestance.
+//
+// Normally, dynamic forks are computed when a stage or pipeline transitions to
+// the running state.  However, if the pipestance was restarted then some of
+// those transitions may have already hapend so the forks need to be computed
+// at the moment of reattachment instead.
+func (self *Pipestance) RestoreForks(ctx context.Context) {
+	defer trace.StartRegion(ctx, "restoreForks").End()
+	for _, node := range self.allNodes() {
+		node.expandForks(false)
+		for _, fork := range node.forks {
+			// Force a cache refresh.
+			fork.metadatasCache = nil
+		}
+	}
+}
+
 func (self *Pipestance) RestartRunningNodes(jobMode string, outerCtx context.Context) error {
 	ctx, task := trace.NewTask(outerCtx, "restartNodes")
 	defer task.End()

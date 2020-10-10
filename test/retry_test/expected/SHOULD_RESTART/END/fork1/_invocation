@@ -1,0 +1,6 @@
+@include "pipeline.mro"
+
+call MAYBE_FAIL as END(
+    sentinel    = "",
+    should_fail = false,
+)

@@ -448,7 +448,7 @@ func (node *TopNode) getParts(src *syntax.CallStm,
 	if boundNode == nil {
 		panic("unknown bound node - this should not be possible in properly-compiled code")
 	}
-	boundNode.expandForks()
+	boundNode.expandForks(true)
 	var errs syntax.ErrorList
 	parts := boundNode.forkIds.Table[src]
 	if len(parts) == 1 && parts[0].Id.IndexSource() != nil &&

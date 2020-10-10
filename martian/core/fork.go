@@ -1383,7 +1383,8 @@ func (self *Fork) getDisabledSource(exp *syntax.DisabledExp) (syntax.Exp, error)
 	}
 }
 
-func (self *Fork) expandForkPart(i int, part *ForkSourcePart,
+func (self *Fork) expandForkPart(must bool,
+	i int, part *ForkSourcePart,
 	split *syntax.SplitExp, result []ForkId) ([]ForkId, error) {
 	if self.metadata != nil {
 		if s, _ := self.metadata.getState(); s == DisabledState {
@@ -1396,27 +1397,33 @@ func (self *Fork) expandForkPart(i int, part *ForkSourcePart,
 		return nil, err
 	}
 	if sp, ok := exp.(*syntax.SplitExp); ok {
-		return self.expandForkPartFromSource(i, part, split, sp.Source, result[len(result):])
+		return self.expandForkPartFromSource(must, i, part, split, sp.Source, result[len(result):])
 	} else {
 		return nil, nil
 	}
 }
 
-func (self *Fork) expandForkPartFromSource(i int, part *ForkSourcePart,
+func (self *Fork) expandForkPartFromSource(must bool,
+	i int, part *ForkSourcePart,
 	split *syntax.SplitExp,
 	src syntax.MapCallSource, result []ForkId) ([]ForkId, error) {
 	switch src := src.(type) {
 	case *syntax.MergeExp:
 		if src.ForkNode != nil {
-			return self.expandForkFromRef(i, part, split, src.ForkNode, result)
+			return self.expandForkFromRef(must,
+				i, part, split, src.ForkNode, result)
 		}
-		return self.expandForkPartFromSource(i, part, split, src.MergeOver, result)
+		return self.expandForkPartFromSource(must,
+			i, part, split, src.MergeOver, result)
 	case *syntax.MapCallSet:
-		return self.expandForkPartFromSource(i, part, split, src.Master, result)
+		return self.expandForkPartFromSource(must,
+			i, part, split, src.Master, result)
 	case syntax.Exp:
-		return self.expandForkPartFromExp(i, part, split, src, result)
+		return self.expandForkPartFromExp(must,
+			i, part, split, src, result)
 	case *syntax.BoundReference:
-		return self.expandForkFromRef(i, part, split, src.Exp, result)
+		return self.expandForkFromRef(must,
+			i, part, split, src.Exp, result)
 	}
 	return nil, fmt.Errorf(
 		"invalid source %s for undetermined %s (computing forks for %s)",
@@ -1425,7 +1432,7 @@ func (self *Fork) expandForkPartFromSource(i int, part *ForkSourcePart,
 		self.fqname)
 }
 
-func (self *Fork) expandForkPartFromExp(i int, part *ForkSourcePart,
+func (self *Fork) expandForkPartFromExp(must bool, i int, part *ForkSourcePart,
 	split *syntax.SplitExp, exp syntax.Exp, result []ForkId) ([]ForkId, error) {
 	if exp == nil {
 		part.Id = arrayIndexFork(0)
@@ -1440,27 +1447,30 @@ func (self *Fork) expandForkPartFromExp(i int, part *ForkSourcePart,
 		self.writeDisable()
 		return nil, nil
 	case *syntax.RefExp:
-		return self.expandForkFromRef(i, part, split, exp, result)
+		return self.expandForkFromRef(must, i, part, split, exp, result)
 	case *syntax.MergeExp:
 		if exp.ForkNode != nil {
-			return self.expandForkFromRef(i, part, split, exp.ForkNode, result)
+			return self.expandForkFromRef(must,
+				i, part, split, exp.ForkNode, result)
 		}
-		return self.expandForkPartFromSource(i, part, split, exp.MergeOver, result)
+		return self.expandForkPartFromSource(must,
+			i, part, split, exp.MergeOver, result)
 	case *syntax.DisabledExp:
 		if d, ok := exp.Disabled.(*syntax.SplitExp); ok && d.Call == split.Call {
-			return self.expandForkPartFromExp(i, part, split, d.Value, result)
+			return self.expandForkPartFromExp(must,
+				i, part, split, d.Value, result)
 		}
 		ee, err := self.getDisabledSource(exp)
 		if err != nil {
 			return nil, err
 		}
-		return self.expandForkPartFromExp(i, part, split, ee, result)
+		return self.expandForkPartFromExp(must, i, part, split, ee, result)
 	case *syntax.ArrayExp:
 		return self.expandForkFromObj(i, part, split, exp, exp, result)
 	case *syntax.MapExp:
 		return self.expandForkFromObj(i, part, split, exp, exp, result)
 	case *syntax.SplitExp:
-		return self.expandForkPartFromSplit(i, part, split, exp, result)
+		return self.expandForkPartFromSplit(must, i, part, split, exp, result)
 	}
 	return nil, fmt.Errorf(
 		"invalid source %s for undetermined %s (computing forks for %s)",
@@ -1469,18 +1479,22 @@ func (self *Fork) expandForkPartFromExp(i int, part *ForkSourcePart,
 		self.fqname)
 }
 
-func (self *Fork) expandForkPartFromSplit(i int, part *ForkSourcePart,
+func (self *Fork) expandForkPartFromSplit(must bool, i int, part *ForkSourcePart,
 	split *syntax.SplitExp, exp *syntax.SplitExp,
 	result []ForkId) ([]ForkId, error) {
 	if split.Call == exp.Call {
-		return self.expandForkPartFromExp(i, part,
+		return self.expandForkPartFromExp(must,
+			i, part,
 			split, exp.Value,
 			result)
 	}
 	for _, id := range self.forkId {
 		if id.Split.Call == exp.Call {
 			if id.Id.IndexSource() != nil {
-				panic(exp.GoString() + " was not not resolved by " + id.GoString())
+				if must {
+					panic(exp.GoString() + " was not not resolved by " + id.GoString())
+				}
+				return result, nil
 			}
 			obj, err := self.expandForkSplitInnerPart(
 				split, exp.Value, id.Id)
@@ -1488,7 +1502,8 @@ func (self *Fork) expandForkPartFromSplit(i int, part *ForkSourcePart,
 				return nil, err
 			}
 			if e, ok := obj.(syntax.Exp); ok {
-				result, err = self.expandForkPartFromExp(i, part, split, e, result)
+				result, err = self.expandForkPartFromExp(must,
+					i, part, split, e, result)
 			} else {
 				result, err = self.expandForkFromObj(i, part, split, obj, exp, result)
 			}
@@ -1555,7 +1570,7 @@ func (self *Fork) expandForkSplitInnerPart(
 		self.fqname)
 }
 
-func (self *Fork) expandForkFromRef(i int,
+func (self *Fork) expandForkFromRef(must bool, i int,
 	part *ForkSourcePart,
 	split *syntax.SplitExp,
 	ref *syntax.RefExp,
@@ -1565,7 +1580,7 @@ func (self *Fork) expandForkFromRef(i int,
 		panic("invalid reference to " + ref.Id)
 	}
 	if bNode != self.node {
-		bNode.expandForks()
+		bNode.expandForks(must)
 	}
 	if parts := self.getUnmatchedForkParts(bNode); len(parts) > 0 {
 		flen := len(self.forkId)
@@ -1770,7 +1785,7 @@ func (self *Fork) expandForkFromObj(
 	panic("invalid fork mode " + split.Source.CallMode().String())
 }
 
-func (self *Fork) expand() ([]ForkId, error) {
+func (self *Fork) expand(must bool) ([]ForkId, error) {
 	if len(self.forkId) == 0 && len(self.node.call.ForkRoots()) > 0 {
 		if split := self.node.call.Split(); split != nil {
 			if src := split.Source; src != nil && !src.KnownLength() {
@@ -1779,7 +1794,8 @@ func (self *Fork) expand() ([]ForkId, error) {
 					Id:    undeterminedFork{},
 				}
 				self.forkId = ForkId{part}
-				ids, err := self.expandForkPart(0, part, split, self.node.forkIds.List)
+				ids, err := self.expandForkPart(must, 0, part, split,
+					self.node.forkIds.List)
 				if err != nil {
 					self.forkId = nil
 				}
@@ -1790,7 +1806,8 @@ func (self *Fork) expand() ([]ForkId, error) {
 	for i := 0; i < len(self.forkId); i++ {
 		part := self.forkId[i]
 		if part.Id.IndexSource() != nil {
-			if ids, err := self.expandForkPart(i, part, part.Split, self.node.forkIds.List); err != nil ||
+			if ids, err := self.expandForkPart(must, i, part, part.Split,
+				self.node.forkIds.List); err != nil ||
 				len(ids) > 0 {
 				return ids, err
 			}

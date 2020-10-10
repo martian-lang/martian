@@ -1,0 +1,13 @@
+{
+    "count": 0,
+    "size": 0,
+    "timestamp": "",
+    "paths": null,
+    "errors": null,
+    "events": [
+        {
+            "Timestamp": "2020-10-09T19:11:11-07:00",
+            "DeltaBytes": 3132
+        }
+    ]
+}

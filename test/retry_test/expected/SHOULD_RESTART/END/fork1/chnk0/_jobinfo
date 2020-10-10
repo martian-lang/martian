@@ -1,0 +1,107 @@
+{
+    "name": "ID.pipeline_test.SHOULD_RESTART.END.fork1.chnk0",
+    "pid": 1622670,
+    "host": "localhost",
+    "type": "local",
+    "cwd": "/user/test/retry_test/pipeline_test/SHOULD_RESTART/END/fork1/chnk0/files",
+    "python": {
+        "binpath": "/bin/python",
+        "version": "2.7.18 (default, Jul 24 2020, 19:47:23) \n[GCC 7.3.1 20180712 (Red Hat 7.3.1-9)]"
+    },
+    "rusage": {
+        "self": {
+            "ru_maxrss": 17316,
+            "ru_ixrss": 0,
+            "ru_idrss": 0,
+            "ru_minflt": 769,
+            "ru_majflt": 0,
+            "ru_nswap": 0,
+            "ru_utime": 0.010383,
+            "ru_stime": 0,
+            "ru_inblock": 8,
+            "ru_oublock": 48,
+            "ru_msgsnd": 0,
+            "ru_msgrcv": 0,
+            "ru_nsignals": 0,
+            "ru_nivcsw": 0
+        },
+        "children": {
+            "ru_maxrss": 12780,
+            "ru_ixrss": 0,
+            "ru_idrss": 0,
+            "ru_minflt": 3067,
+            "ru_majflt": 0,
+            "ru_nswap": 0,
+            "ru_utime": 0.031697,
+            "ru_stime": 0.00595,
+            "ru_inblock": 8,
+            "ru_oublock": 32,
+            "ru_msgsnd": 0,
+            "ru_msgrcv": 0,
+            "ru_nsignals": 0,
+            "ru_nivcsw": 0
+        }
+    },
+    "used_bytes": {
+        "rss": 17731584,
+        "shared": 3166208,
+        "vmem": 1258074112,
+        "text": 2584576,
+        "stack": 166887424,
+        "proc_count": 1
+    },
+    "io": {
+        "total": {
+            "read": {
+                "sysc": 6,
+                "bytes": 0
+            },
+            "write": {
+                "sysc": 0,
+                "bytes": 0
+            }
+        },
+        "max": {
+            "read": {
+                "sysc": 68.20019270873786,
+                "bytes": 0
+            },
+            "write": {
+                "sysc": 0,
+                "bytes": 0
+            }
+        },
+        "dev": {
+            "read": {
+                "sysc": 0,
+                "bytes": 0
+            },
+            "write": {
+                "sysc": 0,
+                "bytes": 0
+            }
+        }
+    },
+    "wallclock": {
+        "start": "2020-10-09 19:11:14",
+        "end": "2020-10-09 19:11:14",
+        "duration_seconds": 0.250064067
+    },
+    "threads": 1,
+    "memGB": 1,
+    "vmemGB": 4,
+    "profile_mode": "disable",
+    "stackvars_flag": "disable",
+    "monitor_flag": "disable",
+    "invocation": {
+        "call": "SHOULD_RESTART",
+        "args": {
+            "count": 2
+        },
+        "mro_file": "pipeline.mro"
+    },
+    "version": {
+        "martian": "<version not embedded>",
+        "pipelines": "<version not embedded>"
+    }
+}

@@ -518,11 +518,14 @@ func (self *Runtime) reattachToPipestance(psid string, pipestancePath string,
 	metadataPath := path.Join(pipestancePath, MetadataZip.FileName())
 	if _, err := os.Stat(metadataPath); err == nil {
 		if err := util.UnzipIgnoreExisting(metadataPath); err != nil {
-			pipestance.Unlock()
+			if !readOnly {
+				pipestance.Unlock()
+			}
 			return nil, err
 		}
 		os.Remove(metadataPath)
 	}
+	pipestance.RestoreForks(ctx)
 
 	// If we're reattaching in local mode, restart any stages that were
 	// left in a running state from last mrp run. The actual job would
@@ -530,7 +533,7 @@ func (self *Runtime) reattachToPipestance(psid string, pipestancePath string,
 	// mrp process died (on OSes where pdeathsig is supported).
 	if !readOnly {
 		util.PrintInfo("runtime", "Reattaching in %s mode.", self.Config.JobMode)
-		if err = pipestance.RestartRunningNodes(self.Config.JobMode, ctx); err != nil {
+		if err := pipestance.RestartRunningNodes(self.Config.JobMode, ctx); err != nil {
 			pipestance.Unlock()
 			return nil, err
 		}

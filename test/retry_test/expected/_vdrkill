@@ -1,0 +1,37 @@
+{
+    "count": 0,
+    "size": 0,
+    "timestamp": "2020-10-09 19:11:17",
+    "paths": null,
+    "errors": null,
+    "events": [
+        {
+            "Timestamp": "2020-10-09T19:11:04-07:00",
+            "DeltaBytes": 3345
+        },
+        {
+            "Timestamp": "2020-10-09T19:11:09-07:00",
+            "DeltaBytes": 6713
+        },
+        {
+            "Timestamp": "2020-10-09T19:11:10-07:00",
+            "DeltaBytes": 4076
+        },
+        {
+            "Timestamp": "2020-10-09T19:11:11-07:00",
+            "DeltaBytes": 3132
+        },
+        {
+            "Timestamp": "2020-10-09T19:11:13-07:00",
+            "DeltaBytes": 3471
+        },
+        {
+            "Timestamp": "2020-10-09T19:11:14-07:00",
+            "DeltaBytes": 3119
+        },
+        {
+            "Timestamp": "2020-10-09T19:11:16-07:00",
+            "DeltaBytes": 3444
+        }
+    ]
+}

@@ -1075,7 +1075,14 @@ func (self *Fork) doJoin(state MetadataState, getBindings func() MarshalerMap) M
 		util.LogError(err, "runtime", "%s: Error writing join args file.",
 			self.fqname)
 	}
-	if err := self.join_metadata.Write(ChunkDefsFile, self.stageDefs.ChunkDefs); err != nil {
+	chunkDefs := make([]ChunkDef, len(self.stageDefs.ChunkDefs))
+	for i := range chunkDefs {
+		// Strip the resources from the chunk defs given to the join.  This is
+		// because the resources will not be accurite if the pipestance was
+		// restarted, and it isn't worth trying to recompute just in case.
+		chunkDefs[i].Args = self.stageDefs.ChunkDefs[i].Args
+	}
+	if err := self.join_metadata.Write(ChunkDefsFile, chunkDefs); err != nil {
 		util.LogError(err, "runtime", "%s: Error writing chunk defs file.",
 			self.fqname)
 	}
