@@ -154,7 +154,7 @@ func (self *Chunk) verifyDef() {
 			return
 		}
 		if alarms == "" {
-			alarms = err.Error()
+			alarms = err.Error() + "\n"
 		} else {
 			alarms = err.Error() + "\n" + alarms
 		}
@@ -168,7 +168,7 @@ func (self *Chunk) verifyDef() {
 		case syntax.EnforceLog:
 			util.PrintInfo("runtime",
 				"(outputs)         %s: WARNING: invalid chunk definition\n%s",
-				self.fork.fqname, alarms)
+				self.fork.fqname, strings.TrimSpace(alarms))
 		}
 	}
 }
@@ -195,7 +195,7 @@ func (self *Chunk) verifyOutput(output LazyArgumentMap) bool {
 				return false
 			}
 			if alarms == "" {
-				alarms = err.Error()
+				alarms = err.Error() + "\n"
 			} else {
 				alarms = err.Error() + "\n" + alarms
 			}
@@ -210,7 +210,7 @@ func (self *Chunk) verifyOutput(output LazyArgumentMap) bool {
 			case syntax.EnforceLog:
 				util.PrintInfo("runtime",
 					"(outputs)         %s: WARNING: invalid chunk definition\n%s",
-					self.fork.fqname, alarms)
+					self.fork.fqname, strings.TrimSpace(alarms))
 			}
 		}
 	}
