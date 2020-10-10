@@ -1,0 +1,63 @@
+# This file contains configuration values to use in the github action.
+# For local development you may or may not want somewhat different
+# options.
+
+# options for analysis running
+run:
+  tests: true
+  modules-download-mode: readonly
+  allow-parallel-runners: true
+
+output:
+  format: colored-line-number
+
+  # print lines of code with issue, default is true
+  print-issued-lines: true
+
+  # print linter name in the end of issue text, default is true
+  print-linter-name: true
+
+  # make issues output unique by line, default is true
+  uniq-by-line: true
+
+# all available settings of specific linters
+linters-settings:
+  errcheck:
+    check-type-assertions: false
+    check-blank: false
+    exclude: .github/errorcheck_excludes.txt
+
+  gofmt:
+    # simplify code: gofmt with `-s` option
+    simplify: true
+
+  goimports:
+    local-prefixes: github.com/martian-lang/martian
+  lll:
+    line-length: 110
+    tab-width: 4
+  maligned:
+    # print struct with more effective memory layout or not, false by default
+    suggest-new: true
+  misspell:
+    locale: US
+    ignore-words:
+      - pipestance
+      - marsoc
+  unused:
+    check-exported: false
+
+linters:
+  enable:
+    - godot
+    - gofmt
+    - lll
+    - maligned
+    - prealloc
+    - misspell
+    - unconvert
+    - unparam
+    - whitespace
+    - exportloopref
+    - deadcode
+    - varcheck
