@@ -5,10 +5,10 @@
 package core
 
 import (
-	// syscall package lacks RLIMIT_NPROC
 	"fmt"
 
 	"github.com/martian-lang/martian/martian/util"
+	// syscall package lacks RLIMIT_NPROC, so we use sys/unix instead.
 	"golang.org/x/sys/unix"
 )
 
