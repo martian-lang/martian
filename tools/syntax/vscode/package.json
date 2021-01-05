@@ -2,7 +2,7 @@
     "name": "martian-lang",
     "displayName": "Martian MRO language",
     "description": "Supports syntax highlighting and indenting for Martian (https://martian-lang.org) .mro files.",
-    "version": "0.0.1",
+    "version": "0.0.2",
     "publisher": "MartianLang",
     "license": "MIT",
     "engines": {
@@ -12,6 +12,9 @@
         "type": "git",
         "url": "https://github.com/martian-lang/martian.git",
         "directory": "tools/syntax/vscode"
+    },
+    "bugs": {
+        "url": "https://github.com/martian-lang/martian/issues"
     },
     "categories": [
         "Programming Languages"
