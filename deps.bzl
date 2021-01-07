@@ -3,11 +3,10 @@
 load("@bazel_tools//tools/build_defs/repo:http.bzl", "http_archive")
 load("@bazel_tools//tools/build_defs/repo:utils.bzl", "maybe")
 load("@bazel_gazelle//:deps.bzl", "gazelle_dependencies", "go_repository")
-load("@io_bazel_rules_go//go:deps.bzl", "go_register_toolchains", "go_rules_dependencies")
 
 def martian_dependencies(
-        rules_nodejs_version = "2.2.0",
-        rules_nodejs_sha = "4952ef879704ab4ad6729a29007e7094aef213ea79e9f2e94cbe1c9a753e63ef"):
+        rules_nodejs_version = "2.3.1",
+        rules_nodejs_sha = "121f17d8b421ce72f3376431c3461cd66bfe14de49059edc7bb008d5aebd16be"):
     """Loads remote repositories required to build martian.
 
     Args:
@@ -27,9 +26,6 @@ def martian_dependencies(
         sha256 = "1c531376ac7e5a180e0237938a2536de0c54d93f5c278634818e0efc952dd56c",
     )
 
-    go_rules_dependencies()
-    go_register_toolchains()
-    
     # Also do this before gazelle_dependencies.
     maybe(
         go_repository,
