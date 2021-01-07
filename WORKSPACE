@@ -34,12 +34,6 @@ http_archive(
     ],
 )
 
-load("@io_bazel_rules_go//go:deps.bzl", "go_register_toolchains", "go_rules_dependencies")
-
-go_rules_dependencies()
-
-go_register_toolchains()
-
 load("//:deps.bzl", "martian_dependencies")
 
 # gazelle:repository_macro deps.bzl%martian_dependencies
