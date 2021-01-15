@@ -164,7 +164,12 @@ func (self *Chunk) verifyDef() {
 		case syntax.EnforceError:
 			self.metadata.WriteErrorString(alarms)
 		case syntax.EnforceAlarm:
-			self.metadata.AppendAlarm(alarms)
+			err := self.metadata.AppendAlarm(alarms)
+			if err == nil {
+				return
+			}
+			// Error writing alarm, so log it at least.
+			fallthrough
 		case syntax.EnforceLog:
 			util.PrintInfo("runtime",
 				"(outputs)         %s: WARNING: invalid chunk definition\n%s",
@@ -206,7 +211,11 @@ func (self *Chunk) verifyOutput(output LazyArgumentMap) bool {
 				self.metadata.WriteErrorString(alarms)
 				return false
 			case syntax.EnforceAlarm:
-				self.metadata.AppendAlarm(alarms)
+				err := self.metadata.AppendAlarm(alarms)
+				if err == nil {
+					return true
+				}
+				fallthrough
 			case syntax.EnforceLog:
 				util.PrintInfo("runtime",
 					"(outputs)         %s: WARNING: invalid chunk definition\n%s",
@@ -913,10 +922,18 @@ func (self *Fork) writeInvocation() {
 			case syntax.EnforceError:
 				self.metadata.WriteErrorString(err.Error())
 			case syntax.EnforceAlarm:
-				self.metadata.AppendAlarm(err.Error())
+				aerr := self.metadata.AppendAlarm(err.Error())
+				if aerr != nil {
+					util.PrintError(aerr, "runtime",
+						"(inputs )          %s: Error writing alarms",
+						self.fqname)
+					util.PrintError(err, "runtime",
+						"(inputs )          %s: WARNING: invalid args",
+						self.fqname)
+				}
 			case syntax.EnforceLog:
 				util.PrintError(err, "runtime",
-					"(inputs)          %s: WARNING: invalid args\n%s",
+					"(inputs )          %s: WARNING: invalid args",
 					self.fqname)
 			}
 		}
@@ -1186,7 +1203,10 @@ func (self *Fork) doComplete() {
 	}
 	if ok, msg := self.verifyOutput(joinOut); ok {
 		if msg != "" {
-			self.metadata.AppendAlarm("Incorrect _outs: " + msg)
+			err := self.metadata.AppendAlarm("Incorrect _outs: " + msg)
+			if err != nil {
+				util.LogError(err, "runtime", "Error writing alarm")
+			}
 		}
 		self.metadata.WriteTime(CompleteFile)
 		// Print alerts
@@ -1245,7 +1265,10 @@ func (self *Fork) stepPipeline() {
 		if len(self.OutParams().List) > 0 {
 			if ok, msg := self.verifyPipelineOutput(outs, t); ok {
 				if msg != "" {
-					self.metadata.AppendAlarm("Incorrect _outs: " + msg)
+					err := self.metadata.AppendAlarm("Incorrect _outs: " + msg)
+					if err != nil {
+						util.LogError(err, "runtime", "Error writing alarm")
+					}
 				}
 				self.metadata.WriteTime(CompleteFile)
 			} else {
@@ -1289,7 +1312,8 @@ func (self *Fork) stepStage() {
 					}
 					if self.index != 0 {
 						self.metadata.writeError(
-							"Error resolving input argument bindings for "+self.forkId.GoString(),
+							"Error resolving input argument bindings for "+
+								self.forkId.GoString(),
 							err)
 					} else {
 						self.metadata.writeError(
@@ -1302,9 +1326,14 @@ func (self *Fork) stepStage() {
 						util.LogError(err, "runtime",
 							"Could not create directories for %s", self.fqname)
 					}
-					self.metadata.AppendAlarm(fmt.Sprintln(
+					err := self.metadata.AppendAlarm(fmt.Sprintln(
 						"Error resolving input argument bindings:",
 						err))
+					if err != nil {
+						util.LogError(err, "runtime",
+							"(inputs )         %s: Could not write alarms.",
+							self.fqname)
+					}
 				}
 			} else if bindings == nil {
 				util.LogInfo("runtime",
