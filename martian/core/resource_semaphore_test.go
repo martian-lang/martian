@@ -11,7 +11,7 @@ import (
 func TestResourceSemaphoreSetActual(t *testing.T) {
 	done := make(chan int)
 	go func() {
-		sem := NewResourceSemaphore(100, "test")
+		sem := NewResourceSemaphore(100, DefaultResourceFormatter("test"))
 		if sem.InUse() != 0 {
 			t.Errorf("Expected nothing in use, got %d", sem.InUse())
 		}
@@ -73,7 +73,7 @@ func TestResourceSemaphoreSetActual(t *testing.T) {
 }
 
 func TestResourceSemaphoreAcquireError(t *testing.T) {
-	sem := NewResourceSemaphore(90, "test")
+	sem := NewResourceSemaphore(90, DefaultResourceFormatter("test"))
 	done := make(chan int)
 	go func() {
 		if err := sem.Acquire(100); err == nil {
@@ -93,7 +93,7 @@ func TestResourceSemaphoreAcquireError(t *testing.T) {
 func TestResourceSemaphoreRelease(t *testing.T) {
 	done := make(chan int)
 	go func() {
-		sem := NewResourceSemaphore(40, "test")
+		sem := NewResourceSemaphore(40, DefaultResourceFormatter("test"))
 		started := make(chan int)
 		acquired := make(chan int)
 		released := make(chan int)
@@ -213,7 +213,7 @@ func TestResourceSemaphoreRelease(t *testing.T) {
 func TestResourceSemaphoreActualRelease(t *testing.T) {
 	done := make(chan int)
 	go func() {
-		sem := NewResourceSemaphore(100, "test")
+		sem := NewResourceSemaphore(100, DefaultResourceFormatter("test"))
 		if sem.InUse() != 0 {
 			t.Errorf("Expected nothing in use, got %d", sem.InUse())
 		}

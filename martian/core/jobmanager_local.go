@@ -10,6 +10,7 @@ import (
 	"os/exec"
 	"runtime"
 	"runtime/trace"
+	"strconv"
 	"strings"
 	"syscall"
 	"time"
@@ -204,19 +205,51 @@ func (self *LocalJobManager) setMaxMem(userMaxMemGB, userMaxVMemGB int, clusterM
 	}
 }
 
+func formatCentiThreads(size int64) string {
+	if size%100 == 0 {
+		return string(append(
+			strconv.AppendInt(make([]byte, 0, 64), size/100, 10),
+			" threads"...))
+	}
+	buf := make([]byte, 0, 18+len(" threads"))
+	buf = strconv.AppendFloat(buf, float64(size)/100, 'g', 3, 64)
+	return string(append(buf, " threads"...))
+}
+
+func formatMemMB(size int64) string {
+	if size < 1024 {
+		return string(append(
+			strconv.AppendInt(make([]byte, 0, 64), size/100, 10),
+			" MB of memory"...))
+	}
+	buf := make([]byte, 0, 18+len(" GB of memory"))
+	buf = strconv.AppendFloat(buf, float64(size)/1024, 'g', 3, 64)
+	return string(append(buf, " GB of memory"...))
+}
+
+func formatVMemMB(size int64) string {
+	if size < 1024 {
+		return string(append(
+			strconv.AppendInt(make([]byte, 0, 64), size/100, 10),
+			" MB of address space"...))
+	}
+	buf := make([]byte, 0, 18+len(" GB of address space"))
+	buf = strconv.AppendFloat(buf, float64(size)/1024, 'g', 3, 64)
+	return string(append(buf, " GB of address space"...))
+}
+
 func (self *LocalJobManager) setupSemaphores() {
-	self.centcoreSem = NewResourceSemaphore(int64(self.maxCores)*100, "centi-threads")
-	self.memMBSem = NewResourceSemaphore(int64(self.maxMemGB)*1024, "MB of memory")
+	self.centcoreSem = NewResourceSemaphore(int64(self.maxCores)*100, formatCentiThreads)
+	self.memMBSem = NewResourceSemaphore(int64(self.maxMemGB)*1024, formatMemMB)
 	if self.maxVmemMB > 0 {
-		self.vmemMBSem = NewResourceSemaphore(self.maxVmemMB,
-			"MB of address space")
+		self.vmemMBSem = NewResourceSemaphore(self.maxVmemMB, formatVMemMB)
 	}
 	if rlim, err := GetMaxProcs(); err != nil {
 		util.LogError(err, "jobmngr",
 			"WARNING: Could not get process rlimit.")
 	} else if int64(rlim.Max) > startingThreadCount &&
 		int64(rlim.Cur) > startingThreadCount {
-		self.procsSem = NewResourceSemaphore(int64(rlim.Max), "processes")
+		self.procsSem = NewResourceSemaphore(int64(rlim.Max), DefaultResourceFormatter("processes"))
 		if err := self.procsSem.Acquire(startingThreadCount); err != nil {
 			util.LogError(err, "runtime", "WARNING: attempting to launch a "+
 				"process which may use more threads than the current ulimit "+

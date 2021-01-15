@@ -8,6 +8,7 @@ package core
 
 import (
 	"fmt"
+	"strconv"
 	"sync"
 
 	"github.com/martian-lang/martian/martian/util"
@@ -21,7 +22,8 @@ type waiter struct {
 // A semaphore type which allows for the maxium size of things entering the
 // semaphore to be dynamically reduced based on observed resource availability.
 type ResourceSemaphore struct {
-	Name string
+	// A formatter used to log messages.
+	Formatter ResourceFormatter
 
 	// The maximum that's allowed to be reserved, ever.
 	maxSize int64
@@ -34,15 +36,33 @@ type ResourceSemaphore struct {
 	// maxSize.
 	reserved int64
 	mu       sync.Mutex
-	waiters  []waiter
+	// The queue of waiting jobs.
+	waiters []waiter
+}
+
+// A ResourceFormatter is a function used to format resource requirements.
+//
+// The size parameter specifies the amount of the resource.
+type ResourceFormatter func(size int64) string
+
+// DefaultResourceFormatter returns a ResourceFormatter which prints the amount
+// followed by the given name, separated with a space.
+func DefaultResourceFormatter(name string) ResourceFormatter {
+	return func(size int64) string {
+		buf := make([]byte, 0, 64)
+		buf = strconv.AppendInt(buf, size, 10)
+		buf = append(buf, ' ')
+		buf = append(buf, name...)
+		return string(buf)
+	}
 }
 
 // Create a new semaphore with the given capactiy.
-func NewResourceSemaphore(size int64, name string) *ResourceSemaphore {
+func NewResourceSemaphore(size int64, formatter ResourceFormatter) *ResourceSemaphore {
 	return &ResourceSemaphore{
-		Name:    name,
-		maxSize: size,
-		curSize: size,
+		Formatter: formatter,
+		maxSize:   size,
+		curSize:   size,
 	}
 }
 
@@ -60,14 +80,14 @@ func (self *ResourceSemaphore) Acquire(n int64) error {
 	if n > self.maxSize {
 		// This can never be served.
 		self.mu.Unlock()
-		return fmt.Errorf("Tried to acquire %d %s, when the maximum is %d.",
-			n, self.Name, self.maxSize)
+		return fmt.Errorf("Tried to acquire %s, when the maximum is %s.",
+			self.Formatter(n), self.Formatter(self.maxSize))
 	}
 
 	if len(self.waiters) == 0 && self.curSize-self.reserved > 0 {
 		util.LogInfo("jobmngr",
-			"Need %d %s to start the next job (%d available).  Waiting for jobs to complete.",
-			n, self.Name, self.curSize-self.reserved)
+			"Need %s to start the next job (%s available).  Waiting for jobs to complete.",
+			self.Formatter(n), self.Formatter(self.curSize-self.reserved))
 	}
 
 	// Enqueue.
@@ -83,31 +103,47 @@ func (self *ResourceSemaphore) Acquire(n int64) error {
 // Release n of the resource.
 func (self *ResourceSemaphore) Release(n int64) {
 	self.mu.Lock()
+	defer self.mu.Unlock()
 	self.reserved -= n
 	if self.reserved < 0 {
-		self.mu.Unlock()
 		panic("semaphore: bad release")
 	}
 	self.runJobs()
-	self.mu.Unlock()
 }
 
+// runJob releases jobs from the queue until either the queue is empty or
+// the available resources have been exhausted.
+//
+// Must be run with self.mu locked.
 func (self *ResourceSemaphore) runJobs() {
 	for i, waiter := range self.waiters {
 		if self.curSize-self.reserved < waiter.amount {
 			if self.curSize-self.reserved > 0 {
 				util.LogInfo("jobmngr",
-					"Need %d %s to start the next job (%d available). "+
+					"Need %s to start the next job (%s available). "+
 						"Waiting for jobs to complete.",
-					waiter.amount, self.Name, self.curSize-self.reserved)
+					self.Formatter(waiter.amount),
+					self.Formatter(self.curSize-self.reserved))
 			}
 			self.waiters = self.waiters[i:]
 			return
 		}
 		self.reserved += waiter.amount
 		close(waiter.ready)
+		// Remove reference, so garbage collection can clean it up.
+		waiter.ready = nil
 	}
-	self.waiters = nil
+	// Clear the list.
+	//
+	// If the backing array still has a bunch of space, and isn't keeping alive
+	// a bunch of completed items, keep it around to serve the next request
+	// without needing to allocate, but otherwise release it to the garbage
+	// collector.
+	if cap(self.waiters) < 2+2*len(self.waiters) {
+		self.waiters = nil
+	} else {
+		self.waiters = self.waiters[len(self.waiters):]
+	}
 }
 
 // Get the current amount of resources in use.  This includes both reserved
