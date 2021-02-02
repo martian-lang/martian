@@ -206,41 +206,67 @@ func (self *RemoteJobManager) jobScript(
 
 	threads := int(math.Ceil(res.Threads))
 	argsStr := formatArgs(threadEnvs(self, threads, envs), shellCmd, argv)
-	params := map[string]string{
-		"JOB_NAME":           fqname + "." + shellName,
-		"THREADS":            strconv.Itoa(threads),
-		"STDOUT":             shellSafeQuote(metadata.MetadataFilePath("stdout")),
-		"STDERR":             shellSafeQuote(metadata.MetadataFilePath("stderr")),
-		"JOB_WORKDIR":        shellSafeQuote(metadata.curFilesPath),
-		"CMD":                argsStr,
-		"MEM_GB":             strconv.Itoa(int(math.Ceil(res.MemGB))),
-		"MEM_MB":             strconv.Itoa(int(math.Ceil(res.MemGB * 1024))),
-		"MEM_KB":             strconv.Itoa(int(math.Ceil(res.MemGB * 1024 * 1024))),
-		"MEM_B":              strconv.Itoa(int(math.Ceil(res.MemGB * 1024 * 1024 * 1024))),
-		"MEM_GB_PER_THREAD":  strconv.Itoa(memGBPerThread),
-		"MEM_MB_PER_THREAD":  strconv.Itoa(memGBPerThread * 1024),
-		"MEM_KB_PER_THREAD":  strconv.Itoa(memGBPerThread * 1024 * 1024),
-		"MEM_B_PER_THREAD":   strconv.Itoa(memGBPerThread * 1024 * 1024 * 1024),
-		"VMEM_GB":            strconv.Itoa(int(math.Ceil(res.VMemGB))),
-		"VMEM_MB":            strconv.Itoa(int(math.Ceil(res.VMemGB * 1024))),
-		"VMEM_KB":            strconv.Itoa(int(math.Ceil(res.VMemGB * 1024 * 1024))),
-		"VMEM_B":             strconv.Itoa(int(math.Ceil(res.VMemGB * 1024 * 1024 * 1024))),
-		"VMEM_GB_PER_THREAD": strconv.Itoa(vmemGBPerThread),
-		"VMEM_MB_PER_THREAD": strconv.Itoa(vmemGBPerThread * 1024),
-		"VMEM_KB_PER_THREAD": strconv.Itoa(vmemGBPerThread * 1024 * 1024),
-		"VMEM_B_PER_THREAD":  strconv.Itoa(vmemGBPerThread * 1024 * 1024 * 1024),
-		"ACCOUNT":            os.Getenv("MRO_ACCOUNT"),
-		"RESOURCES":          mappedJobResourcesOpt,
+	const prefix = "__MRO_"
+	const suffix = "__"
+	params := [...][2]string{
+		{prefix + "JOB_NAME" + suffix,
+			fqname + "." + shellName},
+		{prefix + "THREADS" + suffix,
+			strconv.Itoa(threads)},
+		{prefix + "STDOUT" + suffix,
+			shellSafeQuote(metadata.MetadataFilePath("stdout"))},
+		{prefix + "STDERR" + suffix,
+			shellSafeQuote(metadata.MetadataFilePath("stderr"))},
+		{prefix + "JOB_WORKDIR" + suffix,
+			shellSafeQuote(metadata.curFilesPath)},
+		{prefix + "CMD" + suffix,
+			argsStr},
+		{prefix + "MEM_GB" + suffix,
+			strconv.Itoa(int(math.Ceil(res.MemGB)))},
+		{prefix + "MEM_MB" + suffix,
+			strconv.Itoa(int(math.Ceil(res.MemGB * 1024)))},
+		{prefix + "MEM_KB" + suffix,
+			strconv.Itoa(int(math.Ceil(res.MemGB * 1024 * 1024)))},
+		{prefix + "MEM_B" + suffix,
+			strconv.Itoa(int(math.Ceil(res.MemGB * 1024 * 1024 * 1024)))},
+		{prefix + "MEM_GB_PER_THREAD" + suffix,
+			strconv.Itoa(memGBPerThread)},
+		{prefix + "MEM_MB_PER_THREAD" + suffix,
+			strconv.Itoa(memGBPerThread * 1024)},
+		{prefix + "MEM_KB_PER_THREAD" + suffix,
+			strconv.Itoa(memGBPerThread * 1024 * 1024)},
+		{prefix + "MEM_B_PER_THREAD" + suffix,
+			strconv.Itoa(memGBPerThread * 1024 * 1024 * 1024)},
+		{prefix + "VMEM_GB" + suffix,
+			strconv.Itoa(int(math.Ceil(res.VMemGB)))},
+		{prefix + "VMEM_MB" + suffix,
+			strconv.Itoa(int(math.Ceil(res.VMemGB * 1024)))},
+		{prefix + "VMEM_KB" + suffix,
+			strconv.Itoa(int(math.Ceil(res.VMemGB * 1024 * 1024)))},
+		{prefix + "VMEM_B" + suffix,
+			strconv.Itoa(int(math.Ceil(res.VMemGB * 1024 * 1024 * 1024)))},
+		{prefix + "VMEM_GB_PER_THREAD" + suffix,
+			strconv.Itoa(vmemGBPerThread)},
+		{prefix + "VMEM_MB_PER_THREAD" + suffix,
+			strconv.Itoa(vmemGBPerThread * 1024)},
+		{prefix + "VMEM_KB_PER_THREAD" + suffix,
+			strconv.Itoa(vmemGBPerThread * 1024 * 1024)},
+		{prefix + "VMEM_B_PER_THREAD" + suffix,
+			strconv.Itoa(vmemGBPerThread * 1024 * 1024 * 1024)},
+		{prefix + "ACCOUNT" + suffix,
+			os.Getenv("MRO_ACCOUNT")},
+		{prefix + "RESOURCES" + suffix,
+			mappedJobResourcesOpt},
 	}
 
 	template := self.config.jobTemplate
 	// Replace template annotations with actual values
 	args := make([]string, 0, 2*len(params))
-	for key, val := range params {
-		rkey := "__MRO_" + key + "__"
+	for _, vals := range params {
+		rkey, val := vals[0], vals[1]
 		if len(val) > 0 {
 			args = append(args, rkey, val)
-		} else {
+		} else if strings.Contains(template, rkey) {
 			// Remove lines containing parameter from template
 			for _, line := range strings.Split(template, "\n") {
 				if strings.Contains(line, rkey) {

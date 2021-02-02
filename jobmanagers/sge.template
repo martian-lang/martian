@@ -6,6 +6,7 @@
 #$ -l mem_free=__MRO_MEM_GB__G
 #$ -o __MRO_STDOUT__
 #$ -e __MRO_STDERR__
+#$ -A "__MRO_ACCOUNT__"
 #$ -S "/usr/bin/env bash"
 __MRO_RESOURCES__
 
