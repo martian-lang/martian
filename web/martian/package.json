@@ -18,7 +18,7 @@
     "angular": "^1.7.9",
     "angular-google-chart": "^0.1.0",
     "angular-ui-bootstrap": "^0.14.3",
-    "clean-css-cli": "^4.2.1",
+    "clean-css-cli": "^5.0.1",
     "dagre-d3": "^0.6.3",
     "gulp": "^4.0.0",
     "gulp-clean-css": "^4.3.0",
