@@ -173,21 +173,23 @@ type PerfInfo struct {
 	// For split/main/join nodes, Duration * NumThreads.
 	// For other nodes, it is the sum of the CoreHours for
 	// child nodes.
-	CoreHours       float64 `json:"core_hours"`
-	MaxRss          int     `json:"maxrss"`
-	MaxVmem         int     `json:"maxvmem"`
-	InBlocks        int     `json:"in_blocks"`
-	OutBlocks       int     `json:"out_blocks"`
-	TotalBlocks     int     `json:"total_blocks"`
-	InBlocksRate    float64 `json:"in_blocks_rate"`
-	OutBlocksRate   float64 `json:"out_blocks_rate"`
-	TotalBlocksRate float64 `json:"total_blocks_rate"`
-	InBytes         int64   `json:"in_bytes"`
-	OutBytes        int64   `json:"out_bytes"`
-	InBytesRate     float64 `json:"in_bytes_rate"`
-	OutBytesRate    float64 `json:"out_bytes_rate"`
-	InBytesPeak     float64 `json:"in_bytes_peak"`
-	OutBytesPeak    float64 `json:"out_bytes_peak"`
+	CoreHours        float64 `json:"core_hours"`
+	MaxRss           int     `json:"maxrss"`
+	MaxVmem          int     `json:"maxvmem"`
+	MaxRssRequested  int     `json:"maxrss_requested"`
+	MaxVMemRequested int     `json:"maxvmem_requested"`
+	InBlocks         int     `json:"in_blocks"`
+	OutBlocks        int     `json:"out_blocks"`
+	TotalBlocks      int     `json:"total_blocks"`
+	InBlocksRate     float64 `json:"in_blocks_rate"`
+	OutBlocksRate    float64 `json:"out_blocks_rate"`
+	TotalBlocksRate  float64 `json:"total_blocks_rate"`
+	InBytes          int64   `json:"in_bytes"`
+	OutBytes         int64   `json:"out_bytes"`
+	InBytesRate      float64 `json:"in_bytes_rate"`
+	OutBytesRate     float64 `json:"out_bytes_rate"`
+	InBytesPeak      float64 `json:"in_bytes_peak"`
+	OutBytesPeak     float64 `json:"out_bytes_peak"`
 	// The start time of this node, or the earliest start time
 	// of any of its child nodes.
 	Start time.Time `json:"start"`
@@ -291,6 +293,8 @@ func reduceJobInfo(jobInfo *JobInfo, outputPaths []string, numThreads float64) *
 			perfInfo.MaxRss = jobInfo.MemoryUsage.RssKb()
 		}
 		perfInfo.MaxVmem = jobInfo.MemoryUsage.VmemKb()
+		perfInfo.MaxRssRequested = int(math.Ceil(jobInfo.MemGB * 1024 * 1024))
+		perfInfo.MaxVMemRequested = int(math.Ceil(jobInfo.VMemGB * 1024 * 1024))
 	}
 	if jobInfo.IoStats != nil {
 		perfInfo.InBytes = jobInfo.IoStats.Total.Read.BlockBytes
@@ -339,6 +343,10 @@ func ComputeStats(perfInfos []*PerfInfo, outputPaths []string, vdrKillReport *VD
 		aggPerfInfo.CoreHours += perfInfo.CoreHours
 		aggPerfInfo.MaxRss = max(aggPerfInfo.MaxRss, perfInfo.MaxRss)
 		aggPerfInfo.MaxVmem = max(aggPerfInfo.MaxVmem, perfInfo.MaxVmem)
+		aggPerfInfo.MaxRssRequested = max(aggPerfInfo.MaxRssRequested,
+			perfInfo.MaxRssRequested)
+		aggPerfInfo.MaxVMemRequested = max(aggPerfInfo.MaxVMemRequested,
+			perfInfo.MaxVMemRequested)
 		aggPerfInfo.OutBlocks += perfInfo.OutBlocks
 		aggPerfInfo.InBlocks += perfInfo.InBlocks
 		aggPerfInfo.TotalBlocks += perfInfo.TotalBlocks
