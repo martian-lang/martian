@@ -32,6 +32,8 @@ def execute(cmd):
     out, err = proc.communicate()
     if proc.returncode:
         raise OSError(err)
+    if not isinstance(out, str):
+        out = out.decode()
     if len(out) < 500:
         sys.stderr.write(out)
     else:
