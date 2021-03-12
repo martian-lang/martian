@@ -1,3 +1,5 @@
+load("@build_bazel_rules_nodejs//:index.bzl", "nodejs_binary")
+
 genrule(
     name = "clean_css",
     srcs = [
@@ -14,17 +16,28 @@ genrule(
     ],
 )
 
+nodejs_binary(
+    name = "htmlmin_bin",
+    data = ["@martian_npm//html-minifier-terser"],
+    entry_point = "@martian_npm//:node_modules/html-minifier-terser/cli.js",
+)
+
 genrule(
-    name = "pug",
+    name = "htmlmin",
     srcs = [
-        "templates/graph.pug",
-    ],
-    outs = [
         "templates/graph.html",
     ],
-    cmd = "$(execpath @martian_npm//pug-cli/bin:pug) -o $$(readlink -f $(@D)/) $$(readlink -f $<)",
+    outs = [
+        "serve/graph.html",
+    ],
+    cmd = "$(execpath :htmlmin_bin) " +
+          "-o $@ " +
+          "--remove-comments --collapse-whitespace " +
+          "--continue-on-parse-error --minify-css true " +
+          "--minify-js '{ \"mangle\": false }' " +
+          "$<",
     tools = [
-        "@martian_npm//pug-cli/bin:pug",
+        ":htmlmin_bin",
     ],
 )
 
@@ -103,6 +116,12 @@ genrule(
     cmd = EXTRACT_FILE,
 )
 
+nodejs_binary(
+    name = "terser_bin",
+    data = ["@martian_npm//terser"],
+    entry_point = "@martian_npm//:node_modules/terser/bin/terser",
+)
+
 # Merge the js together.
 genrule(
     name = "merged_js",
@@ -119,10 +138,10 @@ genrule(
         "serve/graph.js",
     ],
     cmd = "cat $(SRCS) | " +
-          "$(execpath @martian_npm//uglify-js/bin:uglifyjs) -c -- - | " +
+          "$(execpath :terser_bin) | " +
           "gzip --best > \"$@\"",
     tools = [
-        "@martian_npm//uglify-js/bin:uglifyjs",
+        ":terser_bin",
     ],
 )
 
@@ -155,8 +174,8 @@ filegroup(
     srcs = [
         ":compress_css",
         ":compress_favicon",
+        ":htmlmin",
         ":merged_js",
-        ":pug",
     ],
     visibility = ["//visibility:public"],
 )

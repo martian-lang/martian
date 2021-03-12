@@ -75,7 +75,7 @@ $(GOLIBTESTS): test-%:
 $(GOBINTESTS): test-%:
 	go test -v ./cmd/$*
 
-WEB_FILES=web/martian/serve web/martian/templates/graph.html
+WEB_FILES=web/martian/serve
 
 $(WEB_FILES): web
 
@@ -193,4 +193,6 @@ clean:
 	rm -rf $(GOBIN)
 	rm -rf $(dir $(GOBIN))pkg
 	rm -rf web/martian/node_modules
+	rm -rf web/martian/build
+	rm -rf web/martian/serve
 	make -C tools/syntax/vscode clean

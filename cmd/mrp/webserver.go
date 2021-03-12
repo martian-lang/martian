@@ -167,7 +167,7 @@ func (self *mrpWebServer) handleStatic(sm *http.ServeMux) {
 func (self *mrpWebServer) graphTemplate() (*template.Template, error) {
 	return template.New("graph.html").Delims(
 		"[[", "]]").ParseFiles(
-		path.Join(self.webRoot, "templates", "graph.html"))
+		path.Join(self.webRoot, "serve", "graph.html"))
 }
 
 func (self *mrpWebServer) makeGraphPage() {

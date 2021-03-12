@@ -1,33 +1,34 @@
-var gulp = require('gulp');
+const gulp = require('gulp');
 
-var pug = require('gulp-pug');
-var gzip = require('gulp-zopfli-green');
-var cleanCSS = require('gulp-clean-css');
-var concat = require('gulp-concat');
-var uglify = require('gulp-uglify');
-
-var paths = {
-    pages: 'templates/**/*.pug'
-};
+const gzip = require('gulp-zopfli-green');
+const cleanCSS = require('gulp-clean-css');
+const concat = require('gulp-concat');
+const htmlmin = require('gulp-html-minifier-terser');
+const uglify = require('gulp-terser');
 
 gulp.task('merge-scripts', function() {
     return gulp.src([
-            'node_modules/d3/dist/d3.min.js',
-            'node_modules/dagre-d3/dist/dagre-d3.min.js',
-            'node_modules/angular/angular.min.js',
-            'node_modules/angular-ui-bootstrap/ui-bootstrap-tpls.min.js',
-            'node_modules/lodash/lodash.min.js',
-            'node_modules/angular-google-chart/ng-google-chart.min.js',
-            'client/graph.js'])
+        'node_modules/d3/dist/d3.min.js',
+        'node_modules/dagre-d3/dist/dagre-d3.min.js',
+        'node_modules/angular/angular.min.js',
+        'node_modules/angular-ui-bootstrap/ui-bootstrap-tpls.min.js',
+        'node_modules/lodash/lodash.min.js',
+        'node_modules/angular-google-chart/ng-google-chart.min.js',
+        'client/graph.js'])
         .pipe(concat('graph.js'))
-        .pipe(uglify({mangle:false}))
+        .pipe(uglify({ mangle: false }))
         .pipe(gulp.dest('build'));
 });
 
 gulp.task('pages', function() {
-    return gulp.src(paths.pages)
-        .pipe(pug())
-        .pipe(gulp.dest('templates'));
+    return gulp.src(['templates/graph.html'])
+        .pipe(htmlmin({
+            collapseWhitespace: true,
+            continueOnParseError: true,
+            minifyCSS: true,
+            minifyJS: { mangle: false }
+        }))
+        .pipe(gulp.dest('serve'));
 });
 
 gulp.task('css', function() {
@@ -38,9 +39,9 @@ gulp.task('css', function() {
 
 gulp.task('run_gzip', function() {
     return gulp.src([
-            'build/**/*',
-            'res/favicon.ico'
-        ])
+        'build/**/*',
+        'res/favicon.ico'
+    ])
         .pipe(gzip({ append: false }))
         .pipe(gulp.dest('serve'));
 });

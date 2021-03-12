@@ -23,9 +23,9 @@
     "gulp": "^4.0.0",
     "gulp-clean-css": "^4.3.0",
     "gulp-concat": "^2.6.1",
-    "gulp-pug": "^4.0.1",
-    "gulp-uglify": "^3.0.2",
+    "gulp-html-minifier-terser": "^6.0.1",
+    "gulp-terser": "^2.0.1",
     "gulp-zopfli-green": "^5.0.1",
-    "pug-cli": "^1.0.0-alpha6"
+    "html-minifier-terser": "^5.1.1"
   }
 }
