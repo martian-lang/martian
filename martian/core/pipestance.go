@@ -834,11 +834,19 @@ func (self *Pipestance) GetUuid() (string, error) {
 	if self.uuid != "" {
 		return self.uuid, nil
 	} else {
-		return self.metadata.readRawSafe(UuidFile)
+		uuid, err := self.metadata.readRawSafe(UuidFile)
+		self.uuid = uuid
+		if self.node.top.envs != nil && self.node.top.envs["MRO_UUID"] == "" {
+			self.node.top.envs["MRO_UUID"] = uuid
+		}
+		return uuid, err
 	}
 }
 
 func (self *Pipestance) SetUuid(uuid string) error {
+	if self.node.top.envs != nil {
+		self.node.top.envs["MRO_UUID"] = uuid
+	}
 	if err := self.metadata.WriteRaw(UuidFile, uuid); err == nil {
 		self.uuid = uuid
 		return nil

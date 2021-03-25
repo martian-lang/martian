@@ -41,6 +41,13 @@ except NameError:
     _string_type = str
     _text_type = str
 
+    from typing import (  # pylint: disable=import-error, unused-import
+        Any,
+        Dict,
+        NoReturn,
+        Union,
+    )
+
 
 # Singleton instance object.
 if not "_INSTANCE" in globals():
@@ -126,6 +133,7 @@ def json_dumps_safe(data, indent=None):
 
 
 def get_mem_kb():
+    # type: () -> int
     """Get the current max rss memory for this process and completed child
     processes."""
     return max(
@@ -230,6 +238,7 @@ def check_call(args, stdin=None, stdout=None, stderr=None, shell=False):
 
 
 def make_path(filename):
+    # type: (Union[str, bytes]) -> bytes
     """Get the file path for a named file."""
     if isinstance(filename, _text_type):
         filename = filename.encode("utf-8")
@@ -237,33 +246,48 @@ def make_path(filename):
 
 
 def get_invocation_args():
+    # type: () -> Dict[str, Any]
     """Get the args from the invocation."""
     return _INSTANCE.jobinfo.invocation["args"]
 
 
 def get_invocation_call():
+    # type: () -> str
     """Get the call information from the invocation."""
     return _INSTANCE.jobinfo.invocation["call"]
 
 
 def get_martian_version():
+    # type: () -> str
     """Get the martian version from the jobinfo."""
     return _INSTANCE.jobinfo.version["martian"]
 
 
 def get_pipelines_version():
+    # type: () -> str
     """Get the pipelines version from the jobinfo."""
     return _INSTANCE.jobinfo.version["pipelines"]
 
 
 def get_threads_allocation():
+    # type: () -> float
     """Get the number of threads allocated to this job by the runtime."""
     return _INSTANCE.jobinfo.threads
 
 
 def get_memory_allocation():
+    # type: () -> float
     """Get the amount of memory in GB allocated to this job by the runtime."""
     return _INSTANCE.jobinfo.mem_gb
+
+
+def get_pipestance_uuid():
+    # type: () -> str
+    """Get the UUID of the top-level pipeline instance.
+
+    Returns an empty string if the UUID is not available.
+    """
+    return os.getenv("MRO_UUID") or os.getenv("MRO_FORCE_UUID") or ""
 
 
 def update_progress(message):
@@ -295,18 +319,21 @@ def log_json(label, obj):
 
 
 def throw(message):
+    # type: (object) -> NoReturn
     """Raise a stage exception."""
     raise StageException(message)
 
 
 # pylint: disable=redefined-builtin
 def exit(message):
+    # type: (Union[str, bytes]) -> NoReturn
     """Fail the pipeline with an assertion."""
     _INSTANCE.metadata.write_assert(message)
     _INSTANCE.done()
 
 
 def alarm(message):
+    # type: (Union[str, bytes]) -> None
     """Add a message to the alarms."""
     _INSTANCE.metadata.alarm(message)
 
