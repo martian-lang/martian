@@ -9,5 +9,8 @@ def martian_npm_repo():
         package_json = "@martian//web/martian:package.json",
         package_lock_json = "@martian//web/martian:package-lock.json",
         symlink_node_modules = False,
-        args = ["--frozen-lockfile"],
+        args = [
+            "--frozen-lockfile",
+            "--no-optional",
+        ],
     )

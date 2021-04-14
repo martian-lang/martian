@@ -61,10 +61,10 @@ ifeq ($(CI),true)
 endif
 
 web:
-	(cd web/martian && npm $(NPM_CMD) && npm run-script build)
+	(cd web/martian && npm $(NPM_CMD) --frozen-lockfile --no-optional && npm run-script build)
 
 vscode:
-	(cd tools/syntax/vscode && npm $(NPM_CMD) && npm run-script compile)
+	(cd tools/syntax/vscode && npm $(NPM_CMD) --frozen-lockfile --no-optional && npm run-script compile)
 
 vscode-test: vscode
 	(cd tools/syntax/vscode && npm run-script check-lint)
