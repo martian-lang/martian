@@ -19,6 +19,7 @@
     "angular-google-chart": "^0.1.0",
     "angular-ui-bootstrap": "^0.14.3",
     "clean-css-cli": "^5.0.1",
+    "d3": ">=5.16.0",
     "dagre-d3": "^0.6.3",
     "gulp": "^4.0.0",
     "gulp-clean-css": "^4.3.0",
@@ -26,6 +27,8 @@
     "gulp-html-minifier-terser": "^6.0.1",
     "gulp-terser": "^2.0.1",
     "gulp-zopfli-green": "^5.0.1",
-    "html-minifier-terser": "^5.1.1"
+    "html-minifier-terser": "^5.1.1",
+    "lodash": ">=4.17.21",
+    "terser": ">=4.8.0"
   }
 }
