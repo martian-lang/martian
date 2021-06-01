@@ -1034,7 +1034,11 @@ func NewRuntimePipestanceFactory(rt *Runtime,
 }
 
 func (self runtimePipeFactory) ReattachToPipestance(ctx context.Context) (*Pipestance, error) {
-	return self.rt.ReattachToPipestance(
+	attachMethod := self.rt.ReattachToPipestance
+	if self.checkSrc && path.Base(self.invocationPath) == MroSourceFile.FileName() {
+		attachMethod = self.rt.ReattachToPipestanceWithMroSrc
+	}
+	return attachMethod(
 		self.psid, self.pipestancePath,
 		self.invocationSrc, self.invocationPath,
 		self.mroPaths, self.mroVersion, self.envs,

@@ -492,6 +492,9 @@ func (self *Runtime) reattachToPipestance(psid string, pipestancePath string,
 		return nil, err
 	}
 	if checkSrc && srcType != MroSourceFile {
+		// If the MroSourceFile was used then the earlier check for exact
+		// equality should be sufficient.  Otherwise we need to check for AST
+		// equality.
 		oldSrcFile := path.Join(pipestancePath, MroSourceFile.FileName())
 		if _, _, oldAst, err := syntax.Compile(oldSrcFile, mroPaths, false); err != nil {
 			if !readOnly {
