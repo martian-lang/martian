@@ -13,7 +13,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"html/template"
-	"io"
 	"io/ioutil"
 	"net"
 	"net/http"
@@ -258,6 +257,9 @@ func pathToMetadata(source http.Handler) http.Handler {
 			r2.URL = new(url.URL)
 			*r2.URL = *r.URL
 			r2.URL.Path = core.MetadataFilePrefix + p
+			if t := core.MetadataFileName(p).MimeType(); t != "" {
+				w.Header().Set("Content-Type", t)
+			}
 			source.ServeHTTP(w, r2)
 		} else {
 			http.NotFound(w, r)
@@ -295,7 +297,9 @@ func (self *mrpWebServer) getInfo(w http.ResponseWriter, req *http.Request) {
 		return
 	}
 	w.Header().Set("Content-Type", "application/json")
-	w.Write(bytes)
+	if _, err := w.Write(bytes); err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+	}
 }
 
 // Get pipestance state: nodes and fatal error (if any).
@@ -394,7 +398,7 @@ func (self *mrpWebServer) getMetadata(w http.ResponseWriter, req *http.Request) 
 		return
 	}
 	defer data.Close()
-	io.Copy(w, data)
+	api.ServeMetadataFile(w, req, name, data)
 }
 
 // Get the list of metadata files from the pipestance top-level.  This is a
@@ -412,7 +416,9 @@ func (self *mrpWebServer) listMetadataTop(w http.ResponseWriter, req *http.Reque
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 	} else {
 		w.Header().Set("Content-Type", "application/json")
-		w.Write(b)
+		if _, err := w.Write(b); err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+		}
 	}
 }
 

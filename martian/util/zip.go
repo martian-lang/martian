@@ -14,6 +14,7 @@ import (
 	"path"
 	"path/filepath"
 	"strings"
+	"time"
 )
 
 func readSymlinkInZip(f *zip.File) (string, error) {
@@ -59,8 +60,13 @@ func findFileInZip(zr *zip.ReadCloser, filePath string) *zip.File {
 // Wraps a file within a zip archive, along with the archive itself,
 // as an io.ReadCloser
 type zipFileReader struct {
-	zr   *zip.ReadCloser
-	file io.ReadCloser
+	zr       *zip.ReadCloser
+	file     io.ReadCloser
+	modified time.Time
+}
+
+func (zr *zipFileReader) ModTime() time.Time {
+	return zr.modified
 }
 
 func (zr *zipFileReader) Read(p []byte) (int, error) {
@@ -99,7 +105,7 @@ func ReadZipFile(zipPath, filePath string) (io.ReadCloser, error) {
 			return nil, err
 		}
 		found = true
-		return &zipFileReader{zr: zr, file: in}, nil
+		return &zipFileReader{zr: zr, file: in, modified: f.Modified}, nil
 	}
 
 	return nil, &ZipError{zipPath, filePath}

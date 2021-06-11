@@ -69,6 +69,38 @@ func (self MetadataFileName) FileName() string {
 	return MetadataFilePrefix + string(self)
 }
 
+// MimeType returns the expected MIME type for this metadata file.
+//
+// For most cases this will be either "text/plain" or "application/json".
+//
+// For unknown metadata types, an empty string is returned.
+func (self MetadataFileName) MimeType() string {
+	switch self {
+	case ArgsFile, OutsFile,
+		JobInfoFile,
+		StageDefsFile, ChunkDefsFile, ChunkOutsFile,
+		VdrKill, PartialVdr, FinalState,
+		TagsFile, VersionsFile, Perf:
+		return "application/json"
+	case LogFile, StdErr, StdOut,
+		InvocationFile, MroSourceFile,
+		Assert, AlarmFile, Errors, Stackvars,
+		ProgressFile:
+		return "text/plain;charset=UTF-8"
+	case MetadataZip:
+		return "application/zip"
+	case CompleteFile, Heartbeat, TimestampFile,
+		JobId, QueuedLocally,
+		JobModeFile, Lock, UiPort, UuidFile,
+		DisabledFile:
+		return "text/plain"
+	case PerfData:
+		return "application/octet-stream"
+	default:
+		return ""
+	}
+}
+
 func metadataFileNameFromPath(p string) MetadataFileName {
 	return MetadataFileName(path.Base(p)[len(MetadataFilePrefix):])
 }

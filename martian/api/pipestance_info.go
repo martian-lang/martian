@@ -2,8 +2,7 @@
 // Copyright (c) 2017 10X Genomics, Inc. All rights reserved.
 //
 
-// Data structures used to exchange information and requests over the http
-// interface to mrp and similar tools.
+// Package api contnains data structures and functions for maratian's http api.
 package api
 
 import (

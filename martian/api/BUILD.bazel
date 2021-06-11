@@ -8,6 +8,7 @@ go_library(
         "graph_page.go",
         "metadata_query.go",
         "pipestance_info.go",
+        "serve_metadata.go",
     ],
     importpath = "github.com/martian-lang/martian/martian/api",
     visibility = ["//visibility:public"],
