@@ -99,7 +99,7 @@ func (self *runner) Init() {
 			"Could not update log journal file.  Continuing, hoping for the best.")
 	}
 	core.CheckMaxVmem(
-		uint64(self.jobInfo.VMemGB) * 1024 * 1024 * 1024)
+		uint64(self.jobInfo.VMemGB*1024*1024) * 1024)
 	self.setRlimit()
 	if cgLim, cgSoftLim, _ := util.GetCgroupMemoryLimit(); cgLim > 0 {
 		if cgLim < int64(math.Ceil(self.jobInfo.MemGB*(1024*1024*1024))) {
@@ -116,6 +116,7 @@ func (self *runner) Init() {
 				cgSoftLim, self.jobInfo.MemGB)
 		}
 	}
+	setSubreaper()
 }
 
 func getClusterEnv() map[string]string {
@@ -135,7 +136,7 @@ func getClusterEnv() map[string]string {
 }
 
 func (self *runner) writeJobinfo() {
-	jobInfo := &core.JobInfo{}
+	jobInfo := new(core.JobInfo)
 	if err := self.metadata.ReadInto(core.JobInfoFile, jobInfo); err != nil {
 		self.Fail(err, "Error reading jobInfo.")
 	} else {
@@ -169,6 +170,7 @@ func (self *runner) done() {
 			End:      end.Format(util.TIMEFMT),
 			Duration: end.Sub(self.start).Seconds(),
 		}
+		waitChildren()
 		self.jobInfo.RusageInfo = core.GetRusage()
 		if !self.highMem.IsZero() {
 			self.jobInfo.MemoryUsage = &self.highMem
@@ -387,11 +389,13 @@ func (self *runner) HandleSignal(sig os.Signal) {
 		}
 	}
 	if c := self.isDone; c != nil {
+		t := time.NewTimer(time.Second * 5)
 		// Wait up to 5 seconds for the child process to terminate.
 		select {
-		case <-time.After(time.Second * 5):
+		case <-t.C:
 		case <-c:
 		}
+		t.Stop()
 	}
 	self.done()
 	if err := self.metadata.WriteRaw(core.Errors, fmt.Sprintf("Caught signal %v", sig)); err != nil {

@@ -45,6 +45,29 @@ func getRusage(who int) *Rusage {
 	}
 }
 
+func (r *Rusage) Add(ru *syscall.Rusage) {
+	if rss := int(ru.Maxrss); rss > r.MaxRss {
+		r.MaxRss = rss
+	}
+	if rss := int(ru.Ixrss); rss > r.SharedRss {
+		r.SharedRss = rss
+	}
+	if rss := int(ru.Idrss); rss > r.UnsharedRss {
+		r.UnsharedRss = rss
+	}
+	r.MinorFaults += int(ru.Minflt)
+	r.MajorFaults += int(ru.Majflt)
+	r.SwapOuts += int(ru.Nswap)
+	r.UserTime += time.Duration(ru.Utime.Nano()).Seconds()
+	r.SystemTime += time.Duration(ru.Stime.Nano()).Seconds()
+	r.InBlocks += int(ru.Inblock)
+	r.OutBlocks += int(ru.Oublock)
+	r.MessagesSent += int(ru.Msgsnd)
+	r.MessagesRcvd += int(ru.Msgrcv)
+	r.SignalsRcvd += int(ru.Nsignals)
+	r.CtxSwitches += int(ru.Nivcsw)
+}
+
 func GetRusage() *RusageInfo {
 	ru := RusageInfo{
 		Self:     getRusage(syscall.RUSAGE_SELF),

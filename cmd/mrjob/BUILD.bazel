@@ -1,17 +1,25 @@
-load("@io_bazel_rules_go//go:def.bzl", "go_binary", "go_library")
+load("@io_bazel_rules_go//go:def.bzl", "go_binary", "go_library", "go_test")
 
 go_library(
     name = "mrjob_lib",
     srcs = [
         "mrjob.go",
         "mrjob_unix.go",
-    ],
+    ] + select({
+        "@io_bazel_rules_go//go/platform:linux": [
+            "mrjob_linux.go",
+        ],
+        "//conditions:default": [
+            "mrjob_generic.go",
+        ],
+    }),
     importpath = "github.com/martian-lang/martian/cmd/mrjob",
     visibility = ["//visibility:private"],
     deps = [
         "//martian/core",
         "//martian/util",
         "@com_github_google_shlex//:go_default_library",
+        "@org_golang_x_sys//unix:go_default_library",
     ],
 )
 
@@ -19,4 +27,16 @@ go_binary(
     name = "mrjob",
     embed = [":mrjob_lib"],
     visibility = ["//:__pkg__"],
+)
+
+go_test(
+    name = "mrjob_test",
+    srcs = ["mrjob_linux_test.go"],
+    embed = [":mrjob_lib"],
+    deps = select({
+        "@io_bazel_rules_go//go/platform:linux": [
+            "//martian/util",
+        ],
+        "//conditions:default": [],
+    }),
 )
