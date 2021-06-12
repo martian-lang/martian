@@ -97,38 +97,6 @@ func countTasks(procFd int, pid string, uid uint32) int {
 	}
 }
 
-// itob slices from here instead of just a string of digits in order to
-// reduce the number of divide/mod ops and also allow use of simd copying.
-const smallsString = "00010203040506070809" +
-	"10111213141516171819" +
-	"20212223242526272829" +
-	"30313233343536373839" +
-	"40414243444546474849" +
-	"50515253545556575859" +
-	"60616263646566676869" +
-	"70717273747576777879" +
-	"80818283848586878889" +
-	"90919293949596979899"
-
-func itob(buf *[10]byte, us uint32) []byte {
-	i := 10
-	for us >= 100 {
-		is := us % 100 * 2
-		us /= 100
-		i -= 2
-		buf[i+1] = smallsString[is+1]
-		buf[i+0] = smallsString[is+0]
-	}
-	is := us * 2
-	i--
-	buf[i] = smallsString[is+1]
-	if us >= 10 {
-		i--
-		buf[i] = smallsString[is]
-	}
-	return buf[i:]
-}
-
 // Gets the total memory usage for the given process and all of its
 // children.  Only errors getting the first process's memory, or the
 // set of children for that process, are reported.  includeParent specifies
@@ -142,13 +110,14 @@ func GetProcessTreeMemory(pid int, includeParent bool, io map[int]*IoAmount) (me
 	}
 	defer unix.Close(procFd)
 	if includeParent {
-		var buf [10]byte
-		return getProcessTreeMemoryAt(procFd, pid, itob(&buf, uint32(pid)), io)
+		var buf bytes.Buffer
+		return getProcessTreeMemoryAt(procFd, pid, strconv.Itoa(pid), io, &buf)
 	} else {
 		if tfd, err := openDirForReadAt(procFd, strconv.Itoa(pid)+"/task"); err != nil {
 			return mem, err
 		} else {
-			err = getChildTreeMemory(procFd, tfd, &mem, io)
+			var buf bytes.Buffer
+			err = getChildTreeMemory(procFd, tfd, &mem, io, &buf)
 			return mem, err
 		}
 	}
@@ -165,9 +134,9 @@ func GetProcessTreeMemoryList(pid int) (ProcessTree, error) {
 	}
 	defer unix.Close(procFd)
 	var stats ProcessTree
-	var buf [10]byte
+	var buf bytes.Buffer
 	return stats, getProcessTreeMemoryList(procFd, pid,
-		itob(&buf, uint32(pid)), 0, &stats)
+		strconv.Itoa(pid), 0, &stats, &buf)
 }
 
 func openDirAsPathAt(fd int, path string) (int, error) {
@@ -182,13 +151,10 @@ func openDirForReadAt(fd int, path string) (int, error) {
 		0)
 }
 
-func getProcessTreeMemoryAt(procFd, pid int, spid []byte,
-	io map[int]*IoAmount) (mem ObservedMemory, err error) {
+func getProcessTreeMemoryAt(procFd, pid int, spid string,
+	io map[int]*IoAmount, buf *bytes.Buffer) (mem ObservedMemory, err error) {
 	var fd int
-	var pidBuf strings.Builder
-	pidBuf.Grow(11)
-	pidBuf.Write(spid)
-	if fd, err = openDirAsPathAt(procFd, pidBuf.String()); err != nil {
+	if fd, err = openDirAsPathAt(procFd, spid); err != nil {
 		return mem, err
 	}
 	closed := false
@@ -197,20 +163,22 @@ func getProcessTreeMemoryAt(procFd, pid int, spid []byte,
 			unix.Close(fd)
 		}
 	}()
-	if mem, err = getRunningMemoryAt(fd); err != nil {
+	if mem, err = getRunningMemoryAt(fd, buf); err != nil {
 		return mem, err
 	}
 	if io != nil {
-		if ioV, err := getRunningIoAt(fd); err == nil {
+		if ioV, err := getRunningIoAt(fd, buf); err == nil {
 			io[pid] = &ioV
 		} else {
 			errString := err.Error()
-			var buf bytes.Buffer
-			buf.Grow(len("Error fetching io for : \n") + len(spid) + len(errString))
-			if _, err := buf.WriteString("Error fetching io for "); err != nil {
+			buf.Reset()
+			buf.Grow(
+				len("Warning: problem fetching io for : ; final statistics may be incomplete\n") +
+					len(spid) + len(errString))
+			if _, err := buf.WriteString("Warning: problem fetching io for "); err != nil {
 				panic(err)
 			}
-			if _, err := buf.Write(spid); err != nil {
+			if _, err := buf.WriteString(spid); err != nil {
 				panic(err)
 			}
 			if _, err := buf.WriteString(": "); err != nil {
@@ -219,7 +187,8 @@ func getProcessTreeMemoryAt(procFd, pid int, spid []byte,
 			if _, err := buf.WriteString(errString); err != nil {
 				panic(err)
 			}
-			if _, err := buf.WriteRune('\n'); err != nil {
+			if _, err := buf.WriteString(
+				"; final statistics may be incomplete\n"); err != nil {
 				panic(err)
 			}
 			if _, err := buf.WriteTo(os.Stdout); err != nil {
@@ -233,12 +202,12 @@ func getProcessTreeMemoryAt(procFd, pid int, spid []byte,
 	} else {
 		closed = true
 		unix.Close(fd)
-		err = getChildTreeMemory(procFd, tfd, &mem, io)
+		err = getChildTreeMemory(procFd, tfd, &mem, io, buf)
 		return mem, err
 	}
 }
 
-func getChildTreeMemory(procFd, tfd int, mem *ObservedMemory, io map[int]*IoAmount) error {
+func getChildTreeMemory(procFd, tfd int, mem *ObservedMemory, io map[int]*IoAmount, buf *bytes.Buffer) error {
 	f := os.NewFile(uintptr(tfd), "task")
 	defer f.Close()
 	if threads, err := f.Readdirnames(-1); err != nil {
@@ -246,10 +215,11 @@ func getChildTreeMemory(procFd, tfd int, mem *ObservedMemory, io map[int]*IoAmou
 	} else {
 		mem.Procs += len(threads)
 		for _, tid := range threads {
-			if childrenBytes, err := util.ReadFileAt(tfd, tid+"/children"); err == nil {
-				for _, child := range bytes.Fields(childrenBytes) {
-					if ichild, err := util.Atoi(child); err == nil {
-						cmem, _ := getProcessTreeMemoryAt(procFd, int(ichild), child, io)
+			buf.Reset()
+			if err := util.ReadFileInto(tfd, tid+"/children", buf); err == nil {
+				for _, child := range strings.Fields(string(bytes.TrimSpace(buf.Bytes()))) {
+					if ichild, err := strconv.Atoi(child); err == nil {
+						cmem, _ := getProcessTreeMemoryAt(procFd, ichild, child, io, buf)
 						mem.Add(cmem)
 					}
 				}
@@ -259,11 +229,9 @@ func getChildTreeMemory(procFd, tfd int, mem *ObservedMemory, io map[int]*IoAmou
 	}
 }
 
-func getProcessTreeMemoryList(procFd int, pid int, spid []byte, depth int, stats *ProcessTree) error {
-	var pidBuf strings.Builder
-	pidBuf.Grow(11)
-	pidBuf.Write(spid)
-	fd, err := openDirAsPathAt(procFd, pidBuf.String())
+func getProcessTreeMemoryList(procFd int, pid int, spid string, depth int, stats *ProcessTree,
+	buf *bytes.Buffer) error {
+	fd, err := openDirAsPathAt(procFd, spid)
 	if err != nil {
 		return errors.New("error opening process directory: " + err.Error())
 	}
@@ -273,7 +241,7 @@ func getProcessTreeMemoryList(procFd int, pid int, spid []byte, depth int, stats
 			unix.Close(fd)
 		}
 	}()
-	mem, err := getRunningMemoryAt(fd)
+	mem, err := getRunningMemoryAt(fd, buf)
 	if err != nil {
 		return err
 	}
@@ -282,19 +250,19 @@ func getProcessTreeMemoryList(procFd int, pid int, spid []byte, depth int, stats
 		Memory: mem,
 		Depth:  depth,
 	}
-	stat.IO, _ = getRunningIoAt(fd)
-	stat.Cmdline = getRunningCommandLine(fd)
+	stat.IO, _ = getRunningIoAt(fd, buf)
+	stat.Cmdline = getRunningCommandLine(fd, buf)
 	*stats = append(*stats, stat)
 	if tfd, err := openDirForReadAt(fd, "task"); err != nil {
 		return errors.New("error opening tid directory: " + err.Error())
 	} else {
 		closed = true
 		unix.Close(fd)
-		return getChildTreeMemoryList(procFd, tfd, depth+1, stats)
+		return getChildTreeMemoryList(procFd, tfd, depth+1, stats, buf)
 	}
 }
 
-func getChildTreeMemoryList(procFd, tfd, depth int, stats *ProcessTree) error {
+func getChildTreeMemoryList(procFd, tfd, depth int, stats *ProcessTree, buf *bytes.Buffer) error {
 	f := os.NewFile(uintptr(tfd), "task")
 	defer f.Close()
 	if threads, err := f.Readdirnames(-1); err != nil {
@@ -302,12 +270,13 @@ func getChildTreeMemoryList(procFd, tfd, depth int, stats *ProcessTree) error {
 	} else {
 		(*stats)[len(*stats)-1].Memory.Procs = len(threads)
 		for _, tid := range threads {
-			if childrenBytes, err := util.ReadFileAt(tfd, tid+"/children"); err == nil {
-				for _, child := range bytes.Fields(childrenBytes) {
-					if ichild, err := util.Atoi(child); err == nil {
+			buf.Reset()
+			if err := util.ReadFileInto(tfd, tid+"/children", buf); err == nil {
+				for _, child := range strings.Fields(string(bytes.TrimSpace(buf.Bytes()))) {
+					if ichild, err := strconv.Atoi(child); err == nil {
 						// Ignore errors.  Usually the issue is that the child
 						// has already died.
-						_ = getProcessTreeMemoryList(procFd, int(ichild), child, depth, stats)
+						_ = getProcessTreeMemoryList(procFd, ichild, child, depth, stats, buf)
 					}
 				}
 			}
@@ -316,11 +285,12 @@ func getChildTreeMemoryList(procFd, tfd, depth int, stats *ProcessTree) error {
 	}
 }
 
-func getRunningCommandLine(fd int) []string {
-	if b, err := util.ReadFileAt(fd, "cmdline"); err != nil {
+func getRunningCommandLine(fd int, buf *bytes.Buffer) []string {
+	buf.Reset()
+	if err := util.ReadFileInto(fd, "cmdline", buf); err != nil {
 		return nil
 	} else {
-		args := bytes.Split(b, []byte{0})
+		args := bytes.Split(buf.Bytes(), []byte{0})
 		result := make([]string, len(args))
 		for i, a := range args {
 			result[i] = string(a)
@@ -362,11 +332,12 @@ func GetRunningMemory(pid int) (ObservedMemory, error) {
 	}
 }
 
-func getRunningMemoryAt(fd int) (ObservedMemory, error) {
-	if b, err := util.ReadFileAt(fd, "statm"); err != nil {
+func getRunningMemoryAt(fd int, buf *bytes.Buffer) (ObservedMemory, error) {
+	buf.Reset()
+	if err := util.ReadFileInto(fd, "statm", buf); err != nil {
 		return ObservedMemory{}, err
 	} else {
-		return parseRunningMemory(b)
+		return parseRunningMemory(buf.Bytes())
 	}
 }
 
@@ -458,11 +429,12 @@ func GetRunningIo(pid int) (*IoAmount, error) {
 }
 
 // Gets IO statistics for a running process by proc fd.
-func getRunningIoAt(fd int) (IoAmount, error) {
-	if b, err := util.ReadFileAt(fd, "io"); err != nil {
+func getRunningIoAt(fd int, buf *bytes.Buffer) (IoAmount, error) {
+	buf.Reset()
+	if err := util.ReadFileInto(fd, "io", buf); err != nil {
 		return IoAmount{}, err
 	} else {
-		return parseRunningIo(b)
+		return parseRunningIo(buf.Bytes())
 	}
 }
 

@@ -15,6 +15,7 @@ import (
 	"os/exec"
 	"path"
 	"regexp"
+	"runtime"
 	"strconv"
 	"strings"
 	"syscall"
@@ -27,6 +28,9 @@ import (
 
 const HeartbeatInterval = time.Minute * 2
 const MemorySampleInterval = time.Second * 5
+
+// Sample memory usage with much higher frequency when monitoring.
+const MonitorMemorySampleInterval = time.Second * 1
 
 type runner struct {
 	job         *exec.Cmd
@@ -466,7 +470,10 @@ func sigToErr(err error) error {
 // exceed its memory quota.
 func (self *runner) WaitLoop() {
 	wait := make(chan error, 1)
-	go func() {
+	go func(wait chan<- error) {
+		defer func(wait chan<- error) {
+			close(wait)
+		}(wait)
 		errorBytes := readBytes(8100, self.errorReader)
 		if len(errorBytes) > 0 {
 			// If the job has finished, we want to wait on it so it isn't
@@ -483,26 +490,42 @@ func (self *runner) WaitLoop() {
 			close(self.isDone)
 			wait <- sigToErr(self.job.Wait())
 		}
-	}()
-	// Make sure we record at least one memory high-water mark, even
-	// for short stages.
-	self.getChildMemGB()
-	lastHeartbeat := time.Now()
-	err := func() error {
+	}(wait)
+	err := func(wait <-chan error) error {
 		defer self.errorReader.Close()
-		timer := time.NewTimer(MemorySampleInterval)
+		// Make sure we record at least one memory high-water mark, even
+		// for short stages.
+		self.getChildMemGB()
+		lastHeartbeat := time.Now()
+		// Do the first memory sample after just 500ms, to capture information
+		// about very short stages.
+		timer := time.NewTimer(time.Millisecond * 500)
+		defer timer.Stop()
 		for {
 			select {
 			case err := <-wait:
 				return err
 			case <-timer.C:
+				// Minimize parent process impact on memory stats, and
+				// prevent mrjob from using too many resources for polling.
+				runtime.GC()
 				if err := self.monitor(&lastHeartbeat); err != nil {
 					return err
 				}
+			}
+			// Don't start a new timer going if we're already done.
+			select {
+			case err := <-wait:
+				return err
+			default:
+			}
+			if self.monitoring {
+				timer.Reset(MonitorMemorySampleInterval)
+			} else {
 				timer.Reset(MemorySampleInterval)
 			}
 		}
-	}()
+	}(wait)
 	{
 		// Wait up to 5 seconds for the job to finish, to ensure we get rusage.
 		select {
@@ -536,7 +559,8 @@ func (self *runner) getChildMemGB() (rss, vmem float64) {
 	mem.IncreaseRusage(core.GetRusage())
 	self.highMem.IncreaseTo(mem)
 	if err != nil {
-		util.LogError(err, "monitor", "Error updating job statistics.")
+		util.LogError(err, "monitor",
+			"Error updating job statistics. Final statistics may not be accurite.")
 	} else {
 		self.ioStats.Update(io, time.Now())
 	}
@@ -548,7 +572,7 @@ func (self *runner) logProcessTree() {
 	tree, _ := core.GetProcessTreeMemoryList(os.Getpid())
 	if len(tree) > 0 {
 		util.LogInfo("monitor", "Process tree:\n%s",
-			tree.Format("                              "))
+			tree.Format("       "))
 	}
 }
 
@@ -560,7 +584,7 @@ func (self *runner) monitor(lastHeartbeat *time.Time) error {
 				tree, _ := core.GetProcessTreeMemoryList(proc.Pid)
 				if len(tree) > 0 {
 					util.LogInfo("monitor", "Process tree:\n%s",
-						tree.Format("                              "))
+						tree.Format("       "))
 				}
 			}
 			self.job.Process.Kill()

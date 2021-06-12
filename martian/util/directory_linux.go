@@ -144,3 +144,47 @@ func ReadFileAt(dirFd int, name string) (b []byte, err error) {
 		return buf.Bytes(), rerr
 	}
 }
+
+// ReadFileAt reads all of the bytes in a file opened relative to the
+// directory with the given file descriptor into the supplied buffer.
+func ReadFileInto(dirFd int, name string, buf *bytes.Buffer) (err error) {
+	if fd, ferr := unix.Openat(dirFd, name,
+		unix.O_RDONLY|unix.O_CLOEXEC, 0); ferr != nil {
+		return ferr
+	} else {
+		// Do not pass the actual file name, because that causes name to escape
+		// to the heap (and it's not useful except for error messages, which
+		// should not happen at this point).
+		f := os.NewFile(uintptr(fd), "file")
+		defer f.Close()
+
+		// capture panic if buffer size is too big.
+		defer func() {
+			if e := recover(); e == nil {
+				return
+			} else if perr, ok := e.(error); ok && perr == bytes.ErrTooLarge {
+				err = perr
+			} else {
+				panic(e)
+			}
+		}()
+
+		if fi, err := f.Stat(); err == nil {
+			if size := fi.Size() + bytes.MinRead; size > bytes.MinRead &&
+				int64(int(size)) == size {
+				// As initial capacity, use file Size + a little extra to
+				// avoid another allocation after Read has filled the
+				// buffer. If the size was wrong, we'll either waste some
+				// space off the end or reallocate as needed, but in the
+				// overwhelmingly common case we'll get it just right.
+				buf.Grow(int(size))
+			} else {
+				buf.Grow(bytes.MinRead)
+			}
+		} else {
+			buf.Grow(bytes.MinRead)
+		}
+		_, rerr := buf.ReadFrom(f)
+		return rerr
+	}
+}
