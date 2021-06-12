@@ -203,9 +203,10 @@ def Popen(
     startupinfo=None,
     creationflags=0,
 ):
+    # type: (...) -> subprocess.Popen
     """Log opening of a subprocess."""
     _INSTANCE.metadata.log("exec", " ".join(args))
-    # pylint: disable=bad-option-value, subprocess-popen-preexec-fn
+    # pylint: disable=bad-option-value, subprocess-popen-preexec-fn, consider-using-with
     return subprocess.Popen(
         args,
         bufsize=bufsize,

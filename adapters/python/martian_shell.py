@@ -479,7 +479,10 @@ class StageWrapper(object):
         if not test:
             # Load the stage code as a module.
             sys.path[0] = os.path.dirname(stagecode_path)
-            self._module = __import__(os.path.basename(stagecode_path))
+            try:
+                self._module = __import__(os.path.basename(stagecode_path))
+            except BaseException:  # pylint: disable=broad-except
+                self.fail()
 
     @staticmethod
     def done():
