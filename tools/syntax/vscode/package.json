@@ -76,7 +76,7 @@
         "vscode:prepublish": "make"
     },
     "devDependencies": {
-        "@types/node": "^14.11.2",
+        "@types/node": "^15.12.4",
         "@types/vscode": "^1.30.0",
         "js-yaml": "^4.0.0",
         "tslint": "^6.1.3",
