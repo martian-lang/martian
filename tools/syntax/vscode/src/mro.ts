@@ -18,24 +18,24 @@ export async function mroFormat(
         args.push(fileName);
     }
     const workspacePath = vscode.workspace.getWorkspaceFolder(
-        vscode.Uri.file(fileName)).uri;
+        vscode.Uri.file(fileName))?.uri;
     return (await executeMro(workspacePath, fileContent, args, mropath)).stdout;
 }
 
 async function getDefaultMroExecutablePath(
-    workspacePath: vscode.Uri): Promise<string> {
+    workspacePath: vscode.Uri | undefined): Promise<string> {
     // Try to retrieve the executable from VS Code's settings. If it's not set,
     // just use "mro" as the default and get it from the system PATH.
     const mroConfig = vscode.workspace.getConfiguration("martian-lang");
     let mroExecutable = mroConfig.get<string>("mroExecutable");
-    if (mroExecutable.length === 0) {
+    if (!mroExecutable || mroExecutable.length === 0) {
         return "mro";
     }
     mroExecutable = mroExecutable.replace(
         "${workspaceFolder}",
-        workspacePath.fsPath
+        workspacePath?.fsPath ?? "."
     )
-    if (!path.isAbsolute(mroExecutable)) {
+    if (!path.isAbsolute(mroExecutable) && workspacePath) {
         try {
             await fs.promises.access(mroExecutable, fs.constants.R_OK);
         } catch {
@@ -46,16 +46,16 @@ async function getDefaultMroExecutablePath(
     return mroExecutable;
 }
 
-function getMroEnv(mropath: string, workspacePath: vscode.Uri): any {
+function getMroEnv(mropath: string, workspacePath: vscode.Uri | undefined): any {
     if (mropath === "") {
         return process.env;
     }
     const env = { ...process.env };
     mropath = mropath.replace(
         "${workspaceFolder}",
-        workspacePath.fsPath
+        workspacePath?.fsPath ?? "."
     );
-    if (!path.isAbsolute(mropath)) {
+    if (!path.isAbsolute(mropath) && workspacePath) {
         mropath = vscode.Uri.joinPath(workspacePath, mropath).fsPath;
     }
     env.MROPATH = mropath;
@@ -63,7 +63,7 @@ function getMroEnv(mropath: string, workspacePath: vscode.Uri): any {
 }
 
 function executeMro(
-    workspacePath: vscode.Uri,
+    workspacePath: vscode.Uri | undefined,
     fileContent: string,
     args: string[],
     mropath: string,
@@ -87,7 +87,7 @@ function executeMro(
         );
         // Write the file being formatted to stdin and close the stream so
         // that the mro process continues.
-        proc.stdin.write(fileContent);
-        proc.stdin.end();
+        proc.stdin?.write(fileContent);
+        proc.stdin?.end();
     });
 }

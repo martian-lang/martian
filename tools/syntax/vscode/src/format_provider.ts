@@ -21,8 +21,8 @@ export class MroFormatProvider
             const formattedContent = await mroFormat(
                 fileContent,
                 document.fileName,
-                formatImports,
-                mropath,
+                formatImports || false,
+                mropath || "",
             );
             if (formattedContent === fileContent) {
                 // If the file didn't change, return any empty array of edits.
@@ -41,6 +41,7 @@ export class MroFormatProvider
             return edits;
         } catch (err) {
             vscode.window.showErrorMessage(`${err}`);
+            return [];
         }
     }
 }
