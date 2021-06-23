@@ -13,16 +13,18 @@ export class MroFormatProvider
         token: vscode.CancellationToken,
     ): Promise<vscode.TextEdit[]> {
         const mroConfig = vscode.workspace.getConfiguration("martian-lang");
-        const formatImports = mroConfig.get<boolean>("mroFormatImports");
-        const mropath = mroConfig.get<string>("mropath");
+        const formatImports = mroConfig
+            .get<boolean>("mroFormatImports") ?? false;
+        const mropath = mroConfig.get<string>("mropath") ?? "";
 
         const fileContent = document.getText();
         try {
             const formattedContent = await mroFormat(
                 fileContent,
                 document.fileName,
-                formatImports || false,
-                mropath || "",
+                formatImports,
+                mropath,
+                token,
             );
             if (formattedContent === fileContent) {
                 // If the file didn't change, return any empty array of edits.
@@ -40,7 +42,7 @@ export class MroFormatProvider
             ];
             return edits;
         } catch (err) {
-            vscode.window.showErrorMessage(`${err}`);
+            await vscode.window.showErrorMessage(String(err));
             return [];
         }
     }

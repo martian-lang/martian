@@ -9,6 +9,7 @@ export async function mroFormat(
     fileName: string,
     formatImports: boolean,
     mropath: string,
+    token: vscode.CancellationToken,
 ): Promise<string> {
     const args = [`format`, `--stdin`];
     if (formatImports) {
@@ -19,7 +20,8 @@ export async function mroFormat(
     }
     const workspacePath = vscode.workspace.getWorkspaceFolder(
         vscode.Uri.file(fileName))?.uri;
-    return (await executeMro(workspacePath, fileContent, args, mropath)).stdout;
+    return (await executeMro(
+        workspacePath, fileContent, args, mropath, token)).stdout;
 }
 
 async function getDefaultMroExecutablePath(
@@ -46,7 +48,11 @@ async function getDefaultMroExecutablePath(
     return mroExecutable;
 }
 
-function getMroEnv(mropath: string, workspacePath: vscode.Uri | undefined): any {
+function getMroEnv(
+    mropath: string,
+    workspacePath: vscode.Uri | undefined): {
+        [key: string]: string | undefined
+    } {
     if (mropath === "") {
         return process.env;
     }
@@ -62,19 +68,24 @@ function getMroEnv(mropath: string, workspacePath: vscode.Uri | undefined): any 
     return env;
 }
 
-function executeMro(
+async function executeMro(
     workspacePath: vscode.Uri | undefined,
     fileContent: string,
     args: string[],
     mropath: string,
+    token: vscode.CancellationToken,
 ): Promise<{ stdout: string; stderr: string }> {
-    return new Promise(async (resolve, reject) => {
-        const execOptions = {
-            env: getMroEnv(mropath, workspacePath),
-            maxBuffer: Number.MAX_SAFE_INTEGER,
-        };
+    const execOptions = {
+        env: getMroEnv(mropath, workspacePath),
+        maxBuffer: Number.MAX_SAFE_INTEGER,
+    };
+    const exePath = await getDefaultMroExecutablePath(workspacePath);
+    if (token.isCancellationRequested) {
+        return { stdout: "", stderr: "" };
+    }
+    return await new Promise((resolve, reject) => {
         const proc = child_process.execFile(
-            await getDefaultMroExecutablePath(workspacePath),
+            exePath,
             args,
             execOptions,
             (error: Error, stdout: string, stderr: string) => {
@@ -85,6 +96,11 @@ function executeMro(
                 }
             },
         );
+        token.onCancellationRequested(() => proc.kill());
+        if (token.isCancellationRequested) {
+            proc.kill();
+            return;
+        }
         // Write the file being formatted to stdin and close the stream so
         // that the mro process continues.
         proc.stdin?.write(fileContent);
