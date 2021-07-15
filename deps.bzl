@@ -5,8 +5,8 @@ load("@bazel_tools//tools/build_defs/repo:utils.bzl", "maybe")
 load("@bazel_gazelle//:deps.bzl", "gazelle_dependencies", "go_repository")
 
 def martian_dependencies(
-        rules_nodejs_version = "3.3.0",
-        rules_nodejs_sha = "f533eeefc8fe1ddfe93652ec50f82373d0c431f7faabd5e6323f6903195ef227"):
+        rules_nodejs_version = "3.7.0",
+        rules_nodejs_sha = "8f5f192ba02319254aaf2cdcca00ec12eaafeb979a80a1e946773c520ae0a2c9"):
     """Loads remote repositories required to build martian.
 
     Args:
@@ -16,6 +16,8 @@ def martian_dependencies(
 
     # Do this before gazelle_dependencies because gazelle wants
     # an older version.
+    # This should actually already have been brought in by rules_go, but is
+    # added here for clarity.
     maybe(
         http_archive,
         name = "bazel_skylib",
@@ -30,7 +32,7 @@ def martian_dependencies(
     maybe(
         go_repository,
         name = "org_golang_x_sys",
-        commit = "bc7a7d42d5c30f4d0fe808715c002826ce2c624e",
+        commit = "0f9fa26af87c481a6877a4ca1330699ba9a30673",
         importpath = "golang.org/x/sys",
     )
 
@@ -62,7 +64,7 @@ def martian_dependencies(
         # is included here mostly for clarity.
         go_repository,
         name = "org_golang_x_tools",
-        commit = "c024452afbcdebb4a0fbe1bb0eaea0d2dbff835b",
+        commit = "d824a7481dff873bb36f76c5b92c46c97852d52e",
         importpath = "golang.org/x/tools",
     )
 
