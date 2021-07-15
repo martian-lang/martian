@@ -37,12 +37,19 @@ async function getDefaultMroExecutablePath(
         "${workspaceFolder}",
         workspacePath?.fsPath ?? "."
     )
-    if (!path.isAbsolute(mroExecutable) && workspacePath) {
+    if (!path.isAbsolute(mroExecutable)) {
         try {
             await fs.promises.access(mroExecutable, fs.constants.R_OK);
         } catch {
-            mroExecutable = vscode.Uri.joinPath(
-                workspacePath, mroExecutable).fsPath;
+            if (workspacePath) {
+                return vscode.Uri.joinPath(
+                    workspacePath, mroExecutable).fsPath;
+            } else {
+                mroExecutable = path.basename(mroExecutable);
+                if (!mroExecutable) {
+                    mroExecutable = "mro";
+                }
+            }
         }
     }
     return mroExecutable;
