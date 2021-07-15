@@ -3,13 +3,13 @@ updates:
 - package-ecosystem: npm
   directory: "/web/martian"
   schedule:
-    interval: daily
+    interval: weekly
   open-pull-requests-limit: 5
   versioning-strategy: increase-if-necessary
 - package-ecosystem: npm
   directory: "/tools/syntax/vscode"
   schedule:
-    interval: daily
+    interval: weekly
   open-pull-requests-limit: 5
   versioning-strategy: increase-if-necessary
 - package-ecosystem: gomod
