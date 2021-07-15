@@ -41,7 +41,7 @@ matrix:
     - pyenv global 3.7.7
     - python --version
     - |
-      BAZEL_VERSION=3.4.1
+      BAZEL_VERSION=4.1.0
       OS="${TRAVIS_OS_NAME}"
       if [[ "${OS}" == "osx" ]]; then
         OS=darwin
