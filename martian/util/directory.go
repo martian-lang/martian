@@ -1,6 +1,8 @@
 // Copyright (c) 2018 10X Genomics, Inc. All rights reserved.
 
 // Generic directory utilities.
+
+//go:build !linux
 // +build !linux
 
 package util

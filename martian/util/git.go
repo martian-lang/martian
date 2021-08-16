@@ -2,6 +2,7 @@
 
 // Run git with the given args, setting pdeathsig in case the parent dies.
 
+//go:build !linux
 // +build !linux
 
 package util

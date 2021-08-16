@@ -4,6 +4,7 @@
 // Martian signal handler.
 //
 
+//go:build !linux
 // +build !linux
 
 package util

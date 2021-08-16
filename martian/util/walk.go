@@ -1,4 +1,6 @@
 // Copyright (c) 2018 10X Genomics, Inc. All rights reserved.
+
+//go:build !linux
 // +build !linux
 
 // Generic implementation forwarding to filepath.Walk

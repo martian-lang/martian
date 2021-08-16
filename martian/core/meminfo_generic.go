@@ -1,5 +1,6 @@
 // Copyright (c) 2020 10X Genomics, Inc. All rights reserved.
 
+//go:build !linux
 // +build !linux
 
 //  Utility method to parse /proc/meminfo

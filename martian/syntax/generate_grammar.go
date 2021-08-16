@@ -2,7 +2,9 @@
 
 // Directives to generate grammar.go from grammar.yacc
 
+//go:build generate
 // +build generate
+
 //go:generate go run golang.org/x/tools/cmd/goyacc -l -p "mm" -o grammar.go grammar.y
 //go:generate rm -f y.output
 //go:generate gofmt -s -w grammar.go
