@@ -7,13 +7,13 @@ def _copy_binary_impl(ctx):
     dest_file = ctx.actions.declare_file(ctx.attr.dest or ctx.attr.name)
     dest_list = [dest_file]
     ctx.actions.run(
-        executable = "cp",
+        executable = "/bin/cp",
         inputs = [ctx.executable.src],
         outputs = dest_list,
         arguments = [
-            "-LT",
             "--preserve=mode,timestamps",
             "--reflink=auto",
+            "-LT",
             ctx.executable.src.path,
             dest_file.path,
         ],
