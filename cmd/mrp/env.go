@@ -16,7 +16,9 @@ import (
 // List of environment variables which might be useful in debugging.
 func loggedEnvs(s string) bool {
 	switch s {
-	case "COMMD_PORT",
+	case "_CONDA_PYTHON_SYSCONFIGDATA_NAME",
+		"_PYTHON_SYSCONFIGDATA_NAME",
+		"COMMD_PORT",
 		"CWD",
 		"ENVIRONMENT", // SGE
 		"EXE",
@@ -25,9 +27,11 @@ func loggedEnvs(s string) bool {
 		"HOSTNAME",
 		"HOSTTYPE", // LSF
 		"HYDRA_ROOT",
+		"JPY_PARENT_PID", // Set inside jupyter notebooks
 		"LANG",
 		"LIBRARY_PATH",
 		"LOGNAME",
+		"MPLCONFIGDIR",
 		"NHOSTS",  // SGE
 		"NQUEUES", // SGE
 		"NSLOTS",  // SGE
@@ -53,9 +57,11 @@ func loggedEnvPrefix(s string) bool {
 	switch s {
 	case "BASH",
 		"CONDA",
+		"CUDA",
 		"DYLD", // Linker
 		"EC2",
 		"EGO", // LSF
+		"HDF5",
 		"JAVA",
 		"JOB", // SGE
 		"LC",
@@ -66,8 +72,11 @@ func loggedEnvPrefix(s string) bool {
 		"MRO",    // Martian
 		"MALLOC", // jemalloc
 		"MARTIAN",
+		"MKL",
 		"MYSYS2", // Anaconda
-		"PBS",    // PBS
+		"NUMEXPR",
+		"OMP",
+		"PBS", // PBS
 		"PD",
 		"RUST",
 		"SBATCH",  // Slurm
