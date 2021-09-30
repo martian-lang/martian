@@ -1,0 +1,44 @@
+name:
+  Release
+
+on:
+  release:
+    types: [published]
+
+jobs:
+  build:
+    runs-on: ubuntu-20.04
+    steps:
+    - uses: actions/checkout@v2
+    - uses: actions/setup-go@v2
+      with:
+        go-version: ">=1.17"
+    - uses: actions/setup-node@v2
+      with:
+        node-version: "lts/*"
+        cache: "npm"
+        cache-dependency-path: |
+          web/martian/package-lock.json
+    - name: build
+      run: make tarball
+    - name: compute tarball prefix
+      run: |
+        echo TARBALL_PREFIX=martian-${{ github.event.release.tag_name }}-$(uname -is | tr "A-Z " "a-z-").tar >> $GITHUB_ENV
+    - name: upload xz
+      uses: actions/upload-release-asset@v1
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        upload_url: ${{ github.event.release.upload_url }}
+        asset_path: ./${{ env.TARBALL_PREFIX }}.xz
+        asset_name: ${{ env.TARBALL_PREFIX }}.xz
+        asset_content_type: application/x-gtar
+    - name: upload gzip
+      uses: actions/upload-release-asset@v1
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        upload_url: ${{ github.event.release.upload_url }}
+        asset_path: ./${{ env.TARBALL_PREFIX }}.gz
+        asset_name: ${{ env.TARBALL_PREFIX }}.gz
+        asset_content_type: application/x-gtar

@@ -1,0 +1,76 @@
+name:
+  Test
+
+on:
+  push
+
+jobs:
+  make:
+    runs-on: ubuntu-20.04
+    strategy:
+      matrix:
+        py: ["3.6"]
+        pylint: ["==2.9.6"]
+        go: [ "1.16", "1.17" ]
+        include:
+        - py: "2.7"
+          pylint: ""
+          go: "1.17"
+    steps:
+    - uses: actions/checkout@v2
+    - uses: actions/setup-python@v2
+      with:
+        python-version: ${{ matrix.py }}
+    - name: Install pylint
+      run: pip install --user pylint${{ matrix.pylint }}
+    - name: pylint
+      run: |
+        pylint adapters/python/martian_shell.py
+        pylint adapters/python/martian.py
+        pylint test/martian_test.py
+    - uses: actions/setup-go@v2
+      with:
+        go-version: ${{ matrix.go }}
+    - uses: actions/setup-node@v2
+      with:
+        node-version: "lts/*"
+        cache: "npm"
+        cache-dependency-path: |
+          web/martian/package-lock.json
+          tools/syntax/vscode/package-lock.json
+    - name: make all
+      run: make all tarball
+    - name: darwin build
+      run: GOOS=darwin go build ./cmd/...
+    - name: Integration tests
+      run: make longtests
+
+  bazel:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v2
+    - uses: actions/setup-python@v2
+      with:
+        python-version: "3.x"
+    - name: Show bazel variables
+      run: |
+        bazel info
+        echo "bazel_repository_cache=$(bazel info repository_cache)" >> $GITHUB_ENV
+        echo "bazel_output_base=$(bazel info output_base)" >> $GITHUB_ENV
+    - name: Cache bazel external repositories
+      uses: actions/cache@v2
+      with:
+        path: |
+          ${{ env.bazel_repository_cache }}
+          ${{ env.bazel_output_base }}/external
+        key: bazel-repo-cache-${{hashFiles('deps.bzl', 'WORKSPACE', 'web/martian/package-lock.json')}}
+        restore-keys: |
+          bazel-repo-cache-
+    - name: test
+      run: |
+        bazel test --nobuild_tests_only \
+                   --verbose_failures \
+                   --discard_analysis_cache \
+                   --notrack_incremental_state \
+                   --nokeep_state_after_build \
+                   //...
