@@ -84,13 +84,17 @@ JOBMANAGERS=$(wildcard jobmanagers/*.py) \
 			$(wildcard jobmanagers/*.json) \
 			$(wildcard jobmanagers/*.template.example)
 
+$(addprefix bin/, $(GOBINS) $(GOBIN_LINKS)): all-bins $(GOBIN_LINKS)
+
 PRODUCT_NAME:=martian-$(VERSION)-$(shell uname -is | tr "A-Z " "a-z-")
 
-$(PRODUCT_NAME).tar.%: $(addprefix bin/, $(GOBINS) $(GOBIN_LINKS)) $(ADAPTERS) $(JOBMANAGERS) $(WEB_FILES)
+TARBALLS:=$(addprefix $(PRODUCT_NAME).tar, .gz .xz)
+
+$(TARBALLS): $(addprefix bin/, $(GOBINS) $(GOBIN_LINKS)) $(ADAPTERS) $(JOBMANAGERS) $(WEB_FILES)
 	git status || echo "no git status"
 	tar --owner=0 --group=0 --transform "s/^\\./$(PRODUCT_NAME)/" -caf $@ $(addprefix ./, $^)
 
-tarball: $(PRODUCT_NAME).tar.xz $(PRODUCT_NAME).tar.gz
+tarball: $(TARBALLS)
 
 test-all: martian/syntax/grammar.go | martian/test/sum_squares/types.go
 	go test -race ./martian/... ./cmd/...
