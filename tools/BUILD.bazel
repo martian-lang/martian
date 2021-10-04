@@ -7,6 +7,12 @@ bzl_library(
 )
 
 bzl_library(
+    name = "extract_file",
+    srcs = ["extract_file.bzl"],
+    visibility = ["//visibility:public"],
+)
+
+bzl_library(
     name = "providers",
     srcs = ["providers.bzl"],
     visibility = ["//visibility:public"],

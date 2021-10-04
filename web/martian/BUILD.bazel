@@ -1,4 +1,5 @@
 load("@build_bazel_rules_nodejs//:index.bzl", "nodejs_binary")
+load("//tools:extract_file.bzl", "extract_file")
 
 genrule(
     name = "clean_css",
@@ -41,79 +42,52 @@ genrule(
     ],
 )
 
-# Pick out the one file we need from the npm package.
-EXTRACT_FILE = """
-for f in $(SRCS); do
-    if [[ $$(basename \"$$f\") == $$(basename \"$@\") ]]; then
-        cp \"$$f\" \"$@\"
-    fi
-done
-"""
-
-genrule(
+extract_file(
     name = "d3",
     srcs = [
         "@martian_npm//d3:d3__files",
     ],
-    outs = [
-        "build/d3.min.js",
-    ],
-    cmd = EXTRACT_FILE,
+    dest = "build/d3.min.js",
 )
 
-genrule(
+extract_file(
     name = "dagre_d3",
     srcs = [
         "@martian_npm//dagre-d3:dagre-d3__files",
     ],
-    outs = [
-        "build/dagre-d3.min.js",
-    ],
-    cmd = EXTRACT_FILE,
+    dest = "build/dagre-d3.min.js",
 )
 
-genrule(
+extract_file(
     name = "angular",
     srcs = [
         "@martian_npm//angular:angular__files",
     ],
-    outs = [
-        "build/angular.min.js",
-    ],
-    cmd = EXTRACT_FILE,
+    dest = "build/angular.min.js",
 )
 
-genrule(
+extract_file(
     name = "lodash",
     srcs = [
         "@martian_npm//lodash:lodash__files",
     ],
-    outs = [
-        "build/lodash.min.js",
-    ],
-    cmd = EXTRACT_FILE,
+    dest = "build/lodash.min.js",
 )
 
-genrule(
+extract_file(
     name = "ng_google_chart",
     srcs = [
         "@martian_npm//angular-google-chart:angular-google-chart__files",
     ],
-    outs = [
-        "build/ng-google-chart.min.js",
-    ],
-    cmd = EXTRACT_FILE,
+    dest = "build/ng-google-chart.min.js",
 )
 
-genrule(
+extract_file(
     name = "ui_bootstrap_tpls",
     srcs = [
         "@martian_npm//angular-ui-bootstrap:angular-ui-bootstrap__files",
     ],
-    outs = [
-        "build/ui-bootstrap-tpls.min.js",
-    ],
-    cmd = EXTRACT_FILE,
+    dest = "build/ui-bootstrap-tpls.min.js",
 )
 
 nodejs_binary(

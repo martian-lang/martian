@@ -3,7 +3,6 @@
 def _copy_binary_impl(ctx):
     if not ctx.executable.src:
         fail("binary must be specified", attr = "src")
-    basename = ctx.executable.src.basename
     dest_file = ctx.actions.declare_file(ctx.attr.dest or ctx.attr.name)
     dest_list = [dest_file]
     ctx.actions.run(
@@ -112,7 +111,6 @@ def _symlink_binary_impl(ctx):
             exe = ctx.files.src[0]
         else:
             fail("binary must be specified", attr = "src")
-    basename = exe.basename
     dest_file = ctx.actions.declare_file(ctx.attr.dest or ctx.attr.name)
     ctx.actions.run_shell(
         outputs = [dest_file],
