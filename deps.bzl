@@ -32,7 +32,7 @@ def martian_dependencies(
     maybe(
         go_repository,
         name = "org_golang_x_sys",
-        commit = "0f9fa26af87c481a6877a4ca1330699ba9a30673",
+        commit = "d867a43fc93e4a7a41e33674e954dc459b27dddb",
         importpath = "golang.org/x/sys",
     )
 
@@ -64,7 +64,7 @@ def martian_dependencies(
         # is included here mostly for clarity.
         go_repository,
         name = "org_golang_x_tools",
-        commit = "d824a7481dff873bb36f76c5b92c46c97852d52e",
+        commit = "0df0ca0f43117120bd7cc900ebf765f9b799438a",
         importpath = "golang.org/x/tools",
     )
 
