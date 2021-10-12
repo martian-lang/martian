@@ -16,10 +16,12 @@ import (
 	"os"
 	"os/user"
 	"path"
+	"path/filepath"
 	"runtime"
 	"runtime/trace"
 	"strings"
 	"sync"
+	"syscall"
 	"time"
 
 	"github.com/martian-lang/martian/martian/api"
@@ -217,9 +219,37 @@ func (pipestanceBox *pipestanceHolder) Configure(c *mrpConfiguration, invocation
 }
 
 func (c *mrpConfiguration) checkSpace() {
-	if bSize, inodes, fstype, err := core.GetAvailableSpace(c.pipestancePath); err != nil {
+	psPath := c.pipestancePath
+	info, err := os.Lstat(c.pipestancePath)
+	if err != nil {
+		util.LogError(err, "filesys", "Cannot stat pipestance directory.")
+	} else if info.Mode()&os.ModeSymlink != 0 {
+		resolved, err := filepath.EvalSymlinks(psPath)
+		if err != nil {
+			util.LogError(err, "filesys",
+				"Could not resolve pipestance path %s, which is a symlink.",
+				psPath)
+		} else {
+			util.LogInfo("filesys",
+				"Pipestance path %s is a symlink to %s",
+				psPath, resolved)
+			psPath = resolved
+			info, err = os.Stat(psPath)
+			if err != nil {
+				util.LogError(err, "filesys",
+					"Cannot stat resolved pipestance directory.")
+			}
+			if !info.IsDir() {
+				util.PrintInfo("filesys", "Pipestance path is not a directory.")
+			}
+		}
+	}
+	if bSize, inodes, fstype, err := core.GetAvailableSpace(psPath); err != nil {
 		util.PrintError(err, "filesys", "Error reading pipestance filesystem information.")
 	} else {
+		// Log the logical path, not the resolved one here, even though
+		// we're getting the info for the resolved one because that's what
+		// matters for space usage etc.
 		util.LogInfo("filesys", "Pipestance path %s",
 			c.pipestancePath)
 		util.LogInfo("filesys", "Pipestance filesystem type %s",
@@ -227,28 +257,66 @@ func (c *mrpConfiguration) checkSpace() {
 		util.LogInfo("filesys", "%s and %s inodes available.",
 			humanize.Bytes(bSize), humanize.Comma(int64(inodes)))
 	}
-	if fstype, opts, err := core.GetMountOptions(c.pipestancePath); err != nil {
-		util.LogError(err, "filesys", "Could not read pipestance filesystem mount options.")
+	if fstype, opts, err := core.GetMountOptions(psPath); err != nil {
+		util.LogError(err, "filesys",
+			"Could not read pipestance filesystem mount options.")
 	} else {
-		util.LogInfo("filesys", "Pipestance filesystem %s mount options: %s",
+		util.LogInfo("filesys",
+			"Pipestance filesystem %s mount options: %s",
 			fstype, opts)
+	}
+	if info != nil {
+		if sysInfo, ok := info.Sys().(*syscall.Stat_t); ok {
+			util.LogInfo("filesys",
+				"Pipestance directory permissions %s owned by uid %d gid %d",
+				info.Mode().String(), sysInfo.Uid, sysInfo.Gid)
+		} else {
+			util.LogInfo("filesys", "Pipestance permissions: %s",
+				info.Mode().String())
+		}
 	}
 
 	binPath := util.RelPath("")
 	if _, _, fstype, err := core.GetAvailableSpace(binPath); err != nil {
-		util.PrintError(err, "filesys", "Error reading source filesystem information.")
+		util.PrintError(err, "filesys",
+			"Error reading source filesystem information.")
 	} else {
 		util.LogInfo("filesys", "Bin path %s", binPath)
 		util.LogInfo("filesys", "Bin filesystem type %s",
 			fstype)
 	}
 	if fstype, opts, err := core.GetMountOptions(binPath); err != nil {
-		util.LogError(err, "filesys", "Could not read source filesystem mount options.")
+		util.LogError(err, "filesys",
+			"Could not read source filesystem mount options.")
 	} else {
 		util.LogInfo("filesys", "Bin filesystem %s mount options: %s",
 			fstype, opts)
 	}
+	if exe, err := os.Executable(); err != nil {
+		util.LogError(err, "filesys", "Could not get executable path.")
+	} else if info, err := os.Stat(exe); err != nil {
+		util.LogError(err, "filesys", "Could not stat executable.")
+	} else if sysInfo, ok := info.Sys().(*syscall.Stat_t); ok {
+		util.LogInfo("filesys", "Executable file permissions %s owned by uid %d gid %d",
+			info.Mode().String(), sysInfo.Uid, sysInfo.Gid)
+	} else {
+		util.LogInfo("filesys", "Executable file permissions %s",
+			info.Mode().String())
+	}
+}
 
+func logUids(username string) {
+	uid := os.Getuid()
+	euid := os.Geteuid()
+	gid := os.Getgid()
+	egid := os.Getegid()
+	if euid != uid || egid != gid {
+		util.LogInfo("user   ", "User %s uid %d (real = %d) / gid %d (real = %d)",
+			username, euid, uid, egid, gid)
+	} else {
+		util.LogInfo("user   ", "User %s uid %d / gid %d",
+			username, uid, gid)
+	}
 }
 
 func (c *mrpConfiguration) getListener(hostname string,
@@ -343,6 +411,7 @@ func main() {
 		pipestanceBox.lastLogCheck = time.Now()
 	}
 	c.checkSpace()
+	logUids(username)
 
 	uuid, _ := pipestanceBox.pipestance.GetUuid()
 	listener := c.getListener(hostname, &pipestanceBox, c.cert)
