@@ -125,6 +125,22 @@
         "-H", "${PROFILE_DEST}.html",
         "${STAGE_PID}"
       ]
+    },
+    "pyspy": {
+      "cmd": "py-spy",
+      "args": [
+        "record",
+        "--pid", "${STAGE_PID}",
+        "-o", "${PROFILE_DEST}",
+        "-r", "${MRO_PERF_FREQ}",
+        "-d", "${MRO_PERF_DURATION}",
+        "-n",
+        "-s"
+      ],
+      "defaults": {
+        "MRO_PERF_FREQ": "100",
+        "MRO_PERF_DURATION": "4800"
+      }
     }
   }
 }
