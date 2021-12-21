@@ -2,7 +2,7 @@ workspace(name = "martian")
 
 load("@bazel_tools//tools/build_defs/repo:http.bzl", "http_archive")
 
-RULES_GO_VERSION = "v0.28.0"
+RULES_GO_VERSION = "v0.29.0"
 
 _RULES_GO_ARCHIVE = "github.com/bazelbuild/rules_go/releases/download/{}/rules_go-{}.zip".format(
     RULES_GO_VERSION,
@@ -11,14 +11,14 @@ _RULES_GO_ARCHIVE = "github.com/bazelbuild/rules_go/releases/download/{}/rules_g
 
 http_archive(
     name = "io_bazel_rules_go",
-    sha256 = "8e968b5fcea1d2d64071872b12737bbb5514524ee5f0a4f54f5920266c261acb",
+    sha256 = "2b1641428dff9018f9e85c0384f03ec6c10660d935b750e3fa1492a281a53b0f",
     urls = [
         "https://mirror.bazel.build/" + _RULES_GO_ARCHIVE,
         "https://" + _RULES_GO_ARCHIVE,
     ],
 )
 
-GAZELLE_VERSION = "v0.23.0"
+GAZELLE_VERSION = "v0.24.0"
 
 _GAZELLE_ARCHIVE = "github.com/bazelbuild/bazel-gazelle/releases/download/{}/bazel-gazelle-{}.tar.gz".format(
     GAZELLE_VERSION,
@@ -27,7 +27,7 @@ _GAZELLE_ARCHIVE = "github.com/bazelbuild/bazel-gazelle/releases/download/{}/baz
 
 http_archive(
     name = "bazel_gazelle",
-    sha256 = "62ca106be173579c0a167deb23358fdfe71ffa1e4cfdddf5582af26520f1c66f",
+    sha256 = "de69a09dc70417580aabf20a28619bb3ef60d038470c7cf8442fafcf627c21cb",
     urls = [
         "https://storage.googleapis.com/bazel-mirror/" + _GAZELLE_ARCHIVE,
         "https://" + _GAZELLE_ARCHIVE,
@@ -55,13 +55,11 @@ martian_npm_repo()
 
 # Development only, not required by dependent projects:
 
-_STARDOC_COMMIT = "8d076b25d4f66a7a37125f62dab6357e4d46603e"
-
 http_archive(
     name = "io_bazel_stardoc",
-    sha256 = "d3b602c511a1a918953c0458cf93ee22a6467ed51aa4c24cc13cd6fd48b27dac",
-    strip_prefix = "stardoc-" + _STARDOC_COMMIT,
+    sha256 = "c9794dcc8026a30ff67cf7cf91ebe245ca294b20b071845d12c192afe243ad72",
     urls = [
-        "https://github.com/bazelbuild/stardoc/archive/{}.tar.gz".format(_STARDOC_COMMIT),
+        "https://mirror.bazel.build/github.com/bazelbuild/stardoc/releases/download/0.5.0/stardoc-0.5.0.tar.gz",
+        "https://github.com/bazelbuild/stardoc/releases/download/0.5.0/stardoc-0.5.0.tar.gz",
     ],
 )
