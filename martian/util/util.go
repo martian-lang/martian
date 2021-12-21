@@ -191,8 +191,24 @@ func ArrayToString(data []interface{}) []string {
 }
 
 func ValidateID(id string) error {
-	if ok, _ := regexp.MatchString("^(\\d|\\w|-)+$", id); !ok {
-		return &MartianError{fmt.Sprintf("Invalid name: %s (only numbers, letters, dash, and underscore allowed)", id)}
+	if id == "" {
+		return &MartianError{"Name cannot be empty"}
+	}
+
+	const MAX_ID_LEN = 64
+	if len(id) > MAX_ID_LEN {
+		return &MartianError{
+			fmt.Sprintf("Name '%s' must be at most %d characters long", id, MAX_ID_LEN),
+		}
+	}
+
+	if ok, _ := regexp.MatchString("^[-_[:alnum:]]+$", id); !ok {
+		return &MartianError{
+			fmt.Sprintf(
+				"Invalid name: '%s' (only numbers, letters, dash, and underscore allowed)",
+				id,
+			),
+		}
 	}
 	return nil
 }
