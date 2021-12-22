@@ -804,6 +804,12 @@ func (self *Metadata) endRefresh(lastRefresh time.Time) {
 		notRunningSince := self.notRunningSince
 		self.notRunningSince = time.Time{}
 		if state, _ := self._getStateNoLock(); state == Running || state == Queued {
+			jobid := self.readRaw(JobId)
+			if jobid != "" {
+				util.LogInfo("runtime",
+					"Job %s is not in the job manager queue.  Failing %s.",
+					jobid, self.fqname)
+			}
 			// The job is not running but the metadata thinks it still is.
 			// The check for metadata updates was completed since the time that
 			// the queue query completed.  This job has failed.  Write an error.
