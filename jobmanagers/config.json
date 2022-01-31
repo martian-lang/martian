@@ -131,11 +131,12 @@
       "args": [
         "record",
         "--pid", "${STAGE_PID}",
-        "-o", "${PROFILE_DEST}",
-        "-r", "${MRO_PERF_FREQ}",
-        "-d", "${MRO_PERF_DURATION}",
-        "-n",
-        "-s"
+        "--output", "${PROFILE_DEST}",
+        "--rate", "${MRO_PERF_FREQ}",
+        "--duration", "${MRO_PERF_DURATION}",
+        "--format", "raw",
+        "--native",
+        "--subprocesses"
       ],
       "defaults": {
         "MRO_PERF_FREQ": "100",
