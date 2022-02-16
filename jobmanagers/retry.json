@@ -10,6 +10,7 @@
     "^Unable to run job: failed receiving gdi request response",
     "^According to the job manager, the job for .+ was not queued or running,",
     "^IOError: \\[Errno 116\\] Stale file handle",
-    "^OSError: \\[Errno 11\\] Resource temporarily unavailable"
+    "^OSError: \\[Errno 11\\] Resource temporarily unavailable",
+    "^jobcmd error: \\(exit status \\d+\\)"
   ]
 }
