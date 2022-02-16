@@ -249,14 +249,18 @@ func (self *runner) Complete() {
 						"Could not write errors file.")
 				}
 			}
-		} else if kb := int(math.Ceil(self.jobInfo.MemGB * 1024 * 1024)); self.jobInfo.RusageInfo.Children.MaxRss > kb {
-			target = core.Errors
-			if writeError := self.metadata.WriteRaw(target, fmt.Sprintf(
-				"Stage exceeded its memory quota (using %.1f, allowed %g)",
-				float64(self.jobInfo.RusageInfo.Children.MaxRss)/(1024*1024),
-				self.jobInfo.MemGB)); writeError != nil {
-				util.PrintError(writeError, "monitor",
-					"Could not write errors file.")
+		}
+		if target != core.Errors {
+			kb := int(math.Ceil(self.jobInfo.MemGB * 1024 * 1024))
+			if self.jobInfo.RusageInfo.Children.MaxRss > kb {
+				target = core.Errors
+				if writeError := self.metadata.WriteRaw(target, fmt.Sprintf(
+					"Stage exceeded its memory quota (using %.1f, allowed %g)",
+					float64(self.jobInfo.RusageInfo.Children.MaxRss)/(1024*1024),
+					self.jobInfo.MemGB)); writeError != nil {
+					util.PrintError(writeError, "monitor",
+						"Could not write errors file.")
+				}
 			}
 		}
 	}
