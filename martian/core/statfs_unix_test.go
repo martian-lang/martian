@@ -23,7 +23,8 @@ func TestFsType(t *testing.T) {
 	if err != nil {
 		t.Errorf("Failed to get type from statfs: %v", err)
 	}
-	if mountType != statfsType && !strings.HasPrefix(mountType, statfsType) {
+	if mountType != statfsType && !strings.HasPrefix(mountType, statfsType) &&
+		!strings.HasPrefix(statfsType, mountType) {
 		t.Errorf("%q != %q", mountType, statfsType)
 	}
 }
