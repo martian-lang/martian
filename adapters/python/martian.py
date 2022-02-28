@@ -62,6 +62,7 @@ class Record(object):
     """An object with a set of attributes generated from a dictioanry."""
 
     def __init__(self, f_dict):
+        # type: (Dict[str, Any]) -> None
         """Initializes the object from a dictionary."""
         self.slots = f_dict.keys()
         for field_name in self.slots:
@@ -143,11 +144,13 @@ def get_mem_kb():
 
 
 def convert_gb_to_kb(mem_gb):
+    # type: (float) -> float
     """Convert from gb to kb."""
     return mem_gb * 1024 * 1024
 
 
 def padded_print(field_name, value):
+    # type: (str, ...) -> str
     """Pad a string with leading spaces to be the same length as field_name."""
     offset = len(field_name) - len(str(value))
     if offset > 0:
@@ -292,27 +295,32 @@ def get_pipestance_uuid():
 
 
 def update_progress(message):
+    # type: (Union[str, bytes]) -> None
     """Updates the current progress of the stage, which will be displayed to
     the user (in the mrp log) next time mrp reads the file."""
     _INSTANCE.metadata.progress(message)
 
 
 def log_info(message):
+    # type: (Union[str, bytes]) -> None
     """Log a message."""
     _INSTANCE.metadata.log("info", message)
 
 
 def log_warn(message):
+    # type: (Union[str, bytes]) -> None
     """Log a warning."""
     _INSTANCE.metadata.log("warn", message)
 
 
 def log_time(message):
+    # type: (Union[str, bytes]) -> None
     """Log a timestamp for an action."""
     _INSTANCE.metadata.log("time", message)
 
 
 def log_json(label, obj):
+    # type: (Union[str, bytes], Any) -> None
     """Log an object in json format."""
     _INSTANCE.metadata.log(
         "json", json_dumps_safe({"label": label, "object": obj})
@@ -345,6 +353,7 @@ def alarm(message):
 
 
 def test_initialize(path):
+    # type: (Union[str, bytes]) -> None
     """Initialize with a fake test metadata."""
     # pylint: disable=bad-option-value, import-outside-toplevel
     import martian_shell as mr_shell

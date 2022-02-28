@@ -70,6 +70,7 @@ except NameError:
 
 
 def _ensure_binary(string):
+    # type: (...) -> bytes
     """Encode unicode strings to bytes, leave byte strings alone."""
     if isinstance(string, _text_type):
         return string.encode("utf-8")
@@ -241,7 +242,7 @@ class _Metadata(object):
         if test:
             self._logfile = sys.stdout
         else:
-            self._logfile = os.fdopen(3, "ab")
+            self._logfile = os.fdopen(3, "a")
         self.cache = set()
 
     def make_path(self, name):
@@ -250,12 +251,14 @@ class _Metadata(object):
 
     @staticmethod
     def make_timestamp(epochsecs):
+        # type: (float) -> str
         """Formats a timestamp according to the martian time format."""
         return datetime.datetime.fromtimestamp(epochsecs).strftime(
             "%Y-%m-%d %H:%M:%S"
         )
 
     def make_timestamp_now(self):
+        # type: () -> str
         """Formats the current time as a string."""
         return self.make_timestamp(time.time())
 
@@ -285,7 +288,8 @@ class _Metadata(object):
     def write_raw_atomic(self, name, text, force=False):
         """Write the given text to the given metadata file, by creating a
         temporary file and then moving it, in order to prevent corruption of
-        the existing file if the proces of writing is interupted."""
+        the existing file if the proces of writing is interupted.
+        """
         text = _ensure_binary(text)
         fname = self.make_path(name)
         fname_tmp = fname + b".tmp"
@@ -303,7 +307,8 @@ class _Metadata(object):
     def write_atomic(self, name, obj, force=False):
         """Write the given object to the given metadata file, by creating a
         temporary file and then moving it, in order to prevent corruption of
-        the existing file if the proces of writing is interupted."""
+        the existing file if the proces of writing is interupted.
+        """
         self.write_raw_atomic(
             name, martian.json_dumps_safe(obj, indent=4), force
         )
@@ -321,6 +326,7 @@ class _Metadata(object):
 
     @staticmethod
     def _to_string_type(message):
+        # type: (...) -> str
         if _PYTHON3 and isinstance(message, bytes):
             message = message.decode("utf-8", errors="ignore")
         elif not isinstance(message, _string_type):
@@ -335,12 +341,10 @@ class _Metadata(object):
     def log(self, level, message):
         """Write a log line to the log file."""
         self._logfile.write(
-            _ensure_binary(
-                "{} [{}] {}\n".format(
-                    self.make_timestamp_now(),
-                    level,
-                    self._to_string_type(message),
-                )
+            "{} [{}] {}\n".format(
+                self.make_timestamp_now(),
+                level,
+                self._to_string_type(message),
             )
         )
         self._logfile.flush()
@@ -466,7 +470,7 @@ class StageWrapper(object):
             self.metadata = _Metadata(metadata_path, files_path, journal_prefix)
 
         # Write jobinfo.
-        self.jobinfo = _CachedJobInfo(self.write_jobinfo())
+        self.jobinfo = _CachedJobInfo(self.write_jobinfo(test))
 
         # Initialize functions to be line-profiled.
         self.funcs = []
@@ -595,10 +599,24 @@ class StageWrapper(object):
         """Runs a command and puts its return value in self._result."""
         self._result = cmd()
 
-    def write_jobinfo(self):
+    def write_jobinfo(self, test=False):
         """Add the 'python' metadata to the existing jobinfo file and return
         the content of the file."""
-        jobinfo = self.metadata.read(b"jobinfo")
+        try:
+            jobinfo = self.metadata.read(b"jobinfo")
+        except OSError:
+            if not test:
+                raise
+            # Create a minimal jobinfo dictionary for when running as a unit
+            # test.
+            jobinfo = {
+                "profile_mode": None,
+                "stackvars_flag": None,
+                "invocation": None,
+                "version": None,
+                "threads": 1,
+                "memGB": 0.01
+            }
         jobinfo["python"] = {"binpath": sys.executable, "version": sys.version}
         self.metadata.write_atomic(b"jobinfo", jobinfo)
         return jobinfo
