@@ -159,8 +159,7 @@ def padded_print(field_name, value):
 
 
 def profile(func):
-    """Add a fuction to the set of functions to be covered by the line
-    profiler."""
+    """Add a fuction to the set of functions to be covered by the line profiler."""
     _INSTANCE.funcs.append(func)
     return func
 
@@ -183,7 +182,6 @@ if sys.platform.startswith("linux"):
         _LIBC.prctl(
             _PR_SET_PDEATHSIG, ctypes.c_ulong(SIGKILL), zero, zero, zero
         )
-
 
 else:
     child_preexec_set_pdeathsig = None  # pylint: disable=invalid-name
@@ -333,8 +331,7 @@ def throw(message):
     raise StageException(message)
 
 
-# pylint: disable=redefined-builtin
-def exit(message):
+def exit(message):  # pylint: disable=redefined-builtin
     # type: (Union[str, bytes]) -> NoReturn
     """Fail the pipeline with an assertion."""
     _INSTANCE.metadata.write_assert(message)
