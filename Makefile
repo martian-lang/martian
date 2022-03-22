@@ -14,21 +14,17 @@ VERSION=$(shell git describe --tags --always --dirty)
 RELEASE=false
 SRC_ROOT=$(abspath $(dir $(PWD))../..)
 GO_FLAGS=-ldflags "-X '$(REPO)/martian/util.__VERSION__=$(VERSION)' -X $(REPO)/martian/util.__RELEASE__='$(RELEASE)'" -gcflags "-trimpath $(SRC_ROOT)"
-GOBIN_LINKS=mrc mrf mrdr
 
 unexport GOPATH
 export GO111MODULE=on
 export GOBIN=$(PWD)/bin
 
-.PHONY: $(GOBINS) grammar web $(GOTESTS) coverage.out govet all-bins $(GOBIN)/sum_squares longtests mrs integration_prereqs $(GOBIN_LINKS) vscode vscode-test
+.PHONY: $(GOBINS) grammar web $(GOTESTS) coverage.out govet all-bins $(GOBIN)/sum_squares longtests mrs integration_prereqs vscode vscode-test
 
 #
 # Targets for development builds.
 #
-all: grammar all-bins web test mrs $(GOBIN_LINKS) vscode
-
-$(GOBIN_LINKS): mro
-	ln -sf mro $(GOBIN)/$@
+all: grammar all-bins web test vscode
 
 martian/syntax/grammar.go: martian/syntax/grammar.y martian/syntax/lexer.go
 	go generate ./martian/syntax
@@ -84,13 +80,13 @@ JOBMANAGERS=$(wildcard jobmanagers/*.py) \
 			$(wildcard jobmanagers/*.json) \
 			$(wildcard jobmanagers/*.template.example)
 
-$(addprefix bin/, $(GOBINS) $(GOBIN_LINKS)): all-bins $(GOBIN_LINKS)
+$(addprefix bin/, $(GOBINS)): all-bins
 
 PRODUCT_NAME:=martian-$(VERSION)-$(shell uname -is | tr "A-Z " "a-z-")
 
 TARBALLS:=$(addprefix $(PRODUCT_NAME).tar, .gz .xz)
 
-$(TARBALLS): $(addprefix bin/, $(GOBINS) $(GOBIN_LINKS)) $(ADAPTERS) $(JOBMANAGERS) $(WEB_FILES)
+$(TARBALLS): $(addprefix bin/, $(GOBINS)) $(ADAPTERS) $(JOBMANAGERS) $(WEB_FILES)
 	git status || echo "no git status"
 	tar --owner=0 --group=0 --transform "s/^\\./$(PRODUCT_NAME)/" -caf $@ $(addprefix ./, $^)
 

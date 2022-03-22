@@ -54,8 +54,7 @@ func main() {
 		Render a call graph, or query information about it.
 
 	version:
-		Print the version and exit.
-`)
+		Print the version and exit.`)
 		} else {
 			delegateMain(append([]string{os.Args[2], "--help"}, os.Args[3:]...))
 			os.Exit(0)
