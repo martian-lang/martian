@@ -1,5 +1,5 @@
 load("@build_bazel_rules_nodejs//:index.bzl", "nodejs_binary")
-load("//tools:extract_file.bzl", "extract_file")
+load("@bazel_skylib//rules:select_file.bzl", "select_file")
 
 genrule(
     name = "clean_css",
@@ -42,52 +42,40 @@ genrule(
     ],
 )
 
-extract_file(
+select_file(
     name = "d3",
-    srcs = [
-        "@martian_npm//d3:d3__files",
-    ],
-    dest = "build/d3.min.js",
+    srcs = "@martian_npm//d3:d3__files",
+    subpath = "d3.min.js",
 )
 
-extract_file(
+select_file(
     name = "dagre_d3",
-    srcs = [
-        "@martian_npm//dagre-d3:dagre-d3__files",
-    ],
-    dest = "build/dagre-d3.min.js",
+    srcs = "@martian_npm//dagre-d3:dagre-d3__files",
+    subpath = "dagre-d3.min.js",
 )
 
-extract_file(
+select_file(
     name = "angular",
-    srcs = [
-        "@martian_npm//angular:angular__files",
-    ],
-    dest = "build/angular.min.js",
+    srcs = "@martian_npm//angular:angular__files",
+    subpath = "angular.min.js",
 )
 
-extract_file(
+select_file(
     name = "lodash",
-    srcs = [
-        "@martian_npm//lodash:lodash__files",
-    ],
-    dest = "build/lodash.min.js",
+    srcs = "@martian_npm//lodash:lodash__files",
+    subpath = "lodash.min.js",
 )
 
-extract_file(
+select_file(
     name = "ng_google_chart",
-    srcs = [
-        "@martian_npm//angular-google-chart:angular-google-chart__files",
-    ],
-    dest = "build/ng-google-chart.min.js",
+    srcs = "@martian_npm//angular-google-chart:angular-google-chart__files",
+    subpath = "ng-google-chart.min.js",
 )
 
-extract_file(
+select_file(
     name = "ui_bootstrap_tpls",
-    srcs = [
-        "@martian_npm//angular-ui-bootstrap:angular-ui-bootstrap__files",
-    ],
-    dest = "build/ui-bootstrap-tpls.min.js",
+    srcs = "@martian_npm//angular-ui-bootstrap:angular-ui-bootstrap__files",
+    subpath = "ui-bootstrap-tpls.min.js",
 )
 
 nodejs_binary(

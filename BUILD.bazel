@@ -1,6 +1,6 @@
 load("@bazel_gazelle//:def.bzl", "gazelle")
 load("@bazel_tools//tools/build_defs/pkg:pkg.bzl", "pkg_tar")
-load("//tools:copy_binary.bzl", "copy_binary", "symlink_binary")
+load("//tools:copy_binary.bzl", "copy_binary")
 
 # gazelle:resolve go github.com/martian-lang/martian/martian/api @martian//martian/api
 # gazelle:resolve go github.com/martian-lang/martian/martian/core @martian//martian/core

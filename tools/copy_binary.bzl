@@ -5,24 +5,31 @@ def _copy_binary_impl(ctx):
         fail("binary must be specified", attr = "src")
     dest_file = ctx.actions.declare_file(ctx.attr.dest or ctx.attr.name)
     dest_list = [dest_file]
-    ctx.actions.run(
-        executable = "/bin/cp",
-        inputs = [ctx.executable.src],
-        outputs = dest_list,
-        arguments = [
-            "--preserve=mode,timestamps",
-            "--reflink=auto",
-            "-LT",
-            ctx.executable.src.path,
-            dest_file.path,
-        ],
-        tools = [],
-        mnemonic = "CopyBinary",
-        progress_message = "Copying {} to {}.".format(
-            ctx.executable.src.short_path,
-            dest_file.short_path,
-        ),
-    )
+    if ctx.attr.allow_symlink:
+        ctx.actions.symlink(
+            output = dest_file,
+            target_file = ctx.executable.src,
+            is_executable = True,
+        )
+    else:
+        ctx.actions.run(
+            executable = "/bin/cp",
+            inputs = [ctx.executable.src],
+            outputs = dest_list,
+            arguments = [
+                "--preserve=mode,timestamps",
+                "--reflink=auto",
+                "-LT",
+                ctx.executable.src.path,
+                dest_file.path,
+            ],
+            tools = [],
+            mnemonic = "CopyBinary",
+            progress_message = "Copying {} to {}.".format(
+                ctx.executable.src.short_path,
+                dest_file.short_path,
+            ),
+        )
     data_runfiles = ctx.attr.src.data_runfiles.files.to_list()
     data_runfiles.remove(ctx.executable.src)
     default_runfiles = ctx.attr.src.default_runfiles.files.to_list()
@@ -66,6 +73,16 @@ copy_binary = rule(
         "dest": attr.string(
             doc = "The package-relative location for this file.  " +
                   "This will default to the name of the target.",
+        ),
+        "allow_symlink": attr.bool(
+            default = True,
+            doc = "Whether to allow symlinking instead of copying. " +
+                  "When False, the output is always a hard copy. " +
+                  "When True, the output *can* be a symlink, but there is no " +
+                  "guarantee that a symlink is created. Set this to True if " +
+                  "you want fast copying and your tools can handle symlinks " +
+                  "(which most UNIX tools can), particularly in remote " +
+                  "execution environments.",
         ),
     },
     doc = """Copies an executable to new location.

@@ -22,23 +22,9 @@ def _extract_file_impl(ctx):
         )
     dest_file = ctx.actions.declare_file(ctx.attr.dest or ctx.attr.name)
     dest_list = [dest_file]
-    ctx.actions.run(
-        executable = "/bin/cp",
-        inputs = files,
-        outputs = dest_list,
-        arguments = [
-            "--preserve=mode,timestamps",
-            "--reflink=auto",
-            "-LT",
-            files[0].path,
-            dest_file.path,
-        ],
-        tools = [],
-        mnemonic = "ExtractFile",
-        progress_message = "Copying {} to {}.".format(
-            files[0].short_path,
-            dest_file.short_path,
-        ),
+    ctx.actions.symlink(
+        output = dest_file,
+        target_file = files[0],
     )
     return [DefaultInfo(
         files = depset(dest_list),
@@ -65,7 +51,9 @@ extract_file = rule(
                   "This will default to the name of the target.",
         ),
     },
-    doc = """Copies a file to new location.
+    doc = """DEPRECATED: Use @bazel_skylib//rules:select_file.bzl instead.
+
+Copies a file to new location.
 
 Take the single file with the given suffix the given build target, and copy it
 to the given destination location.
