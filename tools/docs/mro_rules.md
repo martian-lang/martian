@@ -1,5 +1,7 @@
 <!-- Generated with Stardoc: http://skydoc.bazel.build -->
 
+Rules for dealing with [Martian](https://martian-lang.org) `.mro` sources.
+
 <a id="#mrf_test"></a>
 
 ## mrf_test
@@ -113,7 +115,7 @@ A convenience wrapper for running `mro format` on a set of files.
 | Name  | Description | Default Value |
 | :------------- | :------------- | :------------- |
 | <a id="mrf_runner-mrf_flags"></a>mrf_flags |  Flags to pass to <code>mro format</code>.   |  <code>["--rewrite", "--includes"]</code> |
-| <a id="mrf_runner-srcs"></a>srcs |  The set of mro files or targets to format.  If an <code>mro_library</code>   target is supplied, its transitive dependencies will be formatted   as well.   |  <code>[]</code> |
-| <a id="mrf_runner-kwargs"></a>kwargs |  Any other attributes to pass through to the underlying rule,   including for example <code>name</code> and <code>visibility</code>.   |  none |
+| <a id="mrf_runner-srcs"></a>srcs |  The set of mro files or targets to format.  If an <code>mro_library</code> target is supplied, its transitive dependencies will be formatted as well.   |  <code>[]</code> |
+| <a id="mrf_runner-kwargs"></a>kwargs |  Any other attributes to pass through to the underlying rule, including for example <code>name</code> and <code>visibility</code>.   |  none |
 
 
