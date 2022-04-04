@@ -18,6 +18,11 @@ def _mro_library_impl(ctx):
         ]
     else:
         mropath = []
+    stage_py_deps = [
+        dep[DefaultInfo].files
+        for dep in ctx.attr.deps
+        if MroInfo not in dep and PyInfo in dep
+    ]
     return [
         MroInfo(
             mropath = depset(
@@ -33,6 +38,13 @@ def _mro_library_impl(ctx):
                 ctx.files.srcs,
                 transitive = [
                     dep[MroInfo].transitive_mros
+                    for dep in ctx.attr.deps
+                    if MroInfo in dep
+                ],
+            ),
+            stage_py_deps = depset(
+                transitive = stage_py_deps + [
+                    dep[MroInfo].stage_py_deps
                     for dep in ctx.attr.deps
                     if MroInfo in dep
                 ],

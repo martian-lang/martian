@@ -47,7 +47,13 @@ def _mro_test_impl(ctx):
     )
     runfiles = ctx.runfiles(
         files = [ctx.executable._mro],
-        collect_data = True,
+        transitive_files = depset(transitive = [
+            src[MroInfo].transitive_mros
+            for src in ctx.attr.srcs
+        ] + [
+            src[MroInfo].stage_py_deps
+            for src in ctx.attr.srcs
+        ]),
     )
     return [DefaultInfo(runfiles = runfiles)]
 
