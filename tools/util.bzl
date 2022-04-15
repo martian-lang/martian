@@ -34,11 +34,13 @@ def merge_runfiles(
         collect_data = collect_data,
         collect_default = collect_default,
         symlinks = symlinks,
-    )
-    for dep in deps:
-        rf = rf.merge(dep[DefaultInfo].default_runfiles)
-        if dep[DefaultInfo].default_runfiles != dep[DefaultInfo].data_runfiles:
-            rf = rf.merge(dep[DefaultInfo].data_runfiles)
+    ).merge_all([
+        dep[DefaultInfo].default_runfiles
+        for dep in deps
+    ] + [
+        dep[DefaultInfo].data_runfiles
+        for dep in deps
+    ])
     return rf
 
 def merge_pyinfo(

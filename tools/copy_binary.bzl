@@ -40,17 +40,13 @@ def _copy_binary_impl(ctx):
         transitive_files = depset(data_runfiles),
         collect_data = False,
         collect_default = False,
-    )
+    ).merge_all([dep[DefaultInfo].data_runfiles for dep in ctx.attr.data])
     default_runfiles = ctx.runfiles(
         files = files,
         transitive_files = depset(default_runfiles),
         collect_data = False,
         collect_default = False,
-    )
-    for dep in ctx.attr.data:
-        info = dep[DefaultInfo]
-        data_runfiles = data_runfiles.merge(info.data_runfiles)
-        default_runfiles = default_runfiles.merge(info.default_runfiles)
+    ).merge_all([dep[DefaultInfo].default_runfiles for dep in ctx.attr.data])
     return [DefaultInfo(
         data_runfiles = data_runfiles,
         default_runfiles = default_runfiles,
@@ -111,7 +107,7 @@ def _relpath(dest, src):
         return src[len(dest) + 1:]
     parts = dest.split("/")
     prefix = "../"
-    for part in parts:
+    for _ in parts:
         dest = _dir(dest)
         if src.startswith(dest + "/"):
             return prefix + src[len(dest) + 1:]
