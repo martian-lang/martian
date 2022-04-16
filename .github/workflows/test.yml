@@ -4,6 +4,9 @@ name:
 on:
   push
 
+permissions:
+  contents: read
+
 jobs:
   make:
     runs-on: ubuntu-20.04
@@ -17,8 +20,8 @@ jobs:
           pylint: ""
           go: "1.18"
     steps:
-    - uses: actions/checkout@v2
-    - uses: actions/setup-python@v2
+    - uses: actions/checkout@v3
+    - uses: actions/setup-python@v3
       with:
         python-version: ${{ matrix.py }}
     - name: Install pylint
@@ -28,10 +31,10 @@ jobs:
         pylint adapters/python/martian_shell.py
         pylint adapters/python/martian.py
         pylint test/martian_test.py
-    - uses: actions/setup-go@v2
+    - uses: actions/setup-go@v3
       with:
         go-version: ${{ matrix.go }}
-    - uses: actions/setup-node@v2
+    - uses: actions/setup-node@v3
       with:
         node-version: "lts/*"
         cache: "npm"
@@ -48,11 +51,11 @@ jobs:
   bazel:
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/checkout@v2
-    - uses: actions/setup-python@v2
+    - uses: actions/checkout@v3
+    - uses: actions/setup-python@v3
       with:
         python-version: "3.x"
-    - uses: actions/setup-go@v2
+    - uses: actions/setup-go@v3
       with:
         go-version: ">=1.18"
     - name: Show bazel variables
@@ -61,7 +64,7 @@ jobs:
         echo "bazel_repository_cache=$(bazel info repository_cache)" >> $GITHUB_ENV
         echo "bazel_output_base=$(bazel info output_base)" >> $GITHUB_ENV
     - name: Cache bazel external repositories
-      uses: actions/cache@v2
+      uses: actions/cache@v3
       with:
         path: |
           ${{ env.bazel_repository_cache }}
