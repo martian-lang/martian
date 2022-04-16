@@ -19,7 +19,7 @@ unexport GOPATH
 export GO111MODULE=on
 export GOBIN=$(PWD)/bin
 
-.PHONY: $(GOBINS) grammar web $(GOTESTS) coverage.out govet all-bins $(GOBIN)/sum_squares longtests mrs integration_prereqs vscode vscode-test
+.PHONY: $(GOBINS) grammar web $(GOTESTS) coverage.out govet all-bins $(GOBIN)/sum_squares longtests integration_prereqs vscode vscode-test
 
 #
 # Targets for development builds.
@@ -41,12 +41,6 @@ grammar: martian/syntax/grammar.go
 
 $(GOBINS):
 	go install $(GO_FLAGS) ./cmd/$@
-
-mrs: $(GOBIN)/mrs
-
-$(GOBIN)/mrs: mrp
-	rm -f $(GOBIN)/mrs && ln -s mrp $(GOBIN)/mrs
-
 
 all-bins:
 	go install $(GO_FLAGS) ./cmd/...

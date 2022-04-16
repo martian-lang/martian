@@ -1,8 +1,12 @@
 import * as child_process from "child_process";
+import { promisify } from "util";
+import { Readable } from "stream";
 import * as path from "path";
 import * as fs from "fs";
 import * as process from "process";
 import * as vscode from "vscode";
+
+const execFile = promisify(child_process.execFile);
 
 export async function mroFormat(
     fileContent: string,
@@ -82,7 +86,7 @@ async function executeMro(
     mropath: string,
     token: vscode.CancellationToken,
 ): Promise<{ stdout: string; stderr: string }> {
-    const execOptions = {
+    const execOptions: child_process.ExecOptions = {
         env: getMroEnv(mropath, workspacePath),
         maxBuffer: Number.MAX_SAFE_INTEGER,
     };
@@ -90,27 +94,20 @@ async function executeMro(
     if (token.isCancellationRequested) {
         return { stdout: "", stderr: "" };
     }
-    return await new Promise((resolve, reject) => {
-        const proc = child_process.execFile(
-            exePath,
-            args,
-            execOptions,
-            (error: Error, stdout: string, stderr: string) => {
-                if (!error) {
-                    resolve({ stdout, stderr });
-                } else {
-                    reject(error);
-                }
-            },
-        );
-        token.onCancellationRequested(() => proc.kill());
-        if (token.isCancellationRequested) {
-            proc.kill();
-            return;
+    const procPromise = execFile(
+        exePath,
+        args,
+        execOptions,
+    );
+    const proc = procPromise.child;
+    token.onCancellationRequested(() => proc.kill());
+    if (token.isCancellationRequested) {
+        proc.kill();
+        if (proc.stdin) {
+            proc.stdin.end();
         }
-        // Write the file being formatted to stdin and close the stream so
-        // that the mro process continues.
-        proc.stdin?.write(fileContent);
-        proc.stdin?.end();
-    });
+    } else if (proc.stdin) {
+        Readable.from([fileContent]).pipe(proc.stdin, { end: true });
+    }
+    return await procPromise;
 }

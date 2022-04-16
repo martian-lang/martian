@@ -8,4 +8,5 @@ syntaxes/Martianlang.YAML-tmLanguage
 Makefile
 tslint.json
 tsconfig.json
+out/.eslintrc*
 out/**/*.map

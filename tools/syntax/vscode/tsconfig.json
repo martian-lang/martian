@@ -1,16 +1,17 @@
 {
     "compilerOptions": {
         "module": "commonjs",
-        "target": "es6",
+        "target": "ES2020",
         "outDir": "out",
         "lib": [
-            "es6"
+            "ES2020"
         ],
         "sourceMap": true,
         "rootDir": ".",
         "alwaysStrict": true,
         "allowJs": true,
-        "strictNullChecks": true
+        "strictNullChecks": true,
+        "strict": true
     },
     "exclude": [
         "node_modules",

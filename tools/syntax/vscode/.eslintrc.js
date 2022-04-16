@@ -4,13 +4,16 @@ module.exports = {
         "node": true
     },
     "extends": [
+        "eslint:recommended",
         "plugin:@typescript-eslint/recommended",
         "plugin:@typescript-eslint/recommended-requiring-type-checking"
     ],
     "parser": "@typescript-eslint/parser",
     "parserOptions": {
+        "ecmaVersion": 2020,
         "project": "tsconfig.json",
-        "sourceType": "module"
+        "sourceType": "module",
+        "tsconfigRootDir": __dirname,
     },
     "plugins": [
         "eslint-plugin-jsdoc",
@@ -65,7 +68,6 @@ module.exports = {
             }
         ],
         "@typescript-eslint/no-unused-expressions": "error",
-        "@typescript-eslint/no-use-before-define": "off",
         "@typescript-eslint/no-var-requires": "error",
         "@typescript-eslint/prefer-for-of": "error",
         "@typescript-eslint/prefer-function-type": "error",
@@ -133,7 +135,6 @@ module.exports = {
         "no-unsafe-finally": "error",
         "no-unused-expressions": "error",
         "no-unused-labels": "error",
-        "no-use-before-define": "off",
         "no-var": "error",
         "object-shorthand": "error",
         "one-var": [
@@ -153,5 +154,10 @@ module.exports = {
         ],
         "use-isnan": "error",
         "valid-typeof": "off"
-    }
+    },
+    "ignorePatterns": [
+        "out",
+        "dist",
+        "**/*.d.ts"
+    ]
 };

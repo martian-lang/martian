@@ -2,7 +2,7 @@
     "name": "martian-lang",
     "displayName": "Martian MRO language",
     "description": "Supports syntax highlighting and indenting for Martian (https://martian-lang.org) .mro files.",
-    "version": "0.0.3",
+    "version": "0.0.4",
     "publisher": "MartianLang",
     "license": "MIT",
     "engines": {
@@ -70,9 +70,15 @@
             }
         }
     },
+    "extensionKind": [
+        "workspace",
+        "ui"
+    ],
     "scripts": {
-        "check-lint": "npx eslint -f stylish src/*.ts",
+        "check-lint": "npx eslint -f stylish . --ext ts",
+        "lint": "npx eslint -f stylish . --ext ts",
         "compile": "make",
+        "watch": "tsc -watch -p ./",
         "vscode:prepublish": "make"
     },
     "devDependencies": {

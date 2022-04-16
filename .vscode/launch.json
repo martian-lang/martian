@@ -1,0 +1,22 @@
+{
+    "version": "0.3.0",
+    "configurations": [
+        {
+            "name": "Run Extension",
+            "type": "extensionHost",
+            "request": "launch",
+            "runtimeExecutable": "${execPath}",
+            "args": [
+                "--extensionDevelopmentPath=${workspaceFolder}/tools/syntax/vscode"
+            ],
+            "outFiles": [
+                "${workspaceFolder}/tools/syntax/vscode/syntaxes/Martianlang.tmLanguage.json",
+                "${workspaceFolder}/tools/syntax/vscode/language-configuration.json",
+                "${workspaceFolder}/tools/syntax/vscode/package.json",
+                "${workspaceFolder}/tools/syntax/vscode/out/**/*.js",
+                "${workspaceFolder}/tools/syntax/vscode/out/**/*.js.map"
+            ],
+            "preLaunchTask": "vscode"
+        },
+    ]
+}

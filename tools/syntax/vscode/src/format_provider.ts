@@ -42,7 +42,7 @@ export class MroFormatProvider
             ];
             return edits;
         } catch (err) {
-            await vscode.window.showErrorMessage(String(err));
+            void vscode.window.showErrorMessage(String(err));
             return [];
         }
     }
