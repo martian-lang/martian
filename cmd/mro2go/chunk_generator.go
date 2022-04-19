@@ -7,10 +7,12 @@ package main
 import (
 	"bytes"
 	"fmt"
+
 	"github.com/martian-lang/martian/martian/syntax"
 )
 
-func writeStageChunkDef(buffer *bytes.Buffer, prefix string, stage *syntax.Stage) {
+func writeStageChunkDef(buffer *bytes.Buffer, lookup *syntax.TypeLookup,
+	prefix string, stage *syntax.Stage) {
 	if len(stage.ChunkIns.List) > 0 {
 		// chunk def
 		fmt.Fprintf(buffer, `
@@ -20,7 +22,7 @@ type %sChunkDef struct {`,
 			stage.Id, prefix)
 		buffer.WriteString("\n\t*core.JobResources `json:\",omitempty\"`\n")
 		for _, param := range stage.ChunkIns.List {
-			writeParam(buffer, param)
+			writeParam(buffer, lookup, param)
 		}
 		fmt.Fprintf(buffer, `}
 
@@ -93,7 +95,8 @@ func writeKeyMarshaller(buffer *bytes.Buffer, param syntax.Param, i int) {
 	}`)
 }
 
-func writeStageChunkOuts(buffer *bytes.Buffer, prefix string, stage *syntax.Stage) {
+func writeStageChunkOuts(buffer *bytes.Buffer, lookup *syntax.TypeLookup,
+	prefix string, stage *syntax.Stage) {
 	if len(stage.ChunkOuts.List) > 0 && len(stage.OutParams.List) > 0 {
 		fmt.Fprintf(buffer, `
 // A structure to encode outs from the chunks for %s.
@@ -102,7 +105,7 @@ type %sChunkOuts struct {
 `,
 			stage.Id, prefix, prefix)
 		for _, param := range stage.ChunkOuts.List {
-			writeParam(buffer, param)
+			writeParam(buffer, lookup, param)
 		}
 		fmt.Fprintf(buffer, `}
 
@@ -132,7 +135,7 @@ type %sChunkOuts struct {
 `,
 			stage.Id, prefix)
 		for _, param := range stage.ChunkOuts.List {
-			writeParam(buffer, param)
+			writeParam(buffer, lookup, param)
 		}
 		buffer.WriteString("}\n")
 	}

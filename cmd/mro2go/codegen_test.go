@@ -52,13 +52,57 @@ func TestMroToGo(t *testing.T) {
 	}
 	var dest bytes.Buffer
 	if err := MroToGo(&dest,
-		mrosrc, "testdata/pipeline_stages.mro", "",
+		mrosrc, "testdata/pipeline_stages.mro", nil,
 		nil,
-		"main", "split_test.go"); err != nil {
+		"main", "split_test.go", false, false,
+		make(map[string]struct{})); err != nil {
 		t.Fatal(err)
 	}
 	goSrc := dest.String()
 	if expectedSrc, err := ioutil.ReadFile("split_test.go"); err != nil {
+		t.Fatal(err)
+	} else if string(expectedSrc) != goSrc {
+		t.Errorf("Expected:\n%s\n\nGot:\n%s", expectedSrc, goSrc)
+	}
+}
+
+// Test that the go output for generating a pipeline matches what's expected.
+func TestPipelineMroToGo(t *testing.T) {
+	mrosrc, err := ioutil.ReadFile(path.Join("testdata", "pipeline_stages.mro"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	var dest bytes.Buffer
+	if err := MroToGo(&dest,
+		mrosrc, "testdata/pipeline_stages.mro", []string{"SUM_SQUARE_PIPELINE"},
+		nil,
+		"main", "split_pipeline_test.go", true, true, nil); err != nil {
+		t.Fatal(err)
+	}
+	goSrc := dest.String()
+	if expectedSrc, err := ioutil.ReadFile("split_pipeline_test.go"); err != nil {
+		t.Fatal(err)
+	} else if string(expectedSrc) != goSrc {
+		t.Errorf("Expected:\n%s\n\nGot:\n%s", expectedSrc, goSrc)
+	}
+}
+
+// Test that the go output for generating a pipeline matches what's expected.
+func TestStructPipelineMroToGo(t *testing.T) {
+	mrosrc, err := ioutil.ReadFile(path.Join("testdata", "struct_pipeline.mro"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	var dest bytes.Buffer
+	if err := MroToGo(&dest,
+		mrosrc, "testdata/struct_pipeline.mro", []string{"OUTER"},
+		nil,
+		"main", "struct_pipeline_test.go", true, false,
+		make(map[string]struct{})); err != nil {
+		t.Fatal(err)
+	}
+	goSrc := dest.String()
+	if expectedSrc, err := ioutil.ReadFile("struct_pipeline_test.go"); err != nil {
 		t.Fatal(err)
 	} else if string(expectedSrc) != goSrc {
 		t.Errorf("Expected:\n%s\n\nGot:\n%s", expectedSrc, goSrc)

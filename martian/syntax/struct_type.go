@@ -60,6 +60,9 @@ func (m *StructMember) Line() int               { return m.Node.Loc.Line }
 func (m *StructMember) GetId() string           { return m.Id }
 func (*StructMember) inheritComments() bool     { return false }
 func (*StructMember) getSubnodes() []AstNodable { return nil }
+func (m *StructMember) GetTname() TypeId        { return m.Tname }
+func (m *StructMember) GetArrayDim() int        { return int(m.Tname.ArrayDim) }
+func (m *StructMember) GetHelp() string         { return m.Help }
 
 // Gets the name used to refer to this parameter in outputs.
 func (s *StructMember) GetOutName() string {

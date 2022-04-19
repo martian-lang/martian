@@ -21,6 +21,7 @@ stage CREATOR(
     volatile = strict,
 )
 
+# Called by OUTER.
 pipeline INNER(
     in  int          foo,
     out CREATOR      bar,

@@ -30,7 +30,10 @@ go_test(
     ],
     data = [
         "split_test.go",
+        "split_pipeline_test.go",
+        "struct_pipeline_test.go",
         "testdata/pipeline_stages.mro",
+        "testdata/struct_pipeline.mro",
     ],
     embed = [":mro2go_lib"],
     deps = ["//martian/core"],

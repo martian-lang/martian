@@ -32,14 +32,18 @@ type (
 		Table map[string]*OutParam
 	}
 
-	Param interface {
+	StructMemberLike interface {
 		NamedNode
-		getMode() string
 		GetTname() TypeId
 		GetArrayDim() int
 		GetHelp() string
 		GetOutName() string
 		IsFile() FileKind
+	}
+
+	Param interface {
+		StructMemberLike
+		getMode() string
 		setIsFile(FileKind)
 	}
 
@@ -122,10 +126,7 @@ func (s *OutParam) getNode() *AstNode { return &s.Node }
 func (s *OutParam) File() *SourceFile { return s.Node.Loc.File }
 func (s *OutParam) Line() int         { return s.Node.Loc.Line }
 func (s *OutParam) getMode() string   { return "out" }
-func (s *OutParam) GetTname() TypeId  { return s.Tname }
-func (s *OutParam) GetArrayDim() int  { return int(s.Tname.ArrayDim) }
 func (s *OutParam) GetId() string     { return s.Id }
-func (s *OutParam) GetHelp() string   { return s.Help }
 
 func (s *OutParam) inheritComments() bool { return false }
 func (s *OutParam) getSubnodes() []AstNodable {

@@ -175,16 +175,26 @@ func main() {
 		"The destination file name.  The default is <basename of source>.go")
 	flags.StringVar(outfile, "o", "",
 		"The destination file name.  The default is <basename of source>.go")
+	outDir := flags.String("output-dir", "",
+		"The destination directory, for generating multiple .mro files. "+
+			"Files will be named by the source mro basename, with the "+
+			"extension changed to .go.")
 	packageName := flags.String("package", "",
 		"The name of the package in for the generated source file.  "+
 			"Defaults to the name of the output file's directory.")
 	flags.StringVar(packageName, "p", "",
 		"The name of the package in for the generated source file.  "+
 			"Defaults to the name of the output file's directory.")
-	stageName := flags.String("stage", "",
-		"Only generate code for the given stage.")
+	stageNames := flags.String("stage", "",
+		"Only generate code for the given stages (comma-separated list).")
+	pipelineNames := flags.String("pipeline", "",
+		"Only generate structs for the given pipelines (comma-separated list).")
+	structs := flags.Bool("structs", true,
+		"Also generate any structs required for input/output parameters.")
 	stdout := flags.Bool("stdout", false,
 		"Write the go source to standard out.")
+	onlyIns := flags.Bool("input-only", false,
+		"If set, only create structs for inputs.")
 	if err := flags.Parse(os.Args[1:]); err != nil {
 		// ExitOnError should mean that it never returns an error.
 		panic(err)
@@ -192,6 +202,14 @@ func main() {
 	if flags.NArg() < 1 {
 		flags.Usage()
 		os.Exit(1)
+	}
+	if *pipelineNames != "" {
+		if *stageNames != "" {
+			fmt.Fprintf(os.Stderr,
+				"-stage and -pipeline are incompatible.")
+			os.Exit(1)
+		}
+		*stageNames = *pipelineNames
 	}
 	// Require strict enforcement of mro language.  This prevents, for
 	// example, chunk in parameters with names which duplicate stage ins,
@@ -209,8 +227,13 @@ func main() {
 	if *stdout {
 		f = os.Stdout
 	} else if *outfile != "" {
+		if *outDir != "" {
+			fmt.Fprintln(os.Stderr,
+				"Specifying an output file name is incompatible with "+
+					"specifying an output directory.")
+		}
 		if flags.NArg() > 1 {
-			fmt.Fprintf(os.Stderr,
+			fmt.Fprintln(os.Stderr,
 				"Writing multiple mro files to a single output go file is not supported.")
 			os.Exit(1)
 		}
@@ -231,12 +254,15 @@ func main() {
 			}()
 		}
 	}
+	stageNamesList := maybeSplitList(*stageNames)
+	var seenStructs map[string]struct{}
+	var lastPackage string
 	for _, mrofile := range flags.Args() {
 		thisPackage := *packageName
 		if thisPackage == "" {
 			thisOut := *outfile
 			if thisOut == "" {
-				thisOut = ".go"
+				thisOut = filepath.Join(*outDir, ".go")
 			}
 			if p, err := filepath.Abs(thisOut); err != nil {
 				fmt.Fprintf(os.Stderr,
@@ -246,12 +272,44 @@ func main() {
 				thisPackage = path.Base(path.Dir(p))
 			}
 		}
-		processFile(f, mrofile, *stageName, thisPackage, mroPaths)
+		if *structs && (lastPackage != thisPackage || seenStructs == nil) {
+			seenStructs = make(map[string]struct{})
+			lastPackage = thisPackage
+		}
+		if *outDir != "" {
+			bn := filepath.Base(mrofile)
+			bn = strings.TrimSuffix(bn, filepath.Ext(bn)) + ".go"
+			f, err = os.Create(filepath.Join(*outDir, bn))
+			if err != nil {
+				fmt.Fprintf(os.Stderr,
+					"Error opening destination file %s: %v\n",
+					*outfile, err)
+				os.Exit(1)
+			}
+		}
+		processFile(f, mrofile, thisPackage, stageNamesList,
+			mroPaths, *pipelineNames != "", *onlyIns, seenStructs)
+		if *outDir != "" {
+			if err := f.Close(); err != nil {
+				fmt.Fprintf(os.Stderr,
+					"Error closing %s: %v\n",
+					*outfile, err)
+				os.Exit(1)
+			}
+		}
 	}
 }
 
-func processFile(dest *os.File, mrofile, stageName, packageName string,
-	mroPaths []string) {
+func maybeSplitList(s string) []string {
+	if s == "" {
+		return nil
+	}
+	return strings.Split(s, ",")
+}
+
+func processFile(dest *os.File, mrofile, packageName string, stageNames []string,
+	mroPaths []string, pipeline, onlyIns bool,
+	seenStructs map[string]struct{}) {
 	if dest == nil {
 		thisOut := path.Base(strings.TrimSuffix(mrofile, ".mro")) + ".go"
 		if t, err := os.Create(thisOut); err != nil {
@@ -275,8 +333,8 @@ func processFile(dest *os.File, mrofile, stageName, packageName string,
 		fmt.Fprintf(os.Stderr, "Error reading source file\n%s\n", err.Error())
 		os.Exit(1)
 	} else if err := MroToGo(dest, src,
-		mrofile, stageName, mroPaths,
-		packageName, dest.Name()); err != nil {
+		mrofile, stageNames, mroPaths,
+		packageName, dest.Name(), pipeline, onlyIns, seenStructs); err != nil {
 		fmt.Fprintf(os.Stderr, "Error generating go source for %s\n%s\n",
 			mrofile, err.Error())
 		os.Exit(1)
@@ -303,12 +361,15 @@ func readSrc(mrofile string, mroPaths []string) ([]byte, string, error) {
 }
 
 func MroToGo(dest io.Writer,
-	src []byte, mrofile, stageName string, mroPaths []string,
-	pkg, outName string) error {
+	src []byte, mrofile string, stageNames, mroPaths []string,
+	pkg, outName string, pipeline, onlyIns bool,
+	seenStructs map[string]struct{}) error {
 	if ast, err := parseMro(src, mrofile, mroPaths); err != nil {
 		return err
 	} else {
-		return gofmt(dest, makeGoRaw(ast, pkg, mrofile, stageName), outName)
+		return gofmt(dest,
+			makeCallableGoRaw(ast, pkg, mrofile, stageNames,
+				pipeline, onlyIns, seenStructs), outName)
 	}
 }
 
@@ -317,11 +378,40 @@ func parseMro(src []byte, fname string, mroPaths []string) (*syntax.Ast, error) 
 	return ast, err
 }
 
-func getStages(ast *syntax.Ast, fname, stageName string) []*syntax.Stage {
-	stages := make([]*syntax.Stage, 0, len(ast.Stages))
+func getCallables(ast *syntax.Ast, fname string,
+	pipelineNames []string, pipeline bool) []syntax.Callable {
+	if pipeline {
+		return getPipelines(ast, fname, pipelineNames)
+	} else {
+		return getStages(ast, fname, pipelineNames)
+	}
+}
+
+func matchAny(id string, names []string) bool {
+	for _, n := range names {
+		if n == id {
+			return true
+		}
+	}
+	return len(names) == 0
+}
+
+func getPipelines(ast *syntax.Ast, fname string, pipelineNames []string) []syntax.Callable {
+	stages := make([]syntax.Callable, 0, len(ast.Pipelines))
+	for _, p := range ast.Pipelines {
+		if path.Base(p.Node.Loc.File.FullPath) == path.Base(fname) &&
+			matchAny(p.GetId(), pipelineNames) {
+			stages = append(stages, p)
+		}
+	}
+	return stages
+}
+
+func getStages(ast *syntax.Ast, fname string, stageNames []string) []syntax.Callable {
+	stages := make([]syntax.Callable, 0, len(ast.Stages))
 	for _, stage := range ast.Stages {
 		if path.Base(stage.Node.Loc.File.FullPath) == path.Base(fname) &&
-			(stageName == "" || stage.Id == stageName) {
+			matchAny(stage.GetId(), stageNames) {
 			stages = append(stages, stage)
 		}
 	}
