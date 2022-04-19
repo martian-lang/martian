@@ -2,6 +2,13 @@
 
 package core
 
+import (
+	"fmt"
+	"time"
+
+	"github.com/martian-lang/martian/martian/util"
+)
+
 // Shared job information structures.
 
 type JobInfo struct {
@@ -32,10 +39,64 @@ type PythonInfo struct {
 	Version string `json:"version"`
 }
 
+// WallClockTime is a time value which can be parsed from json in either
+// RFC 3339 format or the "legacy" format, "2006-01-02 15:04:05", which lacks
+// time zone information.
+type WallClockTime time.Time
+
+func (wt WallClockTime) MarshalJSON() ([]byte, error) {
+	return time.Time(wt).MarshalJSON()
+}
+
+func (wt WallClockTime) MarshalText() ([]byte, error) {
+	return time.Time(wt).MarshalText()
+}
+
+func (wt *WallClockTime) UnmarshalJSON(b []byte) error {
+	var t time.Time
+	if err := t.UnmarshalJSON(b); err == nil {
+		*wt = WallClockTime(t)
+		return nil
+	}
+	t, err := time.ParseInLocation(`"`+util.TIMEFMT+`"`, string(b), time.Local)
+	if err != nil {
+		return fmt.Errorf("could not parse %q as timestamp: %w", b, err)
+	}
+	*wt = WallClockTime(t)
+	return nil
+}
+
+func (wt *WallClockTime) UnmarshalText(b []byte) error {
+	var t time.Time
+	err := t.UnmarshalText(b)
+	*wt = WallClockTime(t)
+	return err
+}
+
+func (wt WallClockTime) String() string {
+	return time.Time(wt).String()
+}
+
+func (wt WallClockTime) GoString() string {
+	return time.Time(wt).GoString()
+}
+
+func (wt WallClockTime) IsZero() bool {
+	return time.Time(wt).IsZero()
+}
+
+func (wt WallClockTime) Before(u WallClockTime) bool {
+	return time.Time(wt).Before(time.Time(u))
+}
+
+func (wt WallClockTime) Sub(u WallClockTime) time.Duration {
+	return time.Time(wt).Sub(time.Time(u))
+}
+
 type WallClockInfo struct {
-	Start    string  `json:"start"`
-	End      string  `json:"end,omitempty"`
-	Duration float64 `json:"duration_seconds,omitempty"`
+	Start    WallClockTime `json:"start"`
+	End      WallClockTime `json:"end,omitempty"`
+	Duration float64       `json:"duration_seconds,omitempty"`
 }
 
 type InvocationData struct {

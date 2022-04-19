@@ -166,8 +166,8 @@ func (self *runner) done() {
 	if self.jobInfo != nil {
 		end := time.Now()
 		self.jobInfo.WallClockInfo = &core.WallClockInfo{
-			Start:    self.start.Format(util.TIMEFMT),
-			End:      end.Format(util.TIMEFMT),
+			Start:    core.WallClockTime(self.start),
+			End:      core.WallClockTime(end),
 			Duration: end.Sub(self.start).Seconds(),
 		}
 		waitChildren()

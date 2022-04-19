@@ -261,13 +261,12 @@ func max(a, b int) int {
 
 func reduceJobInfo(jobInfo *JobInfo, outputPaths []string, numThreads float64) *PerfInfo {
 	perfInfo := PerfInfo{}
-	timeLayout := "2006-01-02 15:04:05"
 
 	perfInfo.NumJobs = 1
 	perfInfo.NumThreads = numThreads
 	if jobInfo.WallClockInfo != nil {
-		perfInfo.Start, _ = time.Parse(timeLayout, jobInfo.WallClockInfo.Start)
-		perfInfo.End, _ = time.Parse(timeLayout, jobInfo.WallClockInfo.End)
+		perfInfo.Start = time.Time(jobInfo.WallClockInfo.Start)
+		perfInfo.End = time.Time(jobInfo.WallClockInfo.End)
 		perfInfo.Duration = jobInfo.WallClockInfo.Duration
 		perfInfo.WallTime = perfInfo.End.Sub(perfInfo.Start).Seconds()
 	}

@@ -33,12 +33,12 @@ type PartialVdrKillReport struct {
 // Volatile Disk Recovery
 //
 type VDRKillReport struct {
-	Count     uint        `json:"count"`
-	Size      uint64      `json:"size"`
-	Timestamp string      `json:"timestamp"`
-	Paths     []string    `json:"paths"`
-	Errors    []string    `json:"errors"`
-	Events    []*VdrEvent `json:"events,omitempty"`
+	Count     uint          `json:"count"`
+	Size      uint64        `json:"size"`
+	Timestamp WallClockTime `json:"timestamp"`
+	Paths     []string      `json:"paths"`
+	Errors    []string      `json:"errors"`
+	Events    []*VdrEvent   `json:"events,omitempty"`
 }
 
 // Merge events with the same timestamp.
@@ -76,7 +76,7 @@ func mergeVDRKillReports(killReports []*VDRKillReport) *VDRKillReport {
 			allKillReport.Errors = append(allKillReport.Errors, killReport.Errors...)
 			allKillReport.Paths = append(allKillReport.Paths, killReport.Paths...)
 			allEvents = append(allEvents, killReport.Events...)
-			if allKillReport.Timestamp == "" || allKillReport.Timestamp < killReport.Timestamp {
+			if allKillReport.Timestamp.IsZero() || allKillReport.Timestamp.Before(killReport.Timestamp) {
 				allKillReport.Timestamp = killReport.Timestamp
 			}
 		}
@@ -256,7 +256,7 @@ func (self *Fork) vdrKillSome(partial *PartialVdrKillReport, done bool) (*VDRKil
 				self.metadata.Write(VdrKill, &partial.VDRKillReport)
 			} else {
 				self.metadata.Write(VdrKill,
-					VDRKillReport{Timestamp: util.Timestamp()})
+					VDRKillReport{Timestamp: WallClockTime(time.Now())})
 			}
 			self.deletePartialKill()
 		}
@@ -298,7 +298,7 @@ func (self *Fork) vdrKillSome(partial *PartialVdrKillReport, done bool) (*VDRKil
 		delete(self.fileParamMap, fpath)
 	}
 	event.Timestamp = time.Now()
-	partial.Timestamp = util.Timestamp()
+	partial.Timestamp = WallClockTime(event.Timestamp)
 
 	if len(self.fileParamMap) == 0 || done || len(self.filePostNodes) == 0 {
 		partial.VDRKillReport.mergeEvents()
@@ -659,15 +659,14 @@ func (metadata *Metadata) getStartTime() time.Time {
 		// Stages which don't split/join still have metadata for the
 		// split/join, and still need accurate timestamps.
 		if info, _ := os.Stat(metadata.path); info != nil {
-			return util.FileCreateTime(info).Truncate(time.Second)
+			return util.FileCreateTime(info)
 		} else {
 			return time.Time{}
 		}
 	} else if err != nil || jobInfo.WallClockInfo == nil {
 		return time.Time{}
 	} else {
-		t, _ := time.ParseInLocation(util.TIMEFMT, jobInfo.WallClockInfo.Start, time.Local)
-		return t
+		return time.Time(jobInfo.WallClockInfo.Start)
 	}
 }
 
@@ -992,7 +991,7 @@ func (self *Fork) vdrKill(partialKill *PartialVdrKillReport) *VDRKillReport {
 		os.RemoveAll(p)
 	}
 	// update timestamp to mark actual kill time
-	killReport.Timestamp = util.Timestamp()
+	killReport.Timestamp = WallClockTime(time.Now())
 	if killReport.Size > 0 {
 		killReport.Events = append(killReport.Events, &VdrEvent{
 			Timestamp:  time.Now().Round(time.Second),
