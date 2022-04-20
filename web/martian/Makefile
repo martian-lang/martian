@@ -6,7 +6,9 @@ NODE_MODULES=node_modules/d3/dist/d3.min.js \
 	node_modules/clean-css-cli/bin/cleancss \
 	node_modules/html-minifier-terser/cli.js
 
-$(NODE_MODULES): yarn.lock package.json
+$(NODE_MODULES): node_modules
+
+node_modules: yarn.lock package.json
 	yarn install --no-audit --frozen-lockfile --ignore-optional
 
 serve/graph.js: node_modules/d3/dist/d3.min.js \
@@ -15,7 +17,7 @@ serve/graph.js: node_modules/d3/dist/d3.min.js \
                 node_modules/angular-ui-bootstrap/ui-bootstrap-tpls.min.js \
                 node_modules/lodash/lodash.min.js \
                 node_modules/angular-google-chart/ng-google-chart.min.js \
-                client/graph.js
+                client/graph.js | $(NODE_MODULES)
 	mkdir -p serve
 	cat $^ | node_modules/terser/bin/terser | gzip --best > $@
 
