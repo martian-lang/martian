@@ -45,16 +45,11 @@ $(GOBINS):
 all-bins:
 	go install $(GO_FLAGS) ./cmd/...
 
-NPM_CMD=install
-ifeq ($(CI),true)
-	NPM_CMD=ci
-endif
-
 web:
-	(cd web/martian && npm $(NPM_CMD) --frozen-lockfile --no-optional && npm run-script build)
+	make -C web/martian
 
 vscode:
-	(cd tools/syntax/vscode && npm $(NPM_CMD) --frozen-lockfile --no-optional && npm run-script compile)
+	(cd tools/syntax/vscode && yarn install --frozen-lockfile --ignore-optional && npm run-script compile)
 
 vscode-test: vscode
 	(cd tools/syntax/vscode && npm run-script check-lint)
@@ -186,7 +181,5 @@ longtests: test/split_test/pipeline_test \
 clean:
 	rm -rf $(GOBIN)
 	rm -rf $(dir $(GOBIN))pkg
-	rm -rf web/martian/node_modules
-	rm -rf web/martian/build
-	rm -rf web/martian/serve
+	make -C web/martian clean
 	make -C tools/syntax/vscode clean

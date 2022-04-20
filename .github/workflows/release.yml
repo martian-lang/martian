@@ -18,7 +18,7 @@ jobs:
         node-version: "lts/*"
         cache: "npm"
         cache-dependency-path: |
-          web/martian/package-lock.json
+          web/martian/yarn.lock
     - name: build
       run: make tarball
     - name: compute tarball prefix

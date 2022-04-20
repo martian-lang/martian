@@ -39,8 +39,8 @@ jobs:
         node-version: "lts/*"
         cache: "npm"
         cache-dependency-path: |
-          web/martian/package-lock.json
-          tools/syntax/vscode/package-lock.json
+          web/martian/yarn.lock
+          tools/syntax/vscode/yarn.lock
     - name: make all
       run: make all tarball
     - name: darwin build
@@ -69,7 +69,7 @@ jobs:
         path: |
           ${{ env.bazel_repository_cache }}
           ${{ env.bazel_output_base }}/external
-        key: bazel-repo-cache-${{hashFiles('deps.bzl', 'WORKSPACE', 'web/martian/package-lock.json')}}
+        key: bazel-repo-cache-${{hashFiles('deps.bzl', 'WORKSPACE', 'web/martian/yarn.lock')}}
         restore-keys: |
           bazel-repo-cache-
     - name: test

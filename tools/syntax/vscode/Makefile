@@ -8,7 +8,7 @@ INS=$(addprefix src/, $(addsuffix .ts, $(MODULES)))
 
 all: $(OUTS) syntaxes/Martianlang.tmLanguage.json
 
-$(OUTS): $(INS) tsconfig.json package.json package-lock.json
+$(OUTS): $(INS) tsconfig.json package.json yarn.lock
 	$(TSC) -p ./
 
 syntaxes/Martianlang.tmLanguage.json: syntaxes/Martianlang.YAML-tmLanguage
