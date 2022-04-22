@@ -58,6 +58,10 @@ func (wt *WallClockTime) UnmarshalJSON(b []byte) error {
 		*wt = WallClockTime(t)
 		return nil
 	}
+	if len(b) == 2 && b[1] == '"' && b[0] == '"' {
+		*wt = WallClockTime(t)
+		return nil
+	}
 	t, err := time.ParseInLocation(`"`+util.TIMEFMT+`"`, string(b), time.Local)
 	if err != nil {
 		return fmt.Errorf("could not parse %q as timestamp: %w", b, err)

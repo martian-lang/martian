@@ -10,6 +10,16 @@ import (
 
 func TestWallClockTime_UnmarshalJSON(t *testing.T) {
 	var wt WallClockTime
+	if err := json.Unmarshal([]byte(`null`), &wt); err != nil {
+		t.Error("parse null", err)
+	} else if !wt.IsZero() {
+		t.Error(wt.String(), "!= zero")
+	}
+	if err := json.Unmarshal([]byte(`""`), &wt); err != nil {
+		t.Error("parse empty", err)
+	} else if !wt.IsZero() {
+		t.Error(wt.String(), "!= zero")
+	}
 	if err := json.Unmarshal([]byte(`"2022-04-19 12:01:03"`), &wt); err != nil {
 		t.Error("legacy parse", err)
 	}
