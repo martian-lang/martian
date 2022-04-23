@@ -1,0 +1,28 @@
+load("@io_bazel_rules_go//go:def.bzl", "go_library", "go_test")
+load("//tools:mro2go.bzl", "mro2go_library")
+
+mro2go_library(
+    name = "pipeline_args",
+    testonly = True,
+    srcs = ["//test/split_test_go:pipeline_stages"],
+    importpath = "github.com/martian-lang/martian/martian/test/pipeline_gen",
+    pipelines = ["SUM_SQUARE_PIPELINE"],
+)
+
+go_library(
+    name = "pipeline_gen",
+    testonly = True,
+    srcs = ["generate_pipeline.go"],
+    embed = [":pipeline_args"],
+    deps = [
+        "//martian/syntax/ast_builder",
+    ],
+)
+
+go_test(
+    name = "pipeline_gen_test",
+    size = "small",
+    srcs = ["generate_pipeline_test.go"],
+    embed = [":pipeline_gen"],
+    gotags = ["bazel"],
+)

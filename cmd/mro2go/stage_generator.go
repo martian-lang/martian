@@ -7,6 +7,7 @@ package main
 import (
 	"bytes"
 	"fmt"
+	"strconv"
 	"strings"
 	"unicode"
 
@@ -191,7 +192,28 @@ func writeStageArgs(buffer *bytes.Buffer, lookup *syntax.TypeLookup,
 	for _, param := range stage.GetInParams().List {
 		writeParam(buffer, lookup, param)
 	}
-	buffer.WriteString("}\n\n")
+	buffer.WriteString(`}
+
+// CallName returns the name of this `)
+	buffer.WriteString(stage.Type())
+	buffer.WriteString(` as defined in the .mro file.
+func (*`)
+	buffer.WriteString(prefix)
+	buffer.WriteString(`Args) CallName() string {
+	return `)
+	buffer.Write(strconv.AppendQuote(make([]byte, 0, 255), stage.GetId()))
+	buffer.WriteString(`
+}
+
+// MroFileName returns the name of the .mro file which defines this `)
+	buffer.WriteString(stage.Type())
+	buffer.WriteString(`.
+func (*`)
+	buffer.WriteString(prefix)
+	buffer.WriteString(`Args) MroFileName() string {
+	return `)
+	buffer.Write(strconv.AppendQuote(make([]byte, 0, 255), stage.File().FileName))
+	buffer.WriteString("\n}\n\n")
 }
 
 func writeStageOuts(buffer *bytes.Buffer, lookup *syntax.TypeLookup,

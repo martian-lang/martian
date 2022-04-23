@@ -81,6 +81,7 @@ Given the input pipeline.mro:
 	)
 
 A user would run
+
 	$ mro2go -package populate -o stagestructs.go pipeline.mro
 
 to generate stagestructs.go:
@@ -101,6 +102,16 @@ to generate stagestructs.go:
 		// list of chunk loci, if supplying haploid_merge
 		ChunkLocus      []string `json:"chunk_locus"`
 		MinMapqAttachBc int      `json:"min_mapq_attach_bc"`
+	}
+
+	// CallName returns the name of this stage as defined in the .mro file.
+	func (*PopulateInfoFieldsArgs) CallName() string {
+		return "POPULATE_INFO_FIELDS"
+	}
+
+	// MroFileName returns the name of the .mro file which defines this stage.
+	func (*PopulateInfoFieldsArgs) MroFileName() string {
+		return "pipeline.mro"
 	}
 
 	// A structure to encode and decode outs from the POPULATE_INFO_FIELDS stage.
@@ -221,8 +232,7 @@ func main() {
 			"Could not get working directory: %v\n",
 			err)
 	}
-	mroPaths := append([]string{cwd},
-		util.ParseMroPath(os.Getenv("MROPATH"))...)
+	mroPaths := append(util.ParseMroPath(os.Getenv("MROPATH")), cwd)
 	var f *os.File
 	if *stdout {
 		f = os.Stdout
@@ -364,11 +374,15 @@ func MroToGo(dest io.Writer,
 	src []byte, mrofile string, stageNames, mroPaths []string,
 	pkg, outName string, pipeline, onlyIns bool,
 	seenStructs map[string]struct{}) error {
+	canonicalPath, _, err := syntax.IncludeFilePath(mrofile, mroPaths)
+	if err != nil {
+		return err
+	}
 	if ast, err := parseMro(src, mrofile, mroPaths); err != nil {
 		return err
 	} else {
 		return gofmt(dest,
-			makeCallableGoRaw(ast, pkg, mrofile, stageNames,
+			makeCallableGoRaw(ast, pkg, canonicalPath, stageNames,
 				pipeline, onlyIns, seenStructs), outName)
 	}
 }

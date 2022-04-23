@@ -1,4 +1,5 @@
-//go:generate mro2go -p main -o types.go ../sum_squares.mro
+//go:generate -command m2g /usr/bin/env MROPATH=.. go run github.com/martian-lang/martian/cmd/mro2go
+//go:generate m2g -p main -o types.go sum_squares.mro
 
 package main
 

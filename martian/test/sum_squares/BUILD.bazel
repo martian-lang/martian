@@ -1,4 +1,6 @@
 load("@io_bazel_rules_go//go:def.bzl", "go_binary", "go_library")
+load("//tools:mro2go.bzl", "mro2go_codegen")
+load("@bazel_skylib//rules:diff_test.bzl", "diff_test")
 
 go_library(
     name = "sum_squares_lib",
@@ -19,4 +21,19 @@ go_binary(
     testonly = True,
     embed = [":sum_squares_lib"],
     visibility = ["//visibility:public"],
+)
+
+mro2go_codegen(
+    name = "generate_types",
+    testonly = True,
+    srcs = [
+        "//martian/test:sum_squares",
+    ],
+    package = "main",
+)
+
+diff_test(
+    name = "generate_types_diff_test",
+    file1 = "types.go",
+    file2 = ":generate_types",
 )

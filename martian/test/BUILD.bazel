@@ -11,6 +11,7 @@ go_library(
 mro_library(
     name = "sum_squares",
     srcs = ["sum_squares.mro"],
+    visibility = [":__subpackages__"],
 )
 
 mro_test(

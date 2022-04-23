@@ -47,6 +47,16 @@ type OuterArgs struct {
 	Foo int `json:"foo"`
 }
 
+// CallName returns the name of this pipeline as defined in the .mro file.
+func (*OuterArgs) CallName() string {
+	return "OUTER"
+}
+
+// MroFileName returns the name of the .mro file which defines this pipeline.
+func (*OuterArgs) MroFileName() string {
+	return "testdata/struct_pipeline.mro"
+}
+
 // A structure to encode and decode outs from the OUTER pipeline.
 type OuterOuts struct {
 	// txt file

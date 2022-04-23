@@ -21,6 +21,16 @@ type SumSquaresArgs struct {
 	Values []float64 `json:"values"`
 }
 
+// CallName returns the name of this stage as defined in the .mro file.
+func (*SumSquaresArgs) CallName() string {
+	return "SUM_SQUARES"
+}
+
+// MroFileName returns the name of the .mro file which defines this stage.
+func (*SumSquaresArgs) MroFileName() string {
+	return "testdata/pipeline_stages.mro"
+}
+
 // A structure to encode and decode outs from the SUM_SQUARES stage.
 type SumSquaresOuts struct {
 	// The sum of the squares of the values
@@ -97,6 +107,16 @@ func (def *SumSquaresChunkOuts) MarshalJSON() ([]byte, error) {
 type ReportArgs struct {
 	Values []float64 `json:"values"`
 	Sum    float64   `json:"sum"`
+}
+
+// CallName returns the name of this stage as defined in the .mro file.
+func (*ReportArgs) CallName() string {
+	return "REPORT"
+}
+
+// MroFileName returns the name of the .mro file which defines this stage.
+func (*ReportArgs) MroFileName() string {
+	return "testdata/pipeline_stages.mro"
 }
 
 // A structure to encode and decode outs from the REPORT stage.

@@ -1,5 +1,11 @@
 // Copyright (c) 2020 10X Genomics, Inc. All rights reserved.
 
+//go:generate -command m2g go run . -p main
+//nolint:lll // go:generate's support for splitting a command line is limited.
+//go:generate m2g -input-only -pipeline SUM_SQUARE_PIPELINE -o split_pipeline_test.go testdata/pipeline_stages.mro
+//go:generate m2g -pipeline OUTER -o struct_pipeline_test.go testdata/struct_pipeline.mro
+//go:generate m2g -o split_test.go testdata/pipeline_stages.mro
+
 package main
 
 import (

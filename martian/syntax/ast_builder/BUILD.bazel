@@ -4,6 +4,7 @@ go_library(
     name = "ast_builder",
     srcs = [
         "exp.go",
+        "make_call_mro.go",
         "struct.go",
     ],
     importpath = "github.com/martian-lang/martian/martian/syntax/ast_builder",

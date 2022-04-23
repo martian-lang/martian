@@ -29,8 +29,8 @@ go_test(
         "split_test.go",
     ],
     data = [
-        "split_test.go",
         "split_pipeline_test.go",
+        "split_test.go",
         "struct_pipeline_test.go",
         "testdata/pipeline_stages.mro",
         "testdata/struct_pipeline.mro",

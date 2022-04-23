@@ -7,3 +7,13 @@ type SumSquarePipelineArgs struct {
 	Values    []float64 `json:"values"`
 	DisableSq bool      `json:"disable_sq"`
 }
+
+// CallName returns the name of this pipeline as defined in the .mro file.
+func (*SumSquarePipelineArgs) CallName() string {
+	return "SUM_SQUARE_PIPELINE"
+}
+
+// MroFileName returns the name of the .mro file which defines this pipeline.
+func (*SumSquarePipelineArgs) MroFileName() string {
+	return "testdata/pipeline_stages.mro"
+}

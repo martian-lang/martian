@@ -39,3 +39,15 @@ bzl_library(
         "//tools:providers",
     ],
 )
+
+bzl_library(
+    name = "mro2go",
+    srcs = ["mro2go.bzl"],
+    visibility = [
+        "//tools:__pkg__",
+        "//tools/docs:__pkg__",
+    ],
+    deps = [
+        "//tools:providers",
+    ],
+)

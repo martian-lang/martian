@@ -36,6 +36,8 @@ mro_library(
     name = "pipeline_stages",
     testonly = True,
     srcs = ["pipeline_stages.mro"],
+    mropath = ".",
+    visibility = ["//martian/test/pipeline_gen:__pkg__"],
     deps = [
         "//:sum_squares",
         "//test/split_test_go/stages/report",
