@@ -2,10 +2,10 @@
 # yarn lockfile v1
 
 
-"@es-joy/jsdoccomment@~0.28.0":
-  version "0.28.0"
-  resolved "https://registry.yarnpkg.com/@es-joy/jsdoccomment/-/jsdoccomment-0.28.0.tgz#92c5a8ed6276387d8385db2c1f3ee61306fae0ad"
-  integrity sha512-qXqur4077IrMLZIY0YKpGQvpuSBsiH5dY67HkjINspFgzl/i0rytmSuD8s/hen9+h7Sww3Vg+U01Q/dgxJeFcQ==
+"@es-joy/jsdoccomment@~0.29.0":
+  version "0.29.0"
+  resolved "https://registry.yarnpkg.com/@es-joy/jsdoccomment/-/jsdoccomment-0.29.0.tgz#527c7eefadeaf5c5d0c3b2721b5fa425d2119e98"
+  integrity sha512-4yKy5t+/joLihG+ei6CCU6sc08sjUdEdXCQ2U+9h9VP13EiqHQ4YMgDC18ys/AsLdJDBX3KRx/AWY6PR7hn52Q==
   dependencies:
     comment-parser "1.3.1"
     esquery "^1.4.0"
@@ -294,11 +294,11 @@ escape-string-regexp@^4.0.0:
   integrity sha512-TtpcNJ3XAzx3Gq8sWRzJaVajRs0uVxA2YAkdb1jm2YkPz4G6egUFAyA3n5vtEIZefPk5Wa4UXbKuS5fKkJWdgA==
 
 eslint-plugin-jsdoc@^39.1.0:
-  version "39.2.5"
-  resolved "https://registry.yarnpkg.com/eslint-plugin-jsdoc/-/eslint-plugin-jsdoc-39.2.5.tgz#c63204791679a195c3df50c3f8942eb156cdc275"
-  integrity sha512-SdSgpiLx90PaFTKljH/KDuz+NU80m4s8SFwzcHuOGuZNZ1MSMSSufMUJMqH538hTvTjWeix5SYYx9PO+qx6lHg==
+  version "39.2.9"
+  resolved "https://registry.yarnpkg.com/eslint-plugin-jsdoc/-/eslint-plugin-jsdoc-39.2.9.tgz#bc351de403f1862f1ef8c440d12dedc28e74cbbb"
+  integrity sha512-gaPYJT94rWlWyQcisQyyEJHtLaaJqN4baFlLCEr/LcXVibS9wzQTL2dskqk327ggwqQopR+Xecu2Lng1IJ9Ypw==
   dependencies:
-    "@es-joy/jsdoccomment" "~0.28.0"
+    "@es-joy/jsdoccomment" "~0.29.0"
     comment-parser "1.3.1"
     debug "^4.3.4"
     escape-string-regexp "^4.0.0"
