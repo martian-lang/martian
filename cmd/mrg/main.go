@@ -1,8 +1,11 @@
 //
 // Copyright (c) 2020 10X Genomics, Inc. All rights reserved.
 //
-// Martian command-line invocation generator.
+
+// Command mrg is the martian command-line invocation generator.
 //
+// It can be used to convert back and forth between a call MRO file and a json
+// representation thereof.
 package main
 
 import (

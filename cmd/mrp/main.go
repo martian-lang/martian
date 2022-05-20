@@ -2,7 +2,7 @@
 // Copyright (c) 2020 10X Genomics, Inc. All rights reserved.
 //
 
-// Martian pipeline runner.
+// Command mrp is the martian pipeline runner.
 package main
 
 import (
@@ -21,7 +21,6 @@ import (
 	"runtime/trace"
 	"strings"
 	"sync"
-	"syscall"
 	"time"
 
 	"github.com/martian-lang/martian/martian/api"
@@ -266,10 +265,10 @@ func (c *mrpConfiguration) checkSpace() {
 			fstype, opts)
 	}
 	if info != nil {
-		if sysInfo, ok := info.Sys().(*syscall.Stat_t); ok {
+		if uid, gid, ok := util.GetFileOwner(info); ok {
 			util.LogInfo("filesys",
 				"Pipestance directory permissions %s owned by uid %d gid %d",
-				info.Mode().String(), sysInfo.Uid, sysInfo.Gid)
+				info.Mode().String(), uid, gid)
 		} else {
 			util.LogInfo("filesys", "Pipestance permissions: %s",
 				info.Mode().String())
@@ -296,9 +295,9 @@ func (c *mrpConfiguration) checkSpace() {
 		util.LogError(err, "filesys", "Could not get executable path.")
 	} else if info, err := os.Stat(exe); err != nil {
 		util.LogError(err, "filesys", "Could not stat executable.")
-	} else if sysInfo, ok := info.Sys().(*syscall.Stat_t); ok {
+	} else if uid, gid, ok := util.GetFileOwner(info); ok {
 		util.LogInfo("filesys", "Executable file permissions %s owned by uid %d gid %d",
-			info.Mode().String(), sysInfo.Uid, sysInfo.Gid)
+			info.Mode().String(), uid, gid)
 	} else {
 		util.LogInfo("filesys", "Executable file permissions %s",
 			info.Mode().String())

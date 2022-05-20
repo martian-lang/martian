@@ -1,5 +1,8 @@
 // Copyright (c) 2017 10X Genomics, Inc. All rights reserved.
 
+//go:build !windows
+// +build !windows
+
 // Get and set rlimit
 
 package core
@@ -25,6 +28,14 @@ func GetMaxProcs() (*unix.Rlimit, error) {
 // See `man setrlimit`.
 func SetMaxProcs(rlim *unix.Rlimit) error {
 	return unix.Setrlimit(unix.RLIMIT_NPROC, rlim)
+}
+
+func rlimMax(rlim *unix.Rlimit) int64 {
+	return int64(rlim.Max)
+}
+
+func rlimCur(rlim *unix.Rlimit) int64 {
+	return int64(rlim.Cur)
 }
 
 // Sets the soft rlimit for maximum processes equal to the hard limit.

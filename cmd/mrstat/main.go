@@ -2,7 +2,7 @@
 // Copyright (c) 2014 10X Genomics, Inc. All rights reserved.
 
 /*
-Martian status query tool
+Command mrstat is the Martian status query tool
 
 This tool is used to query or modify running instances of mrp.  Given the
 path to a pipestance root directory, it attempts to discover the tcp endpoint

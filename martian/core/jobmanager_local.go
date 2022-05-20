@@ -247,9 +247,9 @@ func (self *LocalJobManager) setupSemaphores() {
 	if rlim, err := GetMaxProcs(); err != nil {
 		util.LogError(err, "jobmngr",
 			"WARNING: Could not get process rlimit.")
-	} else if int64(rlim.Max) > startingThreadCount &&
-		int64(rlim.Cur) > startingThreadCount {
-		self.procsSem = NewResourceSemaphore(int64(rlim.Max), DefaultResourceFormatter("processes"))
+	} else if rlimMax(rlim) > startingThreadCount &&
+		rlimCur(rlim) > startingThreadCount {
+		self.procsSem = NewResourceSemaphore(rlimMax(rlim), DefaultResourceFormatter("processes"))
 		if err := self.procsSem.Acquire(startingThreadCount); err != nil {
 			util.LogError(err, "runtime", "WARNING: attempting to launch a "+
 				"process which may use more threads than the current ulimit "+
@@ -257,23 +257,23 @@ func (self *LocalJobManager) setupSemaphores() {
 		}
 
 		if userProcs, err := GetUserProcessCount(); err != nil {
-			self.procsSem.UpdateSize(int64(rlim.Cur))
+			self.procsSem.UpdateSize(rlimCur(rlim))
 		} else {
 			self.procsSem.UpdateFreeUsed(
-				int64(rlim.Cur)-int64(userProcs),
+				rlimCur(rlim)-int64(userProcs),
 				startingThreadCount)
 		}
 		if self.procsSem.Available()/(procsPerJob+1) < int64(self.maxCores) {
-			if rlim.Max > rlim.Cur {
+			if rlimMax(rlim) > rlimCur(rlim) {
 				util.PrintInfo("jobmngr",
 					"WARNING: The current process count limit %d is low. "+
 						"To increase parallelism, set ulimit -u %d.",
-					rlim.Cur, rlim.Max)
+					rlimCur(rlim), rlimMax(rlim))
 			} else {
 				util.PrintInfo("jobmngr",
 					"WARNING: The current process count limit %d is low. "+
 						"Contact your system administrator to increase it.",
-					rlim.Cur)
+					rlimCur(rlim))
 			}
 		}
 	}
@@ -352,7 +352,7 @@ func (self *LocalJobManager) refreshResources(localMode bool) error {
 			return err
 		} else {
 			self.procsSem.UpdateFreeUsed(
-				int64(rlim.Cur)-int64(userProcs),
+				rlimCur(rlim)-int64(userProcs),
 				int64(usedMem.Procs)+startingThreadCount)
 		}
 	}
