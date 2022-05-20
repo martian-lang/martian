@@ -7,6 +7,5 @@
 
 package main
 
-// setSubreamer generic stub, which does nothing.
-func setSubreaper() {
-}
+// setSubreaper generic stub, which does nothing.
+func setSubreaper() {}

@@ -4,13 +4,18 @@ go_library(
     name = "mrjob_lib",
     srcs = [
         "mrjob.go",
-        "mrjob_unix.go",
     ] + select({
         "@io_bazel_rules_go//go/platform:linux": [
             "mrjob_linux.go",
+            "mrjob_unix.go",
+        ],
+        "@io_bazel_rules_go//go/platform:windows": [
+            "mrjob_generic.go",
+            "mrjob_windows.go",
         ],
         "//conditions:default": [
             "mrjob_generic.go",
+            "mrjob_unix.go",
         ],
     }),
     importpath = "github.com/martian-lang/martian/cmd/mrjob",

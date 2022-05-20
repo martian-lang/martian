@@ -2,10 +2,9 @@
 // Copyright (c) 2020 10X Genomics, Inc. All rights reserved.
 //
 
-// Martian job monitor.
+// Command mrjob manages process lifetimes for Martian stage code.
 //
-// Manages process lifetime and data collection for martian stage code.
-//
+// Also collects various performance statistics.
 package main
 
 import (
@@ -170,7 +169,15 @@ func (self *runner) done() {
 			End:      core.WallClockTime(end),
 			Duration: end.Sub(self.start).Seconds(),
 		}
-		waitChildren()
+		if waitChildren() {
+			if !reportChildren() {
+				// waitChildren detected that there were remaining child
+				// processes, but reportChildren wasn't able to report them for
+				// whatever reason.
+				util.LogInfo("monitor",
+					"Orphaned child processes detected, which did not terminate.")
+			}
+		}
 		self.jobInfo.RusageInfo = core.GetRusage()
 		if !self.highMem.IsZero() {
 			self.jobInfo.MemoryUsage = &self.highMem
