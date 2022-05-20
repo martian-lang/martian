@@ -537,6 +537,7 @@ func (self *Runtime) reattachToPipestance(psid string, pipestancePath string,
 	// mrp process died (on OSes where pdeathsig is supported).
 	if !readOnly {
 		util.PrintInfo("runtime", "Reattaching in %s mode.", self.Config.JobMode)
+		self.JobManager.resetMaxJobs()
 		if err := pipestance.RestartRunningNodes(self.Config.JobMode, ctx); err != nil {
 			pipestance.Unlock()
 			return nil, err

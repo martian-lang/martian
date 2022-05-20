@@ -142,15 +142,24 @@ func (self *RemoteJobManager) execJob(shellCmd string, argv []string,
 		return
 	}
 
-	// grab job when ready, block until job state changes to a finalized state
-	go func() {
+	// grab job when ready.  MaxJobsSemaphore takes care of polling for job
+	// completion.
+	// Pass in self.jobSem to the goroutine rather than using self.jobSem in
+	// the goroutine to avoid a potential race if the jobSem is replaced during
+	// an auto-restart.
+	go func(ctx context.Context, task *trace.Task, jobSem *MaxJobsSemaphore) {
 		defer task.End()
 		if self.debug {
 			util.LogInfo("jobmngr", "Waiting for job: %s", fqname)
 		}
 		// if we want to try to put a more precise cap on cluster execution load,
 		// might be preferable to request num threads here instead of a slot per job
-		if success := self.jobSem.Acquire(metadata); !success {
+		if success := jobSem.Acquire(metadata, false); !success {
+			if self.debug {
+				util.LogInfo("jobmngr",
+					"Wait for job %s canceled.",
+					fqname)
+			}
 			return
 		}
 		if self.debug {
@@ -159,7 +168,7 @@ func (self *RemoteJobManager) execJob(shellCmd string, argv []string,
 		self.sendJob(shellCmd, argv, envs,
 			metadata, resRequest,
 			fqname, shellName, ctx)
-	}()
+	}(ctx, task, self.jobSem)
 }
 
 func (self *RemoteJobManager) endJob(metadata *Metadata) {
@@ -340,7 +349,7 @@ func (self *RemoteJobManager) sendJob(shellCmd string, argv []string, envs map[s
 
 	util.EnterCriticalSection()
 	defer util.ExitCriticalSection()
-	if err := metadata.remove("queued_locally"); err != nil {
+	if err := metadata.remove(QueuedLocally); err != nil {
 		util.LogError(err, "jobmngr", "Error removing queue sentinel file.")
 	}
 	if output, err := cmd.CombinedOutput(); err != nil {
@@ -382,4 +391,21 @@ func (self *RemoteJobManager) hasQueueCheck() bool {
 
 func (self *RemoteJobManager) queueCheckGrace() time.Duration {
 	return self.config.queueQueryGrace
+}
+
+// Reset the max jobs semaphore.
+func (self *RemoteJobManager) resetMaxJobs() {
+	oldSem := self.jobSem
+	if oldSem != nil {
+		self.jobSem = NewMaxJobsSemaphore(oldSem.Limit)
+		oldSem.Clear()
+	}
+}
+
+// Re-add a job to the max jobs semaphore.
+func (self *RemoteJobManager) reattach(md *Metadata) {
+	if self.jobSem == nil {
+		return
+	}
+	self.jobSem.Acquire(md, true)
 }

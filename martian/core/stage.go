@@ -528,6 +528,33 @@ func (self *Fork) restartLocallyQueuedJobs() error {
 	return nil
 }
 
+func (metadata *Metadata) reattachJob(j JobManager) bool {
+	if metadata.exists(QueuedLocally) {
+		return true
+	}
+	st, _ := metadata.getState()
+	if st == Running || st == Queued {
+		j.reattach(metadata)
+	}
+	return false
+}
+
+// Re-acquires the max jobs semaphore for jobs which were queued or running.
+// Does _not_ do so for jobs which are queued locally, as we need to make sure
+// we acquire the semaphore for all of the jobs which weren't queued locally
+// before we can do those.
+func (self *Fork) reattachJobs() error {
+	anyQueuedLocally := self.split_metadata.reattachJob(self.node.top.rt.JobManager)
+	anyQueuedLocally = self.join_metadata.reattachJob(self.node.top.rt.JobManager) || anyQueuedLocally
+	for _, chunk := range self.chunks {
+		anyQueuedLocally = chunk.metadata.reattachJob(self.node.top.rt.JobManager) || anyQueuedLocally
+	}
+	if anyQueuedLocally {
+		return self.restartLocallyQueuedJobs()
+	}
+	return nil
+}
+
 func (self *Fork) restartLocalJobs() error {
 	self.lastPrint = time.Now()
 	if err := self.split_metadata.restartLocal(); err != nil {
