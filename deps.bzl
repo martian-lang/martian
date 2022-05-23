@@ -32,7 +32,7 @@ def martian_dependencies(
     maybe(
         go_repository,
         name = "org_golang_x_sys",
-        commit = "b874c991c1a50803422b257fb721b0b2dee3cf72",
+        commit = "988cb79eb6c60b82d4b236dd5d6ffd415d9a8425",
         importpath = "golang.org/x/sys",
     )
 
@@ -82,15 +82,16 @@ def martian_dependencies(
         ],
     )
 
-    python_rules_commit = "c8c79aae9aa1b61d199ad03d5fe06338febd0774"
+    python_rules_tag = "0.8.1"
+    python_rules_sha = "cdf6b84084aad8f10bf20b46b77cb48d83c319ebe6458a18e9d2cebf57807cdd"
     maybe(
         http_archive,
         name = "rules_python",
-        sha256 = "95ee649313caeb410b438b230f632222fb5d2053e801fe4ae0572eb1d71e95b8",
-        strip_prefix = "rules_python-" + python_rules_commit,
+        sha256 = python_rules_sha,
+        strip_prefix = "rules_python-" + python_rules_tag,
         urls = [
-            "https://github.com/bazelbuild/rules_python/archive/{}.tar.gz".format(
-                python_rules_commit,
+            "https://github.com/bazelbuild/rules_python/archive/refs/tags/{}.tar.gz".format(
+                python_rules_tag,
             ),
         ],
     )
