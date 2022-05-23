@@ -1,7 +1,7 @@
 #!/bin/bash
 MROPATH=$PWD
 if [ -z "$MROFLAGS" ]; then
-    export MROFLAGS="--disable-ui --jobmode=fake_remote"
+    export MROFLAGS="--disable-ui --jobmode=fake_remote --maxjobs=1"
 fi
 PATH=../../bin:$PATH
 mkdir -p ar_remote_pass
