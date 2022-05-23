@@ -71,6 +71,8 @@ integration_test(
     expectation = [":pass_expect"],
     pipeline = ":pipeline",
     runner = "autoretry_remote_pass.sh",
+    # This test is relatively slow because of --maxjobs=1.  Don't run it in CI.
+    tags = ["manual"],
 )
 
 integration_test(
