@@ -28,17 +28,18 @@ mrf_test(
 )
 
 filegroup(
-    name = "pass_expect",
-    srcs = glob(["expected/**"]),
-)
-
-filegroup(
     name = "fail_expect",
     srcs = glob(["expected_fail1/**"]),
 )
 
+filegroup(
+    name = "pass_expect",
+    srcs = glob(["expected/**"]),
+)
+
 integration_test(
     name = "fork_test",
+    timeout = "short",
     config = "fork_test.json",
     expectation = [":pass_expect"],
     pipeline = ":pipeline",
@@ -55,6 +56,7 @@ integration_test(
 
 integration_test(
     name = "autoretry_pass",
+    timeout = "short",
     config = "autoretry_pass.json",
     expectation = [":pass_expect"],
     pipeline = ":pipeline",
@@ -62,7 +64,18 @@ integration_test(
 )
 
 integration_test(
+    name = "autoretry_remote_pass",
+    timeout = "short",
+    config = "autoretry_remote_pass.json",
+    data = ["//jobmanagers:fake_remote"],
+    expectation = [":pass_expect"],
+    pipeline = ":pipeline",
+    runner = "autoretry_remote_pass.sh",
+)
+
+integration_test(
     name = "fail1_test",
+    timeout = "short",
     config = "fail1_test.json",
     expectation = [":fail_expect"],
     pipeline = ":pipeline",
@@ -71,6 +84,7 @@ integration_test(
 
 integration_test(
     name = "retry_test",
+    timeout = "short",
     config = "retry_test.json",
     expectation = [":pass_expect"],
     pipeline = ":pipeline",

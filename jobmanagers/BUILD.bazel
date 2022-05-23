@@ -16,7 +16,10 @@ filegroup(
 
 filegroup(
     name = "templates",
-    srcs = glob(["*.template"]),
+    srcs = glob(
+        ["*.template"],
+        exclude = ["fake_remote.template"],
+    ),
     visibility = [
         "//:__pkg__",
         "//cmd/mrp:__pkg__",
@@ -27,6 +30,16 @@ filegroup(
     name = "examples",
     srcs = glob(["*.template.example"]),
     visibility = ["//visibility:public"],
+)
+
+filegroup(
+    name = "fake_remote",
+    testonly = True,
+    srcs = [
+        "fake_remote.template",
+        "pid_query.sh",
+    ],
+    visibility = ["//test:__subpackages__"],
 )
 
 py_library(

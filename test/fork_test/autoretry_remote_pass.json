@@ -1,0 +1,6 @@
+{
+  "command": ["autoretry_remote_pass.sh"],
+  "expected_return": 0,
+  "output_dir": "ar_remote_pipeline_test",
+  "contains_files": ["*"]
+}

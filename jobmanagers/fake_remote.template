@@ -1,0 +1,4 @@
+#!/usr/bin/env sh
+# This script is used for testing martian's remote mode without actually
+# running on a remote cluster.
+/usr/bin/env __MRO_CMD__ > __MRO_STDOUT__ 2> __MRO_STDERR__ & echo $!

@@ -84,6 +84,11 @@
           "cmd": "qsub",
           "mem_is_vmem": true,
           "envs": [ ]
+      },
+      "fake_remote": {
+          "cmd": "sh",
+          "queue_query": "pid_query.sh",
+          "queue_query_grace_secs": 1
       }
   },
   "profiles": {
