@@ -62,11 +62,11 @@ type Node struct {
 	frontierNodes  *threadSafeNodeMap
 	forks          []*Fork
 	state          MetadataState
-	local          bool
 	stagecode      *syntax.SrcParam
 	forkRoots      []*syntax.CallStm
-	forkIds        ForkIdSet
 	resolvedCmd    string
+	forkIds        ForkIdSet
+	local          bool
 }
 
 // Represents an edge in the pipeline graph.
@@ -86,15 +86,15 @@ type NodeErrorInfo struct {
 type NodeInfo struct {
 	Name          string                   `json:"name"`
 	Fqname        string                   `json:"fqname"`
-	Type          syntax.CallGraphNodeType `json:"type"`
 	Path          string                   `json:"path"`
 	State         MetadataState            `json:"state"`
 	Metadata      *MetadataInfo            `json:"metadata"`
+	Error         *NodeErrorInfo           `json:"error,omitempty"`
+	StagecodeCmd  string                   `json:"stagecodeCmd"`
 	Forks         []*ForkInfo              `json:"forks"`
 	Edges         []EdgeInfo               `json:"edges"`
 	StagecodeLang syntax.StageCodeType     `json:"stagecodeLang"`
-	StagecodeCmd  string                   `json:"stagecodeCmd"`
-	Error         *NodeErrorInfo           `json:"error,omitempty"`
+	Type          syntax.CallGraphNodeType `json:"type"`
 }
 
 func (self *Node) getNode() *Node { return self }
@@ -386,9 +386,7 @@ func (self *Node) attachToFileParents(fileParents map[Nodable]map[string]syntax.
 	}
 }
 
-//
-// Folder construction
-//
+// Folder construction.
 func (self *Node) mkdirs() error {
 	if err := util.MkdirAll(self.path); err != nil {
 		msg := fmt.Sprintf("Could not create root directory for %s: %s",
@@ -517,9 +515,7 @@ func (self *Node) expandForks(must bool) bool {
 	return any
 }
 
-//
-// Subnode management
-//
+// Subnode management.
 func (self *Node) setPrenode(prenode Nodable) {
 	for _, subnode := range self.subnodes {
 		subnode.getNode().setPrenode(prenode)
@@ -979,9 +975,7 @@ func (self *Node) refreshState(readOnly bool) {
 	}
 }
 
-//
-// Serialization
-//
+// Serialization.
 func (self *Node) serializeState() *NodeInfo {
 	forks := make([]*ForkInfo, 0, len(self.forks))
 	for _, fork := range self.forks {

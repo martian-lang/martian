@@ -19,9 +19,7 @@ import (
 	"github.com/martian-lang/martian/martian/util"
 )
 
-//
-// Job managers
-//
+// JobManager provides an interface for executing jobs.
 type JobManager interface {
 	execJob(shellCmd string,
 		args []string,
@@ -84,18 +82,18 @@ type JobModeEnv struct {
 type JobModeJson struct {
 	Cmd             string        `json:"cmd"`
 	Args            []string      `json:"args,omitempty"`
-	AlwaysVmem      bool          `json:"mem_is_vmem,omitempty"`
 	QueueQuery      string        `json:"queue_query,omitempty"`
-	QueueQueryGrace int           `json:"queue_query_grace_secs,omitempty"`
 	ResourcesOpt    string        `json:"resopt"`
 	JobEnvs         []*JobModeEnv `json:"envs"`
+	QueueQueryGrace int           `json:"queue_query_grace_secs,omitempty"`
+	AlwaysVmem      bool          `json:"mem_is_vmem,omitempty"`
 }
 
 type JobManagerSettings struct {
+	ThreadEnvs    []string `json:"thread_envs"`
 	ThreadsPerJob int      `json:"threads_per_job"`
 	MemGBPerJob   int      `json:"memGB_per_job"`
 	ExtraVmemGB   int      `json:"extra_vmem_per_job,omitempty"`
-	ThreadEnvs    []string `json:"thread_envs"`
 }
 
 type JobManagerJson struct {
@@ -106,12 +104,12 @@ type JobManagerJson struct {
 
 type jobManagerConfig struct {
 	jobSettings      *JobManagerSettings
-	jobCmd           string
-	jobCmdArgs       []string
 	queueQueryCmd    string
-	queueQueryGrace  time.Duration
 	jobResourcesOpt  string
 	jobTemplate      string
+	jobCmd           string
+	jobCmdArgs       []string
+	queueQueryGrace  time.Duration
 	alwaysVmem       bool
 	threadingEnabled bool
 }

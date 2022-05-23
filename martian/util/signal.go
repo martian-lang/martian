@@ -25,10 +25,10 @@ type HandlerObject interface {
 }
 
 type sigHandler struct {
+	objects         map[HandlerObject]struct{}
+	sigchan         chan os.Signal
 	criticalSection sync.RWMutex
 	mutex           sync.Mutex
-	sigchan         chan os.Signal
-	objects         map[HandlerObject]struct{}
 }
 
 var signalHandler sigHandler

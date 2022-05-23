@@ -68,8 +68,8 @@ type StageOverride struct {
 }
 
 type PipestanceOverrides struct {
-	filename         string
 	overridesbystage map[string]*StageOverride
+	filename         string
 }
 
 // Read the overrides file and produce a pipestance overrides object.

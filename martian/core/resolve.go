@@ -21,12 +21,12 @@ import (
 )
 
 type BindingInfo struct {
-	Id          string        `json:"id"`
-	Type        syntax.TypeId `json:"type"`
 	Mode        string        `json:"mode"`
 	Node        *string       `json:"node"`
 	MatchedFork interface{}   `json:"matchedFork"`
 	Value       interface{}   `json:"value"`
+	Id          string        `json:"id"`
+	Type        syntax.TypeId `json:"type"`
 	Waiting     bool          `json:"waiting"`
 }
 
@@ -105,7 +105,7 @@ func (node *TopNode) resolveKeepSplit(s *syntax.SplitExp, t syntax.Type,
 					panic("invalid source kind" + f.Split.Source.CallMode().String())
 				}
 				if outerT == nil {
-					tid := outerT.TypeId()
+					tid := t.TypeId()
 					panic("invalid type " + tid.String() +
 						" for map over " + f.Split.Source.CallMode().String())
 				}

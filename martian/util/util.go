@@ -192,7 +192,11 @@ func ArrayToString(data []interface{}) []string {
 
 func ValidateID(id string) error {
 	if ok, _ := regexp.MatchString("^(\\d|\\w|-)+$", id); !ok {
-		return &MartianError{fmt.Sprintf("Invalid name: %s (only numbers, letters, dash, and underscore allowed)", id)}
+		return &MartianError{
+			Msg: fmt.Sprintf(
+				"Invalid name: %s (only numbers, letters, dash, and underscore allowed)",
+				id),
+		}
 	}
 	return nil
 }

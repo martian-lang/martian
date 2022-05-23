@@ -171,17 +171,18 @@ type Metadata struct {
 	journalPath   string
 	lastRefresh   time.Time
 	lastHeartbeat time.Time
-	mutex         sync.Mutex
 	uniquifier    string
-
-	// A prefix to attach when writing journal file name.
-	// Empty for chunks, or SplitPrefix or JoinPrefix.
-	journalPrefix string
 
 	// If non-zero the job was not found last time the job manager was queried,
 	// the chunk will be failed out if the state seems like it's still running
 	// after the job manager's grace period has elapsed.
 	notRunningSince time.Time
+
+	// A prefix to attach when writing journal file name.
+	// Empty for chunks, or SplitPrefix or JoinPrefix.
+	journalPrefix string
+
+	mutex sync.Mutex
 }
 
 // Basic exportable information from a metadata object.

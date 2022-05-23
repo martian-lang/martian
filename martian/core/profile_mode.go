@@ -40,6 +40,25 @@ func allProfileModes(validProfileModes map[ProfileMode]*ProfileConfig) string {
 
 // ProfileConfig defines a profiling mode.
 type ProfileConfig struct {
+	// When expanding environment variables for args, these
+	// values are used for empty or missing variables.
+	Defaults map[string]string `json:"defaults,omitempty"`
+
+	// Sets these environment variables for the stage code
+	// processes.  Specified values are expaned based on the
+	// preexisting environment in the same way as for Args,
+	// except ${STAGE_PID} is of course not yet available.
+	Env map[string]string `json:"env,omitempty"`
+
+	// The profile mode to pass to the language-specific adapter.
+	//
+	// Adapters are free to define their own profiling modes,
+	// and must ignore unrecognized modes.  By convention,
+	// "cpu" is used for function-level cpu profiling, "line"
+	// for line-level profiling, and "mem" is used for memory
+	// profiling.
+	Adapter ProfileMode `json:"adapter,omitempty"`
+
 	// If present, specifies a separate command to run in order to profile
 	// the stage code.  The command will be started immediately after the
 	// stage code starts up, and must shut down within 15 seconds of the
@@ -61,25 +80,6 @@ type ProfileConfig struct {
 	// ${STAGE_PID} will expand to the pid of the running stage
 	// code process.
 	Args []string `json:"args,omitempty"`
-
-	// When expanding environment variables for args, these
-	// values are used for empty or missing variables.
-	Defaults map[string]string `json:"defaults,omitempty"`
-
-	// Sets these environment variables for the stage code
-	// processes.  Specified values are expaned based on the
-	// preexisting environment in the same way as for Args,
-	// except ${STAGE_PID} is of course not yet available.
-	Env map[string]string `json:"env,omitempty"`
-
-	// The profile mode to pass to the language-specific adapter.
-	//
-	// Adapters are free to define their own profiling modes,
-	// and must ignore unrecognized modes.  By convention,
-	// "cpu" is used for function-level cpu profiling, "line"
-	// for line-level profiling, and "mem" is used for memory
-	// profiling.
-	Adapter ProfileMode `json:"adapter,omitempty"`
 }
 
 type envExpander struct {

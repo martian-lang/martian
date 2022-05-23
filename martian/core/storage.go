@@ -30,15 +30,15 @@ type PartialVdrKillReport struct {
 }
 
 //
-// Volatile Disk Recovery
+// Volatile Disk Recovery report of what files got deleted.
 //
 type VDRKillReport struct {
-	Count     uint          `json:"count"`
-	Size      uint64        `json:"size"`
 	Timestamp WallClockTime `json:"timestamp"`
 	Paths     []string      `json:"paths"`
 	Errors    []string      `json:"errors"`
 	Events    []*VdrEvent   `json:"events,omitempty"`
+	Count     uint          `json:"count"`
+	Size      uint64        `json:"size"`
 }
 
 // Merge events with the same timestamp.
@@ -433,9 +433,9 @@ func getLogicalFileNames(name string) []string {
 }
 
 type vdrFileCache struct {
+	args  map[string]struct{}
 	size  int64
 	count int
-	args  map[string]struct{}
 }
 
 // Returns the set of arguments from fileArgs which actually refer to files,
@@ -1064,8 +1064,8 @@ func (self *Node) vdrKill() (*VDRKillReport, bool) {
 
 type StorageEvent struct {
 	Timestamp time.Time
-	Delta     int64
 	Name      string
+	Delta     int64
 }
 
 func NewStorageEvent(timestamp time.Time, delta int64, fqname string) *StorageEvent {
@@ -1116,14 +1116,14 @@ func (self StorageEventByTimestamp) Collapse() StorageEventByTimestamp {
 // unless you sub out chunk/split/join and then child
 // stages.
 type ForkStorageEvent struct {
+	Timestamp    time.Time
+	VDRTimestamp time.Time
 	Name         string
 	ChildNames   []string
 	TotalBytes   uint64
 	ChunkBytes   uint64
 	ForkBytes    uint64
 	ForkVDRBytes uint64
-	Timestamp    time.Time
-	VDRTimestamp time.Time
 }
 
 func NewForkStorageEvent(timestamp time.Time,

@@ -16,10 +16,10 @@ import (
 
 // Defines resources used by a stage.
 type JobResources struct {
+	Special string  `json:"__special,omitempty"`
 	Threads float64 `json:"__threads,omitempty"`
 	MemGB   float64 `json:"__mem_gb,omitempty"`
 	VMemGB  float64 `json:"__vmem_gb,omitempty"`
-	Special string  `json:"__special,omitempty"`
 }
 
 func (self *JobResources) ToLazyMap() LazyArgumentMap {
@@ -199,14 +199,14 @@ func (self *ChunkDef) MarshalJSON() ([]byte, error) {
 }
 
 type StageDefs struct {
-	ChunkDefs []*ChunkDef   `json:"chunks"`
 	JoinDef   *JobResources `json:"join,omitempty"`
+	ChunkDefs []*ChunkDef   `json:"chunks"`
 }
 
 func (self *StageDefs) UnmarshalJSON(b []byte) error {
 	type stageDefsWeak struct {
-		ChunkDefs []*ChunkDef     `json:"chunks"`
 		JoinDef   LazyArgumentMap `json:"join,omitempty"`
+		ChunkDefs []*ChunkDef     `json:"chunks"`
 	}
 	into := stageDefsWeak{
 		ChunkDefs: self.ChunkDefs,

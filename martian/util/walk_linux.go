@@ -151,7 +151,6 @@ func Walk(root string, walkFn filepath.WalkFunc) error {
 }
 
 func walkInternal(root string, start *os.File, walkFn filepath.WalkFunc) error {
-
 	defer func() {
 		if start != nil {
 			start.Close()
@@ -195,7 +194,9 @@ func walkInternal(root string, start *os.File, walkFn filepath.WalkFunc) error {
 				dirName,
 				os.O_RDONLY|unix.O_DIRECTORY|unix.O_NOFOLLOW|unix.O_CLOEXEC,
 				0); err != nil {
-				if ferr := walkFn(path.Join(root, dirName), nil, err); ferr != nil && ferr != filepath.SkipDir {
+				if ferr := walkFn(
+					path.Join(root, dirName), nil, err,
+				); ferr != nil && ferr != filepath.SkipDir {
 					return ferr
 				}
 			} else {

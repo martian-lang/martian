@@ -273,16 +273,24 @@ func CheckMinimalSpace(path string) error {
 	// Allow zero, as if we haven't already failed to write a file it's
 	// likely that the filesystem is just lying to us.
 	if bytes < PIPESTANCE_MIN_DISK && bytes != 0 {
-		return &DiskSpaceError{bytes, inodes, fmt.Sprintf(
-			"%s has only %dkB remaining space available.\n"+
-				"To ignore this error, set MRO_DISK_SPACE_CHECK=disable in your environment.",
-			path, bytes/1024)}
+		return &DiskSpaceError{
+			Bytes:  bytes,
+			Inodes: inodes,
+			Message: fmt.Sprintf(
+				`%s has only %dkB remaining space available.
+To ignore this error, set MRO_DISK_SPACE_CHECK=disable in your environment.`,
+				path, bytes/1024),
+		}
 	}
 	if inodes < PIPESTANCE_MIN_INODES && inodes != 0 {
-		return &DiskSpaceError{bytes, inodes, fmt.Sprintf(
-			"%s has only %d free inodes remaining.\n"+
-				"To ignore this error, set MRO_DISK_SPACE_CHECK=disable in your environment.",
-			path, inodes)}
+		return &DiskSpaceError{
+			Bytes:  bytes,
+			Inodes: inodes,
+			Message: fmt.Sprintf(
+				`%s has only %d free inodes remaining.
+To ignore this error, set MRO_DISK_SPACE_CHECK=disable in your environment.`,
+				path, inodes),
+		}
 	}
 	return nil
 }

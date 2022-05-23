@@ -192,8 +192,8 @@ func unzip(zipPath string, ignoreExisting bool) error {
 	defer zr.Close()
 
 	type deferredLink struct {
-		filePath string
 		file     *zip.File
+		filePath string
 	}
 	links := make([]deferredLink, 0, len(zr.File))
 	for _, f := range zr.File {

@@ -15,8 +15,8 @@ import (
 )
 
 type waiter struct {
-	amount int64
 	ready  chan<- struct{} // Closed when semaphore acquired.
+	amount int64
 }
 
 // A semaphore type which allows for the maxium size of things entering the
@@ -24,6 +24,8 @@ type waiter struct {
 type ResourceSemaphore struct {
 	// A formatter used to log messages.
 	Formatter ResourceFormatter
+	// The queue of waiting jobs.
+	waiters []waiter
 
 	// The maximum that's allowed to be reserved, ever.
 	maxSize int64
@@ -36,8 +38,6 @@ type ResourceSemaphore struct {
 	// maxSize.
 	reserved int64
 	mu       sync.Mutex
-	// The queue of waiting jobs.
-	waiters []waiter
 }
 
 // A ResourceFormatter is a function used to format resource requirements.

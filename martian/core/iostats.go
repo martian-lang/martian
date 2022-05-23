@@ -77,17 +77,18 @@ type IoStats struct {
 }
 
 type IoStatsBuilder struct {
-	IoStats
-
+	lastMeasurement time.Time
+	start           time.Time
 	// The per-pid usage seen last time the tree was scanned.
 	lastPids map[int]*IoAmount
+
+	IoStats
+
 	// The amount used by PIDs which were seen in the past but
 	// not in a subsequent scan of the process tree.
 	deadUsage IoAmount
 
 	weightedSumSquared IoRate
-	lastMeasurement    time.Time
-	start              time.Time
 }
 
 func NewIoStatsBuilder() *IoStatsBuilder {

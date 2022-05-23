@@ -31,6 +31,12 @@ linters-settings:
     # simplify code: gofmt with `-s` option
     simplify: true
 
+  govet:
+    check-shadowing: false
+    enable-all: true
+    disable:
+      - shadow
+
   goimports:
     local-prefixes: github.com/martian-lang/martian
   lll:

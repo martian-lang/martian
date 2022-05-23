@@ -117,11 +117,11 @@ func (self *ObservedMemory) VmemKb() int {
 }
 
 type ProcessStats struct {
-	Pid    int
-	Memory ObservedMemory
-	IO     IoAmount
 	// The command executed for this process
 	Cmdline []string
+	Pid     int
+	Memory  ObservedMemory
+	IO      IoAmount
 	// The depth in the process tree.
 	Depth int
 }
@@ -162,6 +162,15 @@ func (tree ProcessTree) Format(indent string) string {
 }
 
 type PerfInfo struct {
+	// The start time of this node, or the earliest start time
+	// of any of its child nodes.
+	Start time.Time `json:"start"`
+	// The end time of this node, or the latest end time of any
+	// of its child nodes.
+	End time.Time `json:"end"`
+	// End - Start (seconds)
+	WallTime float64 `json:"walltime"`
+
 	NumJobs    int     `json:"num_jobs"`
 	NumThreads float64 `json:"num_threads"`
 
@@ -190,14 +199,6 @@ type PerfInfo struct {
 	OutBytesRate     float64 `json:"out_bytes_rate"`
 	InBytesPeak      float64 `json:"in_bytes_peak"`
 	OutBytesPeak     float64 `json:"out_bytes_peak"`
-	// The start time of this node, or the earliest start time
-	// of any of its child nodes.
-	Start time.Time `json:"start"`
-	// The end time of this node, or the latest end time of any
-	// of its child nodes.
-	End time.Time `json:"end"`
-	// End - Start (seconds)
-	WallTime float64 `json:"walltime"`
 
 	// Total user time from rusage.
 	UserTime    float64 `json:"usertime"`
@@ -216,8 +217,8 @@ type PerfInfo struct {
 }
 
 type ChunkPerfInfo struct {
-	Index      int       `json:"index"`
 	ChunkStats *PerfInfo `json:"chunk_stats"`
+	Index      int       `json:"index"`
 }
 
 type StagePerfInfo struct {
@@ -227,28 +228,28 @@ type StagePerfInfo struct {
 }
 
 type ForkPerfInfo struct {
-	Stages     []*StagePerfInfo `json:"stages"`
-	Index      int              `json:"index"`
-	Chunks     []*ChunkPerfInfo `json:"chunks"`
 	SplitStats *PerfInfo        `json:"split_stats"`
 	JoinStats  *PerfInfo        `json:"join_stats"`
 	ForkStats  *PerfInfo        `json:"fork_stats"`
+	Stages     []*StagePerfInfo `json:"stages"`
+	Chunks     []*ChunkPerfInfo `json:"chunks"`
+	Index      int              `json:"index"`
 }
 
 type NodeByteStamp struct {
 	Timestamp   time.Time `json:"ts"`
-	Bytes       int64     `json:"bytes"`
 	Description string    `json:"desc"`
+	Bytes       int64     `json:"bytes"`
 }
 
 type NodePerfInfo struct {
 	Name      string                   `json:"name"`
 	Fqname    string                   `json:"fqname"`
-	Type      syntax.CallGraphNodeType `json:"type"`
-	Forks     []*ForkPerfInfo          `json:"forks"`
-	MaxBytes  int64                    `json:"maxbytes"`
-	BytesHist []*NodeByteStamp         `json:"bytehist"`
 	HighMem   *ObservedMemory          `json:"highmem,omitempty"`
+	Forks     []*ForkPerfInfo          `json:"forks"`
+	BytesHist []*NodeByteStamp         `json:"bytehist"`
+	MaxBytes  int64                    `json:"maxbytes"`
+	Type      syntax.CallGraphNodeType `json:"type"`
 }
 
 func max(a, b int) int {

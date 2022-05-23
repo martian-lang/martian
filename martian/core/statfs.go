@@ -5,9 +5,9 @@
 package core
 
 type DiskSpaceError struct {
+	Message string
 	Bytes   uint64
 	Inodes  uint64
-	Message string
 }
 
 func (self *DiskSpaceError) Error() string {

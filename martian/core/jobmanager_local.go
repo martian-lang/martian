@@ -45,20 +45,20 @@ const (
 )
 
 type LocalJobManager struct {
-	maxCores    int
-	maxMemGB    int
-	maxVmemMB   int64
 	jobSettings *JobManagerSettings
 	centcoreSem *ResourceSemaphore
 	memMBSem    *ResourceSemaphore
 	vmemMBSem   *ResourceSemaphore
 	procsSem    *ResourceSemaphore
-	lastMemDiff int64
+	jobDone     chan struct{}
 	queue       []*exec.Cmd
+	maxCores    int
+	maxMemGB    int
+	maxVmemMB   int64
+	lastMemDiff int64
 	debug       bool
 	limitLoad   bool
 	highMem     ObservedMemory
-	jobDone     chan struct{}
 }
 
 func NewLocalJobManager(userMaxCores int,

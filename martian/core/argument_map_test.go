@@ -341,10 +341,10 @@ func TestMarshalerMapMarshal(t *testing.T) {
 type toyStruct struct {
 	Iface  interface{}
 	Map    map[string]int
+	IntP   *int
+	String string `json:"s,omitempty"`
 	Int    int
 	Float  float64 `json:"n"`
-	String string  `json:"s,omitempty"`
-	IntP   *int
 }
 
 func TestMakeMarshalerMap(t *testing.T) {

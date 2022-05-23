@@ -99,6 +99,11 @@ govet: martian/syntax/grammar.go | martian/test/sum_squares/types.go
 
 test: test-all govet $(GOBIN)/sum_squares vscode-test
 
+# Note this target is expected to fail, since we haven't gone back and made
+# legacy code compliant.  The CI only checks for new issues.
+golint:
+	go run github.com/golangci/golangci-lint/cmd/golangci-lint@latest run --config .github/.golangci.yml	
+
 integration_prereqs: mrp mrjob $(ADAPTERS) test/martian_test.py $(JOBMANAGERS)
 
 test/split_test/pipeline_test: test/split_test/split_test.json \

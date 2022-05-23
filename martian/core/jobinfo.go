@@ -13,8 +13,6 @@ import (
 
 type JobInfo struct {
 	Name          string            `json:"name"`
-	Pid           int               `json:"pid,omitempty"`
-	Host          string            `json:"host,omitempty"`
 	Type          string            `json:"type,omitempty"`
 	Cwd           string            `json:"cwd,omitempty"`
 	PythonInfo    *PythonInfo       `json:"python,omitempty"`
@@ -22,9 +20,6 @@ type JobInfo struct {
 	MemoryUsage   *ObservedMemory   `json:"used_bytes,omitempty"`
 	IoStats       *IoStats          `json:"io,omitempty"`
 	WallClockInfo *WallClockInfo    `json:"wallclock,omitempty"`
-	Threads       float64           `json:"threads,omitempty"`
-	MemGB         float64           `json:"memGB,omitempty"`
-	VMemGB        float64           `json:"vmemGB,omitempty"`
 	ProfileConfig *ProfileConfig    `json:"profile_config,omitempty"`
 	ProfileMode   ProfileMode       `json:"profile_mode,omitempty"`
 	Stackvars     string            `json:"stackvars_flag,omitempty"`
@@ -32,6 +27,11 @@ type JobInfo struct {
 	Invocation    *InvocationData   `json:"invocation,omitempty"`
 	Version       *VersionInfo      `json:"version,omitempty"`
 	ClusterEnv    map[string]string `json:"sge,omitempty"`
+	Host          string            `json:"host,omitempty"`
+	Pid           int               `json:"pid,omitempty"`
+	Threads       float64           `json:"threads,omitempty"`
+	MemGB         float64           `json:"memGB,omitempty"`
+	VMemGB        float64           `json:"vmemGB,omitempty"`
 }
 
 type PythonInfo struct {
@@ -106,9 +106,9 @@ type WallClockInfo struct {
 type InvocationData struct {
 	Call      string          `json:"call"`
 	Args      LazyArgumentMap `json:"args"`
+	Include   string          `json:"mro_file,omitempty"`
 	SweepArgs []string        `json:"sweepargs,omitempty"`
 	SplitArgs []string        `json:"splitargs,omitempty"`
-	Include   string          `json:"mro_file,omitempty"`
 }
 
 type VersionInfo struct {

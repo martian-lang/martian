@@ -74,19 +74,19 @@ var disableUniquification = (os.Getenv("MRO_UNIQUIFIED_DIRECTORIES") == disable)
 // Represents the state of a stage chunk (the "main" method).
 type Chunk struct {
 	fork       *Fork
-	index      int
 	chunkDef   *ChunkDef
-	fqname     string
 	metadata   *Metadata
+	fqname     string
+	index      int
 	hasBeenRun bool
 }
 
 // Exportable information about a Chunk object.
 type ChunkInfo struct {
-	Index    int           `json:"index"`
 	ChunkDef *ChunkDef     `json:"chunkDef"`
-	State    MetadataState `json:"state"`
 	Metadata *MetadataInfo `json:"metadata"`
+	State    MetadataState `json:"state"`
+	Index    int           `json:"index"`
 }
 
 func NewChunk(fork *Fork, index int,
@@ -334,7 +334,6 @@ func (self *Chunk) Stage() *syntax.Stage {
 type Fork struct {
 	node           *Node
 	forkId         ForkId
-	index          int
 	id             string
 	path           string
 	fqname         string
@@ -342,18 +341,14 @@ type Fork struct {
 	split_metadata *Metadata
 	join_metadata  *Metadata
 	chunks         []*Chunk
-	split_has_run  bool
-	join_has_run   bool
 	args           map[string]*syntax.ResolvedBinding
 	stageDefs      *StageDefs
 	perfCache      *ForkPerfCache
 	lastPrint      time.Time
-	metadatasCache []*Metadata // cache for collectMetadata
 
 	// Caches the set of strict-mode VDR-able files and the
 	// arguments which are keeping them alive.
 	fileParamMap map[string]*vdrFileCache
-	storageLock  sync.Mutex
 
 	// Mapping from argument name to set of nodes which depend on the
 	// argument, for arguments which may contain any file names.  This
@@ -363,19 +358,26 @@ type Fork struct {
 
 	// Mapping from post-node to set of file-type args it depends on.
 	filePostNodes map[Nodable]map[string]syntax.Type
+
+	metadatasCache []*Metadata // cache for collectMetadata
+
+	storageLock   sync.Mutex
+	index         int
+	split_has_run bool
+	join_has_run  bool
 }
 
 // Exportable information from a Fork object.
 type ForkInfo struct {
-	Index         int                    `json:"index"`
 	ArgPermute    map[string]interface{} `json:"argPermute"`
 	JoinDef       *JobResources          `json:"joinDef"`
 	State         MetadataState          `json:"state"`
 	Metadata      *MetadataInfo          `json:"metadata"`
 	SplitMetadata *MetadataInfo          `json:"split_metadata"`
 	JoinMetadata  *MetadataInfo          `json:"join_metadata"`
-	Chunks        []*ChunkInfo           `json:"chunks"`
 	Bindings      *ForkBindingsInfo      `json:"bindings"`
+	Chunks        []*ChunkInfo           `json:"chunks"`
+	Index         int                    `json:"index"`
 }
 
 type ForkBindingsInfo struct {

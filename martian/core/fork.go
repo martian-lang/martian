@@ -61,8 +61,8 @@ type (
 	ForkId []*ForkSourcePart
 
 	ForkIdSet struct {
-		List  []ForkId
 		Table map[*syntax.CallStm][]*ForkSourcePart
+		List  []ForkId
 	}
 )
 

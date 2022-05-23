@@ -85,8 +85,8 @@ func getRetryRegexps() (retryOn []*regexp.Regexp, defaultRetries int) {
 		}, 0
 	}
 	type retryJson struct {
-		DefaultRetries int      `json:"default_retries"`
 		RetryOn        []string `json:"retry_on"`
+		DefaultRetries int      `json:"default_retries"`
 	}
 	bytes, err := ioutil.ReadFile(retryfile)
 	if err != nil {
@@ -127,6 +127,8 @@ const (
 
 // Configuration required to initialize a Runtime object.
 type RuntimeOptions struct {
+	Overrides *PipestanceOverrides
+
 	// The runtime mode (required): either "local" or a named mode from
 	// jobmanagers/config.json
 	JobMode string
@@ -139,13 +141,14 @@ type RuntimeOptions struct {
 	// constants.
 	ProfileMode     ProfileMode
 	MartianVersion  string
+	ResourceSpecial string
+	OnFinishHandler string
 	LocalMem        int
 	LocalVMem       int
 	LocalCores      int
 	MemPerCore      int
 	MaxJobs         int
 	JobFreqMillis   int
-	ResourceSpecial string
 	FullStageReset  bool
 	StackVars       bool
 	Zip             bool
@@ -153,8 +156,6 @@ type RuntimeOptions struct {
 	Monitor         bool
 	Debug           bool
 	StressTest      bool
-	OnFinishHandler string
-	Overrides       *PipestanceOverrides
 	LimitLoadavg    bool
 	NeverLocal      bool
 }
@@ -251,12 +252,12 @@ func (config *RuntimeOptions) ToFlags() []string {
 // and stagestances.
 type Runtime struct {
 	Config          *RuntimeOptions
-	adaptersPath    string
-	mrjob           string
 	JobManager      JobManager
 	LocalJobManager *LocalJobManager
 	overrides       *PipestanceOverrides
 	jobConfig       *JobManagerJson
+	adaptersPath    string
+	mrjob           string
 }
 
 func (c *RuntimeOptions) NewRuntime() *Runtime {

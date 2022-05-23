@@ -131,9 +131,9 @@ type Pipestance struct {
 
 	// Cache for self.node.allNodes()
 	allNodesCache    []*Node
+	lastQueueCheck   time.Time
 	queueCheckLock   sync.Mutex
 	queueCheckActive bool
-	lastQueueCheck   time.Time
 }
 
 // Run a script whenever a pipestance finishes.
@@ -916,7 +916,6 @@ func (self *threadSafeNodeMap) GetNodes() []*Node {
 
 // The top-level node for a pipestance.
 type TopNode struct {
-	node        Node
 	fqname      string
 	rt          *Runtime
 	types       *syntax.TypeLookup
@@ -927,6 +926,7 @@ type TopNode struct {
 	invocation  *InvocationData
 	version     VersionInfo
 	allNodes    map[string]*Node
+	node        Node
 }
 
 func (self *TopNode) getNode() *Node { return &self.node }
@@ -1012,9 +1012,9 @@ type runtimePipeFactory struct {
 	pipestancePath string
 	mroVersion     string
 	envs           map[string]string
+	tags           []string
 	checkSrc       bool
 	readOnly       bool
-	tags           []string
 }
 
 func NewRuntimePipestanceFactory(rt *Runtime,
@@ -1028,9 +1028,19 @@ func NewRuntimePipestanceFactory(rt *Runtime,
 	checkSrc bool,
 	readOnly bool,
 	tags []string) PipestanceFactory {
-	return runtimePipeFactory{rt,
-		invocationSrc, invocationPath, psid, mroPaths, pipestancePath, mroVersion,
-		envs, checkSrc, readOnly, tags}
+	return runtimePipeFactory{
+		rt:             rt,
+		invocationSrc:  invocationSrc,
+		invocationPath: invocationPath,
+		psid:           psid,
+		mroPaths:       mroPaths,
+		pipestancePath: pipestancePath,
+		mroVersion:     mroVersion,
+		envs:           envs,
+		tags:           tags,
+		checkSrc:       checkSrc,
+		readOnly:       readOnly,
+	}
 }
 
 func (self runtimePipeFactory) ReattachToPipestance(ctx context.Context) (*Pipestance, error) {

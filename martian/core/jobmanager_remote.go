@@ -22,14 +22,14 @@ import (
 type RemoteJobManager struct {
 	jobMode              string
 	jobResourcesMappings map[string]string
+	jobSem               *MaxJobsSemaphore
+	limiter              *time.Ticker
 	config               jobManagerConfig
 	memGBPerCore         int
 	maxJobs              int
 	jobFreqMillis        int
-	jobSem               *MaxJobsSemaphore
-	limiter              *time.Ticker
-	debug                bool
 	queueMutex           sync.Mutex
+	debug                bool
 }
 
 func NewRemoteJobManager(jobMode string, memGBPerCore int, maxJobs int, jobFreqMillis int,
