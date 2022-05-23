@@ -34,9 +34,17 @@ py_library(
     srcs = ["sge_queue.py"],
 )
 
+py_library(
+    name = "slurm_queue",
+    srcs = ["slurm_queue.py"],
+)
+
 filegroup(
     name = "queue_checks",
-    srcs = [":sge_queue"],
+    srcs = [
+        ":sge_queue",
+        ":slurm_queue",
+    ],
     visibility = [
         "//:__pkg__",
         "//cmd/mrp:__pkg__",
