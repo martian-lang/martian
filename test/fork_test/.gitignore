@@ -1,5 +1,9 @@
-pipeline_test
-ar_pipeline_test
-retry_pipeline_test
-pipeline_fail
-ar_pipeline_fail
+pipeline_test/
+ar_pipeline_test/
+ar_remote_pipeline_test/
+retry_pipeline_test/
+pipeline_fail/
+ar_pipeline_fail/
+ar_fail/
+ar_pass/
+ar_remote_pass/

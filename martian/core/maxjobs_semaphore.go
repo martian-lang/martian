@@ -37,7 +37,10 @@ func NewMaxJobsSemaphore(limit int) *MaxJobsSemaphore {
 // If the object was already in the semaphore, as may be the case in the
 // event of automatic restart if the failure was missed for whatever reason,
 // then we only treat the metadata object as having one job running ever.
-func (self *MaxJobsSemaphore) Acquire(metadata *Metadata) bool {
+//
+// If nonblocking is true, then if the semaphore cannot be acquired immediately
+// (mostly) then it will return false.
+func (self *MaxJobsSemaphore) Acquire(metadata *Metadata, nonblocking bool) bool {
 	if metadata == nil {
 		return false
 	}
@@ -51,11 +54,17 @@ func (self *MaxJobsSemaphore) Acquire(metadata *Metadata) bool {
 	self.lock.Lock()
 	defer self.lock.Unlock()
 	for len(self.running) >= self.Limit {
+		if self.Limit <= 0 {
+			return false
+		}
 		if st, ok := metadata.getState(); ok && st != Queued && st != Waiting {
 			return false
 		}
 		if _, ok := self.running[metadata]; ok {
 			return true
+		}
+		if nonblocking {
+			return false
 		}
 		self.cond.Wait()
 	}
@@ -64,6 +73,16 @@ func (self *MaxJobsSemaphore) Acquire(metadata *Metadata) bool {
 	}
 	self.running[metadata] = struct{}{}
 	return true
+}
+
+// Clear this semaphore and release all pending acquisitions.
+//
+// The semaphore can no longer be used after being cleared this way.
+func (self *MaxJobsSemaphore) Clear() {
+	self.lock.Lock()
+	defer self.lock.Unlock()
+	self.Limit = 0
+	self.cond.Broadcast()
 }
 
 // Check that each metadata object which holds the semaphore is still

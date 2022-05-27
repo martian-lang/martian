@@ -154,6 +154,10 @@ test/fork_test/ar_pass/pipeline_test: test/fork_test/autoretry_pass.json \
                                       integration_prereqs
 	test/martian_test.py $<
 
+test/fork_test/ar_remote_pass/pipeline_test: test/fork_test/autoretry_remote_pass.json \
+                                      integration_prereqs
+	test/martian_test.py $<
+
 test/map_test/pipeline_test: test/map_test/map_test.json \
                              integration_prereqs
 	test/martian_test.py $<

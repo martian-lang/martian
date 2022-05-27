@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 #
 # Copyright (c) 2016 10x Genomics, Inc. All rights reserved.
 #
@@ -571,18 +571,6 @@ def check_result(output_dir, expectation_dir, config):
     return result_ok
 
 
-def _encode(filename):
-    """Encode a filename as utf-8, but only in python 2."""
-    try:
-        if isinstance(filename, unicode):
-            return filename.encode("utf-8")
-    except NameError:
-        # Python3 has no type named unicode, because otherwise it would
-        # be too easy to migrate from 2 to 3.
-        pass
-    return filename
-
-
 def main(argv):
     """Execute the test case."""
     parser = argparse.ArgumentParser()
@@ -615,7 +603,7 @@ def main(argv):
         return 2
     expectation_dir = get_expectation_dir(config_filename, config)
     if output_dir and expectation_dir:
-        correct = check_result(_encode(output_dir), expectation_dir, config)
+        correct = check_result(output_dir, expectation_dir, config)
         if correct:
             sys.stderr.write("Output correct.\n")
             return 0

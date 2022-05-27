@@ -769,3 +769,9 @@ func (self *LocalJobManager) execJob(shellCmd string, argv []string,
 }
 
 func (self *LocalJobManager) endJob(*Metadata) {}
+
+// Reset the max jobs semaphore.
+func (self *LocalJobManager) resetMaxJobs() {}
+
+// Re-add a job to the max jobs semaphore.
+func (self *LocalJobManager) reattach(*Metadata) {}

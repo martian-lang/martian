@@ -726,6 +726,16 @@ func (self *Node) restartLocallyQueuedJobs() error {
 	return nil
 }
 
+func (self *Node) reattachJobs() error {
+	var errs syntax.ErrorList
+	for _, fork := range self.forks {
+		if err := fork.reattachJobs(); err != nil {
+			errs = append(errs, err)
+		}
+	}
+	return errs.If()
+}
+
 func (self *Node) restartLocalJobs() error {
 	if self.top.rt.Config.FullStageReset {
 		// If entire stages got blown away then this isn't needed.

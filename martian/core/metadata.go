@@ -463,6 +463,7 @@ func (self *Metadata) _cacheNoLock(name MetadataFileName) {
 
 func (self *Metadata) cache(name MetadataFileName, uniquifier string) {
 	self.mutex.Lock()
+	defer self.mutex.Unlock()
 	if self.uniquifier == uniquifier {
 		self._cacheNoLock(name)
 	} else if self.uniquifier != "" {
@@ -471,7 +472,6 @@ func (self *Metadata) cache(name MetadataFileName, uniquifier string) {
 				"(Saw ID '%s', expected '%s').",
 			self.fqname, uniquifier, self.uniquifier)
 	}
-	self.mutex.Unlock()
 }
 
 func (self *Metadata) _uncacheNoLock(name MetadataFileName) {

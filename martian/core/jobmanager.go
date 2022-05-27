@@ -53,6 +53,11 @@ type JobManager interface {
 	GetMaxCores() int
 	GetMaxMemGB() int
 	GetSettings() *JobManagerSettings
+
+	// Reset the max jobs semaphore.
+	resetMaxJobs()
+	// Re-add a job to the max jobs semaphore.
+	reattach(*Metadata)
 }
 
 // Set environment variables which control thread count.  Do not override

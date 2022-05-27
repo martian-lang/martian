@@ -401,6 +401,12 @@ func (self *Pipestance) RestoreForks(ctx context.Context) {
 	}
 }
 
+// Restart jobs for running nodes, during an auto-restart event.
+//
+// During auto-restart, running jobs are generally allowed to continue running.
+// However, because the graph of stage objects is rebuilt, the MaxJobsSemaphore
+// on the remote job manager must be rebuilt, and we need to reset any jobs
+// which were waiting on that semaphore.
 func (self *Pipestance) RestartRunningNodes(jobMode string, outerCtx context.Context) error {
 	ctx, task := trace.NewTask(outerCtx, "restartNodes")
 	defer task.End()
@@ -417,6 +423,8 @@ func (self *Pipestance) RestartRunningNodes(jobMode string, outerCtx context.Con
 				if err := node.reset(); err != nil {
 					errs = append(errs, err)
 				}
+			} else if err := node.reattachJobs(); err != nil {
+				errs = append(errs, err)
 			}
 		}
 	}
