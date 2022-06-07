@@ -507,17 +507,8 @@ func (self *LocalJobManager) Enqueue(shellCmd string, argv []string,
 		// Exec the shell directly.
 		cmd := exec.Command(shellCmd, argv...)
 		cmd.Dir = metadata.curFilesPath
-		if self.maxCores < runtime.NumCPU() {
-			// If, and only if, the user specified a core limit less than the
-			// detected core count, make sure jobs actually don't use more
-			// threads than they're supposed to.
-			cmd.Env = util.MergeEnv(threadEnvs(self,
-				int(math.Ceil(res.Threads)), envs))
-		} else {
-			// In this case it's ok if we oversubscribe a bit since we're
-			// (probably) not sharing the machine.
-			cmd.Env = util.MergeEnv(envs)
-		}
+		// Make sure jobs don't use more threads than they're supposed to.
+		cmd.Env = util.MergeEnv(threadEnvs(self, int(math.Ceil(res.Threads)), envs))
 
 		stdoutPath := metadata.MetadataFilePath("stdout")
 		stderrPath := metadata.MetadataFilePath("stderr")
