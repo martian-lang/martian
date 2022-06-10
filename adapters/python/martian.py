@@ -1,16 +1,7 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 #
 # Copyright (c) 2014 10X Genomics, Inc. All rights reserved.
 #
-
-# We roll our own six-like py2+3 compatibility to avoid external dependencies.
-
-# This pylint prevents py3 lint from complaining about inheriting from object,
-#   and py2 lint from complaining about the "bad" pylint disable option
-# pylint: disable=bad-option-value, useless-object-inheritance
-
-# This pylint disagrees with black's formatting.
-# pylint: disable=bad-option-value, bad-continuation
 
 """Martian stage code API and common utility methods.
 
@@ -28,25 +19,12 @@ import subprocess
 import sys
 
 
-try:
-    # py2
-    # this pylint disable is because it wants one of these to be UPPERCASE_SNAKE
-    #   .. and the other PascalCase, which defeats the purpose of this alias
-    # pylint: disable=invalid-name
-    _string_type = basestring
-    _text_type = unicode
-except NameError:
-    # py3
-    # pylint: disable=invalid-name
-    _string_type = str
-    _text_type = str
-
-    from typing import (  # pylint: disable=import-error, unused-import
-        Any,
-        Dict,
-        NoReturn,
-        Union,
-    )
+from typing import (  # pylint: disable=import-error, unused-import
+    Any,
+    Dict,
+    NoReturn,
+    Union,
+)
 
 
 # Singleton instance object.
@@ -58,7 +36,7 @@ class StageException(Exception):
     """Base exception type for stage code."""
 
 
-class Record(object):
+class Record:
     """An object with a set of attributes generated from a dictioanry."""
 
     def __init__(self, f_dict):
@@ -71,9 +49,9 @@ class Record(object):
     def items(self):
         """Returns the a dictionary with the elements which were in the keys in
         dictionary used to initialize the record."""
-        return dict(
-            (field_name, getattr(self, field_name)) for field_name in self.slots
-        )
+        return {
+            field_name: getattr(self, field_name) for field_name in self.slots
+        }
 
     def __str__(self):
         """Formats the object as a string."""
@@ -86,20 +64,13 @@ class Record(object):
             yield getattr(self, field_name)
 
     def __getitem__(self, index):
+        # type: (int) -> Any
         """Get the value associated with the Nth key in the source
         dictionary."""
         return getattr(self, self.slots[index])
 
-    # Hack for pysam, which can't handle unicode.
     def coerce_strings(self):
-        """Convert all basestring values into str values."""
-        # Only required for Python 2
-        if _string_type == str:
-            return
-        for field_name in self.slots:
-            value = getattr(self, field_name)
-            if isinstance(value, _string_type):
-                setattr(self, field_name, str(value))
+        """This exists only for backwards compatibility."""
 
 
 def json_sanitize(data):
@@ -114,12 +85,11 @@ def json_sanitize(data):
         retval = {}
         for k in data.keys():
             retval[k] = json_sanitize(data[k])
-    elif isinstance(data, _string_type):
-        # py3: pass on string types before they're caught by hasattr __iter__
+    elif isinstance(data, str):
+        # This branch is required to prevent the __iter__ branch from
+        # processing strings.
         pass
     elif isinstance(data, bytes):
-        # in py2, bytes == str, which is caught by above
-        #   so this branch is never taken in py2
         retval = data.decode("utf-8", errors="ignore")
     elif hasattr(data, "__iter__"):
         # Recurse on lists.
@@ -160,6 +130,7 @@ def padded_print(field_name, value):
 
 def profile(func):
     """Add a fuction to the set of functions to be covered by the line profiler."""
+    assert _INSTANCE is not None
     _INSTANCE.funcs.append(func)
     return func
 
@@ -206,6 +177,7 @@ def Popen(
 ):
     # type: (...) -> subprocess.Popen
     """Log opening of a subprocess."""
+    assert _INSTANCE is not None
     _INSTANCE.metadata.log("exec", " ".join(args))
     # pylint: disable=bad-option-value, subprocess-popen-preexec-fn, consider-using-with
     return subprocess.Popen(
@@ -228,6 +200,7 @@ def Popen(
 
 def check_call(args, stdin=None, stdout=None, stderr=None, shell=False):
     """Log running a given subprocess."""
+    assert _INSTANCE is not None
     _INSTANCE.metadata.log("exec", " ".join(args))
     return subprocess.check_call(
         args,
@@ -242,44 +215,57 @@ def check_call(args, stdin=None, stdout=None, stderr=None, shell=False):
 def make_path(filename):
     # type: (Union[str, bytes]) -> bytes
     """Get the file path for a named file."""
-    if isinstance(filename, _text_type):
+    if isinstance(filename, str):
         filename = filename.encode("utf-8")
+    assert _INSTANCE is not None
     return os.path.join(_INSTANCE.metadata.files_path, filename)
 
 
 def get_invocation_args():
     # type: () -> Dict[str, Any]
     """Get the args from the invocation."""
+    assert _INSTANCE is not None
+    assert _INSTANCE.jobinfo is not None
     return _INSTANCE.jobinfo.invocation["args"]
 
 
 def get_invocation_call():
     # type: () -> str
     """Get the call information from the invocation."""
+    assert _INSTANCE is not None
+    assert _INSTANCE.jobinfo is not None
     return _INSTANCE.jobinfo.invocation["call"]
 
 
 def get_martian_version():
     # type: () -> str
     """Get the martian version from the jobinfo."""
+    assert _INSTANCE is not None
+    assert _INSTANCE.jobinfo is not None
     return _INSTANCE.jobinfo.version["martian"]
 
 
 def get_pipelines_version():
     # type: () -> str
     """Get the pipelines version from the jobinfo."""
+    assert _INSTANCE is not None
+    assert _INSTANCE.jobinfo is not None
     return _INSTANCE.jobinfo.version["pipelines"]
 
 
 def get_threads_allocation():
     # type: () -> float
     """Get the number of threads allocated to this job by the runtime."""
+    assert _INSTANCE is not None
+    assert _INSTANCE.jobinfo is not None
     return _INSTANCE.jobinfo.threads
 
 
 def get_memory_allocation():
     # type: () -> float
     """Get the amount of memory in GB allocated to this job by the runtime."""
+    assert _INSTANCE is not None
+    assert _INSTANCE.jobinfo is not None
     return _INSTANCE.jobinfo.mem_gb
 
 
@@ -296,30 +282,35 @@ def update_progress(message):
     # type: (Union[str, bytes]) -> None
     """Updates the current progress of the stage, which will be displayed to
     the user (in the mrp log) next time mrp reads the file."""
+    assert _INSTANCE is not None
     _INSTANCE.metadata.progress(message)
 
 
 def log_info(message):
     # type: (Union[str, bytes]) -> None
     """Log a message."""
+    assert _INSTANCE is not None
     _INSTANCE.metadata.log("info", message)
 
 
 def log_warn(message):
     # type: (Union[str, bytes]) -> None
     """Log a warning."""
+    assert _INSTANCE is not None
     _INSTANCE.metadata.log("warn", message)
 
 
 def log_time(message):
     # type: (Union[str, bytes]) -> None
     """Log a timestamp for an action."""
+    assert _INSTANCE is not None
     _INSTANCE.metadata.log("time", message)
 
 
 def log_json(label, obj):
     # type: (Union[str, bytes], Any) -> None
     """Log an object in json format."""
+    assert _INSTANCE is not None
     _INSTANCE.metadata.log(
         "json", json_dumps_safe({"label": label, "object": obj})
     )
@@ -334,6 +325,7 @@ def throw(message):
 def exit(message):  # pylint: disable=redefined-builtin
     # type: (Union[str, bytes]) -> NoReturn
     """Fail the pipeline with an assertion."""
+    assert _INSTANCE is not None
     _INSTANCE.metadata.write_assert(message)
     _INSTANCE.done()
 
@@ -341,6 +333,7 @@ def exit(message):  # pylint: disable=redefined-builtin
 def alarm(message):
     # type: (Union[str, bytes]) -> None
     """Add a message to the alarms."""
+    assert _INSTANCE is not None
     _INSTANCE.metadata.alarm(message)
 
 
@@ -350,7 +343,7 @@ def alarm(message):
 
 
 def test_initialize(path):
-    # type: (Union[str, bytes]) -> None
+    # type: (Union[str, bytes]) -> Any
     """Initialize with a fake test metadata."""
     # pylint: disable=bad-option-value, import-outside-toplevel
     import martian_shell as mr_shell

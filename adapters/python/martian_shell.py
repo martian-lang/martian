@@ -1,16 +1,7 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 #
 # Copyright (c) 2014 10X Genomics, Inc. All rights reserved.
 #
-
-# We roll our own six-like py2+3 compatibility to avoid external dependencies.
-
-# This pylint prevents py3 lint from complaining about inheriting from object,
-#   and py2 lint from complaining about the "bad" pylint disable option
-# pylint: disable=bad-option-value, useless-object-inheritance
-
-# This pylint disagrees with black's formatting.
-# pylint: disable=bad-option-value, bad-continuation
 
 """Martian stage code wrapper.
 
@@ -22,22 +13,17 @@ infrastructure.
 
 from __future__ import absolute_import, division, print_function
 
-import os
-import sys
-import json
-import time
+import cProfile
 import datetime
 import errno
-import threading
+import json
+import os
 import pstats
-import cProfile
+import sys
+import threading
+import time
 import traceback
-
-try:
-    from cStringIO import StringIO
-except ImportError:
-    # Python 3 moved (c)StringIO to the io module
-    from io import StringIO
+from io import StringIO
 
 try:
     import line_profiler
@@ -48,31 +34,10 @@ except ImportError:
 import martian
 
 
-#################################################
-# Python 2 and 3 compatibility                  #
-#################################################
-
-
-try:
-    # py2
-    # this pylint disable is because it wants one of these to be UPPERCASE_SNAKE
-    #   .. and the other PascalCase, which defeats the purpose of this alias
-    # pylint: disable=invalid-name
-    _text_type = unicode
-    _string_type = basestring
-    _PYTHON2, _PYTHON3 = True, False
-except NameError:
-    # py3
-    # pylint: disable=invalid-name
-    _text_type = str
-    _string_type = str
-    _PYTHON2, _PYTHON3 = False, True
-
-
 def _ensure_binary(string):
     # type: (...) -> bytes
     """Encode unicode strings to bytes, leave byte strings alone."""
-    if isinstance(string, _text_type):
+    if isinstance(string, str):
         return string.encode("utf-8")
     return string
 
@@ -82,7 +47,7 @@ def _ensure_binary(string):
 #################################################
 
 
-class _MemoryProfile(object):
+class _MemoryProfile:
     """Provides a cProfile-like interface for memory profiling."""
 
     def __init__(self):
@@ -223,7 +188,7 @@ class _MemoryProfile(object):
 _METADATA_PREFIX = b"_"
 
 
-class _Metadata(object):
+class _Metadata:
     """Utility methods to read and write martian metadata files used for
     communication with the parent martian instance."""
 
@@ -327,15 +292,11 @@ class _Metadata(object):
     @staticmethod
     def _to_string_type(message):
         # type: (...) -> str
-        if _PYTHON3 and isinstance(message, bytes):
+        if isinstance(message, bytes):
             message = message.decode("utf-8", errors="ignore")
-        elif not isinstance(message, _string_type):
-            # If not a basestring (str or unicode), convert to string here
+        elif not isinstance(message, str):
+            # If not a str, convert to string here
             message = str(message)
-        elif _PYTHON2 and isinstance(
-            message, _text_type
-        ):  # pylint: disable=undefined-variable
-            message = message.encode("utf-8")
         return message
 
     def log(self, level, message):
@@ -394,7 +355,7 @@ class _TestMetadata(_Metadata):
         sys.stderr.write(message)
 
 
-class _CachedJobInfo(object):
+class _CachedJobInfo:
     """Stores a subset of jobinfo data which is worth caching."""
 
     def __init__(self, jobinfo):
@@ -410,36 +371,42 @@ class _CachedJobInfo(object):
 
     @property
     def profile_mode(self):
+        # type: () -> str
         """The type of in-process profiling to use."""
         return self._profile_mode
 
     @property
     def stackvars_flag(self):
+        # type: () -> bool
         """True if all stack variables should be printed on exception."""
         return self._stackvars_flag
 
     @property
     def invocation(self):
+        # type: () -> dict
         """The stage invocation object."""
         return self._invocation
 
     @property
     def version(self):
+        # type: () -> dict
         """The martian and pipline version information."""
         return self._version
 
     @property
     def threads(self):
+        # type: () -> float
         """The number of threads allocated to this job."""
         return self._threads
 
     @property
     def mem_gb(self):
+        # type: () -> float
         """The amount of memory allocated to this job."""
         return self._memgb
 
 
-class StageWrapper(object):
+class StageWrapper:
     """This class encapsulates the logic for invoking stage code, possibly
     through a wrapper, parsing command line arguments, and so on."""
 
@@ -567,10 +534,11 @@ class StageWrapper(object):
             profiler = None
             try:
                 profiler = line_profiler.LineProfiler()
-            except NameError:
-                martian.throw(
+            except NameError as ex:
+                raise martian.StageException(
                     "Line-level profiling was requested, but line_profiler was not found."
-                )
+                ) from ex
+            assert profiler is not None
             for func in self.funcs:
                 profiler.add_function(func)
             self._run_profiler(cmd, profiler, "profile_line_bin")
@@ -612,10 +580,10 @@ class StageWrapper(object):
             jobinfo = {
                 "profile_mode": None,
                 "stackvars_flag": None,
-                "invocation": None,
-                "version": None,
+                "invocation": {"args": {}, "call": "test"},
+                "version": {"martian": "test", "pipelines": "test"},
                 "threads": 1,
-                "memGB": 0.01
+                "memGB": 0.01,
             }
         jobinfo["python"] = {"binpath": sys.executable, "version": sys.version}
         self.metadata.write_atomic(b"jobinfo", jobinfo)
