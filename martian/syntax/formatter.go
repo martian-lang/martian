@@ -125,9 +125,7 @@ func (self *Ast) Format() string {
 	return self.format(!includesProcessed)
 }
 
-//
 // AST
-//
 func (self *Ast) format(writeIncludes bool) string {
 	needSpacer := false
 	printer := printer{

@@ -468,13 +468,13 @@ func (err *StructFieldError) writeTo(w stringWriter) {
 //
 // For example given,
 //
-//    struct Foo(
-//        int bar,
-//    )
+//	struct Foo(
+//	    int bar,
+//	)
 //
-//    struct Baz(
-//        Foo boz
-//    )
+//	struct Baz(
+//	    Foo boz
+//	)
 //
 // then if called for the Baz type, field "boz" would give "Foo", "boz,bar"
 // would give int, and so on.  If called for an array or map of Baz, the

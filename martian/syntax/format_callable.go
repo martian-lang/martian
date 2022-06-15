@@ -10,9 +10,7 @@ import (
 	"strings"
 )
 
-//
 // Binding
-//
 func (self *BindStm) format(printer *printer, prefix string, idWidth int) {
 	printer.printComments(self.getNode(), prefix+INDENT)
 	printer.printComments(self.Exp.getNode(), prefix+INDENT)
@@ -48,9 +46,7 @@ func (self *BindStms) format(printer *printer, prefix string) {
 	}
 }
 
-//
 // Parameter
-//
 func paramFormat(printer *printer, param Param, modeWidth int, typeWidth int, idWidth int, helpWidth int) {
 	printer.printComments(param.getNode(), INDENT)
 	id := param.GetId()
@@ -173,9 +169,7 @@ func (self *OutParams) format(printer *printer, modeWidth int, typeWidth int, id
 	}
 }
 
-//
 // Pipeline, Call, Return
-//
 func (self *Pipeline) format(printer *printer) {
 	printer.printComments(&self.Node, "")
 
@@ -313,9 +307,7 @@ func (self *PipelineRetains) format(printer *printer) {
 	printer.mustWriteString(")\n")
 }
 
-//
 // Stage
-//
 func (self *Stage) format(printer *printer) {
 	printer.printComments(&self.Node, "")
 
@@ -413,8 +405,8 @@ func (self *Resources) format(printer *printer) {
 // formatGB prints a floating point value, without exponential representation,
 // using the minimum number of decimal digits required such that
 //
-//     formatGB(buf, roundUpTo(gb, 1024))
-//     return roundUpTo(parseFloat32(buf.Bytes()), 1024)
+//	formatGB(buf, roundUpTo(gb, 1024))
+//	return roundUpTo(parseFloat32(buf.Bytes()), 1024)
 //
 // leaves the value unchanged.
 func formatGB(buf *strings.Builder, gb float32) {
@@ -499,9 +491,7 @@ func (self *SrcParam) format(printer *printer, modeWidth, typeWidth int) {
 	printer.mustWriteString("\",\n")
 }
 
-//
 // Callable
-//
 func (self *Callables) format(printer *printer) {
 	if self == nil {
 		return

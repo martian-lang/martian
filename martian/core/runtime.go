@@ -992,11 +992,11 @@ func (invocation *InvocationData) BuildCallSource(mroPaths []string) (string, er
 //
 // That is, if one does
 //
-//   src, err := invocation1.BuildCallSource(mroPaths)
-//   if err != nil {
-//        panic(err)
-//   }
-//   invocation2, err := InvocationDataFromSource([]byte(src), mroPaths)
+//	src, err := invocation1.BuildCallSource(mroPaths)
+//	if err != nil {
+//		panic(err)
+//	}
+//	invocation2, err := InvocationDataFromSource([]byte(src), mroPaths)
 //
 // then invocation2 should be equivalent to invocation1.
 func InvocationDataFromSource(src []byte, mroPaths []string) (*InvocationData, error) {

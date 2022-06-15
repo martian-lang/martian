@@ -14,15 +14,15 @@ import (
 //
 // Given a pipeline
 //
-//   pipeline FOO(
-//       in  int   x,
-//       out int[] y,
-//   )
-//   {
-//       return (
-//           y = [self.x],
-//       )
-//   }
+//	pipeline FOO(
+//	    in  int   x,
+//	    out int[] y,
+//	)
+//	{
+//	    return (
+//	        y = [self.x],
+//	    )
+//	}
 //
 // the output of a normal (non-mapped) call to the pipeline would be a struct
 // containing the element `y`.  When pipeline is called in a map, however, the
@@ -30,17 +30,17 @@ import (
 // first pass output of the above pipeline, if called with `x = split [1, 2, 3]`
 // would be
 //
-//   merge {
-//       y: [split [1, 2, 3]],
-//   }
+//	merge {
+//	    y: [split [1, 2, 3]],
+//	}
 //
 // which would resolve to
 //
-//   [
-//       {y: [1]},
-//       {y: [2]},
-//       {y: [3]},
-//   ]
+//	[
+//	    {y: [1]},
+//	    {y: [2]},
+//	    {y: [3]},
+//	]
 //
 // A merge expression represents such a merge over a single level  of the
 // forking hierarchy, as represented by the call graph node where the split

@@ -237,15 +237,15 @@ func (err *ParseError) Error() string {
 //
 // Example usage:
 //
-//     func foo(things []int) error {
-//         var errs ErrorList
-//         for _, thing := range things {
-//             if err := bar(thing); err != nil {
-//                 errs = append(errs, err)
-//             }
-//         }
-//         return errs.If()  // Important!
-//    }
+//	 func foo(things []int) error {
+//	     var errs ErrorList
+//	     for _, thing := range things {
+//	         if err := bar(thing); err != nil {
+//	             errs = append(errs, err)
+//	         }
+//	     }
+//	     return errs.If()  // Important!
+//	}
 //
 // It is very important to note that the .If() in the return statement
 // is crucial.  See https://golang.org/doc/faq#nil_error.

@@ -291,18 +291,18 @@ func (self IoRateValues) sqrt() IoRateValues {
 // Compute the standard deviation of rate, given this object as the weighted
 // sum squared sum_i[δt_i*x_i^2]
 //
-//   stdDev = sqrt(var)
-//   x = total amount
-//   t = total time
-//   x_i = δx_i / δt_i
-//   w_i = δt_i
-//   mean = m = sum_i[ δt_i * x_i ] / sum_i[δt_i] = sum_i[δx_i] / t
-//        = x / t
-//   var = sum_i[δt_i*(x_i-mx)^2] / sum_i[δt_i]
-//       = (sum_i[δt_i*x_i^2] +
-//          sum_i[δt_i*mx^2] -
-//          sum_i[δt_i*x_i*mx]) / t
-//       = sum_i[δt_i*x_i^2] / t - mx^2
+//	stdDev = sqrt(var)
+//	x = total amount
+//	t = total time
+//	x_i = δx_i / δt_i
+//	w_i = δt_i
+//	mean = m = sum_i[ δt_i * x_i ] / sum_i[δt_i] = sum_i[δx_i] / t
+//	     = x / t
+//	var = sum_i[δt_i*(x_i-mx)^2] / sum_i[δt_i]
+//	    = (sum_i[δt_i*x_i^2] +
+//	       sum_i[δt_i*mx^2] -
+//	       sum_i[δt_i*x_i*mx]) / t
+//	    = sum_i[δt_i*x_i^2] / t - mx^2
 func (sumSq *IoRateValues) computeStdDev(total IoValues, seconds float64) IoRateValues {
 	if seconds <= 0 {
 		return IoRateValues{}

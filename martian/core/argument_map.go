@@ -57,13 +57,13 @@ var nullBytes = []byte(syntax.KindNull)
 // (if they are of the correct type) but which are not required to be present.
 // For example, for a stage defined as
 //
-//     stage STAGE(
-//         in  int a,
-//         out int b,
-//     ) split (
-//         in  int c,
-//         out int d,
-//     )
+//	stage STAGE(
+//	    in  int a,
+//	    out int b,
+//	) split (
+//	    in  int c,
+//	    out int d,
+//	)
 //
 // then in the outputs from the chunks, d is required but b is optional.
 func (self LazyArgumentMap) ValidateInputs(types *syntax.TypeLookup,
@@ -132,13 +132,13 @@ func (self LazyArgumentMap) ValidateInputs(types *syntax.TypeLookup,
 // (if they are of the correct type) but which are not required to be present.
 // For example, for a stage defined as
 //
-//     stage STAGE(
-//         in  int a,
-//         out int b,
-//     ) split (
-//         in  int c,
-//         out int d,
-//     )
+//	stage STAGE(
+//	    in  int a,
+//	    out int b,
+//	) split (
+//	    in  int c,
+//	    out int d,
+//	)
 //
 // then in the outputs from the chunks, d is required but b is optional.
 func (self LazyArgumentMap) ValidateOutputs(types *syntax.TypeLookup,

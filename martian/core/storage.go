@@ -29,9 +29,7 @@ type PartialVdrKillReport struct {
 	Join          bool `json:"ran_join,omitempty"`
 }
 
-//
 // Volatile Disk Recovery report of what files got deleted.
-//
 type VDRKillReport struct {
 	Timestamp WallClockTime `json:"timestamp"`
 	Paths     []string      `json:"paths"`
@@ -345,25 +343,25 @@ func pathIsInside(test, parent string) bool {
 // will not, however, return paths for partially-resolved parent directory
 // symlinks.  For example, imagine this directory structure:
 //
-//   /root1
-//      foo -> /root2
-//      bar
-//         baz
-//         foobar -> /root1/foo/bar/baz
-//   /root2
-//      bar -> /root1/bar
+//	/root1
+//	   foo -> /root2
+//	   bar
+//	      baz
+//	      foobar -> /root1/foo/bar/baz
+//	/root2
+//	   bar -> /root1/bar
 //
 // In this case, getLogicalFileNames("/root1/foo/bar/foobar") will return
 //
-//   /root1/foo/bar/foobar
-//   /root1/bar/baz
-//   /root1/foo/bar/baz
+//	/root1/foo/bar/foobar
+//	/root1/bar/baz
+//	/root1/foo/bar/baz
 //
 // but not for example
 //
-//   /root1/bar/foobar
-//   /root2/bar/baz
-//   /root2/bar/foobar
+//	/root1/bar/foobar
+//	/root2/bar/baz
+//	/root2/bar/foobar
 //
 // all of which resolve to the same file.  These cases are, however, relatively
 // uncommon compared to the cases which are handled.  By contrast, python in
@@ -372,10 +370,10 @@ func pathIsInside(test, parent string) bool {
 // The only cases where this could get us into trouble for VDR would be if a
 // stage did something like
 //
-//   /files
-//       refdata
-//           data -> /home/data
-//       refdir -> refdata
+//	/files
+//	    refdata
+//	        data -> /home/data
+//	    refdir -> refdata
 //
 // and then returned /files/refdir/data/file as an output.  In this case, the
 // method will return /files/refdir/data/file and /home/data/file only.  This

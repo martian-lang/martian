@@ -31,9 +31,7 @@ func flushChannel(c <-chan struct{}) {
 	}
 }
 
-//=============================================================================
 // Pipestance runner.
-//=============================================================================
 func runLoop(pipestanceBox *pipestanceHolder, stepSecs time.Duration,
 	vdrMode core.VdrMode, noExit bool, localJobDone <-chan struct{}) {
 	pipestanceBox.getPipestance().LoadMetadata(context.Background())

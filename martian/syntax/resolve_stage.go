@@ -43,11 +43,11 @@ func (c *CallGraphStage) GetChildren() []CallGraphNode {
 //
 // A stage or pipeline is disabled if it is called like
 //
-//   call STAGE (
-//       ...
-//   ) using (
-//       disabled = FOO.value,
-//   )
+//	call STAGE (
+//	    ...
+//	) using (
+//	    disabled = FOO.value,
+//	)
 //
 // or if its parent pipeline is disabled.
 //

@@ -73,9 +73,9 @@ func (u UUID) MarshalText() (text []byte, err error) {
 //
 // Following formats are supported:
 //
-//   "6ba7b810-9dad-11d1-80b4-00c04fd430c8",
-//   "{6ba7b810-9dad-11d1-80b4-00c04fd430c8}",
-//   "urn:uuid:6ba7b810-9dad-11d1-80b4-00c04fd430c8"
+//	"6ba7b810-9dad-11d1-80b4-00c04fd430c8",
+//	"{6ba7b810-9dad-11d1-80b4-00c04fd430c8}",
+//	"urn:uuid:6ba7b810-9dad-11d1-80b4-00c04fd430c8"
 func (u *UUID) UnmarshalText(text []byte) error {
 	if len(text) < 32 {
 		return fmt.Errorf("uuid string too short: %q", string(text))

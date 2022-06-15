@@ -2,9 +2,7 @@
 
 package syntax
 
-//
 // Struct
-//
 func (self *StructType) format(printer *printer) {
 	printer.printComments(&self.Node, "")
 
@@ -54,9 +52,7 @@ func (member *StructMember) format(printer *printer, typeWidth, idWidth, helpWid
 	printer.mustWriteString(",\n")
 }
 
-//
 // Filetype
-//
 func (self *UserType) format(printer *printer) {
 	printer.printComments(&self.Node, "")
 	printer.mustWriteString("filetype ")

@@ -22,7 +22,7 @@ import (
 //
 // graphAttrs are attribute lines to add to the top-level graph, e.g.
 //
-//   packmode = clust
+//	packmode = clust
 func RenderDot(pipeline *syntax.CallGraphPipeline, w io.StringWriter,
 	indentStart, indent string, graphAttrs ...string) error {
 	if _, err := w.WriteString(indentStart); err != nil {

@@ -16,9 +16,7 @@ import (
 	"github.com/martian-lang/martian/martian/util"
 )
 
-//
 // Semantic Checking Methods
-//
 func (global *Ast) err(nodable AstNodable, msg string, v ...interface{}) error {
 	return &AstError{global, nodable.getNode(), fmt.Sprintf(msg, v...)}
 }

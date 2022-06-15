@@ -6,28 +6,28 @@
 //
 // A stage executable should should look something like
 //
-// 	package main
+//	package main
 //
-// 	import (
-// 		"github.com/martian-lang/martian/martian/adapter"
-// 		"github.com/martian-lang/martian/martian/core"
-// 	)
+//	import (
+//		"github.com/martian-lang/martian/martian/adapter"
+//		"github.com/martian-lang/martian/martian/core"
+//	)
 //
-// 	func main() {
-// 		adapter.RunStage(split, chunk, join)
-// 	}
+//	func main() {
+//		adapter.RunStage(split, chunk, join)
+//	}
 //
-// 	func split(metadata *core.Metadata) (*core.StageDefs, error) {
-// 		...
-// 	}
+//	func split(metadata *core.Metadata) (*core.StageDefs, error) {
+//		...
+//	}
 //
-// 	func chunk(metadata *core.Metadata) (interface{}, error) {
-// 		...
-// 	}
+//	func chunk(metadata *core.Metadata) (interface{}, error) {
+//		...
+//	}
 //
-// 	func join(metadata *core.Metadata) (interface{}, error) {
-// 		...
-// 	}
+//	func join(metadata *core.Metadata) (interface{}, error) {
+//		...
+//	}
 //
 // One executable handles all 3 phases.  Stages which do not split may pass
 // nil for the split and join arguments to RunStage.

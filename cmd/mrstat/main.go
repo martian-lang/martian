@@ -15,7 +15,6 @@ The --stop option allows users to terminate the pipestance.  For running
 pipestances, this forces the pipestance into a failed state, and mrp to
 terminate.  For completed mrp instances launched with the --noexit option,
 it causes mrp to terminate.
-
 */
 package main
 

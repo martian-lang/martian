@@ -30,12 +30,12 @@ var (
 //
 // The default struct member type will be
 //
-//   Go type:                                             MRO type:
-//   bool                                                 bool
-//   float32, float64                                     float
-//   int, uint, int8, int16...                            int
-//   string, []byte                                       string
-//   map[string]json.RawMessage, map[string]interface{}   map
+//	Go type:                                             MRO type:
+//	bool                                                 bool
+//	float32, float64                                     float
+//	int, uint, int8, int16...                            int
+//	string, []byte                                       string
+//	map[string]json.RawMessage, map[string]interface{}   map
 //
 // This can be overridden with a tag `mro:"type_name"`, e.g. if the intended
 // type is a user-defined file type.
