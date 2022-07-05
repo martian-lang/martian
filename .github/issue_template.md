@@ -2,15 +2,18 @@ Before submitting an issue, be sure to read our [contribution guidelines](CONTRI
 
 ## Component
 
-[e.g. `mrp`, `mrf`, as well as the repository revision or release tag]
+[e.g. `mrp`, `mro`, as well as the repository revision or release tag]
 
 ## Pipeline
+
 Please specify one of
+
 * A released 10X genomics pipeline or one of the test pipelines in this repository.
 * An open-source repository containing mro and stage code.
 * A simple mro file, along with stage code and directory layout.
 
 ## Runtime environment
+
 Include the full command line used to run the executable.
 
 Include all non-sensitive environment variables.  We don't want to see user or host names.
@@ -31,6 +34,7 @@ What did you want to happen?
 ## Actual behavior
 
 For `mrp` failures, please include if possible:
+
 * If it was produced, and does not contain any sensitive information, attach the `[id].mri.tgz`.
 * Otherwise:
   * The pipestance `_log` file
