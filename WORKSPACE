@@ -2,7 +2,7 @@ workspace(name = "martian")
 
 load("@bazel_tools//tools/build_defs/repo:http.bzl", "http_archive")
 
-RULES_GO_VERSION = "v0.32.0"
+RULES_GO_VERSION = "v0.34.0"
 
 _RULES_GO_ARCHIVE = "github.com/bazelbuild/rules_go/releases/download/{}/rules_go-{}.zip".format(
     RULES_GO_VERSION,
@@ -11,7 +11,7 @@ _RULES_GO_ARCHIVE = "github.com/bazelbuild/rules_go/releases/download/{}/rules_g
 
 http_archive(
     name = "io_bazel_rules_go",
-    sha256 = "ab21448cef298740765f33a7f5acee0607203e4ea321219f2a4c85a6e0fb0a27",
+    sha256 = "16e9fca53ed6bd4ff4ad76facc9b7b651a89db1689a2877d6fd7b82aa824e366",
     urls = [
         "https://mirror.bazel.build/" + _RULES_GO_ARCHIVE,
         "https://" + _RULES_GO_ARCHIVE,
