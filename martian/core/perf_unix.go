@@ -11,7 +11,6 @@ package core
 import (
 	"bytes"
 	"errors"
-	"io/ioutil"
 	"os"
 	"strconv"
 	"strings"
@@ -103,14 +102,14 @@ func GetUserProcessCount() (int, error) {
 }
 
 func countTasks(procFd int, pid string, uid uint32) int {
-	if pfd, err := unix.Openat(procFd, pid+"/task",
-		os.O_RDONLY|unix.O_DIRECTORY|unix.O_NOFOLLOW|unix.O_CLOEXEC,
+	if pfd, err := openAt(procFd, pid+"/task",
+		os.O_RDONLY|unix.O_DIRECTORY|unix.O_NOFOLLOW,
 		0); err != nil {
 		return 0
 	} else {
-		defer unix.Close(pfd)
+		defer closeHandle(pfd)
 		var ufinfo unix.Stat_t
-		if err := unix.Fstat(pfd, &ufinfo); err != nil ||
+		if err := fstat(pfd, &ufinfo); err != nil ||
 			ufinfo.Mode&unix.S_IFDIR == 0 ||
 			ufinfo.Uid != uid {
 			return 0
@@ -127,12 +126,12 @@ func countTasks(procFd int, pid string, uid uint32) int {
 // whether the top-level pid is included in the total.
 func GetProcessTreeMemory(pid int, includeParent bool, io map[int]*IoAmount) (mem ObservedMemory, err error) {
 	var procFd int
-	if procFd, err = unix.Openat(unix.AT_FDCWD, "/proc",
-		os.O_RDONLY|unix.O_DIRECTORY|unix.O_CLOEXEC|unix.O_PATH,
+	if procFd, err = openAt(unix.AT_FDCWD, "/proc",
+		os.O_RDONLY|unix.O_DIRECTORY|unix.O_PATH,
 		0); err != nil {
 		return mem, err
 	}
-	defer unix.Close(procFd)
+	defer closeHandle(procFd)
 	if includeParent {
 		var buf bytes.Buffer
 		return getProcessTreeMemoryAt(procFd, pid, strconv.Itoa(pid), io, &buf)
@@ -150,13 +149,13 @@ func GetProcessTreeMemory(pid int, includeParent bool, io map[int]*IoAmount) (me
 // GetProcessTreeMemoryList returns the memory usage and other stats for all
 // processes in the tree rooted with pid.
 func GetProcessTreeMemoryList(pid int) (ProcessTree, error) {
-	procFd, err := unix.Openat(unix.AT_FDCWD, "/proc",
-		os.O_RDONLY|unix.O_DIRECTORY|unix.O_CLOEXEC|unix.O_PATH,
+	procFd, err := openAt(unix.AT_FDCWD, "/proc",
+		os.O_RDONLY|unix.O_DIRECTORY|unix.O_PATH,
 		0)
 	if err != nil {
 		return nil, err
 	}
-	defer unix.Close(procFd)
+	defer closeHandle(procFd)
 	var stats ProcessTree
 	var buf bytes.Buffer
 	return stats, getProcessTreeMemoryList(procFd, pid,
@@ -164,14 +163,14 @@ func GetProcessTreeMemoryList(pid int) (ProcessTree, error) {
 }
 
 func openDirAsPathAt(fd int, path string) (int, error) {
-	return unix.Openat(fd, path,
-		os.O_RDONLY|unix.O_DIRECTORY|unix.O_CLOEXEC|unix.O_PATH|unix.O_NOFOLLOW,
+	return openAt(fd, path,
+		os.O_RDONLY|unix.O_DIRECTORY|unix.O_PATH|unix.O_NOFOLLOW,
 		0)
 }
 
 func openDirForReadAt(fd int, path string) (int, error) {
-	return unix.Openat(fd, path,
-		os.O_RDONLY|unix.O_DIRECTORY|unix.O_CLOEXEC|unix.O_NOFOLLOW,
+	return openAt(fd, path,
+		os.O_RDONLY|unix.O_DIRECTORY|unix.O_NOFOLLOW,
 		0)
 }
 
@@ -184,7 +183,7 @@ func getProcessTreeMemoryAt(procFd, pid int, spid string,
 	closed := false
 	defer func() {
 		if !closed {
-			unix.Close(fd)
+			closeHandle(fd)
 		}
 	}()
 	if mem, err = getRunningMemoryAt(fd, buf); err != nil {
@@ -225,7 +224,7 @@ func getProcessTreeMemoryAt(procFd, pid int, spid string,
 		return mem, err
 	} else {
 		closed = true
-		unix.Close(fd)
+		closeHandle(fd)
 		err = getChildTreeMemory(procFd, tfd, &mem, io, buf)
 		return mem, err
 	}
@@ -262,7 +261,7 @@ func getProcessTreeMemoryList(procFd int, pid int, spid string, depth int, stats
 	closed := false
 	defer func() {
 		if !closed {
-			unix.Close(fd)
+			closeHandle(fd)
 		}
 	}()
 	mem, err := getRunningMemoryAt(fd, buf)
@@ -281,7 +280,7 @@ func getProcessTreeMemoryList(procFd int, pid int, spid string, depth int, stats
 		return errors.New("error opening tid directory: " + err.Error())
 	} else {
 		closed = true
-		unix.Close(fd)
+		closeHandle(fd)
 		return getChildTreeMemoryList(procFd, tfd, depth+1, stats, buf)
 	}
 }
@@ -349,7 +348,7 @@ func (err *unexpectedContentError) Error() string {
 
 // Gets the total vmem and rss memory of a running process by pid.
 func GetRunningMemory(pid int) (ObservedMemory, error) {
-	if b, err := ioutil.ReadFile(statmFileName(pid)); err != nil {
+	if b, err := os.ReadFile(statmFileName(pid)); err != nil {
 		return ObservedMemory{}, err
 	} else {
 		return parseRunningMemory(b)
@@ -444,7 +443,7 @@ func readTo(line, prefix []byte, target *int64) (bool, error) {
 
 // Gets IO statistics for a running process by pid.
 func GetRunningIo(pid int) (*IoAmount, error) {
-	if b, err := ioutil.ReadFile(ioFileName(pid)); err != nil {
+	if b, err := os.ReadFile(ioFileName(pid)); err != nil {
 		return nil, err
 	} else {
 		r, err := parseRunningIo(b)

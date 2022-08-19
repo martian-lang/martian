@@ -52,6 +52,15 @@ func closeHandle(fd int) {
 	}
 }
 
+func fstat(fd int, stat *unix.Stat_t) error {
+	for {
+		err := unix.Fstat(fd, stat)
+		if err != syscall.EINTR {
+			return err
+		}
+	}
+}
+
 func renameat(dirFd int, src, dest string) error {
 	for {
 		err := unix.Renameat(dirFd, src, dirFd, dest)

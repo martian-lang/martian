@@ -13,6 +13,24 @@ import (
 	"golang.org/x/sys/unix"
 )
 
+func openAt(dirFd int, target string, flags int, mode uint32) (int, error) {
+	for {
+		fd, err := unix.Openat(dirFd, target,
+			flags|unix.O_CLOEXEC|unix.O_NONBLOCK, mode)
+		if err != syscall.EINTR {
+			return fd, err
+		}
+	}
+}
+
+func fstat(fd int, stat *unix.Stat_t) error {
+	for {
+		if err := unix.Fstat(fd, stat); err != syscall.EINTR {
+			return err
+		}
+	}
+}
+
 // CountDirNames returns the number of files in the directory opened with the
 // given file descriptor.  Unlike the generic implementation, it avoids the
 // string allocation overhead of actually getting the names out.
@@ -60,7 +78,7 @@ func readInt(buf []byte) int {
 	}
 }
 
-// big-endian read
+// big-endian read.
 func readIntBE(buf []byte) int {
 	// Note the order of array access.  See golang.org/issue/14808
 	switch dirEntLenSize {
@@ -76,7 +94,7 @@ func readIntBE(buf []byte) int {
 	}
 }
 
-// little-endian read
+// little-endian read.
 func readIntLE(buf []byte) int {
 	// Note the order of array access.  See golang.org/issue/14808
 	switch dirEntLenSize {
@@ -103,8 +121,8 @@ func dirEntSize(buf []byte) int {
 // ReadFileAt returns all of the bytes in a file opened relative to the
 // directory with the given file descriptor.
 func ReadFileAt(dirFd int, name string) (b []byte, err error) {
-	if fd, ferr := unix.Openat(dirFd, name,
-		unix.O_RDONLY|unix.O_CLOEXEC, 0); ferr != nil {
+	if fd, ferr := openAt(dirFd, name,
+		unix.O_RDONLY, 0); ferr != nil {
 		return nil, ferr
 	} else {
 		// Do not pass the actual file name, because that causes name to escape
@@ -148,8 +166,8 @@ func ReadFileAt(dirFd int, name string) (b []byte, err error) {
 // ReadFileAt reads all of the bytes in a file opened relative to the
 // directory with the given file descriptor into the supplied buffer.
 func ReadFileInto(dirFd int, name string, buf *bytes.Buffer) (err error) {
-	if fd, ferr := unix.Openat(dirFd, name,
-		unix.O_RDONLY|unix.O_CLOEXEC, 0); ferr != nil {
+	if fd, ferr := openAt(dirFd, name,
+		unix.O_RDONLY, 0); ferr != nil {
 		return ferr
 	} else {
 		// Do not pass the actual file name, because that causes name to escape

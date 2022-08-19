@@ -10,6 +10,7 @@ import (
 	"os"
 	"path"
 	"path/filepath"
+	"syscall"
 	"time"
 
 	"golang.org/x/sys/unix"
@@ -102,9 +103,14 @@ func (info *unixFileInfo) fill() {
 
 // Calls fstatat and then fills the mode flags.
 func (info *unixFileInfo) fstatat(fd int, name string) (err error) {
-	err = unix.Fstatat(fd, name,
-		&info.sys,
-		unix.AT_SYMLINK_NOFOLLOW|unix.AT_NO_AUTOMOUNT)
+	for {
+		err = unix.Fstatat(fd, name,
+			&info.sys,
+			unix.AT_SYMLINK_NOFOLLOW|unix.AT_NO_AUTOMOUNT)
+		if err != syscall.EINTR {
+			break
+		}
+	}
 	info.fill()
 	return
 }
@@ -129,7 +135,7 @@ func Walk(root string, walkFn filepath.WalkFunc) error {
 		return walkFn(root, nil, err)
 	} else {
 		info := unixFileInfo{name: path.Base(root)}
-		if err := unix.Fstat(int(start.Fd()), &info.sys); err != nil {
+		if err := fstat(int(start.Fd()), &info.sys); err != nil {
 			start.Close()
 			info.fill()
 			return walkFn(root, &info, err)
@@ -189,10 +195,10 @@ func walkInternal(root string, start *os.File, walkFn filepath.WalkFunc) error {
 			}
 		}
 		for i, dirName := range dirs {
-			if fd, err := unix.Openat(
+			if fd, err := openAt(
 				startFd,
 				dirName,
-				os.O_RDONLY|unix.O_DIRECTORY|unix.O_NOFOLLOW|unix.O_CLOEXEC,
+				os.O_RDONLY|unix.O_DIRECTORY|unix.O_NOFOLLOW,
 				0); err != nil {
 				if ferr := walkFn(
 					path.Join(root, dirName), nil, err,
