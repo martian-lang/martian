@@ -9,7 +9,7 @@ package util
 import (
 	"bytes"
 	"fmt"
-	"io/ioutil"
+	"os"
 	"path"
 	"strconv"
 	"strings"
@@ -54,7 +54,7 @@ func GetMroVersion(dirs []string) (string, error) {
 // and returns its content.
 func GetSakeVersion(dir string) (string, error) {
 	versionPath := path.Join(dir, "..", ".version")
-	data, err := ioutil.ReadFile(versionPath)
+	data, err := os.ReadFile(versionPath)
 	if err != nil {
 		return "", err
 	}

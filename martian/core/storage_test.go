@@ -26,7 +26,7 @@ func TestPathIsInside(t *testing.T) {
 
 func TestGetArgsToFilesMap(t *testing.T) {
 	t.Parallel()
-	forkDir, err := ioutil.TempDir("", "testGetArgsToFilesMap")
+	forkDir, err := os.MkdirTemp("", "testGetArgsToFilesMap")
 	if err != nil {
 		t.Skip(err)
 	}

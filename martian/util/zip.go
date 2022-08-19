@@ -9,7 +9,6 @@ import (
 	"archive/zip"
 	"bytes"
 	"io"
-	"io/ioutil"
 	"os"
 	"path"
 	"path/filepath"
@@ -22,7 +21,7 @@ func readSymlinkInZip(f *zip.File) (string, error) {
 		return "", err
 	} else {
 		defer reader.Close()
-		if symbytes, err := ioutil.ReadAll(reader); err != nil {
+		if symbytes, err := io.ReadAll(reader); err != nil {
 			return "", err
 		} else {
 			return string(symbytes), nil
@@ -144,7 +143,7 @@ func unzipLink(filePath string, f *zip.File) error {
 	}
 	defer in.Close()
 
-	if symbytes, err := ioutil.ReadAll(in); err == nil {
+	if symbytes, err := io.ReadAll(in); err == nil {
 		return os.Symlink(string(symbytes), filePath)
 	} else {
 		return err

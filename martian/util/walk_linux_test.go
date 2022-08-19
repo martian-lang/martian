@@ -4,7 +4,6 @@ package util
 
 import (
 	"fmt"
-	"io/ioutil"
 	"os"
 	"path"
 	"path/filepath"
@@ -12,7 +11,7 @@ import (
 )
 
 func ExampleWalk() {
-	if root, err := ioutil.TempDir("", "examplewalk"); err != nil {
+	if root, err := os.MkdirTemp("", "examplewalk"); err != nil {
 		fmt.Println("Failed to create tempdir:", err)
 		return
 	} else {
@@ -30,35 +29,35 @@ func ExampleWalk() {
 		if err := os.MkdirAll(path.Join(root, "a", "b", "g"), 0777); err != nil {
 			fmt.Println(err)
 		}
-		if err := ioutil.WriteFile(path.Join(root, "a.txt"), []byte("Test string"), 0666); err != nil {
+		if err := os.WriteFile(path.Join(root, "a.txt"), []byte("Test string"), 0666); err != nil {
 			fmt.Println(err)
 		}
-		if err := ioutil.WriteFile(
+		if err := os.WriteFile(
 			path.Join(root, "b.txt"),
 			[]byte("Test string2"), 0666); err != nil {
 			fmt.Println(err)
 		}
-		if err := ioutil.WriteFile(
+		if err := os.WriteFile(
 			path.Join(root, "a", "c.txt"),
 			[]byte("Test string33"), 0666); err != nil {
 			fmt.Println(err)
 		}
-		if err := ioutil.WriteFile(
+		if err := os.WriteFile(
 			path.Join(root, "a", "d.txt"),
 			[]byte("Test string444"), 0666); err != nil {
 			fmt.Println(err)
 		}
-		if err := ioutil.WriteFile(
+		if err := os.WriteFile(
 			path.Join(root, "a", "b", "g", "e.txt"),
 			[]byte("Test string5555"), 0666); err != nil {
 			fmt.Println(err)
 		}
-		if err := ioutil.WriteFile(
+		if err := os.WriteFile(
 			path.Join(root, "a", "b", "g", "f.txt"),
 			[]byte("Test string66666"), 0666); err != nil {
 			fmt.Println(err)
 		}
-		if err := ioutil.WriteFile(
+		if err := os.WriteFile(
 			path.Join(root, "a", "b", "e", "f", "g.txt"),
 			[]byte("Test string777777"), 0666); err != nil {
 			fmt.Println(err)

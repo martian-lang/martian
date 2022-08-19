@@ -6,7 +6,7 @@ package core
 
 import (
 	"bytes"
-	"io/ioutil"
+	"os"
 	"strconv"
 	"strings"
 )
@@ -16,7 +16,7 @@ type LoadAverage struct {
 }
 
 func (la *LoadAverage) Get() error {
-	b, err := ioutil.ReadFile("/proc/loadavg")
+	b, err := os.ReadFile("/proc/loadavg")
 	if err != nil {
 		// Ignore errors.
 		return nil

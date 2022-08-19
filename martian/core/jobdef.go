@@ -100,7 +100,7 @@ func (self *JobResources) updateFromLazyArgs(args LazyArgumentMap) error {
 }
 
 func (self *ChunkDef) mergeFromMarshaler(bindings MarshalerMap) *ChunkDef {
-	if bindings == nil || len(bindings) == 0 {
+	if len(bindings) == 0 {
 		return self
 	}
 	def := ChunkDef{
@@ -254,10 +254,10 @@ type ChunkDef struct {
 }
 
 func (self *ChunkDef) MergeArguments(bindings LazyArgumentMap) *ChunkDef {
-	if bindings == nil || len(bindings) == 0 {
+	if len(bindings) == 0 {
 		return self
 	}
-	if self.Args == nil || len(self.Args) == 0 {
+	if len(self.Args) == 0 {
 		return &ChunkDef{
 			Resources: self.Resources,
 			Args:      bindings,

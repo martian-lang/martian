@@ -10,7 +10,6 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
-	"io/ioutil"
 	"os"
 	"path"
 	"runtime/trace"
@@ -46,7 +45,7 @@ func loopBody(t *testing.T, pipestance *Pipestance) (bool, bool) {
 		t.Error(log)
 		for _, p := range errPaths {
 			t.Log("Errors in", p)
-			b, err := ioutil.ReadFile(p)
+			b, err := os.ReadFile(p)
 			if err != nil {
 				t.Error(err)
 			} else {
@@ -86,7 +85,7 @@ func (t testLogger) WriteString(b string) (int, error) {
 // integration tests, is mainly to be able to see code coverage.  It's also
 // very fast because of the trivial stage code.
 func TestPipestanceRun(t *testing.T) {
-	data, err := ioutil.ReadFile("testdata/map_call_edge_cases.mro")
+	data, err := os.ReadFile("testdata/map_call_edge_cases.mro")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -111,7 +110,7 @@ func TestPipestanceRun(t *testing.T) {
 		false,
 		rt.jobConfig)
 	rt.JobManager = rt.LocalJobManager
-	psdir, err := ioutil.TempDir("", "TestPipestanceRun")
+	psdir, err := os.MkdirTemp("", "TestPipestanceRun")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -152,7 +151,7 @@ func TestPipestanceRun(t *testing.T) {
 	if len(nodeInfos) != 22 {
 		t.Errorf("node count %d != 22", len(nodeInfos))
 	}
-	outs, err := ioutil.ReadFile(path.Join(psdir, "TOP",
+	outs, err := os.ReadFile(path.Join(psdir, "TOP",
 		defaultFork,
 		OutsFile.FileName()))
 	if err != nil {

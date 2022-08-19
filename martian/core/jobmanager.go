@@ -8,7 +8,6 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
 	"os"
 	"os/exec"
 	"path"
@@ -124,13 +123,19 @@ func getJobConfig(profileMode ProfileMode) *JobManagerJson {
 
 	// Check for existence of job manager JSON file
 	jobJsonFile := path.Join(jobPath, "config.json")
-	if _, err := os.Stat(jobJsonFile); os.IsNotExist(err) {
-		util.PrintInfo("jobmngr", "Job manager config file %s does not exist.",
-			jobJsonFile)
+	b, err := os.ReadFile(jobJsonFile)
+	if err != nil {
+		if os.IsNotExist(err) {
+			util.PrintInfo("jobmngr", "Job manager config file %s does not exist.",
+				jobJsonFile)
+		} else {
+			util.PrintError(err, "jobmngr",
+				"Error reading job manager config file %s.",
+				jobJsonFile)
+		}
 		os.Exit(1)
 	}
 	util.LogInfo("jobmngr", "Job config = %s", jobJsonFile)
-	b, _ := ioutil.ReadFile(jobJsonFile)
 
 	// Parse job manager JSON file
 	var jobJson *JobManagerJson
@@ -223,12 +228,12 @@ To set up a job manager template, please follow instructions in %s.`,
 		jobResourcesOpt)
 
 	// Check for existence of job manager template file
-	if _, err := os.Stat(jobTemplateFile); os.IsNotExist(err) {
+	b, err := os.ReadFile(jobTemplateFile)
+	if os.IsNotExist(err) {
 		util.PrintInfo("jobmngr", "%s", jobErrorMsg)
 		os.Exit(1)
 	}
 	util.LogInfo("jobmngr", "Job template = %s", jobTemplateFile)
-	b, _ := ioutil.ReadFile(jobTemplateFile)
 	jobTemplate := string(b)
 
 	// Check if template includes threading.

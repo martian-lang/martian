@@ -3,7 +3,6 @@ package core
 import (
 	"context"
 	"fmt"
-	"io/ioutil"
 	"os"
 	"path/filepath"
 	"strconv"
@@ -95,7 +94,7 @@ func TestPostProcess(t *testing.T) {
 		}
 	}()
 
-	src, err := ioutil.ReadFile("testdata/struct_pipeline.mro")
+	src, err := os.ReadFile("testdata/struct_pipeline.mro")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -122,7 +121,7 @@ func TestPostProcess(t *testing.T) {
 		files[i] = filepath.Join(psSrc, fmt.Sprintf("file%d.txt", i))
 	}
 	for i, f := range files {
-		if err := ioutil.WriteFile(f, []byte(strconv.Itoa(i)), 0644); err != nil {
+		if err := os.WriteFile(f, []byte(strconv.Itoa(i)), 0644); err != nil {
 			t.Error(err)
 		}
 	}
@@ -195,7 +194,7 @@ func TestPostProcess(t *testing.T) {
 	}
 	check := func(fn, expect string) {
 		t.Helper()
-		if b, err := ioutil.ReadFile(filepath.Join(psOuts, fn)); err != nil {
+		if b, err := os.ReadFile(filepath.Join(psOuts, fn)); err != nil {
 			t.Error(err)
 		} else if s := string(b); s != expect {
 			t.Errorf("expected %s in %s, got %s",
@@ -343,7 +342,7 @@ func TestPostProcessEmpties(t *testing.T) {
 		}
 	}()
 
-	src, err := ioutil.ReadFile("testdata/struct_pipeline.mro")
+	src, err := os.ReadFile("testdata/struct_pipeline.mro")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -370,7 +369,7 @@ func TestPostProcessEmpties(t *testing.T) {
 		files[i] = filepath.Join(psSrc, fmt.Sprintf("file%d.txt", i))
 	}
 	for i, f := range files {
-		if err := ioutil.WriteFile(f, []byte(strconv.Itoa(i)), 0644); err != nil {
+		if err := os.WriteFile(f, []byte(strconv.Itoa(i)), 0644); err != nil {
 			t.Error(err)
 		}
 	}
@@ -443,7 +442,7 @@ func TestPostProcessEmpties(t *testing.T) {
 	}
 	check := func(fn, expect string) {
 		t.Helper()
-		if b, err := ioutil.ReadFile(filepath.Join(psOuts, fn)); err != nil {
+		if b, err := os.ReadFile(filepath.Join(psOuts, fn)); err != nil {
 			t.Error(err)
 		} else if s := string(b); s != expect {
 			t.Errorf("expected %s in %s, got %s",

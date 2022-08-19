@@ -7,7 +7,6 @@ package util
 import (
 	"bufio"
 	"bytes"
-	"io/ioutil"
 	"os"
 	"path"
 )
@@ -133,7 +132,7 @@ func GetCgroupMemoryLimit() (limit, softLimit, usage int64) {
 		"memory.limit_in_bytes",
 		"memory.memsw.limit_in_bytes",
 	} {
-		if b, err := ioutil.ReadFile(path.Join(p, name)); err == nil {
+		if b, err := os.ReadFile(path.Join(p, name)); err == nil {
 			if v := parseCgroupInt(b); v != 0 {
 				if v < limit || limit == 0 {
 					limit = v
@@ -141,7 +140,7 @@ func GetCgroupMemoryLimit() (limit, softLimit, usage int64) {
 			}
 		}
 	}
-	if b, err := ioutil.ReadFile(path.Join(p,
+	if b, err := os.ReadFile(path.Join(p,
 		"memory.soft_limit_in_bytes")); err == nil {
 		softLimit = parseCgroupInt(b)
 	}

@@ -3,7 +3,6 @@
 package util
 
 import (
-	"io/ioutil"
 	"os"
 	"strconv"
 	"testing"
@@ -11,15 +10,19 @@ import (
 
 func TestCountDirNames(t *testing.T) {
 	t.Parallel()
-	if d, err := ioutil.TempDir("", "count_test"); err != nil {
+	if d, err := os.MkdirTemp("", "count_test"); err != nil {
 		t.Fatal(err)
 	} else {
 		defer os.RemoveAll(d)
 		const count = 30
 		for i := 0; i < count; i++ {
-			if f, err := ioutil.TempFile(d, strconv.Itoa(i)); err == nil {
-				f.Write([]byte(strconv.Itoa(i)))
-				f.Close()
+			if f, err := os.CreateTemp(d, strconv.Itoa(i)); err == nil {
+				if _, err := f.WriteString(strconv.Itoa(i)); err != nil {
+					t.Error(err)
+				}
+				if err := f.Close(); err != nil {
+					t.Error(err)
+				}
 			} else {
 				t.Fatal(err)
 			}

@@ -3,7 +3,6 @@ package core
 import (
 	"context"
 	"encoding/json"
-	"io/ioutil"
 	"os"
 	"path/filepath"
 	"strings"
@@ -275,7 +274,7 @@ func setupTestPipestance(t *testing.T, mro, name string) (*Pipestance, string) {
 		t.Fatal(err)
 	}
 
-	src, err := ioutil.ReadFile(mro)
+	src, err := os.ReadFile(mro)
 	if err != nil {
 		t.Fatal(err)
 	}

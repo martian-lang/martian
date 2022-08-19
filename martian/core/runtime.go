@@ -11,7 +11,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"os"
 	"os/exec"
 	"path"
@@ -88,7 +87,7 @@ func getRetryRegexps() (retryOn []*regexp.Regexp, defaultRetries int) {
 		RetryOn        []string `json:"retry_on"`
 		DefaultRetries int      `json:"default_retries"`
 	}
-	bytes, err := ioutil.ReadFile(retryfile)
+	bytes, err := os.ReadFile(retryfile)
 	if err != nil {
 		util.PrintInfo("runtime", "Retry config file could not be loaded:\n%v\n", err)
 		os.Exit(1)
@@ -465,7 +464,7 @@ func (self *Runtime) reattachToPipestance(psid string, pipestancePath string,
 		if invocationPath == "" {
 			invocationPath = path.Join(pipestancePath, srcType.FileName())
 		}
-		if data, err := ioutil.ReadFile(invocationPath); err != nil {
+		if data, err := os.ReadFile(invocationPath); err != nil {
 			return nil, &PipestancePathError{pipestancePath}
 		} else {
 			src = data
@@ -475,7 +474,7 @@ func (self *Runtime) reattachToPipestance(psid string, pipestancePath string,
 	}
 	if checkSrc {
 		// Read in the existing _invocation file.
-		data, err := ioutil.ReadFile(path.Join(pipestancePath, srcType.FileName()))
+		data, err := os.ReadFile(path.Join(pipestancePath, srcType.FileName()))
 		if err != nil {
 			return nil, &PipestancePathError{pipestancePath}
 		}
@@ -627,7 +626,7 @@ func (self *Runtime) FreeMemBytes() int64 {
 func GetCallableFrom(pName, incPath string, mroPaths []string) (syntax.Callable, *syntax.TypeLookup, error) {
 	if fpath, err := util.FindUniquePath(incPath, mroPaths); err != nil {
 		return nil, nil, err
-	} else if b, err := ioutil.ReadFile(fpath); err != nil {
+	} else if b, err := os.ReadFile(fpath); err != nil {
 		return nil, nil, err
 	} else {
 		var parser syntax.Parser
@@ -674,7 +673,7 @@ func GetCallable(mroPaths []string, name string, compile bool) (syntax.Callable,
 			for _, fpath := range fpaths {
 				if strings.HasPrefix(fpath, "_") || !strings.HasSuffix(fpath, ".mro") {
 					// skip, private file
-				} else if data, err := ioutil.ReadFile(path.Join(mroPath, fpath)); err == nil {
+				} else if data, err := os.ReadFile(path.Join(mroPath, fpath)); err == nil {
 					if ast, err := parse(data, fpath); err == nil {
 						for _, callable := range ast.Callables.List {
 							if callable.GetId() == name {

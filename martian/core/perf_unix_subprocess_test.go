@@ -7,7 +7,7 @@ package core
 
 import (
 	"context"
-	"io/ioutil"
+	"io"
 	"os"
 	"os/exec"
 	"syscall"
@@ -42,7 +42,7 @@ func runGetProcessVsize(t *testing.T, vsize, rss string) (ObservedMemory, error)
 	}()
 	// Wait for the test script to set up.  It's supposed signal that state
 	// by closing its stdout.
-	if _, err := ioutil.ReadAll(stdout); err != nil {
+	if _, err := io.ReadAll(stdout); err != nil {
 		t.Error(err)
 	}
 	mem, err := GetRunningMemory(cmd.Process.Pid)

@@ -9,7 +9,6 @@ package core
 import (
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
 	"os"
 	"path"
 	"path/filepath"
@@ -141,7 +140,7 @@ call SUM_SQUARE_PIPELINE(
 
 func invokeTest(src string, t *testing.T) {
 	t.Helper()
-	if d, err := ioutil.TempDir("", "pipestance"); err != nil {
+	if d, err := os.MkdirTemp("", "pipestance"); err != nil {
 		t.Error(err)
 	} else {
 		defer os.RemoveAll(d)
@@ -173,7 +172,7 @@ func invokeTest(src string, t *testing.T) {
 		cfg := path.Join(jobPath, "config.json")
 		if _, err := os.Stat(cfg); os.IsNotExist(err) {
 			t.Log("Creating ", cfg)
-			if err := ioutil.WriteFile(cfg, []byte(`{
+			if err := os.WriteFile(cfg, []byte(`{
   "settings": {
     "threads_per_job": 1,
     "memGB_per_job": 1,
