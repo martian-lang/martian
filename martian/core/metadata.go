@@ -7,7 +7,6 @@ package core
 import (
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
 	"os"
 	"path"
 	"path/filepath"
@@ -566,7 +565,7 @@ func (self *Metadata) exists(name MetadataFileName) bool {
 }
 
 func (self *Metadata) readRawBytes(name MetadataFileName) ([]byte, error) {
-	return ioutil.ReadFile(self.MetadataFilePath(name))
+	return os.ReadFile(self.MetadataFilePath(name))
 }
 
 func (self *Metadata) readRawSafe(name MetadataFileName) (string, error) {
@@ -644,7 +643,7 @@ func (self *Metadata) ReadInto(name MetadataFileName, target interface{}) error 
 }
 
 func (self *Metadata) _writeRawNoLock(name MetadataFileName, text string) error {
-	err := ioutil.WriteFile(self.MetadataFilePath(name), []byte(text), 0644)
+	err := os.WriteFile(self.MetadataFilePath(name), []byte(text), 0644)
 	self._cacheNoLock(name)
 	if err != nil {
 		msg := fmt.Sprintf("Could not write %s for %s: %s", name, self.fqname, err.Error())
@@ -663,7 +662,7 @@ func (self *Metadata) WriteRaw(name MetadataFileName, text string) error {
 
 // Writes the given raw data into the given metadata file.
 func (self *Metadata) WriteRawBytes(name MetadataFileName, text []byte) error {
-	err := ioutil.WriteFile(self.MetadataFilePath(name), text, 0644)
+	err := os.WriteFile(self.MetadataFilePath(name), text, 0644)
 	self.cache(name, self.uniquifier)
 	if err != nil {
 		msg := fmt.Sprintf("Could not write %s for %s: %s", name, self.fqname, err.Error())
@@ -731,15 +730,7 @@ func (self *Metadata) WriteAtomic(name MetadataFileName, object interface{}) err
 		return err
 	}
 	fname := self.MetadataFilePath(name)
-	tmpName := fname + ".tmp"
-	if err := ioutil.WriteFile(tmpName, bytes, 0644); err != nil {
-		return err
-	}
-	if err := os.Rename(tmpName, fname); err == nil || os.IsNotExist(err) {
-		return nil
-	} else {
-		return err
-	}
+	return writeAtomic(fname, bytes)
 }
 
 // Writes a journal file corresponding to the given metadata file.  This is
@@ -752,7 +743,7 @@ func (self *Metadata) WriteAtomic(name MetadataFileName, object interface{}) err
 // until the journal is updated.
 func (self *Metadata) UpdateJournal(name MetadataFileName) error {
 	fname := self.journalPath + "." + self.journalPrefix + string(name)
-	if err := ioutil.WriteFile(fname,
+	if err := os.WriteFile(fname,
 		[]byte(util.Timestamp()), 0644); err != nil && !os.IsExist(err) {
 		return err
 	}

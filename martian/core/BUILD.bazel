@@ -28,6 +28,7 @@ go_library(
         "statfs.go",
         "storage.go",
         "uuid.go",
+        "write_atomic.go",
     ] + select({
         "@io_bazel_rules_go//go/platform:linux": [
             "meminfo_linux.go",
@@ -35,6 +36,7 @@ go_library(
             "perf_unix.go",
             "loadavg_linux.go",
             "rlimit.go",
+            "write_atomic_linux.go",
         ],
         "@io_bazel_rules_go//go/platform:windows": [
             "perf_generic.go",
@@ -42,6 +44,7 @@ go_library(
             "loadavg_generic.go",
             "statfs_generic.go",
             "rlimit_windows.go",
+            "write_atomic_generic.go",
         ],
         "//conditions:default": [
             "perf_generic.go",
@@ -49,6 +52,7 @@ go_library(
             "loadavg_generic.go",
             "statfs_generic.go",
             "rlimit.go",
+            "write_atomic_generic.go",
         ],
     }),
     importpath = "github.com/martian-lang/martian/martian/core",
@@ -84,6 +88,7 @@ go_test(
             "loadavg_linux_test.go",
             "meminfo_linux_test.go",
             "statfs_unix_test.go",
+            "write_atomic_linux_test.go",
         ],
         "//conditions:default": [],
     }),
