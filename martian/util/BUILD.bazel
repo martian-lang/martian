@@ -9,6 +9,7 @@ go_library(
         "errors.go",
         "exec.go",
         "log.go",
+        "lookpath_go119.go",
         "signal.go",
         "stamp.go",
         "sysinfo.go",
