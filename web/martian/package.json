@@ -21,7 +21,7 @@
     "clean-css-cli": "^5.6.0",
     "d3": ">=5.16.0",
     "dagre-d3": "^0.6.4",
-    "html-minifier-terser": "^6.0.2",
+    "html-minifier-terser": "^7.0.0",
     "lodash": ">=4.17.21",
     "terser": ">=5.10.0"
   }
