@@ -1,5 +1,4 @@
 load("@rules_python//python:defs.bzl", "py_library")
-load("@bazel_tools//tools/build_defs/pkg:pkg.bzl", "pkg_tar")
 
 filegroup(
     name = "config",
@@ -74,30 +73,5 @@ filegroup(
     visibility = [
         "//:__pkg__",
         "//cmd/mrp:__pkg__",
-    ],
-)
-
-pkg_tar(
-    name = "pkg_cs",
-    srcs = [
-        ":config",
-        ":examples",
-        ":queue_checks",
-    ],
-    include_runfiles = 1,
-    package_dir = "jobmanagers",
-    visibility = ["//:__pkg__"],
-)
-
-pkg_tar(
-    name = "pkg",
-    srcs = [
-        ":templates",
-    ],
-    include_runfiles = 1,
-    package_dir = "jobmanagers",
-    visibility = ["//:__pkg__"],
-    deps = [
-        ":pkg_cs",
     ],
 )

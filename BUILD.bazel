@@ -1,5 +1,4 @@
 load("@bazel_gazelle//:def.bzl", "gazelle")
-load("@bazel_tools//tools/build_defs/pkg:pkg.bzl", "pkg_tar")
 load("//tools:copy_binary.bzl", "copy_binary")
 
 # gazelle:resolve go github.com/martian-lang/martian/martian/api @martian//martian/api
@@ -50,52 +49,6 @@ copy_binary(
     src = "//cmd/mrstat",
     dest = "bin/mrstat",
     visibility = ["//visibility:public"],
-)
-
-pkg_tar(
-    name = "bin_cs",
-    srcs = [
-        ":mrg",
-        ":mrjob",
-        ":mrp",
-        ":mrstat",
-    ],
-    include_runfiles = 1,
-    strip_prefix = "./",
-)
-
-pkg_tar(
-    name = "bin",
-    srcs = [
-        ":mro2go",
-    ],
-    include_runfiles = 1,
-    strip_prefix = "./",
-    deps = [
-        ":bin_cs",
-    ],
-)
-
-pkg_tar(
-    name = "martian",
-    extension = "tar.xz",
-    package_dir = "martian",
-    deps = [
-        ":bin",
-        "//adapters/python:pkg",
-        "//jobmanagers:pkg",
-    ],
-)
-
-pkg_tar(
-    name = "martian_cs",
-    extension = "tar.xz",
-    package_dir = "martian",
-    deps = [
-        ":bin_cs",
-        "//adapters/python:pkg",
-        "//jobmanagers:pkg_cs",
-    ],
 )
 
 copy_binary(

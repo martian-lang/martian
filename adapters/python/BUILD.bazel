@@ -1,5 +1,4 @@
 load("@rules_python//python:defs.bzl", "py_library")
-load("@bazel_tools//tools/build_defs/pkg:pkg.bzl", "pkg_tar")
 
 filegroup(
     name = "python",
@@ -30,17 +29,6 @@ py_library(
     srcs = ["martian.py"],
     imports = ["."],
     visibility = ["//visibility:public"],
-)
-
-pkg_tar(
-    name = "pkg",
-    srcs = [
-        ":martian",
-        ":martian_shell",
-    ],
-    include_runfiles = 1,
-    package_dir = "adapters/python",
-    visibility = ["//:__pkg__"],
 )
 
 py_library(
