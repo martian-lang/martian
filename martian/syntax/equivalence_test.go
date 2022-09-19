@@ -311,7 +311,7 @@ func TestNumExpEquivalence(t *testing.T) {
 		t.Error("Expected 1.0 != 1.1")
 	}
 	if err := f1.equal(&f1); err != nil {
-		t.Error("Expcted 1.0 == 1.0:", err)
+		t.Error("Expected 1.0 == 1.0:", err)
 	}
 	if exp.equal(&b1) == nil {
 		t.Error("Expected 1 != true")

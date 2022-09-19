@@ -1,5 +1,5 @@
 """This little script is intended for testing.  It allocates
-1GB of annonymous virtual address space, then closes its standard
+1GB of anonymous virtual address space, then closes its standard
 output pipe and waits for its standard input pipe to close."""
 
 import mmap
@@ -18,7 +18,7 @@ def main(argv):
     for _ in range(rss_kb):
         vmem.write(kb_string)
 
-    # Close stdout to signal readyness to the parent process.
+    # Close stdout to signal readiness to the parent process.
     os.close(1)
 
     for _ in sys.stdin:

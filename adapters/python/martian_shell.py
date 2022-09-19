@@ -253,7 +253,7 @@ class _Metadata:
     def write_raw_atomic(self, name, text, force=False):
         """Write the given text to the given metadata file, by creating a
         temporary file and then moving it, in order to prevent corruption of
-        the existing file if the proces of writing is interupted.
+        the existing file if the process of writing is interrupted.
         """
         text = _ensure_binary(text)
         fname = self.make_path(name)
@@ -272,7 +272,7 @@ class _Metadata:
     def write_atomic(self, name, obj, force=False):
         """Write the given object to the given metadata file, by creating a
         temporary file and then moving it, in order to prevent corruption of
-        the existing file if the proces of writing is interupted.
+        the existing file if the process of writing is interrupted.
         """
         self.write_raw_atomic(
             name, martian.json_dumps_safe(obj, indent=4), force

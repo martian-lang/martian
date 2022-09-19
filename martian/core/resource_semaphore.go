@@ -19,7 +19,7 @@ type waiter struct {
 	amount int64
 }
 
-// A semaphore type which allows for the maxium size of things entering the
+// A semaphore type which allows for the maximum size of things entering the
 // semaphore to be dynamically reduced based on observed resource availability.
 type ResourceSemaphore struct {
 	// A formatter used to log messages.

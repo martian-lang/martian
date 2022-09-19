@@ -300,7 +300,7 @@ func (skipWalkError) Error() string {
 }
 
 // SkipExp is returned by ExpVisitor functions to indicate that WalkExp should
-// not decend into subexpressions.
+// not descend into subexpressions.
 var SkipExp error = skipWalkError{}
 
 // An ExpVisitor function is a callback to be passed to WalkExp.
@@ -313,7 +313,7 @@ type ExpVisitor func(exp Exp, bindingPath string) error
 
 // WalkExp calls the given visitor function for the given expression and every
 // subexpression (e.g. array, map, or struct element).  If the function returns
-// SkipExp, the walk will not decend into subexpressions of that expression.
+// SkipExp, the walk will not descend into subexpressions of that expression.
 // If it returns any other error, the walk will be aborted and that error will
 // be returned.
 func WalkExp(exp Exp, visitor ExpVisitor) error {

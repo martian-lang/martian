@@ -137,11 +137,11 @@ func getBestCall(ast *syntax.Ast) *syntax.CallStm {
 	return syntax.GenerateAbstractCall(found, &ast.TypeTable)
 }
 
-// Given a string PIPELINE.INNER_PIPELINE.STAGE.output.member, attemtp to
+// Given a string PIPELINE.INNER_PIPELINE.STAGE.output.member, attempt to
 // return the call graph node for PIPELINE.INNER_PIPELINE.STAGE, along with
 // the tail component output.member.  Note that it uses greedy matching so if
 // INNER_PIPELINE also had a call named `output` there would be ambiguity about
-// which was meant; the algorithm has no backtracking so decending into child
+// which was meant; the algorithm has no backtracking so descending into child
 // nodes has priority.
 //
 // A nil value for the returned node indicates that no match was found.
@@ -232,7 +232,7 @@ func traceOutput(stage string, cg syntax.CallGraphNode) bool {
 
 func traceOutputResolved(tail string, source, cg syntax.CallGraphNode) {
 	if cg == source {
-		// Don't decend into children of the selected pipeline.  They can't
+		// Don't descend into children of the selected pipeline.  They can't
 		// possibly depend on the pipeline's outputs.
 		return
 	}

@@ -180,7 +180,7 @@ symlink_binary = rule(
     },
     doc = """Creates a symlink to an executable.
 
-Sometimes it is desireable to run a binary from a different name using a
+Sometimes it is desirable to run a binary from a different name using a
 symlink.  This rule creates a symlink to the given `src`, with the same
 runfiles.
 """,

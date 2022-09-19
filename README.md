@@ -40,7 +40,7 @@ Semantic versioning for martian is based on pipeline compatibility, not the Go
 API.  That is, a major version change indicates that pipelines (defined in
 `.mro` files) may no longer function correctly.  This unfortunately poses problems
 with go modules, (which didn't exist yet at the time v3 was first tagged) which
-exepect version tags to be referring to the semver compatibility of the Go API.
+expect version tags to be referring to the semver compatibility of the Go API.
 We hope to rectify this in v5, but ironically that will force an
 backwards-incompatible change to the Go API.  In the mean time, if you wish to
 depend on martian as a go module, use the git commit rather than a version tag.

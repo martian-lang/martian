@@ -1,4 +1,4 @@
-"""Shared utilty methods for rules."""
+"""Shared utility methods for rules."""
 
 def merge_runfiles(
         ctx,

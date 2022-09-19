@@ -207,7 +207,7 @@ func cleanupCompleted(pipestance *core.Pipestance, pipestanceBox *pipestanceHold
 }
 
 // Check to see if the pipestance directory was deleted.  If it was, exit.
-// This is used when mrp is lanuched with `--noexit` to make sure mrp doesn't
+// This is used when mrp is launched with `--noexit` to make sure mrp doesn't
 // outlive its usefulness.
 func completedLogCheck() {
 	for {

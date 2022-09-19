@@ -20,7 +20,7 @@ type (
 	// Next, compute the merge dimensions MergeOver. Each dimension in
 	// MergeOver, in order, will produce an array or typed map of references.
 	// That is, if MergeOver's first element is an array of length 2, then the
-	// result will be an array of lenth 2, where each element is the same as the
+	// result will be an array of length 2, where each element is the same as the
 	// original reference, but with that dimension removed from MergeOver and
 	// added to ForkIndex (with the appropriate index).
 	//
@@ -51,7 +51,7 @@ type (
 	// be in ForkIndex or MergeOver (which eventually resolves to ForkIndex).
 	//
 	// Finally, take any remaining elements from OutputIndex and use them to
-	// select the array elements or map indicies from the resulting object.  If
+	// select the array elements or map indices from the resulting object.  If
 	// the index is not a compile-time constant, use the upstream fork's
 	// ForkIndex[idx.IndexSource()].
 	RefExp struct {

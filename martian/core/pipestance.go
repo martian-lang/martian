@@ -388,7 +388,7 @@ func (self *Pipestance) KillWithMessage(message string) {
 //
 // Normally, dynamic forks are computed when a stage or pipeline transitions to
 // the running state.  However, if the pipestance was restarted then some of
-// those transitions may have already hapend so the forks need to be computed
+// those transitions may have already happened so the forks need to be computed
 // at the moment of reattachment instead.
 func (self *Pipestance) RestoreForks(ctx context.Context) {
 	defer trace.StartRegion(ctx, "restoreForks").End()
@@ -433,7 +433,7 @@ func (self *Pipestance) RestartRunningNodes(jobMode string, outerCtx context.Con
 
 // Resets local nodes which are queued or are running with a PID that is not
 // a running job.  If |jobMode| is "local" then all nodes are treated as local.
-// This is nessessary for when e.g. mrp is restarted in local mode after ctrl-C
+// This is necessary for when e.g. mrp is restarted in local mode after ctrl-C
 // kills it and all of its child processes.
 func (self *Pipestance) RestartLocalJobs(jobMode string) error {
 	if self.readOnly() {

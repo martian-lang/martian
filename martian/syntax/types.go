@@ -65,7 +65,7 @@ type (
 	}
 
 	// Used to resolve expressions, but not a legal parameter type.
-	// null can be assigned to anyting, but nothing can be assigned to null.
+	// null can be assigned to anything, but nothing can be assigned to null.
 	nullType struct{}
 
 	// IncompatibleTypeError is returned for Type.IsAssignableFrom().

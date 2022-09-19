@@ -77,7 +77,7 @@ def expand_glob(root, pattern):
     For example, if root is /mnt/awesome and pattern is 'foo/*/_outs' it might
     return foo/bar/_outs, foo/baz/_outs, foo/bar/baz/_outs and so on.
 
-    This would be unnessessary in python3 because glob understands the
+    This would be unnecessary in python3 because glob understands the
     ** recursive wildcard syntax, but in python 2 it is needed.
 
     Args:

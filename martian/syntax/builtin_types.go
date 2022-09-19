@@ -181,7 +181,7 @@ func (s *BuiltinType) IsValidExpression(exp Exp, pipeline *Pipeline, ast *Ast) e
 			refs := exp.FindRefs()
 			return &IncompatibleTypeError{
 				Message: fmt.Sprintf(
-					"%s literal cannot be assinged to untyped map: "+
+					"%s literal cannot be assigned to untyped map: "+
 						"contains reference to %s",
 					k,
 					refs[0].GoString()),

@@ -162,7 +162,7 @@ func TestMapIsAssignableFrom(t *testing.T) {
 		t.Error(err)
 	}
 	if err := structType1.IsAssignableFrom(&structType2, lookup); err == nil {
-		t.Error("coversion of float field to int is not allowed.")
+		t.Error("conversion of float field to int is not allowed.")
 	}
 
 	if err := structType3.IsAssignableFrom(&structType3, lookup); err != nil {
@@ -172,7 +172,7 @@ func TestMapIsAssignableFrom(t *testing.T) {
 		t.Error(err)
 	}
 	if err := structType3.IsAssignableFrom(&structType4, lookup); err == nil {
-		t.Error("coversion of float field to int is not allowed.")
+		t.Error("conversion of float field to int is not allowed.")
 	}
 	if err := structType2.IsAssignableFrom(&structType5, lookup); err != nil {
 		t.Error(err)

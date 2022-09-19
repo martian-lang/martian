@@ -123,14 +123,14 @@ type Parser struct {
 	intern *stringIntern
 }
 
-// ParseSource parses a souce string into an ast.
+// ParseSource parses a source string into an ast.
 //
 // src is the mro source code.
 //
 // srcpath is the path to the source code file (if applicable), used for
 // debugging information.
 //
-// incpaths is the orderd set of search paths to use when resolving include
+// incpaths is the ordered set of search paths to use when resolving include
 // directives.
 //
 // if checksrc is true, then the parser will verify that stage src values
@@ -149,7 +149,7 @@ func ParseSource(src string, srcPath string,
 // srcpath is the path to the source code file (if applicable), used for
 // debugging information.
 //
-// incpaths is the orderd set of search paths to use when resolving include
+// incpaths is the ordered set of search paths to use when resolving include
 // directives.
 //
 // if checksrc is true, then the parser will verify that stage src values
@@ -176,7 +176,7 @@ func (parser *Parser) getIntern() *stringIntern {
 // srcpath is the path to the source code file (if applicable), used for
 // debugging information.
 //
-// incpaths is the orderd set of search paths to use when resolving include
+// incpaths is the ordered set of search paths to use when resolving include
 // directives.
 //
 // if checksrc is true, then the parser will verify that stage src values

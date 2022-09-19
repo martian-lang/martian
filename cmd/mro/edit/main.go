@@ -337,7 +337,7 @@ func editFile(data []byte, filename string, mroPaths []string,
 	}
 	count, err := edit.Apply(ast)
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "Error appying edit to %s: %s\n",
+		fmt.Fprintf(os.Stderr, "Error applying edit to %s: %s\n",
 			filename, err.Error())
 	}
 	if count == 0 {

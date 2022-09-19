@@ -39,7 +39,7 @@ type JobManager interface {
 	// Returns the amount of time to wait, after a job is found to be unknown
 	// to the job manager, before declaring the job dead.  This is to protect
 	// against races between NFS caching in the directories Martian watches and
-	// whatever the queue manager uses to syncronize state.
+	// whatever the queue manager uses to synchronize state.
 	queueCheckGrace() time.Duration
 
 	// Update resource availability.
@@ -219,7 +219,7 @@ To set up a job manager template, please follow instructions in %s.`,
 		util.LogInfo("jobmngr", "Job submit command = %s",
 			jobCmd)
 	} else {
-		util.LogInfo("jobmngr", "Job submit comand = %s %s",
+		util.LogInfo("jobmngr", "Job submit command = %s %s",
 			jobCmd, strings.Join(jobModeJson.Args, " "))
 	}
 

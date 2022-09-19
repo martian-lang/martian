@@ -9,7 +9,7 @@ import (
 // JsonWriter describes types that can marshal json directly to a write buffer.
 // In many cases when building up compound objects like maps or arrays, this is
 // much more efficient, both in terms of performance and memory consumption,
-// than just implementing MarshalJSON(), since it doesn't make unnessessary
+// than just implementing MarshalJSON(), since it doesn't make unnecessary
 // copies.
 type JsonWriter interface {
 	// EncodeJSON writes a json representation of the object to a buffer.

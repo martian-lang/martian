@@ -626,7 +626,7 @@ func fmtJson(w *bytes.Buffer, value json.RawMessage) error {
 	return json.Compact(w, value)
 }
 
-// Decend one level down into arrays which might contain file names, so we don't
+// Descend one level down into arrays which might contain file names, so we don't
 // make super-long output lines.
 func fmtArray(w *bytes.Buffer, arr []json.RawMessage, indent []byte) error {
 	if _, err := w.WriteString("[\n"); err != nil {

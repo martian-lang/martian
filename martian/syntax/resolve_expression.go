@@ -387,7 +387,7 @@ func (s *MapExp) filter(t Type, lookup *TypeLookup) (Exp, error) {
 			refs := s.FindRefs()
 			return s, &IncompatibleTypeError{
 				Message: fmt.Sprintf(
-					"%s cannot be assinged to untyped map: "+
+					"%s cannot be assigned to untyped map: "+
 						"contains reference to %s",
 					s.Kind,
 					refs[0].GoString()),

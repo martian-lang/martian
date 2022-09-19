@@ -726,7 +726,7 @@ func (self *Fork) cleanSplitTemp(partial *PartialVdrKillReport) *PartialVdrKillR
 		}
 		if cleanupEvent.DeltaBytes != 0 {
 			partial.Paths = append(partial.Paths, tempPaths...)
-			// Critical section to avoid loosing accounting info.
+			// Critical section to avoid losing accounting info.
 			util.EnterCriticalSection()
 			defer util.ExitCriticalSection()
 		}
@@ -823,7 +823,7 @@ func (self *Fork) cleanChunkTemp(partial *PartialVdrKillReport) *PartialVdrKillR
 	}
 	if cleanupEvent.DeltaBytes != 0 {
 		partial.Paths = append(partial.Paths, temps...)
-		// Critical section to avoid loosing accounting info.
+		// Critical section to avoid losing accounting info.
 		util.EnterCriticalSection()
 		defer util.ExitCriticalSection()
 	}
@@ -911,7 +911,7 @@ func (self *Fork) cleanJoinTemp(partial *PartialVdrKillReport) *PartialVdrKillRe
 		}
 		if cleanupEvent.DeltaBytes != 0 {
 			partial.Paths = append(partial.Paths, tempPaths...)
-			// Critical section to avoid loosing accounting info.
+			// Critical section to avoid losing accounting info.
 			util.EnterCriticalSection()
 			defer util.ExitCriticalSection()
 		}
@@ -981,7 +981,7 @@ func (self *Fork) vdrKill(partialKill *PartialVdrKillReport) *VDRKillReport {
 		}
 		killReport.Paths = append(killReport.Paths, p)
 	}
-	// Critical section to avoid loosing accounting info.
+	// Critical section to avoid losing accounting info.
 	util.EnterCriticalSection()
 	defer util.ExitCriticalSection()
 	// Actually delete the paths.
