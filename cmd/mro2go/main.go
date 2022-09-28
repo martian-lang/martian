@@ -322,6 +322,12 @@ func processFile(dest *os.File, mrofile, packageName string, stageNames []string
 	seenStructs map[string]struct{}) {
 	if dest == nil {
 		thisOut := path.Base(strings.TrimSuffix(mrofile, ".mro")) + ".go"
+		if thisOut[0] == '_' {
+			fmt.Fprintf(os.Stderr,
+				"Warning: destination file %q starts with _, which means it will "+
+					"be ignored by some Go tooling.\n",
+				thisOut)
+		}
 		if t, err := os.Create(thisOut); err != nil {
 			fmt.Fprintf(os.Stderr,
 				"Error opening destination file %s: %v\n",
