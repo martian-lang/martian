@@ -181,11 +181,12 @@ longtests: test/split_test/pipeline_test \
            test/fork_test/pass/pipeline_test \
            test/fork_test/retry/pipeline_test \
            test/fork_test/ar_pass/pipeline_test \
+           test/fork_test/ar_remote_pass/pipeline_test \
            test/fork_test/fail/pipeline_fail \
            test/fork_test/ar_fail/pipeline_fail \
            test/map_test/pipeline_test \
-		   test/disable_test/pipeline_test \
-		   test/retry_test/pipeline_test
+           test/disable_test/pipeline_test \
+           test/retry_test/pipeline_test
 
 clean:
 	rm -rf $(GOBIN)
