@@ -423,14 +423,17 @@ func (self *Pipestance) RestartRunningNodes(jobMode string, outerCtx context.Con
 				if err := node.reset(); err != nil {
 					errs = append(errs, err)
 				}
-			} else if err := node.reattachJobs(); err != nil {
-				errs = append(errs, err)
 			}
-		} else if node.state == Failed &&
-			jobMode != localMode &&
+		}
+		if jobMode != localMode &&
 			!node.local &&
-			!node.top.rt.Config.FullStageReset {
-			util.PrintInfo("runtime", "Found failed node in non-local mode: %s", node.GetFQName())
+			(node.state == Running ||
+				node.state == Failed && !node.top.rt.Config.FullStageReset) {
+			if node.top.rt.Config.Debug {
+				util.PrintInfo("runtime",
+					"Found failed cluster-mode node: %s",
+					node.GetFQName())
+			}
 			if err := node.reattachJobs(); err != nil {
 				errs = append(errs, err)
 			}
