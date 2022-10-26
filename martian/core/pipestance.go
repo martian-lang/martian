@@ -127,11 +127,12 @@ func (self *Stagestance) Callable() syntax.Callable {
 type Pipestance struct {
 	node     *Node
 	metadata *Metadata
-	uuid     string
+
+	lastQueueCheck time.Time
+	uuid           string
 
 	// Cache for self.node.allNodes()
 	allNodesCache    []*Node
-	lastQueueCheck   time.Time
 	queueCheckLock   sync.Mutex
 	queueCheckActive bool
 }

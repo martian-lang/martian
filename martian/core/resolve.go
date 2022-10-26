@@ -882,8 +882,8 @@ func (f *Fork) resolveRef(binding *syntax.RefExp, t syntax.Type,
 }
 
 type elementError struct {
-	element string
 	inner   error
+	element string
 }
 
 func (err *elementError) Error() string {
@@ -905,8 +905,8 @@ func (err *elementError) Unwrap() error {
 }
 
 type forkResolutionError struct {
-	Msg string
 	Err error
+	Msg string
 }
 
 func (err *forkResolutionError) Error() string {
