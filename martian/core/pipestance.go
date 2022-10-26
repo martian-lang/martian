@@ -384,7 +384,7 @@ func (self *Pipestance) KillWithMessage(message string) {
 	}
 }
 
-// RestoreForks attempts to compute dyamic forks for nodes in a pipestance.
+// RestoreForks attempts to compute dynamic forks for nodes in a pipestance.
 //
 // Normally, dynamic forks are computed when a stage or pipeline transitions to
 // the running state.  However, if the pipestance was restarted then some of
