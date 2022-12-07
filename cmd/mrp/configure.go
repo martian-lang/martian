@@ -424,7 +424,7 @@ Options:
 		if value := opts["--retry-wait"]; value != nil {
 			if value, err := strconv.Atoi(value.(string)); err == nil {
 				c.retryWait = time.Duration(value) * time.Second
-				util.LogInfo("options", "--retry-wait=%d", c.retries)
+				util.LogInfo("options", "--retry-wait=%d", c.retryWait)
 			} else {
 				util.PrintError(err, "options",
 					"Could not parse --retry-wait value \"%s\"", opts["--retry-wait"].(string))
