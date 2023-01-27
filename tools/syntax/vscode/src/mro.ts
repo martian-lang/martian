@@ -59,6 +59,22 @@ async function getDefaultMroExecutablePath(
     return mroExecutable;
 }
 
+function processMroPath(
+    mropath: string,
+    workspacePath: vscode.Uri | undefined): string {
+    mropath = mropath.replace(
+        "${workspaceFolder}",
+        workspacePath?.fsPath ?? "."
+    );
+    var paths = mropath.split(":");
+    for (var i in paths) {
+        if (!path.isAbsolute(paths[i]) && workspacePath) {
+            paths[i] = vscode.Uri.joinPath(workspacePath, paths[i]).fsPath;
+        }
+    }
+    return paths.join(":");
+}
+
 function getMroEnv(
     mropath: string,
     workspacePath: vscode.Uri | undefined): {
@@ -68,13 +84,7 @@ function getMroEnv(
         return process.env;
     }
     const env = { ...process.env };
-    mropath = mropath.replace(
-        "${workspaceFolder}",
-        workspacePath?.fsPath ?? "."
-    );
-    if (!path.isAbsolute(mropath) && workspacePath) {
-        mropath = vscode.Uri.joinPath(workspacePath, mropath).fsPath;
-    }
+    mropath = processMroPath(mropath, workspacePath);
     env.MROPATH = mropath;
     return env;
 }

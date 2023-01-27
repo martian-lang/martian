@@ -2,7 +2,7 @@
     "name": "martian-lang",
     "displayName": "Martian MRO language",
     "description": "Supports syntax highlighting and indenting for Martian (https://martian-lang.org) .mro files.",
-    "version": "0.0.4",
+    "version": "0.0.5",
     "publisher": "MartianLang",
     "license": "MIT",
     "engines": {
