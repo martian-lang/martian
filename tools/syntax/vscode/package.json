@@ -6,7 +6,7 @@
     "publisher": "MartianLang",
     "license": "MIT",
     "engines": {
-        "vscode": "^1.36.0"
+        "vscode": "^1.74.0"
     },
     "repository": {
         "type": "git",
@@ -75,8 +75,8 @@
         "ui"
     ],
     "scripts": {
-        "check-lint": "npx eslint -f stylish . --ext ts",
-        "lint": "npx eslint -f stylish . --ext ts",
+        "check-lint": "eslint -f stylish . --ext ts",
+        "lint": "eslint -f stylish . --ext ts",
         "compile": "make",
         "watch": "tsc -watch -p ./",
         "vscode:prepublish": "make"
