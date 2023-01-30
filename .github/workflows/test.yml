@@ -68,7 +68,6 @@ jobs:
         key: bazel-build-cache-${{steps.setup_go.outputs.go-version}}-${{hashFiles('deps.bzl', 'WORKSPACE')}}
         restore-keys: |
           bazel-build-cache-${{steps.setup_go.outputs.go-version}}
-          bazel-build-cache-
     - name: Cache bazel external repositories
       uses: actions/cache@v3
       with:

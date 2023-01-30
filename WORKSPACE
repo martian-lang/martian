@@ -2,7 +2,7 @@ workspace(name = "martian")
 
 load("@bazel_tools//tools/build_defs/repo:http.bzl", "http_archive")
 
-RULES_GO_VERSION = "v0.35.0"
+RULES_GO_VERSION = "v0.37.0"
 
 _RULES_GO_ARCHIVE = "github.com/bazelbuild/rules_go/releases/download/{}/rules_go-{}.zip".format(
     RULES_GO_VERSION,
@@ -11,7 +11,7 @@ _RULES_GO_ARCHIVE = "github.com/bazelbuild/rules_go/releases/download/{}/rules_g
 
 http_archive(
     name = "io_bazel_rules_go",
-    sha256 = "099a9fb96a376ccbbb7d291ed4ecbdfd42f6bc822ab77ae6f1b5cb9e914e94fa",
+    sha256 = "56d8c5a5c91e1af73eca71a6fab2ced959b67c86d12ba37feedb0a2dfea441a6",
     urls = [
         "https://mirror.bazel.build/" + _RULES_GO_ARCHIVE,
         "https://" + _RULES_GO_ARCHIVE,
@@ -57,9 +57,9 @@ martian_npm_repo()
 
 http_archive(
     name = "io_bazel_stardoc",
-    sha256 = "aa814dae0ac400bbab2e8881f9915c6f47c49664bf087c409a15f90438d2c23e",
+    sha256 = "05fb57bb4ad68a360470420a3b6f5317e4f722839abc5b17ec4ef8ed465aaa47",
     urls = [
-        "https://mirror.bazel.build/github.com/bazelbuild/stardoc/releases/download/0.5.1/stardoc-0.5.1.tar.gz",
-        "https://github.com/bazelbuild/stardoc/releases/download/0.5.1/stardoc-0.5.1.tar.gz",
+        "https://mirror.bazel.build/github.com/bazelbuild/stardoc/releases/download/0.5.2/stardoc-0.5.2.tar.gz",
+        "https://github.com/bazelbuild/stardoc/releases/download/0.5.2/stardoc-0.5.2.tar.gz",
     ],
 )
