@@ -28,8 +28,15 @@ export async function mroFormat(
         workspacePath, fileContent, args, mropath, token)).stdout;
 }
 
+function substituteWorkspace(filePath: string, workspacePath?: vscode.Uri) {
+    return filePath.replace(
+        "${workspaceFolder}",
+        workspacePath?.fsPath ?? "."
+    )
+}
+
 async function getDefaultMroExecutablePath(
-    workspacePath: vscode.Uri | undefined): Promise<string> {
+    workspacePath?: vscode.Uri): Promise<string> {
     // Try to retrieve the executable from VS Code's settings. If it's not set,
     // just use "mro" as the default and get it from the system PATH.
     const mroConfig = vscode.workspace.getConfiguration("martian-lang");
@@ -37,10 +44,7 @@ async function getDefaultMroExecutablePath(
     if (!mroExecutable || mroExecutable.length === 0) {
         return "mro";
     }
-    mroExecutable = mroExecutable.replace(
-        "${workspaceFolder}",
-        workspacePath?.fsPath ?? "."
-    )
+    mroExecutable = substituteWorkspace(mroExecutable, workspacePath)
     if (!path.isAbsolute(mroExecutable)) {
         try {
             await fs.promises.access(mroExecutable, fs.constants.R_OK);
@@ -61,21 +65,19 @@ async function getDefaultMroExecutablePath(
 
 function processMroPath(
     mropath: string,
-    workspacePath: vscode.Uri | undefined): string {
-    mropath = mropath.replace(
-        "${workspaceFolder}",
-        workspacePath?.fsPath ?? "."
-    );
+    workspacePath?: vscode.Uri): string {
+    mropath = substituteWorkspace(mropath, workspacePath);
     let paths = mropath.split(":");
     if (workspacePath) {
-        paths = paths.map(p => vscode.Uri.joinPath(workspacePath, p).fsPath);
+        paths = paths.map(p => path.isAbsolute(p) ?
+            p : vscode.Uri.joinPath(workspacePath, p).fsPath);
     }
     return paths.join(":");
 }
 
 function getMroEnv(
     mropath: string,
-    workspacePath: vscode.Uri | undefined): {
+    workspacePath?: vscode.Uri): {
         [key: string]: string | undefined
     } {
     if (mropath === "") {
