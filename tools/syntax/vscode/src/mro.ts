@@ -32,6 +32,9 @@ function substituteWorkspace(filePath: string, workspacePath?: vscode.Uri) {
     return filePath.replace(
         "${workspaceFolder}",
         workspacePath?.fsPath ?? "."
+    ).replace(
+        "${workspaceFolderBasename}",
+        path.basename(workspacePath?.fsPath ?? ".")
     )
 }
 
