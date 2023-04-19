@@ -39,8 +39,6 @@ func FsTypeString(fsType int64) string {
 		return "affs"
 	case unix.AFS_FS_MAGIC, unix.AFS_SUPER_MAGIC:
 		return "afs"
-	case unix.BALLOON_KVM_MAGIC:
-		return "ballon"
 	case unix.BDEVFS_MAGIC:
 		return "bdev"
 	case 0x42465331:
@@ -55,13 +53,13 @@ func FsTypeString(fsType int64) string {
 		return "bpf"
 	case unix.BTRFS_SUPER_MAGIC, unix.BTRFS_TEST_MAGIC:
 		return "btrfs"
-	case 0x00C36400:
+	case unix.CEPH_SUPER_MAGIC:
 		return "ceph"
 	case unix.CGROUP_SUPER_MAGIC:
 		return "cgroup"
 	case unix.CGROUP2_SUPER_MAGIC:
 		return "cgroup2"
-	case 0xff534d42:
+	case unix.CIFS_SUPER_MAGIC:
 		return "cifs"
 	case unix.CODA_SUPER_MAGIC:
 		return "coda"
@@ -234,8 +232,6 @@ func FsTypeString(fsType int64) string {
 		return "xiafs"
 	case 0x2fc12fc1:
 		return "zfs"
-	case unix.ZSMALLOC_MAGIC:
-		return "zsmalloc"
 	default:
 		return fmt.Sprintf("unknown (%#x)", fsType)
 	}
