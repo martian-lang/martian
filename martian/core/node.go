@@ -1220,6 +1220,7 @@ func (self *Node) runJob(shellName, fqname, stageType string,
 		Monitor:       monitor,
 		Invocation:    self.top.invocation,
 		Version:       version,
+		SkipPreflight: self.top.rt.Config.SkipPreflight,
 	}
 	if jobInfo.ProfileConfig != nil && jobInfo.ProfileConfig.Adapter != "" {
 		jobInfo.ProfileMode = jobInfo.ProfileConfig.Adapter

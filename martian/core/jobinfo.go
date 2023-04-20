@@ -32,6 +32,7 @@ type JobInfo struct {
 	Threads       float64           `json:"threads,omitempty"`
 	MemGB         float64           `json:"memGB,omitempty"`
 	VMemGB        float64           `json:"vmemGB,omitempty"`
+	SkipPreflight bool              `json:"skip_preflight,omitempty"`
 }
 
 type PythonInfo struct {
