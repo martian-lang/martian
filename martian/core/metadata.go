@@ -222,18 +222,29 @@ func newMetadataWithJournalPath(fqname, journalName, p, journalPath string) *Met
 	return self
 }
 
-func (self *Metadata) glob() ([]string, error) {
+func (self *Metadata) glob(exclude ...MetadataFileName) ([]string, error) {
 	paths, err := util.Readdirnames(self.path)
 	if err != nil {
 		return nil, err
 	}
 	matches := make([]string, 0, len(paths))
 	for _, p := range paths {
-		if strings.HasPrefix(p, MetadataFilePrefix) {
-			matches = append(matches, path.Join(self.path, p))
+		if suffix, found := strings.CutPrefix(p, MetadataFilePrefix); found {
+			if !isExcludedMetadataName(suffix, exclude...) {
+				matches = append(matches, path.Join(self.path, p))
+			}
 		}
 	}
 	return matches, nil
+}
+
+func isExcludedMetadataName(suffix string, exclude ...MetadataFileName) bool {
+	for _, e := range exclude {
+		if string(e) == suffix {
+			return true
+		}
+	}
+	return false
 }
 
 // Gets the locations of the symlinks pointing to uniquified directories.
