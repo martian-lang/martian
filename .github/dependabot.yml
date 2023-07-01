@@ -12,6 +12,10 @@ updates:
     interval: weekly
   open-pull-requests-limit: 5
   versioning-strategy: increase-if-necessary
+  groups:
+    typescript-eslint:
+      patterns:
+        - "@typescript-eslint/*"
 - package-ecosystem: gomod
   directory: "/"
   schedule:
