@@ -7,6 +7,7 @@ import (
 	"context"
 	"os"
 	"os/exec"
+	"regexp"
 	"strings"
 	"testing"
 	"time"
@@ -18,6 +19,7 @@ func Test_reportChildren(t *testing.T) {
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
 	defer cancel()
 	cmd := exec.CommandContext(ctx, "sleep", "5")
+	cmd.Stderr = os.Stderr
 	if err := cmd.Start(); err != nil {
 		t.Fatal(err)
 	}
@@ -30,8 +32,8 @@ func Test_reportChildren(t *testing.T) {
 		t.Error("Expected to find child process.")
 	}
 	output := string(bytes.TrimSpace(buf.Bytes()))
-	if !strings.HasSuffix(output, "(sleep 5) is still running (state S).") &&
-		!strings.HasSuffix(output, "(sleep 5) is still running (state R).") {
+	if !regexp.MustCompile(
+		`\(sleep(?: 5)?\) is still running \(state [SR]\).$`).MatchString(output) {
 		t.Errorf("expected (sleep 5) is still running (state S or R), got\n%s",
 			output)
 	} else {
