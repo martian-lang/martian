@@ -16,6 +16,7 @@ updates:
     typescript-eslint:
       patterns:
         - "@typescript-eslint/*"
+        - "@types/*"
 - package-ecosystem: gomod
   directory: "/"
   schedule:
