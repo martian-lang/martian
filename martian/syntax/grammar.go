@@ -166,7 +166,7 @@ const mmEofCode = 1
 const mmErrCode = 2
 const mmInitialStackSize = 16
 
-var mmExca = [...]int{
+var mmExca = [...]int16{
 	-1, 1,
 	1, -1,
 	-2, 0,
@@ -188,7 +188,7 @@ const mmPrivate = 57344
 
 const mmLast = 783
 
-var mmAct = [...]int{
+var mmAct = [...]int16{
 	66, 287, 161, 81, 65, 128, 245, 169, 4, 230,
 	212, 32, 34, 188, 131, 132, 24, 22, 41, 15,
 	135, 82, 84, 63, 267, 115, 74, 293, 141, 75,
@@ -270,7 +270,7 @@ var mmAct = [...]int{
 	0, 45, 43,
 }
 
-var mmPact = [...]int{
+var mmPact = [...]int16{
 	639, -1000, 125, 99, 54, -1000, 34, -1000, 181, 86,
 	-1000, -1000, -1000, -1000, -1000, -1000, -1000, 705, -1000, -1000,
 	-1000, -1000, -1000, 248, -1000, 599, -1000, -1000, 705, 705,
@@ -304,7 +304,7 @@ var mmPact = [...]int{
 	-1000,
 }
 
-var mmPgo = [...]int{
+var mmPgo = [...]int16{
 	0, 364, 0, 28, 20, 363, 13, 362, 10, 360,
 	7, 134, 359, 358, 350, 276, 332, 331, 14, 330,
 	329, 328, 6, 5, 2, 327, 325, 324, 15, 23,
@@ -314,7 +314,7 @@ var mmPgo = [...]int{
 	275,
 }
 
-var mmR1 = [...]int{
+var mmR1 = [...]int8{
 	0, 60, 60, 60, 60, 60, 60, 60, 1, 1,
 	15, 15, 11, 11, 11, 11, 13, 13, 12, 14,
 	57, 57, 58, 58, 58, 58, 58, 58, 58, 59,
@@ -334,7 +334,7 @@ var mmR1 = [...]int{
 	2, 2, 2, 2, 2, 2,
 }
 
-var mmR2 = [...]int{
+var mmR2 = [...]int8{
 	0, 2, 3, 2, 1, 2, 1, 1, 3, 2,
 	2, 1, 3, 1, 1, 1, 11, 10, 10, 5,
 	0, 4, 0, 5, 5, 5, 5, 5, 5, 1,
@@ -354,7 +354,7 @@ var mmR2 = [...]int{
 	1, 1, 1, 1, 1, 1,
 }
 
-var mmChk = [...]int{
+var mmChk = [...]int16{
 	-1000, -60, -1, -15, -44, -31, 21, -11, -45, 31,
 	52, 53, 51, -33, -35, -32, 60, 30, -12, -13,
 	-14, 24, -34, 13, -36, 17, 58, 59, 22, 23,
@@ -388,7 +388,7 @@ var mmChk = [...]int{
 	9,
 }
 
-var mmDef = [...]int{
+var mmDef = [...]int16{
 	0, -2, 0, 4, 6, 7, 0, 11, 0, 0,
 	128, 129, 130, 131, 132, 133, 134, 0, 13, 14,
 	15, 85, 136, 0, 139, 0, 142, 143, 0, 0,
@@ -422,7 +422,7 @@ var mmDef = [...]int{
 	28,
 }
 
-var mmTok1 = [...]int{
+var mmTok1 = [...]int8{
 	1, 3, 3, 3, 3, 3, 3, 3, 3, 3,
 	3, 3, 3, 3, 3, 3, 3, 3, 3, 3,
 	3, 3, 3, 3, 3, 3, 3, 3, 3, 3,
@@ -438,7 +438,7 @@ var mmTok1 = [...]int{
 	3, 3, 3, 17, 3, 18,
 }
 
-var mmTok2 = [...]int{
+var mmTok2 = [...]int8{
 	2, 3, 4, 5, 6, 21, 22, 23, 24, 25,
 	26, 27, 28, 29, 30, 31, 32, 33, 34, 35,
 	36, 37, 38, 39, 40, 41, 42, 43, 44, 45,
@@ -446,7 +446,7 @@ var mmTok2 = [...]int{
 	56, 57, 58, 59, 60, 61,
 }
 
-var mmTok3 = [...]int{
+var mmTok3 = [...]int8{
 	0,
 }
 
@@ -526,9 +526,9 @@ func mmErrorMessage(state, lookAhead int) string {
 	expected := make([]int, 0, 4)
 
 	// Look for shiftable tokens.
-	base := mmPact[state]
+	base := int(mmPact[state])
 	for tok := TOKSTART; tok-1 < len(mmToknames); tok++ {
-		if n := base + tok; n >= 0 && n < mmLast && mmChk[mmAct[n]] == tok {
+		if n := base + tok; n >= 0 && n < mmLast && int(mmChk[int(mmAct[n])]) == tok {
 			if len(expected) == cap(expected) {
 				return res
 			}
@@ -538,13 +538,13 @@ func mmErrorMessage(state, lookAhead int) string {
 
 	if mmDef[state] == -2 {
 		i := 0
-		for mmExca[i] != -1 || mmExca[i+1] != state {
+		for mmExca[i] != -1 || int(mmExca[i+1]) != state {
 			i += 2
 		}
 
 		// Look for tokens that we accept or reduce.
 		for i += 2; mmExca[i] >= 0; i += 2 {
-			tok := mmExca[i]
+			tok := int(mmExca[i])
 			if tok < TOKSTART || mmExca[i+1] == 0 {
 				continue
 			}
@@ -575,30 +575,30 @@ func mmlex1(lex mmLexer, lval *mmSymType) (char, token int) {
 	token = 0
 	char = lex.Lex(lval)
 	if char <= 0 {
-		token = mmTok1[0]
+		token = int(mmTok1[0])
 		goto out
 	}
 	if char < len(mmTok1) {
-		token = mmTok1[char]
+		token = int(mmTok1[char])
 		goto out
 	}
 	if char >= mmPrivate {
 		if char < mmPrivate+len(mmTok2) {
-			token = mmTok2[char-mmPrivate]
+			token = int(mmTok2[char-mmPrivate])
 			goto out
 		}
 	}
 	for i := 0; i < len(mmTok3); i += 2 {
-		token = mmTok3[i+0]
+		token = int(mmTok3[i+0])
 		if token == char {
-			token = mmTok3[i+1]
+			token = int(mmTok3[i+1])
 			goto out
 		}
 	}
 
 out:
 	if token == 0 {
-		token = mmTok2[1] /* unknown char */
+		token = int(mmTok2[1]) /* unknown char */
 	}
 	if mmDebug >= 3 {
 		__yyfmt__.Printf("lex %s(%d)\n", mmTokname(token), uint(char))
@@ -653,7 +653,7 @@ mmstack:
 	mmS[mmp].yys = mmstate
 
 mmnewstate:
-	mmn = mmPact[mmstate]
+	mmn = int(mmPact[mmstate])
 	if mmn <= mmFlag {
 		goto mmdefault /* simple state */
 	}
@@ -664,8 +664,8 @@ mmnewstate:
 	if mmn < 0 || mmn >= mmLast {
 		goto mmdefault
 	}
-	mmn = mmAct[mmn]
-	if mmChk[mmn] == mmtoken { /* valid shift */
+	mmn = int(mmAct[mmn])
+	if int(mmChk[mmn]) == mmtoken { /* valid shift */
 		mmrcvr.char = -1
 		mmtoken = -1
 		mmVAL = mmrcvr.lval
@@ -678,7 +678,7 @@ mmnewstate:
 
 mmdefault:
 	/* default state action */
-	mmn = mmDef[mmstate]
+	mmn = int(mmDef[mmstate])
 	if mmn == -2 {
 		if mmrcvr.char < 0 {
 			mmrcvr.char, mmtoken = mmlex1(mmlex, &mmrcvr.lval)
@@ -687,18 +687,18 @@ mmdefault:
 		/* look through exception table */
 		xi := 0
 		for {
-			if mmExca[xi+0] == -1 && mmExca[xi+1] == mmstate {
+			if mmExca[xi+0] == -1 && int(mmExca[xi+1]) == mmstate {
 				break
 			}
 			xi += 2
 		}
 		for xi += 2; ; xi += 2 {
-			mmn = mmExca[xi+0]
+			mmn = int(mmExca[xi+0])
 			if mmn < 0 || mmn == mmtoken {
 				break
 			}
 		}
-		mmn = mmExca[xi+1]
+		mmn = int(mmExca[xi+1])
 		if mmn < 0 {
 			goto ret0
 		}
@@ -720,10 +720,10 @@ mmdefault:
 
 			/* find a state where "error" is a legal shift action */
 			for mmp >= 0 {
-				mmn = mmPact[mmS[mmp].yys] + mmErrCode
+				mmn = int(mmPact[mmS[mmp].yys]) + mmErrCode
 				if mmn >= 0 && mmn < mmLast {
-					mmstate = mmAct[mmn] /* simulate a shift of "error" */
-					if mmChk[mmstate] == mmErrCode {
+					mmstate = int(mmAct[mmn]) /* simulate a shift of "error" */
+					if int(mmChk[mmstate]) == mmErrCode {
 						goto mmstack
 					}
 				}
@@ -759,7 +759,7 @@ mmdefault:
 	mmpt := mmp
 	_ = mmpt // guard against "declared and not used"
 
-	mmp -= mmR2[mmn]
+	mmp -= int(mmR2[mmn])
 	// mmp is now the index of $0. Perform the default action. Iff the
 	// reduced production is ε, $1 is possibly out of range.
 	if mmp+1 >= len(mmS) {
@@ -770,16 +770,16 @@ mmdefault:
 	mmVAL = mmS[mmp+1]
 
 	/* consult goto table to find next state */
-	mmn = mmR1[mmn]
-	mmg := mmPgo[mmn]
+	mmn = int(mmR1[mmn])
+	mmg := int(mmPgo[mmn])
 	mmj := mmg + mmS[mmp].yys + 1
 
 	if mmj >= mmLast {
-		mmstate = mmAct[mmg]
+		mmstate = int(mmAct[mmg])
 	} else {
-		mmstate = mmAct[mmj]
-		if mmChk[mmstate] != -mmn {
-			mmstate = mmAct[mmg]
+		mmstate = int(mmAct[mmj])
+		if int(mmChk[mmstate]) != -mmn {
+			mmstate = int(mmAct[mmg])
 		}
 	}
 	// dummy call; replaced with literal code
