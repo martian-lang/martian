@@ -103,12 +103,15 @@ func TestPipestanceRun(t *testing.T) {
 			ThreadEnvs:    []string{"GOMAXPROCS"},
 		},
 	}
-	rt.LocalJobManager = NewLocalJobManager(4,
+	rt.LocalJobManager, err = NewLocalJobManager(4,
 		4, 16,
 		true,
 		false,
 		false,
 		rt.jobConfig)
+	if err != nil {
+		t.Fatal(err)
+	}
 	rt.JobManager = rt.LocalJobManager
 	psdir, err := os.MkdirTemp("", "TestPipestanceRun")
 	if err != nil {

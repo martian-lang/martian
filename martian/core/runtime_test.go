@@ -188,7 +188,10 @@ func invokeTest(src string, t *testing.T) {
 		}
 		opts := DefaultRuntimeOptions()
 		util.SetupSignalHandlers()
-		rt := opts.NewRuntime()
+		rt, err := opts.NewRuntime()
+		if err != nil {
+			t.Fatal(err)
+		}
 		t.Log("Runtime instantiated.")
 		if ps, err := rt.InvokePipeline(src,
 			path.Join(d, "src.mro"), "test",

@@ -259,25 +259,35 @@ type Runtime struct {
 	mrjob           string
 }
 
-func (c *RuntimeOptions) NewRuntime() *Runtime {
+func (c *RuntimeOptions) NewRuntime() (*Runtime, error) {
 	self := &Runtime{
 		Config:       c,
 		adaptersPath: util.RelPath(path.Join("..", "adapters")),
 		mrjob:        util.RelPath("mrjob"),
 	}
 
-	self.jobConfig = getJobConfig(c.ProfileMode)
-	self.LocalJobManager = NewLocalJobManager(c.LocalCores,
+	var err error
+	self.jobConfig, err = getJobConfig(c.ProfileMode)
+	if err != nil {
+		return self, err
+	}
+	self.LocalJobManager, err = NewLocalJobManager(c.LocalCores,
 		c.LocalMem, c.LocalVMem,
 		c.Debug,
 		c.LimitLoadavg,
 		c.JobMode != localMode,
 		self.jobConfig)
+	if err != nil {
+		return self, err
+	}
 	if c.JobMode == localMode {
 		self.JobManager = self.LocalJobManager
 	} else {
-		self.JobManager = NewRemoteJobManager(c.JobMode, c.MemPerCore, c.MaxJobs,
+		self.JobManager, err = NewRemoteJobManager(c.JobMode, c.MemPerCore, c.MaxJobs,
 			c.JobFreqMillis, c.ResourceSpecial, self.jobConfig, c.Debug)
+		if err != nil {
+			return self, err
+		}
 	}
 	VerifyVDRMode(c.VdrMode)
 
@@ -287,7 +297,7 @@ func (c *RuntimeOptions) NewRuntime() *Runtime {
 		self.overrides = c.Overrides
 	}
 
-	return self
+	return self, err
 }
 
 // Instantiate a pipestance object given a psid, MRO source, and a
@@ -489,7 +499,7 @@ func (self *Runtime) reattachToPipestance(psid string, pipestancePath string,
 		psid, pipestancePath, mroPaths,
 		mroVersion, envs, checkSrc, readOnly, ctx)
 	if err != nil {
-		return nil, err
+		return pipestance, err
 	}
 	if checkSrc && srcType != MroSourceFile {
 		// If the MroSourceFile was used then the earlier check for exact
@@ -505,7 +515,7 @@ func (self *Runtime) reattachToPipestance(psid string, pipestancePath string,
 			if !readOnly {
 				pipestance.Unlock()
 			}
-			return nil, &PipestanceInvocationError{psid, invocationPath}
+			return pipestance, &PipestanceInvocationError{psid, invocationPath}
 		}
 	}
 
@@ -513,7 +523,7 @@ func (self *Runtime) reattachToPipestance(psid string, pipestancePath string,
 	if !readOnly {
 		if err := pipestance.VerifyJobMode(); err != nil {
 			pipestance.Unlock()
-			return nil, err
+			return pipestance, err
 		}
 	}
 
@@ -524,7 +534,7 @@ func (self *Runtime) reattachToPipestance(psid string, pipestancePath string,
 			if !readOnly {
 				pipestance.Unlock()
 			}
-			return nil, err
+			return pipestance, err
 		}
 		os.Remove(metadataPath)
 	}
@@ -539,7 +549,7 @@ func (self *Runtime) reattachToPipestance(psid string, pipestancePath string,
 		self.JobManager.resetMaxJobs()
 		if err := pipestance.RestartRunningNodes(self.Config.JobMode, ctx); err != nil {
 			pipestance.Unlock()
-			return nil, err
+			return pipestance, err
 		}
 	}
 

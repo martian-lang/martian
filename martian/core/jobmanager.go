@@ -7,6 +7,7 @@ package core
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"os"
 	"os/exec"
@@ -118,7 +119,7 @@ type jobManagerConfig struct {
 	threadingEnabled bool
 }
 
-func getJobConfig(profileMode ProfileMode) *JobManagerJson {
+func getJobConfig(profileMode ProfileMode) (*JobManagerJson, error) {
 	jobPath := util.RelPath(path.Join("..", "jobmanagers"))
 
 	// Check for existence of job manager JSON file
@@ -126,64 +127,58 @@ func getJobConfig(profileMode ProfileMode) *JobManagerJson {
 	b, err := os.ReadFile(jobJsonFile)
 	if err != nil {
 		if os.IsNotExist(err) {
-			util.PrintInfo("jobmngr", "Job manager config file %s does not exist.",
+			return nil, fmt.Errorf("Job manager config file %s does not exist.",
 				jobJsonFile)
 		} else {
-			util.PrintError(err, "jobmngr",
-				"Error reading job manager config file %s.",
-				jobJsonFile)
+			return nil, fmt.Errorf(
+				"Error reading job manager config file %s.\n%w",
+				jobJsonFile, err)
 		}
-		os.Exit(1)
 	}
 	util.LogInfo("jobmngr", "Job config = %s", jobJsonFile)
 
 	// Parse job manager JSON file
 	var jobJson *JobManagerJson
 	if err := json.Unmarshal(b, &jobJson); err != nil {
-		util.PrintInfo("jobmngr",
-			"Job manager config file %s does not contain valid JSON.",
-			jobJsonFile)
-		os.Exit(1)
+		return nil, fmt.Errorf(
+			"Job manager config file %s does not contain valid JSON: %w",
+			jobJsonFile, err)
 	}
 
 	// Validate settings fields
 	jobSettings := jobJson.JobSettings
 	if jobSettings == nil {
-		util.PrintInfo("jobmngr",
+		return nil, fmt.Errorf(
 			"Job manager config file %s should contain 'settings' field.",
 			jobJsonFile)
-		os.Exit(1)
 	}
 	if jobSettings.ThreadsPerJob <= 0 {
-		util.PrintInfo("jobmngr",
-			"Job manager config %s contains invalid default threads per job.",
+		return nil, fmt.Errorf(
+			"Job manager config file %s contains invalid default threads per job.",
 			jobJsonFile)
-		os.Exit(1)
 	}
 	if jobSettings.MemGBPerJob <= 0 {
-		util.PrintInfo("jobmngr",
+		return nil, fmt.Errorf(
 			"Job manager config %s contains invalid default memory (GB) per job.",
 			jobJsonFile)
-		os.Exit(1)
 	}
 
 	if profileMode != "" && profileMode != DisableProfile {
 		if _, ok := jobJson.ProfileMode[profileMode]; !ok {
-			util.PrintInfo("jobmngr",
+			return nil, fmt.Errorf(
 				"Invalid profile mode: %s. Valid profile modes: %s",
 				profileMode, allProfileModes(jobJson.ProfileMode))
-			os.Exit(1)
 		}
 	}
-	return jobJson
+	return jobJson, nil
 }
 
-func verifyJobManager(jobMode string, jobJson *JobManagerJson, memGBPerCore int) jobManagerConfig {
+func verifyJobManager(jobMode string, jobJson *JobManagerJson, memGBPerCore int) (jobManagerConfig, error) {
 	if jobMode == localMode {
 		// Local job mode only needs to verify settings parameters
 		return jobManagerConfig{
 			jobSettings: jobJson.JobSettings,
-		}
+		}, nil
 	}
 
 	var jobTemplateFile string
@@ -204,10 +199,9 @@ To set up a job manager template, please follow instructions in %s.`,
 
 		jobModeJson, ok = jobJson.JobModes[jobMode]
 		if !strings.HasSuffix(jobTemplateFile, ".template") || !ok {
-			util.PrintInfo("jobmngr",
+			return jobManagerConfig{}, fmt.Errorf(
 				"Job manager template file %s must be named <name_of_job_manager>.template.",
 				jobTemplateFile)
-			os.Exit(1)
 		}
 		jobErrorMsg = fmt.Sprintf(
 			"Job manager template file %s does not exist.",
@@ -230,8 +224,7 @@ To set up a job manager template, please follow instructions in %s.`,
 	// Check for existence of job manager template file
 	b, err := os.ReadFile(jobTemplateFile)
 	if os.IsNotExist(err) {
-		util.PrintInfo("jobmngr", "%s", jobErrorMsg)
-		os.Exit(1)
+		return jobManagerConfig{}, errors.New(jobErrorMsg)
 	}
 	util.LogInfo("jobmngr", "Job template = %s", jobTemplateFile)
 	jobTemplate := string(b)
@@ -264,9 +257,9 @@ Please consult the documentation for details.
 
 	// Verify job command exists
 	if _, err := exec.LookPath(jobCmd); err != nil {
-		util.Println("Job command '%s' not found in %q",
+		return jobManagerConfig{}, fmt.Errorf(
+			"Job command '%s' not found in %q",
 			jobCmd, os.Getenv("PATH"))
-		os.Exit(1)
 	}
 
 	// Verify environment variables
@@ -295,5 +288,5 @@ Please consult the documentation for details.
 		jobResourcesOpt:  jobResourcesOpt,
 		jobTemplate:      jobTemplate,
 		threadingEnabled: jobThreadingEnabled,
-	}
+	}, nil
 }

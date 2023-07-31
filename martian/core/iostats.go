@@ -2,6 +2,7 @@
 
 package core
 
+//nolint:misspell  // The kernel misspelled cancelled in cancelled_write_bytes
 /*
 Data structures for managing stage I/O performance information.
 On linux, this information is pulled from /proc/[pid]/io.

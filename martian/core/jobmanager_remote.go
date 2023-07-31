@@ -33,14 +33,18 @@ type RemoteJobManager struct {
 }
 
 func NewRemoteJobManager(jobMode string, memGBPerCore int, maxJobs int, jobFreqMillis int,
-	jobResources string, config *JobManagerJson, debug bool) *RemoteJobManager {
+	jobResources string, config *JobManagerJson, debug bool) (*RemoteJobManager, error) {
 	self := &RemoteJobManager{}
 	self.jobMode = jobMode
 	self.memGBPerCore = memGBPerCore
 	self.maxJobs = maxJobs
 	self.jobFreqMillis = jobFreqMillis
 	self.debug = debug
-	self.config = verifyJobManager(jobMode, config, memGBPerCore)
+	var err error
+	self.config, err = verifyJobManager(jobMode, config, memGBPerCore)
+	if err != nil {
+		return self, err
+	}
 
 	// Parse jobresources mappings
 	self.jobResourcesMappings = map[string]string{}
@@ -65,7 +69,7 @@ func NewRemoteJobManager(jobMode string, memGBPerCore int, maxJobs int, jobFreqM
 		// dummy limiter to keep struct OK
 		self.limiter = time.NewTicker(time.Millisecond * 1)
 	}
-	return self
+	return self, err
 }
 
 func (self *RemoteJobManager) refreshResources(bool) error {

@@ -64,7 +64,7 @@ type LocalJobManager struct {
 func NewLocalJobManager(userMaxCores int,
 	userMaxMemGB, userMaxVMemGB int,
 	debug bool, limitLoadavg bool, clusterMode bool,
-	config *JobManagerJson) *LocalJobManager {
+	config *JobManagerJson) (*LocalJobManager, error) {
 	self := &LocalJobManager{
 		debug:     debug,
 		limitLoad: limitLoadavg,
@@ -73,11 +73,16 @@ func NewLocalJobManager(userMaxCores int,
 		// runloop processing is in progress.
 		jobDone: make(chan struct{}, 1),
 	}
-	self.jobSettings = verifyJobManager("local", config, -1).jobSettings
+	var err error
+	jc, err := verifyJobManager("local", config, -1)
+	self.jobSettings = jc.jobSettings
+	if err != nil {
+		return self, err
+	}
 	self.setMaxCores(userMaxCores, clusterMode)
 	self.setMaxMem(userMaxMemGB, userMaxVMemGB, clusterMode)
 	self.setupSemaphores()
-	return self
+	return self, err
 }
 
 func (self *LocalJobManager) setMaxCores(userMaxCores int, clusterMode bool) {

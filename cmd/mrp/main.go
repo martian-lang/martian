@@ -108,7 +108,7 @@ func (self *pipestanceHolder) UpdateState(state core.MetadataState) chan struct{
 	oldState := self.info.State
 	self.info.State = state
 	if oldState != state || time.Since(self.lastRegister) > 10*time.Minute {
-		return self.Register()
+		return self.Register(false)
 	}
 	return nil
 }
@@ -119,8 +119,11 @@ func (self *pipestanceHolder) UpdateError(message string) {
 	self.lock.Unlock()
 }
 
-func (self *pipestanceHolder) Register() chan struct{} {
-	if !self.enableUI {
+// Register sends state information to enterprise, if available.
+//
+// It will only do this if the UI is enabled, unless force is true.
+func (self *pipestanceHolder) Register(force bool) chan struct{} {
+	if !self.enableUI && !force {
 		return nil
 	}
 	if enterpriseHost := os.Getenv("MARTIAN_ENTERPRISE"); enterpriseHost != "" {
@@ -177,7 +180,7 @@ func (self *pipestanceHolder) HandleSignal(os.Signal) {
 		// will never complete.  Also, it won't matter for what we then
 		// use the pipestance for.
 		if ps := self.pipestance; ps != nil {
-			ps.ClearUiPort()
+			_ = ps.ClearUiPort()
 		}
 	}
 }
@@ -187,25 +190,13 @@ func (pipestanceBox *pipestanceHolder) Configure(c *mrpConfiguration, invocation
 	//=========================================================================
 	// Configure Martian runtime.
 	//=========================================================================
-	rt := c.config.NewRuntime()
+	rt, err1 := c.config.NewRuntime()
 
 	factory := core.NewRuntimePipestanceFactory(rt,
 		invocationSrc, c.invocationPath, c.psid, c.mroPaths, c.pipestancePath, c.mroVersion,
 		nil, true, c.readOnly, c.tags)
 	reattaching := false
 	pipestance, err := factory.InvokePipeline()
-	if err != nil {
-		if _, ok := err.(*core.PipestanceExistsError); ok {
-			if pipestance, err = factory.ReattachToPipestance(context.Background()); err == nil {
-				c.config.MartianVersion, c.mroVersion, _ = pipestance.GetVersions()
-				reattaching = true
-			} else {
-				util.DieIf(err)
-			}
-		} else {
-			util.DieIf(err)
-		}
-	}
 	pipestanceBox.pipestance = pipestance
 	pipestanceBox.factory = factory
 	pipestanceBox.maxRetries = c.retries
@@ -213,8 +204,88 @@ func (pipestanceBox *pipestanceHolder) Configure(c *mrpConfiguration, invocation
 	pipestanceBox.readOnly = c.readOnly
 	pipestanceBox.retryWait = c.retryWait
 	pipestanceBox.https = c.cert != nil
+	// Delay reporting of this error to here so that we have a chance to
+	// populate the pipestance, so we can get the UUID for reporting purposes
+	// if necessary.  We do need to check it before we try to get anything
+	// from the job manager, however.
+	if err1 != nil {
+		util.PrintInfo("jobmngr", "%v", err)
+		pipestanceBox.reportConfigFailure(err)
+		// Not using util.DieIf here because it would log the error redundantly.
+		os.Exit(1)
+	}
+	pipestanceBox.info.MaxCores = rt.JobManager.GetMaxCores()
+	pipestanceBox.info.MaxMemGB = rt.JobManager.GetMaxMemGB()
+
+	if err != nil {
+		if _, ok := err.(*core.PipestanceExistsError); ok {
+			pipestance, err = factory.ReattachToPipestance(context.Background())
+			pipestanceBox.pipestance = pipestance
+			if err == nil {
+				c.config.MartianVersion, c.mroVersion, _ = pipestance.GetVersions()
+				reattaching = true
+			} else {
+				pipestanceBox.reportAndDieIf(err)
+			}
+		} else {
+			pipestanceBox.reportAndDieIf(err)
+		}
+	}
+	pipestanceBox.info.Uuid, _ = pipestance.GetUuid()
+	pipestanceBox.info.Start = pipestance.GetTimestamp()
+	pipestanceBox.info.Pname = pipestance.GetPname()
+	pipestanceBox.info.State = pipestance.GetState(context.Background())
 
 	return reattaching, rt
+}
+
+// reportAndDieIf is shortand for reportConfigFailure followed by util.DieIf.
+func (pipestanceBox *pipestanceHolder) reportAndDieIf(err error) {
+	if err == nil {
+		return
+	}
+	pipestanceBox.reportConfigFailure(err)
+	util.DieIf(err)
+}
+
+// reportConfigFailure reports startup failures to enterprise if possible.
+func (pipestanceBox *pipestanceHolder) reportConfigFailure(err error) {
+	enterpriseHost := os.Getenv("MARTIAN_ENTERPRISE")
+	if enterpriseHost == "" {
+		// No one to report to.
+		return
+	}
+	// We must have a UUID for reporting, but this may be called before the
+	// point at which the UUID was populated in the info object.
+	if pipestanceBox.info.Uuid == "" {
+		if pipestance := pipestanceBox.pipestance; pipestance != nil {
+			pipestanceBox.info.Uuid, _ = pipestance.GetUuid()
+		}
+		// If we don't have a UUID from the pipestance object, fall back by
+		// trying to get it from the environment.
+		if pipestanceBox.info.Uuid == "" {
+			pipestanceBox.info.Uuid = os.Getenv("MRO_FORCE_UUID")
+		}
+		if pipestanceBox.info.Uuid == "" {
+			pipestanceBox.info.Uuid = os.Getenv("MRO_UUID")
+		}
+		if pipestanceBox.info.Uuid == "" {
+			// No UUID, can't report anything.
+			return
+		}
+	}
+	pipestanceBox.info.State = core.Failed
+	if pipestanceBox.info.Start == "" {
+		pipestanceBox.info.Start = util.Timestamp()
+	}
+	pipestanceBox.UpdateError(err.Error())
+	// Set a timeout on error reporting.
+	timer := time.NewTimer(time.Minute)
+	defer timer.Stop()
+	select {
+	case <-pipestanceBox.Register(true):
+	case <-timer.C:
+	}
 }
 
 func (c *mrpConfiguration) checkSpace() {
@@ -335,6 +406,7 @@ func (c *mrpConfiguration) getListener(hostname string,
 			fmt.Sprintf(":%s", c.uiport)); err != nil {
 			util.PrintError(err, "webserv", "Cannot open port %s", c.uiport)
 			if dieWithoutUi {
+				pipestanceBox.reportConfigFailure(err)
 				os.Exit(1)
 			} else {
 				util.PrintError(err, "webserv", "UI disabled")
@@ -350,6 +422,7 @@ func (c *mrpConfiguration) getListener(hostname string,
 				u.Scheme = "https"
 			}
 			c.uiport = u.Port()
+			pipestanceBox.info.Port = c.uiport
 			u.Host = net.JoinHostPort(hostname, c.uiport)
 			if c.authKey != "" {
 				q := u.Query()
@@ -399,7 +472,27 @@ func main() {
 	invocationSrc := string(data)
 
 	// Attempt to reattach to the pipestance.
-	var pipestanceBox pipestanceHolder
+	cwd, _ := os.Getwd()
+	pipestanceBox := pipestanceHolder{
+		info: &api.PipestanceInfo{
+			Hostname:     hostname,
+			Username:     username,
+			Cwd:          cwd,
+			Binpath:      util.RelPath(os.Args[0]),
+			Cmdline:      strings.Join(os.Args, " "),
+			Pid:          os.Getpid(),
+			Version:      c.config.MartianVersion,
+			PsId:         c.psid,
+			JobMode:      c.config.JobMode,
+			InvokePath:   c.invocationPath,
+			InvokeSource: invocationSrc,
+			MroPath:      util.FormatMroPath(c.mroPaths),
+			ProfileMode:  c.config.ProfileMode,
+			Port:         c.uiport,
+			MroVersion:   c.mroVersion,
+			PsPath:       c.pipestancePath,
+		},
+	}
 	reattaching, rt := pipestanceBox.Configure(&c, invocationSrc)
 	pipestance := pipestanceBox.pipestance
 
@@ -412,37 +505,7 @@ func main() {
 	c.checkSpace()
 	logUids(username)
 
-	uuid, _ := pipestanceBox.pipestance.GetUuid()
 	listener := c.getListener(hostname, &pipestanceBox, c.cert)
-
-	//=========================================================================
-	// Collect pipestance static info.
-	//=========================================================================
-	cwd, _ := os.Getwd()
-	pipestanceBox.info = &api.PipestanceInfo{
-		Hostname:     hostname,
-		Username:     username,
-		Cwd:          cwd,
-		Binpath:      util.RelPath(os.Args[0]),
-		Cmdline:      strings.Join(os.Args, " "),
-		Pid:          os.Getpid(),
-		Start:        pipestance.GetTimestamp(),
-		Version:      c.config.MartianVersion,
-		Pname:        pipestance.GetPname(),
-		PsId:         c.psid,
-		State:        pipestance.GetState(context.Background()),
-		JobMode:      c.config.JobMode,
-		MaxCores:     rt.JobManager.GetMaxCores(),
-		MaxMemGB:     rt.JobManager.GetMaxMemGB(),
-		InvokePath:   c.invocationPath,
-		InvokeSource: invocationSrc,
-		MroPath:      util.FormatMroPath(c.mroPaths),
-		ProfileMode:  c.config.ProfileMode,
-		Port:         c.uiport,
-		MroVersion:   c.mroVersion,
-		Uuid:         uuid,
-		PsPath:       c.pipestancePath,
-	}
 
 	if reattaching {
 		// If it already exists, try to reattach to it.
@@ -450,7 +513,7 @@ func main() {
 			if err = pipestance.Reset(); err == nil {
 				err = pipestance.RestartLocalJobs(c.config.JobMode)
 			}
-			util.DieIf(err)
+			pipestanceBox.reportAndDieIf(err)
 		}
 	} else if !c.config.SkipPreflight && !c.readOnly {
 		util.Println("Running preflight checks (please wait)...")
