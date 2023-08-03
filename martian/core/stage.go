@@ -8,12 +8,14 @@ package core
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
 	"math"
 	"os"
 	"path"
+	"runtime/trace"
 	"strings"
 	"sync"
 	"time"
@@ -1415,8 +1417,8 @@ func (self *Fork) printUpdateIfNeeded() {
 	}
 }
 
-func (self *Fork) cachePerf() {
-	perfInfo, vdrKillReport := self.serializePerf()
+func (self *Fork) cachePerf(ctx context.Context) {
+	perfInfo, vdrKillReport := self.serializePerf(ctx)
 	self.perfCache = &ForkPerfCache{perfInfo, vdrKillReport}
 }
 
@@ -1480,7 +1482,8 @@ func (self *Fork) getAlarms(alarms *strings.Builder) {
 	}
 }
 
-func (self *Fork) serializeState() *ForkInfo {
+func (self *Fork) serializeState(ctx context.Context) *ForkInfo {
+	defer trace.StartRegion(ctx, "Fork_serializeState").End()
 	argbindings := self.node.inputBindingInfo(self.forkId)
 	outputs := self.node.outputBindingInfo(self.forkId)
 	bindings := &ForkBindingsInfo{
@@ -1489,6 +1492,9 @@ func (self *Fork) serializeState() *ForkInfo {
 	}
 	chunks := make([]*ChunkInfo, 0, len(self.chunks))
 	for _, chunk := range self.chunks {
+		if ctx.Err() != nil {
+			return nil
+		}
 		chunks = append(chunks, chunk.serializeState())
 	}
 	return &ForkInfo{
@@ -1520,7 +1526,8 @@ func (self *Fork) getStages() []*StagePerfInfo {
 	return stages
 }
 
-func (self *Fork) serializePerf() (*ForkPerfInfo, *VDRKillReport) {
+func (self *Fork) serializePerf(ctx context.Context) (*ForkPerfInfo, *VDRKillReport) {
+	defer trace.StartRegion(ctx, "Fork_serializePerf").End()
 	if self.perfCache != nil {
 		// Use cached performance information if it exists.
 		return self.perfCache.perfInfo, self.perfCache.vdrKillReport
@@ -1529,6 +1536,9 @@ func (self *Fork) serializePerf() (*ForkPerfInfo, *VDRKillReport) {
 	chunks := make([]*ChunkPerfInfo, 0, len(self.chunks))
 	stats := make([]*PerfInfo, 0, len(self.chunks)+len(self.node.subnodes)+2)
 	for _, chunk := range self.chunks {
+		if ctx.Err() != nil {
+			return nil, nil
+		}
 		chunkSer := chunk.serializePerf()
 		chunks = append(chunks, chunkSer)
 		if chunkSer.ChunkStats != nil {
@@ -1557,13 +1567,22 @@ func (self *Fork) serializePerf() (*ForkPerfInfo, *VDRKillReport) {
 	killReports := make([]*VDRKillReport, 1, len(self.node.subnodes)+1)
 	killReports[0], _ = self.getVdrKillReport()
 	for _, node := range self.node.subnodes {
+		if ctx.Err() != nil {
+			return nil, nil
+		}
 		for _, subfork := range node.matchForks(self.forkId) {
-			subforkSer, subforkKillReport := subfork.serializePerf()
+			if ctx.Err() != nil {
+				return nil, nil
+			}
+			subforkSer, subforkKillReport := subfork.serializePerf(ctx)
 			stats = append(stats, subforkSer.ForkStats)
 			if subforkKillReport != nil {
 				killReports = append(killReports, subforkKillReport)
 			}
 		}
+	}
+	if ctx.Err() != nil {
+		return nil, nil
 	}
 	killReport := mergeVDRKillReports(killReports)
 	fpaths, _ := self.metadata.enumerateFiles()

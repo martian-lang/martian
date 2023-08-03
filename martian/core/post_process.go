@@ -8,11 +8,13 @@ package core
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"fmt"
 	"os"
 	"path"
 	"path/filepath"
+	"runtime/trace"
 	"sort"
 	"strconv"
 	"strings"
@@ -21,7 +23,9 @@ import (
 	"github.com/martian-lang/martian/martian/util"
 )
 
-func (self *Fork) postProcess() error {
+func (self *Fork) postProcess(ctx context.Context) error {
+	defer trace.StartRegion(ctx, "Fork_postProcess").End()
+
 	ro := self.node.call.ResolvedOutputs()
 	if ro == nil {
 		return nil

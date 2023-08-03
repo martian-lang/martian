@@ -181,7 +181,7 @@ func TestPostProcess(t *testing.T) {
 	}
 	var buf strings.Builder
 	util.SetPrintLogger(&buf)
-	if err := fork.postProcess(); err != nil {
+	if err := fork.postProcess(context.Background()); err != nil {
 		t.Error(err)
 	}
 	util.SetPrintLogger(&devNull)
@@ -419,7 +419,7 @@ func TestPostProcessEmpties(t *testing.T) {
 	}
 	var buf strings.Builder
 	util.SetPrintLogger(&buf)
-	if err := fork.postProcess(); err != nil {
+	if err := fork.postProcess(context.Background()); err != nil {
 		t.Error(err)
 	}
 	util.SetPrintLogger(&devNull)

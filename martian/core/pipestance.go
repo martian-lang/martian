@@ -653,47 +653,54 @@ func (self *Pipestance) Reset() error {
 	return nil
 }
 
-func (self *Pipestance) SerializeState() []*NodeInfo {
+func (self *Pipestance) SerializeState(ctx context.Context) []*NodeInfo {
 	nodes := self.allNodes()
 	ser := make([]*NodeInfo, 0, len(nodes))
 	for _, node := range nodes {
-		ser = append(ser, node.serializeState())
+		if ctx.Err() != nil {
+			return nil
+		}
+		ser = append(ser, node.serializeState(ctx))
 	}
 	return ser
 }
 
-func (self *Pipestance) SerializePerf() []*NodePerfInfo {
+func (self *Pipestance) SerializePerf(ctx context.Context) []*NodePerfInfo {
 	nodes := self.allNodes()
 	ser := make([]*NodePerfInfo, 0, len(nodes))
 	for _, node := range nodes {
-		perf, _ := node.serializePerf()
+		if ctx.Err() != nil {
+			return nil
+		}
+		perf, _ := node.serializePerf(ctx)
 		ser = append(ser, perf)
 	}
 	util.LogInfo("perform", "Serializing pipestance performance data.")
-	if len(ser) > 0 {
+	if len(ser) > 0 && ctx.Err() == nil {
 		overallPerf := ser[0]
-		self.ComputeDiskUsage(overallPerf)
+		self.ComputeDiskUsage(ctx, overallPerf)
 		overallPerf.HighMem = &self.node.top.rt.LocalJobManager.highMem
 	}
 	return ser
 }
 
-func (self *Pipestance) Serialize(name MetadataFileName) interface{} {
+func (self *Pipestance) Serialize(ctx context.Context, name MetadataFileName) interface{} {
 	switch name {
 	case FinalState:
-		return self.SerializeState()
+		return self.SerializeState(ctx)
 	case Perf:
-		return self.SerializePerf()
+		return self.SerializePerf(ctx)
 	default:
 		panic(fmt.Sprintf("Unsupported serialization type: %v", name))
 	}
 }
 
-func (self *Pipestance) ComputeDiskUsage(nodePerf *NodePerfInfo) *NodePerfInfo {
+func (self *Pipestance) ComputeDiskUsage(ctx context.Context, nodePerf *NodePerfInfo) *NodePerfInfo {
+	defer trace.StartRegion(ctx, "ComputeDiskUsage").End()
 	nodes := self.allNodes()
 	allStorageEvents := make(StorageEventByTimestamp, 0, len(nodes)*2)
 	for _, node := range nodes {
-		_, storageEvents := node.serializePerf()
+		_, storageEvents := node.serializePerf(ctx)
 		for _, ev := range storageEvents {
 			if ev.DeltaBytes != 0 {
 				allStorageEvents = append(allStorageEvents,
@@ -797,14 +804,16 @@ func (self *Pipestance) GetVersions() (string, string, error) {
 }
 
 func (self *Pipestance) PostProcess() {
-	self.node.postProcess()
+	ctx, task := trace.NewTask(context.Background(), "PostProcess")
+	defer task.End()
+	self.node.postProcess(ctx)
 	start, _ := self.metadata.readRawBytes(TimestampFile)
 	start = append(start, "\nend: "...)
 	if err := self.metadata.WriteRawBytes(TimestampFile, append(start, util.Timestamp()...)); err != nil {
 		util.LogError(err, "runtime",
 			"Error writing completion timestamp.")
 	}
-	if err := self.Immortalize(false); err != nil {
+	if err := self.Immortalize(ctx, false); err != nil {
 		util.LogError(err, "runtime",
 			"Error finalizing pipestance state.")
 	}
@@ -814,19 +823,20 @@ func (self *Pipestance) PostProcess() {
 // for posterity.
 //
 // Unless force is true, this is only permitted for locked pipestances.
-func (self *Pipestance) Immortalize(force bool) error {
+func (self *Pipestance) Immortalize(ctx context.Context, force bool) error {
+	defer trace.StartRegion(ctx, "Immortalize").End()
 	if !force && self.readOnly() {
 		return &RuntimeError{"Pipestance is in read only mode."}
 	}
 	self.metadata.loadCache()
 	var errs syntax.ErrorList
 	if !self.metadata.exists(Perf) {
-		if err := self.metadata.Write(Perf, self.SerializePerf()); err != nil {
+		if err := self.metadata.Write(Perf, self.SerializePerf(ctx)); err != nil {
 			errs = append(errs, err)
 		}
 	}
 	if !self.metadata.exists(FinalState) {
-		if err := self.metadata.Write(FinalState, self.SerializeState()); err != nil {
+		if err := self.metadata.Write(FinalState, self.SerializeState(ctx)); err != nil {
 			errs = append(errs, err)
 		}
 	}

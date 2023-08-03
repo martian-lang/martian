@@ -7,11 +7,13 @@
 package core
 
 import (
+	"context"
 	"fmt"
 	"math"
 	"os"
 	"path"
 	"regexp"
+	"runtime/trace"
 	"sort"
 	"strconv"
 	"strings"
@@ -761,13 +763,14 @@ func (self *Node) kill(message string) {
 	}
 }
 
-func (self *Node) postProcess() {
+func (self *Node) postProcess(ctx context.Context) {
+	defer trace.StartRegion(ctx, "Node_postProcess").End()
 	os.RemoveAll(self.top.journalPath)
 	os.RemoveAll(self.top.tmpPath)
 
 	var errs syntax.ErrorList
 	for _, fork := range self.forks {
-		if err := fork.postProcess(); err != nil {
+		if err := fork.postProcess(ctx); err != nil {
 			errs = append(errs, err)
 		}
 	}
@@ -776,11 +779,11 @@ func (self *Node) postProcess() {
 	}
 }
 
-func (self *Node) cachePerf() {
+func (self *Node) cachePerf(ctx context.Context) {
 	if _, ok := self.vdrKill(); ok {
 		// Cache all fork performance info if node can be VDR-ed.
 		for _, fork := range self.forks {
-			fork.cachePerf()
+			fork.cachePerf(ctx)
 		}
 	}
 }
@@ -891,11 +894,13 @@ func (self *Node) step() bool {
 		}
 		self.addFrontierNode(self)
 	case Complete:
+		ctx, task := trace.NewTask(context.Background(), "step_Complete")
+		defer task.End()
 		if vdr := self.top.rt.Config.VdrMode; vdr == VdrRolling || vdr == VdrStrict {
 			for _, node := range self.prenodes {
-				node.getNode().cachePerf()
+				node.getNode().cachePerf(ctx)
 			}
-			self.cachePerf()
+			self.cachePerf(ctx)
 		}
 		fallthrough
 	case DisabledState:
@@ -986,13 +991,20 @@ func (self *Node) refreshState(readOnly bool) {
 }
 
 // Serialization.
-func (self *Node) serializeState() *NodeInfo {
+func (self *Node) serializeState(ctx context.Context) *NodeInfo {
+	defer trace.StartRegion(ctx, "Node_serializeState").End()
 	forks := make([]*ForkInfo, 0, len(self.forks))
 	for _, fork := range self.forks {
-		forks = append(forks, fork.serializeState())
+		if ctx.Err() != nil {
+			return nil
+		}
+		forks = append(forks, fork.serializeState(ctx))
 	}
 	edges := make([]EdgeInfo, 0, len(self.directPrenodes))
 	for _, prenode := range self.directPrenodes {
+		if ctx.Err() != nil {
+			return nil
+		}
 		edges = append(edges, EdgeInfo{
 			From: prenode.GetFQName(),
 			To:   self.call.GetFqid(),
@@ -1035,11 +1047,15 @@ func (self *Node) serializeState() *NodeInfo {
 	return info
 }
 
-func (self *Node) serializePerf() (*NodePerfInfo, []*VdrEvent) {
+func (self *Node) serializePerf(ctx context.Context) (*NodePerfInfo, []*VdrEvent) {
+	defer trace.StartRegion(ctx, "Node_serializePerf").End()
 	forks := make([]*ForkPerfInfo, 0, len(self.forks))
 	var storageEvents []*VdrEvent
 	for _, fork := range self.forks {
-		forkSer, vdrKill := fork.serializePerf()
+		if ctx.Err() != nil {
+			return nil, nil
+		}
+		forkSer, vdrKill := fork.serializePerf(ctx)
 		forks = append(forks, forkSer)
 		if vdrKill != nil && self.call.Kind() != syntax.KindPipeline {
 			storageEvents = append(storageEvents, vdrKill.Events...)

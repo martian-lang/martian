@@ -150,7 +150,7 @@ func TestPipestanceRun(t *testing.T) {
 			}
 		}
 	}
-	nodeInfos := pipestance.SerializeState()
+	nodeInfos := pipestance.SerializeState(context.Background())
 	if len(nodeInfos) != 22 {
 		t.Errorf("node count %d != 22", len(nodeInfos))
 	}

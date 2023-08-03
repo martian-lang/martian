@@ -29,20 +29,20 @@ import (
 	"github.com/martian-lang/martian/martian/util"
 )
 
-func getFinalState(rt *core.Runtime, pipestance *core.Pipestance) []*core.NodeInfo {
+func getFinalState(ctx context.Context, rt *core.Runtime, pipestance *core.Pipestance) []*core.NodeInfo {
 	var target []*core.NodeInfo
 	if err := rt.GetSerializationInto(pipestance.GetPath(), core.FinalState, &target); err == nil {
 		return target
 	}
-	return pipestance.SerializeState()
+	return pipestance.SerializeState(ctx)
 }
 
-func getPerf(rt *core.Runtime, pipestance *core.Pipestance) []*core.NodePerfInfo {
+func getPerf(ctx context.Context, rt *core.Runtime, pipestance *core.Pipestance) []*core.NodePerfInfo {
 	var target []*core.NodePerfInfo
 	if err := rt.GetSerializationInto(pipestance.GetPath(), core.Perf, &target); err == nil {
 		return target
 	}
-	return pipestance.SerializePerf()
+	return pipestance.SerializePerf(ctx)
 }
 
 func runWebServer(
@@ -309,8 +309,13 @@ func (self *mrpWebServer) getState(w http.ResponseWriter, req *http.Request) {
 	}
 	pipestance := self.pipestanceBox.getPipestance()
 	state := api.PipestanceState{
-		Nodes: getFinalState(self.rt, pipestance),
+		Nodes: getFinalState(req.Context(), self.rt, pipestance),
 		Info:  self.pipestanceBox.info,
+	}
+	if err := req.Context().Err(); err != nil {
+		// Don't sending bytes if the request was canceled.
+		http.Error(w, err.Error(), http.StatusRequestTimeout)
+		return
 	}
 	self.mutex.Lock()
 	bytes, err := json.Marshal(&state)
@@ -342,7 +347,12 @@ func (self *mrpWebServer) getPerf(w http.ResponseWriter, req *http.Request) {
 	}
 	pipestance := self.pipestanceBox.getPipestance()
 	state := api.PerfInfo{
-		Nodes: getPerf(self.rt, pipestance),
+		Nodes: getPerf(req.Context(), self.rt, pipestance),
+	}
+	if err := req.Context().Err(); err != nil {
+		// Don't sending bytes if the request was canceled.
+		http.Error(w, err.Error(), http.StatusRequestTimeout)
+		return
 	}
 	bytes, err := json.Marshal(&state)
 	if err != nil {
