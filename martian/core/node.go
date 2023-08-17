@@ -1000,6 +1000,9 @@ func (self *Node) serializeState(ctx context.Context) *NodeInfo {
 		}
 		forks = append(forks, fork.serializeState(ctx))
 	}
+	if ctx.Err() != nil {
+		return nil
+	}
 	edges := make([]EdgeInfo, 0, len(self.directPrenodes))
 	for _, prenode := range self.directPrenodes {
 		if ctx.Err() != nil {
@@ -1056,6 +1059,9 @@ func (self *Node) serializePerf(ctx context.Context) (*NodePerfInfo, []*VdrEvent
 			return nil, nil
 		}
 		forkSer, vdrKill := fork.serializePerf(ctx)
+		if ctx.Err() != nil {
+			return nil, nil
+		}
 		forks = append(forks, forkSer)
 		if vdrKill != nil && self.call.Kind() != syntax.KindPipeline {
 			storageEvents = append(storageEvents, vdrKill.Events...)

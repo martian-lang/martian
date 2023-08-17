@@ -1575,6 +1575,10 @@ func (self *Fork) serializePerf(ctx context.Context) (*ForkPerfInfo, *VDRKillRep
 				return nil, nil
 			}
 			subforkSer, subforkKillReport := subfork.serializePerf(ctx)
+			if ctx.Err() != nil {
+				// If the context has expired, subforkSer will be nil.
+				return nil, nil
+			}
 			stats = append(stats, subforkSer.ForkStats)
 			if subforkKillReport != nil {
 				killReports = append(killReports, subforkKillReport)

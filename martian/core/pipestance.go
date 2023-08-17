@@ -675,6 +675,9 @@ func (self *Pipestance) SerializePerf(ctx context.Context) []*NodePerfInfo {
 		perf, _ := node.serializePerf(ctx)
 		ser = append(ser, perf)
 	}
+	if ctx.Err() != nil {
+		return nil
+	}
 	util.LogInfo("perform", "Serializing pipestance performance data.")
 	if len(ser) > 0 && ctx.Err() == nil {
 		overallPerf := ser[0]
