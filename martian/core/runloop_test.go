@@ -134,6 +134,7 @@ func TestPipestanceRun(t *testing.T) {
 	for {
 		flushChannel(rt.LocalJobManager.Done())
 		done, hadProgress := loopBody(t, pipestance)
+
 		if done {
 			break
 		}
@@ -150,6 +151,20 @@ func TestPipestanceRun(t *testing.T) {
 			}
 		}
 	}
+
+	// Test that serializing the state works correctly with a canceled context.
+	// Coverage from this call is going to be racy, of course, but it's very
+	// difficult to get coverage more reliably here.
+	// This essentially simulates the effect of an API client querying the
+	// state while the pipestance is running.
+	ch := make(chan interface{}, 2)
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Microsecond)
+	go func() { ch <- pipestance.SerializePerf(ctx) }()
+	go func() { ch <- pipestance.SerializeState(ctx) }()
+	<-ch
+	<-ch
+	cancel()
+
 	nodeInfos := pipestance.SerializeState(context.Background())
 	if len(nodeInfos) != 22 {
 		t.Errorf("node count %d != 22", len(nodeInfos))
