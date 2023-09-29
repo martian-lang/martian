@@ -32,10 +32,10 @@ def martian_dependencies(
     # Also do this before gazelle_dependencies.
     maybe(
         go_repository,
-        # v0.8.0, latest as of 2023-06-08
+        # v0.12.0, latest as of 2023-09-18
         name = "org_golang_x_sys",
-        version = "v0.8.0",
-        sum = "h1:EBmGv8NaZBZTWvrbjNoL6HVt+IVy3QDQpJs7VRIw3tU=",
+        version = "v0.12.0",
+        sum = "h1:CM0HF96J0hcLAwsHPJZjfdNzs0gftsLfgKt57wWHJ0o=",
         importpath = "golang.org/x/sys",
     )
 
