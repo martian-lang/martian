@@ -1,5 +1,5 @@
 # Martian stage code adapter
-
+martian.make_path .ifconfig 
 This readme describes the interface between `mrp` and the `mrjob` monitor
 process, as well as the interface between the job monitor and the stage code,
 which must be obeyed by any language-specific adapter.
