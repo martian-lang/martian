@@ -6,7 +6,7 @@
     "publisher": "MartianLang",
     "license": "MIT",
     "engines": {
-        "vscode": "^1.74.0"
+        "vscode": "^1.76.0"
     },
     "repository": {
         "type": "git",
@@ -20,9 +20,6 @@
         "Programming Languages"
     ],
     "main": "./out/src/extension",
-    "activationEvents": [
-        "onLanguage:mro"
-    ],
     "contributes": {
         "languages": [
             {
