@@ -32,7 +32,7 @@ jobs:
         go-version: ${{ matrix.go }}
     - uses: actions/setup-node@v3
       with:
-        node-version: "lts/*"
+        node-version: "18"
         cache: "npm"
         cache-dependency-path: |
           web/martian/yarn.lock
