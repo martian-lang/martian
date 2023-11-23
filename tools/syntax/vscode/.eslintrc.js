@@ -104,7 +104,7 @@ module.exports = {
         "id-match": "error",
         "jsdoc/check-alignment": "error",
         "jsdoc/check-indentation": "error",
-        "jsdoc/newline-after-description": "error",
+        "jsdoc/tag-lines": "error",
         "max-classes-per-file": [
             "error",
             1

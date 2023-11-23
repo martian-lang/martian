@@ -87,7 +87,7 @@
         "@typescript-eslint/eslint-plugin": "^6.1.0",
         "@typescript-eslint/parser": "^6.1.0",
         "eslint": "^8.5.0",
-        "eslint-plugin-jsdoc": "^39.1.0",
+        "eslint-plugin-jsdoc": "^46.9.0",
         "js-yaml": "^4.0.0",
         "typescript": "^5.0.4"
     }
