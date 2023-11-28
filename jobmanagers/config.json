@@ -8,7 +8,8 @@
         "MKL_NUM_THREADS",
         "NUMEXPR_MAX_THREADS",
         "NUMEXPR_NUM_THREADS",
-        "OMP_NUM_THREADS"
+        "OMP_NUM_THREADS",
+        "POLARS_MAX_THREADS"
     ]
   },
   "jobmodes": {
