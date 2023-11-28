@@ -46,7 +46,7 @@ all-bins:
 	go install $(GO_FLAGS) ./cmd/...
 
 web:
-	make -C web/martian
+	$(MAKE) -C web/martian
 
 vscode:
 	(cd tools/syntax/vscode && yarn install --frozen-lockfile --ignore-optional && npm run-script compile)
@@ -191,5 +191,5 @@ longtests: test/split_test/pipeline_test \
 clean:
 	rm -rf $(GOBIN)
 	rm -rf $(dir $(GOBIN))pkg
-	make -C web/martian clean
-	make -C tools/syntax/vscode clean
+	$(MAKE) -C web/martian clean
+	$(MAKE) -C tools/syntax/vscode clean
