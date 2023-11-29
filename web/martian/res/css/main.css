@@ -717,6 +717,10 @@ tr.active {
     font-style: italic;
     color: #de5068;
 }
+.disabled rect {
+    fill: #ffffff;
+    color: black
+}
 .details td {
     font-family: Menlo, Arial;
     font-size: 12px;
