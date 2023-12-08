@@ -125,14 +125,18 @@ func CheckMaxVmem(amount uint64) uint64 {
 	return min
 }
 
-func SetVMemRLimit(amount uint64) error {
+func SetVMemRLimit(amount uint64) (uint64, error) {
 	var rlim unix.Rlimit
 	if err := unix.Getrlimit(unix.RLIMIT_AS, &rlim); err != nil {
-		return err
+		return rlim.Cur, err
 	} else if rlim.Max != unix.RLIM_INFINITY && rlim.Max < amount {
-		return fmt.Errorf("could not set RLIMIT_AS %d > %d",
+		return rlim.Cur, fmt.Errorf("could not set RLIMIT_AS %d > %d",
 			amount, rlim.Max)
+	} else if rlim.Cur == amount {
+		// Nothing to do.
+		return amount, nil
 	}
+	oldAmount := rlim.Cur
 	rlim.Cur = amount
-	return unix.Setrlimit(unix.RLIMIT_AS, &rlim)
+	return oldAmount, unix.Setrlimit(unix.RLIMIT_AS, &rlim)
 }

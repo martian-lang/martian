@@ -318,25 +318,40 @@ func (self *runner) StartJob(args []string) error {
 			self.metadata.MetadataFilePath(core.PerfData),
 			self.metadata.MetadataFilePath(core.ProfileOut))
 	}
-	if self.monitoring && self.jobInfo.VMemGB > 0 {
-		// Exclude mrjob's vmem usage from the rlimit.
-		mem, _ := core.GetProcessTreeMemory(self.jobInfo.Pid, true, nil)
-		amount := int64(self.jobInfo.VMemGB)*1024*1024*1024 - mem.Vmem
-		if amount < mem.Vmem+1024*1024 {
-			amount = mem.Vmem + 1024*1024
+	if err := func(cmd *exec.Cmd) error {
+		if self.monitoring && self.jobInfo.VMemGB > 0 {
+			// Exclude mrjob's vmem usage from the rlimit.
+			mem, _ := core.GetProcessTreeMemory(self.jobInfo.Pid, true, nil)
+			amount := int64(self.jobInfo.VMemGB)*1024*1024*1024 - mem.Vmem
+			if amount < mem.Vmem+1024*1024 {
+				amount = mem.Vmem + 1024*1024
+			}
+			if oldAmount, err := core.SetVMemRLimit(uint64(amount)); err != nil {
+				util.LogError(err, "monitor",
+					"Could not set VM rlimit.")
+			} else {
+				// After launching the subprocess, restore the vmem
+				// limit for this process.  Otherwise the go runtime can run
+				//  into various kinds of trouble.
+				defer func(amt uint64) {
+					if _, err := core.SetVMemRLimit(amt); err != nil {
+						util.LogError(err, "monitor",
+							"Could not restore VM rlimit.")
+					}
+				}(oldAmount)
+			}
 		}
-		if err := core.SetVMemRLimit(uint64(amount)); err != nil {
-			util.LogError(err, "monitor",
-				"Could not set VM rlimit.")
+		if err := func() error {
+			util.EnterCriticalSection()
+			defer util.ExitCriticalSection()
+			self.job = cmd
+			return self.job.Start()
+		}(); err != nil {
+			self.errorReader.Close()
+			return err
 		}
-	}
-	if err := func() error {
-		util.EnterCriticalSection()
-		defer util.ExitCriticalSection()
-		self.job = cmd
-		return self.job.Start()
-	}(); err != nil {
-		self.errorReader.Close()
+		return nil
+	}(cmd); err != nil {
 		return err
 	}
 	if err := self.startProfile(); err != nil {
