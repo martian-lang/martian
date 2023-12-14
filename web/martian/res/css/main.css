@@ -605,9 +605,14 @@ div.topfile {
     position: absolute;
     padding: 5px 10px;
     top: 50px;
-    left: 0px;
+    left: 0;
+    right: 0;
     margin-left: 775px;
 }
+.details.collapsed {
+    display: none;
+}
+
 pre {
     font-size: 12px;
 }
@@ -804,3 +809,10 @@ td.tight {
     z-index: 1;
     position: relative;
 }
+/* SVG from  https://fonts.google.com/icons?selected=Material+Symbols+Outlined:right_panel_close:FILL@0;wght@400;GRAD@0;opsz@24&icon.query=right+panel*/
+.icon-toggle {
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 -960 960 960' %3E%3Cpath d='M300-640v320l160-160-160-160ZM200-120q-33 0-56.5-23.5T120-200v-560q0-33 23.5-56.5T200-840h560q33 0 56.5 23.5T840-760v560q0 33-23.5 56.5T760-120H200Zm440-80h120v-560H640v560Zm-80 0v-560H200v560h360Zm80 0h120-120Z'/%3E%3C/svg%3E");
+    width:24px;
+    height: 24px;
+    border: none;
+  }

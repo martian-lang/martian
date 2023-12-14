@@ -39,6 +39,7 @@ files = { "files": ["log"] }
                    uib-btn-radio="true"
                    style="margin-top: -7px">Performance</div>
             </div>
+            <button class="icon-toggle" ng-click="toggleDetails()" title="Toggle Details"></button>
           </div>[[end]]
         </div>
       </div>
@@ -48,7 +49,7 @@ files = { "files": ["log"] }
         <g id="top" transform="translate(5,5) scale(1.0)"></g>
       </svg>
     </div>
-    <div class="details" id="info" ng-show="!perf &amp;&amp; !node">
+    <div class="details" ng-class="{ collapsed: detailsCollapsed }" id="info" ng-show="!perf &amp;&amp; !node">
       <h4 class="stagename"><a href="#">Pipestance Details</a></h4>
       <h5>Runtime</h5>
       <table class="table">
@@ -125,7 +126,7 @@ files = { "files": ["log"] }
         <pre>{{info.invokesrc}}</pre>
       </div>
     </div>
-    <div class="details" id="perf" ng-if="perf &amp;&amp; pnode">
+    <div class="details" ng-class="{ collapsed: detailsCollapsed }" id="perf" ng-if="perf &amp;&amp; pnode">
       <h4 class="stagename">
         <a href="#"
            ng-click="selectNode(topnode.fqname)"
@@ -227,7 +228,7 @@ files = { "files": ["log"] }
         <div google-chart chart="charts[forki]" ng-if="charts[forki]"></div>
       </span>
     </div>
-    <div class="details" id="stage" ng-show="!perf &amp;&amp; node">
+    <div class="details" ng-class="{ collapsed: detailsCollapsed }" id="stage" ng-show="!perf &amp;&amp; node">
       <h4 class="stagename">
         <a href="#" ng-click="node=null;id=null">&larr;</a>&nbsp;<a href="#">{{node.name}}</a>&nbsp;{{node.type}}
       </h4>
