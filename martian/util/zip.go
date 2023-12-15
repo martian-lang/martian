@@ -228,6 +228,19 @@ func addZipFile(filePath string, out io.Writer) error {
 	return nil
 }
 
+// isCompressedExtension returns true if the file path has an extension
+// that typically implies compressed data.
+//
+// Typically CreateZip is used only for metadata files, none of which have these
+// extensions, but checking just to be safe.
+func isCompressedExtension(p string) bool {
+	switch filepath.Ext(p) {
+	case ".gz", ".png", ".jpg", "*.jpeg", "*.zip":
+		return true
+	}
+	return false
+}
+
 func CreateZip(zipPath string, filePaths []string) error {
 	f, err := os.Create(zipPath)
 	if err != nil {
@@ -251,6 +264,12 @@ func CreateZip(zipPath string, filePaths []string) error {
 			return err
 		}
 		header.Name = relPath
+		// Turn on compression for files > 1kB.
+		// For smaller files, the overhead of starting a deflate stream isn't
+		// really worth the trouble.
+		if info.Size() > 1024 && !isCompressedExtension(relPath) {
+			header.Method = zip.Deflate
+		}
 		out, err := zw.CreateHeader(header)
 		if err != nil {
 			return err
