@@ -5,6 +5,7 @@ package api
 import (
 	"errors"
 	"io"
+	"io/fs"
 	"net/http"
 	"os"
 	"strconv"
@@ -33,7 +34,7 @@ func ServeMetadataFile(w http.ResponseWriter, req *http.Request,
 	}
 	switch data := data.(type) {
 	case interface {
-		Stat() (os.FileInfo, error) // TODO(azarchs): Use fs.File, after go 1.15
+		Stat() (fs.FileInfo, error)
 	}:
 		st, err := data.Stat()
 		if err != nil {

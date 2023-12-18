@@ -8,10 +8,13 @@ package util
 import (
 	"archive/zip"
 	"bytes"
+	"context"
 	"io"
+	"io/fs"
 	"os"
 	"path"
 	"path/filepath"
+	"runtime/trace"
 	"strings"
 	"time"
 )
@@ -30,13 +33,16 @@ func readSymlinkInZip(f *zip.File) (string, error) {
 }
 
 // Find a file in the zip.  Follows symlinks.
-func findFileInZip(zr *zip.ReadCloser, filePath string) *zip.File {
+func findFileInZip(ctx context.Context, zr *zip.ReadCloser, filePath string) *zip.File {
 	for _, f := range zr.File {
+		if ctx.Err() != nil {
+			return nil
+		}
 		if f.Mode()&os.ModeSymlink != 0 && strings.HasPrefix(filePath, f.Name+string(os.PathSeparator)) {
 			if linkPath, err := readSymlinkInZip(f); err != nil {
 				return nil
 			} else {
-				return findFileInZip(zr, path.Clean(
+				return findFileInZip(ctx, zr, path.Clean(
 					path.Join(path.Dir(f.Name), linkPath,
 						strings.TrimPrefix(filePath, f.Name+string(os.PathSeparator)))))
 			}
@@ -45,7 +51,7 @@ func findFileInZip(zr *zip.ReadCloser, filePath string) *zip.File {
 				if linkPath, err := readSymlinkInZip(f); err != nil {
 					return f
 				} else {
-					return findFileInZip(zr, path.Clean(
+					return findFileInZip(ctx, zr, path.Clean(
 						path.Join(path.Dir(filePath), linkPath)))
 				}
 			} else {
@@ -59,13 +65,13 @@ func findFileInZip(zr *zip.ReadCloser, filePath string) *zip.File {
 // Wraps a file within a zip archive, along with the archive itself,
 // as an io.ReadCloser
 type zipFileReader struct {
-	zr       *zip.ReadCloser
-	file     io.ReadCloser
-	modified time.Time
+	zr   *zip.ReadCloser
+	file io.ReadCloser
+	info zipFileInfo
 }
 
 func (zr *zipFileReader) ModTime() time.Time {
-	return zr.modified
+	return zr.info.ModTime()
 }
 
 func (zr *zipFileReader) Read(p []byte) (int, error) {
@@ -85,11 +91,111 @@ func (zr *zipFileReader) Close() error {
 	return err
 }
 
+// fs.FileInfo for a zipFileReader.
+// Extracts just the bits we need so as to avoid holding pointers to the rest of
+// the zip.FileHeader.
+type zipFileInfo struct {
+	modTime time.Time
+	name    string
+	size    int64
+	mode    fs.FileMode
+}
+
+func extractFileInfo(fh *zip.FileHeader, raw bool) zipFileInfo {
+	result := zipFileInfo{
+		name:    fh.Name,
+		mode:    fh.Mode(),
+		modTime: fh.Modified,
+	}
+	if raw && fh.CompressedSize64 > 0 {
+		result.size = int64(fh.CompressedSize64)
+	} else {
+		result.size = int64(fh.UncompressedSize64)
+	}
+	return result
+}
+
+func (fi zipFileInfo) Name() string       { return path.Base(fi.name) }
+func (fi zipFileInfo) Size() int64        { return fi.size }
+func (fi zipFileInfo) IsDir() bool        { return fi.Mode().IsDir() }
+func (fi zipFileInfo) ModTime() time.Time { return fi.modTime }
+func (fi zipFileInfo) Mode() fs.FileMode  { return fi.mode }
+func (fi zipFileInfo) Type() fs.FileMode  { return fi.Mode().Type() }
+func (fi zipFileInfo) Sys() any           { return &fi }
+
+func (zr *zipFileReader) Stat() (fs.FileInfo, error) {
+	return &zr.info, nil
+}
+
 // Opens a file within a zip archive for reading.
 func ReadZipFile(zipPath, filePath string) (io.ReadCloser, error) {
+	r, _, err := ReadZipFileRaw(context.TODO(), zipPath, filePath, "")
+	return r, err
+}
+
+func openZipRaw(f *zip.File, accept string) (io.ReadCloser, string, error) {
+	if m := acceptedEncoding(accept, f.Method); m != "" {
+		r, err := f.OpenRaw()
+		if err != nil {
+			return nil, "", err
+		}
+		return io.NopCloser(r), m, err
+	}
+	r, err := f.Open()
+	return r, "", err
+}
+
+// zipMethodToEncoding returns the http-header Content-Encoding name
+// corresponding to the given zip method, or an empty string.
+//
+// Go's standard library only knows how to handle deflate, by default,
+// but for completeness we're adding a few others here, since this code path
+// is intended for use with ZipFile.OpenRaw() where we could in theory
+// be sending compressed data to a web client and letting them deal with
+// decompression.
+func zipMethodToEncoding(method uint16) string {
+	// For methods other than deflate, see zip APPNOTE.txt section 4.4.5
+	switch method {
+	case zip.Deflate:
+		return "deflate"
+	case 12:
+		return "bz2"
+	case 93:
+		return "zstd"
+	case 95:
+		return "xz"
+	}
+	return ""
+}
+
+// acceptedEncoding returns the encoding name corresponding to the zip
+// compression method, if it is present in accept.
+func acceptedEncoding(accept string, method uint16) string {
+	m := zipMethodToEncoding(method)
+	// strings.Contains isn't a formally correct way to test whether the
+	// encoding is accepted, however there's no case where an encoding
+	// we support exists as a substring of a different valid encoding specifier,
+	// (ignoring `;q=` modifiers, which we don't care about because we aren't
+	// actually giving the user choices here) so this is correct in practice,
+	// and more computationally efficient than a test that would be robust
+	// against invalid specifiers in an `Accept-Encoding` header.
+	if m != "" && !strings.Contains(accept, m) {
+		m = ""
+	}
+	return m
+}
+
+// ReadZipRaw opens a file within an archive for reading, without decompressing.
+//
+// The second return argument specifies the encoding found within the file,
+// generally either the empty string (uncompressed) or deflate.
+func ReadZipFileRaw(ctx context.Context,
+	zipPath, filePath,
+	acceptEncoding string) (io.ReadCloser, string, error) {
+	defer trace.StartRegion(ctx, "ReadZipFileRaw").End()
 	zr, err := zip.OpenReader(zipPath)
 	if err != nil {
-		return nil, err
+		return nil, "", err
 	}
 	found := false
 	defer func() {
@@ -98,16 +204,26 @@ func ReadZipFile(zipPath, filePath string) (io.ReadCloser, error) {
 		}
 	}()
 
-	if f := findFileInZip(zr, filePath); f != nil {
-		in, err := f.Open()
-		if err != nil {
-			return nil, err
-		}
-		found = true
-		return &zipFileReader{zr: zr, file: in, modified: f.Modified}, nil
+	if err := ctx.Err(); err != nil {
+		return nil, "", err
 	}
 
-	return nil, &ZipError{zipPath, filePath}
+	if f := findFileInZip(ctx, zr, filePath); f != nil {
+		in, m, err := openZipRaw(f, acceptEncoding)
+		if err != nil {
+			return nil, "", err
+		}
+		found = true
+		return &zipFileReader{
+			zr: zr, file: in,
+			info: extractFileInfo(&f.FileHeader, m != ""),
+		}, m, nil
+	}
+	if err := ctx.Err(); err != nil {
+		return nil, "", err
+	}
+
+	return nil, "", &ZipError{zipPath, filePath}
 }
 
 func ReadZip(zipPath string, filePath string) ([]byte, error) {
@@ -117,7 +233,7 @@ func ReadZip(zipPath string, filePath string) ([]byte, error) {
 	}
 	defer zr.Close()
 
-	if f := findFileInZip(zr, filePath); f != nil {
+	if f := findFileInZip(context.TODO(), zr, filePath); f != nil {
 		in, err := f.Open()
 		if err != nil {
 			return nil, err
