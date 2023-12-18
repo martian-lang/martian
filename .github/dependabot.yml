@@ -13,10 +13,11 @@ updates:
   open-pull-requests-limit: 5
   versioning-strategy: increase-if-necessary
   groups:
-    typescript-eslint:
+    eslint:
       patterns:
         - "@typescript-eslint/*"
         - "@types/*"
+        - "eslint"
 - package-ecosystem: gomod
   directory: "/"
   schedule:
