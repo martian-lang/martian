@@ -66,14 +66,10 @@
       }
     });
     maxX += 100;
-    if (maxX < 720.0) {
-      maxX = 720.0;
-    }
+    maxX = Math.max(720, maxX);
     var scale = 720.0 / maxX;
     maxY += 100;
-    if (maxY < 700) {
-      maxY = 700;
-    }
+    maxY = Math.max(2000, maxY);
     $scope.graph.select("svg").attr("width", graphWidth).attr("height", maxY.toString() + "px");
     $scope.graph.attr("transform", "translate(5,5) scale(" + scale + ")");
     $scope.graph.selectAll("g.node.stage rect").attr("rx", 20).attr("ry", 20);

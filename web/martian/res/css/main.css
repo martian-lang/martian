@@ -51,6 +51,8 @@ svg:not(:root) {
     overflow: hidden
 }
 
+#graph > svg { height: 2000px }
+
 button,input,select,textarea {
     margin: 0;
     font-family: inherit;
