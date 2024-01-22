@@ -61,7 +61,7 @@ jobs:
         echo "bazel_repository_cache=$(bazel info repository_cache)" >> $GITHUB_ENV
         echo "bazel_output_base=$(bazel info output_base)" >> $GITHUB_ENV
     - name: Cache bazel build of external repositories
-      uses: actions/cache@v3
+      uses: actions/cache@v4
       with:
         path: |
           ${{ env.bazel_output_base }}/external
@@ -69,7 +69,7 @@ jobs:
         restore-keys: |
           bazel-build-cache-${{steps.setup_go.outputs.go-version}}
     - name: Cache bazel external repositories
-      uses: actions/cache@v3
+      uses: actions/cache@v4
       with:
         path: |
           ${{ env.bazel_repository_cache }}
