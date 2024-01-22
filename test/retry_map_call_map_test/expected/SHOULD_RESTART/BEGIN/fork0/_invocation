@@ -1,0 +1,5 @@
+@include "pipeline.mro"
+
+call BEGIN(
+    count = 2,
+)

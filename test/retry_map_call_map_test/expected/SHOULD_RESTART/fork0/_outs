@@ -1,0 +1,6 @@
+{
+    "sentinels": {
+        "test0": "/user/test/retry_map_call_map_test/retry_map_call_map_test.runfiles/martian/test/retry_map_call_map_test/pipeline_test/outs/sentinels/test0",
+        "test1": null
+    }
+}

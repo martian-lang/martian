@@ -1,4 +1,4 @@
-""" This is stage code for the autoretry test.
+""" This is stage code for the autoretry test (map call over maps variant).
 
 The code is intended to fail on the first try and succeed
 on later retries.  Because of this, it does things that
@@ -10,32 +10,6 @@ This stage can be run either as chunks or as split/chunk/join.
 
 import os
 import martian
-
-__MRO__ = """
-stage BEGIN(
-    in  int    count,
-    out file[] sentinels,
-    out bool[] should_fail_next,
-    src py     "stage",
-) split (
-    in  file   sentinel,
-    in  bool   should_fail,
-    out file   sentinel,
-    out bool   should_fail,
-) using (
-    volatile = strict,
-)
-
-stage MAYBE_FAIL(
-    in  file sentinel,
-    in  bool should_fail,
-    out file sentinel,
-    out bool should_fail,
-    src py   "stage",
-) using (
-    volatile = strict,
-)
-"""
 
 
 def split(args):
@@ -79,6 +53,5 @@ def main(args, outs):
 
 def join(args, outs, chunk_defs, chunk_outs):
     """ Collects the chunk outputs. """
-    # pylint: disable=unused-argument
-    outs.should_fail_next = [chunk.should_fail for chunk in chunk_outs]
-    outs.sentinels = [chunk.sentinel for chunk in chunk_outs]
+    outs.should_fail_next = {f"test{i}": chunk.should_fail for (i, chunk) in enumerate(chunk_outs)}
+    outs.sentinels = {f"test{i}": chunk.sentinel for (i, chunk) in enumerate(chunk_outs)}

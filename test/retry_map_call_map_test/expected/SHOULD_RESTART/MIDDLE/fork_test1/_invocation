@@ -1,0 +1,6 @@
+@include "pipeline.mro"
+
+call MAYBE_FAIL as MIDDLE(
+    sentinel    = "",
+    should_fail = false,
+)
