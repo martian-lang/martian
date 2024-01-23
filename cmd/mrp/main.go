@@ -190,7 +190,7 @@ func (pipestanceBox *pipestanceHolder) Configure(c *mrpConfiguration, invocation
 	//=========================================================================
 	// Configure Martian runtime.
 	//=========================================================================
-	rt, err1 := c.config.NewRuntime()
+	rt, configErr := c.config.NewRuntime()
 
 	factory := core.NewRuntimePipestanceFactory(rt,
 		invocationSrc, c.invocationPath, c.psid, c.mroPaths, c.pipestancePath, c.mroVersion,
@@ -208,9 +208,9 @@ func (pipestanceBox *pipestanceHolder) Configure(c *mrpConfiguration, invocation
 	// populate the pipestance, so we can get the UUID for reporting purposes
 	// if necessary.  We do need to check it before we try to get anything
 	// from the job manager, however.
-	if err1 != nil {
-		util.PrintInfo("jobmngr", "%v", err)
-		pipestanceBox.reportConfigFailure(err)
+	if configErr != nil {
+		util.PrintInfo("jobmngr", "%v", configErr)
+		pipestanceBox.reportConfigFailure(configErr)
 		// Not using util.DieIf here because it would log the error redundantly.
 		os.Exit(1)
 	}
