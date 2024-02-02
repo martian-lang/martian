@@ -18,10 +18,13 @@ func loggedEnvs(s string) bool {
 	switch s {
 	case "_CONDA_PYTHON_SYSCONFIGDATA_NAME",
 		"_PYTHON_SYSCONFIGDATA_NAME",
+		"BATCH_SYSTEM", // HTCondor
 		"COMMD_PORT",
 		"CWD",
 		"ENVIRONMENT", // SGE
 		"EXE",
+		"GODEBUG",
+		"GOMAXPROCS",
 		"HOME",
 		"HOST",
 		"HOSTNAME",
@@ -57,6 +60,7 @@ func loggedEnvPrefix(s string) bool {
 	switch s {
 	case "BASH",
 		"CONDA",
+		"_CONDOR", // HT Condor
 		"CUDA",
 		"DYLD", // Linker
 		"EC2",
