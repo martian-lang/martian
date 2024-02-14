@@ -2,7 +2,7 @@ workspace(name = "martian")
 
 load("@bazel_tools//tools/build_defs/repo:http.bzl", "http_archive")
 
-RULES_GO_VERSION = "v0.43.0"
+RULES_GO_VERSION = "v0.46.0"
 
 _RULES_GO_ARCHIVE = "github.com/bazelbuild/rules_go/releases/download/{}/rules_go-{}.zip".format(
     RULES_GO_VERSION,
@@ -11,14 +11,14 @@ _RULES_GO_ARCHIVE = "github.com/bazelbuild/rules_go/releases/download/{}/rules_g
 
 http_archive(
     name = "io_bazel_rules_go",
-    sha256 = "d6ab6b57e48c09523e93050f13698f708428cfd5e619252e369d377af6597707",
+    sha256 = "80a98277ad1311dacd837f9b16db62887702e9f1d1c4c9f796d0121a46c8e184",
     urls = [
         "https://mirror.bazel.build/" + _RULES_GO_ARCHIVE,
         "https://" + _RULES_GO_ARCHIVE,
     ],
 )
 
-GAZELLE_VERSION = "v0.34.0"
+GAZELLE_VERSION = "v0.35.0"
 
 _GAZELLE_ARCHIVE = "github.com/bazelbuild/bazel-gazelle/releases/download/{}/bazel-gazelle-{}.tar.gz".format(
     GAZELLE_VERSION,
@@ -27,7 +27,7 @@ _GAZELLE_ARCHIVE = "github.com/bazelbuild/bazel-gazelle/releases/download/{}/baz
 
 http_archive(
     name = "bazel_gazelle",
-    sha256 = "b7387f72efb59f876e4daae42f1d3912d0d45563eac7cb23d1de0b094ab588cf",
+    integrity = "sha256-MpOL2hbmcABjA1R5Bj2dJMYO2o15/Uc5Vj9Q0zHLMgk=",
     urls = [
         "https://storage.googleapis.com/bazel-mirror/" + _GAZELLE_ARCHIVE,
         "https://" + _GAZELLE_ARCHIVE,

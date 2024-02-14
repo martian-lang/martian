@@ -1,8 +1,8 @@
 """Repository macro to load remote dependencies."""
 
+load("@bazel_gazelle//:deps.bzl", "gazelle_dependencies", "go_repository")
 load("@bazel_tools//tools/build_defs/repo:http.bzl", "http_archive")
 load("@bazel_tools//tools/build_defs/repo:utils.bzl", "maybe")
-load("@bazel_gazelle//:deps.bzl", "gazelle_dependencies", "go_repository")
 
 def martian_dependencies(
         rules_nodejs_version = "4.7.0",
@@ -32,10 +32,10 @@ def martian_dependencies(
     # Also do this before gazelle_dependencies.
     maybe(
         go_repository,
-        # v0.12.0, latest as of 2023-09-18
+        # v0.15.0, latest as of 2023-12-15
         name = "org_golang_x_sys",
-        version = "v0.12.0",
-        sum = "h1:CM0HF96J0hcLAwsHPJZjfdNzs0gftsLfgKt57wWHJ0o=",
+        version = "v0.15.0",
+        sum = "h1:/VUhepiaJMQUp4+oa/7Zr1D23ma6VTLIYjOOTFZPUcA=",
         importpath = "golang.org/x/sys",
     )
 
@@ -67,10 +67,10 @@ def martian_dependencies(
         # is included here mostly for clarity.
         go_repository,
         name = "org_golang_x_tools",
-        # v0.7.0, latest as of 2023-03-27
-        version = "v0.7.0",
+        # v0.15.0, latest as of 2023-11-16
+        version = "v0.15.0",
         importpath = "golang.org/x/tools",
-        sum = "h1:W4OVu8VVOaIO0yzWMNdepAulS7YfoS3Zabrm8DOXXU4=",
+        sum = "h1:zdAyfUGbYmuVokhzVmghFl2ZJh5QhcfebBgmVPFYA+8=",
     )
 
     maybe(
