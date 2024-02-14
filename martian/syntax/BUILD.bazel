@@ -74,6 +74,8 @@ go_test(
         "format_callable_test.go",
         "format_exp_test.go",
         "formatter_test.go",
+        "go121_test.go",
+        "go122_test.go",
         "include_test.go",
         "map_call_test.go",
         "parsenum_test.go",
