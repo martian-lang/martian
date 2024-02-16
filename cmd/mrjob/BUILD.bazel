@@ -31,6 +31,7 @@ go_library(
 go_binary(
     name = "mrjob",
     embed = [":mrjob_lib"],
+    pgoprofile = "default.pgo",
     visibility = ["//:__pkg__"],
 )
 

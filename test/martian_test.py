@@ -144,6 +144,10 @@ def check_exists_file(output, expect, filename, reverse=False):
     """Checks if a file exists in the output directory."""
     if reverse:
         filename = deuniquify(filename)
+        if os.path.basename(filename) == "_selfProfile.pprof":
+            # ignore these - we want to be able to use the test fixtures to
+            # generate self-profile information for PGO.
+            return True
     if not os.path.isfile(os.path.join(output, filename)):
         if reverse:
             parent_filename = _parent_files(filename)

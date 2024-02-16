@@ -45,7 +45,7 @@ func CompileAll(mroPaths []string, checkSrcPath bool) (int, []*syntax.Ast, error
 	return len(fileNames), asts, nil
 }
 
-func Main(argv []string) {
+func Main(argv []string) int {
 	util.SetPrintLogger(os.Stderr)
 	// Command-line arguments.
 	doc := `Martian Compiler.
@@ -101,7 +101,7 @@ Options:
 
 		if err != nil {
 			fmt.Fprintln(os.Stderr, err.Error())
-			os.Exit(1)
+			return 1
 		}
 
 		if mkjson {
@@ -186,8 +186,9 @@ Options:
 	fmt.Fprintln(os.Stderr, "Successfully compiled", count, "mro files.")
 
 	if wasErr {
-		os.Exit(1)
+		return 1
 	}
+	return 0
 }
 
 func printCallGraphs(asts []*syntax.Ast) bool {

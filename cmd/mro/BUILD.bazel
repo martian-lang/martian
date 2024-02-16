@@ -17,5 +17,6 @@ go_library(
 go_binary(
     name = "mro",
     embed = [":mro_lib"],
+    pgoprofile = "default.pgo",
     visibility = ["//visibility:public"],
 )

@@ -27,7 +27,7 @@ import (
 	"github.com/martian-lang/martian/martian/util"
 )
 
-func Main(argv []string) {
+func Main(argv []string) int {
 	util.SetPrintLogger(os.Stderr)
 	// Command-line arguments.
 	doc := `Martian Formatter.
@@ -49,14 +49,14 @@ Options:
 	opts, err := docopt.Parse(doc, argv, true, martianVersion, false)
 	if err != nil {
 		fmt.Fprintln(os.Stderr, err.Error())
-		os.Exit(1)
+		return 1
 	}
 
 	// Martian environment variables.
 	cwd, err := os.Getwd()
 	if err != nil {
 		fmt.Fprintln(os.Stderr, err.Error())
-		os.Exit(1)
+		return 1
 	}
 	mroPaths := util.ParseMroPath(cwd)
 	if value := os.Getenv("MROPATH"); len(value) > 0 {
@@ -72,7 +72,7 @@ Options:
 				fmt.Fprintln(os.Stderr)
 				fmt.Fprintln(os.Stderr, err.Error())
 				fmt.Fprintln(os.Stderr)
-				os.Exit(1)
+				return 1
 			}
 			for _, f := range fnames {
 				if strings.HasSuffix(f, ".mro") {
@@ -87,7 +87,7 @@ Options:
 				fmt.Fprintln(os.Stderr)
 				fmt.Fprintln(os.Stderr, err.Error())
 				fmt.Fprintln(os.Stderr)
-				os.Exit(1)
+				return 1
 			}
 			if err := ioutil.WriteFile(fname, []byte(fsrc), 0644); err != nil {
 				fmt.Fprintf(os.Stderr, "Error writing to %s: %s\n",
@@ -103,14 +103,14 @@ Options:
 		b, err := ioutil.ReadAll(os.Stdin)
 		if err != nil {
 			fmt.Fprintln(os.Stderr, err.Error())
-			os.Exit(1)
+			return 1
 		}
 		fsrc, err := syntax.FormatSrcBytes(b, fn, fixIncludes, mroPaths)
 		if err != nil {
 			fmt.Fprintln(os.Stderr)
 			fmt.Fprintln(os.Stderr, err.Error())
 			fmt.Fprintln(os.Stderr)
-			os.Exit(1)
+			return 1
 		}
 		fmt.Print(fsrc)
 	} else {
@@ -121,7 +121,7 @@ Options:
 				fmt.Fprintln(os.Stderr)
 				fmt.Fprintln(os.Stderr, err.Error())
 				fmt.Fprintln(os.Stderr)
-				os.Exit(1)
+				return 1
 			}
 			if opts["--rewrite"].(bool) {
 				if err := ioutil.WriteFile(fname, []byte(fsrc), 0644); err != nil {
@@ -133,4 +133,5 @@ Options:
 			}
 		}
 	}
+	return 0
 }

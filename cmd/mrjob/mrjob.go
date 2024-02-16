@@ -15,6 +15,7 @@ import (
 	"path"
 	"regexp"
 	"runtime"
+	"runtime/pprof"
 	"strconv"
 	"strings"
 	"syscall"
@@ -60,6 +61,10 @@ func main() {
 	fqname := path.Base(args[3])
 	journalPath := path.Dir(args[3])
 
+	if os.Getenv("MRO_SELF_PROFILE") != "" {
+		startCpuProfile(metadataPath)
+	}
+
 	run := runner{
 		ioStats:  core.NewIoStatsBuilder(),
 		metadata: core.NewMetadataRunWithJournalPath(fqname, metadataPath, filesPath, journalPath, runType),
@@ -84,6 +89,25 @@ func main() {
 	}
 	run.isDone = make(chan struct{})
 	run.WaitLoop()
+}
+
+// If we're running a CPU self-profile, this is the handle to it.
+var selfProfile *os.File
+
+func startCpuProfile(metadataPath string) {
+	// This isn't going through the  usual metadata API because we want
+	// the profile to include construction of that.
+	f, err := os.Create(path.Join(metadataPath, "_selfProfile.pprof"))
+	if err != nil {
+		util.PrintError(err, "profile", "Error recording CPU profile")
+		return
+	}
+	if err := pprof.StartCPUProfile(f); err != nil {
+		f.Close()
+		util.PrintError(err, "profile", "Error recording CPU profile")
+		return
+	}
+	selfProfile = f
 }
 
 func (self *runner) Init() {
@@ -222,6 +246,12 @@ func (self *runner) waitForPerf() {
 		select {
 		case <-c:
 		case <-time.After(15 * time.Second):
+		}
+	}
+	if selfProfile != nil {
+		pprof.StopCPUProfile()
+		if err := selfProfile.Close(); err != nil {
+			util.PrintError(err, "profile", "Error closing cpu profile")
 		}
 	}
 }

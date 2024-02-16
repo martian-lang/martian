@@ -18,6 +18,7 @@ import (
 	"path"
 	"path/filepath"
 	"runtime"
+	"runtime/pprof"
 	"runtime/trace"
 	"strings"
 	"sync"
@@ -446,8 +447,47 @@ func (c *mrpConfiguration) getListener(hostname string,
 	return listener
 }
 
+type cpuProfiler struct {
+	target *os.File
+}
+
+func (c *cpuProfiler) HandleSignal(os.Signal) {
+	pprof.StopCPUProfile()
+	if err := c.target.Close(); err != nil {
+		util.PrintError(err, "profile", "Error closing cpu profile")
+	}
+}
+
+func startCpuProfile(dest string) {
+	dir, name := path.Split(dest)
+	var f *os.File
+	var err error
+	if strings.ContainsRune(name, '*') {
+		// For purposese of automating profile collection, if there is a * in
+		// the destination profile name, make a new file, so we don't have to
+		// specify a fresh filename for every run.
+		f, err = os.CreateTemp(dir, name)
+	} else {
+		f, err = os.Open(dest)
+	}
+	if err != nil {
+		util.PrintError(err, "profile", "Error recording CPU profile")
+		return
+	}
+	if err := pprof.StartCPUProfile(f); err != nil {
+		f.Close()
+		util.PrintError(err, "profile", "Error recording CPU profile")
+		return
+	}
+	cpuProfile := cpuProfiler{target: f}
+	util.RegisterSignalHandler(&cpuProfile)
+}
+
 func main() {
 	util.SetupSignalHandlers()
+	if pf := os.Getenv("MRO_SELF_PROFILE"); pf != "" {
+		startCpuProfile(pf)
+	}
 	c := configure()
 
 	// Validate psid.

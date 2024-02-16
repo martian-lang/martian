@@ -13,7 +13,7 @@ GOTESTS=$(GOLIBTESTS) $(GOBINTESTS) test-all
 VERSION=$(shell git describe --tags --always --dirty)
 RELEASE=false
 SRC_ROOT=$(abspath $(dir $(PWD))../..)
-GO_FLAGS=-ldflags "-X '$(REPO)/martian/util.__VERSION__=$(VERSION)' -X $(REPO)/martian/util.__RELEASE__='$(RELEASE)'" -gcflags "-trimpath $(SRC_ROOT)"
+GO_FLAGS=-trimpath -ldflags "-X '$(REPO)/martian/util.__VERSION__=$(VERSION)' -X $(REPO)/martian/util.__RELEASE__='$(RELEASE)'"
 
 unexport GOPATH
 export GO111MODULE=on
@@ -166,6 +166,9 @@ test/disable_test/pipeline_test: test/disable_test/disable_test.json \
                                  integration_prereqs
 	test/martian_test.py $<
 
+test/retry_map_call_map_test/pipeline_test: test/retry_map_call_map_test/autoretry_pass.json \
+                                            integration_prereqs
+	test/martian_test.py $<
 
 test/retry_test/pipeline_test: test/retry_test/autoretry_pass.json \
                                integration_prereqs
@@ -186,7 +189,17 @@ longtests: test/split_test/pipeline_test \
            test/fork_test/ar_fail/pipeline_fail \
            test/map_test/pipeline_test \
            test/disable_test/pipeline_test \
+           test/retry_map_call_map_test/pipeline_test \
            test/retry_test/pipeline_test
+
+# Collect profiles to use for profile-guided optimization for mrp and mrjob,
+# and merge/update the appropriate default.pgo files.
+update_pgo: integration_prereqs
+	mkdir -p profiles
+	rm -f profiles/*.pprof
+	MRO_SELF_PROFILE="$(PWD)/profiles/*.pprof" $(MAKE) longtests
+	find $(PWD)/profiles -maxdepth 1 -name "*.pprof" | xargs go tool pprof -proto > $(PWD)/cmd/mrp/default.pgo
+	find $(PWD)/test -name _selfProfile.pprof | xargs go tool pprof -proto > $(PWD)/cmd/mrjob/default.pgo
 
 clean:
 	rm -rf $(GOBIN)

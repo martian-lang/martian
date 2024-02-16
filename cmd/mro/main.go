@@ -9,6 +9,7 @@ import (
 	"runtime"
 	"runtime/pprof"
 	"runtime/trace"
+	"strings"
 
 	"github.com/martian-lang/martian/cmd/mro/check"
 	"github.com/martian-lang/martian/cmd/mro/edit"
@@ -27,14 +28,11 @@ func main() {
 	// Support running from a symlink from the old tool name.
 	switch path.Base(os.Args[0]) {
 	case "mrc":
-		check.Main(os.Args[1:])
-		os.Exit(0)
+		os.Exit(check.Main(os.Args[1:]))
 	case "mrdr":
-		edit.Main(os.Args[1:])
-		os.Exit(0)
+		os.Exit(edit.Main(os.Args[1:]))
 	case "mrf":
-		format.Main(os.Args[1:])
-		os.Exit(0)
+		os.Exit(format.Main(os.Args[1:]))
 	}
 	switch os.Args[1] {
 	case "help":
@@ -56,64 +54,76 @@ func main() {
 	version:
 		Print the version and exit.`)
 		} else {
-			delegateMain(append([]string{os.Args[2], "--help"}, os.Args[3:]...))
-			os.Exit(0)
+			os.Exit(delegateMain(append([]string{
+				os.Args[2], "--help"}, os.Args[3:]...)))
 		}
 	case "version", "--version":
 		fmt.Println(util.GetVersion())
 		os.Exit(0)
 	}
-	delegateMain(os.Args[1:])
-	os.Exit(0)
+	os.Exit(delegateMain(os.Args[1:]))
 }
 
-func delegateMain(argv []string) {
+func delegateMain(argv []string) int {
 	switch argv[0] {
 	case "check":
-		check.Main(argv[1:])
+		return check.Main(argv[1:])
 	case "edit":
-		edit.Main(argv[1:])
+		return edit.Main(argv[1:])
 	case "format":
-		format.Main(argv[1:])
+		return format.Main(argv[1:])
 	case "graph":
-		graph.Main(argv[1:])
+		return graph.Main(argv[1:])
 	case "-cpuprofile":
-		cpuProfile(argv[1], argv[2:])
+		return cpuProfile(argv[1], argv[2:])
 	case "-memprofile":
-		memProfile(argv[1], argv[2:])
+		return memProfile(argv[1], argv[2:])
 	case "-trace":
-		traceProf(argv[1], argv[2:])
+		return traceProf(argv[1], argv[2:])
 	default:
 		fmt.Fprintln(os.Stderr, usage)
-		os.Exit(1)
+		return 1
 	}
 }
 
-func cpuProfile(dest string, argv []string) {
-	f, err := os.Create(dest)
+// For purposese of automating profile collection, if there is a * in
+// the destination profile name, make a new temp file, so we don't have to
+// specify a fresh filename for every run.
+func openMaybeTemp(dest string) (*os.File, error) {
+	dir, name := path.Split(dest)
+	if strings.ContainsRune(name, '*') {
+		return os.CreateTemp(dir, name)
+	} else {
+		return os.Create(dest)
+	}
+}
+
+func cpuProfile(dest string, argv []string) int {
+	f, err := openMaybeTemp(dest)
 	if err != nil {
 		fmt.Fprintln(os.Stderr, "could not create CPU profile: ", err)
-		os.Exit(1)
+		return 1
 	}
 	defer f.Close()
 	if err := pprof.StartCPUProfile(f); err != nil {
 		fmt.Fprintln(os.Stderr, "could not start CPU profile: ", err)
-		os.Exit(1)
+		return 1
 	}
-	delegateMain(argv)
+	returnCode := delegateMain(argv)
 	pprof.StopCPUProfile()
 	if err := f.Close(); err != nil {
 		fmt.Fprintln(os.Stderr, "could not close cpu profile: ", err)
 	}
+	return returnCode
 }
 
-func memProfile(dest string, argv []string) {
-	delegateMain(argv)
+func memProfile(dest string, argv []string) int {
+	returnCode := delegateMain(argv)
 	runtime.GC()
-	f, err := os.Create(dest)
+	f, err := openMaybeTemp(dest)
 	if err != nil {
 		fmt.Fprintln(os.Stderr, "could not create memory profile: ", err)
-		os.Exit(1)
+		return 1
 	}
 	defer f.Close()
 	if err := pprof.WriteHeapProfile(f); err != nil {
@@ -121,22 +131,24 @@ func memProfile(dest string, argv []string) {
 	} else if err := f.Close(); err != nil {
 		fmt.Fprintln(os.Stderr, "could not close memory profile: ", err)
 	}
+	return returnCode
 }
 
-func traceProf(dest string, argv []string) {
-	f, err := os.Create(dest)
+func traceProf(dest string, argv []string) int {
+	f, err := openMaybeTemp(dest)
 	if err != nil {
 		fmt.Fprintln(os.Stderr, "could not create trace: ", err)
-		os.Exit(1)
+		return 1
 	}
 	defer f.Close()
 	if err := trace.Start(f); err != nil {
 		fmt.Fprintln(os.Stderr, "could not start trace: ", err)
-		os.Exit(1)
+		return 1
 	}
-	delegateMain(argv)
+	returnCode := delegateMain(argv)
 	trace.Stop()
 	if err := f.Close(); err != nil {
 		fmt.Fprintln(os.Stderr, "could not close trace: ", err)
 	}
+	return returnCode
 }

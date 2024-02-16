@@ -2,6 +2,7 @@ import martian
 import json
 import os
 import random
+import time
 
 __MRO__ = """
 stage ADD_KEY(
@@ -33,3 +34,7 @@ def main(args, outs):
     s[args.key] = args.value
     with open(outs.result, "w") as outf:
         json.dump(s, outf, indent=2)
+    if os.environ.get("MRO_SELF_PROFILE", False):
+        # To improve profile coverage, we want to have some cases where
+        # the stage doesn't immediately complete.
+        time.sleep(random.random() * 20)
