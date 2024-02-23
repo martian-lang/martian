@@ -73,6 +73,13 @@ class Record:
         """This exists only for backwards compatibility."""
 
 
+def clear(outs):
+    # type: (Record) -> None
+    """Set all of the outs to None."""
+    for field_name in outs.slots:
+        setattr(outs, field_name, None)
+
+
 def json_sanitize(data):
     """Converts NaN values into None values, and decode raw bytes."""
     retval = data
