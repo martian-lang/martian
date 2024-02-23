@@ -59,7 +59,7 @@ class Record:
 
     def __iter__(self):
         """Iterate through the values of the object corresponding to keys in
-        the dictioanry used to initialize the object."""
+        the dictionary used to initialize the object."""
         for field_name in self.slots:
             yield getattr(self, field_name)
 
@@ -129,7 +129,7 @@ def padded_print(field_name, value):
 
 
 def profile(func):
-    """Add a fuction to the set of functions to be covered by the line profiler."""
+    """Add a function to the set of functions to be covered by the line profiler."""
     assert _INSTANCE is not None
     _INSTANCE.funcs.append(func)
     return func
@@ -147,7 +147,7 @@ if sys.platform.startswith("linux"):
 
     def child_preexec_set_pdeathsig():
         """When used as the preexec_fn argument for subprocess.Popen etc,
-        causes the subprocess to recieve SIGKILL if the parent process
+        causes the subprocess to receive SIGKILL if the parent process
         terminates."""
         zero = ctypes.c_ulong(0)
         _LIBC.prctl(
