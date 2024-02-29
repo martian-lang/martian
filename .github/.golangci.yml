@@ -25,7 +25,14 @@ linters-settings:
   errcheck:
     check-type-assertions: false
     check-blank: false
-    exclude: .github/errorcheck_excludes.txt
+    exclude-functions:
+      - io.Copy(*bytes.Buffer)
+      - io.Copy(os.Stderr)
+      - (bytes.Buffer).Write
+      - (bytes.Buffer).WriteByte
+      - (bytes.Buffer).WriteRune
+      - (bytes.Buffer).WriteString
+      - fmt.Fprintln(os.Stderr)
 
   gofmt:
     # simplify code: gofmt with `-s` option

@@ -1,7 +1,0 @@
-io.Copy(*bytes.Buffer)
-io.Copy(os.Stderr)
-(bytes.Buffer).Write
-(bytes.Buffer).WriteByte
-(bytes.Buffer).WriteRune
-(bytes.Buffer).WriteString
-fmt.Fprintln(os.Stderr)
