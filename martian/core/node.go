@@ -618,6 +618,11 @@ func (self *Node) loadMetadata() {
 	self.addFrontierNode(self)
 }
 
+// removeMetadata deletes the directories for any steps which do not have any
+// output or metadata files.
+//
+// When zipping metadata on completion is enabled, this reclaims some
+// additional inodes.
 func (self *Node) removeMetadata() {
 	for _, fork := range self.forks {
 		fork.removeMetadata()

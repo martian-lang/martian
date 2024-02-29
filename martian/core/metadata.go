@@ -194,14 +194,15 @@ type MetadataInfo struct {
 }
 
 func NewMetadata(fqname string, p string) *Metadata {
+	fp := path.Join(p, "files")
 	return &Metadata{
 		fqname:        fqname,
 		path:          p,
 		finalPath:     p,
 		contents:      make(map[MetadataFileName]struct{}),
 		readCache:     make(map[MetadataFileName]LazyArgumentMap),
-		curFilesPath:  path.Join(p, "files"),
-		finalFilePath: path.Join(p, "files"),
+		curFilesPath:  fp,
+		finalFilePath: fp,
 	}
 }
 
@@ -402,7 +403,10 @@ func (self *Metadata) uniquify() error {
 	return nil
 }
 
-func (self *Metadata) removeAll() error {
+// removeAll deletes all output files, the directory containing them, and the
+// symlinks pointing to them.  If includeMeta is true, also delete the metadata
+// directory itself.
+func (self *Metadata) removeAll(includeMeta bool) error {
 	self.mutex.Lock()
 	defer self.mutex.Unlock()
 	if len(self.contents) > 0 {
@@ -416,8 +420,16 @@ func (self *Metadata) removeAll() error {
 	if err := os.RemoveAll(self.curFilesPath); err != nil {
 		return err
 	}
-	if err := os.RemoveAll(self.path); err != nil {
-		return err
+	if includeMeta {
+		if err := os.RemoveAll(self.path); err != nil {
+			return err
+		}
+	} else if t := self.TempDir(); t != "" {
+		// If we're deleting the entire `self.path` then this gets taken care of
+		// that way, but otherwise we still want to remove it.
+		if err := os.RemoveAll(self.TempDir()); err != nil {
+			return err
+		}
 	}
 	// Remove final directories iff they're symlinks or empty.  If a
 	// successful run wrote to it then we don't want to delete it.
@@ -904,7 +916,7 @@ func (self *Metadata) uncheckedReset() error {
 			}
 		}
 	}
-	if err := self.removeAll(); err != nil {
+	if err := self.removeAll(true); err != nil {
 		util.PrintInfo("runtime",
 			"Cannot reset the stage because some folder contents could not "+
 				"be deleted.\n\nPlease resolve this error in order to "+

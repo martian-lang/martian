@@ -585,11 +585,21 @@ func (self *Fork) collectMetadatas() []*Metadata {
 	return metadatas
 }
 
+// removeMetadata deletes the directories for any steps which do not have any
+// output or metadata files.
+//
+// When zipping metadata on completion is enabled, this reclaims some
+// additional inodes.
 func (self *Fork) removeMetadata() {
 	rem := func(metadata *Metadata) {
 		filePaths, _ := metadata.enumerateFiles()
-		if len(filePaths) == 0 {
-			metadata.removeAll()
+		if len(filePaths) != 0 {
+			return
+		}
+		if md, err := metadata.glob(); err != nil || len(md) > 0 {
+			_ = metadata.removeAll(false)
+		} else {
+			_ = metadata.removeAll(true)
 		}
 	}
 	rem(self.split_metadata)
