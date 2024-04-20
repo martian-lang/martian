@@ -11,6 +11,7 @@
     "^According to the job manager, the job for .+ was not queued or running,",
     "^IOError: \\[Errno 116\\] Stale file handle",
     "^OSError: \\[Errno 11\\] Resource temporarily unavailable",
-    "^jobcmd error \\(exit status \\d+\\)"
+    "^jobcmd error \\(exit status \\d+\\)",
+    "^sbatch: error: Batch job submission failed: Socket timed out on send/recv operation"
   ]
 }
