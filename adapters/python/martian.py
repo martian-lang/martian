@@ -17,6 +17,7 @@ import os
 import resource
 import subprocess
 import sys
+from pathlib import PurePath
 
 
 from typing import (  # pylint: disable=import-error, unused-import
@@ -98,6 +99,8 @@ def json_sanitize(data):
         pass
     elif isinstance(data, bytes):
         retval = data.decode("utf-8", errors="ignore")
+    elif isinstance(data, PurePath):
+        retval = str(data)
     elif hasattr(data, "__iter__"):
         # Recurse on lists.
         retval = [json_sanitize(d) for d in data]
