@@ -26,6 +26,10 @@
 ###   works best for single-node, multi-threaded applications on your system.
 #SBATCH --signal=2
 #SBATCH --no-requeue
+### NOTE: if your cluster is configured to use VSizeFactor with a value less
+### than 400, replace __MRO_MEM_GB__ below with __MRO_VMEM_GB__, as many stages
+### require their virtual address space to be significantly larger than their
+### memory requirement.
 #SBATCH --mem=__MRO_MEM_GB__G
 #SBATCH -o __MRO_STDOUT__
 #SBATCH -e __MRO_STDERR__
