@@ -846,10 +846,19 @@ func (self *Metadata) endRefresh(lastRefresh time.Time) {
 			// The job is not running but the metadata thinks it still is.
 			// The check for metadata updates was completed since the time that
 			// the queue query completed.  This job has failed.  Write an error.
-			err := self._writeRawNoLock(Errors, fmt.Sprintf(
-				"According to the job manager, the job for %s was not queued "+
-					"or running, since at least %s.",
-				self.fqname, notRunningSince.Format(util.TIMEFMT)))
+			var err error
+			if state == Running {
+				err = self._writeRawNoLock(Errors, fmt.Sprintf(
+					"According to the job manager, the job for %s (%s) has "+
+						"not been running since at least %s.",
+					self.fqname, jobid, notRunningSince.Format(util.TIMEFMT)))
+			} else {
+				err = self._writeRawNoLock(Errors, fmt.Sprintf(
+					"According to the job manager, the job for %s (%s) "+
+						"has not been queued or running since at least %s, but "+
+						"it does not appear to have started successfully.",
+					self.fqname, jobid, notRunningSince.Format(util.TIMEFMT)))
+			}
 			if err != nil {
 				util.LogError(err, "runtime",
 					"Error writing error message about cluster-mode job not running.")
