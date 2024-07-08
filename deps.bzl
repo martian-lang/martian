@@ -21,21 +21,21 @@ def martian_dependencies(
     maybe(
         http_archive,
         name = "bazel_skylib",
-        # 1.4.2, latest as of 2023-06-08
+        # 1.6.1, latest as of 2024-05-20
         urls = [
-            "https://mirror.bazel.build/github.com/bazelbuild/bazel-skylib/releases/download/1.4.2/bazel-skylib-1.4.2.tar.gz",
-            "https://github.com/bazelbuild/bazel-skylib/releases/download/1.4.2/bazel-skylib-1.4.2.tar.gz",
+            "https://mirror.bazel.build/github.com/bazelbuild/bazel-skylib/releases/download/1.6.1/bazel-skylib-1.6.1.tar.gz",
+            "https://github.com/bazelbuild/bazel-skylib/releases/download/1.6.1/bazel-skylib-1.6.1.tar.gz",
         ],
-        sha256 = "66ffd9315665bfaafc96b52278f57c7e2dd09f5ede279ea6d39b2be471e7e3aa",
+        sha256 = "9f38886a40548c6e96c106b752f242130ee11aaa068a56ba7e56f4511f33e4f2",
     )
 
     # Also do this before gazelle_dependencies.
     maybe(
         go_repository,
-        # v0.15.0, latest as of 2023-12-15
         name = "org_golang_x_sys",
-        version = "v0.19.0",
-        sum = "h1:q5f1RH2jigJ1MoAWp2KTp3gm5zAGFUTarQZ5U386+4o=",
+        # v0.20.0, latest as of 2024-05-20
+        version = "v0.20.0",
+        sum = "h1:Od9JTbYCk261bKm4M/mw7AklTlFYIa0bIp9BgSm1S8Y=",
         importpath = "golang.org/x/sys",
     )
 
@@ -67,10 +67,10 @@ def martian_dependencies(
         # is included here mostly for clarity.
         go_repository,
         name = "org_golang_x_tools",
-        # v0.15.0, latest as of 2023-11-16
-        version = "v0.20.0",
+        # v0.21.0, latest as of 2024-05-20
+        version = "v0.21.0",
         importpath = "golang.org/x/tools",
-        sum = "h1:hz/CVckiOxybQvFw6h7b/q80NTr9IUQb4s1IIzW7KNY=",
+        sum = "h1:qc0xYgIbsSDt9EyWz05J5wfa7LOVW0YTLOXrqdLAWIw=",
     )
 
     maybe(
