@@ -68,6 +68,7 @@ Options:
 			os.Stderr.WriteString("\n")
 			os.Exit(1)
 		}
+		os.Exit(0)
 	}
 
 	// Read and parse JSON from stdin.
