@@ -21,12 +21,11 @@ def martian_dependencies(
     maybe(
         http_archive,
         name = "bazel_skylib",
-        # 1.6.1, latest as of 2024-05-20
         urls = [
-            "https://mirror.bazel.build/github.com/bazelbuild/bazel-skylib/releases/download/1.6.1/bazel-skylib-1.6.1.tar.gz",
-            "https://github.com/bazelbuild/bazel-skylib/releases/download/1.6.1/bazel-skylib-1.6.1.tar.gz",
+            "https://mirror.bazel.build/github.com/bazelbuild/bazel-skylib/releases/download/1.7.1/bazel-skylib-1.7.1.tar.gz",
+            "https://github.com/bazelbuild/bazel-skylib/releases/download/1.7.1/bazel-skylib-1.7.1.tar.gz",
         ],
-        sha256 = "9f38886a40548c6e96c106b752f242130ee11aaa068a56ba7e56f4511f33e4f2",
+        sha256 = "bc283cdfcd526a52c3201279cda4bc298652efa898b10b4db0837dc51652756f",
     )
 
     # Also do this before gazelle_dependencies.
@@ -86,8 +85,8 @@ def martian_dependencies(
         ],
     )
 
-    python_rules_tag = "0.8.1"
-    python_rules_sha = "cdf6b84084aad8f10bf20b46b77cb48d83c319ebe6458a18e9d2cebf57807cdd"
+    python_rules_tag = "0.30.0"
+    python_rules_sha = "3b8b4cdc991bc9def8833d118e4c850f1b7498b3d65d5698eea92c3528b8cf2c"
     maybe(
         http_archive,
         name = "rules_python",

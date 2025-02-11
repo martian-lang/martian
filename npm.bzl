@@ -12,5 +12,7 @@ def martian_npm_repo():
         args = [
             "--frozen-lockfile",
             "--ignore-optional",
+            "--mutex",
+            "network",
         ],
     )

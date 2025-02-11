@@ -8,4 +8,4 @@ require (
 	golang.org/x/tools v0.21.0
 )
 
-go 1.21
+go 1.22

@@ -9,7 +9,7 @@ permissions:
 
 jobs:
   make:
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-latest
     strategy:
       matrix:
         py: ["3.8"]
@@ -46,6 +46,8 @@ jobs:
 
   bazel:
     runs-on: ubuntu-latest
+    env:
+      USE_BAZEL_VERSION: 7.5.0
     steps:
     - uses: actions/checkout@v4
     - uses: actions/setup-python@v5
@@ -54,7 +56,7 @@ jobs:
     - uses: actions/setup-go@v5
       id: setup_go
       with:
-        go-version: "1.21"
+        go-version: "1.23"
     - name: Show bazel variables
       run: |
         bazel info
@@ -83,6 +85,7 @@ jobs:
                    --discard_analysis_cache \
                    --notrack_incremental_state \
                    --nokeep_state_after_build \
+                   --enable_workspace \
                    //...
     - name: Show build timing summary
       run: bazel analyze-profile ${{ env.bazel_output_base }}/command.profile.gz
