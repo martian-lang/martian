@@ -33,8 +33,8 @@ def martian_dependencies(
         go_repository,
         name = "org_golang_x_sys",
         # v0.20.0, latest as of 2024-05-20
-        version = "v0.20.0",
-        sum = "h1:Od9JTbYCk261bKm4M/mw7AklTlFYIa0bIp9BgSm1S8Y=",
+        version = "v0.30.0",
+        sum = "h1:QjkSwP/36a20jFYWkSue1YwXzLmsV5Gfq7Eiy72C1uc=",
         importpath = "golang.org/x/sys",
     )
 
@@ -67,9 +67,9 @@ def martian_dependencies(
         go_repository,
         name = "org_golang_x_tools",
         # v0.21.0, latest as of 2024-05-20
-        version = "v0.21.0",
+        version = "v0.30.0",
         importpath = "golang.org/x/tools",
-        sum = "h1:qc0xYgIbsSDt9EyWz05J5wfa7LOVW0YTLOXrqdLAWIw=",
+        sum = "h1:BgcpHewrV5AUp2G9MebG4XPFI1E2W41zU1SaqVA9vJY=",
     )
 
     maybe(
