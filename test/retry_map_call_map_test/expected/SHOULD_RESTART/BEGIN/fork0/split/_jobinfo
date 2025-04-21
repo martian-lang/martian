@@ -1,0 +1,107 @@
+{
+    "name": "ID.pipeline_test.SHOULD_RESTART.BEGIN.fork0",
+    "type": "local",
+    "cwd": "/user/test/retry_map_call_map_test/retry_map_call_map_test.runfiles/martian/test/retry_map_call_map_test/pipeline_test/SHOULD_RESTART/BEGIN/fork0/split-ue2ef9c4265/files",
+    "python": {
+        "binpath": "/bin/python3",
+        "version": "3.7.16 (default, Aug 30 2023, 20:37:53) \n[GCC 7.3.1 20180712 (Red Hat 7.3.1-15)]"
+    },
+    "rusage": {
+        "self": {
+            "ru_maxrss": 13304,
+            "ru_ixrss": 0,
+            "ru_idrss": 0,
+            "ru_minflt": 366,
+            "ru_majflt": 0,
+            "ru_nswap": 0,
+            "ru_utime": 0.004656,
+            "ru_stime": 0,
+            "ru_inblock": 64,
+            "ru_oublock": 40,
+            "ru_msgsnd": 0,
+            "ru_msgrcv": 0,
+            "ru_nsignals": 0,
+            "ru_nivcsw": 0
+        },
+        "children": {
+            "ru_maxrss": 16160,
+            "ru_ixrss": 0,
+            "ru_idrss": 0,
+            "ru_minflt": 3870,
+            "ru_majflt": 3,
+            "ru_nswap": 0,
+            "ru_utime": 0.055575,
+            "ru_stime": 0.011661,
+            "ru_inblock": 200,
+            "ru_oublock": 72,
+            "ru_msgsnd": 0,
+            "ru_msgrcv": 0,
+            "ru_nsignals": 0,
+            "ru_nivcsw": 1
+        }
+    },
+    "used_bytes": {
+        "rss": 13623296,
+        "shared": 3252224,
+        "vmem": 1641078784,
+        "text": 1163264,
+        "stack": 84197376,
+        "proc_count": 1
+    },
+    "io": {
+        "total": {
+            "read": {
+                "sysc": 6,
+                "bytes": 0
+            },
+            "write": {
+                "sysc": 0,
+                "bytes": 0
+            }
+        },
+        "max": {
+            "read": {
+                "sysc": 1928.3099359704686,
+                "bytes": 0
+            },
+            "write": {
+                "sysc": 0,
+                "bytes": 0
+            }
+        },
+        "dev": {
+            "read": {
+                "sysc": 0,
+                "bytes": 0
+            },
+            "write": {
+                "sysc": 0,
+                "bytes": 0
+            }
+        }
+    },
+    "wallclock": {
+        "start": "2024-01-08T18:43:49.060592735Z",
+        "end": "2024-01-08T18:43:49.152555481Z",
+        "duration_seconds": 0.091962752
+    },
+    "profile_mode": "disable",
+    "stackvars_flag": "disable",
+    "monitor_flag": "disable",
+    "invocation": {
+        "call": "SHOULD_RESTART",
+        "args": {
+            "count": 2
+        },
+        "mro_file": "pipeline.mro"
+    },
+    "version": {
+        "martian": "\u003cversion not embedded\u003e",
+        "pipelines": "v4.0.11-29-g954ba393-dirty"
+    },
+    "host": "bespin1.fuzzplex.com",
+    "pid": 779009,
+    "threads": 1,
+    "memGB": 1,
+    "vmemGB": 4
+}

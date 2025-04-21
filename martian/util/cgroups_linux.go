@@ -11,22 +11,43 @@ import (
 	"path"
 )
 
-// Get the cgroup types from the mount options of a mount.
-func getCgTypes(fields [][]byte) []byte {
+// These are effectively constants, but can be overridden for unit tests.
+var (
+	mountInfoPath  = "/proc/self/mountinfo"
+	cgroupProcPath = "/proc/self/cgroup"
+)
+
+// Parse mount type and options from mountinfo line.
+func getCgMountType(fields [][]byte) ([]byte, []byte) {
 	for i, f := range fields {
 		if len(f) == 1 && f[0] == '-' {
-			if len(fields) < i+4 || string(fields[i+1]) != "cgroup" {
-				return nil
+			if len(fields) < i+4 {
+				return nil, nil
 			}
-			return fields[i+3]
+			return fields[i+1], fields[i+3]
 		}
 	}
-	return nil
+	return nil, nil
+}
+
+// Get the cgroup types from the mount options of a mount.
+func getCgTypes(fields [][]byte) []byte {
+	ty, opts := getCgMountType(fields)
+	if string(ty) != "cgroup" {
+		return nil
+	}
+	return opts
+}
+
+// Returns true if the mount type is cgroup2.
+func isCgV2(fields [][]byte) bool {
+	ty, _ := getCgMountType(fields)
+	return string(ty) == "cgroup2"
 }
 
 // Find out where the memory cgroup controller is mounted.
 func findCgroupMount(cgType []byte) string {
-	m, err := os.Open("/proc/self/mountinfo")
+	m, err := os.Open(mountInfoPath)
 	if err != nil {
 		return ""
 	}
@@ -35,7 +56,11 @@ func findCgroupMount(cgType []byte) string {
 	for scanner.Scan() {
 		fields := bytes.Fields(scanner.Bytes())
 		if len(fields) >= 10 {
-			if bytes.Contains(getCgTypes(fields[6:]), cgType) {
+			if len(cgType) == 0 {
+				if isCgV2(fields[6:]) {
+					return string(fields[4])
+				}
+			} else if bytes.Contains(getCgTypes(fields[6:]), cgType) {
 				return string(fields[4])
 			}
 		}
@@ -43,35 +68,43 @@ func findCgroupMount(cgType []byte) string {
 	return ""
 }
 
-func findCgroup(cgType []byte) string {
-	f, err := os.Open("/proc/self/cgroup")
+func findCgroup(cgType []byte) (string, bool) {
+	f, err := os.Open(cgroupProcPath)
 	if err != nil {
-		return ""
+		return "", false
 	}
 	defer f.Close()
 	scanner := bufio.NewScanner(f)
 	for scanner.Scan() {
 		fields := bytes.SplitN(scanner.Bytes(), []byte{':'}, 3)
-		if len(fields) >= 3 && bytes.Contains(fields[1], cgType) {
-			return string(bytes.TrimSpace(fields[2]))
+		if len(fields) >= 3 {
+			if len(fields[1]) == 0 {
+				return string(bytes.TrimSpace(fields[2])), true
+			}
+			if bytes.Contains(fields[1], cgType) {
+				return string(bytes.TrimSpace(fields[2])), false
+			}
 		}
 	}
-	return ""
+	return "", false
 }
 
-func getCgroupPath(cgType []byte) string {
+func getCgroupPath(cgType []byte) (string, bool) {
+	p, v2 := findCgroup(cgType)
+	if p == "" {
+		return "", false
+	}
+	if v2 {
+		cgType = nil
+	}
 	root := findCgroupMount(cgType)
 	if root == "" {
-		return ""
+		return "", v2
 	}
-	p := findCgroup(cgType)
-	if p == "" {
-		return ""
-	}
-	return root + p
+	return root + p, v2
 }
 
-func getMemoryCgroupPath() string {
+func getMemoryCgroupPath() (string, bool) {
 	return getCgroupPath([]byte("memory"))
 }
 
@@ -123,15 +156,26 @@ func readMemoryStat(p string) (limit, usage int64) {
 // Get the lowest rss memory limit in cgroups, as well as the current
 // usage.
 func GetCgroupMemoryLimit() (limit, softLimit, usage int64) {
-	p := getMemoryCgroupPath()
+	p, v2 := getMemoryCgroupPath()
 	if p == "" {
 		return 0, 0, 0
 	}
 	limit, usage = readMemoryStat(p)
-	for _, name := range [...]string{
-		"memory.limit_in_bytes",
-		"memory.memsw.limit_in_bytes",
-	} {
+	var limitFiles [2]string
+	soft := "memory.soft_limit_in_bytes"
+	if v2 {
+		limitFiles = [...]string{
+			"memory.max",
+			"memory.swap.max",
+		}
+		soft = "memory.high"
+	} else {
+		limitFiles = [...]string{
+			"memory.limit_in_bytes",
+			"memory.memsw.limit_in_bytes",
+		}
+	}
+	for _, name := range limitFiles {
 		if b, err := os.ReadFile(path.Join(p, name)); err == nil {
 			if v := parseCgroupInt(b); v != 0 {
 				if v < limit || limit == 0 {
@@ -141,7 +185,7 @@ func GetCgroupMemoryLimit() (limit, softLimit, usage int64) {
 		}
 	}
 	if b, err := os.ReadFile(path.Join(p,
-		"memory.soft_limit_in_bytes")); err == nil {
+		soft)); err == nil {
 		softLimit = parseCgroupInt(b)
 	}
 	return limit, softLimit, usage

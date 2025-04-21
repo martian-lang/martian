@@ -70,6 +70,7 @@ go_test(
     name = "util_test",
     srcs = select({
         "@io_bazel_rules_go//go/platform:linux": [
+            "cgroups_linux_test.go",
             "directory_linux_test.go",
             "walk_linux_test.go",
         ],

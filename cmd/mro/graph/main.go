@@ -16,7 +16,7 @@ import (
 	"github.com/martian-lang/martian/martian/util"
 )
 
-func Main(argv []string) {
+func Main(argv []string) int {
 	util.SetPrintLogger(os.Stderr)
 	syntax.SetEnforcementLevel(syntax.EnforceError)
 
@@ -50,7 +50,7 @@ func Main(argv []string) {
 			fmt.Fprintln(flags.Output(),
 				"Cannot render input/output traces as json or dot.")
 			flags.Usage()
-			os.Exit(1)
+			return 1
 		}
 		if stageInput != "" {
 			if !traceInput(stageInput, cg, lookup) {
@@ -62,27 +62,27 @@ func Main(argv []string) {
 				fmt.Fprintln(os.Stderr, "Callable", stageOutput, "not found")
 			}
 		}
-		os.Exit(0)
+		return 0
 	}
 	pcg, ok := cg.(*syntax.CallGraphPipeline)
 	if !ok {
 		fmt.Fprintln(os.Stderr,
 			"Best call found was not a pipeline:",
 			cg.GetFqid())
-		os.Exit(1)
+		return 1
 	}
 	if asDot {
 		if asJson {
 			fmt.Fprintln(flags.Output(),
 				"Cannot render both json and dot.")
 			flags.Usage()
-			os.Exit(1)
+			return 1
 		}
 		renderDot(pcg)
-		os.Exit(0)
+		return 0
 	}
 	renderJson(pcg)
-	os.Exit(0)
+	return 0
 }
 
 func getGraph(fname string) (syntax.CallGraphNode, *syntax.TypeLookup) {

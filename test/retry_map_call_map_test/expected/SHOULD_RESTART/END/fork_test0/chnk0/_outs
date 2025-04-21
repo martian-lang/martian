@@ -1,0 +1,4 @@
+{
+    "sentinel": "/user/test/retry_map_call_map_test/retry_map_call_map_test.runfiles/martian/test/retry_map_call_map_test/pipeline_test/SHOULD_RESTART/END/fork_test0/chnk0-ue2ef9c426f/files/sentinel",
+    "should_fail": true
+}

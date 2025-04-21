@@ -343,7 +343,6 @@ type Fork struct {
 	split_metadata *Metadata
 	join_metadata  *Metadata
 	chunks         []*Chunk
-	args           map[string]*syntax.ResolvedBinding
 	stageDefs      *StageDefs
 	perfCache      *ForkPerfCache
 	lastPrint      time.Time
@@ -392,28 +391,15 @@ type ForkPerfCache struct {
 	vdrKillReport *VDRKillReport
 }
 
-func NewFork(nodable Nodable, index int, id ForkId, args map[string]*syntax.ResolvedBinding) *Fork {
+func NewFork(nodable Nodable, index int, id ForkId) *Fork {
 	self := &Fork{
 		node:  nodable.getNode(),
 		index: index,
+		// By default, initialize stage defs with one empty chunk.
+		stageDefs: &StageDefs{ChunkDefs: []*ChunkDef{new(ChunkDef)}},
 	}
 	self.updateId(id)
-	self.args = args
-	self.split_has_run = false
-	self.join_has_run = false
 	self.lastPrint = time.Now()
-
-	// By default, initialize stage defs with one empty chunk.
-	self.stageDefs = &StageDefs{ChunkDefs: []*ChunkDef{new(ChunkDef)}}
-
-	if err := self.split_metadata.ReadInto(StageDefsFile, &self.stageDefs); err == nil {
-		width := util.WidthForInt(len(self.stageDefs.ChunkDefs))
-		self.chunks = make([]*Chunk, 0, len(self.stageDefs.ChunkDefs))
-		for i, chunkDef := range self.stageDefs.ChunkDefs {
-			chunk := NewChunk(self, i, chunkDef, width)
-			self.chunks = append(self.chunks, chunk)
-		}
-	}
 
 	return self
 }
@@ -431,6 +417,7 @@ func (self *Fork) updateId(id ForkId) {
 	} else {
 		self.id = idx
 	}
+	oldPath := self.path
 	self.path = path.Join(self.node.path, self.id)
 	self.fqname = self.node.call.GetFqid() + "." + encodeJournalName.Replace(self.id)
 	self.metadata = NewMetadata(self.fqname, self.path)
@@ -446,6 +433,17 @@ func (self *Fork) updateId(id ForkId) {
 		self.split_metadata.discoverUniquify()
 		self.join_metadata.finalFilePath = self.metadata.finalFilePath
 		self.join_metadata.discoverUniquify()
+	}
+	// If we updated the path, we should load stage defs and create chunks.
+	if self.path != oldPath {
+		if err := self.split_metadata.ReadInto(StageDefsFile, &self.stageDefs); err == nil {
+			width := util.WidthForInt(len(self.stageDefs.ChunkDefs))
+			self.chunks = make([]*Chunk, 0, len(self.stageDefs.ChunkDefs))
+			for i, chunkDef := range self.stageDefs.ChunkDefs {
+				chunk := NewChunk(self, i, chunkDef, width)
+				self.chunks = append(self.chunks, chunk)
+			}
+		}
 	}
 }
 
@@ -587,11 +585,21 @@ func (self *Fork) collectMetadatas() []*Metadata {
 	return metadatas
 }
 
+// removeMetadata deletes the directories for any steps which do not have any
+// output or metadata files.
+//
+// When zipping metadata on completion is enabled, this reclaims some
+// additional inodes.
 func (self *Fork) removeMetadata() {
 	rem := func(metadata *Metadata) {
 		filePaths, _ := metadata.enumerateFiles()
-		if len(filePaths) == 0 {
-			metadata.removeAll()
+		if len(filePaths) != 0 {
+			return
+		}
+		if md, err := metadata.glob(); err != nil || len(md) > 0 {
+			_ = metadata.removeAll(false)
+		} else {
+			_ = metadata.removeAll(true)
 		}
 	}
 	rem(self.split_metadata)

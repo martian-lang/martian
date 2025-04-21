@@ -9,3 +9,4 @@ pkg
 coverage.out
 coverage.html
 /.vscode/
+*.pprof

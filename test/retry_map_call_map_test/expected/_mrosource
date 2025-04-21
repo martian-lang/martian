@@ -1,0 +1,51 @@
+stage BEGIN(
+    in  int       count,
+    out map<file> sentinels,
+    out map<bool> should_fail_next,
+    src py        "stage",
+) split (
+    in  file      sentinel,
+    in  bool      should_fail,
+    out file      sentinel,
+    out bool      should_fail,
+) using (
+    volatile = strict,
+)
+
+stage MAYBE_FAIL(
+    in  file sentinel,
+    in  bool should_fail,
+    out file sentinel,
+    out bool should_fail,
+    src py   "stage",
+) using (
+    volatile = strict,
+)
+
+pipeline SHOULD_RESTART(
+    in  int       count,
+    out map<file> sentinels,
+)
+{
+    call BEGIN(
+        count = self.count,
+    )
+
+    map call MAYBE_FAIL as MIDDLE(
+        sentinel    = split BEGIN.sentinels,
+        should_fail = split BEGIN.should_fail_next,
+    )
+
+    map call MAYBE_FAIL as END(
+        sentinel    = split MIDDLE.sentinel,
+        should_fail = split MIDDLE.should_fail,
+    )
+
+    return (
+        sentinels = END.sentinel,
+    )
+}
+
+call SHOULD_RESTART(
+    count = 2,
+)

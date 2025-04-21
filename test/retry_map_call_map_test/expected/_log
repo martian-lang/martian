@@ -1,0 +1,209 @@
+Martian Runtime - <version not embedded>
+2024-01-08 18:43:48 [build  ] Built with Go version go1.21.3 X:nocoverageredesign
+2024-01-08 18:43:48 [cmdline] mrp --autoretry=3 --vdrmode=strict pipeline.mro pipeline_test
+2024-01-08 18:43:48 [pid    ] 778991
+2024-01-08 18:43:48 [environ] SSH_AGENT_PID=553831
+2024-01-08 18:43:48 [environ] SSH_SESSION_WEBPROXY_ADDR=<proxyhost>:3080
+2024-01-08 18:43:48 [environ] HOSTNAME=bespin1.fuzzplex.com
+2024-01-08 18:43:48 [environ] SHELL=/bin/bash
+2024-01-08 18:43:48 [environ] TERM=xterm-256color
+2024-01-08 18:43:48 [environ] JAVA_RUNFILES=/user/test/retry_map_call_map_test/retry_map_call_map_test.runfiles
+2024-01-08 18:43:48 [environ] SSH_CLIENT=10.113.241.114 21366 3022
+2024-01-08 18:43:48 [environ] SSH_TELEPORT_HOST_UUID=a86875a6-94e9-4446-8ac8-36e107c3965c
+2024-01-08 18:43:48 [environ] HYDRA_ROOT=/mnt/hydra/hydra/spool
+2024-01-08 18:43:48 [environ] SSH_SESSION_ID=c5cdc57c-bb45-478f-af7a-63520110481e
+2024-01-08 18:43:48 [environ] SSH_TTY=/dev/pts/84
+2024-01-08 18:43:48 [environ] SSH_TELEPORT_USER=chris.macklin@10xgenomics.com
+2024-01-08 18:43:48 [environ] USER=chris.macklin
+2024-01-08 18:43:48 [environ] LS_COLORS=rs=0:di=38;5;27:ln=38;5;51:mh=44;38;5;15:pi=40;38;5;11:so=38;5;13:do=38;5;5:bd=48;5;232;38;5;11:cd=48;5;232;38;5;3:or=48;5;232;38;5;9:mi=05;48;5;232;38;5;15:su=48;5;196;38;5;15:sg=48;5;11;38;5;16:ca=48;5;196;38;5;226:tw=48;5;10;38;5;16:ow=48;5;10;38;5;21:st=48;5;21;38;5;15:ex=38;5;34:*.tar=38;5;9:*.tgz=38;5;9:*.arc=38;5;9:*.arj=38;5;9:*.taz=38;5;9:*.lha=38;5;9:*.lz4=38;5;9:*.lzh=38;5;9:*.lzma=38;5;9:*.tlz=38;5;9:*.txz=38;5;9:*.tzo=38;5;9:*.t7z=38;5;9:*.zip=38;5;9:*.z=38;5;9:*.Z=38;5;9:*.dz=38;5;9:*.gz=38;5;9:*.lrz=38;5;9:*.lz=38;5;9:*.lzo=38;5;9:*.xz=38;5;9:*.bz2=38;5;9:*.bz=38;5;9:*.tbz=38;5;9:*.tbz2=38;5;9:*.tz=38;5;9:*.deb=38;5;9:*.rpm=38;5;9:*.jar=38;5;9:*.war=38;5;9:*.ear=38;5;9:*.sar=38;5;9:*.rar=38;5;9:*.alz=38;5;9:*.ace=38;5;9:*.zoo=38;5;9:*.cpio=38;5;9:*.7z=38;5;9:*.rz=38;5;9:*.cab=38;5;9:*.jpg=38;5;13:*.jpeg=38;5;13:*.gif=38;5;13:*.bmp=38;5;13:*.pbm=38;5;13:*.pgm=38;5;13:*.ppm=38;5;13:*.tga=38;5;13:*.xbm=38;5;13:*.xpm=38;5;13:*.tif=38;5;13:*.tiff=38;5;13:*.png=38;5;13:*.svg=38;5;13:*.svgz=38;5;13:*.mng=38;5;13:*.pcx=38;5;13:*.mov=38;5;13:*.mpg=38;5;13:*.mpeg=38;5;13:*.m2v=38;5;13:*.mkv=38;5;13:*.webm=38;5;13:*.ogm=38;5;13:*.mp4=38;5;13:*.m4v=38;5;13:*.mp4v=38;5;13:*.vob=38;5;13:*.qt=38;5;13:*.nuv=38;5;13:*.wmv=38;5;13:*.asf=38;5;13:*.rm=38;5;13:*.rmvb=38;5;13:*.flc=38;5;13:*.avi=38;5;13:*.fli=38;5;13:*.flv=38;5;13:*.gl=38;5;13:*.dl=38;5;13:*.xcf=38;5;13:*.xwd=38;5;13:*.yuv=38;5;13:*.cgm=38;5;13:*.emf=38;5;13:*.axv=38;5;13:*.anx=38;5;13:*.ogv=38;5;13:*.ogx=38;5;13:*.aac=38;5;45:*.au=38;5;45:*.flac=38;5;45:*.mid=38;5;45:*.midi=38;5;45:*.mka=38;5;45:*.mp3=38;5;45:*.mpc=38;5;45:*.ogg=38;5;45:*.ra=38;5;45:*.wav=38;5;45:*.axa=38;5;45:*.oga=38;5;45:*.spx=38;5;45:*.xspf=38;5;45:
+2024-01-08 18:43:48 [environ] SSH_AUTH_SOCK=/tmp/teleport-2271710694/teleport-553831.socket
+2024-01-08 18:43:48 [environ] PATH=../../bin:/user/test/retry_map_call_map_test/retry_map_call_map_test.runfiles/martian/bazel-out/k8-fastbuild/bin/bin:.:/mnt/build/toolchains/versions/3.1.10/bin:/bin:/usr/bin:/usr/local/bin:/sbin:/usr/local/sbin:/usr/sbin:/bin:/mnt/hydra/hydra/bin:/mnt/home/chris.macklin/.local/bin:/mnt/home/chris.macklin/bin:/mnt/bazelbuild/user/chris.macklin/cargo/bin
+2024-01-08 18:43:48 [environ] LD=/mnt/build/toolchains/versions/3.1.10/bin/ld
+2024-01-08 18:43:48 [environ] CUDA_TOOLKIT_PATH=/mnt/build/toolchains/versions/3.1.10/tools/cuda
+2024-01-08 18:43:48 [environ] PYTHONSAFEPATH=1
+2024-01-08 18:43:48 [environ] PWD=/user/test/retry_map_call_map_test/retry_map_call_map_test.runfiles/martian/test/retry_map_call_map_test
+2024-01-08 18:43:48 [environ] LANG=en_US.UTF-8
+2024-01-08 18:43:48 [environ] HOME=/mnt/home/chris.macklin
+2024-01-08 18:43:48 [environ] SHLVL=4
+2024-01-08 18:43:48 [environ] LC_TERMINAL_VERSION=3.4.23
+2024-01-08 18:43:48 [environ] LOGNAME=chris.macklin
+2024-01-08 18:43:48 [environ] PYTHONPATH=/user/test/retry_map_call_map_test/retry_map_call_map_test.runfiles:/user/test/retry_map_call_map_test/retry_map_call_map_test.runfiles/:/user/test/retry_map_call_map_test/retry_map_call_map_test.runfiles/bazel_tools:/user/test/retry_map_call_map_test/retry_map_call_map_test.runfiles/martian
+2024-01-08 18:43:48 [environ] SSH_CONNECTION=10.113.241.114 21366 10.113.7.233 3022
+2024-01-08 18:43:48 [environ] LC_TERMINAL=iTerm2
+2024-01-08 18:43:48 [environ] PYTHON_RUNFILES=/user/test/retry_map_call_map_test/retry_map_call_map_test.runfiles
+2024-01-08 18:43:48 [environ] SSH_TELEPORT_CLUSTER_NAME=main
+2024-01-08 18:43:48 [environ] BASH_FUNC_rlocation()=() {  if is_absolute "$1"; then
+ echo "$1";
+ else
+ if [[ -e "$TEST_SRCDIR/$1" ]]; then
+ echo "$TEST_SRCDIR/$1";
+ else
+ if [[ -e "$RUNFILES_MANIFEST_FILE" ]]; then
+ echo "$(grep "^$1 " "$RUNFILES_MANIFEST_FILE" | sed 's/[^ ]* //')";
+ fi;
+ fi;
+ fi
+}
+2024-01-08 18:43:48 [environ] BASH_FUNC_is_absolute()=() {  [[ "$1" = /* ]] || [[ "$1" =~ ^[a-zA-Z]:[/\\].* ]]
+}
+2024-01-08 18:43:48 [environ] _=../../bin/mrp
+2024-01-08 18:43:48 [environ] MROFLAGS=--disable-ui
+2024-01-08 18:43:48 [environ] MROPATH=/user/test/retry_map_call_map_test/retry_map_call_map_test.runfiles/martian/test/retry_map_call_map_test
+2024-01-08 18:43:48 [version] MRO Version=v4.0.11-29-g954ba393-dirty
+2024-01-08 18:43:48 [options] --jobmode=local
+2024-01-08 18:43:48 [options] --vdrmode=strict
+2024-01-08 18:43:48 [options] --profile=disable
+2024-01-08 18:43:48 [options] --disable-ui
+2024-01-08 18:43:48 [options] --stackvars=false
+2024-01-08 18:43:48 [options] --zip=false
+2024-01-08 18:43:48 [options] --limit-loadavg=false
+2024-01-08 18:43:48 [options] --noexit=false
+2024-01-08 18:43:48 [options] --nopreflight=false
+2024-01-08 18:43:48 [options] --autoretry=3
+2024-01-08 18:43:48 [jobmngr] Job config = /user/test/retry_map_call_map_test/retry_map_call_map_test.runfiles/martian/jobmanagers/config.json
+2024-01-08 18:43:48 [jobmngr] Using 96 logical cores available on system.
+2024-01-08 18:43:48 [jobmngr] Using 672 GB, 90% of system memory.
+2024-01-08 18:43:48 [jobmngr] WARNING: configured to use 672GB of local memory, but only 334.0GB is currently available.
+2024-01-08 18:43:49 [sysinfo] linux amd64
+2024-01-08 18:43:49 [sysinfo] Linux kernel release version: 5.10.173-154.642.amzn2.x86_64
+2024-01-08 18:43:49 [sysinfo] glibc version: 2.26
+2024-01-08 18:43:49 [filesys] Pipestance path /user/test/retry_map_call_map_test/retry_map_call_map_test.runfiles/martian/test/retry_map_call_map_test/pipeline_test
+2024-01-08 18:43:49 [filesys] Pipestance filesystem type xfs
+2024-01-08 18:43:49 [filesys] 2.4 TB and 3,192,699,490 inodes available.
+2024-01-08 18:43:49 [filesys] Pipestance filesystem xfs mount options: rw,noatime,rw,seclabel,attr2,inode64,logbufs=8,logbsize=32k,usrquota
+2024-01-08 18:43:49 [filesys] Pipestance directory permissions drwxr-xr-x owned by uid 5211 gid 5900
+2024-01-08 18:43:49 [filesys] Bin path /user/test/retry_map_call_map_test/retry_map_call_map_test.runfiles/martian/bin
+2024-01-08 18:43:49 [filesys] Bin filesystem type xfs
+2024-01-08 18:43:49 [filesys] Bin filesystem xfs mount options: rw,noatime,rw,seclabel,attr2,inode64,logbufs=8,logbsize=32k,usrquota
+2024-01-08 18:43:49 [filesys] Executable file permissions -r-xr-xr-x owned by uid 5211 gid 5900
+2024-01-08 18:43:49 [user   ] User chris.macklin uid 5211 / gid 5900
+2024-01-08 18:43:49 [webserv] UI disabled.
+Running preflight checks (please wait)...
+2024-01-08 18:43:49 [jobmngr] 338.0GB less memory than expected was free
+2024-01-08 18:43:49 [jobmngr] cgroup rss usage is 243.2GB, vs. limit of 8589934592.0
+2024-01-08 18:43:49 [runtime] (ready)           ID.pipeline_test.SHOULD_RESTART.BEGIN
+2024-01-08 18:43:49 [runtime] (run:local)       ID.pipeline_test.SHOULD_RESTART.BEGIN.fork0.split
+2024-01-08 18:43:49 [runtime] (split_complete)  ID.pipeline_test.SHOULD_RESTART.BEGIN
+2024-01-08 18:43:49 [runtime] (run:local)       ID.pipeline_test.SHOULD_RESTART.BEGIN.fork0.chnk0.main
+2024-01-08 18:43:49 [runtime] (run:local)       ID.pipeline_test.SHOULD_RESTART.BEGIN.fork0.chnk1.main
+2024-01-08 18:43:49 [runtime] (failed)          ID.pipeline_test.SHOULD_RESTART.BEGIN
+2024-01-08 18:43:49 [runtime] Waiting 1s before attempting a retry.
+2024-01-08 18:43:50 [runtime] Transient error detected.  Log content:
+
+Traceback (most recent call last):
+  File "/user/test/retry_map_call_map_test/retry_map_call_map_test.runfiles/martian/adapters/python/martian_shell.py", line 648, in _main
+    stage.main()
+  File "/user/test/retry_map_call_map_test/retry_map_call_map_test.runfiles/martian/adapters/python/martian_shell.py", line 607, in main
+    self._run(lambda: self._module.main(args, outs))
+  File "/user/test/retry_map_call_map_test/retry_map_call_map_test.runfiles/martian/adapters/python/martian_shell.py", line 564, in _run
+    cmd()
+  File "/user/test/retry_map_call_map_test/retry_map_call_map_test.runfiles/martian/adapters/python/martian_shell.py", line 607, in <lambda>
+    self._run(lambda: self._module.main(args, outs))
+  File "/user/test/retry_map_call_map_test/retry_map_call_map_test.runfiles/martian/test/retry_map_call_map_test/stage/__init__.py", line 47, in main
+    martian.throw("resource temporarily unavailable")
+  File "/mnt/home/chris.macklin/martian-public/adapters/python/martian.py", line 322, in throw
+    raise StageException(message)
+martian.StageException: resource temporarily unavailable
+
+
+2024-01-08 18:43:50 [runtime] Attempting retry.
+2024-01-08 18:43:50 [runtime] Reattaching in local mode.
+2024-01-08 18:43:50 [runtime] (reset-partial)   ID.pipeline_test.SHOULD_RESTART.BEGIN.fork0.chnk0
+2024-01-08 18:43:53 [runtime] (split_complete)  ID.pipeline_test.SHOULD_RESTART.BEGIN
+2024-01-08 18:43:53 [runtime] (run:local)       ID.pipeline_test.SHOULD_RESTART.BEGIN.fork0.chnk0.main
+2024-01-08 18:43:53 [runtime] (chunks_complete) ID.pipeline_test.SHOULD_RESTART.BEGIN
+2024-01-08 18:43:53 [runtime] (run:local)       ID.pipeline_test.SHOULD_RESTART.BEGIN.fork0.join
+2024-01-08 18:43:53 [runtime] (join_complete)   ID.pipeline_test.SHOULD_RESTART.BEGIN
+2024-01-08 18:43:53 [runtime] Adding 1 new forks of ID.pipeline_test.SHOULD_RESTART.MIDDLE.fork_test0
+2024-01-08 18:43:53 [runtime] (ready)           ID.pipeline_test.SHOULD_RESTART.MIDDLE.fork_test0
+2024-01-08 18:43:53 [runtime] (run:local)       ID.pipeline_test.SHOULD_RESTART.MIDDLE.fork_test0.chnk0.main
+2024-01-08 18:43:53 [runtime] (ready)           ID.pipeline_test.SHOULD_RESTART.MIDDLE.fork_test1
+2024-01-08 18:43:53 [runtime] (run:local)       ID.pipeline_test.SHOULD_RESTART.MIDDLE.fork_test1.chnk0.main
+2024-01-08 18:43:53 [runtime] (failed)          ID.pipeline_test.SHOULD_RESTART.MIDDLE.fork_test0
+2024-01-08 18:43:53 [runtime] (chunks_complete) ID.pipeline_test.SHOULD_RESTART.MIDDLE.fork_test1
+2024-01-08 18:43:53 [runtime] Waiting 1s before attempting a retry.
+2024-01-08 18:43:54 [runtime] Transient error detected.  Log content:
+
+Traceback (most recent call last):
+  File "/user/test/retry_map_call_map_test/retry_map_call_map_test.runfiles/martian/adapters/python/martian_shell.py", line 648, in _main
+    stage.main()
+  File "/user/test/retry_map_call_map_test/retry_map_call_map_test.runfiles/martian/adapters/python/martian_shell.py", line 607, in main
+    self._run(lambda: self._module.main(args, outs))
+  File "/user/test/retry_map_call_map_test/retry_map_call_map_test.runfiles/martian/adapters/python/martian_shell.py", line 564, in _run
+    cmd()
+  File "/user/test/retry_map_call_map_test/retry_map_call_map_test.runfiles/martian/adapters/python/martian_shell.py", line 607, in <lambda>
+    self._run(lambda: self._module.main(args, outs))
+  File "/user/test/retry_map_call_map_test/retry_map_call_map_test.runfiles/martian/test/retry_map_call_map_test/stage/__init__.py", line 47, in main
+    martian.throw("resource temporarily unavailable")
+  File "/mnt/home/chris.macklin/martian-public/adapters/python/martian.py", line 322, in throw
+    raise StageException(message)
+martian.StageException: resource temporarily unavailable
+
+
+2024-01-08 18:43:54 [runtime] Attempting retry.
+2024-01-08 18:43:54 [runtime] Adding 1 new forks of ID.pipeline_test.SHOULD_RESTART.END.fork_test0
+2024-01-08 18:43:54 [runtime] Adding 1 new forks of ID.pipeline_test.SHOULD_RESTART.MIDDLE.fork_test0
+2024-01-08 18:43:54 [runtime] Reattaching in local mode.
+2024-01-08 18:43:54 [runtime] (reset-partial)   ID.pipeline_test.SHOULD_RESTART.MIDDLE.fork_test0.chnk0
+2024-01-08 18:43:57 [jobmngr] 338.2GB less memory than expected was free
+2024-01-08 18:43:57 [jobmngr] cgroup rss usage is 243.2GB, vs. limit of 8589934592.0
+2024-01-08 18:43:57 [runtime] (split_complete)  ID.pipeline_test.SHOULD_RESTART.MIDDLE.fork_test0
+2024-01-08 18:43:57 [runtime] (run:local)       ID.pipeline_test.SHOULD_RESTART.MIDDLE.fork_test0.chnk0.main
+2024-01-08 18:43:57 [runtime] (complete)        ID.pipeline_test.SHOULD_RESTART.MIDDLE.fork_test1
+2024-01-08 18:43:57 [runtime] (chunks_complete) ID.pipeline_test.SHOULD_RESTART.MIDDLE.fork_test0
+2024-01-08 18:43:57 [runtime] (complete)        ID.pipeline_test.SHOULD_RESTART.MIDDLE.fork_test1
+2024-01-08 18:43:57 [runtime] (ready)           ID.pipeline_test.SHOULD_RESTART.END.fork_test0
+2024-01-08 18:43:57 [runtime] (run:local)       ID.pipeline_test.SHOULD_RESTART.END.fork_test0.chnk0.main
+2024-01-08 18:43:57 [runtime] (ready)           ID.pipeline_test.SHOULD_RESTART.END.fork_test1
+2024-01-08 18:43:57 [runtime] (run:local)       ID.pipeline_test.SHOULD_RESTART.END.fork_test1.chnk0.main
+2024-01-08 18:43:58 [runtime] (failed)          ID.pipeline_test.SHOULD_RESTART.END.fork_test0
+2024-01-08 18:43:58 [runtime] (chunks_complete) ID.pipeline_test.SHOULD_RESTART.END.fork_test1
+2024-01-08 18:43:58 [runtime] Waiting 1s before attempting a retry.
+2024-01-08 18:43:59 [runtime] Transient error detected.  Log content:
+
+Traceback (most recent call last):
+  File "/user/test/retry_map_call_map_test/retry_map_call_map_test.runfiles/martian/adapters/python/martian_shell.py", line 648, in _main
+    stage.main()
+  File "/user/test/retry_map_call_map_test/retry_map_call_map_test.runfiles/martian/adapters/python/martian_shell.py", line 607, in main
+    self._run(lambda: self._module.main(args, outs))
+  File "/user/test/retry_map_call_map_test/retry_map_call_map_test.runfiles/martian/adapters/python/martian_shell.py", line 564, in _run
+    cmd()
+  File "/user/test/retry_map_call_map_test/retry_map_call_map_test.runfiles/martian/adapters/python/martian_shell.py", line 607, in <lambda>
+    self._run(lambda: self._module.main(args, outs))
+  File "/user/test/retry_map_call_map_test/retry_map_call_map_test.runfiles/martian/test/retry_map_call_map_test/stage/__init__.py", line 47, in main
+    martian.throw("resource temporarily unavailable")
+  File "/mnt/home/chris.macklin/martian-public/adapters/python/martian.py", line 322, in throw
+    raise StageException(message)
+martian.StageException: resource temporarily unavailable
+
+
+2024-01-08 18:43:59 [runtime] Attempting retry.
+2024-01-08 18:43:59 [runtime] Adding 1 new forks of ID.pipeline_test.SHOULD_RESTART.END.fork_test0
+2024-01-08 18:43:59 [runtime] Adding 1 new forks of ID.pipeline_test.SHOULD_RESTART.MIDDLE.fork_test0
+2024-01-08 18:43:59 [runtime] Reattaching in local mode.
+2024-01-08 18:43:59 [runtime] (reset-partial)   ID.pipeline_test.SHOULD_RESTART.END.fork_test0.chnk0
+2024-01-08 18:44:02 [runtime] (split_complete)  ID.pipeline_test.SHOULD_RESTART.END.fork_test0
+2024-01-08 18:44:02 [runtime] (run:local)       ID.pipeline_test.SHOULD_RESTART.END.fork_test0.chnk0.main
+2024-01-08 18:44:02 [runtime] (complete)        ID.pipeline_test.SHOULD_RESTART.END.fork_test1
+2024-01-08 18:44:02 [runtime] (chunks_complete) ID.pipeline_test.SHOULD_RESTART.END.fork_test0
+2024-01-08 18:44:02 [runtime] (complete)        ID.pipeline_test.SHOULD_RESTART.END.fork_test1
+2024-01-08 18:44:02 [runtime] VDR killed 0 files, 0 B.
+
+Outputs:
+- sentinels: {
+    test0: /user/test/retry_map_call_map_test/retry_map_call_map_test.runfiles/martian/test/retry_map_call_map_test/pipeline_test/outs/sentinels/test0
+    test1: null
+  }
+
+2024-01-08 18:44:02 [perform] Serializing pipestance performance data.
+Pipestance completed successfully!
+
+2024-01-08 18:44:02 Shutting down.
+2024-01-08 18:44:02 [jobmngr] Highest memory usage observed: {
+  "rss": 11653120,
+  "shared": 8105984,
+  "vmem": 1818664960,
+  "text": 4911104,
+  "stack": 107515904,
+  "proc_count": 17
+}

@@ -14,7 +14,7 @@
       }
     };
   });
-
+  const graphWidth = "750px";  
   renderGraph = function($scope, $compile) {
     var g = new dagreD3.graphlib.Graph({
       directed: true
@@ -66,15 +66,11 @@
       }
     });
     maxX += 100;
-    if (maxX < 720.0) {
-      maxX = 720.0;
-    }
+    maxX = Math.max(720, maxX);
     var scale = 720.0 / maxX;
     maxY += 100;
-    if (maxY < 700) {
-      maxY = 700;
-    }
-    $scope.svg.attr("width", "750px").attr("height", maxY.toString() + "px");
+    maxY = Math.max(2000, maxY);
+    $scope.graph.select("svg").attr("width", graphWidth).attr("height", maxY.toString() + "px");
     $scope.graph.attr("transform", "translate(5,5) scale(" + scale + ")");
     $scope.graph.selectAll("g.node.stage rect").attr("rx", 20).attr("ry", 20);
     $scope.graph.selectAll("g.node.pipeline rect").attr("rx", 0).attr("ry", 0);
@@ -202,6 +198,14 @@
 
   app.controller("MartianGraphCtrl", function($scope, $compile, $http, $interval) {
     var auth, j, len, ref, ref1, selected, tab, v, zoom;
+    $scope.toggleDetails = function () {
+      $scope.detailsCollapsed = !$scope.detailsCollapsed;
+      if ($scope.detailsCollapsed) {
+        $scope.svg.attr("width", "100%");
+      } else {
+        $scope.svg.attr("width", graphWidth);
+      }
+    };
     $scope.pname = pname;
     $scope.psid = psid;
     $scope.admin = admin;

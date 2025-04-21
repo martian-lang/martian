@@ -53,6 +53,10 @@ def split(args):
 
 def main(args, outs):
     """ Fails if args.sentinel is non-empty and refers to a file that exists. """
+    # We should never have any files in the outs; if there is one, it implies that
+    # we failed to clean up correctly.
+    assert outs.sentinel
+    assert not os.path.exists(outs.sentinel)
     sentinel = ""
     if args.should_fail:
         sentinel = martian.make_path("sentinel")

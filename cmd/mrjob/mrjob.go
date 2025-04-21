@@ -15,6 +15,7 @@ import (
 	"path"
 	"regexp"
 	"runtime"
+	"runtime/pprof"
 	"strconv"
 	"strings"
 	"syscall"
@@ -60,6 +61,10 @@ func main() {
 	fqname := path.Base(args[3])
 	journalPath := path.Dir(args[3])
 
+	if os.Getenv("MRO_SELF_PROFILE") != "" {
+		startCpuProfile(metadataPath)
+	}
+
 	run := runner{
 		ioStats:  core.NewIoStatsBuilder(),
 		metadata: core.NewMetadataRunWithJournalPath(fqname, metadataPath, filesPath, journalPath, runType),
@@ -84,6 +89,25 @@ func main() {
 	}
 	run.isDone = make(chan struct{})
 	run.WaitLoop()
+}
+
+// If we're running a CPU self-profile, this is the handle to it.
+var selfProfile *os.File
+
+func startCpuProfile(metadataPath string) {
+	// This isn't going through the  usual metadata API because we want
+	// the profile to include construction of that.
+	f, err := os.Create(path.Join(metadataPath, "_selfProfile.pprof"))
+	if err != nil {
+		util.PrintError(err, "profile", "Error recording CPU profile")
+		return
+	}
+	if err := pprof.StartCPUProfile(f); err != nil {
+		f.Close()
+		util.PrintError(err, "profile", "Error recording CPU profile")
+		return
+	}
+	selfProfile = f
 }
 
 func (self *runner) Init() {
@@ -224,6 +248,12 @@ func (self *runner) waitForPerf() {
 		case <-time.After(15 * time.Second):
 		}
 	}
+	if selfProfile != nil {
+		pprof.StopCPUProfile()
+		if err := selfProfile.Close(); err != nil {
+			util.PrintError(err, "profile", "Error closing cpu profile")
+		}
+	}
 }
 
 func totalCpu(ru *core.RusageInfo) float64 {
@@ -318,25 +348,40 @@ func (self *runner) StartJob(args []string) error {
 			self.metadata.MetadataFilePath(core.PerfData),
 			self.metadata.MetadataFilePath(core.ProfileOut))
 	}
-	if self.monitoring && self.jobInfo.VMemGB > 0 {
-		// Exclude mrjob's vmem usage from the rlimit.
-		mem, _ := core.GetProcessTreeMemory(self.jobInfo.Pid, true, nil)
-		amount := int64(self.jobInfo.VMemGB)*1024*1024*1024 - mem.Vmem
-		if amount < mem.Vmem+1024*1024 {
-			amount = mem.Vmem + 1024*1024
+	if err := func(cmd *exec.Cmd) error {
+		if self.monitoring && self.jobInfo.VMemGB > 0 {
+			// Exclude mrjob's vmem usage from the rlimit.
+			mem, _ := core.GetProcessTreeMemory(self.jobInfo.Pid, true, nil)
+			amount := int64(self.jobInfo.VMemGB)*1024*1024*1024 - mem.Vmem
+			if amount < mem.Vmem+1024*1024 {
+				amount = mem.Vmem + 1024*1024
+			}
+			if oldAmount, err := core.SetVMemRLimit(uint64(amount)); err != nil {
+				util.LogError(err, "monitor",
+					"Could not set VM rlimit.")
+			} else {
+				// After launching the subprocess, restore the vmem
+				// limit for this process.  Otherwise the go runtime can run
+				//  into various kinds of trouble.
+				defer func(amt uint64) {
+					if _, err := core.SetVMemRLimit(amt); err != nil {
+						util.LogError(err, "monitor",
+							"Could not restore VM rlimit.")
+					}
+				}(oldAmount)
+			}
 		}
-		if err := core.SetVMemRLimit(uint64(amount)); err != nil {
-			util.LogError(err, "monitor",
-				"Could not set VM rlimit.")
+		if err := func() error {
+			util.EnterCriticalSection()
+			defer util.ExitCriticalSection()
+			self.job = cmd
+			return self.job.Start()
+		}(); err != nil {
+			self.errorReader.Close()
+			return err
 		}
-	}
-	if err := func() error {
-		util.EnterCriticalSection()
-		defer util.ExitCriticalSection()
-		self.job = cmd
-		return self.job.Start()
-	}(); err != nil {
-		self.errorReader.Close()
+		return nil
+	}(cmd); err != nil {
 		return err
 	}
 	if err := self.startProfile(); err != nil {

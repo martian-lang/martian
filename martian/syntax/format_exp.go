@@ -405,6 +405,12 @@ func quoteString(w stringWriter, s string) {
 			case '\\', '"':
 				mustWriteByte(w, '\\')
 				mustWriteByte(w, b)
+			case '\b':
+				mustWriteByte(w, '\\')
+				mustWriteByte(w, 'b')
+			case '\f':
+				mustWriteByte(w, '\\')
+				mustWriteByte(w, 'f')
 			case '\n':
 				mustWriteByte(w, '\\')
 				mustWriteByte(w, 'n')

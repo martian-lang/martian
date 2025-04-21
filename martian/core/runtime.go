@@ -575,12 +575,25 @@ func (self *Runtime) GetSerialization(pipestancePath string, name MetadataFileNa
 	return nil, false
 }
 
+// Deprecated: use GetMaybeCompressedMetadata instead.
 func (self *Runtime) GetMetadata(pipestancePath string, metadataPath string) (io.ReadCloser, error) {
+	r, _, err := self.GetMaybeCompressedMetadata(context.TODO(), pipestancePath, metadataPath, "")
+	return r, err
+}
+
+// GetMaybeCompressedMetadata returns a reader for the given metadata file.
+// If the metadata is found within a zip archive, and is compressed using a
+// method found in the acceptEncoding string, it is returend along with
+// the encoding.
+func (self *Runtime) GetMaybeCompressedMetadata(ctx context.Context,
+	pipestancePath, metadataPath, acceptEncoding string) (io.ReadCloser, string, error) {
+	defer trace.StartRegion(ctx, "GetMaybeCompressedMetadata").End()
 	metadata := NewMetadata("", pipestancePath)
 	metadata.loadCache()
 	if mdf := MetadataFileName(
 		strings.TrimPrefix(metadataPath, MetadataFilePrefix)); metadata.exists(mdf) {
-		return metadata.openFile(mdf)
+		f, err := metadata.openFile(mdf)
+		return f, "", err
 	}
 	if !filepath.IsAbs(metadataPath) {
 		metadataPath = path.Join(pipestancePath, metadataPath)
@@ -590,16 +603,17 @@ func (self *Runtime) GetMetadata(pipestancePath string, metadataPath string) (io
 
 		// Relative paths outside the pipestance directory will be ignored.
 		if !strings.Contains(relPath, "..") {
-			if data, err := util.ReadZipFile(metadata.MetadataFilePath(MetadataZip), relPath); err == nil {
-				return data, nil
+			if data, m, err := util.ReadZipFileRaw(ctx,
+				metadata.MetadataFilePath(MetadataZip), relPath, acceptEncoding); err == nil {
+				return data, m, nil
 			}
 		}
 	}
 	data, err := os.Open(metadataPath)
 	if err != nil {
-		return nil, err
+		return nil, "", err
 	}
-	return data, nil
+	return data, "", nil
 }
 
 func (self *Runtime) freeMemMB() int64 {

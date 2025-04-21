@@ -401,13 +401,19 @@ func (self *mrpWebServer) getMetadata(w http.ResponseWriter, req *http.Request) 
 		http.Error(w, "'..' not allowed in path.", http.StatusBadRequest)
 		return
 	}
-	data, err := self.rt.GetMetadata(pipestance.GetPath(),
-		path.Join(p, core.MetadataFilePrefix+name))
+	data, enc, err := self.rt.GetMaybeCompressedMetadata(req.Context(),
+		pipestance.GetPath(),
+		path.Join(p, core.MetadataFilePrefix+name),
+		req.Header.Get("Accept-Encoding"))
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusNotFound)
 		return
 	}
 	defer data.Close()
+
+	if enc != "" {
+		w.Header().Set("Content-Encoding", enc)
+	}
 	api.ServeMetadataFile(w, req, name, data)
 }
 

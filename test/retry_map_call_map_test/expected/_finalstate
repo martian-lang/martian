@@ -1,0 +1,638 @@
+[
+    {
+        "name": "SHOULD_RESTART",
+        "fqname": "ID.pipeline_test.SHOULD_RESTART",
+        "path": "/user/test/retry_map_call_map_test/retry_map_call_map_test.runfiles/martian/test/retry_map_call_map_test/pipeline_test/SHOULD_RESTART",
+        "state": "complete",
+        "metadata": {
+            "path": "/user/test/retry_map_call_map_test/retry_map_call_map_test.runfiles/martian/test/retry_map_call_map_test/pipeline_test/SHOULD_RESTART",
+            "names": []
+        },
+        "stagecodeCmd": "",
+        "forks": [
+            {
+                "argPermute": null,
+                "joinDef": null,
+                "state": "complete",
+                "metadata": {
+                    "path": "/user/test/retry_map_call_map_test/retry_map_call_map_test.runfiles/martian/test/retry_map_call_map_test/pipeline_test/SHOULD_RESTART/fork0",
+                    "names": [
+                        "complete",
+                        "invocation",
+                        "outs",
+                        "vdrkill"
+                    ]
+                },
+                "split_metadata": {
+                    "path": "/user/test/retry_map_call_map_test/retry_map_call_map_test.runfiles/martian/test/retry_map_call_map_test/pipeline_test/SHOULD_RESTART/fork0/split",
+                    "names": []
+                },
+                "join_metadata": {
+                    "path": "/user/test/retry_map_call_map_test/retry_map_call_map_test.runfiles/martian/test/retry_map_call_map_test/pipeline_test/SHOULD_RESTART/fork0/join",
+                    "names": []
+                },
+                "bindings": {
+                    "Argument": [
+                        {
+                            "mode": "",
+                            "node": null,
+                            "matchedFork": null,
+                            "value": 2,
+                            "id": "count",
+                            "type": "int",
+                            "waiting": false
+                        }
+                    ],
+                    "Return": [
+                        {
+                            "mode": "reference",
+                            "node": "ID.pipeline_test.SHOULD_RESTART.END",
+                            "matchedFork": null,
+                            "value": {
+                                "test0": "/user/test/retry_map_call_map_test/retry_map_call_map_test.runfiles/martian/test/retry_map_call_map_test/pipeline_test/SHOULD_RESTART/END/fork_test0/chnk0-ue2ef9c426f/files/sentinel",
+                                "test1": ""
+                            },
+                            "id": "sentinels",
+                            "type": "map\u003cfile\u003e",
+                            "waiting": false
+                        }
+                    ]
+                },
+                "chunks": [],
+                "index": 0
+            }
+        ],
+        "edges": [
+            {
+                "from": "ID.pipeline_test.SHOULD_RESTART.END",
+                "to": "ID.pipeline_test.SHOULD_RESTART"
+            }
+        ],
+        "stagecodeLang": "",
+        "type": "pipeline"
+    },
+    {
+        "name": "BEGIN",
+        "fqname": "ID.pipeline_test.SHOULD_RESTART.BEGIN",
+        "path": "/user/test/retry_map_call_map_test/retry_map_call_map_test.runfiles/martian/test/retry_map_call_map_test/pipeline_test/SHOULD_RESTART/BEGIN",
+        "state": "complete",
+        "metadata": {
+            "path": "/user/test/retry_map_call_map_test/retry_map_call_map_test.runfiles/martian/test/retry_map_call_map_test/pipeline_test/SHOULD_RESTART/BEGIN",
+            "names": []
+        },
+        "stagecodeCmd": "/user/test/retry_map_call_map_test/retry_map_call_map_test.runfiles/martian/test/retry_map_call_map_test/stage",
+        "forks": [
+            {
+                "argPermute": null,
+                "joinDef": null,
+                "state": "complete",
+                "metadata": {
+                    "path": "/user/test/retry_map_call_map_test/retry_map_call_map_test.runfiles/martian/test/retry_map_call_map_test/pipeline_test/SHOULD_RESTART/BEGIN/fork0",
+                    "names": [
+                        "complete",
+                        "invocation",
+                        "outs",
+                        "vdrkill"
+                    ]
+                },
+                "split_metadata": {
+                    "path": "/user/test/retry_map_call_map_test/retry_map_call_map_test.runfiles/martian/test/retry_map_call_map_test/pipeline_test/SHOULD_RESTART/BEGIN/fork0/split",
+                    "names": [
+                        "args",
+                        "complete",
+                        "jobinfo",
+                        "log",
+                        "stage_defs",
+                        "stderr",
+                        "stdout"
+                    ]
+                },
+                "join_metadata": {
+                    "path": "/user/test/retry_map_call_map_test/retry_map_call_map_test.runfiles/martian/test/retry_map_call_map_test/pipeline_test/SHOULD_RESTART/BEGIN/fork0/join",
+                    "names": [
+                        "args",
+                        "chunk_defs",
+                        "chunk_outs",
+                        "complete",
+                        "jobinfo",
+                        "log",
+                        "outs",
+                        "stderr",
+                        "stdout"
+                    ]
+                },
+                "bindings": {
+                    "Argument": [
+                        {
+                            "mode": "",
+                            "node": null,
+                            "matchedFork": null,
+                            "value": 2,
+                            "id": "count",
+                            "type": "int",
+                            "waiting": false
+                        }
+                    ],
+                    "Return": [
+                        {
+                            "mode": "reference",
+                            "node": "ID.pipeline_test.SHOULD_RESTART.BEGIN",
+                            "matchedFork": null,
+                            "value": {
+                                "test0": "/user/test/retry_map_call_map_test/retry_map_call_map_test.runfiles/martian/test/retry_map_call_map_test/pipeline_test/SHOULD_RESTART/BEGIN/fork0/chnk0-ue2ef9c4266/files/sentinel",
+                                "test1": ""
+                            },
+                            "id": "sentinels",
+                            "type": "map\u003cfile\u003e",
+                            "waiting": false
+                        },
+                        {
+                            "mode": "reference",
+                            "node": "ID.pipeline_test.SHOULD_RESTART.BEGIN",
+                            "matchedFork": null,
+                            "value": {
+                                "test0": true,
+                                "test1": false
+                            },
+                            "id": "should_fail_next",
+                            "type": "map\u003cbool\u003e",
+                            "waiting": false
+                        }
+                    ]
+                },
+                "chunks": [
+                    {
+                        "chunkDef": {
+                            "sentinel": "/user/test/retry_map_call_map_test/retry_map_call_map_test.runfiles/martian/test/retry_map_call_map_test/pipeline_test/SHOULD_RESTART/BEGIN/fork0/split-ue2ef9c4265/files/sentinel",
+                            "should_fail": true
+                        },
+                        "metadata": {
+                            "path": "/user/test/retry_map_call_map_test/retry_map_call_map_test.runfiles/martian/test/retry_map_call_map_test/pipeline_test/SHOULD_RESTART/BEGIN/fork0/chnk0",
+                            "names": [
+                                "args",
+                                "complete",
+                                "jobinfo",
+                                "log",
+                                "outs",
+                                "stderr",
+                                "stdout"
+                            ]
+                        },
+                        "state": "complete",
+                        "index": 0
+                    },
+                    {
+                        "chunkDef": {
+                            "sentinel": "",
+                            "should_fail": false
+                        },
+                        "metadata": {
+                            "path": "/user/test/retry_map_call_map_test/retry_map_call_map_test.runfiles/martian/test/retry_map_call_map_test/pipeline_test/SHOULD_RESTART/BEGIN/fork0/chnk1",
+                            "names": [
+                                "args",
+                                "complete",
+                                "jobinfo",
+                                "log",
+                                "outs",
+                                "stderr",
+                                "stdout"
+                            ]
+                        },
+                        "state": "complete",
+                        "index": 1
+                    }
+                ],
+                "index": 0
+            }
+        ],
+        "edges": [],
+        "stagecodeLang": "Python",
+        "type": "stage"
+    },
+    {
+        "name": "END",
+        "fqname": "ID.pipeline_test.SHOULD_RESTART.END",
+        "path": "/user/test/retry_map_call_map_test/retry_map_call_map_test.runfiles/martian/test/retry_map_call_map_test/pipeline_test/SHOULD_RESTART/END",
+        "state": "complete",
+        "metadata": {
+            "path": "/user/test/retry_map_call_map_test/retry_map_call_map_test.runfiles/martian/test/retry_map_call_map_test/pipeline_test/SHOULD_RESTART/END",
+            "names": []
+        },
+        "stagecodeCmd": "/user/test/retry_map_call_map_test/retry_map_call_map_test.runfiles/martian/test/retry_map_call_map_test/stage",
+        "forks": [
+            {
+                "argPermute": null,
+                "joinDef": {
+                    "__threads": 1,
+                    "__mem_gb": 1,
+                    "__vmem_gb": 4
+                },
+                "state": "complete",
+                "metadata": {
+                    "path": "/user/test/retry_map_call_map_test/retry_map_call_map_test.runfiles/martian/test/retry_map_call_map_test/pipeline_test/SHOULD_RESTART/END/fork_test0",
+                    "names": [
+                        "complete",
+                        "invocation",
+                        "outs",
+                        "vdrkill"
+                    ]
+                },
+                "split_metadata": {
+                    "path": "/user/test/retry_map_call_map_test/retry_map_call_map_test.runfiles/martian/test/retry_map_call_map_test/pipeline_test/SHOULD_RESTART/END/fork_test0/split",
+                    "names": [
+                        "args",
+                        "complete",
+                        "stage_defs"
+                    ]
+                },
+                "join_metadata": {
+                    "path": "/user/test/retry_map_call_map_test/retry_map_call_map_test.runfiles/martian/test/retry_map_call_map_test/pipeline_test/SHOULD_RESTART/END/fork_test0/join",
+                    "names": [
+                        "args",
+                        "chunk_defs",
+                        "complete",
+                        "outs"
+                    ]
+                },
+                "bindings": {
+                    "Argument": [
+                        {
+                            "mode": "reference",
+                            "node": "ID.pipeline_test.SHOULD_RESTART.MIDDLE",
+                            "matchedFork": null,
+                            "value": "/user/test/retry_map_call_map_test/retry_map_call_map_test.runfiles/martian/test/retry_map_call_map_test/pipeline_test/SHOULD_RESTART/MIDDLE/fork_test0/chnk0-ue2ef9c426a/files/sentinel",
+                            "id": "sentinel",
+                            "type": "file",
+                            "waiting": false
+                        },
+                        {
+                            "mode": "reference",
+                            "node": "ID.pipeline_test.SHOULD_RESTART.MIDDLE",
+                            "matchedFork": null,
+                            "value": true,
+                            "id": "should_fail",
+                            "type": "bool",
+                            "waiting": false
+                        }
+                    ],
+                    "Return": [
+                        {
+                            "mode": "reference",
+                            "node": "ID.pipeline_test.SHOULD_RESTART.END",
+                            "matchedFork": null,
+                            "value": "/user/test/retry_map_call_map_test/retry_map_call_map_test.runfiles/martian/test/retry_map_call_map_test/pipeline_test/SHOULD_RESTART/END/fork_test0/chnk0-ue2ef9c426f/files/sentinel",
+                            "id": "sentinel",
+                            "type": "map\u003cfile\u003e",
+                            "waiting": false
+                        },
+                        {
+                            "mode": "reference",
+                            "node": "ID.pipeline_test.SHOULD_RESTART.END",
+                            "matchedFork": null,
+                            "value": true,
+                            "id": "should_fail",
+                            "type": "map\u003cbool\u003e",
+                            "waiting": false
+                        }
+                    ]
+                },
+                "chunks": [
+                    {
+                        "chunkDef": {
+                            "__mem_gb": 1,
+                            "__threads": 1,
+                            "__vmem_gb": 4
+                        },
+                        "metadata": {
+                            "path": "/user/test/retry_map_call_map_test/retry_map_call_map_test.runfiles/martian/test/retry_map_call_map_test/pipeline_test/SHOULD_RESTART/END/fork_test0/chnk0",
+                            "names": [
+                                "args",
+                                "complete",
+                                "jobinfo",
+                                "log",
+                                "outs",
+                                "stderr",
+                                "stdout"
+                            ]
+                        },
+                        "state": "complete",
+                        "index": 0
+                    }
+                ],
+                "index": 0
+            },
+            {
+                "argPermute": null,
+                "joinDef": null,
+                "state": "complete",
+                "metadata": {
+                    "path": "/user/test/retry_map_call_map_test/retry_map_call_map_test.runfiles/martian/test/retry_map_call_map_test/pipeline_test/SHOULD_RESTART/END/fork_test1",
+                    "names": [
+                        "complete",
+                        "invocation",
+                        "outs",
+                        "vdrkill"
+                    ]
+                },
+                "split_metadata": {
+                    "path": "/user/test/retry_map_call_map_test/retry_map_call_map_test.runfiles/martian/test/retry_map_call_map_test/pipeline_test/SHOULD_RESTART/END/fork_test1/split",
+                    "names": [
+                        "args",
+                        "complete",
+                        "stage_defs"
+                    ]
+                },
+                "join_metadata": {
+                    "path": "/user/test/retry_map_call_map_test/retry_map_call_map_test.runfiles/martian/test/retry_map_call_map_test/pipeline_test/SHOULD_RESTART/END/fork_test1/join",
+                    "names": [
+                        "args",
+                        "chunk_defs",
+                        "complete",
+                        "outs"
+                    ]
+                },
+                "bindings": {
+                    "Argument": [
+                        {
+                            "mode": "reference",
+                            "node": "ID.pipeline_test.SHOULD_RESTART.MIDDLE",
+                            "matchedFork": null,
+                            "value": "",
+                            "id": "sentinel",
+                            "type": "file",
+                            "waiting": false
+                        },
+                        {
+                            "mode": "reference",
+                            "node": "ID.pipeline_test.SHOULD_RESTART.MIDDLE",
+                            "matchedFork": null,
+                            "value": false,
+                            "id": "should_fail",
+                            "type": "bool",
+                            "waiting": false
+                        }
+                    ],
+                    "Return": [
+                        {
+                            "mode": "reference",
+                            "node": "ID.pipeline_test.SHOULD_RESTART.END",
+                            "matchedFork": null,
+                            "value": "",
+                            "id": "sentinel",
+                            "type": "map\u003cfile\u003e",
+                            "waiting": false
+                        },
+                        {
+                            "mode": "reference",
+                            "node": "ID.pipeline_test.SHOULD_RESTART.END",
+                            "matchedFork": null,
+                            "value": false,
+                            "id": "should_fail",
+                            "type": "map\u003cbool\u003e",
+                            "waiting": false
+                        }
+                    ]
+                },
+                "chunks": [
+                    {
+                        "chunkDef": {},
+                        "metadata": {
+                            "path": "/user/test/retry_map_call_map_test/retry_map_call_map_test.runfiles/martian/test/retry_map_call_map_test/pipeline_test/SHOULD_RESTART/END/fork_test1/chnk0",
+                            "names": [
+                                "args",
+                                "complete",
+                                "jobinfo",
+                                "log",
+                                "outs",
+                                "stderr",
+                                "stdout"
+                            ]
+                        },
+                        "state": "complete",
+                        "index": 0
+                    }
+                ],
+                "index": 1
+            }
+        ],
+        "edges": [
+            {
+                "from": "ID.pipeline_test.SHOULD_RESTART.BEGIN",
+                "to": "ID.pipeline_test.SHOULD_RESTART.END"
+            },
+            {
+                "from": "ID.pipeline_test.SHOULD_RESTART.MIDDLE",
+                "to": "ID.pipeline_test.SHOULD_RESTART.END"
+            }
+        ],
+        "stagecodeLang": "Python",
+        "type": "stage"
+    },
+    {
+        "name": "MIDDLE",
+        "fqname": "ID.pipeline_test.SHOULD_RESTART.MIDDLE",
+        "path": "/user/test/retry_map_call_map_test/retry_map_call_map_test.runfiles/martian/test/retry_map_call_map_test/pipeline_test/SHOULD_RESTART/MIDDLE",
+        "state": "complete",
+        "metadata": {
+            "path": "/user/test/retry_map_call_map_test/retry_map_call_map_test.runfiles/martian/test/retry_map_call_map_test/pipeline_test/SHOULD_RESTART/MIDDLE",
+            "names": []
+        },
+        "stagecodeCmd": "/user/test/retry_map_call_map_test/retry_map_call_map_test.runfiles/martian/test/retry_map_call_map_test/stage",
+        "forks": [
+            {
+                "argPermute": null,
+                "joinDef": null,
+                "state": "complete",
+                "metadata": {
+                    "path": "/user/test/retry_map_call_map_test/retry_map_call_map_test.runfiles/martian/test/retry_map_call_map_test/pipeline_test/SHOULD_RESTART/MIDDLE/fork_test0",
+                    "names": [
+                        "complete",
+                        "invocation",
+                        "outs",
+                        "vdrkill"
+                    ]
+                },
+                "split_metadata": {
+                    "path": "/user/test/retry_map_call_map_test/retry_map_call_map_test.runfiles/martian/test/retry_map_call_map_test/pipeline_test/SHOULD_RESTART/MIDDLE/fork_test0/split",
+                    "names": [
+                        "args",
+                        "complete",
+                        "stage_defs"
+                    ]
+                },
+                "join_metadata": {
+                    "path": "/user/test/retry_map_call_map_test/retry_map_call_map_test.runfiles/martian/test/retry_map_call_map_test/pipeline_test/SHOULD_RESTART/MIDDLE/fork_test0/join",
+                    "names": [
+                        "args",
+                        "chunk_defs",
+                        "complete",
+                        "outs"
+                    ]
+                },
+                "bindings": {
+                    "Argument": [
+                        {
+                            "mode": "reference",
+                            "node": "ID.pipeline_test.SHOULD_RESTART.BEGIN",
+                            "matchedFork": null,
+                            "value": "/user/test/retry_map_call_map_test/retry_map_call_map_test.runfiles/martian/test/retry_map_call_map_test/pipeline_test/SHOULD_RESTART/BEGIN/fork0/chnk0-ue2ef9c4266/files/sentinel",
+                            "id": "sentinel",
+                            "type": "file",
+                            "waiting": false
+                        },
+                        {
+                            "mode": "reference",
+                            "node": "ID.pipeline_test.SHOULD_RESTART.BEGIN",
+                            "matchedFork": null,
+                            "value": true,
+                            "id": "should_fail",
+                            "type": "bool",
+                            "waiting": false
+                        }
+                    ],
+                    "Return": [
+                        {
+                            "mode": "reference",
+                            "node": "ID.pipeline_test.SHOULD_RESTART.MIDDLE",
+                            "matchedFork": null,
+                            "value": "/user/test/retry_map_call_map_test/retry_map_call_map_test.runfiles/martian/test/retry_map_call_map_test/pipeline_test/SHOULD_RESTART/MIDDLE/fork_test0/chnk0-ue2ef9c426a/files/sentinel",
+                            "id": "sentinel",
+                            "type": "map\u003cfile\u003e",
+                            "waiting": false
+                        },
+                        {
+                            "mode": "reference",
+                            "node": "ID.pipeline_test.SHOULD_RESTART.MIDDLE",
+                            "matchedFork": null,
+                            "value": true,
+                            "id": "should_fail",
+                            "type": "map\u003cbool\u003e",
+                            "waiting": false
+                        }
+                    ]
+                },
+                "chunks": [
+                    {
+                        "chunkDef": {},
+                        "metadata": {
+                            "path": "/user/test/retry_map_call_map_test/retry_map_call_map_test.runfiles/martian/test/retry_map_call_map_test/pipeline_test/SHOULD_RESTART/MIDDLE/fork_test0/chnk0",
+                            "names": [
+                                "args",
+                                "complete",
+                                "jobinfo",
+                                "log",
+                                "outs",
+                                "stderr",
+                                "stdout"
+                            ]
+                        },
+                        "state": "complete",
+                        "index": 0
+                    }
+                ],
+                "index": 0
+            },
+            {
+                "argPermute": null,
+                "joinDef": null,
+                "state": "complete",
+                "metadata": {
+                    "path": "/user/test/retry_map_call_map_test/retry_map_call_map_test.runfiles/martian/test/retry_map_call_map_test/pipeline_test/SHOULD_RESTART/MIDDLE/fork_test1",
+                    "names": [
+                        "complete",
+                        "invocation",
+                        "outs",
+                        "vdrkill"
+                    ]
+                },
+                "split_metadata": {
+                    "path": "/user/test/retry_map_call_map_test/retry_map_call_map_test.runfiles/martian/test/retry_map_call_map_test/pipeline_test/SHOULD_RESTART/MIDDLE/fork_test1/split",
+                    "names": [
+                        "args",
+                        "complete",
+                        "stage_defs"
+                    ]
+                },
+                "join_metadata": {
+                    "path": "/user/test/retry_map_call_map_test/retry_map_call_map_test.runfiles/martian/test/retry_map_call_map_test/pipeline_test/SHOULD_RESTART/MIDDLE/fork_test1/join",
+                    "names": [
+                        "args",
+                        "chunk_defs",
+                        "complete",
+                        "outs"
+                    ]
+                },
+                "bindings": {
+                    "Argument": [
+                        {
+                            "mode": "reference",
+                            "node": "ID.pipeline_test.SHOULD_RESTART.BEGIN",
+                            "matchedFork": null,
+                            "value": "",
+                            "id": "sentinel",
+                            "type": "file",
+                            "waiting": false
+                        },
+                        {
+                            "mode": "reference",
+                            "node": "ID.pipeline_test.SHOULD_RESTART.BEGIN",
+                            "matchedFork": null,
+                            "value": false,
+                            "id": "should_fail",
+                            "type": "bool",
+                            "waiting": false
+                        }
+                    ],
+                    "Return": [
+                        {
+                            "mode": "reference",
+                            "node": "ID.pipeline_test.SHOULD_RESTART.MIDDLE",
+                            "matchedFork": null,
+                            "value": "",
+                            "id": "sentinel",
+                            "type": "map\u003cfile\u003e",
+                            "waiting": false
+                        },
+                        {
+                            "mode": "reference",
+                            "node": "ID.pipeline_test.SHOULD_RESTART.MIDDLE",
+                            "matchedFork": null,
+                            "value": false,
+                            "id": "should_fail",
+                            "type": "map\u003cbool\u003e",
+                            "waiting": false
+                        }
+                    ]
+                },
+                "chunks": [
+                    {
+                        "chunkDef": {},
+                        "metadata": {
+                            "path": "/user/test/retry_map_call_map_test/retry_map_call_map_test.runfiles/martian/test/retry_map_call_map_test/pipeline_test/SHOULD_RESTART/MIDDLE/fork_test1/chnk0",
+                            "names": [
+                                "args",
+                                "complete",
+                                "jobinfo",
+                                "log",
+                                "outs",
+                                "stderr",
+                                "stdout"
+                            ]
+                        },
+                        "state": "complete",
+                        "index": 0
+                    }
+                ],
+                "index": 1
+            }
+        ],
+        "edges": [
+            {
+                "from": "ID.pipeline_test.SHOULD_RESTART.BEGIN",
+                "to": "ID.pipeline_test.SHOULD_RESTART.MIDDLE"
+            }
+        ],
+        "stagecodeLang": "Python",
+        "type": "stage"
+    }
+]

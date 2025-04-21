@@ -429,17 +429,17 @@ func (self *Node) buildForks() {
 	// Build out argument permutations.
 	self.forkIds.MakeForkIds(self.call.ForkRoots(), self.top.types)
 	if len(self.forkIds.List) == 0 {
-		self.forks = []*Fork{NewFork(self, 0, nil, self.call.ResolvedInputs())}
+		self.forks = []*Fork{NewFork(self, 0, nil)}
 	} else {
 		self.forks = make([]*Fork, len(self.forkIds.List), cap(self.forkIds.List))
 		for i, id := range self.forkIds.List {
-			self.forks[i] = NewFork(self, i, id, self.call.ResolvedInputs())
+			self.forks[i] = NewFork(self, i, id)
 		}
 	}
 }
 
 func cloneFork(fork *Fork, id ForkId) *Fork {
-	nf := NewFork(fork.node, len(fork.node.forks), id, fork.args)
+	nf := NewFork(fork.node, len(fork.node.forks), id)
 	// Copy fileArgs
 	if len(fork.fileArgs) > 0 {
 		nf.fileArgs = make(
@@ -618,6 +618,11 @@ func (self *Node) loadMetadata() {
 	self.addFrontierNode(self)
 }
 
+// removeMetadata deletes the directories for any steps which do not have any
+// output or metadata files.
+//
+// When zipping metadata on completion is enabled, this reclaims some
+// additional inodes.
 func (self *Node) removeMetadata() {
 	for _, fork := range self.forks {
 		fork.removeMetadata()

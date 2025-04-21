@@ -1,8 +1,8 @@
 """Repository macro to load remote dependencies."""
 
+load("@bazel_gazelle//:deps.bzl", "gazelle_dependencies", "go_repository")
 load("@bazel_tools//tools/build_defs/repo:http.bzl", "http_archive")
 load("@bazel_tools//tools/build_defs/repo:utils.bzl", "maybe")
-load("@bazel_gazelle//:deps.bzl", "gazelle_dependencies", "go_repository")
 
 def martian_dependencies(
         rules_nodejs_version = "4.7.0",
@@ -21,21 +21,20 @@ def martian_dependencies(
     maybe(
         http_archive,
         name = "bazel_skylib",
-        # 1.4.2, latest as of 2023-06-08
         urls = [
-            "https://mirror.bazel.build/github.com/bazelbuild/bazel-skylib/releases/download/1.4.2/bazel-skylib-1.4.2.tar.gz",
-            "https://github.com/bazelbuild/bazel-skylib/releases/download/1.4.2/bazel-skylib-1.4.2.tar.gz",
+            "https://mirror.bazel.build/github.com/bazelbuild/bazel-skylib/releases/download/1.7.1/bazel-skylib-1.7.1.tar.gz",
+            "https://github.com/bazelbuild/bazel-skylib/releases/download/1.7.1/bazel-skylib-1.7.1.tar.gz",
         ],
-        sha256 = "66ffd9315665bfaafc96b52278f57c7e2dd09f5ede279ea6d39b2be471e7e3aa",
+        sha256 = "bc283cdfcd526a52c3201279cda4bc298652efa898b10b4db0837dc51652756f",
     )
 
     # Also do this before gazelle_dependencies.
     maybe(
         go_repository,
-        # v0.8.0, latest as of 2023-06-08
         name = "org_golang_x_sys",
-        version = "v0.8.0",
-        sum = "h1:EBmGv8NaZBZTWvrbjNoL6HVt+IVy3QDQpJs7VRIw3tU=",
+        # v0.20.0, latest as of 2024-05-20
+        version = "v0.30.0",
+        sum = "h1:QjkSwP/36a20jFYWkSue1YwXzLmsV5Gfq7Eiy72C1uc=",
         importpath = "golang.org/x/sys",
     )
 
@@ -67,10 +66,10 @@ def martian_dependencies(
         # is included here mostly for clarity.
         go_repository,
         name = "org_golang_x_tools",
-        # v0.7.0, latest as of 2023-03-27
-        version = "v0.7.0",
+        # v0.21.0, latest as of 2024-05-20
+        version = "v0.30.0",
         importpath = "golang.org/x/tools",
-        sum = "h1:W4OVu8VVOaIO0yzWMNdepAulS7YfoS3Zabrm8DOXXU4=",
+        sum = "h1:BgcpHewrV5AUp2G9MebG4XPFI1E2W41zU1SaqVA9vJY=",
     )
 
     maybe(
@@ -86,8 +85,8 @@ def martian_dependencies(
         ],
     )
 
-    python_rules_tag = "0.8.1"
-    python_rules_sha = "cdf6b84084aad8f10bf20b46b77cb48d83c319ebe6458a18e9d2cebf57807cdd"
+    python_rules_tag = "0.30.0"
+    python_rules_sha = "3b8b4cdc991bc9def8833d118e4c850f1b7498b3d65d5698eea92c3528b8cf2c"
     maybe(
         http_archive,
         name = "rules_python",

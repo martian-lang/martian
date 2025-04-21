@@ -108,6 +108,8 @@ func TestUnquoteFormat(t *testing.T) {
 		}
 	}
 	check(t, "\"hey\" is\\\n\tfor \U0001f40es")
-	check(t, "Control\a\b\f\n\r\t\v \u2029 characters")
+	if isGo122 {
+		check(t, "Control\a\b\f\n\r\t\v \u2029 characters")
+	}
 	check(t, "Invalid character \x88\xee")
 }

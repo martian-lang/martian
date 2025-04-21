@@ -61,7 +61,7 @@ func (s stringListValue) Set(v string) error {
 	return nil
 }
 
-func Main(argv []string) {
+func Main(argv []string) int {
 	util.SetPrintLogger(os.Stderr)
 	util.SetupSignalHandlers()
 
@@ -116,12 +116,12 @@ func Main(argv []string) {
 	}
 	if *version {
 		fmt.Println(util.GetVersion())
-		os.Exit(0)
+		return 0
 	}
 
 	if flags.NArg() < 1 {
 		flags.Usage()
-		os.Exit(1)
+		return 1
 	}
 
 	cwd, _ := os.Getwd()
@@ -146,7 +146,7 @@ func Main(argv []string) {
 	if err != nil {
 		fmt.Fprintln(flags.Output(),
 			err.Error())
-		os.Exit(10)
+		return 10
 	}
 
 	if edit != nil {
@@ -186,7 +186,7 @@ func Main(argv []string) {
 			fmt.Fprintln(os.Stderr,
 				"Error finding unused stage outputs:",
 				err.Error())
-			os.Exit(11)
+			return 11
 		} else if len(unused) > 0 {
 			fmt.Fprintln(os.Stderr,
 				"Stage outputs not used in top-level outs or other stage inputs:")
@@ -217,6 +217,7 @@ func Main(argv []string) {
 			}
 		}
 	}
+	return 0
 }
 
 func loadFiles(names, mroPaths []string, parser *syntax.Parser) ([][]byte, []*syntax.Ast) {
