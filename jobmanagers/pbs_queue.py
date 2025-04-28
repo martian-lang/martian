@@ -30,18 +30,17 @@ def mkopts(ids):
 
 def execute(cmd):
     """Executes qstat and captures its output."""
-    proc = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-    out, err = proc.communicate()
-    if proc.returncode:
-        raise OSError(err)
-    if not isinstance(out, str):
-        out = out.decode()
-    if len(out) < 500:
-        sys.stderr.write(out)
-    else:
-        sys.stderr.write(out[:496] + "...")
-    return out
-
+    with subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE) as proc:
+        out, err = proc.communicate()
+        if proc.returncode:
+            raise OSError(err)
+        if not isinstance(out, str):
+            out = out.decode()
+        if len(out) < 500:
+            sys.stderr.write(out)
+        else:
+            sys.stderr.write(out[:496] + "...")
+        return out
 
 def parse_output(out):
     """Parses the JSON-format output of qstat and yields the ids of pending
@@ -55,7 +54,7 @@ def main():
     """Reads a set of ids from standard input, queries qstat, and outputs the
     jobids to standard output for jobs which are in the pending state."""
     for jobid in parse_output(execute(mkopts(get_ids()))):
-        sys.stdout.write("%s\n" % jobid)
+        sys.stdout.write(f"{jobid}\n")
     return 0
 
 
