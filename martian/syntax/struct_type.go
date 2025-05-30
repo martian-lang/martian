@@ -307,6 +307,15 @@ func (s *StructType) CheckEqual(other Type) error {
 				})
 			}
 		}
+		if len(other.Members) > len(s.Members) {
+			for _, member := range other.Members {
+				if s.getMember(member.Id) == nil {
+					errs = append(errs, &IncompatibleTypeError{
+						Message: "extra field: " + member.Id,
+					})
+				}
+			}
+		}
 		return errs.If()
 	}
 }

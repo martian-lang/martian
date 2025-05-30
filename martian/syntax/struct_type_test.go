@@ -421,7 +421,7 @@ func TestStructTypeRedefinition(t *testing.T) {
 			t.Error(err)
 		}
 		if err := ast.TypeTable.AddStructType(st); err == nil {
-			t.Error(msg)
+			t.Error("did not get expected error about", msg)
 		} else if !strings.Contains(err.Error(), msg) {
 			t.Errorf("expected error %q but got %q",
 				msg, err.Error())
@@ -467,6 +467,17 @@ func TestStructTypeRedefinition(t *testing.T) {
 			},
 		},
 	}, "missing field")
+	checkBad(&StructType{
+		Id: "MY_STRUCT_1",
+		Members: []*StructMember{
+			{
+				Id: "my_field_1",
+				Tname: TypeId{
+					Tname: KindInt,
+				},
+			},
+		},
+	}, "extra field")
 	checkBad(&StructType{
 		Id: "MY_STRUCT_1",
 		Members: []*StructMember{
