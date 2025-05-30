@@ -177,3 +177,58 @@ func TestNestedStaticForks(t *testing.T) {
 		}
 	}
 }
+
+func TestDisabledStructSource(t *testing.T) {
+	ast := testGood(t, `
+struct Structy(
+    string x,
+)
+
+stage A(
+    out Structy[] a,
+    src comp      "true",
+)
+
+stage B(
+    in  Structy b,
+    out int     x,
+    src comp    "true",
+)
+
+pipeline X(
+    in  bool  skip,
+    out int[] x,
+)
+{
+    call A() using (
+        disabled = self.skip,
+    )
+
+    map call B(
+        b = split A.a,
+    )
+
+    return (
+        x = B.x,
+    )
+}
+
+call X(
+    skip = true,
+)
+`)
+	if ast == nil {
+		return
+	}
+	graph, err := ast.MakePipelineCallGraph("", ast.Call)
+	if err != nil {
+		t.Fatal(err)
+	}
+	x, err := graph.Outputs.BindingPath("x", nil, &ast.TypeTable)
+	if err != nil {
+		t.Fatal("missing output x")
+	}
+	if x.Exp.getKind() != KindNull {
+		t.Errorf("Expected null, got %v", x.Exp)
+	}
+}

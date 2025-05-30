@@ -24,7 +24,7 @@ const (
 	// yet what kind of inputs those are because the call has not yet been
 	// compiled.
 	ModeUnknownMapCall
-	// This call invokes the callableon an expression which evaluates to null,
+	// This call invokes the callable on an expression which evaluates to null,
 	// which could be either an array or a map but either way has no elements.
 	ModeNullMapCall
 )

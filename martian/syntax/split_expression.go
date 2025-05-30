@@ -616,6 +616,8 @@ func (s *SplitExp) filter(t Type, lookup *TypeLookup) (Exp, error) {
 				t = lookup.GetArray(t, 1)
 			case ModeMapCall:
 				t = lookup.GetMap(t)
+			case ModeNullMapCall:
+				t = builtinNull
 			default:
 				return s, &wrapError{
 					innerError: &bindingError{
