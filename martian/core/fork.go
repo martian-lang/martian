@@ -14,6 +14,9 @@ import (
 	"github.com/martian-lang/martian/martian/util"
 )
 
+// Limit of JSON read size in bytes.
+const readSizeLimit int64 = 1.25 * 1024 * 1024
+
 type (
 	// Represents a component of a fork ID, for a map-called stage or
 	// pipeline.
@@ -1351,7 +1354,7 @@ func (self *Fork) getDisabledSource(exp *syntax.DisabledExp) (syntax.Exp, error)
 	// If the source was disabled, we've got a null fork.
 	ready, result, err := self.node.top.resolve(exp.Disabled,
 		self.node.top.types.Get(syntax.TypeId{Tname: syntax.KindBool}),
-		self.forkId, 1024*1024)
+		self.forkId, readSizeLimit)
 	if err != nil {
 		return nil, err
 	}
@@ -1554,7 +1557,7 @@ func (self *Fork) expandForkSplitInnerPart(
 		}
 		panic("call " + exp.Call.GoString() + " not found in " + self.forkId.GoString())
 	case *syntax.RefExp:
-		ready, obj, err := self.node.top.resolveRef(exp, nil, self.forkId, 1024*1024)
+		ready, obj, err := self.node.top.resolveRef(exp, nil, self.forkId, readSizeLimit)
 		if err != nil {
 			return nil, err
 		}
@@ -1620,7 +1623,7 @@ func (self *Fork) expandForkFromRef(must bool, i int,
 			len(matchedForks), len(bNode.forks), bNode.GetFQName())
 	}
 	ready, obj, err := matchedForks[0].resolveRef(ref, nil,
-		bNode.call.Call().DecId, 1024*1024)
+		bNode.call.Call().DecId, readSizeLimit)
 	if err != nil {
 		return nil, &elementError{
 			element: "evaluating mapping source " + ref.GoString(),
