@@ -81,6 +81,8 @@
       },
       "pbspro": {
           "cmd": "qsub",
+          "queue_query": "pbs_queue.py",
+          "queue_query_grace_secs": 300,
           "mem_is_vmem": true,
           "envs": [ ]
       },
