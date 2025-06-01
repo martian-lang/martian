@@ -11,7 +11,7 @@ import sys
 import json
 
 # PBS Pro "job states" to be regarded as "alive"
-ALIVE = {'Q', 'H', 'W', 'S', 'R', 'E'}
+ALIVE = "QHWSRE"
 
 
 def get_ids():
