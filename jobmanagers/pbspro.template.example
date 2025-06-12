@@ -6,9 +6,12 @@
 # Setup Instructions
 # =============================================================================
 #
-# 1. Add any other necessary PBSpro arguments such as queue (-q) or account
-#    (-A). If your system requires a walltime (-l walltime), 24 hours (24:00:00)
-#    is sufficient.  We recommend you do not remove any arguments below or
+# 1. Add any other necessary PBSpro arguments such as queue (-q), account
+#    (-A), project (-P) or volumes (-l storage=). 
+#    If your system requires a walltime (-l walltime), 24 hours (24:00:00)
+#    is sufficient, but this can often be reduced to 4 hours or less if 
+#    '--maxjobs' is at least 10. 
+#    We recommend you do not remove any arguments below or
 #    Martian may not run properly.
 #
 # 2. Change filename of pbspro.template.example to pbspro.template.
@@ -18,6 +21,7 @@
 # =============================================================================
 #
 #PBS -N __MRO_JOB_NAME__
+#PBS -S /bin/bash
 #PBS -V
 #PBS -l select=1:ncpus=__MRO_THREADS__
 #PBS -l mem=__MRO_MEM_GB__gb
