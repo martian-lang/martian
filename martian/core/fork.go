@@ -15,7 +15,7 @@ import (
 )
 
 // Limit of JSON read size in bytes.
-const readSizeLimit int64 = 1.25 * 1024 * 1024
+const readSizeLimit int64 = 2 * 1024 * 1024
 
 type (
 	// Represents a component of a fork ID, for a map-called stage or
