@@ -14,6 +14,17 @@
       }
     };
   });
+
+  app.filter("sortStageNames", function() {
+    return function(nodes) {
+      return _.values(nodes || {}).sort(function(a, b) {
+        var aU = a.name.charAt(0) === "_";
+        var bU = b.name.charAt(0) === "_";
+        if (aU !== bU) { return aU ? 1 : -1; }
+        return a.name.localeCompare(b.name);
+      });
+    };
+  });
   const graphWidth = "750px";  
   renderGraph = function($scope, $compile) {
     var g = new dagreD3.graphlib.Graph({
@@ -71,7 +82,9 @@
     maxY += 100;
     maxY = Math.max(2000, maxY);
     $scope.graph.select("svg").attr("width", graphWidth).attr("height", maxY.toString() + "px");
-    $scope.graph.attr("transform", "translate(5,5) scale(" + scale + ")");
+    if (!$scope.hasNavigated) {
+      $scope.graph.attr("transform", "translate(5,5) scale(" + scale + ")");
+    }
     $scope.graph.selectAll("g.node.stage rect").attr("rx", 20).attr("ry", 20);
     $scope.graph.selectAll("g.node.pipeline rect").attr("rx", 0).attr("ry", 0);
     $scope.zoom(g, 750, maxY, scale);
@@ -227,12 +240,16 @@
     $scope.graph = $scope.svg.select("g");
     $scope.render = dagreD3.render();
     zoom = d3.zoom().on("zoom", function() {
-      return $scope.graph.attr("transform", d3.event.transform);
+      var t = d3.event.transform;
+      return $scope.graph.attr("transform", t);
     });
     $scope.svg.call(zoom);
+    $scope.hasNavigated = false;
     $scope.zoom = function(g, width, height, scale) {
-      return $scope.svg.call(
-        zoom.transform, d3.zoomIdentity.translate(5, 5).scale(scale));
+      if (!$scope.hasNavigated) {
+        $scope.svg.call(
+          zoom.transform, d3.zoomIdentity.translate(5, 5).scale(scale));
+      }
     };
     $http.get("/api/get-state/" + container + "/" + pname + "/" + psid + auth)
       .then(function(r) {
@@ -345,6 +362,67 @@
     };
     $scope.copyToClipboard = function() {
       return "";
+    };
+    var lastSearchQuery = null;
+    var lastMatchIds = [];
+    var lastMatchIndex = -1;
+    var navigateToStage = function(query) {
+      query = (query || "").toLowerCase().trim();
+      if (!query) { $scope.stageSearchResult = null; return; }
+      var allIds = Object.keys($scope.nodes || {});
+      var matchIds = [];
+      for (var i = 0; i < allIds.length; i++) {
+        if ($scope.nodes[allIds[i]].name.toLowerCase() === query) { matchIds.push(allIds[i]); }
+      }
+      if (matchIds.length === 0) {
+        for (var i = 0; i < allIds.length; i++) {
+          if ($scope.nodes[allIds[i]].name.toLowerCase().indexOf(query) !== -1) { matchIds.push(allIds[i]); }
+        }
+      }
+      if (matchIds.length === 0) { $scope.stageSearchResult = "No match"; $scope.stageSearchResultFound = false; $scope.matchCount = 0; return; }
+      if (query === lastSearchQuery) {
+        lastMatchIndex = (lastMatchIndex + 1) % matchIds.length;
+      } else {
+        lastSearchQuery = query;
+        lastMatchIds = matchIds;
+        lastMatchIndex = 0;
+      }
+      var matchId = matchIds[lastMatchIndex];
+      var matchNode = null;
+      d3.selectAll("g.node").each(function(nodeId) {
+        if (nodeId === matchId) { matchNode = d3.select(this); }
+      });
+      if (!matchNode || matchNode.empty()) { $scope.stageSearchResult = "No match"; $scope.stageSearchResultFound = false; return; }
+      var coords = matchNode.attr("transform").substr(10).split(",");
+      var nx = parseFloat(coords[0]);
+      var ny = parseFloat(coords[1]);
+      var svgEl = $scope.svg.node();
+      var svgParent = svgEl.parentElement;
+      var targetScale = 2.0;
+      var tx = svgEl.clientWidth / 2 - nx * targetScale;
+      var navbarOffset = svgParent ? svgParent.offsetTop : 0;
+      var ty = (window.innerHeight - navbarOffset) / 2 - ny * targetScale;
+      $scope.hasNavigated = true;
+      $scope.svg.call(zoom.transform, d3.zoomIdentity.translate(tx, ty).scale(targetScale));
+      window.scrollTo(0, navbarOffset);
+      $scope.selectNode(matchId);
+      $scope.matchCount = matchIds.length;
+      var suffix = matchIds.length > 1 ? " (" + (lastMatchIndex + 1) + "/" + matchIds.length + ")" : "";
+      $scope.stageSearchResult = "→ " + $scope.nodes[matchId].name + suffix;
+      $scope.stageSearchResultFound = true;
+    };
+    $scope.searchNext = function() { navigateToStage($scope.stageSearch); };
+    $scope.$watch("stageSearch", function(val, oldVal) {
+      if (val === oldVal) { return; }
+      if (!val) { $scope.stageSearchResult = null; return; }
+      var nodes = $scope.nodes || {};
+      var exactMatch = Object.keys(nodes).find(function(id) {
+        return nodes[id].name.toLowerCase() === val.toLowerCase().trim();
+      });
+      if (exactMatch) { navigateToStage(val); }
+    });
+    $scope.searchKeydown = function(event) {
+      if (event.keyCode === 13) { navigateToStage($scope.stageSearch); }
     };
     $scope.selectNode = function(id) {
       $scope.id = id;

@@ -811,6 +811,63 @@ td.tight {
     z-index: 1;
     position: relative;
 }
+.stage-search {
+    display: inline-flex;
+    align-items: center;
+    margin-right: 12px;
+    vertical-align: middle;
+    position: relative;
+}
+
+.stage-search-input {
+    height: 36px;
+    padding: 6px 8px;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+    font-size: 13px;
+    font-family: Menlo, Arial, sans-serif;
+    color: #333;
+    background: #fff;
+    width: 180px;
+    outline: none;
+    margin-top: -7px;
+}
+
+.stage-search-input:focus {
+    border-color: #33b5e5;
+    box-shadow: 0 0 0 2px rgba(51,181,229,0.25);
+}
+
+.stage-search-hint {
+    margin-left: 6px;
+    font-size: 12px;
+    font-family: Menlo, Arial, sans-serif;
+    color: #de5068;
+}
+
+.stage-search-hint.found {
+    color: #3d8b40;
+}
+
+.stage-search-next {
+    margin-left: 4px;
+    background: none;
+    border: 1px solid #33b5e5;
+    border-radius: 3px;
+    color: #33b5e5;
+    font-size: 11px;
+    padding: 1px 5px;
+    cursor: pointer;
+    line-height: 1.4;
+    vertical-align: middle;
+}
+
+.stage-search-next:hover {
+    background: #33b5e5;
+    color: #fff;
+}
+
+
 /* SVG from  https://fonts.google.com/icons?selected=Material+Symbols+Outlined:right_panel_close:FILL@0;wght@400;GRAD@0;opsz@24&icon.query=right+panel*/
 .icon-toggle {
     background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 -960 960 960' %3E%3Cpath d='M300-640v320l160-160-160-160ZM200-120q-33 0-56.5-23.5T120-200v-560q0-33 23.5-56.5T200-840h560q33 0 56.5 23.5T840-760v560q0 33-23.5 56.5T760-120H200Zm440-80h120v-560H640v560Zm-80 0v-560H200v560h360Zm80 0h120-120Z'/%3E%3C/svg%3E");

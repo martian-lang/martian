@@ -29,6 +29,25 @@ files = { "files": ["log"] }
               exit admin mode
             </a>)</span>[[end]][[if not .Release]]
           <div class="navbar-views">
+            <div class="stage-search">
+              <input type="text"
+                     id="stage-search"
+                     class="stage-search-input"
+                     list="stage-names"
+                     placeholder="Search stages..."
+                     ng-model="stageSearch"
+                     ng-keydown="searchKeydown($event)">
+              <datalist id="stage-names">
+                <option ng-repeat="n in nodes | sortStageNames track by n.fqname" value="{{n.name}}"></option>
+              </datalist>
+              <span class="stage-search-hint"
+                    ng-show="stageSearchResult"
+                    ng-class="{'found': stageSearchResultFound}">{{stageSearchResult}}</span>
+              <button class="stage-search-next"
+                      ng-show="matchCount > 1"
+                      ng-click="searchNext()"
+                      title="Next match">&#8595;</button>
+            </div>
             <div class="btn-group">
               <button class="btn btn-default"
                       ng-model="perf"
