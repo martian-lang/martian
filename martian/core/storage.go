@@ -331,7 +331,9 @@ func pathIsInside(test, parent string) bool {
 	parent = filepath.Clean(parent)
 	name := filepath.Clean(test)
 	return name == parent ||
-		(len(parent) < len(name) && strings.HasPrefix(name, parent+"/"))
+		(len(parent) < len(name) &&
+			strings.HasPrefix(name, parent) &&
+			name[len(parent)] == '/')
 }
 
 // Returns (almost) all of the logical file names which may refer to the same
@@ -550,14 +552,15 @@ func anyOverlap(names []string, files map[string]struct{}) (string, string) {
 	// Only look for parent-directory matches after checking all forms
 	// of name for an exact match
 	for _, name := range names {
-		dir := name + "/"
 		for file := range files {
 			if len(name) > len(file)+1 {
-				if strings.HasPrefix(name, file+"/") {
+				if strings.HasPrefix(name, file) &&
+					name[len(file)] == '/' {
 					return file, name
 				}
-			} else if len(dir) < len(file) {
-				if strings.HasPrefix(file, dir) {
+			} else if len(name) < len(file) {
+				if strings.HasPrefix(file, name) &&
+					file[len(name)] == '/' {
 					return file, name
 				}
 			}
