@@ -167,6 +167,14 @@ Options:
     -h --help           Show this message.
     --version           Show version.`
 	opts, _ := docopt.Parse(doc, nil, true, util.GetVersion(), false)
+
+	martianFlags := ""
+	if martianFlags = os.Getenv("MROFLAGS"); len(martianFlags) > 0 {
+		martianOptions := strings.Split(martianFlags, " ")
+		parseMroFlags(opts, doc, martianOptions, []string{"call.mro", "pipestance"})
+		util.LogInfo("environ", "MROFLAGS=%s", martianFlags)
+	}
+
 	autoAdjustMemory := opts["--auto-adjust-memory"].(bool)
 	c := mrpConfiguration{
 		config:  core.DefaultRuntimeOptions(),
@@ -175,13 +183,6 @@ Options:
 	config := &c.config
 
 	logEnviron(config.MartianVersion, os.Args, os.Environ(), os.Getpid())
-
-	martianFlags := ""
-	if martianFlags = os.Getenv("MROFLAGS"); len(martianFlags) > 0 {
-		martianOptions := strings.Split(martianFlags, " ")
-		parseMroFlags(opts, doc, martianOptions, []string{"call.mro", "pipestance"})
-		util.LogInfo("environ", "MROFLAGS=%s", martianFlags)
-	}
 
 	if value := opts["--strict"]; value != nil {
 		level := syntax.ParseEnforcementLevel(value.(string))
