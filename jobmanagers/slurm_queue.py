@@ -42,7 +42,7 @@ def execute(cmd):
 
 def allow_state(state):
     """Returns True if the state code is for a queued or running job."""
-    return state in ["CG", "PD", "R", "RD", "RS", "SO"]
+    return state in ["CG", "CF", "PD", "R", "RD", "RS", "SI", "SO"]
 
 
 def parse_output(out):
