@@ -102,7 +102,7 @@ test: test-all govet $(GOBIN)/sum_squares vscode-test
 # Note this target is expected to fail, since we haven't gone back and made
 # legacy code compliant.  The CI only checks for new issues.
 golint:
-	go run github.com/golangci/golangci-lint/v2/cmd/golangci-lint@v2.6.2 run --config .golangci.yml
+	go run github.com/golangci/golangci-lint/v2/cmd/golangci-lint@v2.13.2 run --config .golangci.yml
 
 integration_prereqs: mrp mrjob $(ADAPTERS) test/martian_test.py $(JOBMANAGERS)
 
