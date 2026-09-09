@@ -19,18 +19,18 @@ func ExampleStructType() {
 		Value int
 	}
 	type MyStruct struct {
-		StringVal      string `json:"str1"`
-		IntAsStringVal int    `json:"str2,string"`
 		Time           time.Time
-		Omitted        int `json:"-"`
-		unexported     int
-		MapVal         map[time.Time]InnerStruct `json:"int_map" mro_help:"a bunch of ints"`
-		Csvs           [][]string                `json:"csvs" mro_type:"csv" mro_out:"csv_files"`
-		ByteMap        map[string][]byte         `json:"byte_map1"`
-		FileByteMap    map[string][][]byte       `json:"byte_map2" mro_type:"csv"`
 		UntypedMap1    map[string]interface{}
 		UntypedMap2    map[string]json.RawMessage
+		MapVal         map[time.Time]InnerStruct `json:"int_map" mro_help:"a bunch of ints"`
+		ByteMap        map[string][]byte         `json:"byte_map1"`
+		FileByteMap    map[string][][]byte       `json:"byte_map2" mro_type:"csv"`
+		StringVal      string                    `json:"str1"`
 		UntypedMap3    []map[string]map[string]string
+		Csvs           [][]string `json:"csvs" mro_type:"csv" mro_out:"csv_files"`
+		unexported     int
+		Omitted        int `json:"-"`
+		IntAsStringVal int `json:"str2,string"`
 		Float          float32
 		FloatStr       float32 `json:"float_str,string"`
 		BoolVal        bool
@@ -96,16 +96,16 @@ func ExampleStructType() {
 	// )
 	//
 	// struct MyStruct(
-	//     string           str1,
-	//     string           str2,
 	//     string           Time,
-	//     map<InnerStruct> int_map     "a bunch of ints",
-	//     csv[][]          csvs        ""                "csv_files",
-	//     map<string>      byte_map1,
-	//     map<csv[]>       byte_map2,
 	//     map              UntypedMap1,
 	//     map              UntypedMap2,
+	//     map<InnerStruct> int_map     "a bunch of ints",
+	//     map<string>      byte_map1,
+	//     map<csv[]>       byte_map2,
+	//     string           str1,
 	//     map[]            UntypedMap3,
+	//     csv[][]          csvs        ""                "csv_files",
+	//     string           str2,
 	//     float            Float,
 	//     string           float_str,
 	//     bool             BoolVal,
@@ -113,22 +113,17 @@ func ExampleStructType() {
 	// )
 	//
 	// call STAGE as ALIAS(
-	//     str1        = "foo",
-	//     str2        = "1",
 	//     Time        = "2021-01-02T03:04:05Z",
+	//     UntypedMap1 = {
+	//         "baz": 2,
+	//         "foo": "bar",
+	//     },
+	//     UntypedMap2 = null,
 	//     int_map     = {
 	//         "2021-01-02T03:04:05Z": {
 	//             Value: 1,
 	//         },
 	//     },
-	//     csvs        = [
-	//         ["foo"],
-	//         null,
-	//         [
-	//             "bar",
-	//             "baz",
-	//         ],
-	//     ],
 	//     byte_map1   = {
 	//         "baz": null,
 	//         "foo": "YmFy",
@@ -140,11 +135,7 @@ func ExampleStructType() {
 	//             null,
 	//         ],
 	//     },
-	//     UntypedMap1 = {
-	//         "baz": 2,
-	//         "foo": "bar",
-	//     },
-	//     UntypedMap2 = null,
+	//     str1        = "foo",
 	//     UntypedMap3 = [
 	//         {
 	//             "foo": {
@@ -153,6 +144,15 @@ func ExampleStructType() {
 	//             },
 	//         },
 	//     ],
+	//     csvs        = [
+	//         ["foo"],
+	//         null,
+	//         [
+	//             "bar",
+	//             "baz",
+	//         ],
+	//     ],
+	//     str2        = "1",
 	//     Float       = 4,
 	//     float_str   = "5",
 	//     BoolVal     = true,
@@ -165,11 +165,11 @@ func TestEmbeddedStruct(t *testing.T) {
 		Value1 int
 	}
 	type OuterStruct struct {
-		InnerStruct
-		Value2 uint
+		Time   time.Time `mro_type:"time"`
 		Value3 *InnerStruct
 		Value4 *InnerStruct
-		Time   time.Time `mro_type:"time"`
+		InnerStruct
+		Value2 uint
 	}
 	val := OuterStruct{
 		InnerStruct: InnerStruct{Value1: 1},
@@ -193,21 +193,21 @@ func TestEmbeddedStruct(t *testing.T) {
 		},
 	}
 	const expected = `struct OuterStruct(
-    int         Value1,
-    int         Value2,
+    time        Time,
     InnerStruct Value3,
     InnerStruct Value4,
-    time        Time,
+    int         Value1,
+    int         Value2,
 )
 
 call STAGE(
-    Value1 = 1,
-    Value2 = 2,
+    Time   = "0001-01-01T00:00:00Z",
     Value3 = {
         Value1: 0,
     },
     Value4 = null,
-    Time   = "0001-01-01T00:00:00Z",
+    Value1 = 1,
+    Value2 = 2,
 )
 `
 	result := ast.Format()

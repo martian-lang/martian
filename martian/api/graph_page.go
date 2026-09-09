@@ -10,8 +10,8 @@ type GraphPage struct {
 	Container    string
 	Pname        string
 	Psid         string
+	Auth         string
 	Admin        bool
 	AdminStyle   bool
 	Release      bool
-	Auth         string
 }

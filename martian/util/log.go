@@ -116,7 +116,7 @@ func (p *logTarget) WriteString(msg string) (int, error) {
 var logWriter = new(logTarget)
 
 // Wraps the martian logger as go log.Logger object for use with, for example,
-// net/http.HttpServer.ErrorLog
+// net/http.HttpServer.ErrorLog.
 func GetLogger(component string) (*golog.Logger, bool) {
 	if logInit() {
 		return golog.New(LOGGER, "["+component+"]", golog.LstdFlags), true

@@ -16,14 +16,14 @@ import (
 	"golang.org/x/sys/unix"
 )
 
-// Implements the os.FileInfo interface to wrap unix.Stat_t
+// Implements the os.FileInfo interface to wrap unix.Stat_t.
 type unixFileInfo struct {
 	name string
 	mode os.FileMode
 	sys  unix.Stat_t
 }
 
-// base name of the file
+// base name of the file.
 func (info *unixFileInfo) Name() string {
 	if info == nil {
 		return ""
@@ -39,7 +39,7 @@ func (info *unixFileInfo) Size() int64 {
 	return info.sys.Size
 }
 
-// File mode bits
+// File mode bits.
 func (info *unixFileInfo) Mode() os.FileMode {
 	if info == nil {
 		return 0
@@ -47,7 +47,7 @@ func (info *unixFileInfo) Mode() os.FileMode {
 	return info.mode
 }
 
-// Modification time
+// Modification time.
 func (info *unixFileInfo) ModTime() time.Time {
 	if info == nil {
 		return time.Time{}
@@ -55,7 +55,7 @@ func (info *unixFileInfo) ModTime() time.Time {
 	return time.Unix(info.sys.Mtim.Sec, info.sys.Mtim.Nsec)
 }
 
-// Abbreviation for Mode().IsDir()
+// Abbreviation for Mode().IsDir().
 func (info *unixFileInfo) IsDir() bool {
 	if info == nil {
 		return false
@@ -63,7 +63,7 @@ func (info *unixFileInfo) IsDir() bool {
 	return info.sys.Mode&unix.S_IFDIR == unix.S_IFDIR
 }
 
-// Underlying data source - nil or *unix.Stat_t
+// Underlying data source - nil or *unix.Stat_t.
 func (info *unixFileInfo) Sys() interface{} {
 	if info == nil {
 		return nil

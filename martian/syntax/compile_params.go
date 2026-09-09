@@ -467,7 +467,7 @@ func (binding *BindStm) compileParam(global *Ast, pipeline *Pipeline, param Para
 	if t == nil {
 		return global.err(binding,
 			"BindingError: invalid type %q for parameter %q",
-			binding.Tname, binding.Id)
+			binding.Tname.String(), binding.Id)
 	}
 	if err := t.IsValidExpression(binding.Exp, pipeline, global); err != nil {
 		if !binding.rewriteToDefaultOutput(global, pipeline, t) {

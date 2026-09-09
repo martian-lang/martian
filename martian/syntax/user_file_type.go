@@ -11,8 +11,8 @@ import (
 
 // A user-defined file type.
 type UserType struct {
-	Node AstNode
 	Id   string
+	Node AstNode
 }
 
 func (*UserType) getDec() {}

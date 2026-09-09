@@ -1,5 +1,4 @@
 {
-  "fqid": "P",
   "inputs": null,
   "outputs": {
     "expression": {
@@ -14,19 +13,19 @@
     },
     "type": "P"
   },
+  "fqid": "P",
   "children": [
     {
-      "fqid": "P.DISABLER",
       "inputs": null,
       "outputs": {
         "expression": {
           "__reference__": "P.DISABLER"
         },
         "type": "DISABLER"
-      }
+      },
+      "fqid": "P.DISABLER"
     },
     {
-      "fqid": "P.P1",
       "inputs": null,
       "outputs": {
         "expression": {
@@ -41,6 +40,7 @@
         },
         "type": "P1"
       },
+      "fqid": "P.P1",
       "disabled": [
         {
           "__reference__": "P.DISABLER.disable"
@@ -48,7 +48,6 @@
       ],
       "children": [
         {
-          "fqid": "P.P1.DISABLER",
           "inputs": null,
           "outputs": {
             "expression": {
@@ -56,6 +55,7 @@
             },
             "type": "DISABLER"
           },
+          "fqid": "P.P1.DISABLER",
           "disabled": [
             {
               "__reference__": "P.DISABLER.disable"
@@ -65,7 +65,6 @@
       ]
     },
     {
-      "fqid": "P.P2",
       "inputs": {
         "disable": {
           "expression": {
@@ -97,6 +96,7 @@
         },
         "type": "P2"
       },
+      "fqid": "P.P2",
       "disabled": [
         {
           "__reference__": "P.DISABLER.disable"
@@ -104,7 +104,6 @@
       ],
       "children": [
         {
-          "fqid": "P.P2.DISABLER",
           "inputs": null,
           "outputs": {
             "expression": {
@@ -117,6 +116,7 @@
             },
             "type": "DISABLER"
           },
+          "fqid": "P.P2.DISABLER",
           "disabled": [
             {
               "__reference__": "P.DISABLER.disable"

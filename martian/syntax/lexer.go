@@ -14,8 +14,13 @@ import (
 )
 
 type mmLexInfo struct {
+	// for many byte->string conversions, the same string is expected
+	// to show up frequently.  For example the stage name will usually
+	// appear at least 3 times: when it's declared, when it's called, and
+	// when its output is referenced.  So we coalesce those allocations.
+	intern *stringIntern
+
 	src      []byte    // All the data we're scanning
-	pos      int       // Position of the scan head
 	loc      SourceLoc // Keep track of the line number
 	previous []byte    //
 	token    []byte    // Cache the last token for error messaging
@@ -23,11 +28,7 @@ type mmLexInfo struct {
 	global   *Ast
 	exp      ValExp // If parsing an expression, rather than an AST.
 	comments []*commentBlock
-	// for many byte->string conversions, the same string is expected
-	// to show up frequently.  For example the stage name will usually
-	// appear at least 3 times: when it's declared, when it's called, and
-	// when its output is referenced.  So we coalesce those allocations.
-	intern *stringIntern
+	pos      int // Position of the scan head
 	// True if the column number needs to be incremented.
 	incCol bool
 }
@@ -67,8 +68,8 @@ func (self *mmLexInfo) Lex(lval *mmSymType) int {
 			continue
 		} else if tokid == COMMENT {
 			self.comments = append(self.comments, &commentBlock{
-				self.Loc(),
-				string(bytes.TrimSpace(val)),
+				Value: string(bytes.TrimSpace(val)),
+				Loc:   self.Loc(),
 			})
 			self.loc.Line++
 			self.loc.Col = 1

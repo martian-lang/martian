@@ -1242,7 +1242,7 @@ func getUnknownLength(v json.Marshaler) (int, error) {
 		return len(m), err
 	}
 	val := reflect.ValueOf(v)
-	for val.Kind() == reflect.Ptr || val.Kind() == reflect.Interface {
+	for val.Kind() == reflect.Pointer || val.Kind() == reflect.Interface {
 		val = val.Elem()
 	}
 	if val.Kind() == reflect.Array {
@@ -1310,7 +1310,7 @@ func getUnknownKeys(v json.Marshaler) (mapKeyRange, error) {
 		return keys, nil
 	}
 	val := reflect.ValueOf(v)
-	for val.Kind() == reflect.Ptr || val.Kind() == reflect.Interface {
+	for val.Kind() == reflect.Pointer || val.Kind() == reflect.Interface {
 		val = val.Elem()
 	}
 	if val.Kind() == reflect.Map {

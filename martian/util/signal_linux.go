@@ -13,7 +13,7 @@ import (
 
 // After a call to SetupSignalHandlers, these signals will be handled
 // by waiting for all pending critical sections to complete, running
-// all registered handlers, and then exiting with return code 1
+// all registered handlers, and then exiting with return code 1.
 var HANDLED_SIGNALS = [...]os.Signal{
 	os.Interrupt,
 	syscall.SIGHUP,

@@ -121,16 +121,16 @@ type (
 
 	// A MapExp represents a literal map of expressions.
 	MapExp struct {
-		valExp
-		// Will be KindMap or KindStruct.
-		Kind  ExpKind
 		Value map[string]Exp
+		// Will be KindMap or KindStruct.
+		Kind ExpKind
+		valExp
 	}
 
 	// A StringExp represents a string or file type literal.
 	StringExp struct {
-		valExp
 		Value string
+		valExp
 	}
 
 	// A BoolExp represents a boolean value.

@@ -64,10 +64,10 @@ func (err *AstError) Error() string {
 }
 
 type FileNotFoundError struct {
-	loc   SourceLoc
-	name  string
 	inner error
+	name  string
 	paths string
+	loc   SourceLoc
 }
 
 func (err *FileNotFoundError) writeTo(w stringWriter) {

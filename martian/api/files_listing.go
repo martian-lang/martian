@@ -10,7 +10,7 @@ import (
 	"github.com/martian-lang/martian/martian/util"
 )
 
-// Lists of top-level files and files in "extras"
+// Lists of top-level files and files in "extras".
 type FilesListing struct {
 	Files  []string `json:"files,omitempty"`
 	Extras []string `json:"extras,omitempty"`

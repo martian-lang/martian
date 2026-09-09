@@ -62,11 +62,11 @@ type (
 
 	// editBinding is an Edit which updates the expression used in a binding.
 	editBinding struct {
+		Exp      syntax.Exp
 		Pipeline *syntax.Pipeline
 		Call     *syntax.CallStm
 		Binding  *syntax.BindStm
 		Mods     bool
-		Exp      syntax.Exp
 	}
 )
 

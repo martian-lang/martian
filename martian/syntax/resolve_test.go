@@ -5,6 +5,7 @@ package syntax
 import (
 	"encoding/json"
 	"io/ioutil"
+	"os"
 	"strings"
 	"testing"
 )
@@ -479,7 +480,7 @@ func TestSerializeCallGraph(t *testing.T) {
 	if err := enc.Encode(graph); err != nil {
 		t.Fatal(err)
 	}
-	expectB, err := ioutil.ReadFile("testdata/resolve_test.json")
+	expectB, err := os.ReadFile("testdata/resolve_test.json")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -490,7 +491,7 @@ func TestSerializeCallGraph(t *testing.T) {
 }
 
 func TestSerializeMapCallGraph(t *testing.T) {
-	src, err := ioutil.ReadFile("testdata/map_call_test.mro")
+	src, err := os.ReadFile("testdata/map_call_test.mro")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -509,7 +510,7 @@ func TestSerializeMapCallGraph(t *testing.T) {
 	if err := enc.Encode(graph); err != nil {
 		t.Fatal(err)
 	}
-	expectB, err := ioutil.ReadFile("testdata/map_call_test.json")
+	expectB, err := os.ReadFile("testdata/map_call_test.json")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -792,7 +793,6 @@ call DUMMY(
 		t.Fatal(err)
 	}
 	const expect = `{
-		"fqid": "ID.DUMMY",
 		"inputs": {
 			"foo": {
 				"expression": 0,
@@ -805,6 +805,7 @@ call DUMMY(
 			},
 			"type": "DUMMY"
 		},
+		"fqid": "ID.DUMMY",
 		"children": null
 	}
 `

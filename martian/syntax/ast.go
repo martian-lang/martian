@@ -22,9 +22,9 @@ type (
 	}
 
 	SourceLoc struct {
+		File *SourceFile
 		Line int
 		Col  int
-		File *SourceFile
 	}
 
 	SourceFile struct {
@@ -62,15 +62,15 @@ type (
 
 	// Include directive.
 	Include struct {
-		Node  AstNode
 		Value string
+		Node  AstNode
 	}
 
 	// Comments are also not, strictly speaking, part of the AST, but for
 	// formatting code we need to keep track of them.
 	commentBlock struct {
-		Loc   SourceLoc
 		Value string
+		Loc   SourceLoc
 	}
 
 	Ast struct {

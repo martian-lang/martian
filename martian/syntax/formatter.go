@@ -35,9 +35,9 @@ type stringWriter interface {
 }
 
 type printer struct {
-	buf         strings.Builder
-	comments    map[string][]*commentBlock
 	lastComment SourceLoc
+	comments    map[string][]*commentBlock
+	buf         strings.Builder
 }
 
 func (self *printer) printComments(node *AstNode, prefix string) {
@@ -125,7 +125,7 @@ func (self *Ast) Format() string {
 	return self.format(!includesProcessed)
 }
 
-// AST
+// AST.
 func (self *Ast) format(writeIncludes bool) string {
 	needSpacer := false
 	printer := printer{

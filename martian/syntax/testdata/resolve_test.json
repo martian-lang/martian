@@ -1,5 +1,4 @@
 {
-  "fqid": "POINT_MAPPER",
   "inputs": {
     "disable4": {
       "expression": true,
@@ -101,9 +100,9 @@
     },
     "type": "POINT_MAPPER"
   },
+  "fqid": "POINT_MAPPER",
   "children": [
     {
-      "fqid": "POINT_MAPPER.PIPE1",
       "inputs": {
         "x": {
           "expression": 5,
@@ -141,9 +140,9 @@
         },
         "type": "POINT_PIPE"
       },
+      "fqid": "POINT_MAPPER.PIPE1",
       "children": [
         {
-          "fqid": "POINT_MAPPER.PIPE1.POINT_MAKER",
           "inputs": {
             "points": {
               "expression": [
@@ -164,12 +163,12 @@
               "__reference__": "POINT_MAPPER.PIPE1.POINT_MAKER"
             },
             "type": "POINT_MAKER"
-          }
+          },
+          "fqid": "POINT_MAPPER.PIPE1.POINT_MAKER"
         }
       ]
     },
     {
-      "fqid": "POINT_MAPPER.PIPE2",
       "inputs": {
         "x": {
           "expression": 7,
@@ -207,9 +206,9 @@
         },
         "type": "POINT_PIPE"
       },
+      "fqid": "POINT_MAPPER.PIPE2",
       "children": [
         {
-          "fqid": "POINT_MAPPER.PIPE2.POINT_MAKER",
           "inputs": {
             "points": {
               "expression": [
@@ -230,12 +229,12 @@
               "__reference__": "POINT_MAPPER.PIPE2.POINT_MAKER"
             },
             "type": "POINT_MAKER"
-          }
+          },
+          "fqid": "POINT_MAPPER.PIPE2.POINT_MAKER"
         }
       ]
     },
     {
-      "fqid": "POINT_MAPPER.PIPE3",
       "inputs": {
         "x": {
           "expression": 3,
@@ -273,9 +272,9 @@
         },
         "type": "POINT_PIPE"
       },
+      "fqid": "POINT_MAPPER.PIPE3",
       "children": [
         {
-          "fqid": "POINT_MAPPER.PIPE3.POINT_MAKER",
           "inputs": {
             "points": {
               "expression": [
@@ -296,12 +295,12 @@
               "__reference__": "POINT_MAPPER.PIPE3.POINT_MAKER"
             },
             "type": "POINT_MAKER"
-          }
+          },
+          "fqid": "POINT_MAPPER.PIPE3.POINT_MAKER"
         }
       ]
     },
     {
-      "fqid": "POINT_MAPPER.PIPE4",
       "inputs": {
         "x": {
           "expression": 18,
@@ -316,13 +315,13 @@
         "expression": null,
         "type": "null"
       },
+      "fqid": "POINT_MAPPER.PIPE4",
       "disabled": [
         true
       ],
       "children": null
     },
     {
-      "fqid": "POINT_MAPPER.PIPE5",
       "inputs": {
         "x": {
           "expression": 20,
@@ -365,6 +364,7 @@
         },
         "type": "POINT_PIPE"
       },
+      "fqid": "POINT_MAPPER.PIPE5",
       "disabled": [
         {
           "__reference__": "POINT_MAPPER.PIPE1.POINT_MAKER.disable_user"
@@ -372,7 +372,6 @@
       ],
       "children": [
         {
-          "fqid": "POINT_MAPPER.PIPE5.POINT_MAKER",
           "inputs": {
             "points": {
               "expression": [
@@ -394,6 +393,7 @@
             },
             "type": "POINT_MAKER"
           },
+          "fqid": "POINT_MAPPER.PIPE5.POINT_MAKER",
           "disabled": [
             {
               "__reference__": "POINT_MAPPER.PIPE1.POINT_MAKER.disable_user"
@@ -403,7 +403,6 @@
       ]
     },
     {
-      "fqid": "POINT_MAPPER.PIPE6",
       "inputs": {
         "x": {
           "expression": {
@@ -464,9 +463,9 @@
         },
         "type": "map<POINT_PIPE>"
       },
+      "fqid": "POINT_MAPPER.PIPE6",
       "children": [
         {
-          "fqid": "POINT_MAPPER.PIPE6.POINT_MAKER",
           "inputs": {
             "points": {
               "expression": [
@@ -503,6 +502,7 @@
             },
             "type": "POINT_MAKER"
           },
+          "fqid": "POINT_MAPPER.PIPE6.POINT_MAKER",
           "fork_roots": [
             "POINT_MAPPER.PIPE6"
           ]
@@ -510,7 +510,6 @@
       ]
     },
     {
-      "fqid": "POINT_MAPPER.MAP_CALLER",
       "inputs": {
         "xs": {
           "expression": {
@@ -565,9 +564,9 @@
         ],
         "type": "MAP_CALLER[]"
       },
+      "fqid": "POINT_MAPPER.MAP_CALLER",
       "children": [
         {
-          "fqid": "POINT_MAPPER.MAP_CALLER.POINT_PIPE",
           "inputs": {
             "x": {
               "expression": {
@@ -717,9 +716,9 @@
             ],
             "type": "POINT_PIPE[][]"
           },
+          "fqid": "POINT_MAPPER.MAP_CALLER.POINT_PIPE",
           "children": [
             {
-              "fqid": "POINT_MAPPER.MAP_CALLER.POINT_PIPE.POINT_MAKER",
               "inputs": {
                 "points": {
                   "expression": [
@@ -769,6 +768,7 @@
                 },
                 "type": "POINT_MAKER"
               },
+              "fqid": "POINT_MAPPER.MAP_CALLER.POINT_PIPE.POINT_MAKER",
               "fork_roots": [
                 "POINT_MAPPER.MAP_CALLER",
                 "POINT_MAPPER.MAP_CALLER.POINT_PIPE"
@@ -779,7 +779,6 @@
       ]
     },
     {
-      "fqid": "POINT_MAPPER.POINT_USER",
       "inputs": {
         "extra": {
           "expression": "frob\nlate",
@@ -862,7 +861,8 @@
           "__reference__": "POINT_MAPPER.POINT_USER"
         },
         "type": "POINT_USER"
-      }
+      },
+      "fqid": "POINT_MAPPER.POINT_USER"
     }
   ]
 }

@@ -38,8 +38,8 @@ type (
 )
 
 type bindingError struct {
-	Msg string
 	Err error
+	Msg string
 }
 
 func (err *bindingError) Error() string {

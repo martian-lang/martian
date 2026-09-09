@@ -324,8 +324,8 @@ func setupSimpleStructPipestance(t *testing.T, name string) (*Pipestance, string
 		D string `json:"d"`
 	}
 	type fooBar struct {
-		Bar int `json:"bar"`
 		Foo foo `json:"foo"`
+		Bar int `json:"bar"`
 	}
 	type makeFooBar struct {
 		FooBar fooBar `json:"foobar"`
@@ -373,13 +373,13 @@ func TestResolveSimplePipelineOutputs(t *testing.T) {
 	}
 	const expected = `{
 	"foobar": {
-		"bar": 1,
 		"foo": {
 			"a": "HELLO/MAKEFOOBAR/fork0/files/a",
 			"b": "HELLO/MAKEFOOBAR/fork0/files/b",
 			"c": "HELLO/MAKEFOOBAR/fork0/files/c",
 			"d": "HELLO/MAKEFOOBAR/fork0/files/d"
-		}
+		},
+		"bar": 1
 	}
 }`
 	if s, ok := typ.(*syntax.StructType); !ok {
