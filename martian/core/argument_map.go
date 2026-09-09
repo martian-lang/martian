@@ -636,7 +636,7 @@ func MakeMarshalerMap(binding interface{}) MarshalerMap {
 			}
 			return m
 		} else if t.Kind() == reflect.Struct &&
-			!reflect.PtrTo(t).Implements(jsonMarshalerType) {
+			!reflect.PointerTo(t).Implements(jsonMarshalerType) {
 			// If the struct has custom marshaling logic then we need to
 			// respect that.  Otherwise we can just pull out the public
 			// fields.

@@ -143,7 +143,7 @@ var (
 var textMarshalerType = reflect.TypeOf((*encoding.TextMarshaler)(nil)).Elem()
 
 func getStructMemberType(t reflect.Type, typeName string) (syntax.TypeId, error) {
-	if t.Kind() != reflect.Pointer && reflect.PtrTo(t).Implements(textMarshalerType) ||
+	if t.Kind() != reflect.Pointer && reflect.PointerTo(t).Implements(textMarshalerType) ||
 		t.Implements(textMarshalerType) {
 		if typeName != "" {
 			return syntax.TypeId{Tname: typeName}, nil
@@ -155,7 +155,7 @@ func getStructMemberType(t reflect.Type, typeName string) (syntax.TypeId, error)
 		return getStructMemberType(t.Elem(), typeName)
 	case reflect.Slice:
 		if t.Elem().Kind() == reflect.Uint8 &&
-			!reflect.PtrTo(t.Elem()).Implements(textMarshalerType) {
+			!reflect.PointerTo(t.Elem()).Implements(textMarshalerType) {
 			// []byte type, treat like string and don't make an array.
 			if typeName != "" {
 				return syntax.TypeId{Tname: typeName}, nil

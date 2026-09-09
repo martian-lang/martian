@@ -8,7 +8,6 @@ import (
 	"bytes"
 	"errors"
 	"io/fs"
-	"io/ioutil"
 	"os"
 	"strconv"
 	"syscall"
@@ -69,7 +68,7 @@ func reportChildren() bool {
 			continue
 		}
 		procPath := append(pathBuf, proc...)
-		statBytes, err := ioutil.ReadFile(string(append(procPath, "/stat"...)))
+		statBytes, err := os.ReadFile(string(append(procPath, "/stat"...)))
 		if err != nil {
 			if !errors.Is(err, fs.ErrNotExist) &&
 				!errors.Is(err, fs.ErrPermission) {
@@ -86,7 +85,7 @@ func reportChildren() bool {
 		}
 
 		if string(fields[3]) == me {
-			b, err := ioutil.ReadFile(string(append(procPath, "/cmdline"...)))
+			b, err := os.ReadFile(string(append(procPath, "/cmdline"...)))
 			var cmdLine []byte
 			if err == nil && len(b) > 0 {
 				null := []byte{0}

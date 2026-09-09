@@ -11,7 +11,7 @@ package main
 import (
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"os"
 	"path"
 	"path/filepath"
@@ -49,7 +49,7 @@ Options:
 	}
 
 	if opts["--reverse"].(bool) {
-		src, err := ioutil.ReadAll(os.Stdin)
+		src, err := io.ReadAll(os.Stdin)
 		if err != nil {
 			panic(err)
 		}

@@ -8,7 +8,7 @@ package syntax
 
 import (
 	"fmt"
-	"io/ioutil"
+	"os"
 	"path/filepath"
 	"sort"
 	"strings"
@@ -377,7 +377,7 @@ func (parser *Parser) findMissingIncludes(seenFiles map[string]*SourceFile,
 	neededFiles := make([]*SourceFile, 0, len(neededCallables))
 	var errs ErrorList
 	for _, incPath := range incPaths {
-		if files, err := ioutil.ReadDir(incPath); err != nil {
+		if files, err := os.ReadDir(incPath); err != nil {
 			errs = append(errs, err)
 		} else {
 			for _, finfo := range files {
@@ -387,7 +387,7 @@ func (parser *Parser) findMissingIncludes(seenFiles map[string]*SourceFile,
 						continue
 					}
 					seenFiles[absPath] = nil
-					if src, err := ioutil.ReadFile(absPath); err == nil {
+					if src, err := os.ReadFile(absPath); err == nil {
 						// Parse and generate the AST.
 						srcFile := SourceFile{
 							FileName: filepath.Base(absPath),

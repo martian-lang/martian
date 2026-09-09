@@ -165,7 +165,6 @@ import (
 	"flag"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"os"
 	"path"
 	"path/filepath"
@@ -359,16 +358,16 @@ func processFile(dest *os.File, mrofile, packageName string, stageNames []string
 
 func readSrc(mrofile string, mroPaths []string) ([]byte, string, error) {
 	if mrofile == "-" {
-		src, err := ioutil.ReadAll(os.Stdin)
+		src, err := io.ReadAll(os.Stdin)
 		return src, "<stdin>", err
 	} else if _, err := os.Stat(mrofile); err == nil {
-		src, err := ioutil.ReadFile(mrofile)
+		src, err := os.ReadFile(mrofile)
 		return src, mrofile, err
 	} else if os.IsNotExist(err) {
 		if p, found := util.SearchPaths(mrofile, mroPaths); !found {
 			return nil, mrofile, err
 		} else {
-			src, err := ioutil.ReadFile(p)
+			src, err := os.ReadFile(p)
 			return src, p, err
 		}
 	} else {

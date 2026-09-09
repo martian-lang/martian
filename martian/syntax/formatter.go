@@ -10,7 +10,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
-	"io/ioutil"
+	"os"
 	"strings"
 )
 
@@ -214,7 +214,7 @@ func FormatFile(filename string, fixIncludes bool, mropath []string) (string, er
 
 func (parser *Parser) FormatFile(filename string, fixIncludes bool, mropath []string) (string, error) {
 	// Read MRO source file.
-	data, err := ioutil.ReadFile(filename)
+	data, err := os.ReadFile(filename)
 	if err != nil {
 		return "", err
 	}

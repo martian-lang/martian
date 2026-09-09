@@ -10,7 +10,7 @@ import (
 	"github.com/martian-lang/martian/martian/core"
 )
 
-const __MRO__ = `
+/*
 stage SUM_SQUARES(
     in  float[] values,
     out float   sum,
@@ -18,7 +18,7 @@ stage SUM_SQUARES(
     in  float   value,
     out float   square,
 )
-`
+*/
 
 // Make a chunk for each value.
 func split(metadata *core.Metadata) (*core.StageDefs, error) {

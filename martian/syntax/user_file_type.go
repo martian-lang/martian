@@ -113,13 +113,13 @@ func (s *UserType) IsValidExpression(exp Exp, pipeline *Pipeline, ast *Ast) erro
 	}
 }
 func (s *UserType) CheckEqual(other Type) error {
-	if other, ok := other.(*UserType); !ok {
+	if otherU, ok := other.(*UserType); !ok {
 		return &IncompatibleTypeError{
-			Message: other.Id + " is not a user-defined file type",
+			Message: other.TypeId().Tname + " is not a user-defined file type",
 		}
-	} else if s.Id != other.Id {
+	} else if s.Id != otherU.Id {
 		return &IncompatibleTypeError{
-			Message: other.Id + " != " + s.Id,
+			Message: otherU.Id + " != " + s.Id,
 		}
 	} else {
 		return nil

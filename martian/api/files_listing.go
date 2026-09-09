@@ -1,7 +1,7 @@
 package api
 
 import (
-	"io/ioutil"
+	"os"
 	"path/filepath"
 	"sort"
 	"strings"
@@ -44,7 +44,7 @@ func GetFilesListing(psdir string) (*FilesListing, error) {
 			result.Files = files
 			sort.Strings(result.Files)
 		}
-		if infos, err := ioutil.ReadDir(filepath.Join(psdir, "extras")); err == nil && len(files) > 0 {
+		if infos, err := os.ReadDir(filepath.Join(psdir, "extras")); err == nil && len(files) > 0 {
 			files := make([]string, 0, len(infos))
 			for _, info := range infos {
 				if !info.IsDir() {

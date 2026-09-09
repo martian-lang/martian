@@ -71,7 +71,7 @@ func ValExp(arg interface{}) (syntax.ValExp, error) {
 func valExp(arg reflect.Value, forceString bool) (syntax.ValExp, error) {
 	t := arg.Type()
 	if arg.Kind() != reflect.Pointer &&
-		reflect.PtrTo(t).Implements(textMarshalerType) ||
+		reflect.PointerTo(t).Implements(textMarshalerType) ||
 		t.Implements(textMarshalerType) {
 		return textMarshalerEncoder(arg)
 	}
@@ -89,7 +89,7 @@ func valExp(arg reflect.Value, forceString bool) (syntax.ValExp, error) {
 			if t.PkgPath() == "encoding/json" && t.Name() == "RawMessage" {
 				var parser syntax.Parser
 				return parser.ParseValExp(arg.Bytes())
-			} else if !reflect.PtrTo(t.Elem()).Implements(textMarshalerType) {
+			} else if !reflect.PointerTo(t.Elem()).Implements(textMarshalerType) {
 				// []byte gets special treatment, just like in json
 				return &syntax.StringExp{Value: encodeByteSlice(arg)}, nil
 			}
