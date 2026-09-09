@@ -5,6 +5,7 @@ package ast_builder
 
 import (
 	"encoding"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"reflect"
@@ -140,7 +141,10 @@ var (
 	UnknownTypeError   = InvalidTypeError("invalid type json.RawMessage")
 )
 
-var textMarshalerType = reflect.TypeOf((*encoding.TextMarshaler)(nil)).Elem()
+var (
+	textMarshalerType  = reflect.TypeOf((*encoding.TextMarshaler)(nil)).Elem()
+	jsonRawMessageType = reflect.TypeOf((json.RawMessage)(nil))
+)
 
 func getStructMemberType(t reflect.Type, typeName string) (syntax.TypeId, error) {
 	if t.Kind() != reflect.Pointer && reflect.PointerTo(t).Implements(textMarshalerType) ||
@@ -159,7 +163,7 @@ func getStructMemberType(t reflect.Type, typeName string) (syntax.TypeId, error)
 			// []byte type, treat like string and don't make an array.
 			if typeName != "" {
 				return syntax.TypeId{Tname: typeName}, nil
-			} else if t.PkgPath() == "encoding/json" && t.Name() == "RawMessage" {
+			} else if t.PkgPath() == jsonRawMessageType.PkgPath() && t.Name() == jsonRawMessageType.Name() {
 				return syntax.TypeId{Tname: syntax.KindMap}, UnknownTypeError
 			}
 			return syntax.TypeId{Tname: syntax.KindString}, nil
