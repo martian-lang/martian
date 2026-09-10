@@ -86,7 +86,7 @@ func valExp(arg reflect.Value, forceString bool) (syntax.ValExp, error) {
 			return new(syntax.NullExp), nil
 		}
 		if t.Elem().Kind() == reflect.Uint8 {
-			if t.PkgPath() == "encoding/json" && t.Name() == "RawMessage" {
+			if t == rawMessageType {
 				var parser syntax.Parser
 				return parser.ParseValExp(arg.Bytes())
 			} else if !reflect.PtrTo(t.Elem()).Implements(textMarshalerType) {

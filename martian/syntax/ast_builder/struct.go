@@ -5,6 +5,7 @@ package ast_builder
 
 import (
 	"encoding"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"reflect"
@@ -17,6 +18,12 @@ var (
 	NotStructTypeError = errors.New("not a struct type")
 	AnonymousTypeError = errors.New("cannot convert anonymous type")
 )
+
+// rawMessageType is compared by type identity rather than by name and
+// package path because, with GOEXPERIMENT=jsonv2, the standard library
+// defines json.RawMessage as a type alias for encoding/json/jsontext.Value
+// rather than as a distinct named type.
+var rawMessageType = reflect.TypeOf(json.RawMessage(nil))
 
 // StructType returns an mro StructType ast node declaring a struct
 // corresponding to the given go struct type.
@@ -159,7 +166,7 @@ func getStructMemberType(t reflect.Type, typeName string) (syntax.TypeId, error)
 			// []byte type, treat like string and don't make an array.
 			if typeName != "" {
 				return syntax.TypeId{Tname: typeName}, nil
-			} else if t.PkgPath() == "encoding/json" && t.Name() == "RawMessage" {
+			} else if t == rawMessageType {
 				return syntax.TypeId{Tname: syntax.KindMap}, UnknownTypeError
 			}
 			return syntax.TypeId{Tname: syntax.KindString}, nil
