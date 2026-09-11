@@ -15,7 +15,7 @@ jobs:
         go: ["1.26", "1.27"]
     steps:
       - uses: actions/checkout@v7
-      - uses: actions/setup-python@v6
+      - uses: actions/setup-python@v7
         with:
           python-version: ${{ matrix.py }}
       - name: Install pylint
@@ -48,7 +48,7 @@ jobs:
       USE_BAZEL_VERSION: 7.7.1
     steps:
       - uses: actions/checkout@v7
-      - uses: actions/setup-python@v6
+      - uses: actions/setup-python@v7
         with:
           python-version: "3.10"
       - uses: actions/setup-go@v7
