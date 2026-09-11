@@ -35,8 +35,11 @@ func Test_reportChildren(t *testing.T) {
 	}
 	output := string(bytes.TrimSpace(buf.Bytes()))
 	if !regexp.MustCompile(
-		`\(sleep(?: 5)?\) is still running \(state [SR]\).$`).MatchString(output) {
-		t.Errorf("expected (sleep 5) is still running (state S or R), got\n%s",
+		// D (uninterruptible sleep) can happen transiently right after
+		// starting the process, e.g. while its pages are being faulted in
+		// from disk under IO pressure, so it's not safe to assume S or R.
+		`\(sleep(?: 5)?\) is still running \(state [SRD]\).$`).MatchString(output) {
+		t.Errorf("expected (sleep 5) is still running (state S, R, or D), got\n%s",
 			output)
 	} else {
 		t.Log(output)
