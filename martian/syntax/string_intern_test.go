@@ -111,5 +111,19 @@ func TestUnquoteFormat(t *testing.T) {
 	if isGo122 {
 		check(t, "Control\a\b\f\n\r\t\v \u2029 characters")
 	}
-	check(t, "Invalid character \x88\xee")
+	if isGo127 {
+		// As of go 1.27, encoding/json emits invalid UTF-8 as the raw,
+		// unescaped unicode "replacement character" rather than escaping
+		// it as \ufffd, unlike our own implementation, so jsonEnc and enc
+		// diverge here.
+		const s = "Invalid character \x88\xee"
+		if e, a := "\"Invalid character \ufffd\ufffd\"", string(jsonEnc(s)); e != a {
+			t.Errorf("Expected %q -> %q, got %q", s, e, a)
+		}
+		if e, a := "\"Invalid character \\ufffd\\ufffd\"", string(enc(s)); e != a {
+			t.Errorf("Expected %q -> %q, got %q", s, e, a)
+		}
+	} else {
+		check(t, "Invalid character \x88\xee")
+	}
 }

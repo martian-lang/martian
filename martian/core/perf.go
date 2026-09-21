@@ -278,16 +278,6 @@ func (prev MemViolationContents) Merge(new MemViolationContents) MemViolationCon
 // - `0` an integer for a chunk index.
 type MemViolationReport map[string]MemViolationContents
 
-func nonZeroMin(a, b float64) float64 {
-	if a == 0 {
-		return b
-	}
-	if b == 0 {
-		return a
-	}
-	return math.Min(a, b)
-}
-
 func reduceJobInfo(jobInfo *JobInfo, outputPaths []string, numThreads float64) *PerfInfo {
 	perfInfo := PerfInfo{}
 

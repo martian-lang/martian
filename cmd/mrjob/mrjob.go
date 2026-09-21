@@ -405,11 +405,11 @@ func (self *runner) startProfile() error {
 			util.PrintError(err, "profile", "Error parsing perf args")
 			return nil
 		} else {
-			baseArgs := []string{
+			baseArgs := append(make([]string, 0, 5+len(args)),
 				"record",
 				"-p", strconv.Itoa(self.job.Process.Pid),
 				"-o", self.metadata.MetadataFilePath(journaledFiles[0]),
-			}
+			)
 			cmd = exec.Command("perf", append(baseArgs, args...)...)
 		}
 	} else if pc := self.jobInfo.ProfileConfig; pc == nil || pc.Command == "" {

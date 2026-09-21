@@ -18,15 +18,12 @@ type (
 
 	// An ordered set of Callable objects.
 	Callables struct {
-		List []Callable `json:"-"`
-
 		// Lookup table of callables by Id.  Populated during compile.
 		Table map[string]Callable
+		List  []Callable `json:"-"`
 	}
 
 	Stage struct {
-		Node      AstNode
-		Id        string
 		InParams  *InParams
 		OutParams *OutParams
 		Retain    *RetainParams
@@ -34,6 +31,8 @@ type (
 		ChunkIns  *InParams
 		ChunkOuts *OutParams
 		Resources *Resources
+		Id        string
+		Node      AstNode
 		Split     bool
 	}
 
@@ -52,24 +51,23 @@ type (
 
 	// Stage executable declaration.
 	SrcParam struct {
-		Node AstNode
 		Lang StageLanguage
 		cmd  string
-		Type StageCodeType
 		Path string
+		Node AstNode
 		Args []string
+		Type StageCodeType
 	}
 
 	// Stage resource definitions.
 	Resources struct {
-		Node         AstNode
-		ThreadNode   *AstNode
-		MemNode      *AstNode
-		VMemNode     *AstNode
-		SpecialNode  *AstNode
-		VolatileNode *AstNode
-
+		ThreadNode     *AstNode
+		MemNode        *AstNode
+		VMemNode       *AstNode
+		SpecialNode    *AstNode
+		VolatileNode   *AstNode
 		Special        string
+		Node           AstNode
 		Threads        float32
 		MemGB          float32
 		VMemGB         float32
@@ -77,14 +75,14 @@ type (
 	}
 
 	Pipeline struct {
-		Node      AstNode
-		Id        string
 		InParams  *InParams
 		OutParams *OutParams
-		Calls     []*CallStm
 		Callables *Callables `json:"-"`
 		Ret       *ReturnStm
 		Retain    *PipelineRetains
+		Id        string
+		Node      AstNode
+		Calls     []*CallStm
 	}
 
 	// Specifies the set of references which may or may not also be
@@ -97,8 +95,8 @@ type (
 
 	// The set of bindings for the return values of a pipeline.
 	ReturnStm struct {
-		Node     AstNode
 		Bindings *BindStms
+		Node     AstNode
 	}
 )
 

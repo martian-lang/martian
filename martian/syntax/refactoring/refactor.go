@@ -48,10 +48,6 @@ type RefactorConfig struct {
 	// Remove the given output parameters.
 	RemoveOutParams []CallableParam
 
-	// If removeCalls is true, RemoveAllUnusedCalls is applied repeatedly until
-	// no further changes are made.
-	RemoveCalls bool
-
 	// Rename the given callable objects.
 	Rename []Rename
 
@@ -60,6 +56,10 @@ type RefactorConfig struct {
 
 	// Rename the given output parameters.
 	RenameOutParam []RenameParam
+
+	// If removeCalls is true, RemoveAllUnusedCalls is applied repeatedly until
+	// no further changes are made.
+	RemoveCalls bool
 }
 
 // Refactor modifies a set of ASTs.

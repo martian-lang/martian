@@ -5,6 +5,7 @@ package ast_builder
 
 import (
 	"encoding"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"reflect"
@@ -50,7 +51,7 @@ var (
 //
 // The `mro_out:"..."` tag may be used to add an out name for the struct field.
 func StructType(t reflect.Type) (*syntax.StructType, error) {
-	if t.Kind() == reflect.Ptr {
+	if t.Kind() == reflect.Pointer {
 		return StructType(t.Elem())
 	}
 	if t.Kind() != reflect.Struct {
@@ -72,7 +73,7 @@ func structMembers(t reflect.Type, list []*syntax.StructMember) ([]*syntax.Struc
 		isUnexported := sf.PkgPath != ""
 		if sf.Anonymous {
 			t := sf.Type
-			for t.Kind() == reflect.Ptr {
+			for t.Kind() == reflect.Pointer {
 				t = t.Elem()
 			}
 			if t.Kind() == reflect.Struct {
@@ -140,10 +141,13 @@ var (
 	UnknownTypeError   = InvalidTypeError("invalid type json.RawMessage")
 )
 
-var textMarshalerType = reflect.TypeOf((*encoding.TextMarshaler)(nil)).Elem()
+var (
+	textMarshalerType  = reflect.TypeOf((*encoding.TextMarshaler)(nil)).Elem()
+	jsonRawMessageType = reflect.TypeOf((json.RawMessage)(nil))
+)
 
 func getStructMemberType(t reflect.Type, typeName string) (syntax.TypeId, error) {
-	if t.Kind() != reflect.Ptr && reflect.PtrTo(t).Implements(textMarshalerType) ||
+	if t.Kind() != reflect.Pointer && reflect.PointerTo(t).Implements(textMarshalerType) ||
 		t.Implements(textMarshalerType) {
 		if typeName != "" {
 			return syntax.TypeId{Tname: typeName}, nil
@@ -151,15 +155,15 @@ func getStructMemberType(t reflect.Type, typeName string) (syntax.TypeId, error)
 		return syntax.TypeId{Tname: syntax.KindString}, nil
 	}
 	switch t.Kind() {
-	case reflect.Ptr:
+	case reflect.Pointer:
 		return getStructMemberType(t.Elem(), typeName)
 	case reflect.Slice:
 		if t.Elem().Kind() == reflect.Uint8 &&
-			!reflect.PtrTo(t.Elem()).Implements(textMarshalerType) {
+			!reflect.PointerTo(t.Elem()).Implements(textMarshalerType) {
 			// []byte type, treat like string and don't make an array.
 			if typeName != "" {
 				return syntax.TypeId{Tname: typeName}, nil
-			} else if t.PkgPath() == "encoding/json" && t.Name() == "RawMessage" {
+			} else if t.PkgPath() == jsonRawMessageType.PkgPath() && t.Name() == jsonRawMessageType.Name() {
 				return syntax.TypeId{Tname: syntax.KindMap}, UnknownTypeError
 			}
 			return syntax.TypeId{Tname: syntax.KindString}, nil
@@ -222,7 +226,7 @@ func checkKeyType(t reflect.Type) error {
 		return nil
 	}
 	switch t.Kind() {
-	case reflect.Ptr:
+	case reflect.Pointer:
 		return checkKeyType(t.Elem())
 	case reflect.String,
 		reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64,

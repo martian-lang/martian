@@ -609,7 +609,7 @@ func MakeMarshalerMap(binding interface{}) MarshalerMap {
 	default:
 		v := reflect.ValueOf(binding)
 		t := v.Type()
-		for t.Kind() == reflect.Ptr || t.Kind() == reflect.Interface {
+		for t.Kind() == reflect.Pointer || t.Kind() == reflect.Interface {
 			if v.IsNil() {
 				return nil
 			}
@@ -636,7 +636,7 @@ func MakeMarshalerMap(binding interface{}) MarshalerMap {
 			}
 			return m
 		} else if t.Kind() == reflect.Struct &&
-			!reflect.PtrTo(t).Implements(jsonMarshalerType) {
+			!reflect.PointerTo(t).Implements(jsonMarshalerType) {
 			// If the struct has custom marshaling logic then we need to
 			// respect that.  Otherwise we can just pull out the public
 			// fields.
@@ -700,7 +700,7 @@ func argumentMapFromStruct(t reflect.Type, v reflect.Value) MarshalerMap {
 			return v.Uint() == 0
 		case reflect.Float32, reflect.Float64:
 			return v.Float() == 0
-		case reflect.Interface, reflect.Ptr:
+		case reflect.Interface, reflect.Pointer:
 			return v.IsNil()
 		}
 		return false

@@ -17,9 +17,9 @@ func ExampleBindings() {
 		"value3": nil,
 		"value4": json.RawMessage(`{"a": 2}`),
 		"value5": new(struct {
-			V1 bool              `json:"v1,string"`
-			V2 uint              `json:"v2,string"`
 			V3 map[string]string `json:"v3"`
+			V2 uint              `json:"v2,string"`
+			V1 bool              `json:"v1,string"`
 		}),
 	})
 	if err != nil {

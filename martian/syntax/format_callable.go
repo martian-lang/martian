@@ -10,7 +10,7 @@ import (
 	"strings"
 )
 
-// Binding
+// Binding.
 func (self *BindStm) format(printer *printer, prefix string, idWidth int) {
 	printer.printComments(self.getNode(), prefix+INDENT)
 	printer.printComments(self.Exp.getNode(), prefix+INDENT)
@@ -46,7 +46,7 @@ func (self *BindStms) format(printer *printer, prefix string) {
 	}
 }
 
-// Parameter
+// Parameter.
 func paramFormat(printer *printer, param Param, modeWidth int, typeWidth int, idWidth int, helpWidth int) {
 	printer.printComments(param.getNode(), INDENT)
 	id := param.GetId()
@@ -169,7 +169,7 @@ func (self *OutParams) format(printer *printer, modeWidth int, typeWidth int, id
 	}
 }
 
-// Pipeline, Call, Return
+// Pipeline, Call, Return.
 func (self *Pipeline) format(printer *printer) {
 	printer.printComments(&self.Node, "")
 
@@ -307,7 +307,7 @@ func (self *PipelineRetains) format(printer *printer) {
 	printer.mustWriteString(")\n")
 }
 
-// Stage
+// Stage.
 func (self *Stage) format(printer *printer) {
 	printer.printComments(&self.Node, "")
 
@@ -491,7 +491,7 @@ func (self *SrcParam) format(printer *printer, modeWidth, typeWidth int) {
 	printer.mustWriteString("\",\n")
 }
 
-// Callable
+// Callable.
 func (self *Callables) format(printer *printer) {
 	if self == nil {
 		return

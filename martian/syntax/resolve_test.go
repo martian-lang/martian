@@ -4,7 +4,7 @@ package syntax
 
 import (
 	"encoding/json"
-	"io/ioutil"
+	"os"
 	"strings"
 	"testing"
 )
@@ -32,7 +32,7 @@ func TestCallGraphNodeTypeMarshalText(t *testing.T) {
 }
 
 func TestAstMakeCallGraph(t *testing.T) {
-	src, err := ioutil.ReadFile("testdata/resolve_test.mro")
+	src, err := os.ReadFile("testdata/resolve_test.mro")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -147,7 +147,7 @@ func TestAstMakeCallGraph(t *testing.T) {
 }
 
 func TestAstMakeStageCallGraph(t *testing.T) {
-	src, err := ioutil.ReadFile("testdata/call_stage.mro")
+	src, err := os.ReadFile("testdata/call_stage.mro")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -363,7 +363,7 @@ call BROKEN()
 }
 
 func TestResolvedBindingFindRefs(t *testing.T) {
-	src, err := ioutil.ReadFile("testdata/resolve_test.mro")
+	src, err := os.ReadFile("testdata/resolve_test.mro")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -460,7 +460,7 @@ func TestResolvedBindingFindRefs(t *testing.T) {
 }
 
 func TestSerializeCallGraph(t *testing.T) {
-	src, err := ioutil.ReadFile("testdata/resolve_test.mro")
+	src, err := os.ReadFile("testdata/resolve_test.mro")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -479,7 +479,7 @@ func TestSerializeCallGraph(t *testing.T) {
 	if err := enc.Encode(graph); err != nil {
 		t.Fatal(err)
 	}
-	expectB, err := ioutil.ReadFile("testdata/resolve_test.json")
+	expectB, err := os.ReadFile("testdata/resolve_test.json")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -490,7 +490,7 @@ func TestSerializeCallGraph(t *testing.T) {
 }
 
 func TestSerializeMapCallGraph(t *testing.T) {
-	src, err := ioutil.ReadFile("testdata/map_call_test.mro")
+	src, err := os.ReadFile("testdata/map_call_test.mro")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -509,7 +509,7 @@ func TestSerializeMapCallGraph(t *testing.T) {
 	if err := enc.Encode(graph); err != nil {
 		t.Fatal(err)
 	}
-	expectB, err := ioutil.ReadFile("testdata/map_call_test.json")
+	expectB, err := os.ReadFile("testdata/map_call_test.json")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -573,7 +573,7 @@ func TestSerializeMapCallGraph(t *testing.T) {
 }
 
 func TestSerializeMapCallGraph2(t *testing.T) {
-	src, err := ioutil.ReadFile("testdata/map_call_edge_cases.mro")
+	src, err := os.ReadFile("testdata/map_call_edge_cases.mro")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -598,7 +598,7 @@ func TestSerializeMapCallGraph2(t *testing.T) {
 	if err := enc.Encode(graph); err != nil {
 		t.Fatal(err)
 	}
-	expectB, err := ioutil.ReadFile("testdata/map_call_edge_cases.json")
+	expectB, err := os.ReadFile("testdata/map_call_edge_cases.json")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -609,7 +609,7 @@ func TestSerializeMapCallGraph2(t *testing.T) {
 }
 
 func TestSerializeDisableCallGraph(t *testing.T) {
-	src, err := ioutil.ReadFile("testdata/disable_pipeline.mro")
+	src, err := os.ReadFile("testdata/disable_pipeline.mro")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -628,7 +628,7 @@ func TestSerializeDisableCallGraph(t *testing.T) {
 	if err := enc.Encode(graph); err != nil {
 		t.Fatal(err)
 	}
-	expectB, err := ioutil.ReadFile("testdata/disable_pipeline.json")
+	expectB, err := os.ReadFile("testdata/disable_pipeline.json")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -639,7 +639,7 @@ func TestSerializeDisableCallGraph(t *testing.T) {
 }
 
 func TestSerializeDisableBindingCallGraph(t *testing.T) {
-	src, err := ioutil.ReadFile("testdata/disable_bindings.mro")
+	src, err := os.ReadFile("testdata/disable_bindings.mro")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -658,7 +658,7 @@ func TestSerializeDisableBindingCallGraph(t *testing.T) {
 	if err := enc.Encode(graph); err != nil {
 		t.Fatal(err)
 	}
-	expectB, err := ioutil.ReadFile("testdata/disable_bindings.json")
+	expectB, err := os.ReadFile("testdata/disable_bindings.json")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -792,7 +792,6 @@ call DUMMY(
 		t.Fatal(err)
 	}
 	const expect = `{
-		"fqid": "ID.DUMMY",
 		"inputs": {
 			"foo": {
 				"expression": 0,
@@ -805,6 +804,7 @@ call DUMMY(
 			},
 			"type": "DUMMY"
 		},
+		"fqid": "ID.DUMMY",
 		"children": null
 	}
 `

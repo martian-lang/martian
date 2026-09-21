@@ -17,9 +17,9 @@ type (
 
 	// An ordered set of BindStm objects.
 	BindStms struct {
+		Table map[string]*BindStm
 		Node  AstNode
 		List  []*BindStm `json:"-"`
-		Table map[string]*BindStm
 	}
 )
 

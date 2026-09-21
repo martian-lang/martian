@@ -24,20 +24,20 @@ type creatorStage struct {
 }
 
 type innerPipeline struct {
-	Bar      creatorStage             `json:"bar"`
 	Results1 map[string]*creatorStage `json:"results1"`
 	Results2 map[string]*creatorStage `json:"results2"`
+	Bar      creatorStage             `json:"bar"`
 }
 
 type outerPipeline struct {
-	Text   string                   `json:"text"`
 	Inner  innerPipeline            `json:"inner"`
+	One    *creatorStage            `json:"one"`
+	Many   map[string]*creatorStage `json:"many"`
+	Text   string                   `json:"text"`
 	Files1 []map[string]string      `json:"files1"`
 	Bars   []int                    `json:"bars"`
 	Strs   []fooStruct              `json:"strs"`
 	Texts  []string                 `json:"texts"`
-	One    *creatorStage            `json:"one"`
-	Many   map[string]*creatorStage `json:"many"`
 }
 
 func compareOutputText(t *testing.T, expected, actual string) {

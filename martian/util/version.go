@@ -62,7 +62,7 @@ func GetSakeVersion(dir string) (string, error) {
 }
 
 // Returns the output of running 'git describe --tags --dirty --always'
-// in the given directory, e.g. 'v2.3.0-rc3-10-gf615588-dirty'
+// in the given directory, e.g. 'v2.3.0-rc3-10-gf615588-dirty'.
 func GetGitTag(dir string) (string, error) {
 	return runGit(dir, "describe", "--tags", "--dirty", "--always")
 }

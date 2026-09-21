@@ -29,6 +29,8 @@ mrf_test(
 
 integration_test(
     name = "monitor_test",
+    size = "large",
+    timeout = "short",
     config = "monitor_test.json",
     expectation = glob(["expected/**"]),
     pipeline = ":pipeline",

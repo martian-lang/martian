@@ -18,18 +18,16 @@ type (
 
 	// An ordered set of parameters.
 	InParams struct {
-		List []*InParam `json:"-"`
-
 		// Lookup table of params by Id.  Populated during compile.
 		Table map[string]*InParam
+		List  []*InParam `json:"-"`
 	}
 
 	// An ordered set of parameters.
 	OutParams struct {
-		List []*OutParam `json:"-"`
-
 		// Lookup table of params by Id.  Populated during compile.
 		Table map[string]*OutParam
+		List  []*OutParam `json:"-"`
 	}
 
 	StructMemberLike interface {
@@ -48,10 +46,10 @@ type (
 	}
 
 	InParam struct {
-		Node   AstNode
-		Tname  TypeId
 		Id     string
 		Help   string
+		Node   AstNode
+		Tname  TypeId
 		Isfile FileKind
 	}
 
@@ -62,9 +60,9 @@ type (
 	// To simplify implementation of the parser, this stores the stage's
 	// ChunkIns and ChunkOuts.
 	paramsTuple struct {
-		Present bool
 		Ins     *InParams
 		Outs    *OutParams
+		Present bool
 	}
 
 	RetainParams struct {
@@ -73,8 +71,8 @@ type (
 	}
 
 	RetainParam struct {
-		Node AstNode
 		Id   string
+		Node AstNode
 	}
 )
 

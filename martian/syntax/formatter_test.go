@@ -7,12 +7,12 @@
 package syntax
 
 import (
-	"io/ioutil"
+	"os"
 	"testing"
 )
 
 func fmtTestSrc() []byte {
-	srcb, err := ioutil.ReadFile("testdata/formatter_test.mro")
+	srcb, err := os.ReadFile("testdata/formatter_test.mro")
 	if err != nil {
 		panic(err)
 	}

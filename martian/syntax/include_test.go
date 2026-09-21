@@ -3,7 +3,7 @@
 package syntax
 
 import (
-	"io/ioutil"
+	"os"
 	"path"
 	"path/filepath"
 	"testing"
@@ -183,7 +183,7 @@ func TestUncheckedCombineSource(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	srcBytes, err := ioutil.ReadFile(path.Join("testdata", "call.mro"))
+	srcBytes, err := os.ReadFile(path.Join("testdata", "call.mro"))
 	if err != nil {
 		t.Fatal(err)
 	}

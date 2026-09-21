@@ -22,7 +22,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"net/http"
 	"net/url"
 	"os"
@@ -64,7 +63,7 @@ Options:
 	psid := opts["<pipestance_name>"].(string)
 
 	var mrpUrl *url.URL
-	if urlBytes, err := ioutil.ReadFile(path.Join(psid, core.UiPort.FileName())); err != nil {
+	if urlBytes, err := os.ReadFile(path.Join(psid, core.UiPort.FileName())); err != nil {
 		if os.IsNotExist(err) {
 			if info, err := os.Stat(psid); err != nil || !info.IsDir() {
 				fmt.Fprintln(os.Stderr, psid,
@@ -145,7 +144,7 @@ func status(psid string, mrpUrl *url.URL) {
 		io.Copy(os.Stderr, resp.Body)
 		resp.Body.Close()
 		os.Exit(6)
-	} else if bytes, err := ioutil.ReadAll(resp.Body); err != nil {
+	} else if bytes, err := io.ReadAll(resp.Body); err != nil {
 		fmt.Fprintln(os.Stderr, "Error reading response:", err)
 		resp.Body.Close()
 		os.Exit(7)

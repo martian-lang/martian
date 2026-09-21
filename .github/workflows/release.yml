@@ -14,11 +14,11 @@ jobs:
     # Do not use latest, because we don't want to link against too new a glibc.
     runs-on: ubuntu-22.04
     steps:
-      - uses: actions/checkout@v6
-      - uses: actions/setup-go@v6
+      - uses: actions/checkout@v7
+      - uses: actions/setup-go@v7
         with:
-          go-version: ">=1.24"
-      - uses: actions/setup-node@v6
+          go-version: ">=1.26"
+      - uses: actions/setup-node@v7
         with:
           node-version: "lts/*"
           cache: "npm"

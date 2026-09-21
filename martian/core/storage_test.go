@@ -2,7 +2,6 @@ package core
 
 import (
 	"encoding/json"
-	"io/ioutil"
 	"os"
 	"path"
 	"strconv"
@@ -51,7 +50,7 @@ func TestGetArgsToFilesMap(t *testing.T) {
 		if err := os.MkdirAll(path.Dir(p), 0755); err != nil {
 			t.Error(err)
 		}
-		if err := ioutil.WriteFile(p, []byte(p), 0644); err != nil {
+		if err := os.WriteFile(p, []byte(p), 0644); err != nil {
 			t.Error(err)
 		}
 	}
@@ -146,13 +145,13 @@ func makeStorageTestDir(t testing.TB, forkDir string) (
 		"otherThings": nil,
 		"dir":         nil,
 	}
-	realPaths := []string{
+	realPaths := append(make([]string, 0, 205),
 		path.Join(forkDir, "thing", "thing1"),
 		path.Join(forkDir, "thing", "thing2"),
 		path.Join(forkDir, "thing", "thing3"),
 		path.Join(forkDir, "what"),
 		path.Join(forkDir, "unreferenced"),
-	}
+	)
 	pathsList := make([]string, 200)
 	for i := range pathsList {
 		pathsList[i] = path.Join(forkDir, "dir", strconv.Itoa(i))
@@ -163,7 +162,7 @@ func makeStorageTestDir(t testing.TB, forkDir string) (
 		if err := os.MkdirAll(path.Dir(p), 0755); err != nil {
 			t.Error(err)
 		}
-		if err := ioutil.WriteFile(p, []byte(p), 0644); err != nil {
+		if err := os.WriteFile(p, []byte(p), 0644); err != nil {
 			t.Error(err)
 		}
 	}
@@ -192,7 +191,7 @@ func makeStorageTestDir(t testing.TB, forkDir string) (
 
 func TestAddFilesToArgsMappings(t *testing.T) {
 	t.Parallel()
-	forkDir, err := ioutil.TempDir("", "testAddFilesToArgsMappings")
+	forkDir, err := os.MkdirTemp("", "testAddFilesToArgsMappings")
 	if err != nil {
 		t.Skip(err)
 	}
@@ -291,7 +290,7 @@ func checkFileToArgMappings(t errorReporter, filesToArgs map[string]*vdrFileCach
 }
 
 func BenchmarkAddFilesToArgsMappings(b *testing.B) {
-	forkDir, err := ioutil.TempDir("", "benchAddFilesToArgsMappings")
+	forkDir, err := os.MkdirTemp("", "benchAddFilesToArgsMappings")
 	if err != nil {
 		b.Skip(err)
 	}

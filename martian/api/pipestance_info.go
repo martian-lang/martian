@@ -31,11 +31,11 @@ type PipestanceInfo struct {
 	// The command line used to execute mrp.
 	Cmdline string `json:"cmdline"`
 
-	// The PID of the MRP instance.
-	Pid int `json:"pid"`
-
 	// The time when the pipestance was first started.
 	Start string `json:"start"`
+
+	// The reason for the most recent pipestance failure, if any.
+	LastErrorMessage string `json:"err_msg,omitempty"`
 
 	// The martian version for this mrp.
 	Version      string             `json:"version"`
@@ -43,8 +43,6 @@ type PipestanceInfo struct {
 	PsId         string             `json:"psid"`
 	State        core.MetadataState `json:"state"`
 	JobMode      string             `json:"jobmode"`
-	MaxCores     int                `json:"maxcores"`
-	MaxMemGB     int                `json:"maxmemgb"`
 	InvokePath   string             `json:"invokepath"`
 	InvokeSource string             `json:"invokesrc,omitempty"`
 	MroPath      string             `json:"mropath"`
@@ -54,15 +52,18 @@ type PipestanceInfo struct {
 	Uuid         string             `json:"uuid"`
 	PsPath       string             `json:"pipestance_path,omitempty"`
 
-	// The reason for the most recent pipestance failure, if any.
-	LastErrorMessage string `json:"err_msg,omitempty"`
+	// The PID of the MRP instance.
+	Pid int `json:"pid"`
+
+	MaxCores int `json:"maxcores"`
+	MaxMemGB int `json:"maxmemgb"`
 }
 
 // The full state information for a pipestance, including the status of every
 // node in the pipeline graph.
 type PipestanceState struct {
-	Nodes []*core.NodeInfo `json:"nodes"`
 	Info  *PipestanceInfo  `json:"info"`
+	Nodes []*core.NodeInfo `json:"nodes"`
 }
 
 // All of the performance information for a pipestance.
@@ -99,7 +100,7 @@ func (self *PipestanceInfo) StripMro() *PipestanceInfo {
 	}
 }
 
-// Get the absolute path to the pipestance directory
+// Get the absolute path to the pipestance directory.
 func (self *PipestanceInfo) FullPipestancePath() string {
 	if self.PsPath != "" {
 		if filepath.IsAbs(self.PsPath) {

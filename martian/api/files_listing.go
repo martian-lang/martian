@@ -1,7 +1,7 @@
 package api
 
 import (
-	"io/ioutil"
+	"os"
 	"path/filepath"
 	"sort"
 	"strings"
@@ -10,7 +10,7 @@ import (
 	"github.com/martian-lang/martian/martian/util"
 )
 
-// Lists of top-level files and files in "extras"
+// Lists of top-level files and files in "extras".
 type FilesListing struct {
 	Files  []string `json:"files,omitempty"`
 	Extras []string `json:"extras,omitempty"`
@@ -44,7 +44,7 @@ func GetFilesListing(psdir string) (*FilesListing, error) {
 			result.Files = files
 			sort.Strings(result.Files)
 		}
-		if infos, err := ioutil.ReadDir(filepath.Join(psdir, "extras")); err == nil && len(files) > 0 {
+		if infos, err := os.ReadDir(filepath.Join(psdir, "extras")); err == nil && len(files) > 0 {
 			files := make([]string, 0, len(infos))
 			for _, info := range infos {
 				if !info.IsDir() {

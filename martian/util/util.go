@@ -272,7 +272,7 @@ func Atoi(s []byte) (int64, error) {
 }
 
 func FormatEnv(envs map[string]string) []string {
-	l := []string{}
+	l := make([]string, 0, len(envs))
 	for key, value := range envs {
 		l = append(l, fmt.Sprintf("%s=%s", key, value))
 	}
@@ -280,10 +280,11 @@ func FormatEnv(envs map[string]string) []string {
 }
 
 func MergeEnv(envs map[string]string) []string {
-	e := map[string]string{}
+	ee := os.Environ()
+	e := make(map[string]string, len(ee)+len(envs))
 
 	// Get base environment and convert to dictionary
-	for _, env := range os.Environ() {
+	for _, env := range ee {
 		envList := strings.SplitN(env, "=", 2)
 		key, value := envList[0], envList[1]
 		e[key] = value

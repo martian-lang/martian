@@ -63,7 +63,7 @@ func findFileInZip(ctx context.Context, zr *zip.ReadCloser, filePath string) *zi
 }
 
 // Wraps a file within a zip archive, along with the archive itself,
-// as an io.ReadCloser
+// as an io.ReadCloser.
 type zipFileReader struct {
 	zr   *zip.ReadCloser
 	file io.ReadCloser

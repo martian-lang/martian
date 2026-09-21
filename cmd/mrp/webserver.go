@@ -13,7 +13,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"html/template"
-	"io/ioutil"
+	"io"
 	"net"
 	"net/http"
 	"net/url"
@@ -377,7 +377,7 @@ func (self *mrpWebServer) getMetadata(w http.ResponseWriter, req *http.Request) 
 	// Someone thought it was a good idea to put a JSON object in the body
 	// instead of making a proper REST request.
 	var name, p string
-	if body, err := ioutil.ReadAll(req.Body); err != nil || len(body) <= 0 {
+	if body, err := io.ReadAll(req.Body); err != nil || len(body) <= 0 {
 		http.Error(w, "Request body is required.", http.StatusBadRequest)
 		return
 	} else {

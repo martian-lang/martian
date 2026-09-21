@@ -1,5 +1,4 @@
 {
-  "fqid": "TOP",
   "inputs": {
     "inputs": {
       "expression": {
@@ -225,9 +224,9 @@
     },
     "type": "TOP"
   },
+  "fqid": "TOP",
   "children": [
     {
-      "fqid": "TOP.GENERATE_INPUTS",
       "inputs": {
         "what": {
           "expression": {
@@ -249,10 +248,10 @@
           "__reference__": "TOP.GENERATE_INPUTS"
         },
         "type": "GENERATE_INPUTS"
-      }
+      },
+      "fqid": "TOP.GENERATE_INPUTS"
     },
     {
-      "fqid": "TOP._STRUCTIFY",
       "inputs": {
         "inputs1": {
           "expression": {
@@ -353,10 +352,10 @@
         },
         "type": "_STRUCTIFY"
       },
+      "fqid": "TOP._STRUCTIFY",
       "children": null
     },
     {
-      "fqid": "TOP.PIPELINE3",
       "inputs": {
         "blah": {
           "expression": "A thing",
@@ -623,9 +622,9 @@
         },
         "type": "PIPELINE3"
       },
+      "fqid": "TOP.PIPELINE3",
       "children": [
         {
-          "fqid": "TOP.PIPELINE3.MAP_MAP",
           "inputs": {
             "blah": {
               "expression": "A thing",
@@ -674,9 +673,9 @@
             },
             "type": "map<PIPELINE2>"
           },
+          "fqid": "TOP.PIPELINE3.MAP_MAP",
           "children": [
             {
-              "fqid": "TOP.PIPELINE3.MAP_MAP.PIPELINE1",
               "inputs": {
                 "blah": {
                   "expression": "A thing",
@@ -723,9 +722,9 @@
                 },
                 "type": "map<PIPELINE1[]>"
               },
+              "fqid": "TOP.PIPELINE3.MAP_MAP.PIPELINE1",
               "children": [
                 {
-                  "fqid": "TOP.PIPELINE3.MAP_MAP.PIPELINE1.STUFF1",
                   "inputs": {
                     "thing1": {
                       "expression": {
@@ -795,6 +794,7 @@
                     },
                     "type": "STUFF1"
                   },
+                  "fqid": "TOP.PIPELINE3.MAP_MAP.PIPELINE1.STUFF1",
                   "fork_roots": [
                     "TOP.PIPELINE3.MAP_MAP",
                     "TOP.PIPELINE3.MAP_MAP.PIPELINE1"
@@ -805,7 +805,6 @@
           ]
         },
         {
-          "fqid": "TOP.PIPELINE3.ARRAY_MAP",
           "inputs": {
             "blah": {
               "expression": "A thing",
@@ -870,9 +869,9 @@
             ],
             "type": "PIPELINE2[]"
           },
+          "fqid": "TOP.PIPELINE3.ARRAY_MAP",
           "children": [
             {
-              "fqid": "TOP.PIPELINE3.ARRAY_MAP.PIPELINE1",
               "inputs": {
                 "blah": {
                   "expression": "A thing",
@@ -929,6 +928,7 @@
                 ],
                 "type": "PIPELINE1[][]"
               },
+              "fqid": "TOP.PIPELINE3.ARRAY_MAP.PIPELINE1",
               "disabled": [
                 {
                   "call": "ARRAY_MAP",
@@ -941,7 +941,6 @@
               ],
               "children": [
                 {
-                  "fqid": "TOP.PIPELINE3.ARRAY_MAP.PIPELINE1.STUFF1",
                   "inputs": {
                     "thing1": {
                       "expression": {
@@ -1020,6 +1019,7 @@
                     },
                     "type": "STUFF1"
                   },
+                  "fqid": "TOP.PIPELINE3.ARRAY_MAP.PIPELINE1.STUFF1",
                   "disabled": [
                     {
                       "call": "ARRAY_MAP",
@@ -1040,7 +1040,6 @@
           ]
         },
         {
-          "fqid": "TOP.PIPELINE3.GENERATE_ARRAY",
           "inputs": {
             "what": {
               "expression": [
@@ -1064,10 +1063,10 @@
               "__reference__": "TOP.PIPELINE3.GENERATE_ARRAY"
             },
             "type": "GENERATE_ARRAY"
-          }
+          },
+          "fqid": "TOP.PIPELINE3.GENERATE_ARRAY"
         },
         {
-          "fqid": "TOP.PIPELINE3.VARIABLE_ARRAY_MAP",
           "inputs": {
             "blah": {
               "expression": "A thing",
@@ -1134,12 +1133,12 @@
             },
             "type": "PIPELINE2"
           },
+          "fqid": "TOP.PIPELINE3.VARIABLE_ARRAY_MAP",
           "fork_roots": [
             "TOP.PIPELINE3.VARIABLE_ARRAY_MAP"
           ],
           "children": [
             {
-              "fqid": "TOP.PIPELINE3.VARIABLE_ARRAY_MAP.PIPELINE1",
               "inputs": {
                 "blah": {
                   "expression": "A thing",
@@ -1195,6 +1194,7 @@
                 },
                 "type": "PIPELINE1"
               },
+              "fqid": "TOP.PIPELINE3.VARIABLE_ARRAY_MAP.PIPELINE1",
               "disabled": [
                 {
                   "call": "VARIABLE_ARRAY_MAP",
@@ -1210,7 +1210,6 @@
               ],
               "children": [
                 {
-                  "fqid": "TOP.PIPELINE3.VARIABLE_ARRAY_MAP.PIPELINE1.STUFF1",
                   "inputs": {
                     "thing1": {
                       "expression": {
@@ -1265,6 +1264,7 @@
                     },
                     "type": "STUFF1"
                   },
+                  "fqid": "TOP.PIPELINE3.VARIABLE_ARRAY_MAP.PIPELINE1.STUFF1",
                   "disabled": [
                     {
                       "call": "VARIABLE_ARRAY_MAP",
@@ -1284,7 +1284,6 @@
           ]
         },
         {
-          "fqid": "TOP.PIPELINE3.GENERATE_MAP",
           "inputs": {
             "what": {
               "expression": {
@@ -1329,10 +1328,10 @@
               "__reference__": "TOP.PIPELINE3.GENERATE_MAP"
             },
             "type": "GENERATE_MAP"
-          }
+          },
+          "fqid": "TOP.PIPELINE3.GENERATE_MAP"
         },
         {
-          "fqid": "TOP.PIPELINE3.VARIABLE_MAP_MAP",
           "inputs": {
             "blah": {
               "expression": "A thing",
@@ -1399,12 +1398,12 @@
             },
             "type": "PIPELINE2"
           },
+          "fqid": "TOP.PIPELINE3.VARIABLE_MAP_MAP",
           "fork_roots": [
             "TOP.PIPELINE3.VARIABLE_MAP_MAP"
           ],
           "children": [
             {
-              "fqid": "TOP.PIPELINE3.VARIABLE_MAP_MAP.PIPELINE1",
               "inputs": {
                 "blah": {
                   "expression": "A thing",
@@ -1460,6 +1459,7 @@
                 },
                 "type": "PIPELINE1"
               },
+              "fqid": "TOP.PIPELINE3.VARIABLE_MAP_MAP.PIPELINE1",
               "disabled": [
                 {
                   "call": "VARIABLE_MAP_MAP",
@@ -1475,7 +1475,6 @@
               ],
               "children": [
                 {
-                  "fqid": "TOP.PIPELINE3.VARIABLE_MAP_MAP.PIPELINE1.STUFF1",
                   "inputs": {
                     "thing1": {
                       "expression": {
@@ -1530,6 +1529,7 @@
                     },
                     "type": "STUFF1"
                   },
+                  "fqid": "TOP.PIPELINE3.VARIABLE_MAP_MAP.PIPELINE1.STUFF1",
                   "disabled": [
                     {
                       "call": "VARIABLE_MAP_MAP",
@@ -1549,7 +1549,6 @@
           ]
         },
         {
-          "fqid": "TOP.PIPELINE3.STUFF2",
           "inputs": {
             "inputs": {
               "expression": {
@@ -1583,10 +1582,10 @@
               "__reference__": "TOP.PIPELINE3.STUFF2"
             },
             "type": "STUFF2"
-          }
+          },
+          "fqid": "TOP.PIPELINE3.STUFF2"
         },
         {
-          "fqid": "TOP.PIPELINE3.PARTLY_VARIABLE",
           "inputs": {
             "blah": {
               "expression": "A thing",
@@ -1660,9 +1659,9 @@
             ],
             "type": "PIPELINE2[]"
           },
+          "fqid": "TOP.PIPELINE3.PARTLY_VARIABLE",
           "children": [
             {
-              "fqid": "TOP.PIPELINE3.PARTLY_VARIABLE.PIPELINE1",
               "inputs": {
                 "blah": {
                   "expression": "A thing",
@@ -1737,6 +1736,7 @@
                 ],
                 "type": "PIPELINE1[][]"
               },
+              "fqid": "TOP.PIPELINE3.PARTLY_VARIABLE.PIPELINE1",
               "disabled": [
                 {
                   "__reference__": "TOP.GENERATE_INPUTS.result.thing"
@@ -1744,7 +1744,6 @@
               ],
               "children": [
                 {
-                  "fqid": "TOP.PIPELINE3.PARTLY_VARIABLE.PIPELINE1.STUFF1",
                   "inputs": {
                     "thing1": {
                       "expression": {
@@ -1805,6 +1804,7 @@
                     },
                     "type": "STUFF1"
                   },
+                  "fqid": "TOP.PIPELINE3.PARTLY_VARIABLE.PIPELINE1.STUFF1",
                   "disabled": [
                     {
                       "__reference__": "TOP.GENERATE_INPUTS.result.thing"

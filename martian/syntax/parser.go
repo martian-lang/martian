@@ -8,7 +8,6 @@ package syntax
 
 import (
 	"fmt"
-	"io/ioutil"
 	"os"
 	"path/filepath"
 	"strings"
@@ -16,7 +15,7 @@ import (
 	"github.com/martian-lang/martian/martian/util"
 )
 
-// Semantic Checking Methods
+// Semantic Checking Methods.
 func (global *Ast) err(nodable AstNodable, msg string, v ...interface{}) error {
 	return &AstError{global, nodable.getNode(), fmt.Sprintf(msg, v...)}
 }
@@ -311,7 +310,7 @@ func (parser *Parser) getIncludes(srcFile *SourceFile, includes []*Include, incP
 					IncludedFrom: []*SourceLoc{&inc.Node.Loc},
 				}
 				processedIncludes[absPath] = iSrcFile
-				if b, err := ioutil.ReadFile(iSrcFile.FullPath); err != nil {
+				if b, err := os.ReadFile(iSrcFile.FullPath); err != nil {
 					errs = append(errs, &wrapError{
 						innerError: err,
 						loc:        inc.Node.Loc,
@@ -428,7 +427,7 @@ func Compile(fpath string,
 // closure of all includes, the compiled AST, or an error if applicable.
 func (parser *Parser) Compile(fpath string,
 	mroPaths []string, checkSrcPath bool) (string, []string, *Ast, error) {
-	if data, err := ioutil.ReadFile(fpath); err != nil {
+	if data, err := os.ReadFile(fpath); err != nil {
 		return "", nil, nil, err
 	} else {
 		return parser.ParseSourceBytes(data, fpath, mroPaths, checkSrcPath)

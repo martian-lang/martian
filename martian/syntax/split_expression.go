@@ -12,19 +12,20 @@ import (
 // where a call is made repeatedly, once for each element in the collection.
 // Only top-level expressions can be split.
 type SplitExp struct {
-	valExp
 	// Either a MapExp, ArrayExp, or RefExp.  In a fully-resolved pipeline,
 	// it could also be another nested SplitExp.
 	Value Exp
 	// The type for the binding expression.
 	Type Type
+	// The dimensionality source
+	Source MapCallSource
+
 	// The call that this split was made on.  This becomes relevant when
 	// resolving a map call of a pipeline - calls within that pipeline
 	// may split further, but potentially over a different set of keys.
 	Call *CallStm
 
-	// The dimensionality source
-	Source MapCallSource
+	valExp
 }
 
 func (s *SplitExp) getKind() ExpKind { return KindSplit }

@@ -164,8 +164,8 @@ func isNullBytes(data json.RawMessage) bool {
 }
 
 type unmarshalError struct {
-	Message string
 	Reason  error
+	Message string
 }
 
 func (err *unmarshalError) Error() string {

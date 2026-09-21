@@ -55,7 +55,14 @@ type (
 	// the index is not a compile-time constant, use the upstream fork's
 	// ForkIndex[idx.IndexSource()].
 	RefExp struct {
-		Node AstNode
+		// Which fork of a mapped call this reference refers to.  This is not
+		// set when compiling mro, as mro does not have syntax for indexing into
+		// collections.  Instead, it is set when resolving a call graph.
+		//
+		// Every dimension over which this stage is forked should be included
+		// in this map.
+		Forks map[*CallStm]CollectionIndex `json:"fork_index,omitempty"`
+
 		Kind ExpKind
 
 		// For KindSelf, the name of the pipeline input parameter.  For
@@ -65,13 +72,7 @@ type (
 		// The binding path through the referred-to call or input.
 		OutputId string
 
-		// Which fork of a mapped call this reference refers to.  This is not
-		// set when compiling mro, as mro does not have syntax for indexing into
-		// collections.  Instead, it is set when resolving a call graph.
-		//
-		// Every dimension over which this stage is forked should be included
-		// in this map.
-		Forks map[*CallStm]CollectionIndex `json:"fork_index,omitempty"`
+		Node AstNode
 	}
 
 	// An index into an array or map.

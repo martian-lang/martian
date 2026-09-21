@@ -640,9 +640,9 @@ func (a *MapExp) Keys() map[string]Exp {
 }
 
 type InconsistentMapCallError struct {
-	Pipeline string
-	Call     *CallStm
 	Inner    error
+	Call     *CallStm
+	Pipeline string
 }
 
 func (err *InconsistentMapCallError) Unwrap() error {

@@ -13,8 +13,6 @@ import (
 
 type (
 	StructMember struct {
-		Node  AstNode
-		Tname TypeId
 		// The key for this value in json.
 		Id string
 		// The name of the file or directory in the top-level outputs
@@ -25,16 +23,20 @@ type (
 		OutName string
 		// The name by which this value is labeled when printing outputs
 		// to the console.
-		Help      string
-		isComplex bool
+		Help string
+
+		Node  AstNode
+		Tname TypeId
+
 		isFile    FileKind
+		isComplex bool
 	}
 
 	StructType struct {
-		Node    AstNode
-		Id      string
-		Members []*StructMember
 		Table   map[string]*StructMember
+		Id      string
+		Node    AstNode
+		Members []*StructMember
 		isFile  FileKind
 	}
 )
@@ -440,8 +442,8 @@ func (s *StructType) String() string {
 }
 
 type StructFieldError struct {
-	Message    string
 	InnerError error
+	Message    string
 }
 
 func (err *StructFieldError) Error() string {

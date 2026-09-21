@@ -16,7 +16,7 @@ import (
 // Martian Errors
 //
 
-// MartianError
+// MartianError.
 type MartianError struct {
 	Msg string
 }
@@ -25,7 +25,7 @@ func (self *MartianError) Error() string {
 	return self.Msg
 }
 
-// ZipError
+// ZipError.
 type ZipError struct {
 	ZipPath  string
 	FilePath string

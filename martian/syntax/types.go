@@ -70,8 +70,8 @@ type (
 
 	// IncompatibleTypeError is returned for Type.IsAssignableFrom().
 	IncompatibleTypeError struct {
-		Message string
 		Reason  error
+		Message string
 	}
 )
 

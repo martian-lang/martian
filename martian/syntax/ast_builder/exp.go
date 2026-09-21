@@ -24,7 +24,7 @@ func Bindings(args interface{}) (*syntax.BindStms, error) {
 
 func bindings(args reflect.Value) (*syntax.BindStms, error) {
 	switch args.Kind() {
-	case reflect.Ptr, reflect.Interface:
+	case reflect.Pointer, reflect.Interface:
 		if args.IsNil() {
 			return nil, fmt.Errorf("expected non-nil args")
 		}
@@ -70,13 +70,13 @@ func ValExp(arg interface{}) (syntax.ValExp, error) {
 
 func valExp(arg reflect.Value, forceString bool) (syntax.ValExp, error) {
 	t := arg.Type()
-	if arg.Kind() != reflect.Ptr &&
-		reflect.PtrTo(t).Implements(textMarshalerType) ||
+	if arg.Kind() != reflect.Pointer &&
+		reflect.PointerTo(t).Implements(textMarshalerType) ||
 		t.Implements(textMarshalerType) {
 		return textMarshalerEncoder(arg)
 	}
 	switch arg.Kind() {
-	case reflect.Ptr, reflect.Interface:
+	case reflect.Pointer, reflect.Interface:
 		if arg.IsNil() {
 			return new(syntax.NullExp), nil
 		}
@@ -86,10 +86,10 @@ func valExp(arg reflect.Value, forceString bool) (syntax.ValExp, error) {
 			return new(syntax.NullExp), nil
 		}
 		if t.Elem().Kind() == reflect.Uint8 {
-			if t.PkgPath() == "encoding/json" && t.Name() == "RawMessage" {
+			if t.PkgPath() == jsonRawMessageType.PkgPath() && t.Name() == jsonRawMessageType.Name() {
 				var parser syntax.Parser
 				return parser.ParseValExp(arg.Bytes())
-			} else if !reflect.PtrTo(t.Elem()).Implements(textMarshalerType) {
+			} else if !reflect.PointerTo(t.Elem()).Implements(textMarshalerType) {
 				// []byte gets special treatment, just like in json
 				return &syntax.StringExp{Value: encodeByteSlice(arg)}, nil
 			}
@@ -176,7 +176,7 @@ func valExp(arg reflect.Value, forceString bool) (syntax.ValExp, error) {
 }
 
 func textMarshalerEncoder(v reflect.Value) (syntax.ValExp, error) {
-	if v.Kind() == reflect.Ptr && v.IsNil() {
+	if v.Kind() == reflect.Pointer && v.IsNil() {
 		return new(syntax.NullExp), nil
 	}
 	m, ok := v.Interface().(encoding.TextMarshaler)
@@ -233,7 +233,7 @@ func encodeBindings(s reflect.Value, t reflect.Type, b []*syntax.BindStm) ([]*sy
 		isUnexported := sf.PkgPath != ""
 		if sf.Anonymous {
 			t := sf.Type
-			for t.Kind() == reflect.Ptr {
+			for t.Kind() == reflect.Pointer {
 				t = t.Elem()
 			}
 			if t.Kind() == reflect.Struct {
@@ -282,7 +282,7 @@ func keyString(k reflect.Value) (string, error) {
 	if k.Kind() == reflect.String {
 		return k.String(), nil
 	}
-	if k.Kind() == reflect.Ptr && k.IsNil() {
+	if k.Kind() == reflect.Pointer && k.IsNil() {
 		return "", nil
 	}
 	if tm, ok := k.Interface().(encoding.TextMarshaler); ok {
@@ -295,7 +295,7 @@ func keyString(k reflect.Value) (string, error) {
 	case reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32,
 		reflect.Uint64, reflect.Uintptr:
 		return strconv.FormatUint(k.Uint(), 10), nil
-	case reflect.Ptr, reflect.Interface:
+	case reflect.Pointer, reflect.Interface:
 		if k.IsNil() {
 			return "", nil
 		}

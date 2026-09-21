@@ -9,7 +9,6 @@ import (
 	"context"
 	"crypto/tls"
 	"fmt"
-	"io/ioutil"
 	"net"
 	"net/http"
 	"net/url"
@@ -507,7 +506,7 @@ func main() {
 	//=========================================================================
 	// Invoke pipestance or Reattach if exists.
 	//=========================================================================
-	data, err := ioutil.ReadFile(c.invocationPath)
+	data, err := os.ReadFile(c.invocationPath)
 	util.DieIf(err)
 	invocationSrc := string(data)
 

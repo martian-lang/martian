@@ -9,7 +9,9 @@ type (
 	// object.  These declarations may exist in pipeline or as the top
 	// level call.
 	CallStm struct {
-		Node      AstNode
+		// The source of map keys or array length, if this is a map call.
+		Mapping MapCallSource
+
 		Modifiers *Modifiers
 
 		// The name of this call, which can be bound in references.
@@ -22,8 +24,7 @@ type (
 		// The set of bindings for the input arguments of the callable.
 		Bindings *BindStms
 
-		// The source of map keys or array length, if this is a map call.
-		Mapping MapCallSource
+		Node AstNode
 	}
 
 	// A set of modifiers on a call.

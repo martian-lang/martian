@@ -17,7 +17,7 @@ package format
 
 import (
 	"fmt"
-	"io/ioutil"
+	"io"
 	"os"
 	"path"
 	"strings"
@@ -90,7 +90,7 @@ Options:
 				fmt.Fprintln(os.Stderr)
 				return 1
 			}
-			if err := ioutil.WriteFile(fname, []byte(fsrc), 0644); err != nil {
+			if err := os.WriteFile(fname, []byte(fsrc), 0644); err != nil {
 				fmt.Fprintf(os.Stderr, "Error writing to %s: %s\n",
 					fname, err.Error())
 			}
@@ -101,7 +101,7 @@ Options:
 		if fnames := opts["<file.mro>"].([]string); len(fnames) == 1 && fnames[0] != "" {
 			fn = fnames[0]
 		}
-		b, err := ioutil.ReadAll(os.Stdin)
+		b, err := io.ReadAll(os.Stdin)
 		if err != nil {
 			fmt.Fprintln(os.Stderr, err.Error())
 			return 1
@@ -125,7 +125,7 @@ Options:
 				return 1
 			}
 			if opts["--rewrite"].(bool) {
-				if err := ioutil.WriteFile(fname, []byte(fsrc), 0644); err != nil {
+				if err := os.WriteFile(fname, []byte(fsrc), 0644); err != nil {
 					fmt.Fprintf(os.Stderr, "Error writing to %s: %s\n",
 						fname, err.Error())
 				}

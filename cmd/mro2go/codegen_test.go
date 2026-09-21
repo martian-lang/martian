@@ -12,7 +12,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
+	"os"
 	"path"
 	"reflect"
 	"strings"
@@ -52,7 +52,7 @@ func ExampleGoName() {
 // Test that the go output is the same as what is being tested
 // for functionality elsewhere.
 func TestMroToGo(t *testing.T) {
-	mrosrc, err := ioutil.ReadFile(path.Join("testdata", "pipeline_stages.mro"))
+	mrosrc, err := os.ReadFile(path.Join("testdata", "pipeline_stages.mro"))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -65,7 +65,7 @@ func TestMroToGo(t *testing.T) {
 		t.Fatal(err)
 	}
 	goSrc := dest.String()
-	if expectedSrc, err := ioutil.ReadFile("split_test.go"); err != nil {
+	if expectedSrc, err := os.ReadFile("split_test.go"); err != nil {
 		t.Fatal(err)
 	} else if string(expectedSrc) != goSrc {
 		t.Errorf("Expected:\n%s\n\nGot:\n%s", expectedSrc, goSrc)
@@ -74,7 +74,7 @@ func TestMroToGo(t *testing.T) {
 
 // Test that the go output for generating a pipeline matches what's expected.
 func TestPipelineMroToGo(t *testing.T) {
-	mrosrc, err := ioutil.ReadFile(path.Join("testdata", "pipeline_stages.mro"))
+	mrosrc, err := os.ReadFile(path.Join("testdata", "pipeline_stages.mro"))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -86,7 +86,7 @@ func TestPipelineMroToGo(t *testing.T) {
 		t.Fatal(err)
 	}
 	goSrc := dest.String()
-	if expectedSrc, err := ioutil.ReadFile("split_pipeline_test.go"); err != nil {
+	if expectedSrc, err := os.ReadFile("split_pipeline_test.go"); err != nil {
 		t.Fatal(err)
 	} else if string(expectedSrc) != goSrc {
 		t.Errorf("Expected:\n%s\n\nGot:\n%s", expectedSrc, goSrc)
@@ -95,7 +95,7 @@ func TestPipelineMroToGo(t *testing.T) {
 
 // Test that the go output for generating a pipeline matches what's expected.
 func TestStructPipelineMroToGo(t *testing.T) {
-	mrosrc, err := ioutil.ReadFile(path.Join("testdata", "struct_pipeline.mro"))
+	mrosrc, err := os.ReadFile(path.Join("testdata", "struct_pipeline.mro"))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -108,7 +108,7 @@ func TestStructPipelineMroToGo(t *testing.T) {
 		t.Fatal(err)
 	}
 	goSrc := dest.String()
-	if expectedSrc, err := ioutil.ReadFile("struct_pipeline_test.go"); err != nil {
+	if expectedSrc, err := os.ReadFile("struct_pipeline_test.go"); err != nil {
 		t.Fatal(err)
 	} else if string(expectedSrc) != goSrc {
 		t.Errorf("Expected:\n%s\n\nGot:\n%s", expectedSrc, goSrc)
