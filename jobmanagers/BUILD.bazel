@@ -51,11 +51,17 @@ py_library(
     srcs = ["slurm_queue.py"],
 )
 
+py_library(
+    name = "pbs_queue",
+    srcs = ["pbs_queue.py"],
+)
+
 filegroup(
     name = "queue_checks",
     srcs = [
         ":sge_queue",
         ":slurm_queue",
+        ":pbs_queue",
     ],
     visibility = [
         "//:__pkg__",
