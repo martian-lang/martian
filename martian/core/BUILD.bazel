@@ -95,6 +95,7 @@ go_test(
     data = [
         "testdata/map_call_edge_cases.mro",
         "testdata/mock_stages.mro",
+        "testdata/pruned_merge.mro",
         "testdata/simple_struct_pipeline.mro",
         "testdata/stage.py",
         "testdata/stages.mro",

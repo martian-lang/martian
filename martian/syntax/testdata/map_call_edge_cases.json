@@ -13,6 +13,17 @@
   "outputs": {
     "expression": {
       "outputs": {
+        "expect_null1": {
+          "__reference__": "TOP.PIPELINE3.STUFF4.result"
+        },
+        "expect_null2": {
+          "__disabled__": {
+            "__reference__": "TOP.PIPELINE3.DISABLER.result"
+          },
+          "value": {
+            "__reference__": "TOP.PIPELINE3.EXPECT_DISABLED2.result"
+          }
+        },
         "intermediate1": {
           "foo": {
             "outs": [
@@ -412,6 +423,17 @@
       },
       "outputs": {
         "expression": {
+          "expect_null1": {
+            "__reference__": "TOP.PIPELINE3.STUFF4.result"
+          },
+          "expect_null2": {
+            "__disabled__": {
+              "__reference__": "TOP.PIPELINE3.DISABLER.result"
+            },
+            "value": {
+              "__reference__": "TOP.PIPELINE3.EXPECT_DISABLED2.result"
+            }
+          },
           "intermediate1": {
             "foo": {
               "outs": [
@@ -624,6 +646,21 @@
       },
       "fqid": "TOP.PIPELINE3",
       "children": [
+        {
+          "inputs": {
+            "what": {
+              "expression": true,
+              "type": "bool"
+            }
+          },
+          "outputs": {
+            "expression": {
+              "__reference__": "TOP.PIPELINE3.DISABLER"
+            },
+            "type": "GENERATE_BOOL"
+          },
+          "fqid": "TOP.PIPELINE3.DISABLER"
+        },
         {
           "inputs": {
             "blah": {
@@ -1065,6 +1102,158 @@
             "type": "GENERATE_ARRAY"
           },
           "fqid": "TOP.PIPELINE3.GENERATE_ARRAY"
+        },
+        {
+          "inputs": {
+            "dummy": {
+              "expression": {
+                "__reference__": "TOP.PIPELINE3.DISABLER.result"
+              },
+              "type": "bool"
+            },
+            "what": {
+              "expression": {
+                "call": "EXPECT_DISABLED1",
+                "mode": "array",
+                "split": {
+                  "__reference__": "TOP.PIPELINE3.GENERATE_ARRAY.result"
+                }
+              },
+              "type": "Inputs2"
+            }
+          },
+          "outputs": {
+            "expression": {
+              "__disabled__": {
+                "__reference__": "TOP.PIPELINE3.DISABLER.result"
+              },
+              "value": {
+                "call": "TOP.PIPELINE3.EXPECT_DISABLED1",
+                "mode": "array",
+                "merge_value": {
+                  "__reference__": "TOP.PIPELINE3.EXPECT_DISABLED1",
+                  "fork": {
+                    "EXPECT_DISABLED1": "unknown"
+                  }
+                },
+                "merge_over": {
+                  "ref": "TOP.PIPELINE3.GENERATE_ARRAY.result",
+                  "type": "Inputs2Plus[]"
+                }
+              }
+            },
+            "type": "STUFF3[]"
+          },
+          "fqid": "TOP.PIPELINE3.EXPECT_DISABLED1",
+          "comments": [
+            "Disabled map call shouldn't try to expand forks."
+          ],
+          "disabled": [
+            {
+              "__reference__": "TOP.PIPELINE3.DISABLER.result"
+            }
+          ],
+          "fork_roots": [
+            "TOP.PIPELINE3.EXPECT_DISABLED1"
+          ]
+        },
+        {
+          "inputs": {
+            "dummy": {
+              "expression": {
+                "__reference__": "TOP.PIPELINE3.DISABLER.result"
+              },
+              "type": "bool"
+            },
+            "what": {
+              "expression": {
+                "__disabled__": {
+                  "__reference__": "TOP.PIPELINE3.DISABLER.result"
+                },
+                "value": {
+                  "call": "TOP.PIPELINE3.EXPECT_DISABLED1",
+                  "mode": "array",
+                  "merge_value": {
+                    "__reference__": "TOP.PIPELINE3.EXPECT_DISABLED1.result",
+                    "fork": {
+                      "EXPECT_DISABLED1": "unknown"
+                    }
+                  },
+                  "merge_over": {
+                    "ref": "TOP.PIPELINE3.GENERATE_ARRAY.result",
+                    "type": "Inputs2Plus[]"
+                  }
+                }
+              },
+              "type": "Inputs2[]"
+            }
+          },
+          "outputs": {
+            "expression": {
+              "__reference__": "TOP.PIPELINE3.STUFF4"
+            },
+            "type": "STUFF4"
+          },
+          "fqid": "TOP.PIPELINE3.STUFF4"
+        },
+        {
+          "inputs": {
+            "what": {
+              "expression": {
+                "__reference__": "TOP.PIPELINE3.DISABLER.result"
+              },
+              "type": "bool"
+            }
+          },
+          "outputs": {
+            "expression": {
+              "__reference__": "TOP.PIPELINE3.LATE_BOOL"
+            },
+            "type": "GENERATE_BOOL"
+          },
+          "fqid": "TOP.PIPELINE3.LATE_BOOL",
+          "comments": [
+            "This boolean will be generated after the decision as to whether or not",
+            "the next few stages can be disabled has been made, allowing us to test",
+            "that disablement can be evaluated before all inputs are ready."
+          ]
+        },
+        {
+          "inputs": {
+            "dummy": {
+              "expression": {
+                "__reference__": "TOP.PIPELINE3.LATE_BOOL.result"
+              },
+              "type": "bool"
+            },
+            "what": {
+              "expression": {
+                "__reference__": "TOP.PIPELINE3.GENERATE_ARRAY.result"
+              },
+              "type": "Inputs2[]"
+            }
+          },
+          "outputs": {
+            "expression": {
+              "__disabled__": {
+                "__reference__": "TOP.PIPELINE3.DISABLER.result"
+              },
+              "value": {
+                "__reference__": "TOP.PIPELINE3.EXPECT_DISABLED2"
+              }
+            },
+            "type": "STUFF4"
+          },
+          "fqid": "TOP.PIPELINE3.EXPECT_DISABLED2",
+          "comments": [
+            "Should be able to discover that this is disabled before GENERATE_ARRAY",
+            "completes."
+          ],
+          "disabled": [
+            {
+              "__reference__": "TOP.PIPELINE3.DISABLER.result"
+            }
+          ]
         },
         {
           "inputs": {

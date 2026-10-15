@@ -257,7 +257,11 @@ func (arr sortedSplitList) Less(i, j int) bool {
 	return arr[i].Line() < arr[j].Line()
 }
 
-func unifyMapSources(call *CallStm, ins map[string]*ResolvedBinding, disable []Exp) (*SplitExp, error) {
+func unifyMapSources(
+	call *CallStm,
+	ins map[string]*ResolvedBinding,
+	disable []Exp,
+) (*SplitExp, error) {
 	splits := make(map[*SplitExp]struct{})
 	for _, b := range ins {
 		findSplitsForCall(b.Exp, call, splits)
@@ -273,7 +277,7 @@ func unifyMapSources(call *CallStm, ins map[string]*ResolvedBinding, disable []E
 	sort.Sort(splitList)
 	var root MapCallSource
 	var errs ErrorList
-	var ref MapCallSource
+	// MergeMapCallSources takes care of preferring a source with known length.
 	for _, sp := range splitList {
 		if f, err := mergeSplitSource(root, sp); err != nil {
 			errs = append(errs, err)
@@ -285,9 +289,6 @@ func unifyMapSources(call *CallStm, ins map[string]*ResolvedBinding, disable []E
 		return nil, err
 	}
 	if root != nil {
-		if ref != nil && (ref.KnownLength() || !root.KnownLength()) {
-			root = ref
-		}
 		for _, sp := range splitList {
 			sp.setSource(root)
 		}

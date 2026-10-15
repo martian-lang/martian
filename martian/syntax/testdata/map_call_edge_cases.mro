@@ -50,6 +50,12 @@ stage GENERATE_INPUTS(
     src exec        "stage.py",
 )
 
+stage GENERATE_BOOL(
+    in  bool what,
+    out bool result,
+    src exec "stage.py",
+)
+
 stage STUFF1(
     in  string what,
     in  string thing1,
@@ -63,6 +69,20 @@ stage STUFF2(
     in  map<Inputs4> inputs,
     out string       result,
     src exec         "stage.py",
+)
+
+stage STUFF3(
+    in  Inputs2 what,
+    in  bool    dummy,
+    out Inputs2 result,
+    src exec    "stage.py",
+)
+
+stage STUFF4(
+    in  Inputs2[] what,
+    in  bool      dummy,
+    out Inputs2[] result,
+    src exec      "stage.py",
 )
 
 pipeline PIPELINE1(
@@ -111,6 +131,8 @@ pipeline PIPELINE3(
     in  Inputs2[]    inputs2,
     in  Inputs2[]    inputs3,
     in  string       blah,
+    out Inputs2[]    expect_null1,
+    out Inputs2[]    expect_null2,
     out STUFF2       output,
     out map<Inputs4> intermediate1,
     out Inputs4[]    intermediate2,
@@ -119,6 +141,10 @@ pipeline PIPELINE3(
     out Inputs4[]    intermediate5,
 )
 {
+    call GENERATE_BOOL as DISABLER(
+        what = true,
+    )
+
     map call PIPELINE2 as MAP_MAP(
         inputs = split self.inputs1,
         blah   = self.blah,
@@ -143,6 +169,35 @@ pipeline PIPELINE3(
                 thing: false,
             },
         ],
+    )
+
+    # Disabled map call shouldn't try to expand forks.
+    map call STUFF3 as EXPECT_DISABLED1(
+        what  = split GENERATE_ARRAY.result,
+        dummy = DISABLER.result,
+    ) using (
+        disabled = DISABLER.result,
+    )
+
+    call STUFF4(
+        what  = EXPECT_DISABLED1.result,
+        dummy = DISABLER.result,
+    )
+
+    # This boolean will be generated after the decision as to whether or not
+    # the next few stages can be disabled has been made, allowing us to test
+    # that disablement can be evaluated before all inputs are ready.
+    call GENERATE_BOOL as LATE_BOOL(
+        what = DISABLER.result,
+    )
+
+    # Should be able to discover that this is disabled before GENERATE_ARRAY
+    # completes.
+    call STUFF4 as EXPECT_DISABLED2(
+        what  = GENERATE_ARRAY.result,
+        dummy = LATE_BOOL.result,
+    ) using (
+        disabled = DISABLER.result,
     )
 
     map call PIPELINE2 as VARIABLE_ARRAY_MAP(
@@ -203,6 +258,8 @@ pipeline PIPELINE3(
     )
 
     return (
+        expect_null1  = STUFF4.result,
+        expect_null2  = EXPECT_DISABLED2.result,
         output        = STUFF2,
         intermediate1 = MAP_MAP,
         intermediate2 = ARRAY_MAP,

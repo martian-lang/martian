@@ -161,6 +161,58 @@ func TestAstMakeStageCallGraph(t *testing.T) {
 	}
 }
 
+func TestAstMakeMappedStageCallGraph(t *testing.T) {
+	_, _, ast, err := ParseSourceBytes([]byte(`
+stage MAPPED(
+	in  int thingy,
+	out int thing,
+	src comp "nope",
+)
+
+map call MAPPED(
+	thingy = split [
+		1,
+		2,
+		3,
+	],
+)
+`), "mapped_stage.mro", nil, false)
+	if err != nil {
+		t.Fatal(err)
+	}
+	graph, err := ast.MakePipelineCallGraph("", ast.Call)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if graph.ForkRoots() == nil {
+		t.Error("expected top-level pipeline to be mapped")
+	}
+	children := graph.GetChildren()
+	if len(children) != 1 {
+		t.Fatalf("expected 1 child, got %d", len(children))
+	}
+	if c := children[0].Call(); c.Mapping != nil {
+		t.Errorf("inner stage call should not be mapped, got %v",
+			c.Mapping)
+	}
+	if roots := children[0].ForkRoots(); len(roots) != 1 ||
+		roots[0] != &graph.CallGraphStage {
+		t.Errorf("inner stage should be forked only by the top-level call, got %v",
+			roots)
+	}
+	inputs := children[0].ResolvedInputs()
+	if len(inputs) != 1 {
+		t.Fatalf("expected 1 input, got %d", len(inputs))
+	}
+	if s := inputs["thingy"].Type.TypeId().str(); s != "int" {
+		t.Errorf("input type %s != int", s)
+	}
+	outs := graph.ResolvedOutputs()
+	if s := outs.Type.TypeId().str(); s != "MAPPED[]" {
+		t.Errorf("%s != MAPPED[]", s)
+	}
+}
+
 func TestAstMakeCallGraphMappedPipeline(t *testing.T) {
 	_, _, ast, err := ParseSourceBytes([]byte(`
 pipeline MAPPED(
@@ -237,9 +289,7 @@ map call MAPPER(
 	        ],
 	    },
 	]`
-	if s := FormatExp(outs.Exp, "\t"); err != nil {
-		t.Error(err)
-	} else if s != expected {
+	if s := FormatExp(outs.Exp, "\t"); s != expected {
 		t.Errorf("%s != "+expected, s)
 	}
 }
@@ -605,6 +655,44 @@ func TestSerializeMapCallGraph2(t *testing.T) {
 	expect := string(expectB)
 	if s := dest.String(); expect != s {
 		diffLines(expect, s, t)
+		// Uncomment this line to update the expectation value.
+		// os.WriteFile("testdata/map_call_edge_cases.json",
+		// 	[]byte(s),
+		// 	0o644)
+	}
+}
+
+func TestSerializePrunedMergeCallGraph(t *testing.T) {
+	src, err := os.ReadFile("testdata/pruned_merge.mro")
+	if err != nil {
+		t.Fatal(err)
+	}
+	_, _, ast, err := ParseSourceBytes(src, "testdata/pruned_merge.mro", nil, false)
+	if err != nil {
+		t.Fatal(err)
+	}
+	graph, err := ast.MakeCallGraph("", ast.Call)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var dest strings.Builder
+	enc := json.NewEncoder(&dest)
+	enc.SetEscapeHTML(false)
+	enc.SetIndent("", "  ")
+	if err := enc.Encode(graph); err != nil {
+		t.Fatal(err)
+	}
+	expectB, err := os.ReadFile("testdata/pruned_merge.json")
+	if err != nil {
+		t.Fatal(err)
+	}
+	expect := string(expectB)
+	if s := dest.String(); expect != s {
+		diffLines(expect, s, t)
+		// Uncomment this line to update the expectation value.
+		// os.WriteFile("testdata/pruned_merge.json",
+		// 	[]byte(s),
+		// 	0o644)
 	}
 }
 

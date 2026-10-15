@@ -962,3 +962,186 @@ pipeline THINGIFY(
 }
 `, "array length mismatch")
 }
+
+// Tests that when a map call splits over both a source whose length is only
+// known at runtime and one whose length is known statically, the known-length
+// source is used for the call regardless of which order the splits appear in.
+func TestMapCallUnifyKnownLengthSource(t *testing.T) {
+	t.Parallel()
+	const header = `
+stage GEN(
+    out int[]    arr,
+    out map<int> m,
+    src comp     "nope",
+)
+
+stage MAPPED(
+    in  int  a,
+    in  int  z,
+    out int  c,
+    src comp "nope",
+)
+
+stage ECHO(
+    in  int  x,
+    out int  c,
+    src comp "nope",
+)
+`
+	arrayPipeline := func(bindings string) string {
+		return header + `
+pipeline P(
+    out MAPPED[] outs,
+)
+{
+    call GEN()
+
+    map call ECHO(
+        x = split GEN.arr,
+    )
+
+    map call MAPPED(
+` + bindings + `
+    )
+
+    return (
+        outs = MAPPED,
+    )
+}
+
+call P()
+`
+	}
+	mapPipeline := func(bindings string) string {
+		return header + `
+pipeline P(
+    out map<MAPPED> outs,
+)
+{
+    call GEN()
+
+    map call MAPPED(
+` + bindings + `
+    )
+
+    return (
+        outs = MAPPED,
+    )
+}
+
+call P()
+`
+	}
+	cases := []struct {
+		name string
+		src  string
+		mode CallMode
+	}{
+		{
+			name: "unknown first by line and name",
+			src: arrayPipeline(`        a = split GEN.arr,
+        z = split [1, 2, 3],`),
+			mode: ModeArrayCall,
+		},
+		{
+			name: "unknown first by line last by name",
+			src: arrayPipeline(`        z = split GEN.arr,
+        a = split [1, 2, 3],`),
+			mode: ModeArrayCall,
+		},
+		{
+			name: "known first by line",
+			src: arrayPipeline(`        a = split [1, 2, 3],
+        z = split GEN.arr,`),
+			mode: ModeArrayCall,
+		},
+		{
+			name: "same line",
+			src:  arrayPipeline(`        a = split GEN.arr, z = split [1, 2, 3],`),
+			mode: ModeArrayCall,
+		},
+		{
+			name: "merge unknown first",
+			src: arrayPipeline(`        a = split ECHO.c,
+        z = split [1, 2, 3],`),
+			mode: ModeArrayCall,
+		},
+		{
+			name: "merge known first",
+			src: arrayPipeline(`        a = split [1, 2, 3],
+        z = split ECHO.c,`),
+			mode: ModeArrayCall,
+		},
+		{
+			name: "map unknown first",
+			src: mapPipeline(`        a = split GEN.m,
+        z = split {"x": 1, "y": 2},`),
+			mode: ModeMapCall,
+		},
+		{
+			name: "map known first",
+			src: mapPipeline(`        a = split {"x": 1, "y": 2},
+        z = split GEN.m,`),
+			mode: ModeMapCall,
+		},
+	}
+	for _, c := range cases {
+		t.Run(c.name, func(t *testing.T) {
+			t.Parallel()
+			ast := testGood(t, c.src)
+			if ast == nil {
+				return
+			}
+			graph, err := ast.MakeCallGraph("", ast.Call)
+			if err != nil {
+				t.Fatal(err)
+			}
+			node, ok := graph.NodeClosure()["P.MAPPED"].(*CallGraphStage)
+			if !ok {
+				t.Fatal("could not find stage node P.MAPPED")
+			}
+			src := node.MapSource()
+			if src == nil {
+				t.Fatal("expected P.MAPPED to be mapped")
+			}
+			if m := src.CallMode(); m != c.mode {
+				t.Errorf("call mode %v != %v", m, c.mode)
+			}
+			if !src.KnownLength() {
+				t.Errorf("expected known length source, got %s", src.GoString())
+			}
+			switch c.mode {
+			case ModeArrayCall:
+				if l := src.ArrayLength(); l != 3 {
+					t.Errorf("array length %d != 3", l)
+				}
+			case ModeMapCall:
+				keys := src.Keys()
+				if len(keys) != 2 || keys["x"] == nil || keys["y"] == nil {
+					t.Errorf("expected keys x, y; got %v", keys)
+				}
+			}
+			outs, ok := graph.ResolvedOutputs().Exp.(*MapExp)
+			if !ok {
+				t.Fatalf("expected struct output, got %s",
+					FormatExp(graph.ResolvedOutputs().Exp, ""))
+			}
+			switch c.mode {
+			case ModeArrayCall:
+				if arr, ok := outs.Value["outs"].(*ArrayExp); !ok {
+					t.Errorf("expected static array output, got %s",
+						FormatExp(outs.Value["outs"], ""))
+				} else if len(arr.Value) != 3 {
+					t.Errorf("output length %d != 3", len(arr.Value))
+				}
+			case ModeMapCall:
+				if m, ok := outs.Value["outs"].(*MapExp); !ok {
+					t.Errorf("expected static map output, got %s",
+						FormatExp(outs.Value["outs"], ""))
+				} else if len(m.Value) != 2 {
+					t.Errorf("output length %d != 2", len(m.Value))
+				}
+			}
+		})
+	}
+}

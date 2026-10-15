@@ -79,13 +79,12 @@ func (t testLogger) WriteString(b string) (int, error) {
 	return len(b), nil
 }
 
-// Tests actually running a pipestance.
-//
-// The reason this test exists, rather than simply relying on the end-to-end
-// integration tests, is mainly to be able to see code coverage.  It's also
-// very fast because of the trivial stage code.
-func TestPipestanceRun(t *testing.T) {
-	data, err := os.ReadFile("testdata/map_call_edge_cases.mro")
+// Runs the pipestance for the given mro file to completion, and returns it
+// along with the directory it ran in.  The directory is removed when the
+// test completes.
+func runTestPipestance(t *testing.T, mroPath string) (*Pipestance, string) {
+	t.Helper()
+	data, err := os.ReadFile(mroPath)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -117,10 +116,10 @@ func TestPipestanceRun(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer os.RemoveAll(psdir)
+	t.Cleanup(func() { os.RemoveAll(psdir) })
 	t.Log("Starting pipestance in", psdir)
 	pipestance, err := rt.InvokePipeline(string(data),
-		"testdata/map_call_edge_cases.mro", t.Name(),
+		mroPath, t.Name(),
 		psdir, []string{"testdata"}, "<none>", nil, nil)
 	if err != nil {
 		t.Fatal("Invoking pipeline:", err)
@@ -164,10 +163,21 @@ func TestPipestanceRun(t *testing.T) {
 	<-ch
 	<-ch
 	cancel()
+	return pipestance, psdir
+}
+
+// Tests actually running a pipestance.
+//
+// The reason this test exists, rather than simply relying on the end-to-end
+// integration tests, is mainly to be able to see code coverage.  It's also
+// very fast because of the trivial stage code.
+func TestPipestanceRun(t *testing.T) {
+	t.Parallel()
+	pipestance, psdir := runTestPipestance(t, "testdata/map_call_edge_cases.mro")
 
 	nodeInfos := pipestance.SerializeState(context.Background())
-	if len(nodeInfos) != 22 {
-		t.Errorf("node count %d != 22", len(nodeInfos))
+	if len(nodeInfos) != 27 {
+		t.Errorf("node count %d != 27", len(nodeInfos))
 	}
 	outs, err := os.ReadFile(path.Join(psdir, "TOP",
 		defaultFork,
@@ -177,6 +187,15 @@ func TestPipestanceRun(t *testing.T) {
 	}
 	dec := json.NewDecoder(bytes.NewReader(outs))
 	dec.DisallowUnknownFields()
+	type Inputs1 struct {
+		T1 string `json:"thing1"`
+		T2 int    `json:"thing2"`
+		T3 int    `json:"thing3"`
+	}
+	type Inputs2 struct {
+		Inputs []Inputs1 `json:"inputs"`
+		Thing  bool      `json:"thing"`
+	}
 	type Inputs4 struct {
 		Outs []*struct {
 			Blah  []*string `json:"blah"`
@@ -185,7 +204,9 @@ func TestPipestanceRun(t *testing.T) {
 	}
 	var outputs struct {
 		Outputs *struct {
-			Output *struct {
+			ExpectNull1 []Inputs2 `json:"expect_null1"`
+			ExpectNull2 []Inputs2 `json:"expect_null2"`
+			Output      *struct {
 				Result string `json:"result"`
 			} `json:"output"`
 			I1 map[string]*Inputs4 `json:"intermediate1"`
@@ -201,6 +222,12 @@ func TestPipestanceRun(t *testing.T) {
 	}
 	if outputs.Outputs == nil {
 		t.Fatal("outputs was null")
+	}
+	if outputs.Outputs.ExpectNull1 != nil {
+		t.Error("expected null output 1")
+	}
+	if outputs.Outputs.ExpectNull2 != nil {
+		t.Error("expected null output 2")
 	}
 	if outputs.Outputs.Output == nil {
 		t.Error("outputs.output was null")
@@ -259,5 +286,37 @@ func TestPipestanceRun(t *testing.T) {
 	} else if b := outputs.Outputs.I5[0].Outs; len(b) != 1 {
 		t.Errorf("incorrect length %d != 1 for intermediate5[0].outs",
 			len(b))
+	}
+}
+
+// Tests running a pipeline where a map call contains a disabled sub-pipeline,
+// so that the merge of the pruned fork has to be resolved.
+func TestPipestanceRunPrunedMerge(t *testing.T) {
+	t.Parallel()
+	_, psdir := runTestPipestance(t, "testdata/pruned_merge.mro")
+	outs, err := os.ReadFile(path.Join(psdir, "OUTER",
+		defaultFork,
+		OutsFile.FileName()))
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Log(string(outs))
+	var outputs struct {
+		Ys map[string]int  `json:"ys"`
+		Zs map[string]*int `json:"zs"`
+	}
+	if err := json.Unmarshal(outs, &outputs); err != nil {
+		t.Fatal(err)
+	}
+	if len(outputs.Ys) != 2 ||
+		outputs.Ys["a"] != 1 || outputs.Ys["b"] != 2 {
+		t.Errorf("unexpected ys: %v", outputs.Ys)
+	}
+	if len(outputs.Zs) != 2 {
+		t.Errorf("expected zs to be the same length as Ys (2), got %d", len(outputs.Zs))
+	}
+	if outputs.Zs["a"] != nil || outputs.Zs["b"] != nil {
+		t.Errorf("expected all outputs for zs to be null, got %v",
+			outputs.Zs)
 	}
 }

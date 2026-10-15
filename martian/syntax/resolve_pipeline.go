@@ -29,7 +29,48 @@ func (c *CallGraphPipeline) Callable() Callable {
 
 // If the top-level call is a stage, not a pipeline, create a "fake" pipeline
 // which wraps that stage.
+//
+// The wrapper is equivalent to
+//
+//	pipeline STAGE(...) {
+//	    call STAGE(* = self)
+//	    return (* = STAGE)
+//	}
+//
+// The inner call is a new call statement, rather than the given top-level
+// call, because the top-level call may be a map call, and the inner call must
+// not be mapped a second time.
 func wrapStageAsPipeline(call *CallStm, stage *Stage) *Pipeline {
+	inner := &CallStm{
+		Modifiers: &Modifiers{Bindings: new(BindStms)},
+		Id:        call.Id,
+		DecId:     call.DecId,
+		Bindings: &BindStms{
+			Node:  call.Bindings.Node,
+			List:  make([]*BindStm, 0, len(stage.InParams.List)),
+			Table: make(map[string]*BindStm, len(stage.InParams.List)),
+		},
+		Node: call.Node,
+	}
+	if call.Modifiers != nil {
+		inner.Modifiers.Local = call.Modifiers.Local
+		inner.Modifiers.Preflight = call.Modifiers.Preflight
+		inner.Modifiers.Volatile = call.Modifiers.Volatile
+	}
+	for _, param := range stage.InParams.List {
+		binding := &BindStm{
+			Node:  param.Node,
+			Id:    param.Id,
+			Tname: param.Tname,
+			Exp: &RefExp{
+				Node: param.Node,
+				Kind: KindSelf,
+				Id:   param.Id,
+			},
+		}
+		inner.Bindings.List = append(inner.Bindings.List, binding)
+		inner.Bindings.Table[param.Id] = binding
+	}
 	returns := &BindStms{
 		List:  make([]*BindStm, 0, len(stage.OutParams.List)),
 		Table: make(map[string]*BindStm, len(stage.OutParams.List)),
@@ -40,7 +81,7 @@ func wrapStageAsPipeline(call *CallStm, stage *Stage) *Pipeline {
 			Tname: param.Tname,
 			Exp: &RefExp{
 				Kind:     KindCall,
-				Id:       call.Id,
+				Id:       inner.Id,
 				OutputId: param.Id,
 			},
 		}
@@ -52,7 +93,7 @@ func wrapStageAsPipeline(call *CallStm, stage *Stage) *Pipeline {
 		Id:        stage.Id,
 		InParams:  stage.InParams,
 		OutParams: stage.OutParams,
-		Calls:     []*CallStm{call},
+		Calls:     []*CallStm{inner},
 		Callables: &Callables{
 			List: []Callable{stage},
 			Table: map[string]Callable{

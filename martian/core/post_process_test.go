@@ -48,7 +48,9 @@ func compareOutputText(t *testing.T, expected, actual string) {
 		actualLines := strings.Split(str, "\n")
 		if len(expectLines) != len(actualLines) {
 			t.Errorf("line count %d != %d", len(actualLines), len(expectLines))
-		} else {
+			t.Log(actual)
+		}
+		if len(expectLines) <= len(actualLines) {
 			for i, exp := range expectLines {
 				if exp != actualLines[i] {
 					te := strings.TrimSpace(exp)

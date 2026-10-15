@@ -1,0 +1,78 @@
+# Map call over a disabled stage.
+
+stage GEN(
+    in  map<int> what,
+    out map<int> result,
+    src exec     "stage.py",
+)
+
+stage WORK(
+    in  int what,
+    out int result,
+    src exec "stage.py",
+)
+
+pipeline SUB(
+    in  int x,
+    out int y,
+)
+{
+    call WORK(
+        what = self.x,
+    )
+
+    return (
+        y = WORK.result,
+    )
+}
+
+pipeline INNER(
+    in  int  x,
+    in  bool skip,
+    out int  y,
+    out int  z,
+)
+{
+    call WORK as KEEP(
+        what = self.x,
+    )
+
+    call SUB(
+        x = self.x,
+    ) using (
+        disabled = self.skip,
+    )
+
+    return (
+        y = KEEP.result,
+        z = SUB.y,
+    )
+}
+
+pipeline OUTER(
+    in  bool     skip,
+    out map<int> ys,
+    out map<int> zs,
+)
+{
+    call GEN(
+        what = {
+            "a": 1,
+            "b": 2,
+        },
+    )
+
+    map call INNER(
+        x    = split GEN.result,
+        skip = self.skip,
+    )
+
+    return (
+        ys = INNER.y,
+        zs = INNER.z,
+    )
+}
+
+call OUTER(
+    skip = true,
+)

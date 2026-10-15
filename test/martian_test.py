@@ -117,7 +117,7 @@ _FILES_SEP = "%sfiles%s" % (os.path.sep, os.path.sep)
 
 def _parent_files(value):
     """Convert file names like .../chnk0/files/foo to .../files/foo."""
-    if not _FILES_SEP in value:
+    if _FILES_SEP not in value:
         return value
     if not os.path.basename(value) or not os.path.dirname(value):
         return value
@@ -164,6 +164,7 @@ def check_exists_file(output, expect, filename, reverse=False):
             report_missing("file", output, expect, filename, reverse)
             return False
     return True
+
 
 def check_exists(output, expect, filename, reverse=False):
     """Checks that a given file, directory, or link in the expected directory
@@ -309,7 +310,15 @@ def compare_jobinfo(output, expect, filename):
     paths).
     """
     return compare_json(
-        output, expect, filename, ["name", "threads", "memGB", "type",]
+        output,
+        expect,
+        filename,
+        [
+            "name",
+            "threads",
+            "memGB",
+            "type",
+        ],
     )
 
 
@@ -353,6 +362,7 @@ def compare_vdrkill(output, expect, filename):
     if not compare_dicts(actual, expected, ["count", "paths", "errors"]):
         return False
     return True
+
 
 _TIMESTAMP_REGEX = re.compile(
     "[0-9]{4}-[0-9]{2}-[0-9]{2} [0-9]{1,2}:[0-9]{2}:[0-9]{2}"
@@ -448,11 +458,25 @@ def clean_errors(line):
     return _TRACEBACK_REGEX.sub(", line LINENO, in", clean_line(line))
 
 
+_TRACEBACK_MARKER_REGEX = re.compile(rb"^\s*[\^~]+\s*$")
+
+
+def skip_traceback_markers(lines):
+    """Filter out the lines python 3.11+ adds to tracebacks to point at the
+    failing expression, so that output from different versions can match."""
+    for line in lines:
+        if not _TRACEBACK_MARKER_REGEX.match(line):
+            yield line
+
+
 def compare_errors(output, expect, filename):
-    """As compare_lines, but we also ignore traceback line-numbers."""
+    """As compare_lines, but we also ignore traceback line-numbers and
+    expression markers."""
     with open(os.path.join(output, filename), "rb") as act:
         with open(os.path.join(expect, filename), "rb") as exp:
-            for actual, expected in zip_longest(act, exp):
+            for actual, expected in zip_longest(
+                skip_traceback_markers(act), skip_traceback_markers(exp)
+            ):
                 if actual and expected:
                     actual = actual.decode("utf-8", errors="ignore")
                     expected = expected.decode("utf-8", errors="ignore")
@@ -582,9 +606,9 @@ def main(argv):
     config_filename = parser.parse_args(argv[1:]).config
     with open(config_filename, "rb") as configfile:
         config = json.load(configfile)
-    if not "command" in config or not config["command"]:
+    if "command" not in config or not config["command"]:
         sys.stderr.write("No command specified in %s\n" % config_filename)
-    if not "work_dir" in config:
+    if "work_dir" not in config:
         config["work_dir"] = os.path.dirname(config_filename)
     config["work_dir"] = os.path.abspath(config["work_dir"])
     config["command"][0] = os.path.abspath(
@@ -604,8 +628,9 @@ def main(argv):
     path = env["PATH"]
     env["PATH"] = f"{python_dir}{os.pathsep}{path}"
 
-
-    return_code = subprocess.call(config["command"], cwd=config["work_dir"], env=env)
+    return_code = subprocess.call(
+        config["command"], cwd=config["work_dir"], env=env
+    )
     if "expected_return" in config:
         if return_code != config["expected_return"]:
             sys.stderr.write("Command returned %d\n" % return_code)

@@ -112,6 +112,7 @@ mro_library(
         "testdata/disable_pipeline.mro",
         "testdata/map_call_edge_cases.mro",
         "testdata/map_call_test.mro",
+        "testdata/pruned_merge.mro",
         "testdata/resolve_test.mro",
     ],
 )

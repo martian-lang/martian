@@ -334,10 +334,10 @@ func MergeMapCallSources(a, b MapCallSource) (MapCallSource, error) {
 		}
 		return src, err
 	}
-	if b == nil || b.CallMode() == ModeSingleCall {
+	if b.CallMode() == ModeSingleCall {
 		return a, nil
 	}
-	if a == nil || a.CallMode() == ModeSingleCall {
+	if a.CallMode() == ModeSingleCall {
 		return b, nil
 	}
 	if b.CallMode() == ModeUnknownMapCall {

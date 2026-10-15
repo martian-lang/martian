@@ -72,8 +72,11 @@ func (*MergeExp) getKind() ExpKind    { return KindMerge }
 func (*MergeExp) inheritComments() bool     { return false }
 func (*MergeExp) getSubnodes() []AstNodable { return nil }
 
+// HasRef returns true if the merge depends on runtime data, either through
+// references in the merged value or because the set of keys or indices
+// being merged over is not known until runtime.
 func (s *MergeExp) HasRef() bool {
-	if s.ForkNode != nil {
+	if s.ForkNode != nil || !s.MergeOver.KnownLength() {
 		return true
 	}
 	return s.Value.HasRef()

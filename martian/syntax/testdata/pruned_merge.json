@@ -1,0 +1,147 @@
+{
+  "inputs": {
+    "skip": {
+      "expression": true,
+      "type": "bool"
+    }
+  },
+  "outputs": {
+    "expression": {
+      "ys": {
+        "call": "OUTER.INNER",
+        "mode": "map",
+        "merge_value": {
+          "__reference__": "OUTER.INNER.KEEP.result",
+          "fork": {
+            "INNER": "unknown"
+          }
+        },
+        "merge_over": {
+          "ref": "OUTER.GEN.result",
+          "type": "map<int>"
+        },
+        "fork_node": "OUTER.INNER.KEEP"
+      },
+      "zs": {
+        "call": "OUTER.INNER",
+        "mode": "map",
+        "merge_value": null,
+        "merge_over": {
+          "ref": "OUTER.GEN.result",
+          "type": "map<int>"
+        }
+      }
+    },
+    "type": "OUTER"
+  },
+  "fqid": "OUTER",
+  "children": [
+    {
+      "inputs": {
+        "what": {
+          "expression": {
+            "a": 1,
+            "b": 2
+          },
+          "type": "map<int>"
+        }
+      },
+      "outputs": {
+        "expression": {
+          "__reference__": "OUTER.GEN"
+        },
+        "type": "GEN"
+      },
+      "fqid": "OUTER.GEN"
+    },
+    {
+      "inputs": {
+        "skip": {
+          "expression": true,
+          "type": "bool"
+        },
+        "x": {
+          "expression": {
+            "call": "INNER",
+            "mode": "map",
+            "split": {
+              "__reference__": "OUTER.GEN.result"
+            }
+          },
+          "type": "int"
+        }
+      },
+      "outputs": {
+        "expression": {
+          "y": {
+            "__reference__": "OUTER.INNER.KEEP.result",
+            "fork": {
+              "INNER": "unknown"
+            }
+          },
+          "z": null
+        },
+        "type": "INNER"
+      },
+      "fqid": "OUTER.INNER",
+      "fork_roots": [
+        "OUTER.INNER"
+      ],
+      "children": [
+        {
+          "inputs": {
+            "what": {
+              "expression": {
+                "call": "INNER",
+                "mode": "map",
+                "split": {
+                  "__reference__": "OUTER.GEN.result"
+                }
+              },
+              "type": "int"
+            }
+          },
+          "outputs": {
+            "expression": {
+              "__reference__": "OUTER.INNER.KEEP",
+              "fork": {
+                "INNER": "unknown"
+              }
+            },
+            "type": "WORK"
+          },
+          "fqid": "OUTER.INNER.KEEP",
+          "fork_roots": [
+            "OUTER.INNER"
+          ]
+        },
+        {
+          "inputs": {
+            "x": {
+              "expression": {
+                "call": "INNER",
+                "mode": "map",
+                "split": {
+                  "__reference__": "OUTER.GEN.result"
+                }
+              },
+              "type": "int"
+            }
+          },
+          "outputs": {
+            "expression": null,
+            "type": "null"
+          },
+          "fqid": "OUTER.INNER.SUB",
+          "disabled": [
+            true
+          ],
+          "fork_roots": [
+            "OUTER.INNER"
+          ],
+          "children": null
+        }
+      ]
+    }
+  ]
+}
