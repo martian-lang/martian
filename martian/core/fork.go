@@ -1437,6 +1437,7 @@ func (self *Fork) expandForkPartFromSource(must bool,
 func (self *Fork) expandForkPartFromExp(must bool, i int, part *ForkSourcePart,
 	split *syntax.SplitExp, exp syntax.Exp, result []ForkId) ([]ForkId, error) {
 	if exp == nil {
+		part = self.copyPart(i, part)
 		part.Id = arrayIndexFork(0)
 		self.updateId(self.forkId)
 		self.writeDisable()
@@ -1444,10 +1445,7 @@ func (self *Fork) expandForkPartFromExp(must bool, i int, part *ForkSourcePart,
 	}
 	switch exp := exp.(type) {
 	case *syntax.NullExp:
-		part.Id = emptyFork{}
-		self.updateId(self.forkId)
-		self.writeDisable()
-		return nil, nil
+		return self.expandForkFromObj(i, part, split, nil, exp, result)
 	case *syntax.RefExp:
 		return self.expandForkFromRef(must, i, part, split, exp, result)
 	case *syntax.MergeExp:
@@ -1469,10 +1467,7 @@ func (self *Fork) expandForkPartFromExp(must bool, i int, part *ForkSourcePart,
 		if ee == nil {
 			// The source was disabled, so it is null, and there are
 			// no forks.
-			part.Id = emptyFork{}
-			self.updateId(self.forkId)
-			self.writeDisable()
-			return nil, nil
+			return self.expandForkFromObj(i, part, split, nil, exp, result)
 		}
 		return self.expandForkPartFromExp(must, i, part, split, ee, result)
 	case *syntax.ArrayExp:
@@ -1643,19 +1638,28 @@ func (self *Fork) expandForkFromRef(must bool, i int,
 	return self.expandForkFromObj(i, part, split, obj, ref, result)
 }
 
+// copyPart replaces the part at index i of this fork's ID with a copy, and
+// returns the copy.
+//
+// Parts are shared between sibling forks, and with the node's ForkIdSet.Table,
+// which getParts relies on remaining unresolved, so must not be modified in
+// place.
+func (self *Fork) copyPart(i int, part *ForkSourcePart) *ForkSourcePart {
+	pc := *part
+	self.forkId[i] = &pc
+	return &pc
+}
+
 func (self *Fork) expandForkFromObj(
 	i int, part *ForkSourcePart,
 	split *syntax.SplitExp,
 	obj json.Marshaler,
 	ref fmt.GoStringer,
 	result []ForkId) ([]ForkId, error) {
+	part = self.copyPart(i, part)
 	if obj == nil {
-		if len(self.node.forks)-1 > self.index {
-			pc := *part
-			part = &pc
-			self.forkId[i] = part
-		}
 		part.Id = emptyFork{}
+		part.Range = arrayLengthRange(0)
 		self.updateId(self.forkId)
 		self.writeDisable()
 		return nil, nil
@@ -1676,21 +1680,11 @@ func (self *Fork) expandForkFromObj(
 			}
 		}
 		if n == 0 {
-			if len(self.node.forks)-1 > self.index {
-				pc := *part
-				part = &pc
-				self.forkId[i] = part
-			}
 			part.Id = emptyFork{}
 			self.updateId(self.forkId)
 			self.writeDisable()
 			return nil, nil
 		} else if n == 1 {
-			if len(self.node.forks)-1 > self.index {
-				pc := *part
-				part = &pc
-				self.forkId[i] = part
-			}
 			part.Id = arrayIndexFork(0)
 			if self.forkId[i] != part {
 				panic("not editing the right part")
@@ -1744,11 +1738,6 @@ func (self *Fork) expandForkFromObj(
 			}
 		}
 		if len(keys) == 0 {
-			if len(self.node.forks)-1 > self.index {
-				pc := *part
-				part = &pc
-				self.forkId[i] = part
-			}
 			part.Id = emptyFork{}
 			self.updateId(self.forkId)
 			self.writeDisable()

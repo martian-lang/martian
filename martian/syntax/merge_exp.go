@@ -391,6 +391,13 @@ func (s *MergeExp) BindingPath(bindPath string,
 	}
 	// Static merge, do it now.
 	switch src.CallMode() {
+	case ModeNullMapCall:
+		// The source is null, e.g. because the call which produced it was
+		// disabled, so there's nothing to merge.  This is the same as for an
+		// empty source.
+		return &NullExp{
+			valExp: valExp{Node: *v.getNode()},
+		}, s.wrapError(err)
 	case ModeArrayCall:
 		if src.ArrayLength() == 0 {
 			return &NullExp{

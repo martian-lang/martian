@@ -446,7 +446,7 @@ func (s *SplitExp) BindingPath(bindPath string,
 	}
 	switch val := v.(type) {
 	case *NullExp:
-		return s.Value, nil
+		return v, nil
 	case *MergeExp:
 		if i != nil && i.IndexSource() == nil {
 			if val.GetCall() != s.Call {
