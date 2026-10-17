@@ -41,6 +41,31 @@ func (s *DisabledExp) getKind() ExpKind {
 	return s.Value.getKind()
 }
 
+// CallMode returns the call mode for a call which depends on this source,
+// which is the call mode of the inner value if it is a valid source.
+func (s *DisabledExp) CallMode() CallMode {
+	if src, ok := s.Value.(MapCallSource); ok {
+		return src.CallMode()
+	}
+	return ModeSingleCall
+}
+
+// KnownLength always returns false, because the value may be null if it is
+// disabled.
+func (s *DisabledExp) KnownLength() bool {
+	return false
+}
+
+// ArrayLength always returns -1, because the length is not known.
+func (s *DisabledExp) ArrayLength() int {
+	return -1
+}
+
+// Keys always returns nil, because the keys are not known.
+func (s *DisabledExp) Keys() map[string]Exp {
+	return nil
+}
+
 func (s *DisabledExp) BindingPath(bindPath string,
 	forks map[*CallStm]CollectionIndex,
 	lookup *TypeLookup) (Exp, error) {

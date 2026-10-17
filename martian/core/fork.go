@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"net/url"
 	"reflect"
+	"slices"
 	"sort"
 	"strconv"
 	"strings"
@@ -293,7 +294,7 @@ func (set *ForkIdSet) expandStaticForks(lookup *syntax.TypeLookup) {
 func (fork ForkId) expandStaticForks(index map[*syntax.CallStm]syntax.CollectionIndex,
 	slice []ForkId,
 	lookup *syntax.TypeLookup) []ForkId {
-	for i := 0; i < len(fork); i++ {
+	for i := range fork {
 		part := fork[i]
 		if part.Id.IndexSource() != nil {
 			if ids := fork.expandStaticForkPart(i, part,
@@ -723,10 +724,8 @@ func (r arrayLengthRange) Length() int {
 
 func (r mapKeyRange) Allow(i syntax.CollectionIndex) error {
 	x := i.MapKey()
-	for _, k := range r {
-		if x == k {
-			return nil
-		}
+	if slices.Contains(r, x) {
+		return nil
 	}
 	return fmt.Errorf("no key %q in source", x)
 }
@@ -1467,6 +1466,14 @@ func (self *Fork) expandForkPartFromExp(must bool, i int, part *ForkSourcePart,
 		if err != nil {
 			return nil, err
 		}
+		if ee == nil {
+			// The source was disabled, so it is null, and there are
+			// no forks.
+			part.Id = emptyFork{}
+			self.updateId(self.forkId)
+			self.writeDisable()
+			return nil, nil
+		}
 		return self.expandForkPartFromExp(must, i, part, split, ee, result)
 	case *syntax.ArrayExp:
 		return self.expandForkFromObj(i, part, split, exp, exp, result)
@@ -1700,7 +1707,7 @@ func (self *Fork) expandForkFromObj(
 		if cap(result) < n-1 {
 			result = make([]ForkId, 0, n-1)
 		}
-		for j := 0; j < n; j++ {
+		for j := range n {
 			r := arrayIndexFork(j)
 			re[j].Split = split
 			re[j].Id = r
@@ -1762,7 +1769,7 @@ func (self *Fork) expandForkFromObj(
 		if cap(result) < len(keys)-1 {
 			result = make([]ForkId, 0, len(keys)-1)
 		}
-		for j := 0; j < len(keys); j++ {
+		for j := range keys {
 			r := mapKeyFork(keys[j])
 			re[j].Split = split
 			re[j].Id = r
