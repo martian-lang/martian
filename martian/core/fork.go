@@ -1130,7 +1130,10 @@ func (f ForkId) forkId(buf *strings.Builder, start int) (bool, error) {
 					part.Id.GoString(),
 			}
 		} else if alen == 0 {
-			return forkIndex == 0, nil
+			// An empty fork has no index of its own for this part or any
+			// after it, but the indices of the parts before it are still
+			// needed to tell it apart from other empty forks.
+			break
 		}
 		if err := r.Allow(part.Id); err != nil {
 			return forkIndex == 0, err
@@ -1180,13 +1183,14 @@ func (f ForkId) forkId(buf *strings.Builder, start int) (bool, error) {
 				} else {
 					return false, nil
 				}
-				// Otherwise, flush the fork index and recurse.
+				// Otherwise, flush the fork index and recurse, starting with
+				// this part so that its key gets written.
 			} else if err := f.writeForkIndex(buf, forkDim, forkIndex); err != nil {
 				return true, err
 			} else if _, err := buf.WriteRune('/'); err != nil {
 				return true, err
 			}
-			return f.forkId(buf, start+i+1)
+			return f.forkId(buf, start+i)
 		default:
 			panic("invalid source type")
 		}
