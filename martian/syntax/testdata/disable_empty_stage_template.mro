@@ -1,0 +1,16 @@
+pipeline TOP(
+    in  %s empty,
+    out %s y,
+)
+{
+    map call S(
+        x = split self.empty,
+    )
+
+    return (
+        y = S.y,
+    )
+}
+call TOP(
+    empty = null,
+)

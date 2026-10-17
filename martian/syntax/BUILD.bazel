@@ -83,6 +83,7 @@ go_test(
         "parsenum_test.go",
         "parser_errors_test.go",
         "parser_test.go",
+        "resolve_disable_test.go",
         "resolve_expression_test.go",
         "resolve_test.go",
         "split_expression_test.go",
@@ -104,12 +105,20 @@ alias(
     visibility = ["//visibility:public"],
 )
 
+# Templates and fragments used by resolve_disable_test.go are not valid
+# standalone MRO, so they are left out of this target.  syntax_test gets
+# them from its testdata glob.
 mro_library(
     name = "example_mros",
     testonly = True,
     srcs = [
         "testdata/disable_bindings.mro",
+        "testdata/disable_by_split.mro",
+        "testdata/disable_empty_defs.mro",
+        "testdata/disable_literals_defs.mro",
+        "testdata/disable_nested_sources.mro",
         "testdata/disable_pipeline.mro",
+        "testdata/disable_split_defs.mro",
         "testdata/map_call_edge_cases.mro",
         "testdata/map_call_test.mro",
         "testdata/pruned_merge.mro",

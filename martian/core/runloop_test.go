@@ -12,6 +12,7 @@ import (
 	"encoding/json"
 	"os"
 	"path"
+	"reflect"
 	"runtime/trace"
 	"strings"
 	"testing"
@@ -172,7 +173,6 @@ func runTestPipestance(t *testing.T, mroPath string) (*Pipestance, string) {
 // integration tests, is mainly to be able to see code coverage.  It's also
 // very fast because of the trivial stage code.
 func TestPipestanceRun(t *testing.T) {
-	t.Parallel()
 	pipestance, psdir := runTestPipestance(t, "testdata/map_call_edge_cases.mro")
 
 	nodeInfos := pipestance.SerializeState(context.Background())
@@ -292,7 +292,6 @@ func TestPipestanceRun(t *testing.T) {
 // Tests running a pipeline where a map call contains a disabled sub-pipeline,
 // so that the merge of the pruned fork has to be resolved.
 func TestPipestanceRunPrunedMerge(t *testing.T) {
-	t.Parallel()
 	_, psdir := runTestPipestance(t, "testdata/pruned_merge.mro")
 	outs, err := os.ReadFile(path.Join(psdir, "OUTER",
 		defaultFork,
@@ -318,5 +317,302 @@ func TestPipestanceRunPrunedMerge(t *testing.T) {
 	if outputs.Zs["a"] != nil || outputs.Zs["b"] != nil {
 		t.Errorf("expected all outputs for zs to be null, got %v",
 			outputs.Zs)
+	}
+}
+
+// Tests running a pipeline where a map call over a sub-pipeline contains a
+// stage which is disabled by a value that is available before the split
+// source is, and the merged output of that stage is consumed downstream.
+func TestPipestanceRunMapCallDisabledInner(t *testing.T) {
+	_, psdir := runTestPipestance(t, "testdata/map_call_disabled_inner.mro")
+	outs, err := os.ReadFile(path.Join(psdir, "TOP",
+		defaultFork,
+		OutsFile.FileName()))
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Log(string(outs))
+	var outputs struct {
+		UsedA map[string]*int `json:"used_a"`
+	}
+	if err := json.Unmarshal(outs, &outputs); err != nil {
+		t.Fatal(err)
+	}
+	if len(outputs.UsedA) != 2 {
+		t.Errorf("expected used_a to have 2 keys, got %v", outputs.UsedA)
+	}
+	for _, k := range []string{"x", "y"} {
+		if v, ok := outputs.UsedA[k]; !ok {
+			t.Errorf("missing key %s in used_a", k)
+		} else if v != nil {
+			t.Errorf("expected used_a[%s] to be null, got %d", k, *v)
+		}
+	}
+}
+
+// Tests running a pipeline where a map call splits over the output of a map
+// call inside a sub-pipeline which is disabled by a value determined at
+// runtime.  When the sub-pipeline is disabled, its output is null, so the
+// downstream map call has no forks, and its output is an empty collection.
+func TestPipestanceRunMapCallDisabledPipeline(t *testing.T) {
+	for _, c := range []struct {
+		expect any
+		mro    string
+	}{
+		{
+			mro:    "testdata/map_call_disabled_pipeline.mro",
+			expect: map[string]any{"x": 1.0, "y": 2.0},
+		},
+		{
+			mro:    "testdata/map_call_disabled_pipeline_static.mro",
+			expect: map[string]any{"x": 1.0, "y": 2.0},
+		},
+		{
+			mro:    "testdata/map_call_disabled_pipeline_on.mro",
+			expect: map[string]any{},
+		},
+		{
+			mro:    "testdata/map_call_disabled_pipeline_array_on.mro",
+			expect: []any{},
+		},
+	} {
+		t.Run(path.Base(c.mro), func(t *testing.T) {
+			_, psdir := runTestPipestance(t, c.mro)
+			outs, err := os.ReadFile(path.Join(psdir, "TOP",
+				defaultFork,
+				OutsFile.FileName()))
+			if err != nil {
+				t.Fatal(err)
+			}
+			t.Log(string(outs))
+			var outputs struct {
+				Result any `json:"result"`
+			}
+			if err := json.Unmarshal(outs, &outputs); err != nil {
+				t.Fatal(err)
+			}
+			if !reflect.DeepEqual(outputs.Result, c.expect) {
+				t.Errorf("result %v != expected %v", outputs.Result, c.expect)
+			}
+		})
+	}
+}
+
+// Tests running pipelines where a map call splits over the output of a map
+// call inside a sub-pipeline which is disabled by a value determined at
+// runtime, in cases involving nested collections.
+func TestPipestanceRunMapCallDisabledPipelineNested(t *testing.T) {
+	for _, c := range []struct {
+		expect map[string]any
+		mro    string
+	}{
+		{
+			mro: "testdata/map_call_disabled_pipeline_map_of_arrays.mro",
+			expect: map[string]any{
+				"result_on": map[string]any{},
+				"result_off": map[string]any{
+					"x": []any{1.0, 2.0},
+					"y": []any{3.0},
+				},
+			},
+		},
+		{
+			mro: "testdata/map_call_disabled_pipeline_array_of_maps.mro",
+			expect: map[string]any{
+				"result_on": []any{},
+				"result_off": []any{
+					map[string]any{"x": 1.0},
+					map[string]any{"y": 2.0},
+				},
+			},
+		},
+		{
+			mro: "testdata/map_call_disabled_pipeline_mapped_parent.mro",
+			expect: map[string]any{
+				"result_first_on": []any{
+					map[string]any{},
+					map[string]any{"x": 2.0},
+				},
+				"result_last_on": []any{
+					map[string]any{"x": 1.0},
+					map[string]any{},
+				},
+			},
+		},
+		{
+			mro: "testdata/map_call_disabled_pipeline_mapped_parent_keys.mro",
+			expect: map[string]any{
+				"result_first_on": []any{
+					map[string]any{},
+					map[string]any{"y": 2.0},
+				},
+				"result_last_on": []any{
+					map[string]any{"x": 1.0},
+					map[string]any{},
+				},
+			},
+		},
+		{
+			mro: "testdata/map_call_mapped_pipeline_keys.mro",
+			expect: map[string]any{
+				"result": []any{
+					map[string]any{"x": 1.0},
+					map[string]any{"y": 2.0},
+				},
+			},
+		},
+	} {
+		t.Run(path.Base(c.mro), func(t *testing.T) {
+			_, psdir := runTestPipestance(t, c.mro)
+			outs, err := os.ReadFile(path.Join(psdir, "TOP",
+				defaultFork,
+				OutsFile.FileName()))
+			if err != nil {
+				t.Fatal(err)
+			}
+			t.Log(string(outs))
+			var outputs map[string]any
+			if err := json.Unmarshal(outs, &outputs); err != nil {
+				t.Fatal(err)
+			}
+			if !reflect.DeepEqual(outputs, c.expect) {
+				t.Errorf("result %v != expected %v", outputs, c.expect)
+			}
+		})
+	}
+}
+
+// Tests running pipelines which exercise fork expansion for map calls over
+// literal sources, partially matched nested sources, and sources which are
+// disabled by a value that is part of an enclosing split.
+func TestPipestanceRunMapCallForkExpansion(t *testing.T) {
+	for _, c := range []struct {
+		expect map[string]any
+		mro    string
+	}{
+		{
+			mro: "testdata/map_call_nested_partial_parts.mro",
+			expect: map[string]any{
+				"result": []any{
+					map[string]any{
+						"a": []any{1.0, 2.0},
+						"b": []any{3.0},
+					},
+					map[string]any{
+						"c": []any{4.0},
+					},
+				},
+			},
+		},
+		{
+			mro: "testdata/map_call_literal_sources.mro",
+			expect: map[string]any{
+				"arr": []any{
+					[]any{1.0, 2.0},
+					[]any{2.0, 2.0},
+					[]any{3.0, 2.0},
+				},
+				"one": []any{
+					map[string]any{"k": 1.0},
+					map[string]any{"k": 2.0},
+					map[string]any{"k": 3.0},
+				},
+				"two": []any{
+					map[string]any{"a": 1.0, "b": 5.0},
+					map[string]any{"a": 2.0, "b": 5.0},
+					map[string]any{"a": 3.0, "b": 5.0},
+				},
+			},
+		},
+		{
+			mro: "testdata/map_call_static_literals.mro",
+			expect: map[string]any{
+				"multi":  map[string]any{"a": 1.0, "b": 2.0},
+				"single": map[string]any{"only": 7.0},
+				"arr":    []any{4.0, 5.0},
+				"nested": []any{
+					map[string]any{"p": 1.0, "q": 2.0},
+					map[string]any{"p": 2.0, "q": 2.0},
+				},
+			},
+		},
+		{
+			mro: "testdata/map_call_disabled_by_split.mro",
+			expect: map[string]any{
+				"result": []any{
+					map[string]any{},
+					map[string]any{"x": 1.0, "y": 2.0},
+				},
+			},
+		},
+	} {
+		t.Run(path.Base(c.mro), func(t *testing.T) {
+			_, psdir := runTestPipestance(t, c.mro)
+			outs, err := os.ReadFile(path.Join(psdir, "TOP",
+				defaultFork,
+				OutsFile.FileName()))
+			if err != nil {
+				t.Fatal(err)
+			}
+			t.Log(string(outs))
+			var outputs map[string]any
+			if err := json.Unmarshal(outs, &outputs); err != nil {
+				t.Fatal(err)
+			}
+			if !reflect.DeepEqual(outputs, c.expect) {
+				t.Errorf("result %v != expected %v", outputs, c.expect)
+			}
+		})
+	}
+}
+
+// Tests running a pipeline where a map call over the output of a
+// runtime-disabled sub-pipeline is inside a statically mapped pipeline, and
+// the sub-pipeline is disabled in more than one nonzero instance.  The empty
+// forks for those instances must have distinct IDs, rather than all sharing
+// the node's directory.
+func TestPipestanceRunMapCallDisabledPipelineMultiEmpty(t *testing.T) {
+	pipestance, psdir := runTestPipestance(t,
+		"testdata/map_call_disabled_pipeline_mapped_parent_multi.mro")
+	for _, node := range pipestance.allNodes() {
+		paths := make(map[string]string, len(node.forks))
+		for _, fork := range node.forks {
+			if fork.path == node.path {
+				t.Errorf("fork %s of %s has the node's own path",
+					fork.forkId.GoString(), node.GetFQName())
+			}
+			if other, ok := paths[fork.path]; ok {
+				t.Errorf("forks %s and %s of %s share path %s",
+					other, fork.forkId.GoString(),
+					node.GetFQName(), fork.path)
+			}
+			paths[fork.path] = fork.forkId.GoString()
+		}
+	}
+	outs, err := os.ReadFile(path.Join(psdir, "TOP",
+		defaultFork,
+		OutsFile.FileName()))
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Log(string(outs))
+	var outputs map[string]any
+	if err := json.Unmarshal(outs, &outputs); err != nil {
+		t.Fatal(err)
+	}
+	expect := map[string]any{
+		"result_first_on": []any{
+			map[string]any{"x": 1.0},
+			map[string]any{},
+			map[string]any{},
+		},
+		"result_middle_on": []any{
+			map[string]any{},
+			map[string]any{"x": 2.0},
+			map[string]any{},
+		},
+	}
+	if !reflect.DeepEqual(outputs, expect) {
+		t.Errorf("result %v != expected %v", outputs, expect)
 	}
 }

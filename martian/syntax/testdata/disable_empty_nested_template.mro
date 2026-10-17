@@ -1,0 +1,49 @@
+stage F(
+    in  bool i,
+    out bool b,
+    src comp "nope",
+)
+
+pipeline MID(
+    in  %[1]s empty,
+    in  bool  disable,
+    out %[1]s y,
+)
+{
+    map call SUB(
+        x = split self.empty,
+    ) using (
+        disabled = self.disable,
+    )
+
+    return (
+        y = SUB.y,
+    )
+}
+
+pipeline TOP(
+    in  %[1]s empty,
+    in  bool  disable,
+    out %[1]s y,
+)
+{
+    call F(
+        i = false,
+    )
+
+    call MID(
+        empty   = self.empty,
+        disable = self.disable,
+    ) using (
+        disabled = F.b,
+    )
+
+    return (
+        y = MID.y,
+    )
+}
+
+call TOP(
+    empty   = %[2]s,
+    disable = %[3]s,
+)

@@ -1,0 +1,90 @@
+# Map call over the map<int[]> output of a map call inside a sub-pipeline
+# which is disabled by a value only known at runtime.  The split input is
+# itself a collection, so the element type is int[] while the split source
+# is a map.
+
+stage PASS_MAP(
+    in  map<int[]> what,
+    out map<int[]> result,
+    src exec       "stage.py",
+)
+
+stage WORK_BOOL(
+    in  bool what,
+    out bool result,
+    src exec "stage.py",
+)
+
+stage WORK_ARR(
+    in  int[] what,
+    out int[] result,
+    src exec  "stage.py",
+)
+
+pipeline INNER(
+    in  map<int[]> inputs,
+    out map<int[]> result,
+)
+{
+    call PASS_MAP as DELAY(
+        what = self.inputs,
+    )
+
+    map call WORK_ARR(
+        what = split DELAY.result,
+    )
+
+    return (
+        result = WORK_ARR.result,
+    )
+}
+
+pipeline TOP(
+    in  map<int[]> inputs,
+    out map<int[]> result_on,
+    out map<int[]> result_off,
+)
+{
+    call WORK_BOOL as FLAG_ON(
+        what = true,
+    )
+
+    call WORK_BOOL as FLAG_OFF(
+        what = false,
+    )
+
+    call INNER as INNER_ON(
+        inputs = self.inputs,
+    ) using (
+        disabled = FLAG_ON.result,
+    )
+
+    call INNER as INNER_OFF(
+        inputs = self.inputs,
+    ) using (
+        disabled = FLAG_OFF.result,
+    )
+
+    map call WORK_ARR as CONSUMER_ON(
+        what = split INNER_ON.result,
+    )
+
+    map call WORK_ARR as CONSUMER_OFF(
+        what = split INNER_OFF.result,
+    )
+
+    return (
+        result_on  = CONSUMER_ON.result,
+        result_off = CONSUMER_OFF.result,
+    )
+}
+
+call TOP(
+    inputs = {
+        "x": [
+            1,
+            2,
+        ],
+        "y": [3],
+    },
+)

@@ -1,0 +1,31 @@
+stage F(
+    in  bool i,
+    out bool b,
+    src comp "nope",
+)
+
+pipeline TOP(
+    in  %[1]s empty,
+    in  bool  disable,
+    out %[1]s y,
+)
+{
+    call F(
+        i = self.disable,
+    )
+
+    map call SUB(
+        x = split self.empty,
+    ) using (
+        disabled = %[2]s,
+    )
+
+    return (
+        y = SUB.y,
+    )
+}
+
+call TOP(
+    empty   = %[3]s,
+    disable = %[4]s,
+)

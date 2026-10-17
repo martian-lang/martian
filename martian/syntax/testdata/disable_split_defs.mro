@@ -1,0 +1,28 @@
+stage S(
+    in  int x,
+    out int y,
+    src comp "nope",
+)
+
+stage B(
+    in  bool b,
+    out bool b,
+    src comp "nope",
+)
+
+pipeline SUB(
+    in  int  x,
+    in  bool flag,
+    out int  y,
+)
+{
+    call S(
+        x = self.x,
+    ) using (
+        disabled = self.flag,
+    )
+
+    return (
+        y = S.y,
+    )
+}

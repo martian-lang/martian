@@ -1,0 +1,19 @@
+pipeline TOP(
+    in  bool on,
+    out int  y,
+)
+{
+    call S(
+        x = 1,
+        b = false,
+    ) using (
+        disabled = self.on,
+    )
+
+    return (
+        y = S.y,
+    )
+}
+call TOP(
+    on = true,
+)

@@ -1,0 +1,47 @@
+pipeline WRAP(
+    in  bool d,
+    out int  y,
+)
+{
+    call SUB as A(
+        x = 1,
+        b = false,
+    ) using (
+        disabled = self.d,
+    )
+
+    call S as B(
+        x = 2,
+        b = false,
+    ) using (
+        disabled = A.flag,
+    )
+
+    return (
+        y = B.y,
+    )
+}
+
+pipeline TOP(
+    in  bool b,
+    out int  y,
+)
+{
+    call S as Z(
+        x = 0,
+        b = self.b,
+    )
+
+    call WRAP(
+        d = Z.flag,
+    ) using (
+        disabled = Z.flag,
+    )
+
+    return (
+        y = WRAP.y,
+    )
+}
+call TOP(
+    b = false,
+)

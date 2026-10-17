@@ -1,0 +1,81 @@
+# Map calls over statically known literal sources, including single-key maps,
+# multi-key maps, and nested literals.
+
+stage PASS_MAP(
+    in  map<int> what,
+    out map<int> result,
+    src exec     "stage.py",
+)
+
+stage PASS_ARR(
+    in  int[] what,
+    out int[] result,
+    src exec  "stage.py",
+)
+
+stage WORK_INT(
+    in  int what,
+    out int result,
+    src exec "stage.py",
+)
+
+pipeline INNER(
+    in  int      x,
+    out map<int> result,
+)
+{
+    map call WORK_INT(
+        what = split {
+            "p": self.x,
+            "q": 2,
+        },
+    )
+
+    return (
+        result = WORK_INT.result,
+    )
+}
+
+pipeline TOP(
+    out map<int>      multi,
+    out map<int>      single,
+    out int[]         arr,
+    out map<int>[]    nested,
+)
+{
+    map call WORK_INT as MULTI(
+        what = split {
+            "a": 1,
+            "b": 2,
+        },
+    )
+
+    map call WORK_INT as SINGLE(
+        what = split {
+            "only": 7,
+        },
+    )
+
+    map call WORK_INT as ARR(
+        what = split [
+            4,
+            5,
+        ],
+    )
+
+    map call INNER(
+        x = split [
+            1,
+            2,
+        ],
+    )
+
+    return (
+        multi  = MULTI.result,
+        single = SINGLE.result,
+        arr    = ARR.result,
+        nested = INNER.result,
+    )
+}
+
+call TOP()

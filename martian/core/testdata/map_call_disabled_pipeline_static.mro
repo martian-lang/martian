@@ -1,0 +1,70 @@
+# Same as map_call_disabled_pipeline.mro, except that the inner map call
+# splits over a value which is known at compile time, so its merge is
+# expanded statically.
+
+stage PASS_MAP(
+    in  map<int> what,
+    out map<int> result,
+    src exec     "stage.py",
+)
+
+stage WORK_BOOL(
+    in  bool what,
+    out bool result,
+    src exec "stage.py",
+)
+
+stage WORK_INT(
+    in  int what,
+    out int result,
+    src exec "stage.py",
+)
+
+pipeline INNER(
+    in  map<int> inputs,
+    out map<int> result,
+)
+{
+    call PASS_MAP as DELAY(
+        what = self.inputs,
+    )
+
+    map call WORK_INT(
+        what = split self.inputs,
+    )
+
+    return (
+        result = WORK_INT.result,
+    )
+}
+
+pipeline TOP(
+    in  map<int> inputs,
+    out map<int> result,
+)
+{
+    call WORK_BOOL as FLAG(
+        what = false,
+    )
+
+    call INNER(
+        inputs = self.inputs,
+    ) using (
+        disabled = FLAG.result,
+    )
+
+    map call WORK_INT as CONSUMER(
+        what = split INNER.result,
+    )
+
+    return (
+        result = CONSUMER.result,
+    )
+}
+
+call TOP(
+    inputs = {
+        "x": 1,
+        "y": 2,
+    },
+)
