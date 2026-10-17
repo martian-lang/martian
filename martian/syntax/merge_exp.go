@@ -393,16 +393,21 @@ func (s *MergeExp) BindingPath(bindPath string,
 	switch src.CallMode() {
 	case ModeNullMapCall:
 		// The source is null, e.g. because the call which produced it was
-		// disabled, so there's nothing to merge.  This is the same as for an
-		// empty source.
+		// disabled, so there's nothing to merge.  Mapping over a null
+		// source gives an empty collection, the same as for an empty
+		// source.  Null is reserved for calls which are themselves disabled.
+		switch s.collectionMode() {
+		case ModeArrayCall:
+			return s.emptyArray(v), s.wrapError(err)
+		case ModeMapCall:
+			return s.emptyMap(v), s.wrapError(err)
+		}
 		return &NullExp{
 			valExp: valExp{Node: *v.getNode()},
 		}, s.wrapError(err)
 	case ModeArrayCall:
 		if src.ArrayLength() == 0 {
-			return &NullExp{
-				valExp: valExp{Node: *v.getNode()},
-			}, s.wrapError(err)
+			return s.emptyArray(v), s.wrapError(err)
 		}
 		var errs ErrorList
 		arr := ArrayExp{
@@ -431,9 +436,7 @@ func (s *MergeExp) BindingPath(bindPath string,
 	case ModeMapCall:
 		keys := src.Keys()
 		if len(keys) == 0 {
-			return &NullExp{
-				valExp: valExp{Node: *v.getNode()},
-			}, s.wrapError(err)
+			return s.emptyMap(v), s.wrapError(err)
 		}
 
 		var errs ErrorList
@@ -464,4 +467,71 @@ func (s *MergeExp) BindingPath(bindPath string,
 	default:
 		panic("invalid merge kind " + src.CallMode().String())
 	}
+}
+
+func (s *MergeExp) emptyArray(v Exp) *ArrayExp {
+	return &ArrayExp{
+		valExp: valExp{Node: *v.getNode()},
+		Value:  []Exp{},
+	}
+}
+
+func (s *MergeExp) emptyMap(v Exp) *MapExp {
+	return &MapExp{
+		valExp: valExp{Node: *v.getNode()},
+		Kind:   KindMap,
+		Value:  map[string]Exp{},
+	}
+}
+
+// collectionMode returns ModeArrayCall or ModeMapCall, depending on whether
+// the merge results in an array or a map, if that can be determined from its
+// sources even when the source being merged over is null.
+func (s *MergeExp) collectionMode() CallMode {
+	if m := definiteCallMode(s.MergeOver, 0); m != ModeNullMapCall {
+		return m
+	}
+	if s.Call != nil {
+		return definiteCallMode(s.Call.Call().Mapping, 0)
+	}
+	return ModeNullMapCall
+}
+
+// definiteCallMode searches the source for a definite array or map call mode.
+// It returns ModeNullMapCall if none is found.
+func definiteCallMode(src MapCallSource, depth int) CallMode {
+	if src == nil || depth > 16 {
+		return ModeNullMapCall
+	}
+	switch m := src.CallMode(); m {
+	case ModeArrayCall, ModeMapCall:
+		return m
+	}
+	switch src := src.(type) {
+	case *MapCallSet:
+		if src == nil {
+			return ModeNullMapCall
+		}
+		for _, s := range src.Sources {
+			if m := definiteCallMode(s, depth+1); m != ModeNullMapCall {
+				return m
+			}
+		}
+	case *MergeExp:
+		if src == nil {
+			return ModeNullMapCall
+		}
+		return definiteCallMode(src.MergeOver, depth+1)
+	case *SplitExp:
+		if src == nil {
+			return ModeNullMapCall
+		}
+		return definiteCallMode(src.Source, depth+1)
+	case *CallStm:
+		if src == nil {
+			return ModeNullMapCall
+		}
+		return definiteCallMode(src.Mapping, depth+1)
+	}
+	return ModeNullMapCall
 }
