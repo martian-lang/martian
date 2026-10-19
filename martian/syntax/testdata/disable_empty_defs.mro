@@ -1,0 +1,19 @@
+stage S(
+    in  int x,
+    out int y,
+    src comp "nope",
+)
+
+pipeline SUB(
+    in  int x,
+    out int y,
+)
+{
+    call S(
+        x = self.x,
+    )
+
+    return (
+        y = S.y,
+    )
+}

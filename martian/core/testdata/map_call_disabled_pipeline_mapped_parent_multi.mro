@@ -1,0 +1,114 @@
+# Map call over the output of a map call inside a sub-pipeline which is
+# disabled by a value only known at runtime, where the enclosing pipeline is
+# itself statically mapped, and the sub-pipeline is disabled in more than one
+# nonzero instance of the enclosing pipeline.  The downstream map call has
+# no forks in those instances, which must still get distinct fork IDs.
+#
+# All instances use the same keys, because a map call inside a statically
+# mapped pipeline cannot yet split over runtime maps whose keys differ
+# between instances.
+
+stage PASS_MAP(
+    in  map<int> what,
+    out map<int> result,
+    src exec     "stage.py",
+)
+
+stage WORK_BOOL(
+    in  bool what,
+    out bool result,
+    src exec "stage.py",
+)
+
+stage WORK_INT(
+    in  int what,
+    out int result,
+    src exec "stage.py",
+)
+
+pipeline INNER(
+    in  map<int> inputs,
+    out map<int> result,
+)
+{
+    call PASS_MAP as DELAY(
+        what = self.inputs,
+    )
+
+    map call WORK_INT(
+        what = split DELAY.result,
+    )
+
+    return (
+        result = WORK_INT.result,
+    )
+}
+
+pipeline MID(
+    in  map<int> inputs,
+    in  bool     disable,
+    out map<int> result,
+)
+{
+    call WORK_BOOL as FLAG(
+        what = self.disable,
+    )
+
+    call INNER(
+        inputs = self.inputs,
+    ) using (
+        disabled = FLAG.result,
+    )
+
+    map call WORK_INT as CONSUMER(
+        what = split INNER.result,
+    )
+
+    return (
+        result = CONSUMER.result,
+    )
+}
+
+pipeline TOP(
+    in  map<int>[] inputs,
+    out map<int>[] result_first_on,
+    out map<int>[] result_middle_on,
+)
+{
+    map call MID as FIRST_ON(
+        inputs  = split self.inputs,
+        disable = split [
+            false,
+            true,
+            true,
+        ],
+    )
+
+    map call MID as MIDDLE_ON(
+        inputs  = split self.inputs,
+        disable = split [
+            true,
+            false,
+            true,
+        ],
+    )
+
+    return (
+        result_first_on  = FIRST_ON.result,
+        result_middle_on = MIDDLE_ON.result,
+    )
+}
+
+call TOP(
+    inputs = [
+        {
+            "x": 1,
+        },
+        {
+            "x": 2,
+        },
+        {
+            "x": 3,
+        },
+    ],
+)

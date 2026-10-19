@@ -5,6 +5,7 @@
 package syntax
 
 import (
+	"slices"
 	"sort"
 	"strings"
 )
@@ -144,8 +145,8 @@ func makeFqid(prefix string, call *CallStm, parent *CallGraphPipeline) string {
 		if _, err := buf.WriteString(prefix); err != nil {
 			panic(err)
 		}
-		for i := len(fqidParts) - 1; i >= 0; i-- {
-			if _, err := buf.WriteString(fqidParts[i]); err != nil {
+		for i, fqidPart := range slices.Backward(fqidParts) {
+			if _, err := buf.WriteString(fqidPart); err != nil {
 				panic(err)
 			}
 			if i != 0 {
@@ -192,7 +193,7 @@ func (node *CallGraphStage) resolveInputs(siblings map[string]*ResolvedBinding,
 		node.Disable = alwaysDisable(disable)
 	} else {
 		node.Disable, err = node.resolveDisable(disable, parentInputs,
-			siblings, lookup)
+			siblings, lookup, false)
 		if err != nil {
 			errs = append(errs, &wrapError{
 				innerError: err,
@@ -209,8 +210,8 @@ func (node *CallGraphStage) resolveInputs(siblings map[string]*ResolvedBinding,
 	}
 	if node.split != nil {
 		found := false
-		for i := len(mapped) - 1; i >= 0; i-- {
-			if mapped[i].call == node.split.Call {
+		for _, m := range slices.Backward(mapped) {
+			if m.call == node.split.Call {
 				found = true
 				break
 			}
@@ -353,9 +354,13 @@ func (node *CallGraphStage) resolveForks(mapped ForkRootList, localRoot *CallGra
 
 var trueExp = BoolExp{Value: true}
 
+// resolveDisable computes the set of expressions which disable this call.
+//
+// Unless ignoreEmpty is set, a call which is mapped over an empty source is
+// always disabled.
 func (node *CallGraphStage) resolveDisable(disable []Exp,
 	parentInputs, siblings map[string]*ResolvedBinding,
-	lookup *TypeLookup) ([]Exp, error) {
+	lookup *TypeLookup, ignoreEmpty bool) ([]Exp, error) {
 	mod := node.call.Modifiers
 	if mod == nil {
 		return disable, nil
@@ -368,20 +373,8 @@ func (node *CallGraphStage) resolveDisable(disable []Exp,
 			disable = disable[1:]
 		}
 	}
-	if node.call.KnownLength() {
-		// Map over an empty set is equivalent to disabled.
-		switch node.call.CallMode() {
-		case ModeArrayCall:
-			if node.call.ArrayLength() == 0 {
-				return []Exp{&trueExp}, nil
-			}
-		case ModeMapCall:
-			if len(node.call.Keys()) == 0 {
-				return []Exp{&trueExp}, nil
-			}
-		case ModeNullMapCall:
-			return []Exp{&trueExp}, nil
-		}
+	if !ignoreEmpty && node.knownEmptyMapping() {
+		return []Exp{&trueExp}, nil
 	}
 	bind := mod.Bindings
 	if bind == nil {
@@ -591,13 +584,18 @@ func (node *CallGraphStage) resolve(siblings map[string]*ResolvedBinding,
 
 	if len(node.stage.OutParams.List) > 0 {
 		if node.isAlwaysDisabled() {
-			// constantly-disabled stages always output null.  No need to
-			// propagate references.
-			node.Outputs = &ResolvedBinding{
-				Exp: &NullExp{
-					valExp: valExp{Node: node.stage.Node},
-				},
-				Type: lookup.Get(TypeId{Tname: node.stage.Id}),
+			// constantly-disabled stages always output null, and stages
+			// mapped over an empty source output an empty collection.  No
+			// need to propagate references.
+			node.Outputs = node.emptyMappingOutputs(node.stage.Id,
+				siblings, lookup)
+			if node.Outputs == nil {
+				node.Outputs = &ResolvedBinding{
+					Exp: &NullExp{
+						valExp: valExp{Node: node.stage.Node},
+					},
+					Type: lookup.Get(TypeId{Tname: node.stage.Id}),
+				}
 			}
 			node.Disable = alwaysDisable(node.Disable)
 		} else {
@@ -639,8 +637,7 @@ func (node *CallGraphStage) resolve(siblings map[string]*ResolvedBinding,
 					}
 				}
 			}
-			for i := len(node.Forks) - 1; i >= 0; i-- {
-				fs := node.Forks[i]
+			for i, fs := range slices.Backward(node.Forks) {
 				if fs != node {
 					if ref.Forks == nil {
 						ref.Forks = make(map[*CallStm]CollectionIndex, len(node.Forks)-i)
@@ -864,6 +861,93 @@ func (node *CallGraphStage) isAlwaysDisabled() bool {
 		return true
 	}
 	return node.isEmptyMapping()
+}
+
+// knownEmptyMapping returns true if the call is mapped over a source which
+// is known statically to be empty or null.
+func (node *CallGraphStage) knownEmptyMapping() bool {
+	if !node.call.KnownLength() {
+		return false
+	}
+	switch node.call.CallMode() {
+	case ModeArrayCall:
+		return node.call.ArrayLength() == 0
+	case ModeMapCall:
+		return len(node.call.Keys()) == 0
+	case ModeNullMapCall:
+		return true
+	}
+	return false
+}
+
+// emptyMappingOutputs returns the outputs for a call which never runs
+// because it is mapped over a source which is statically empty or null.
+//
+// Mapping over an empty source gives an empty array or map, rather than null,
+// which is reserved for calls which are themselves disabled.  The result is
+// therefore still subject to any disabled bindings on the call.
+//
+// It returns nil if the call is not mapped over an empty source, or if its
+// outputs should be null for other reasons.
+func (node *CallGraphStage) emptyMappingOutputs(tname string,
+	siblings map[string]*ResolvedBinding,
+	lookup *TypeLookup) *ResolvedBinding {
+	if node.call.CallMode() == ModeSingleCall ||
+		!node.isEmptyMapping() && !node.knownEmptyMapping() {
+		return nil
+	}
+	mode := definiteCallMode(node.call.Mapping, 0)
+	if mode == ModeNullMapCall && node.split != nil {
+		mode = definiteCallMode(node.split.Source, 0)
+	}
+	tid := TypeId{Tname: tname}
+	var exp Exp
+	switch mode {
+	case ModeArrayCall:
+		tid.ArrayDim = 1
+		exp = &ArrayExp{
+			valExp: valExp{Node: node.call.Node},
+			Value:  []Exp{},
+		}
+	case ModeMapCall:
+		tid.MapDim = 1
+		exp = &MapExp{
+			valExp: valExp{Node: node.call.Node},
+			Kind:   KindMap,
+			Value:  map[string]Exp{},
+		}
+	default:
+		return nil
+	}
+	var parentDisable []Exp
+	var parentInputs map[string]*ResolvedBinding
+	if node.Parent != nil {
+		parentDisable = node.Parent.Disable
+		parentInputs = node.Parent.Inputs
+	}
+	disable, err := node.resolveDisable(parentDisable, parentInputs,
+		siblings, lookup, true)
+	if err != nil {
+		return nil
+	}
+	// The parent's disable bindings are already applied to the parent's
+	// outputs.  resolveDisable may have replaced them, for example with a
+	// literal true, in which case they must not be removed.
+	if len(disable) >= len(parentDisable) &&
+		slices.Equal(disable[:len(parentDisable)], parentDisable) {
+		disable = disable[len(parentDisable):]
+	}
+	for _, d := range disable {
+		e, err := wrapDisabled(d, exp, lookup)
+		if err != nil {
+			return nil
+		}
+		exp = e
+	}
+	return &ResolvedBinding{
+		Exp:  exp,
+		Type: lookup.Get(tid),
+	}
 }
 
 func (node *CallGraphStage) isEmptyMapping() bool {

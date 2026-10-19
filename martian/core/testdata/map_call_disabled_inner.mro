@@ -1,0 +1,77 @@
+# Map call over a pipeline containing a stage which is disabled by a value
+# that is available before the split source is.
+#
+# Distilled from the SAMPLE_ANALYZER map call in the cellranger SC_MULTI_CS
+# pipeline.  Both the sub-pipeline (as opposed to map calling the disabled
+# stage directly) and the split source being a stage output (so the fork
+# count is unknown until DELAY completes) are required.  The merged output
+# of the disabled stage should be a map with a null for each key.
+
+stage PASS_MAP(
+    in  map<int> what,
+    out map<int> result,
+    src exec     "stage.py",
+)
+
+stage WORK_BOOL(
+    in  bool what,
+    out bool result,
+    src exec "stage.py",
+)
+
+stage WORK_INT(
+    in  int what,
+    out int result,
+    src exec "stage.py",
+)
+
+pipeline ANALYZER(
+    in  int      x,
+    in  bool     disable_a,
+    out WORK_INT a,
+)
+{
+    call WORK_INT as A(
+        what = self.x,
+    ) using (
+        disabled = self.disable_a,
+    )
+
+    return (
+        a = A,
+    )
+}
+
+pipeline TOP(
+    in  map<int> inputs,
+    out map<int> used_a,
+)
+{
+    call WORK_BOOL as FLAG(
+        what = true,
+    )
+
+    call PASS_MAP as DELAY(
+        what = self.inputs,
+    )
+
+    map call ANALYZER(
+        x         = split DELAY.result,
+        disable_a = FLAG.result,
+    )
+
+    call PASS_MAP as USE_A(
+        what = ANALYZER.a.result,
+    )
+
+    return (
+        used_a = USE_A.result,
+    )
+}
+
+call TOP(
+    inputs = {
+        "x": 1,
+        "y": 2,
+    },
+)

@@ -1,0 +1,89 @@
+# Map calls over literal arrays and maps, including single-key and empty
+# literals, in contexts where the number of forks of the enclosing pipeline
+# is not known statically.
+
+stage PASS_MAP(
+    in  map<int> what,
+    out map<int> result,
+    src exec     "stage.py",
+)
+
+stage PASS_ARR(
+    in  int[] what,
+    out int[] result,
+    src exec  "stage.py",
+)
+
+stage WORK_INT(
+    in  int what,
+    out int result,
+    src exec "stage.py",
+)
+
+pipeline INNER(
+    in  int      x,
+    out int[]    arr,
+    out map<int> one,
+    out map<int> two,
+)
+{
+    call WORK_INT as W(
+        what = self.x,
+    )
+
+    map call WORK_INT as A(
+        what = split [
+            W.result,
+            2,
+        ],
+    )
+
+    map call WORK_INT as ONE(
+        what = split {
+            "k": W.result,
+        },
+    )
+
+    map call WORK_INT as TWO(
+        what = split {
+            "a": W.result,
+            "b": 5,
+        },
+    )
+
+    return (
+        arr = A.result,
+        one = ONE.result,
+        two = TWO.result,
+    )
+}
+
+pipeline TOP(
+    in  int[]      xs,
+    out int[][]    arr,
+    out map<int>[] one,
+    out map<int>[] two,
+)
+{
+    call PASS_ARR(
+        what = self.xs,
+    )
+
+    map call INNER(
+        x = split PASS_ARR.result,
+    )
+
+    return (
+        arr = INNER.arr,
+        one = INNER.one,
+        two = INNER.two,
+    )
+}
+
+call TOP(
+    xs = [
+        1,
+        2,
+        3,
+    ],
+)

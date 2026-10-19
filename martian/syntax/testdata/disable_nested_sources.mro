@@ -1,0 +1,55 @@
+stage S(
+    in  int x,
+    in  int y,
+    out int z,
+    src comp "nope",
+)
+
+pipeline INNER(
+    in  int[] x,
+    in  int[] y,
+    out int[] z,
+)
+{
+    map call S(
+        x = split self.x,
+        y = split self.y,
+    )
+
+    return (
+        z = S.z,
+    )
+}
+
+pipeline TOP(
+    in  int[][] xs,
+    in  int[][] ys,
+    out int[][] z,
+)
+{
+    map call INNER(
+        x = split self.xs,
+        y = split self.ys,
+    )
+
+    return (
+        z = INNER.z,
+    )
+}
+
+call TOP(
+    xs = [
+        [
+            1,
+            2,
+        ],
+        [3],
+    ],
+    ys = [
+        [
+            3,
+            4,
+        ],
+        [5],
+    ],
+)

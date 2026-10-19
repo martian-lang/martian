@@ -1,0 +1,24 @@
+pipeline TOP(
+    in  bool on,
+    out int  y,
+)
+{
+    call SUB(
+        x = 1,
+        b = false,
+    ) using (
+        disabled = self.on,
+    )
+
+    call S(
+        x = SUB.y,
+        b = SUB.flag,
+    )
+
+    return (
+        y = S.y,
+    )
+}
+call TOP(
+    on = true,
+)

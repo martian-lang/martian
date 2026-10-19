@@ -1,0 +1,91 @@
+# Map call over the output of a map call inside a sub-pipeline which is
+# itself mapped, where the inner map source is only known at runtime, so that
+# the downstream map call's source is only partly matched by each fork of the
+# enclosing pipeline.
+
+stage PASS_MAP(
+    in  map<int> what,
+    out map<int> result,
+    src exec     "stage.py",
+)
+
+stage PASS_ARR(
+    in  int[] what,
+    out int[] result,
+    src exec  "stage.py",
+)
+
+stage WORK_INT(
+    in  int what,
+    out int result,
+    src exec "stage.py",
+)
+
+pipeline N(
+    in  int[] inputs,
+    out int[] result,
+)
+{
+    call PASS_ARR as DELAY(
+        what = self.inputs,
+    )
+
+    map call WORK_INT(
+        what = split DELAY.result,
+    )
+
+    return (
+        result = WORK_INT.result,
+    )
+}
+
+pipeline P(
+    in  map<int[]> groups,
+    out map<int[]> result,
+)
+{
+    map call N as NN(
+        inputs = split self.groups,
+    )
+
+    map call PASS_ARR as CONSUMER(
+        what = split NN.result,
+    )
+
+    return (
+        result = CONSUMER.result,
+    )
+}
+
+pipeline TOP(
+    in  map<int[]>[] groups,
+    out map<int[]>[] result,
+)
+{
+    map call P(
+        groups = split self.groups,
+    )
+
+    return (
+        result = P.result,
+    )
+}
+
+call TOP(
+    groups = [
+        {
+            "a": [
+                1,
+                2,
+            ],
+            "b": [
+                3,
+            ],
+        },
+        {
+            "c": [
+                4,
+            ],
+        },
+    ],
+)

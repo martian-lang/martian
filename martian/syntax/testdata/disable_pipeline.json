@@ -35,8 +35,8 @@
             2,
             3
           ],
-          null,
-          null
+          [],
+          []
         ],
         [
           [
@@ -88,8 +88,18 @@
                 "value": 3
               }
             ],
-            null,
-            null
+            {
+              "__disabled__": {
+                "__reference__": "TOP_CALL.RUNS_ENABLED.RUN_CREATOR5.CREATE_DISABLE.disable"
+              },
+              "value": []
+            },
+            {
+              "__disabled__": {
+                "__reference__": "TOP_CALL.RUNS_ENABLED.RUN_CREATOR5.CREATE_DISABLE.disable"
+              },
+              "value": []
+            }
           ]
         },
         null
@@ -145,8 +155,8 @@
               2,
               3
             ],
-            null,
-            null
+            [],
+            []
           ]
         },
         "type": "RUNS"
@@ -357,12 +367,12 @@
             }
           },
           "outputs": {
-            "expression": null,
-            "type": "null"
+            "expression": [],
+            "type": "RUN_CREATOR[]"
           },
           "fqid": "TOP_CALL.RUNS_ENABLED.RUN_CREATOR3",
           "comments": [
-            "Always null"
+            "Always empty, unless disabled"
           ],
           "disabled": [
             true
@@ -385,12 +395,12 @@
             }
           },
           "outputs": {
-            "expression": null,
-            "type": "null"
+            "expression": [],
+            "type": "RUN_CREATOR[]"
           },
           "fqid": "TOP_CALL.RUNS_ENABLED.RUN_CREATOR4",
           "comments": [
-            "Always null"
+            "Always empty, unless disabled"
           ],
           "disabled": [
             true
@@ -599,11 +609,11 @@
           },
           "outputs": {
             "expression": null,
-            "type": "null"
+            "type": "RUN_CREATOR[]"
           },
           "fqid": "TOP_CALL.RUNS_DISABLED.RUN_CREATOR3",
           "comments": [
-            "Always null"
+            "Always empty, unless disabled"
           ],
           "disabled": [
             true
@@ -627,11 +637,11 @@
           },
           "outputs": {
             "expression": null,
-            "type": "null"
+            "type": "RUN_CREATOR[]"
           },
           "fqid": "TOP_CALL.RUNS_DISABLED.RUN_CREATOR4",
           "comments": [
-            "Always null"
+            "Always empty, unless disabled"
           ],
           "disabled": [
             true
@@ -750,8 +760,18 @@
                   "value": 3
                 }
               ],
-              null,
-              null
+              {
+                "__disabled__": {
+                  "__reference__": "TOP_CALL.RUNS_ENABLED.RUN_CREATOR5.CREATE_DISABLE.disable"
+                },
+                "value": []
+              },
+              {
+                "__disabled__": {
+                  "__reference__": "TOP_CALL.RUNS_ENABLED.RUN_CREATOR5.CREATE_DISABLE.disable"
+                },
+                "value": []
+              }
             ]
           }
         },
@@ -1044,12 +1064,17 @@
             }
           },
           "outputs": {
-            "expression": null,
-            "type": "null"
+            "expression": {
+              "__disabled__": {
+                "__reference__": "TOP_CALL.RUNS_ENABLED.RUN_CREATOR5.CREATE_DISABLE.disable"
+              },
+              "value": []
+            },
+            "type": "RUN_CREATOR[]"
           },
           "fqid": "TOP_CALL.RUNS_DISABLED_DYNAMIC.RUN_CREATOR3",
           "comments": [
-            "Always null"
+            "Always empty, unless disabled"
           ],
           "disabled": [
             true
@@ -1074,12 +1099,17 @@
             }
           },
           "outputs": {
-            "expression": null,
-            "type": "null"
+            "expression": {
+              "__disabled__": {
+                "__reference__": "TOP_CALL.RUNS_ENABLED.RUN_CREATOR5.CREATE_DISABLE.disable"
+              },
+              "value": []
+            },
+            "type": "RUN_CREATOR[]"
           },
           "fqid": "TOP_CALL.RUNS_DISABLED_DYNAMIC.RUN_CREATOR4",
           "comments": [
-            "Always null"
+            "Always empty, unless disabled"
           ],
           "disabled": [
             true

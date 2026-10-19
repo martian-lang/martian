@@ -1,0 +1,21 @@
+pipeline TOP(
+    %s
+    out %s y,
+)
+{
+    map call SUB(
+        x    = 1,
+        flag = split %s,
+    )
+
+    map call S as CONSUMER(
+        x = split SUB.y,
+    )
+
+    return (
+        y = CONSUMER.y,
+    )
+}
+call TOP(
+    %s
+)

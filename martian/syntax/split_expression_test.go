@@ -228,7 +228,9 @@ call X(
 	if err != nil {
 		t.Fatal("missing output x")
 	}
-	if x.Exp.getKind() != KindNull {
-		t.Errorf("Expected null, got %v", x.Exp)
+	// A is disabled, but B is not, so mapping over A's null output gives an
+	// empty array, not null.
+	if arr, ok := x.Exp.(*ArrayExp); !ok || len(arr.Value) != 0 {
+		t.Errorf("Expected [], got %v", x.Exp)
 	}
 }

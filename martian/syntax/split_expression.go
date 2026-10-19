@@ -29,7 +29,7 @@ type SplitExp struct {
 }
 
 func (s *SplitExp) getKind() ExpKind { return KindSplit }
-func (s *SplitExp) val() interface{} { return s.Value }
+func (s *SplitExp) val() any         { return s.Value }
 
 func (s *SplitExp) getSubnodes() []AstNodable {
 	return []AstNodable{s.Value}
@@ -140,11 +140,13 @@ func (exp *SplitExp) FindTypedRefs(list []*BoundReference,
 			return list, err
 		}
 	case *DisabledExp:
-		list, err := val.Value.FindTypedRefs(list, t, lookup)
+		// Use the call mode of the value rather than of the split, which
+		// for a collection-valued element describes the element.
+		var err error
+		innerType, err = lookup.AddDim(t, val.CallMode())
 		if err != nil {
 			return list, err
 		}
-		return val.Disabled.FindTypedRefs(list, &builtinBool, lookup)
 	default:
 		return list, &wrapError{
 			innerError: &bindingError{
@@ -290,6 +292,8 @@ func (exp *SplitExp) CallMode() CallMode {
 	switch e := exp.Value.(type) {
 	case *RefExp:
 		return ModeUnknownMapCall
+	case *DisabledExp:
+		return e.CallMode()
 	case *MergeExp:
 		if is, ok := e.Value.(MapCallSource); ok {
 			return is.CallMode()
@@ -442,7 +446,7 @@ func (s *SplitExp) BindingPath(bindPath string,
 	}
 	switch val := v.(type) {
 	case *NullExp:
-		return s.Value, nil
+		return v, nil
 	case *MergeExp:
 		if i != nil && i.IndexSource() == nil {
 			if val.GetCall() != s.Call {

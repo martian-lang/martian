@@ -1,0 +1,84 @@
+# Map call over the output of a pipeline which is disabled by a value that is
+# itself part of the split of the enclosing statically mapped pipeline.
+
+stage PASS_MAP(
+    in  map<int> what,
+    out map<int> result,
+    src exec     "stage.py",
+)
+
+stage PASS_ARR(
+    in  int[] what,
+    out int[] result,
+    src exec  "stage.py",
+)
+
+stage WORK_INT(
+    in  int what,
+    out int result,
+    src exec "stage.py",
+)
+
+pipeline INNER(
+    in  map<int> inputs,
+    out map<int> result,
+)
+{
+    call PASS_MAP as DELAY(
+        what = self.inputs,
+    )
+
+    map call WORK_INT(
+        what = split DELAY.result,
+    )
+
+    return (
+        result = WORK_INT.result,
+    )
+}
+
+pipeline MID(
+    in  map<int> inputs,
+    in  bool     disable,
+    out map<int> result,
+)
+{
+    call INNER(
+        inputs = self.inputs,
+    ) using (
+        disabled = self.disable,
+    )
+
+    map call WORK_INT as CONSUMER(
+        what = split INNER.result,
+    )
+
+    return (
+        result = CONSUMER.result,
+    )
+}
+
+pipeline TOP(
+    in  map<int>   inputs,
+    out map<int>[] result,
+)
+{
+    map call MID(
+        inputs  = self.inputs,
+        disable = split [
+            true,
+            false,
+        ],
+    )
+
+    return (
+        result = MID.result,
+    )
+}
+
+call TOP(
+    inputs = {
+        "x": 1,
+        "y": 2,
+    },
+)

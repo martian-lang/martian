@@ -12,6 +12,7 @@ import (
 	"errors"
 	"fmt"
 	"os"
+	"slices"
 	"sort"
 	"strconv"
 	"strings"
@@ -326,12 +327,25 @@ func (node *TopNode) resolveMerge(binding *syntax.MergeExp, t syntax.Type,
 		}
 	}
 	var forkRefId string
-	if callRef := binding.ForkNode; callRef != nil {
-		forkRefId = callRef.Id
+	constraint := binding.ForkNode
+	if constraint != nil {
+		forkRefId = constraint.Id
 	} else {
 		forkRefId = binding.Call.GetFqid()
+		if ref, ok := binding.Value.(*syntax.RefExp); ok && ref.Id == forkRefId {
+			constraint = ref
+		}
 	}
-	parts, errs := node.getParts(binding.GetCall(), fork, forkRefId)
+	partsFork := fork
+	if constraint != nil {
+		// The merge may have been statically constrained to a subset of the
+		// forks of the bound node, for example if this is a merge inside one
+		// instance of a statically mapped pipeline.
+		if boundNode := node.allNodes[forkRefId]; boundNode != nil {
+			partsFork = fork.constrain(constraint.Forks, boundNode.forkRoots)
+		}
+	}
+	parts, errs := node.getParts(binding.GetCall(), partsFork, forkRefId)
 	if err := errs.If(); err != nil {
 		util.PrintError(err, "runtime",
 			"Resolving parts for %s.  This will likely result in further errors.",
@@ -437,6 +451,43 @@ func (node *TopNode) resolveMerge(binding *syntax.MergeExp, t syntax.Type,
 		return allReady, result, err
 	}
 	panic("invalid mapping mode")
+}
+
+// constrain returns a fork ID which includes the statically-known indices from
+// ref for any of the given roots which are not already part of this fork ID,
+// ordered as in roots.  If there are no such indices, it returns this fork ID.
+func (f ForkId) constrain(ref map[*syntax.CallStm]syntax.CollectionIndex,
+	roots []*syntax.CallStm) ForkId {
+	staticIndex := func(src *syntax.CallStm) syntax.CollectionIndex {
+		if _, err := f.matchPart(src); err == nil {
+			return nil
+		}
+		if j := ref[src]; j != nil && j.IndexSource() == nil {
+			return j
+		}
+		return nil
+	}
+	if !slices.ContainsFunc(roots, func(src *syntax.CallStm) bool {
+		return staticIndex(src) != nil
+	}) {
+		return f
+	}
+	result := make(ForkId, 0, len(roots))
+	for _, src := range roots {
+		if p, err := f.matchPart(src); err == nil {
+			result = append(result, p)
+		} else if j := staticIndex(src); j != nil {
+			result = append(result, &ForkSourcePart{
+				Id: convertForkPart(j),
+				Split: &syntax.SplitExp{
+					Value:  &syntax.MergeExp{MergeOver: src},
+					Call:   src,
+					Source: src,
+				},
+			})
+		}
+	}
+	return result
 }
 
 // getParts returns the ForkSourcePart corresponding the the given call for

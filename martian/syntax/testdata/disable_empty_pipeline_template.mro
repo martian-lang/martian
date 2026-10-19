@@ -1,0 +1,20 @@
+pipeline TOP(
+    in  %s empty,
+    out %s y,
+)
+{
+    map call SUB(
+        x = split self.empty,
+    )
+
+    map call S as AFTER(
+        x = split SUB.y,
+    )
+
+    return (
+        y = AFTER.y,
+    )
+}
+call TOP(
+    empty = null,
+)

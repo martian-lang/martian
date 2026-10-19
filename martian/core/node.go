@@ -9,11 +9,13 @@ package core
 import (
 	"context"
 	"fmt"
+	"maps"
 	"math"
 	"os"
 	"path"
 	"regexp"
 	"runtime/trace"
+	"slices"
 	"sort"
 	"strconv"
 	"strings"
@@ -150,7 +152,7 @@ func (self *Node) makeDirectPrenodes() {
 		if mods := self.call.Call().Modifiers; mods != nil {
 			if modBindings := mods.Bindings; modBindings != nil {
 				allBindings = append(
-					allBindings[:len(allBindings):len(allBindings)],
+					slices.Clip(allBindings),
 					modBindings.List...)
 			}
 		}
@@ -214,9 +216,11 @@ func (self *Node) addDirectRefNodes(ref *syntax.RefExp,
 	return prenodes
 }
 
-func (self *Node) makePrenodesForBinding(bind *syntax.ResolvedBinding,
+func (self *Node) makePrenodesForBinding(
+	bind *syntax.ResolvedBinding,
 	refs map[Nodable]struct{},
-	fileRefs map[Nodable]map[string]syntax.Type) (map[Nodable]struct{}, map[Nodable]map[string]syntax.Type) {
+	fileRefs map[Nodable]map[string]syntax.Type,
+) (map[Nodable]struct{}, map[Nodable]map[string]syntax.Type) {
 	brefs, err := bind.FindRefs(self.top.types)
 	if err != nil {
 		// This should never happen if the ast compiled properly
@@ -466,9 +470,7 @@ func cloneFork(fork *Fork, id ForkId) *Fork {
 				nf.filePostNodes[k] = nil
 			} else {
 				nm := make(map[string]syntax.Type, len(m))
-				for k, t := range m {
-					nm[k] = t
-				}
+				maps.Copy(nm, m)
 				nf.filePostNodes[k] = nm
 			}
 		}
@@ -630,13 +632,21 @@ func (self *Node) removeMetadata() {
 }
 
 func (self *Node) getFork(index string) *Fork {
-	i, err := strconv.Atoi(index)
-	if err == nil && i >= 0 && i < len(self.forks) {
-		return self.forks[i]
-	}
 	l := len(self.call.GetFqid()) + 5
+	matches := func(f *Fork) bool {
+		return len(f.fqname) > l && f.fqname[l:] == index
+	}
+	// Fast path: usually the fork ID is the fork's position in the list.
+	if i, err := strconv.Atoi(index); err == nil && i >= 0 && i < len(self.forks) {
+		if f := self.forks[i]; matches(f) {
+			return f
+		}
+	}
+	// After forks are expanded at runtime, the order of forks in the list
+	// does not generally match their IDs, so e.g. fork2 is not necessarily
+	// self.forks[2].  Fall back to scanning.
 	for _, f := range self.forks {
-		if len(f.fqname) > l && f.fqname[l:] == index {
+		if matches(f) {
 			return f
 		}
 	}
@@ -856,7 +866,7 @@ func (self *Node) isErrorTransient() (bool, string) {
 		}
 		if metadata.exists(Errors) {
 			errlog := metadata.readRaw(Errors)
-			for _, line := range strings.Split(errlog, "\n") {
+			for line := range strings.SplitSeq(errlog, "\n") {
 				for _, re := range passRegexp {
 					if re.MatchString(line) {
 						return true, errlog
@@ -926,7 +936,9 @@ func (self *Node) step() bool {
 // 3. The chunk index, if any.
 // 4. The job uniquifier, if any.
 // 5. The metadata file name.
-var jobJournalRe = regexp.MustCompile(`(.*)\.fork([^.]+)(?:\.chnk(\d+))?(?:\.u([a-f0-9]{10}))?\.(.*)$`)
+var jobJournalRe = regexp.MustCompile(
+	`(.*)\.fork([^.]+)(?:\.chnk(\d+))?(?:\.u([a-f0-9]{10}))?\.(.*)$`,
+)
 
 func (self *Node) parseRunFilename(fqname string) (string, string, int, string, string) {
 	if match := jobJournalRe.FindStringSubmatch(fqname); len(match) >= 6 {
@@ -1112,9 +1124,7 @@ func (self *Node) runJob(shellName, fqname, stageType string,
 	envs := self.top.envs
 	if td := metadata.TempDir(); td != "" {
 		envs = make(map[string]string, len(self.top.envs)+1)
-		for k, v := range self.top.envs {
-			envs[k] = v
-		}
+		maps.Copy(envs, self.top.envs)
 		envs["TMPDIR"] = td
 	}
 	switch self.stagecode.Type {
@@ -1142,7 +1152,7 @@ func (self *Node) runJob(shellName, fqname, stageType string,
 	case syntax.ExecStage:
 		shellCmd = self.resolvedCmd
 		argv = append(
-			self.stagecode.Args[:len(self.stagecode.Args):len(self.stagecode.Args)],
+			slices.Clip(self.stagecode.Args),
 			shellName, metadata.path, metadata.curFilesPath, runFile)
 	default:
 		panic(fmt.Sprint("Unknown stage code language: ", self.stagecode.Type))

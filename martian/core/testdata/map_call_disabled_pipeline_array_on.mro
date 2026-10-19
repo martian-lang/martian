@@ -1,0 +1,69 @@
+# Same as map_call_disabled_pipeline_on.mro, but with arrays, so the
+# downstream map call's result is an empty array rather than [null].
+
+stage PASS_MAP(
+    in  int[] what,
+    out int[] result,
+    src exec  "stage.py",
+)
+
+stage WORK_BOOL(
+    in  bool what,
+    out bool result,
+    src exec "stage.py",
+)
+
+stage WORK_INT(
+    in  int what,
+    out int result,
+    src exec "stage.py",
+)
+
+pipeline INNER(
+    in  int[] inputs,
+    out int[] result,
+)
+{
+    call PASS_MAP as DELAY(
+        what = self.inputs,
+    )
+
+    map call WORK_INT(
+        what = split DELAY.result,
+    )
+
+    return (
+        result = WORK_INT.result,
+    )
+}
+
+pipeline TOP(
+    in  int[] inputs,
+    out int[] result,
+)
+{
+    call WORK_BOOL as FLAG(
+        what = true,
+    )
+
+    call INNER(
+        inputs = self.inputs,
+    ) using (
+        disabled = FLAG.result,
+    )
+
+    map call WORK_INT as CONSUMER(
+        what = split INNER.result,
+    )
+
+    return (
+        result = CONSUMER.result,
+    )
+}
+
+call TOP(
+    inputs = [
+        1,
+        2,
+    ],
+)

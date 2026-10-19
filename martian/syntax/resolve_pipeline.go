@@ -143,11 +143,19 @@ func (node *CallGraphPipeline) resolve(siblings map[string]*ResolvedBinding,
 		// No point in going further.  Trim away the child nodes and return
 		// null.
 		node.Children = nil
-		node.Outputs = &ResolvedBinding{
-			Exp: &NullExp{
-				valExp: valExp{Node: node.pipeline.Node},
-			},
-			Type: &builtinNull,
+		if len(node.pipeline.Ret.Bindings.List) > 0 {
+			// A pipeline mapped over an empty source outputs an empty
+			// collection.
+			node.Outputs = node.emptyMappingOutputs(node.pipeline.Id,
+				siblings, lookup)
+		}
+		if node.Outputs == nil {
+			node.Outputs = &ResolvedBinding{
+				Exp: &NullExp{
+					valExp: valExp{Node: node.pipeline.Node},
+				},
+				Type: &builtinNull,
+			}
 		}
 		node.Disable = alwaysDisable(node.Disable)
 		return nil
